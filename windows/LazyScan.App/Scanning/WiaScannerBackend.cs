@@ -713,7 +713,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                 }
                 catch (COMException e)
                 {
-                    throw ScanException.SessionFailed(e.Message);
+                    throw WiaErrors.ToSessionException(e.HResult, e.Message);
                 }
             }
         }

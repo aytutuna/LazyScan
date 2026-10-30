@@ -56,6 +56,17 @@ public static class WiaErrors
         if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, code);
         return ScanException.ScanFailed(string.IsNullOrWhiteSpace(driverMessage) ? code : $"{code}: {driverMessage}");
     }
+
+    /// <summary>
+    /// Like <see cref="ToScanException"/> for a WIA call that failed while opening the device:
+    /// an HRESULT that maps to no problem is a session failure, as no scan was attempted.
+    /// </summary>
+    public static ScanException ToSessionException(int hresult, string? driverMessage)
+    {
+        string code = $"WIA error 0x{unchecked((uint)hresult):X8}";
+        if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, code);
+        return ScanException.SessionFailed(string.IsNullOrWhiteSpace(driverMessage) ? code : $"{code}: {driverMessage}");
+    }
 }
 
 /// <summary>

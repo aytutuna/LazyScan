@@ -61,6 +61,26 @@ public class WiaErrorsTests
     }
 
     [Fact]
+    public void BusyWhileOpeningBecomesTheBusyProblem()
+    {
+        var error = WiaErrors.ToSessionException(unchecked((int)WiaErrors.Busy), "Exception from HRESULT: 0x80210006");
+        Assert.Equal(ScannerProblem.Busy, error.Problem);
+        Assert.StartsWith(ScannerProblems.Describe(ScannerProblem.Busy), error.Message);
+        Assert.EndsWith("(WIA error 0x80210006)", error.Message);
+    }
+
+    [Fact]
+    public void UnmappedHResultWhileOpeningIsASessionFailure()
+    {
+        var error = WiaErrors.ToSessionException(unchecked((int)0x8021000Eu), "Driver crashed");
+        Assert.Null(error.Problem);
+        Assert.Equal(ScanErrorKind.SessionFailed, error.Kind);
+        Assert.Equal("Could not open a session with the scanner: WIA error 0x8021000E: Driver crashed", error.Message);
+        Assert.Equal("Could not open a session with the scanner: WIA error 0x8021000E",
+                     WiaErrors.ToSessionException(unchecked((int)0x8021000Eu), " ").Message);
+    }
+
+    [Fact]
     public void FeederOnlyScannerHasNoFlatbed()
     {
         Assert.Equal([ScanSource.DocumentFeeder], WiaDocumentHandling.Sources(WiaDocumentHandling.Feed));
