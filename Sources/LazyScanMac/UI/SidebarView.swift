@@ -36,14 +36,17 @@ struct SidebarView: View {
                 HStack {
                     Text("Scanners")
                     Spacer()
-                    Button {
-                        state.showTroubleshooter = true
-                    } label: {
-                        Image(systemName: "questionmark.circle")
+                    // Until a scanner is listed, the Troubleshoot link in the list is the one way in.
+                    if state.hasRealDevices {
+                        Button {
+                            state.showTroubleshooter = true
+                        } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Why isn't my scanner listed?")
+                        .accessibilityLabel("Why isn't my scanner listed?")
                     }
-                    .buttonStyle(.borderless)
-                    .help("Why isn't my scanner listed?")
-                    .accessibilityLabel("Why isn't my scanner listed?")
                 }
             }
         }

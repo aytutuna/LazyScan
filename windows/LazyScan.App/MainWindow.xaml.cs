@@ -160,7 +160,6 @@ public partial class MainWindow : Window
         AutomationProperties.SetName(PaneToggleButton, toggleText);
         ScannersHeader.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         AddScannerButton.Visibility = compact || ViewModel.NetworkScanners is null ? Visibility.Collapsed : Visibility.Visible;
-        TroubleshootButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         UpdateEmptyDevicesHint();
         ScannersHeader.Margin = narrow ? new Thickness(0, 0, 16, 0) : new Thickness(16, 8, 16, 6);
         PresetsHeader.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
@@ -440,10 +439,15 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The sidebar's empty state (the troubleshooter and adding by address) while no scanner but
-    /// the demo scanner is listed; not in the icon rail, where the header buttons are hidden too.
+    /// the demo scanner is listed, and the header's ? button once one is, so the two are never
+    /// shown together; neither in the icon rail, where the header buttons are hidden too.
     /// </summary>
     private void UpdateEmptyDevicesHint()
     {
+        bool help = ViewModel.HasRealDevices && !IsPaneCompact;
+        TroubleshootButton.Visibility = help ? Visibility.Visible : Visibility.Collapsed;
+        // Alone, the + sits where the ? does, level with the presets' buttons.
+        AddScannerButton.Margin = new Thickness(0, 4, help ? 2 : 8, 0);
         EmptyDevicesHint.Visibility = !ViewModel.HasRealDevices && !IsPaneCompact ? Visibility.Visible : Visibility.Collapsed;
     }
 

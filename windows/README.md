@@ -1428,10 +1428,10 @@ glass at one end), magazines with photographs and tints bleeding into the gutter
 
 ### Why isn't my scanner listed?
 
-The **?** button next to **Scanners**, the link under the scanner list while only the Demo
-Scanner is listed, and **Troubleshoot** on an error about a scanner that would not connect or
-scan open a window of checks, each a card with its status (problem, warning, OK or tip), what it
-means in plain language and the buttons that help:
+The **?** button next to **Scanners** once a scanner is listed, the link under the scanner list
+while only the Demo Scanner is listed, and **Troubleshoot** on an error about a scanner that
+would not connect or scan open a window of checks, each a card with its status (problem, warning,
+OK or tip), what it means in plain language and the buttons that help:
 
 - **The last failure**: a scanner that is busy in another app ("close other apps that may be
   using it, such as Windows Scan or the scanner maker's app"), another condition the scanner
