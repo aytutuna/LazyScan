@@ -251,17 +251,11 @@ public class DocumentSidesTests
         var eachSaved = Feeder(DuplexMode.Manual);
         eachSaved.DocumentMultiPage = false;
         Assert.False(DocumentSides.UsesManualSteps(eachSaved, null));
-        Assert.Equal("Turning the stack over by hand needs “Collect pages, then Save PDF”.",
+        Assert.Equal("Turning the stack over by hand needs Collect pages before saving.",
                      DocumentSides.ManualUnavailableReason(eachSaved));
-        // The switch it names reads as the format saves the collected pages.
+        // The switch is named the same whatever the format.
         eachSaved.Format = OutputFormat.Word;
-        Assert.Equal("Turning the stack over by hand needs “Collect pages, then Save Word”.",
-                     DocumentSides.ManualUnavailableReason(eachSaved));
-        eachSaved.Format = OutputFormat.Text;
-        Assert.Equal("Turning the stack over by hand needs “Collect pages, then Save Text”.",
-                     DocumentSides.ManualUnavailableReason(eachSaved));
-        eachSaved.Format = OutputFormat.Jpeg;
-        Assert.Equal("Turning the stack over by hand needs “Collect pages, then Save PDF”.",
+        Assert.Equal("Turning the stack over by hand needs Collect pages before saving.",
                      DocumentSides.ManualUnavailableReason(eachSaved));
         Assert.Null(DocumentSides.ManualUnavailableReason(Feeder(DuplexMode.Manual)));
 

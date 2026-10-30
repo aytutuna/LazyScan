@@ -221,17 +221,11 @@ final class DocumentSidesTests: XCTestCase {
         eachSaved.documentMultiPage = false
         XCTAssertFalse(DocumentSides.usesManualSteps(eachSaved, capabilities: nil))
         XCTAssertEqual(DocumentSides.manualUnavailableReason(eachSaved),
-                       "Turning the stack over by hand needs \u{201C}Collect pages, then Save PDF\u{201D}.")
-        // The switch it names reads as the format saves the collected pages.
+                       "Turning the stack over by hand needs Collect pages before saving.")
+        // The switch is named the same whatever the format.
         eachSaved.format = .word
         XCTAssertEqual(DocumentSides.manualUnavailableReason(eachSaved),
-                       "Turning the stack over by hand needs \u{201C}Collect pages, then Save Word\u{201D}.")
-        eachSaved.format = .text
-        XCTAssertEqual(DocumentSides.manualUnavailableReason(eachSaved),
-                       "Turning the stack over by hand needs \u{201C}Collect pages, then Save Text\u{201D}.")
-        eachSaved.format = .jpeg
-        XCTAssertEqual(DocumentSides.manualUnavailableReason(eachSaved),
-                       "Turning the stack over by hand needs \u{201C}Collect pages, then Save PDF\u{201D}.")
+                       "Turning the stack over by hand needs Collect pages before saving.")
         XCTAssertNil(DocumentSides.manualUnavailableReason(feeder(.manual)))
 
         // The Copy task is in Document mode, yet copies are made from one side of each sheet.
