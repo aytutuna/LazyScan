@@ -15,6 +15,7 @@ public enum IOSReviewText {
     public static let rotateLabel = "Rotate"
     /// What the list of photos is for, for VoiceOver.
     public static let listHelp = "Turn Keep off to leave a photo out, or fix its crop."
+    public static let receiptsListHelp = "Turn Keep off to leave a receipt out, or fix its crop."
     /// The receipts' choices (the Mac's and Windows' Receipts section).
     public static let nameByDateLabel = "Name by receipt date"
     public static let combineLabel = "One PDF for all"
@@ -39,6 +40,8 @@ public enum IOSReviewText {
     public static let sidesAsImagesLabel = "Also save sides as images"
     public static let discardLabel = "Discard"
     public static let discardHint = "Deletes the sides taken; can't be undone"
+    /// Discard's hint while the back was skipped and only the front is held.
+    public static let discardFrontHint = "Delete the front; can't be undone"
     /// The ID card review's Print button (AirPrint, I16).
     public static let printLabel = "Print"
     public static let printIdCardHint = "Print both sides at real size on an AirPrint printer"

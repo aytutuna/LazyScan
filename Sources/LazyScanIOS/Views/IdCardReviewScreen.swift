@@ -66,7 +66,7 @@ struct IdCardReviewScreen: View {
                         asksDiscard = true
                     }
                     .disabled(state.isBusy)
-                    .accessibilityHint(Text(IOSReviewText.discardHint))
+                    .accessibilityHint(Text(discardHint))
                     .accessibilityIdentifier("idcard.discard")
                 }
             }
@@ -191,6 +191,11 @@ struct IdCardReviewScreen: View {
             formats.append(format)
         }
         return formats
+    }
+
+    /// What Discard deletes: the front alone when the back was skipped.
+    private var discardHint: String {
+        state.idCardBack == nil ? IOSReviewText.discardFrontHint : IOSReviewText.discardHint
     }
 
     private var paper: Binding<IdCardPaper> {

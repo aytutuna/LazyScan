@@ -3621,12 +3621,12 @@ public enum IOSObjectFinder {
     public static func candidates(_ corners: [[CGPoint]], confidences: [Double], width: Int, height: Int) -> [QuadCandidate]
 }
 // LazyScanIOS/Review/IOSPhotoReviewModel.swift (I13):
-public enum IOSReviewText { /* cancelLabel "Cancel", keepLabel "Keep", fixCropLabel "Fix crop", rotateLabel "Rotate", listHelp,
+public enum IOSReviewText { /* cancelLabel "Cancel", keepLabel "Keep", fixCropLabel "Fix crop", rotateLabel "Rotate", listHelp, receiptsListHelp,
                               nameByDateLabel "Name by receipt date", combineLabel "One PDF for all", saveAsLabel "Save as",
                               idCardTitle "Check the ID card", privacyHelp, frontTitle "Front", backTitle "Back",
                               scanAgainLabel "Scan again", takeAgainLabel "Take again", swapLabel "Swap sides", noBackLine "No back side",
                               scanBackLabel "Scan the back", takeBackLabel "Take the back", pagePreviewName "Page preview", paperLabel "Paper",
-                              sidesAsImagesLabel "Also save sides as images", discardLabel "Discard", discardHint,
+                              sidesAsImagesLabel "Also save sides as images", discardLabel "Discard", discardHint, discardFrontHint,
                               cardFrontPrompt "Fit the front in the frame", cardBackPrompt "Fit the back in the frame",
                               guideName "Card frame"; idCardSaveTitle(_:) "Save PDF", sideAction(_:side:) "Scan the back again",
                               sizeCaption(width:height:dpi:) "6.0 × 4.0 in" */ }

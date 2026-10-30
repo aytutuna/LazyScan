@@ -765,6 +765,7 @@ final class IOSObjectsTests: XCTestCase {
         // A scanner's words stay for printer mode.
         XCTAssertEqual(IOSReviewText.sideAction(IOSReviewText.scanAgainLabel, side: .back), "Scan the back again")
         // The review opens with the front alone when the back is skipped.
+        XCTAssertEqual(IOSReviewText.discardFrontHint, "Delete the front; can't be undone")
         XCTAssertEqual(IOSReviewText.discardHint, "Deletes the sides taken; can't be undone")
     }
 

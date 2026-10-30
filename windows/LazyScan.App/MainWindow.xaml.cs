@@ -269,7 +269,9 @@ public partial class MainWindow : Window
         }
         if (ViewModel.ShowPhotoReview)
         {
-            return "The detected photos have not been saved.";
+            return ViewModel.IsReceiptReview
+                ? "The receipts found have not been saved."
+                : "The detected photos have not been saved.";
         }
         if (ViewModel.HasIdCardCaptures)
         {
@@ -393,6 +395,9 @@ public partial class MainWindow : Window
             int included = ViewModel.DetectedPhotos.Count(p => p.Photo.Included);
             ReviewTitle.Text = ViewModel.ReviewTitle;
             ReviewSaveButton.Content = ViewModel.ReviewSaveTitle;
+            AutomationProperties.SetHelpText(PhotoGrid, ViewModel.IsReceiptReview
+                ? "Untick a receipt to leave it out, or fix its crop."
+                : "Untick a photo to leave it out, or fix its crop.");
             PhotoGrid.IsEnabled = !ViewModel.IsBusy;
             // Saving nothing would discard the batch: discarding is the Discard button's job.
             ReviewSaveButton.IsEnabled = !ViewModel.IsBusy && included > 0;

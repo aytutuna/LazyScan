@@ -34,7 +34,7 @@ struct PhotoReviewScreen: View {
                     }
                     .padding(16)
                 }
-                .accessibilityHint(Text(IOSReviewText.listHelp))
+                .accessibilityHint(Text(listHelp))
                 Divider()
                 footer
             }
@@ -77,6 +77,10 @@ struct PhotoReviewScreen: View {
             number += 1
         }
         return list
+    }
+
+    private var listHelp: String {
+        model.isReceipts ? IOSReviewText.receiptsListHelp : IOSReviewText.listHelp
     }
 
     /// The import's progress, the receipts' choices, the progress of a save, and Save.

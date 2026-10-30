@@ -1377,8 +1377,7 @@
                             <!-- The right margin puts the scrollbar in the dialog's padding, clear of the cards. -->
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                           Margin="-6,0,-18,0">
-                                <ItemsControl x:Name="PhotoGrid" Margin="0,0,12,0"
-                                              AutomationProperties.HelpText="Untick a photo to leave it out, or fix its crop.">
+                                <ItemsControl x:Name="PhotoGrid" Margin="0,0,12,0">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel />
