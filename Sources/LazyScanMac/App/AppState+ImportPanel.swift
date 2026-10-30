@@ -32,11 +32,13 @@ extension AppState {
     /// The pictures Continuity Camera hands over (File > Import from iPhone or iPad: a photo, a scanned
     /// document) are imported as photo files dropped on the window are: each is written to a file in
     /// the temporary folder and the files go to `importPhotos`. Returns whether there was anything to take.
-    /// While something runs they are refused and said in `errorMessage`: the menu stays enabled, and
-    /// `importPhotos` would drop them without a word, with no file left anywhere else.
+    /// While something runs, a review is open or a stack is being turned over by hand they are refused
+    /// and said in `errorMessage`: the menu stays enabled, and `importPhotos` would drop them without a
+    /// word or blame the settings, with no file left anywhere else. Settings that do not import photos
+    /// are left to `importPhotos`, which says so.
     func importFromDevice(_ providers: [NSItemProvider]) -> Bool {
         guard !providers.isEmpty else { return false }
-        guard !isBusy else {
+        guard !isBusy, canImportPhotos || !PhotoImport.isOffered(settings) else {
             errorMessage = Self.deviceBusyMessage
             return false
         }
@@ -52,8 +54,8 @@ extension AppState {
                     files.append(file)
                 }
             }
-            // A scan may have started while the pictures came over.
-            guard !isBusy else {
+            // A scan may have started, or a review opened, while the pictures came over.
+            guard !isBusy, canImportPhotos || !PhotoImport.isOffered(settings) else {
                 errorMessage = Self.deviceBusyMessage
                 return
             }
@@ -64,7 +66,8 @@ extension AppState {
     }
 
     private static let deviceBusyMessage =
-        "The picture from your iPhone or iPad was not added while another task was running. Import it again once it has finished."
+        "The picture from your iPhone or iPad was not added while a scan or save was running, a review was open, "
+        + "or the stack was being turned over by hand. Import it again once that has finished."
 
     /// The file's name is shown by the corner editor and in an error, so it is the provider's suggested
     /// name or the time the picture came over, written like a screenshot's: "Picture 2026-10-29 at
