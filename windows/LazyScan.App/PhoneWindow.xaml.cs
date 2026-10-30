@@ -63,6 +63,7 @@ public partial class PhoneWindow : Window
             // The pairing code stops working when the window closes.
             e.Cancel = true;
             _closing = true;
+            _code = null;
             await _companion.ClosePairingAsync();
             // Closed again once this Closing has finished (it may not close from inside it).
             _ = Dispatcher.BeginInvoke(new Action(Close));
@@ -301,8 +302,9 @@ public partial class PhoneWindow : Window
     {
         if (_companion is null) return;
         _approval?.TrySetResult(false);
-        await _companion.ClosePairingAsync();
+        // Before the close, or the Refresh it causes calls the code expired.
         _code = null;
+        await _companion.ClosePairingAsync();
         Refresh();
     }
 
@@ -335,6 +337,12 @@ public partial class PhoneWindow : Window
             if (_justPaired is { } name)
             {
                 PairNote.Text = $"Paired with {name}. Documents sent from it are added to the queue.";
+                PairNote.Visibility = Visibility.Visible;
+            }
+            else if (_code is not null)
+            {
+                // Cleared wherever the user ends the pairing, so a code still set here has run out.
+                PairNote.Text = "The code expired. Choose Pair a phone to show a new one.";
                 PairNote.Visibility = Visibility.Visible;
             }
         }
@@ -401,6 +409,7 @@ public partial class PhoneWindow : Window
     {
         bool focused = ApprovalCard.IsKeyboardFocusWithin;
         _approval?.TrySetResult(allow);
+        _code = null;
         ApprovalCard.Visibility = Visibility.Collapsed;
         if (focused) PairButton.Focus();
     }
@@ -551,6 +560,8 @@ public partial class PhoneWindow : Window
         {
             await _companion.ResetPairingAsync();
             _code = null;
+            // The Refresh the reset caused ran with the code still set and called it expired.
+            PairNote.Visibility = Visibility.Collapsed;
             ShowStatus("Pairing was reset.");
         }
         catch (Exception error) when (error is CryptographicException or IOException or UnauthorizedAccessException

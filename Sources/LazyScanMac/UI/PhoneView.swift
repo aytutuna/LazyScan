@@ -49,7 +49,7 @@ struct PhoneView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     sectionTitle("Networks")
-                    if snapshot.networks.isEmpty {
+                    if snapshot.networks.isEmpty && service != nil {
                         Text("Not connected to a network.")
                             .foregroundStyle(.secondary)
                     }
@@ -220,8 +220,14 @@ struct PhoneView: View {
                         .font(.headline)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
-                        Button("Allow") { question.settle(true) }
-                        Button("Don't allow") { question.settle(false) }
+                        Button("Allow") {
+                            question.settle(true)
+                            code = nil
+                        }
+                        Button("Don't allow") {
+                            question.settle(false)
+                            code = nil
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -230,11 +236,19 @@ struct PhoneView: View {
                     RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 2)
                 }
             }
-            if !shown, let pairNote {
-                Text(pairNote)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if !shown {
+                // Cleared wherever the user ends the pairing, so a code still set but not shown has run out.
+                if let pairNote {
+                    Text(pairNote)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if code != nil {
+                    Text("The code expired. Choose Pair a phone to show a new one.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -313,8 +327,9 @@ struct PhoneView: View {
 
     private func stopPairing() async {
         question.settle(false)
-        await state.companionService?.closePairing()
+        // Before the close, or the update it causes calls the code expired.
         code = nil
+        await state.companionService?.closePairing()
     }
 
     private func copyPairingText(_ text: String) {
