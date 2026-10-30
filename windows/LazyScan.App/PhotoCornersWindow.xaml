@@ -56,7 +56,7 @@
         <DockPanel DockPanel.Dock="Bottom" Margin="20,12,20,16" LastChildFill="False">
             <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="Reset" Style="{StaticResource SubtleButtonStyle}"
                     ui:Icon.Glyph="&#xE7A7;" Margin="-11,0,0,0" Click="Reset_Click" IsEnabled="False"
-                    ToolTip="Go back to the corners found in the photo" />
+                    ToolTip="Go back to the starting corners" />
             <Button x:Name="WholePhotoButton" DockPanel.Dock="Left" Style="{StaticResource SubtleButtonStyle}"
                     ui:Icon.Glyph="&#xE740;" Margin="4,0,0,0" Click="WholePhoto_Click"
                     AutomationProperties.HelpText="Add the whole photo as the page, as it is" />

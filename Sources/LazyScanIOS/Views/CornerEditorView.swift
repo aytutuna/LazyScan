@@ -134,7 +134,7 @@ struct CornerEditorView: View {
                 model.reset()
             }
             .disabled(!model.canReset)
-            .accessibilityHint(Text("Back to the corners found"))
+            .accessibilityHint(Text("Back to the starting corners"))
             .accessibilityIdentifier("corners.reset")
             Spacer(minLength: 0)
             Button(PhotoImport.wholePhotoLabel) {

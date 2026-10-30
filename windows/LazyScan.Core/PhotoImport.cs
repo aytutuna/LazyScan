@@ -370,7 +370,7 @@ public static class PhotoImport
     {
         PhotoReviewReason.Unsure => "The page edges are unclear.",
         PhotoReviewReason.CutOff => "The page runs off the photo.",
-        PhotoReviewReason.TwoPages => "Two pages found: pick one.",
+        PhotoReviewReason.TwoPages => "Two pages found: outline one.",
         PhotoReviewReason.NothingFound => "No page found in this photo.",
         _ => "",
     };

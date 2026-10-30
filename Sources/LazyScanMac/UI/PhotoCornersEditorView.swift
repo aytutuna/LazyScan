@@ -146,7 +146,7 @@ struct PhotoCornersEditorView: View {
         HStack {
             Button("Reset") { corners = request.plan.corners }
                 .disabled(corners == request.plan.corners)
-                .help("Go back to the corners found in the photo")
+                .help("Go back to the starting corners")
             Button(PhotoImport.wholePhotoLabel) {
                 state.answerCorners(PhotoCornersAnswer(choice: .wholePhoto))
             }

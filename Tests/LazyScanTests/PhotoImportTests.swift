@@ -396,7 +396,7 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertEqual(PhotoImport.reasonText(.unsure), "The page edges are unclear.")
         XCTAssertEqual(PhotoImport.reasonText(.nothingFound), "No page found in this photo.")
         XCTAssertEqual(PhotoImport.reasonText(.cutOff), "The page runs off the photo.")
-        XCTAssertEqual(PhotoImport.reasonText(.twoPages), "Two pages found: pick one.")
+        XCTAssertEqual(PhotoImport.reasonText(.twoPages), "Two pages found: outline one.")
         XCTAssertEqual(PhotoImport.reasonText(.none), "")
         for reason in [PhotoReviewReason.none, .unsure, .cutOff, .twoPages, .nothingFound] {
             XCTAssertTrue((0...6).contains(StatusLine.words(PhotoImport.reasonText(reason))))

@@ -361,7 +361,7 @@ public enum PhotoImport {
         switch reason {
         case .unsure: return "The page edges are unclear."
         case .cutOff: return "The page runs off the photo."
-        case .twoPages: return "Two pages found: pick one."
+        case .twoPages: return "Two pages found: outline one."
         case .nothingFound: return "No page found in this photo."
         case .none: return ""
         }

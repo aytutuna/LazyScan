@@ -404,7 +404,7 @@ public class PhotoImportTests
         Assert.Equal("The page edges are unclear.", PhotoImport.ReasonText(PhotoReviewReason.Unsure));
         Assert.Equal("No page found in this photo.", PhotoImport.ReasonText(PhotoReviewReason.NothingFound));
         Assert.Equal("The page runs off the photo.", PhotoImport.ReasonText(PhotoReviewReason.CutOff));
-        Assert.Equal("Two pages found: pick one.", PhotoImport.ReasonText(PhotoReviewReason.TwoPages));
+        Assert.Equal("Two pages found: outline one.", PhotoImport.ReasonText(PhotoReviewReason.TwoPages));
         Assert.Equal("", PhotoImport.ReasonText(PhotoReviewReason.None));
         foreach (var reason in Enum.GetValues<PhotoReviewReason>())
         {

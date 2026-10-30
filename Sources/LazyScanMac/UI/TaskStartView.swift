@@ -94,7 +94,7 @@ struct TaskStartView: View {
             } label: {
                 Label("Go to Scanner", systemImage: "scanner")
             }
-            .help("Scan with your current settings")
+            .help("Open the scanner without changing your settings")
         }
     }
 

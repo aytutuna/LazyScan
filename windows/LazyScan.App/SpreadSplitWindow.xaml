@@ -29,7 +29,6 @@
                                  ToolTip="Spine runs up and down" Checked="Axis_Changed" />
                     <RadioButton x:Name="StackedButton" Style="{StaticResource SegmentedTextItemStyle}"
                                  Content="Stacked" Padding="12,4,12,5"
-                                 AutomationProperties.Name="One above the other"
                                  ToolTip="Spine runs across (book on its side)" Checked="Axis_Changed" />
                 </UniformGrid>
             </Border>
