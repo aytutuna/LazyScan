@@ -141,8 +141,6 @@ public static class PhotoImport
     public const string WholePhotoLabel = "Use whole photo";
     public const string SkipLabel = "Skip photo";
     public const string StopLabel = "Stop import";
-    public const string NotOfferedMessage =
-        "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.";
     public const string NoPhotosMessage =
         "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP).";
     /// <summary>The title <see cref="NotOfferedMessage"/> and <see cref="NoPhotosMessage"/> are shown under: nothing failed.</summary>
@@ -169,6 +167,21 @@ public static class PhotoImport
 
     /// <summary>Whether photos can be imported with these settings: the document queue collects them.</summary>
     public static bool IsOffered(ScanSettings settings) => TaskCatalog.FlowOf(settings) == TaskFlowKind.DocumentQueue;
+
+    /// <summary>
+    /// Why a task of Document mode keeps photos out of the queue: it saves its scans on its own (the ID card,
+    /// Photocopy and Receipts tasks). Null when no such task is in use.
+    /// </summary>
+    public static string? OwnSaveTaskReason(ScanSettings settings) =>
+        settings.Intent == ScanIntent.Document && settings.Task is { } task && !IsOffered(settings)
+            ? $"The {TaskCatalog.Definition(task).Title} task saves its scans on its own"
+            : null;
+
+    /// <summary>Why photos are not imported with these settings, and what to change to import them.</summary>
+    public static string NotOfferedMessage(ScanSettings settings) =>
+        OwnSaveTaskReason(settings) is { } reason
+            ? $"{reason}, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them."
+            : "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.";
 
     /// <summary>The photo the right way up: <paramref name="stored"/> mirrored and turned as <paramref name="orientation"/> says.</summary>
     public static RgbaImage Oriented(RgbaImage stored, PhotoOrientation orientation)

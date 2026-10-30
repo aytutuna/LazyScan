@@ -22,12 +22,17 @@ public enum CompanionHostText {
     }
 
     /// "2 pages from Aytu's iPhone will be added to the queue when the current step is done.", or what to
-    /// choose when the settings do not collect pages.
-    public static func waitingMessage(pageCount: Int, from: String, collectsPages: Bool) -> String {
+    /// choose when the settings do not collect pages; `taskReason` (`PhotoImport.ownSaveTaskReason`) names
+    /// the task to leave when one keeps them out.
+    public static func waitingMessage(pageCount: Int, from: String, collectsPages: Bool, taskReason: String? = nil) -> String {
         let what = pageCount == 1 ? "1 page" : "\(pageCount) pages"
         if collectsPages { return "\(what) from \(from) will be added to the queue when the current step is done." }
+        let are = pageCount == 1 ? "is" : "are"
         let them = pageCount == 1 ? "it" : "them"
-        return "\(what) from \(from) \(pageCount == 1 ? "is" : "are") waiting: choose Document mode, or a document task, "
+        if let taskReason {
+            return "\(what) from \(from) \(are) waiting: \(taskReason). Leave the task or pick Document to PDF to add \(them) to the queue."
+        }
+        return "\(what) from \(from) \(are) waiting: choose Document mode, or a document task, "
             + "with Collect pages before saving on, to add \(them) to the queue."
     }
 
@@ -164,7 +169,8 @@ extension AppState {
             }
             let collects = PhotoImport.isOffered(settings) && settings.documentMultiPage
             let waiting = CompanionHostText.waitingMessage(pageCount: pages, from: names.count == 1 ? names[0] : "your phones",
-                                                           collectsPages: collects)
+                                                           collectsPages: collects,
+                                                           taskReason: PhotoImport.ownSaveTaskReason(settings))
             if waiting != phoneDocumentsWaitingMessage {
                 phoneDocumentsWaitingMessage = waiting
                 // Only the reason the user can act on is shown on the bar; being busy passes on its own.

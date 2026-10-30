@@ -206,7 +206,7 @@ extension AppState {
         let files = PhotoImport.photoFiles(urls.map(\.path)).map { URL(fileURLWithPath: $0) }
         guard !files.isEmpty, canImportPhotos else {
             if !urls.isEmpty {
-                errorMessage = files.isEmpty ? PhotoImport.noPhotosMessage : PhotoImport.notOfferedMessage
+                errorMessage = files.isEmpty ? PhotoImport.noPhotosMessage : PhotoImport.notOfferedMessage(for: settings)
                 errorTitle = PhotoImport.notImportedTitle
             }
             return

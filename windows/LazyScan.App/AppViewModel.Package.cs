@@ -12,9 +12,13 @@ public static class PackageText
 {
     public const string AddToPages = "Add to pages";
     public const string OpenAsNew = "Open as new";
-    public const string NotOfferedMessage =
-        "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.";
     public const string NotAddedTitle = "Not added";
+
+    /// <summary>Why a document's pages are not added with these settings, and what to change to add them.</summary>
+    public static string NotOfferedMessage(ScanSettings settings) =>
+        PhotoImport.OwnSaveTaskReason(settings) is { } reason
+            ? $"{reason}, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them."
+            : "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.";
 
     /// <summary>"Opened Receipt.lsdoc: 3 pages"</summary>
     public static string OpenedMessage(string fileName, int pageCount) =>
@@ -153,7 +157,7 @@ public sealed partial class AppViewModel
         if (!CollectsPackages)
         {
             ErrorTitle = PackageText.NotAddedTitle;
-            ErrorMessage = PackageText.NotOfferedMessage;
+            ErrorMessage = PackageText.NotOfferedMessage(Settings);
             NotifyAll();
             return Task.CompletedTask;
         }

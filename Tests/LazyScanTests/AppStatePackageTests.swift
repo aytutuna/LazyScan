@@ -171,6 +171,17 @@ final class AppStatePackageTests: XCTestCase {
         XCTAssertEqual(state.scannedPages.map(\.documentLabel), ["Lunch 2026-10-20", nil])
     }
 
+    func test_notOfferedMessage_namesTheTaskThatSavesOnItsOwn() {
+        XCTAssertEqual(PackageText.notOfferedMessage(for: TaskCatalog.apply(.receipt, to: ScanSettings())),
+                       "The Receipts task saves its scans on its own, so a document's pages cannot be added here. "
+                           + "Leave the task or pick Document to PDF to add them.")
+        var photos = ScanSettings()
+        photos.intent = .photo
+        XCTAssertEqual(PackageText.notOfferedMessage(for: photos),
+                       "A document's pages are added to the page queue: choose Document mode, or a document task, "
+                           + "with Collect pages before saving on, to add them.")
+    }
+
     @MainActor
     func test_pendingPackage_waitsWhileTheSettingsDoNotCollectPages() async throws {
         let state = try await makeState(pages: 1)
@@ -178,7 +189,7 @@ final class AppStatePackageTests: XCTestCase {
         await state.openPackage(at: url)
         state.settings.intent = .photo
         XCTAssertFalse(state.openPendingPackageAsNew())
-        XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage)
+        XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage(for: state.settings))
         // A refusal, not a failure: the alert has a title of its own, which goes when the alert closes.
         XCTAssertEqual(state.errorTitle, "Not added")
         XCTAssertNotNil(state.pendingPackage)
@@ -189,7 +200,7 @@ final class AppStatePackageTests: XCTestCase {
         state.errorMessage = nil
         XCTAssertNil(state.errorTitle)
         XCTAssertFalse(state.addPendingPackageToPages())
-        XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage)
+        XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage(for: state.settings))
         XCTAssertEqual(state.errorTitle, "Not added")
         XCTAssertNotNil(state.pendingPackage)
         XCTAssertEqual(state.scannedPages.count, 1)

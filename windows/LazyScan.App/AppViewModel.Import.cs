@@ -58,7 +58,7 @@ public sealed partial class AppViewModel
             if (paths.Count > 0)
             {
                 ErrorTitle = PhotoImport.NotImportedTitle;
-                ErrorMessage = files.Count == 0 ? PhotoImport.NoPhotosMessage : PhotoImport.NotOfferedMessage;
+                ErrorMessage = files.Count == 0 ? PhotoImport.NoPhotosMessage : PhotoImport.NotOfferedMessage(Settings);
             }
             NotifyAll();
             return Task.CompletedTask;

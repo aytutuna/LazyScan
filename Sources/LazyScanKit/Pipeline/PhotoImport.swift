@@ -146,8 +146,6 @@ public enum PhotoImport {
     public static let wholePhotoLabel = "Use whole photo"
     public static let skipLabel = "Skip photo"
     public static let stopLabel = "Stop import"
-    public static let notOfferedMessage =
-        "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them."
     public static let noPhotosMessage =
         "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP)."
     /// The title `notOfferedMessage` and `noPhotosMessage` are shown under: nothing failed.
@@ -174,6 +172,21 @@ public enum PhotoImport {
     /// Whether photos can be imported with these settings: the document queue collects them.
     public static func isOffered(_ settings: ScanSettings) -> Bool {
         TaskCatalog.flow(of: settings) == .documentQueue
+    }
+
+    /// Why a task of Document mode keeps photos out of the queue: it saves its scans on its own (the ID card,
+    /// Photocopy and Receipts tasks). Nil when no such task is in use.
+    public static func ownSaveTaskReason(_ settings: ScanSettings) -> String? {
+        guard settings.intent == .document, let task = settings.task, !isOffered(settings) else { return nil }
+        return "The \(TaskCatalog.definition(task).title) task saves its scans on its own"
+    }
+
+    /// Why photos are not imported with these settings, and what to change to import them.
+    public static func notOfferedMessage(for settings: ScanSettings) -> String {
+        if let reason = ownSaveTaskReason(settings) {
+            return "\(reason), so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them."
+        }
+        return "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them."
     }
 
     /// The photo the right way up: `stored` mirrored and turned as `orientation` says.

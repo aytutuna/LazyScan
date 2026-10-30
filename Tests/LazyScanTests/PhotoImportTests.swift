@@ -322,6 +322,32 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertTrue(PhotoImport.isOffered(TaskCatalog.apply(.document, to: ScanSettings())))
     }
 
+    func testTheRefusalNamesTheTaskThatSavesOnItsOwn() {
+        let receipts = TaskCatalog.apply(.receipt, to: ScanSettings())
+        XCTAssertEqual(PhotoImport.ownSaveTaskReason(receipts), "The Receipts task saves its scans on its own")
+        XCTAssertEqual(PhotoImport.ownSaveTaskReason(TaskCatalog.apply(.idCard, to: ScanSettings())),
+                       "The ID card task saves its scans on its own")
+        XCTAssertEqual(PhotoImport.ownSaveTaskReason(TaskCatalog.apply(.copy, to: ScanSettings())),
+                       "The Photocopy task saves its scans on its own")
+        XCTAssertEqual(PhotoImport.notOfferedMessage(for: receipts),
+                       "The Receipts task saves its scans on its own, so photos cannot be added as pages here. "
+                           + "Leave the task or pick Document to PDF to import them.")
+        // Nothing keeps photos out of the queue: no reason.
+        XCTAssertNil(PhotoImport.ownSaveTaskReason(ScanSettings()))
+        XCTAssertNil(PhotoImport.ownSaveTaskReason(TaskCatalog.apply(.quickScan, to: ScanSettings())))
+        // The ID card task needs the flatbed: with the feeder as the source it no longer applies, and photos are offered.
+        var idCardOnFeeder = TaskCatalog.apply(.idCard, to: ScanSettings())
+        idCardOnFeeder.source = .documentFeeder
+        XCTAssertNil(PhotoImport.ownSaveTaskReason(idCardOnFeeder))
+        // In Photos mode the way out is the mode.
+        let inPhotosMode = "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them."
+        var photos = ScanSettings()
+        photos.intent = .photo
+        XCTAssertNil(PhotoImport.ownSaveTaskReason(photos))
+        XCTAssertEqual(PhotoImport.notOfferedMessage(for: photos), inPhotosMode)
+        XCTAssertEqual(PhotoImport.notOfferedMessage(for: TaskCatalog.apply(.photos, to: ScanSettings())), inPhotosMode)
+    }
+
     func testPagesFromPhotosGoThroughTheCleanUpStageButAreNotCroppedAgain() throws {
         var s = ScanSettings()
         s.document.autoCrop = true

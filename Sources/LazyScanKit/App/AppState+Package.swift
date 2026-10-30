@@ -11,9 +11,15 @@ import ImageIO
 public enum PackageText {
     public static let addToPages = "Add to pages"
     public static let openAsNew = "Open as new"
-    public static let notOfferedMessage =
-        "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them."
     public static let notAddedTitle = "Not added"
+
+    /// Why a document's pages are not added with these settings, and what to change to add them.
+    public static func notOfferedMessage(for settings: ScanSettings) -> String {
+        if let reason = PhotoImport.ownSaveTaskReason(settings) {
+            return "\(reason), so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them."
+        }
+        return "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them."
+    }
 
     /// "Opened Receipt.lsdoc: 3 pages"
     public static func openedMessage(_ fileName: String, pageCount: Int) -> String {
@@ -151,7 +157,7 @@ extension AppState {
     private func canTakePackage() -> Bool {
         // Without Collect pages before saving, ingest would save the pages at once instead of queueing them.
         guard PhotoImport.isOffered(settings), settings.documentMultiPage else {
-            errorMessage = PackageText.notOfferedMessage
+            errorMessage = PackageText.notOfferedMessage(for: settings)
             errorTitle = PackageText.notAddedTitle
             return false
         }

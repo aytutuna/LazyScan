@@ -240,8 +240,9 @@ public sealed partial class AppViewModel
         string from = _phoneDocuments.Select(d => d.PhoneName).Distinct().Count() == 1 ? _phoneDocuments.Peek().PhoneName : "your phones";
         string are = pages == 1 ? "is" : "are";
         string them = pages == 1 ? "it" : "them";
-        return CollectsPackages
-            ? $"{what} from {from} will be added to the queue when the current step is done."
+        if (CollectsPackages) return $"{what} from {from} will be added to the queue when the current step is done.";
+        return PhotoImport.OwnSaveTaskReason(Settings) is { } reason
+            ? $"{what} from {from} {are} waiting: {reason}. Leave the task or pick Document to PDF to add {them} to the queue."
             : $"{what} from {from} {are} waiting: choose Document mode, or a document task, "
               + $"with Collect pages before saving on, to add {them} to the queue.";
     }

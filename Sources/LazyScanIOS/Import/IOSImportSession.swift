@@ -317,7 +317,7 @@ public final class IOSImportSession: ObservableObject {
         var outcome = IOSImportOutcome()
         if sources.isEmpty { return outcome }
         guard IOSShell.takesPhotos(state.settings) else {
-            state.errorMessage = PhotoImport.notOfferedMessage
+            state.errorMessage = PhotoImport.notOfferedMessage(for: state.settings)
             state.errorTitle = PhotoImport.notImportedTitle
             return outcome
         }

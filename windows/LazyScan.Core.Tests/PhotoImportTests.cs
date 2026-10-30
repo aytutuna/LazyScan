@@ -329,6 +329,34 @@ public class PhotoImportTests
     }
 
     [Fact]
+    public void TheRefusalNamesTheTaskThatSavesOnItsOwn()
+    {
+        var receipts = TaskCatalog.Apply(ScanTask.Receipt, new ScanSettings());
+        Assert.Equal("The Receipts task saves its scans on its own", PhotoImport.OwnSaveTaskReason(receipts));
+        Assert.Equal("The ID card task saves its scans on its own",
+                     PhotoImport.OwnSaveTaskReason(TaskCatalog.Apply(ScanTask.IdCard, new ScanSettings())));
+        Assert.Equal("The Photocopy task saves its scans on its own",
+                     PhotoImport.OwnSaveTaskReason(TaskCatalog.Apply(ScanTask.Copy, new ScanSettings())));
+        Assert.Equal("The Receipts task saves its scans on its own, so photos cannot be added as pages here. "
+                     + "Leave the task or pick Document to PDF to import them.",
+                     PhotoImport.NotOfferedMessage(receipts));
+        // Nothing keeps photos out of the queue: no reason.
+        Assert.Null(PhotoImport.OwnSaveTaskReason(new ScanSettings()));
+        Assert.Null(PhotoImport.OwnSaveTaskReason(TaskCatalog.Apply(ScanTask.QuickScan, new ScanSettings())));
+        // The ID card task needs the flatbed: with the feeder as the source it no longer applies, and photos are offered.
+        var idCardOnFeeder = TaskCatalog.Apply(ScanTask.IdCard, new ScanSettings());
+        idCardOnFeeder.Source = ScanSource.DocumentFeeder;
+        Assert.Null(PhotoImport.OwnSaveTaskReason(idCardOnFeeder));
+        // In Photos mode the way out is the mode.
+        const string inPhotosMode =
+            "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.";
+        var photos = new ScanSettings { Intent = ScanIntent.Photo };
+        Assert.Null(PhotoImport.OwnSaveTaskReason(photos));
+        Assert.Equal(inPhotosMode, PhotoImport.NotOfferedMessage(photos));
+        Assert.Equal(inPhotosMode, PhotoImport.NotOfferedMessage(TaskCatalog.Apply(ScanTask.Photos, new ScanSettings())));
+    }
+
+    [Fact]
     public void PagesFromPhotosGoThroughTheCleanUpStageButAreNotCroppedAgain()
     {
         var s = new ScanSettings();
