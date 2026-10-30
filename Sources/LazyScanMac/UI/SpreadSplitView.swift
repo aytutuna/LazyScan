@@ -12,8 +12,8 @@ enum SpreadSplitChoice: Equatable {
 }
 
 /// Splitting a spread by hand: the spread as scanned with the cut drawn across it; a click or drag on
-/// the spread, or the slider, moves the cut, and the pages lie side by side or one above the other.
-/// The strip splits or joins the spread with the choice (`AppState.splitSpread`,
+/// the spread, the slider or the arrow keys move the cut, and the pages lie side by side or one above
+/// the other. The strip splits or joins the spread with the choice (`AppState.splitSpread`,
 /// `AppState.joinSpread`). Twin of the Windows `SpreadSplitWindow`.
 struct SpreadSplitView: View {
     let source: SpreadEditorSource
@@ -24,9 +24,13 @@ struct SpreadSplitView: View {
     @State private var axis: GutterAxis
     @State private var fraction: Double
     @State private var showKeys: Bool = false
+    /// The spread has the keyboard, so the cut takes the arrow keys right away.
+    @FocusState private var stageFocused: Bool
 
     /// The slider's range: the cut stays this far from the spread's edges.
     private static let range: ClosedRange<Double> = 0.05...0.95
+    /// One arrow key press moves the cut this share of the spread; with Shift, ten times as much.
+    private static let keyStep: Double = 0.002
 
     init(source: SpreadEditorSource, onDone: @escaping (SpreadSplitChoice) -> Void) {
         self.source = source
@@ -53,7 +57,7 @@ struct SpreadSplitView: View {
                 .help("More about keyboard use")
                 .accessibilityLabel(Text("More about keyboard use"))
                 .popover(isPresented: $showKeys, arrowEdge: .bottom) {
-                    Text("Use the slider for fine placement. If the book lay on its side, choose Stacked.")
+                    Text("Arrow keys move the cut; Shift takes bigger steps. If the book lay on its side, choose Stacked.")
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(14)
                         .frame(width: 280, alignment: .leading)
@@ -74,10 +78,18 @@ struct SpreadSplitView: View {
                 .gesture(DragGesture(minimumDistance: 0).onChanged { value in
                     moveCut(to: value.location, in: size)
                 })
+                .focusable()
+                .focusEffectDisabled()
+                .focused($stageFocused)
+                .onAppear { stageFocused = true }
+                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                    nudge(press.key, bigger: press.modifiers.contains(.shift))
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityElement()
                 .accessibilityLabel("Spread")
                 .accessibilityValue("Cut \(Int((fraction * 100).rounded()))% from the \(axis == .vertical ? "left" : "top")")
+                .accessibilityHint(Text("Arrow keys move the cut; Shift takes bigger steps."))
             }
             .frame(minHeight: 360)
             Picker("Pages lie", selection: $axis) {
@@ -143,6 +155,20 @@ struct SpreadSplitView: View {
         guard size.width > 0, size.height > 0 else { return }
         let share = axis == .vertical ? Double(location.x / size.width) : Double(location.y / size.height)
         fraction = min(max(share, Self.range.lowerBound), Self.range.upperBound)
+    }
+
+    /// The cut moved a step by the left or right arrow key, or up or down when the pages are stacked
+    /// (ten steps with Shift), kept within the slider's range.
+    private func nudge(_ key: KeyEquivalent, bigger: Bool) -> KeyPress.Result {
+        let step = Self.keyStep * (bigger ? 10 : 1)
+        let delta: Double
+        switch (axis, key) {
+        case (.vertical, .leftArrow), (.horizontal, .upArrow): delta = -step
+        case (.vertical, .rightArrow), (.horizontal, .downArrow): delta = step
+        default: return .ignored
+        }
+        fraction = min(max(fraction + delta, Self.range.lowerBound), Self.range.upperBound)
+        return .handled
     }
 }
 #endif
