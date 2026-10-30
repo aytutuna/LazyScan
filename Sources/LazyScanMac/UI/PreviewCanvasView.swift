@@ -24,7 +24,10 @@ struct PreviewCanvasView: View {
                                                  in: canvasBounds(for: geo.size))
                     imageLayer(frame: frame)
                     if state.overviewImage != nil {
-                        selectionLayer(frame: frame, viewSize: geo.size)
+                        // A feeder scan ignores the selection: it is hidden then, not cleared.
+                        if state.settings.source == .flatbed {
+                            selectionLayer(frame: frame, viewSize: geo.size)
+                        }
                     } else if !state.detectedPhotos.isEmpty {
                         detectedPhotosOverlay(image: image, frame: frame)
                     }

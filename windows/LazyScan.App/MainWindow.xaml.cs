@@ -303,9 +303,10 @@ public partial class MainWindow : Window
 
         CanvasImage.Source = ViewModel.CanvasBitmap;
         CanvasHint.Visibility = ViewModel.CanvasBitmap is null ? Visibility.Visible : Visibility.Collapsed;
-        // After a preview, until an area is selected: the preview can be dragged over.
+        // After a preview, until an area is selected: the preview can be dragged over. The area is
+        // the flatbed's (a feeder scan ignores it), so choosing the feeder hides the chip and the marquee.
         DragChip.Visibility = ViewModel.OverviewImage is not null && ViewModel.SelectionRect is null && !ViewModel.IsBusy
-                              && ViewModel.CanvasBitmap is not null
+                              && ViewModel.CanvasBitmap is not null && ViewModel.Settings.Source == ScanSource.Flatbed
             ? Visibility.Visible : Visibility.Collapsed;
 
         int pageCount = ViewModel.ScannedPages.Count;
@@ -2218,14 +2219,15 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Draw the marquee from the model's normalized selection over the displayed image, so it
-    /// follows resizes and disappears whenever the selection is cleared (device switch) or
-    /// there is no overview under it. A drag in progress draws itself.
+    /// follows resizes and disappears whenever the selection is cleared (device switch), there
+    /// is no overview under it or the feeder is the source (the selection stays for the flatbed).
+    /// A drag in progress draws itself.
     /// </summary>
     private void UpdateMarquee()
     {
         if (_marqueeStart is not null) return;
         if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null
-            || DisplayedImageRect() is not { } imageRect)
+            || ViewModel.Settings.Source != ScanSource.Flatbed || DisplayedImageRect() is not { } imageRect)
         {
             SelectionMarquee.Visibility = Visibility.Collapsed;
             return;
@@ -2251,8 +2253,9 @@ public partial class MainWindow : Window
     {
         _marqueeStart = null;
         // The selection is a region of the flatbed, so it can only be drawn over the overview
-        // (the bed) — never over a last scan, which may be a feeder page or an earlier crop.
-        if (ViewModel.OverviewImage is null) return;
+        // (the bed) while the flatbed is the source — never over a last scan, which may be a
+        // feeder page or an earlier crop.
+        if (ViewModel.OverviewImage is null || ViewModel.Settings.Source != ScanSource.Flatbed) return;
         if (DisplayedImageRect() is not { } imageRect) return;
         var p = e.GetPosition(CanvasHost);
         if (!imageRect.Contains(p)) return;

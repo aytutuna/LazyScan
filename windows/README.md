@@ -191,7 +191,7 @@ texts); the Mac mirrors the layout (see the main README).
   prompt), how splitting works (`SplitMode` steps), where a network scanner's address is, and the
   keys of the crop, spread and corner editors (`PhotoImport.EditorKeys`). The flyout takes focus,
   closes with Esc and gives the focus back.
-- **State instead of instructions.** "Drag to select an area" on a preview until an area is
+- **State instead of instructions.** "Drag to select an area" on a flatbed preview until an area is
   selected, "Using the selected area" (with × to clear it) under Paper size, "Drop to add as pages"
   while photo files are dragged over the window, a **Not split** badge with **Split…** on a spread
   kept whole, a scissors or link on the gap between two pages (Split here / Join), the next file's
