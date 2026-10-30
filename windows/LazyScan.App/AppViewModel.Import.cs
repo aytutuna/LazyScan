@@ -34,10 +34,10 @@ public sealed partial class AppViewModel
 
     /// <summary>
     /// Photos can be imported now: the settings collect pages in the queue (<see cref="PhotoImport.IsOffered"/>),
-    /// nothing else is running, no review is open, and no stack is being turned over by hand.
+    /// nothing else is running, no review is open, and no stack turned over by hand is under way (<see cref="IsStackUnderWay"/>).
     /// </summary>
     public bool CanImportPhotos =>
-        !IsBusy && PhotoImport.IsOffered(Settings) && !IsTurningOverByHand && !ShowPhotoReview && !ShowIdCardReview;
+        !IsBusy && PhotoImport.IsOffered(Settings) && !IsStackUnderWay && !ShowPhotoReview && !ShowIdCardReview;
 
     /// <summary>
     /// Adds the photos among <paramref name="paths"/> to the queue, one after another: each is read
@@ -182,7 +182,8 @@ public sealed partial class AppViewModel
                 }
                 foreach (var item in spooled) ScannedPages.Add(item);
                 added.AddRange(spooled.Select(item => item.Page));
-                RecordCaptures(spooled.Select(item => item.Page.Id));
+                // Photos come in between stacks turned over by hand, never as one of their sides.
+                if (!IsTurningOverByHand) RecordCaptures(spooled.Select(item => item.Page.Id));
                 lastPreview = preview;
                 NotifyAll();
             }

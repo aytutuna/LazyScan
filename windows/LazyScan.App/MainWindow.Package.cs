@@ -39,9 +39,9 @@ public partial class MainWindow
         bool takes = ViewModel.CanTakePhonePages || (!ViewModel.IsBusy && !ViewModel.CollectsPackages);
         PackageAddButton.IsEnabled = takes;
         PackageOpenButton.IsEnabled = takes;
-        bool turningOver = ViewModel.IsTurningOverByHand;
-        PackageAddButton.ToolTip = turningOver ? DocumentSides.NotWhileTurningOverReason : "Add its pages after the pages in the queue";
-        PackageOpenButton.ToolTip = turningOver ? DocumentSides.NotWhileTurningOverReason : "Clear the queue and open the document in its place";
+        bool underWay = ViewModel.IsStackUnderWay;
+        PackageAddButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : "Add its pages after the pages in the queue";
+        PackageOpenButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : "Clear the queue and open the document in its place";
         PackageBar.Visibility = Visibility.Visible;
         if (isNew) AnnounceWhenShown(PackageBarText);
     }

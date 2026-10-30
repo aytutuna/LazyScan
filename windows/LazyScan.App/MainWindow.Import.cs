@@ -54,13 +54,13 @@ public partial class MainWindow
     private void SyncImportOptions()
     {
         bool offered = PhotoImport.IsOffered(ViewModel.Settings);
-        bool turningOver = ViewModel.IsTurningOverByHand;
+        bool underWay = ViewModel.IsStackUnderWay;
         ImportPhotosButton.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
         ImportPhotosButton.IsEnabled = ViewModel.CanImportPhotos;
-        ImportPhotosButton.ToolTip = turningOver ? DocumentSides.NotWhileTurningOverReason : ImportName;
+        ImportPhotosButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : ImportName;
         CanvasImport.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
         CanvasImportButton.IsEnabled = ViewModel.CanImportPhotos;
-        CanvasImportButton.ToolTip = turningOver ? DocumentSides.NotWhileTurningOverReason : PhotoImport.ButtonHint;
+        CanvasImportButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : PhotoImport.ButtonHint;
     }
 
     private void ImportPhotos_Click(object sender, RoutedEventArgs e)

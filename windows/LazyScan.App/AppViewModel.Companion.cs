@@ -56,7 +56,7 @@ public sealed partial class AppViewModel
 
     /// <summary>The queue can take a phone's pages now: it collects pages and nothing else is going on.</summary>
     public bool CanTakePhonePages =>
-        !IsBusy && CollectsPackages && !IsTurningOverByHand && !ShowPhotoReview && !ShowIdCardReview;
+        !IsBusy && CollectsPackages && !IsStackUnderWay && !ShowPhotoReview && !ShowIdCardReview;
 
     /// <summary>
     /// Starts the phone link at launch when a phone is paired (nothing listens otherwise, and no
@@ -240,6 +240,7 @@ public sealed partial class AppViewModel
         string from = _phoneDocuments.Select(d => d.PhoneName).Distinct().Count() == 1 ? _phoneDocuments.Peek().PhoneName : "your phones";
         string are = pages == 1 ? "is" : "are";
         string them = pages == 1 ? "it" : "them";
+        if (IsStackUnderWay) return $"{what} from {from} will be added to the queue when this two-sided stack is finished.";
         if (CollectsPackages) return $"{what} from {from} will be added to the queue when the current step is done.";
         return PhotoImport.OwnSaveTaskReason(Settings) is { } reason
             ? $"{what} from {from} {are} waiting: {reason}. Leave the task or pick Document to PDF to add {them} to the queue."

@@ -331,17 +331,22 @@ final class IOSImportSessionTests: XCTestCase {
 
         state.copyPages = []
         state.errorMessage = nil
-        // A stack turned over by hand: its steps count the scanner's fronts and backs.
+        // A stack turned over by hand: between stacks photos come in; once its fronts are scanned they wait.
         state.settings.source = .documentFeeder
         state.settings.duplex = .manual
         XCTAssertTrue(state.isTurningOverByHand)
+        XCTAssertTrue(importer.canImport)
+        XCTAssertTrue(state.ingest([ScannedPage(image: white, dpi: 100, colorMode: .color)], source: .scanner))
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertTrue(state.isStackUnderWay)
+        XCTAssertFalse(importer.canImport)
         let turning: IOSImportOutcome = await importer.importItems(items)
         XCTAssertEqual(turning.added, 0)
         XCTAssertEqual(turning.problems, [IOSImportText.sidesInProgressMessage])
         XCTAssertEqual(state.errorMessage, "Finish the front and back sides first; nothing was imported.")
         XCTAssertNil(importer.cornerRequest)
         XCTAssertFalse(importer.isImporting)
-        XCTAssertTrue(state.scannedPages.isEmpty)
+        XCTAssertEqual(state.scannedPages.count, 1)
     }
 
     @MainActor

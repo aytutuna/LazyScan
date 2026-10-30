@@ -188,9 +188,9 @@ package enum PhotoFileReader {
 /// dropped on the scanner view), `PhotoImport`. Twin of the Windows `AppViewModel.Import.cs`.
 extension AppState {
     /// Photos can be imported now: the settings collect pages in the queue (`PhotoImport.isOffered`),
-    /// nothing else is running, no review is open, and no stack is being turned over by hand.
+    /// nothing else is running, no review is open, and no stack turned over by hand is under way (`isStackUnderWay`).
     public var canImportPhotos: Bool {
-        !isBusy && PhotoImport.isOffered(settings) && !isTurningOverByHand && !showPhotoReview && !showIdCardReview
+        !isBusy && PhotoImport.isOffered(settings) && !isStackUnderWay && !showPhotoReview && !showIdCardReview
     }
 
     /// Adds the photos among `urls` to the queue, one after another: each is read (the file itself is
@@ -307,7 +307,8 @@ extension AppState {
                         }
                         self.scannedPages.append(contentsOf: spooled)
                         added.append(contentsOf: spooled)
-                        self.recordCaptures(spooled.map(\.id))
+                        // Photos come in between stacks turned over by hand, never as one of their sides.
+                        if !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
                         lastPreview = done.1
                         lastSize = CGSize(width: cleaned.image.width, height: cleaned.image.height)
                     }

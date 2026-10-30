@@ -1202,14 +1202,14 @@ public final class AppState: ObservableObject {
         return true
     }
 
-    /// Pages can be brought in now (`ingest`): nothing else is running, no stack is being turned over
-    /// by hand (its steps count the scanner's fronts and backs), and neither the photo or receipt
+    /// Pages can be brought in now (`ingest`): nothing else is running, no stack turned over by hand is
+    /// under way (`isStackUnderWay`; between stacks they come in), and neither the photo or receipt
     /// review nor the ID card's review is open (new pages would replace what is being reviewed), and no
     /// Quick scan page or copy is held on the phone. The same rule as `canImportPhotos` without its
     /// settings check, and as the Windows
     /// `AppViewModel.CanTakePhonePages`.
     public var canIngest: Bool {
-        !isBusy && !isTurningOverByHand && !showPhotoReview && !showIdCardReview && quickScanPage == nil
+        !isBusy && !isStackUnderWay && !showPhotoReview && !showIdCardReview && quickScanPage == nil
             && copyPages.isEmpty
     }
 
@@ -1316,7 +1316,9 @@ public final class AppState: ObservableObject {
                 self.scannedPages.append(contentsOf: spooled)
                 // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
                 if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
-                self.recordCaptures(spooled.map(\.id))
+                // Only the scanner's pages are sides of a stack turned over by hand; a phone's or a photo's
+                // come in between stacks.
+                if source == .scanner || !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
                 self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
                 let n = processed.count
                 if let manualSide {

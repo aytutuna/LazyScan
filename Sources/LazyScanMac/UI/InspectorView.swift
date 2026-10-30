@@ -1221,7 +1221,7 @@ struct InspectorView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!state.canImportPhotos)
-                .help(state.isTurningOverByHand ? DocumentSides.notWhileTurningOverReason : PhotoImport.buttonHint)
+                .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason : PhotoImport.buttonHint)
                 .accessibilityHint(Text(PhotoImport.buttonHelp))
             }
         }

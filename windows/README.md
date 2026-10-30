@@ -394,7 +394,7 @@ fax, a scan) becomes a page; a photo of more than 150 megapixels is turned down 
 before its pixels are decoded, and the other photos go on. It is offered wherever the queue
 collects pages (Document mode and the document tasks, also with **Collect pages** off, where the
 pages then wait in the queue); not in Photos mode or the ID card, copy and receipt tasks, nor while
-a stack is turned over by hand.
+a stack turned over by hand is under way (between stacks it is, and photos never count as its sides).
 
 Each photo is read once into memory and never changed, moved or locked: the spool gets the page and
 the photo as the app made them, never the file itself. The photo is turned upright by its
@@ -560,7 +560,7 @@ Documents from paired phones are added to the queue **on their own**, labelled *
 page strip, with a bar saying what arrived (the taskbar button flashes when the window is in the
 background). A document sent as new starts a document of its own in the queue, under the name it
 came with; one sent to the current document joins it. While the queue does not collect pages
-(Photos mode, the ID card, copy and receipt tasks, **Collect pages before saving** off, a review open) or a scan runs, the document waits
+(Photos mode, the ID card, copy and receipt tasks, **Collect pages before saving** off, a review open, a stack turned over by hand under way) or a scan runs, the document waits
 and says so, and is added as soon as it can be. Pages the phone kept as photographed can be shown
 that way with one click, as for imported photos. A `.lsdoc` opened from File Explorer (the app
 registers the type for your user each time it starts), dropped on the window or picked with Import

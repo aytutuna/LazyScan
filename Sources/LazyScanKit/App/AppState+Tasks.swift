@@ -33,6 +33,13 @@ extension AppState {
     /// The steps guide turning a stack over by hand: fronts, then backs.
     public var isTurningOverByHand: Bool { taskFlow != nil && flowIsManual }
 
+    /// Turning over by hand, the fronts or backs of a stack are in the queue: pages from a phone or a
+    /// photo wait until the stack is finished rather than land in the middle of it.
+    public var isStackUnderWay: Bool {
+        isTurningOverByHand
+            && (queuedCaptures(DocumentSides.frontsStepID) > 0 || queuedCaptures(DocumentSides.backsStepID) > 0)
+    }
+
     /// Turning over by hand, the backs are next (or were scanned and did not pair up).
     public var awaitingBacks: Bool { isTurningOverByHand && taskFlow?.current?.id == DocumentSides.backsStepID }
 

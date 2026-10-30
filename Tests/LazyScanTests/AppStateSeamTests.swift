@@ -432,17 +432,35 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
-    func test_ingest_isRefused_whileAStackIsTurnedOverByHand_orAReviewIsOpen() {
+    func test_ingest_comesInBetweenStacksTurnedOverByHand_isRefusedWhileOneIsUnderWay_orAReviewIsOpen() async throws {
         let state = makeState()
-        // Turning the stack over by hand: its steps count the scanner's fronts and backs.
+        // Turning stacks over by hand, nothing scanned yet: a phone's page comes in, and is no front.
         state.settings.source = .documentFeeder
         state.settings.duplex = .manual
         XCTAssertTrue(state.isTurningOverByHand)
+        XCTAssertFalse(state.isStackUnderWay)
+        XCTAssertTrue(state.canIngest)
+        XCTAssertTrue(state.ingest([seamPage(width: 300, height: 400, dpi: 50)], source: .phone))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertEqual(state.scannedPages.map(\.source), [.phone])
+        XCTAssertEqual(try XCTUnwrap(state.taskFlow).captures(for: DocumentSides.frontsStepID), [])
+        XCTAssertFalse(state.isStackUnderWay)
+
+        // A scanner's page is a front: the stack is under way, and other pages wait until it is finished.
+        XCTAssertTrue(state.ingest([seamPage(width: 300, height: 400, dpi: 50)], source: .scanner))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        let front: UUID = try XCTUnwrap(state.scannedPages.last?.id)
+        XCTAssertEqual(try XCTUnwrap(state.taskFlow).captures(for: DocumentSides.frontsStepID), [front])
+        XCTAssertTrue(state.isStackUnderWay)
         XCTAssertFalse(state.canIngest)
         XCTAssertFalse(state.ingest([seamPage(width: 300, height: 400, dpi: 50)], source: .phone))
         XCTAssertFalse(state.isBusy)
-        XCTAssertTrue(state.scannedPages.isEmpty)
-        XCTAssertTrue(state.scanHistory.isEmpty)
+        XCTAssertEqual(state.scannedPages.count, 2)
+
+        // Clearing the queue ends the stack.
+        state.clearPages()
+        XCTAssertFalse(state.isStackUnderWay)
+        XCTAssertTrue(state.canIngest)
 
         state.settings.source = .flatbed
         state.settings.duplex = .off

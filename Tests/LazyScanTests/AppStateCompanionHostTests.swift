@@ -189,6 +189,10 @@ final class AppStateCompanionHostTests: XCTestCase {
     func test_waitingMessage_countsAndNames() {
         XCTAssertEqual(CompanionHostText.waitingMessage(pageCount: 1, from: "your phones", collectsPages: true),
                        "1 page from your phones will be added to the queue when the current step is done.")
+        // In the middle of a stack turned over by hand they come once it is finished.
+        XCTAssertEqual(CompanionHostText.waitingMessage(pageCount: 2, from: "Aytu's iPhone", collectsPages: true,
+                                                        stackUnderWay: true),
+                       "2 pages from Aytu's iPhone will be added to the queue when this two-sided stack is finished.")
         XCTAssertEqual(CompanionHostText.waitingMessage(pageCount: 1, from: "Aytu's iPhone", collectsPages: false),
                        "1 page from Aytu's iPhone is waiting: choose Document mode, or a document task, "
                            + "with Collect pages before saving on, to add it to the queue.")

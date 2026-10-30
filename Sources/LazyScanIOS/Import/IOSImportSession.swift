@@ -209,7 +209,7 @@ public enum IOSImportText {
         if count == 1 { return "Print or discard the copy first; the other one was not added." }
         return "Print or discard the copy first; the other \(count) were not added."
     }
-    /// An import refused while a stack is being turned over by hand: its steps count the fronts and backs.
+    /// An import refused while a stack turned over by hand is under way (`AppState.isStackUnderWay`).
     public static let sidesInProgressMessage = "Finish the front and back sides first; nothing was imported."
 }
 
@@ -774,7 +774,7 @@ public final class IOSImportSession: ObservableObject {
         await waitUntilIdle()
         let card: Bool = TaskCatalog.flow(of: state.settings) == .idCard && state.taskFlow != nil
         let cardIn: Bool = card && (state.showIdCardReview || IdCardSteps.sideOf(state.taskFlow?.current?.id) == nil)
-        guard cardIn || state.quickScanPage != nil || !state.copyPages.isEmpty || state.isTurningOverByHand else { return false }
+        guard cardIn || state.quickScanPage != nil || !state.copyPages.isEmpty || state.isStackUnderWay else { return false }
         leftOut += left + pending.count
         pending.removeAll()
         return true
@@ -786,7 +786,7 @@ public final class IOSImportSession: ObservableObject {
         if !state.copyPages.isEmpty {
             return added > 0 ? IOSImportText.copyFullMessage(leftOut) : IOSImportText.copyHeldMessage
         }
-        if state.isTurningOverByHand { return IOSImportText.sidesInProgressMessage }
+        if state.isStackUnderWay { return IOSImportText.sidesInProgressMessage }
         if TaskCatalog.flow(of: state.settings) == .idCard { return IOSImportText.cardFullMessage(leftOut) }
         return IOSImportText.textTakesOneMessage(leftOut)
     }

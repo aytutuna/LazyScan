@@ -21,11 +21,14 @@ public enum CompanionHostText {
         "Adding pages from \(phoneName)\u{2026}"
     }
 
-    /// "2 pages from Aytu's iPhone will be added to the queue when the current step is done.", or what to
+    /// "2 pages from Aytu's iPhone will be added to the queue when the current step is done.", "… when this
+    /// two-sided stack is finished." while `stackUnderWay` (`AppState.isStackUnderWay`), or what to
     /// choose when the settings do not collect pages; `taskReason` (`PhotoImport.ownSaveTaskReason`) names
     /// the task to leave when one keeps them out.
-    public static func waitingMessage(pageCount: Int, from: String, collectsPages: Bool, taskReason: String? = nil) -> String {
+    public static func waitingMessage(pageCount: Int, from: String, collectsPages: Bool, stackUnderWay: Bool = false,
+                                      taskReason: String? = nil) -> String {
         let what = pageCount == 1 ? "1 page" : "\(pageCount) pages"
+        if stackUnderWay { return "\(what) from \(from) will be added to the queue when this two-sided stack is finished." }
         if collectsPages { return "\(what) from \(from) will be added to the queue when the current step is done." }
         let are = pageCount == 1 ? "is" : "are"
         let them = pageCount == 1 ? "it" : "them"
@@ -169,7 +172,7 @@ extension AppState {
             }
             let collects = PhotoImport.isOffered(settings) && settings.documentMultiPage
             let waiting = CompanionHostText.waitingMessage(pageCount: pages, from: names.count == 1 ? names[0] : "your phones",
-                                                           collectsPages: collects,
+                                                           collectsPages: collects, stackUnderWay: isStackUnderWay,
                                                            taskReason: PhotoImport.ownSaveTaskReason(settings))
             if waiting != phoneDocumentsWaitingMessage {
                 phoneDocumentsWaitingMessage = waiting

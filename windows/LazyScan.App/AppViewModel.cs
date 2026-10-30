@@ -504,6 +504,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>The steps guide turning a stack over by hand: fronts, then backs.</summary>
     public bool IsTurningOverByHand => Flow is not null && _flowKey.Manual;
 
+    /// <summary>
+    /// Turning over by hand, the fronts or backs of a stack are in the queue: pages from a phone or a
+    /// photo wait until the stack is finished rather than land in the middle of it.
+    /// </summary>
+    public bool IsStackUnderWay =>
+        IsTurningOverByHand && (QueuedCaptures(DocumentSides.FrontsStepId) > 0 || QueuedCaptures(DocumentSides.BacksStepId) > 0);
+
     /// <summary>Turning over by hand, the backs are next (or were scanned and did not pair up).</summary>
     public bool AwaitingBacks => IsTurningOverByHand && Flow?.Current?.Id == DocumentSides.BacksStepId;
 
