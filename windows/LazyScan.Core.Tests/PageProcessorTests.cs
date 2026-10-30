@@ -537,6 +537,14 @@ public class PageProcessorTests
     }
 
     [Fact]
+    public void NothingToSave_IsSaidUnderItsOwnTitle()
+    {
+        Assert.Equal("Nothing saved", PageFilter.NothingSavedTitle);
+        Assert.Equal("Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.",
+                     PageFilter.NothingToSaveMessage);
+    }
+
+    [Fact]
     public void Badge_AndToggleLabel_SayWhatHappensToThePage()
     {
         var on = Options(true);

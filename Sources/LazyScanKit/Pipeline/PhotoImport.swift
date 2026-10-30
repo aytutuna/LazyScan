@@ -150,6 +150,8 @@ public enum PhotoImport {
         "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them."
     public static let noPhotosMessage =
         "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP)."
+    /// The title `notOfferedMessage` and `noPhotosMessage` are shown under: nothing failed.
+    public static let notImportedTitle = "Not imported"
     /// Why a file that is no picture (or a damaged one) was not imported (`unreadableMessage`).
     public static let unreadableDetail = "it is not a picture this app can read, or the file is damaged."
     /// Why a photo of more than `maxPhotoPixels` was not imported.

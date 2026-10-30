@@ -273,7 +273,9 @@ public final class AppState: ObservableObject {
     public var readsQueue: Bool { queueReaders > 0 }
     @Published public private(set) var progress: ScanProgress?
     @Published public internal(set) var statusMessage = "Looking for scanners…"
-    @Published public var errorMessage: String?
+    @Published public var errorMessage: String? {
+        didSet { errorTitle = nil }
+    }
     /// The name the next QR separator sheet carries (the inspector's field); empty for none. Not kept
     /// in settings (AppState+Split.swift).
     @Published public var qrSheetName = ""
@@ -376,6 +378,10 @@ public final class AppState: ObservableObject {
     /// `errorMessage` is about a scanner that would not connect or scan, so its alert offers the
     /// troubleshooter. Cleared when the alert closes.
     @Published public var errorSuggestsTroubleshooter = false
+    /// `errorMessage` says why nothing was done rather than what failed, so its alert is titled with
+    /// this ("Not imported") instead of `ScannerProblems.notice`'s title. Cleared whenever
+    /// `errorMessage` changes, so it is set after it.
+    @Published public var errorTitle: String?
 
     /// No settings were saved before this start: the app opens on the start screen.
     public let isFirstRun: Bool
@@ -1516,6 +1522,7 @@ public final class AppState: ObservableObject {
             let plan = SavePlan.make(queued, options: s.document)
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
+                self.errorTitle = PageFilter.nothingSavedTitle
                 self.statusMessage = DocumentSplitter.queueSummary(queued, options: s.document) + "."
                 return
             }

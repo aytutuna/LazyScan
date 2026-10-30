@@ -179,14 +179,18 @@ final class AppStatePackageTests: XCTestCase {
         state.settings.intent = .photo
         XCTAssertFalse(state.openPendingPackageAsNew())
         XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage)
+        // A refusal, not a failure: the alert has a title of its own, which goes when the alert closes.
+        XCTAssertEqual(state.errorTitle, "Not added")
         XCTAssertNotNil(state.pendingPackage)
         XCTAssertEqual(state.scannedPages.count, 1)
         // Without Collect pages before saving the pages would be saved at once, not queued.
         state.settings.intent = .document
         state.settings.documentMultiPage = false
         state.errorMessage = nil
+        XCTAssertNil(state.errorTitle)
         XCTAssertFalse(state.addPendingPackageToPages())
         XCTAssertEqual(state.errorMessage, PackageText.notOfferedMessage)
+        XCTAssertEqual(state.errorTitle, "Not added")
         XCTAssertNotNil(state.pendingPackage)
         XCTAssertEqual(state.scannedPages.count, 1)
     }

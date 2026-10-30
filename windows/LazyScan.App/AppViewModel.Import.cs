@@ -55,7 +55,11 @@ public sealed partial class AppViewModel
         var files = PhotoImport.PhotoFiles(paths);
         if (files.Count == 0 || !CanImportPhotos)
         {
-            if (paths.Count > 0) ErrorMessage = files.Count == 0 ? PhotoImport.NoPhotosMessage : PhotoImport.NotOfferedMessage;
+            if (paths.Count > 0)
+            {
+                ErrorTitle = PhotoImport.NotImportedTitle;
+                ErrorMessage = files.Count == 0 ? PhotoImport.NoPhotosMessage : PhotoImport.NotOfferedMessage;
+            }
             NotifyAll();
             return Task.CompletedTask;
         }

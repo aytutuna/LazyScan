@@ -13,6 +13,7 @@ public enum PackageText {
     public static let openAsNew = "Open as new"
     public static let notOfferedMessage =
         "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them."
+    public static let notAddedTitle = "Not added"
 
     /// "Opened Receipt.lsdoc: 3 pages"
     public static func openedMessage(_ fileName: String, pageCount: Int) -> String {
@@ -151,6 +152,7 @@ extension AppState {
         // Without Collect pages before saving, ingest would save the pages at once instead of queueing them.
         guard PhotoImport.isOffered(settings), settings.documentMultiPage else {
             errorMessage = PackageText.notOfferedMessage
+            errorTitle = PackageText.notAddedTitle
             return false
         }
         return canIngest

@@ -651,9 +651,11 @@ struct ErrorAlert: ViewModifier {
         }
     }
 
-    /// The error the alert shows, as its title and message.
+    /// The error the alert shows, as its title and message; a refusal under its own title.
     private var notice: ProblemNotice {
-        ScannerProblems.notice(state.errorMessage ?? "")
+        let message: String = state.errorMessage ?? ""
+        guard let title: String = state.errorTitle else { return ScannerProblems.notice(message) }
+        return ProblemNotice(title: title, message: message.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private var shown: Binding<Bool> {

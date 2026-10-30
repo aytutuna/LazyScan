@@ -395,6 +395,7 @@ public class PhotoImportTests
         Assert.Equal("Add phone photos of documents as pages", PhotoImport.ButtonHint);
         Assert.Equal("Each page is found in the photo and straightened. Your photo files are not changed.", PhotoImport.ButtonHelp);
         Assert.Equal(("or drop them here", "Drop to add as pages"), (PhotoImport.DropHint, PhotoImport.DropOverlay));
+        Assert.Equal("Not imported", PhotoImport.NotImportedTitle);
         Assert.Equal("Check the corners", PhotoImport.EditorTitle);
         Assert.Equal("Drag each corner onto a corner of the page.", PhotoImport.EditorHelp);
         Assert.Equal("Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.", PhotoImport.EditorKeys);

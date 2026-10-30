@@ -618,6 +618,8 @@ public enum PageFilter {
     /// The message when every queued page is left out, so there is nothing to save.
     public static let nothingToSaveMessage =
         "Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save."
+    /// The title `nothingToSaveMessage` is shown under: nothing failed.
+    public static let nothingSavedTitle = "Nothing saved"
 
     /// The page looks blank at `sensitivity` (false when it was not checked).
     public static func looksBlank(_ page: ScannedPage, sensitivity: BlankSensitivity) -> Bool {

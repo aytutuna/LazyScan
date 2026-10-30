@@ -205,7 +205,10 @@ extension AppState {
         guard !isBusy else { return }
         let files = PhotoImport.photoFiles(urls.map(\.path)).map { URL(fileURLWithPath: $0) }
         guard !files.isEmpty, canImportPhotos else {
-            if !urls.isEmpty { errorMessage = files.isEmpty ? PhotoImport.noPhotosMessage : PhotoImport.notOfferedMessage }
+            if !urls.isEmpty {
+                errorMessage = files.isEmpty ? PhotoImport.noPhotosMessage : PhotoImport.notOfferedMessage
+                errorTitle = PhotoImport.notImportedTitle
+            }
             return
         }
         let s = settings

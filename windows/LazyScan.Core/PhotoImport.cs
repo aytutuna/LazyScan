@@ -145,6 +145,8 @@ public static class PhotoImport
         "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.";
     public const string NoPhotosMessage =
         "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP).";
+    /// <summary>The title <see cref="NotOfferedMessage"/> and <see cref="NoPhotosMessage"/> are shown under: nothing failed.</summary>
+    public const string NotImportedTitle = "Not imported";
     /// <summary>Why a file that is no picture (or a damaged one) was not imported (<see cref="UnreadableMessage"/>).</summary>
     public const string UnreadableDetail = "it is not a picture this app can read, or the file is damaged.";
     /// <summary>Why a photo of more than <see cref="MaxPhotoPixels"/> was not imported.</summary>

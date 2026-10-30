@@ -66,6 +66,7 @@ public sealed class PackageAppTests : IDisposable
         Assert.Equal("Lunch 2026-10-20", offered.DocumentName);
         Assert.Equal("Opened Receipt.lsdoc: 2 pages", PackageText.OpenedMessage(offered.FileName, offered.PageCount));
         Assert.Equal("Opened Receipt.lsdoc: 1 page", PackageText.OpenedMessage(offered.FileName, 1));
+        Assert.Equal("Not added", PackageText.NotAddedTitle);
         Assert.All(offered.Pages, page => Assert.Equal(PageSource.Phone, page.Source));
         Assert.Equal((60, 40), (offered.Pages[0].Image.Width, offered.Pages[0].Image.Height));
         Assert.True(offered.Pages[1].CanSwapVersions);

@@ -14,6 +14,7 @@ public static class PackageText
     public const string OpenAsNew = "Open as new";
     public const string NotOfferedMessage =
         "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.";
+    public const string NotAddedTitle = "Not added";
 
     /// <summary>"Opened Receipt.lsdoc: 3 pages"</summary>
     public static string OpenedMessage(string fileName, int pageCount) =>
@@ -151,6 +152,7 @@ public sealed partial class AppViewModel
     {
         if (!CollectsPackages)
         {
+            ErrorTitle = PackageText.NotAddedTitle;
             ErrorMessage = PackageText.NotOfferedMessage;
             NotifyAll();
             return Task.CompletedTask;

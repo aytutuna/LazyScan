@@ -562,6 +562,12 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertEqual(PageFilter.pagesToSave(pages, options: options(false)).map(\.id), [pages[0].id, pages[1].id, pages[2].id])
     }
 
+    func test_nothingToSave_isSaidUnderItsOwnTitle() {
+        XCTAssertEqual(PageFilter.nothingSavedTitle, "Nothing saved")
+        XCTAssertEqual(PageFilter.nothingToSaveMessage,
+                       "Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.")
+    }
+
     func test_badge_andToggleLabel_sayWhatHappensToThePage() {
         let on = options(true)
         let off = options(false)

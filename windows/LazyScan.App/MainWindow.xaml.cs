@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         ViewModel.ScannedPages.CollectionChanged += (_, _) =>
             Dispatcher.InvokeAsync(NamePageItems, System.Windows.Threading.DispatcherPriority.Loaded);
         HistoryView.Attach(ViewModel);
-        SavedView.Attach(ViewModel, ShowError);
+        SavedView.Attach(ViewModel, message => ShowError(message));
         StartView.Attach(ViewModel);
         StartView.TaskChosen += StartTask;
         StartView.PresetChosen += StartPreset;
@@ -424,7 +424,9 @@ public partial class MainWindow : Window
             // A scanner that would not connect or scan: the bar offers the troubleshooter.
             bool troubleshoot = ViewModel.ErrorSuggestsTroubleshooter;
             ViewModel.ErrorSuggestsTroubleshooter = false;
-            ShowError(error);
+            string? title = ViewModel.ErrorTitle;
+            ViewModel.ErrorTitle = null;
+            ShowError(error, title);
             if (troubleshoot) InfoBarTroubleshootButton.Visibility = Visibility.Visible;
         }
         UpdateEmptyDevicesHint();
@@ -445,12 +447,17 @@ public partial class MainWindow : Window
     /// tooltip. It stays until dismissed; a newer error replaces the text. Screen readers are told
     /// through a live-region event. The bar's Troubleshoot button is hidden; only a scanner error from
     /// the view model shows it again.
+    /// A refusal (<paramref name="title"/>, "Not imported") is shown as it is, under the info glyph
+    /// instead of the critical one.
     /// </summary>
-    private void ShowError(string message)
+    private void ShowError(string message, string? title = null)
     {
-        var notice = ScannerProblems.Notice(message);
+        var notice = title is null ? ScannerProblems.Notice(message) : new ProblemNotice(title, message.Trim());
         InfoBarTitle.Text = notice.Title;
         InfoBarMessage.Text = notice.Message;
+        InfoBarGlyph.Text = title is null ? "\uEB90" : "\uE946";
+        InfoBarGlyph.SetResourceReference(TextBlock.ForegroundProperty,
+            title is null ? "SystemFillColorCriticalBrush" : "TextFillColorSecondaryBrush");
         bool shortened = notice.Message != message.Trim();
         InfoBarText.ToolTip = shortened ? message : null;
         AutomationProperties.SetHelpText(InfoBarText, shortened ? message : "");

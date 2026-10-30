@@ -318,6 +318,7 @@ public final class IOSImportSession: ObservableObject {
         if sources.isEmpty { return outcome }
         guard IOSShell.takesPhotos(state.settings) else {
             state.errorMessage = PhotoImport.notOfferedMessage
+            state.errorTitle = PhotoImport.notImportedTitle
             return outcome
         }
         pending.append(contentsOf: sources)

@@ -70,6 +70,7 @@ public sealed partial class AppViewModel
             var plan = SavePlan.Make(queued, s.Document);
             if (plan.IsEmpty)
             {
+                ErrorTitle = PageFilter.NothingSavedTitle;
                 ErrorMessage = PageFilter.NothingToSaveMessage;
                 StatusMessage = DocumentSplitter.QueueSummary(queued, s.Document) + ".";
                 return;

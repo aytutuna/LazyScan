@@ -387,6 +387,22 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(left.filter { (name: String) -> Bool in name.hasSuffix(".tiff") }, [])
     }
 
+    @MainActor
+    func test_savePDF_withEveryPageSkipped_keepsTheQueue_andSaysWhyUnderItsOwnTitle() async throws {
+        let state = makeState()
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        state.scannedPages[0] = state.scannedPages[0].withInclusion(.skip)
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertEqual(state.errorMessage, PageFilter.nothingToSaveMessage)
+        XCTAssertEqual(state.errorTitle, "Nothing saved")
+        XCTAssertEqual(state.scannedPages.count, 1)
+        XCTAssertEqual(state.lastSavedURLs, [])
+        state.errorMessage = nil
+        XCTAssertNil(state.errorTitle)
+    }
+
     func test_imagesSaveTitle_andMessage() {
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 1), "Save JPEG")
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 0), "Save JPEG")

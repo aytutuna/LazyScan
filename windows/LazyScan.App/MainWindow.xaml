@@ -64,7 +64,7 @@
             <!-- Errors. -->
             <Border x:Name="InfoBar" Style="{StaticResource InfoBarStyle}" Visibility="Collapsed">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xEB90;" Margin="0,0,12,0"
+                    <TextBlock DockPanel.Dock="Left" x:Name="InfoBarGlyph" Style="{StaticResource GlyphText}" Text="&#xEB90;" Margin="0,0,12,0"
                                VerticalAlignment="Top" Padding="0,2,0,0"
                                Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                     <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE711;"

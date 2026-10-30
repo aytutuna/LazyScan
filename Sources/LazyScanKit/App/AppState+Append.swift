@@ -43,6 +43,7 @@ extension AppState {
             let plan: SavePlan = SavePlan.make(queued, options: s.document)
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
+                self.errorTitle = PageFilter.nothingSavedTitle
                 self.statusMessage = DocumentSplitter.queueSummary(queued, options: s.document) + "."
                 return
             }

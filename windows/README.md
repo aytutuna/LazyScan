@@ -211,7 +211,8 @@ texts); the Mac mirrors the layout (see the main README).
   what was saved: "3 photos · Scans", "3 receipts · Scans", "3 files · Scans".
 - **The error bar** is titled by the scanner's problem ("Paper jam", "Scanner offline"; "Something
   went wrong" for any other error) and says what to do in a line (`ScannerProblems.Notice`); the
-  whole message is its tooltip and help text.
+  whole message is its tooltip and help text. A refusal (nothing was done, nothing failed) has a
+  title of its own ("Not imported", "Not added") and the info glyph.
 - **While a review is open** (photos, receipts, the ID card), the task banner is hidden under it,
   keeping its place, and the empty stage's title and line are hidden while a banner shows (the
   import link stays).

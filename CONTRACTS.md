@@ -89,6 +89,8 @@ public enum ScannerProblems {
     public static func find(_ message: String?) -> ScannerProblem?        // the problem whose describe text is in the message
     /// The error bar's (Windows) or alert's (Mac) title and message: the problem's title and the
     /// message with its describe text cut to the advice; genericTitle and the message as it is otherwise.
+    /// A refusal brings its own title instead (`AppState.errorTitle`, C# `ErrorTitle`: "Not imported",
+    /// "Not added", "Nothing saved") over the message as it is, and on Windows the info glyph.
     public static func notice(_ message: String) -> ProblemNotice
 }
 public struct ProblemNotice: Equatable, Sendable { public let title: String; public let message: String }
@@ -749,6 +751,7 @@ public struct PageProcessor {
 }
 public enum PageFilter {
     public static let nothingToSaveMessage: String
+    public static let nothingSavedTitle: String   // "Nothing saved", the title nothingToSaveMessage is shown under
     public static func looksBlank(_ page: ScannedPage, sensitivity: BlankSensitivity) -> Bool
     public static func isExcluded(_ page: ScannedPage, options: DocumentOptions) -> Bool   // keep / skip, else the setting
     public static func toggled(_ page: ScannedPage, options: DocumentOptions) -> PageInclusion   // two clicks undo one
@@ -1496,7 +1499,7 @@ public enum PhotoImport {
     // them here", dropOverlay "Drop to add as pages", label "Photo", labelHelp, correctedCaption "Corrected from photo",
     // originalCaption "As photographed", editorTitle "Check the corners", editorHelp, editorKeys (behind an info button),
     // useCornersLabel "Use corners", wholePhotoLabel, skipLabel "Skip photo", stopLabel "Stop import", notOfferedMessage, noPhotosMessage,
-    // unreadableDetail, tooLargeDetail, missingDetail
+    // notImportedTitle "Not imported" (their title), unreadableDetail, tooLargeDetail, missingDetail
     public static func isPhotoFile(_ path: String) -> Bool; public static func isHeif(_ path: String) -> Bool
     public static func photoFiles(_ paths: [String]) -> [String]    // the photos, in order, each once (letter case aside)
     public static func isOffered(_ settings: ScanSettings) -> Bool  // TaskCatalog.flow(of:) == .documentQueue
@@ -1657,7 +1660,7 @@ public struct HelloResponse { desktopId, desktopName, protocolVersion, queuedPag
 public struct InboxResponse { packageId, pageCount, duplicate }
 public struct OutboxItem { id, name, contentType, byteCount, created }; public struct OutboxList { items }   // items without a valid id or date dropped
 // App/AppState+Package.swift (I18): a .lsdoc opened by hand
-public enum PackageText {                          // addToPages "Add to pages", openAsNew "Open as new", notOfferedMessage
+public enum PackageText {                          // addToPages "Add to pages", openAsNew "Open as new", notOfferedMessage, notAddedTitle "Not added"
     public static func openedMessage(_ fileName: String, pageCount: Int) -> String   // "Opened Receipt.lsdoc: 3 pages"
     public static func unreadablePictureMessage(_ fileName: String) -> String        // "Receipt.lsdoc cannot be opened: one of its pictures cannot be read."
 }

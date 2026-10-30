@@ -106,7 +106,8 @@ struct ContentView: View {
             PhotoReviewView()
                 .environmentObject(state)
         }
-        // An error titled by the scanner's problem ("Paper jam"), with what to do (`ScannerProblems.notice`).
+        // An error titled by the scanner's problem ("Paper jam"), with what to do (`ScannerProblems.notice`),
+        // or a refusal by what was not done ("Not imported", `AppState.errorTitle`).
         .alert(errorNotice.title, isPresented: Binding(
             get: { state.errorMessage != nil },
             set: { if !$0 { state.errorMessage = nil; state.errorSuggestsTroubleshooter = false } }
@@ -141,9 +142,11 @@ struct ContentView: View {
         .task { state.start() }
     }
 
-    /// The error the alert shows, as its title and message.
+    /// The error the alert shows, as its title and message; a refusal under its own title.
     private var errorNotice: ProblemNotice {
-        ScannerProblems.notice(state.errorMessage ?? "")
+        let message: String = state.errorMessage ?? ""
+        guard let title: String = state.errorTitle else { return ScannerProblems.notice(message) }
+        return ProblemNotice(title: title, message: message.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private var scannerDetail: some View {

@@ -719,6 +719,8 @@ public static class PageFilter
     /// <summary>The message when every queued page is left out, so there is nothing to save.</summary>
     public const string NothingToSaveMessage =
         "Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.";
+    /// <summary>The title <see cref="NothingToSaveMessage"/> is shown under: nothing failed.</summary>
+    public const string NothingSavedTitle = "Nothing saved";
 }
 
 /// <summary>

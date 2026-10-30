@@ -287,6 +287,7 @@ extension AppState {
             let pages: [ScannedPage] = plan.documents.flatMap { $0.pages }
             guard !pages.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
+                self.errorTitle = PageFilter.nothingSavedTitle
                 return
             }
             // A spooled page shows a preview; its print size comes from the full pixels at its dpi.

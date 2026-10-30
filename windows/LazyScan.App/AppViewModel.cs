@@ -1136,6 +1136,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public bool ErrorSuggestsTroubleshooter { get; set; }
 
     /// <summary>
+    /// <see cref="ErrorMessage"/> says why nothing was done rather than what failed, so the error bar
+    /// is titled with this ("Not imported") instead of <see cref="ScannerProblems.Notice"/>'s title.
+    /// The window clears it when it shows the error.
+    /// </summary>
+    public string? ErrorTitle { get; set; }
+
+    /// <summary>
     /// What the troubleshooter looks at now: the scanners listed, the last failure, the WIA
     /// service and network as last read, and what each connection adds
     /// (<see cref="IScannerBackendDiagnostics"/>). Read <see cref="ReadSystemStateAsync"/> first
@@ -1745,6 +1752,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var plan = SavePlan.Make(queued, s.Document);
             if (plan.IsEmpty)
             {
+                ErrorTitle = PageFilter.NothingSavedTitle;
                 ErrorMessage = PageFilter.NothingToSaveMessage;
                 StatusMessage = DocumentSplitter.QueueSummary(queued, s.Document) + ".";
                 return;
