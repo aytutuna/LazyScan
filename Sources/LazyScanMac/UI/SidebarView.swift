@@ -120,20 +120,10 @@ private struct DeviceRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(device.name)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if device.isDemo {
-                        Text("Demo")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(.quaternary, in: Capsule())
-                    }
-                }
-                Text(device.transport)
+                Text(device.name)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(device.isDemo ? "Demo (no hardware)" : device.transport)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

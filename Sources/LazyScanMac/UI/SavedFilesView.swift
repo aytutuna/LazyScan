@@ -47,7 +47,7 @@ struct SavedFilesView: View {
                 Button {
                     reload()
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("Reload Folder", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .help("Re-read the destination folder")
             }
