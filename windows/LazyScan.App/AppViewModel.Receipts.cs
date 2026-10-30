@@ -215,7 +215,10 @@ public sealed partial class AppViewModel
             IsReceiptReview = false;
             _photoSourceImages = [];
             ResetFlow();
-            int undated = byDate ? dates.Count(d => d is null) : 0;
+            // With Also save text on, WriteTextBeside has reported the unread text already.
+            if (ocrProblem is not null && ErrorMessage is null) ErrorMessage = TextExport.RecognitionFailed(ocrProblem);
+            // No date was looked for in a receipt whose text could not be read.
+            int undated = byDate ? dates.Where((d, i) => lines[i] is not null).Count(d => d is null) : 0;
             var names = saved.Select(p => Path.GetFileName(p)).ToList();
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             bool pdfs = combine || format == OutputFormat.Pdf;

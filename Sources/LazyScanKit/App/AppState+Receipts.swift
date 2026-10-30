@@ -204,7 +204,11 @@ extension AppState {
             self.photoSourceImages = [:]
             self.resetFlow()
             if let textProblem { self.errorMessage = TextExport.sidecarFailed(textProblem) }
-            let undated = byDate ? read.filter { $0.date == nil }.count : 0
+            if textProblem == nil, let problem = read.compactMap(\.problem).first {
+                self.errorMessage = TextExport.recognitionFailed(problem)
+            }
+            // No date was looked for in a receipt whose text could not be read.
+            let undated = byDate ? read.filter { $0.lines != nil && $0.date == nil }.count : 0
             var names: [String] = saved.map(\.lastPathComponent)
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             if pdfs, !names.isEmpty, let note = Self.pdfNote(size: nil, isProtected: protection != nil) {

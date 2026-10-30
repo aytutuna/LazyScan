@@ -1133,7 +1133,9 @@ their date: 300 dpi, grayscale, Compact PDFs, searchable, named `Receipt {docdat
   earliest; today's date when no date is found ("No date was found on 1 of them; it is named by
   today's date."; for one PDF only when no receipt had a date). The date is read only when the
   naming template has `{docdate}`. A receipt whose text cannot be read is still saved, without a
-  text layer. JPEG, PNG and TIFF save each receipt as an image (one PDF is then not offered); Word
+  text layer or a date; the error bar says "The text could not be read: …" (with **Also save text**:
+  "The PDF was saved, but not its text file: …"), and the status gives it no date note.
+  JPEG, PNG and TIFF save each receipt as an image (one PDF is then not offered); Word
   and text are not offered for receipts (a Word or text format left from before saves PDFs, and the
   format box shows PDF). All or nothing:
   a failed or cancelled save removes what it wrote and the review stays open.
