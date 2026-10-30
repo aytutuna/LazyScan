@@ -167,8 +167,9 @@ struct TroubleshootCheckCard: View {
                 if !actions.isEmpty {
                     HStack(spacing: 8) {
                         ForEach(actions, id: \.self) { action in
+                            // The hint adds which check the button is for (several cards offer the same one).
                             Button(Troubleshooter.label(action, platform: .mac)) { perform(action) }
-                                .help(check.title)
+                                .accessibilityHint(Text("\(Troubleshooter.statusLabel(check.status)): \(check.title)"))
                         }
                     }
                     .padding(.top, 4)

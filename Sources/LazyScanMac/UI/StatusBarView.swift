@@ -53,6 +53,10 @@ struct StatusBarView: View {
     private var savedActions: some View {
         let urls = state.lastSavedURLs
         let offered = state.savedFileActions
+        // Open with is in the menu for one saved file only (`SaveActions.offered`).
+        let moreHelp: String = urls.count == 1
+            ? "More: open with, email and the other actions"
+            : "More: email and the other actions"
         return HStack(spacing: 10) {
             ForEach(offered.filter { Self.barActions.contains($0) }) { action in
                 Button {
@@ -78,7 +82,7 @@ struct StatusBarView: View {
             .menuStyle(.button)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("More: open with, email")
+            .help(moreHelp)
         }
         .buttonStyle(.borderless)
         .controlSize(.small)

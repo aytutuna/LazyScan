@@ -268,7 +268,7 @@ fileprivate struct SavedFileCard: View {
                 .menuStyle(.button)
                 .menuIndicator(.hidden)
                 .fixedSize()
-                .help("More: open with, email, copy")
+                .help("More: open with, email, copy and the other actions")
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
