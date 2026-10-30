@@ -8,7 +8,10 @@ import SystemConfiguration
 public struct LazyScanApp: App {
     @StateObject private var state = AppState.makeForMac()
 
-    public init() {}
+    public init() {
+        // No tabs: each would be another window over the same state.
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
 
     public var body: some Scene {
         WindowGroup("Lazy Scan") {
@@ -19,6 +22,8 @@ public struct LazyScanApp: App {
                 .onAppear { NSApp.activate(ignoringOtherApps: true) }
         }
         .commands {
+            // No File > New Window: a second window on the same state would show each sheet and alert twice.
+            CommandGroup(replacing: .newItem) {}
             // File > Import from iPhone or iPad: Continuity Camera, taken by ContentView's importsItemProviders.
             ImportFromDevicesCommands()
         }
