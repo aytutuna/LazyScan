@@ -56,6 +56,27 @@ public enum TextExport {
         return "\(pages.prefix(1).uppercased())\(pages.dropFirst()) kept in the queue: press \(format.saveTitle) \(advice), or choose PDF to save \(them) as scanned."
     }
 
+    /// What the user reads when a PDF or pictures to be saved at once could not be written, or the save
+    /// was cancelled, and the pages not written went to the queue: "Not saved — the 3 pages are kept in
+    /// the queue: press Save PDF to try again." or "Cancelled — the page is kept in the queue."; with
+    /// `written` of the `pageCount` pictures saved, "2 of 5 pages saved — the other 3 are kept in the
+    /// queue: press Save 3 JPEGs to try again." or "Cancelled — 2 of 5 pages saved; the other 3 are kept
+    /// in the queue.". `saveTitle` is the button that saves them.
+    public static func pagesKeptInQueue(pageCount: Int, written: Int, cancelled: Bool, saveTitle: String) -> String {
+        if written == 0 {
+            let pages = pageCount == 1 ? "the page is" : "the \(pageCount) pages are"
+            return cancelled
+                ? "Cancelled \u{2014} \(pages) kept in the queue."
+                : "Not saved \u{2014} \(pages) kept in the queue: press \(saveTitle) to try again."
+        }
+        let rest = pageCount - written
+        let others = rest == 1 ? "the other one is" : "the other \(rest) are"
+        let saved = "\(written) of \(pageCount) pages saved"
+        return cancelled
+            ? "Cancelled \u{2014} \(saved); \(others) kept in the queue."
+            : "\(saved) \u{2014} \(others) kept in the queue: press \(saveTitle) to try again."
+    }
+
     /// "Copied the text of page 2." or "No text was found on page 2." after Copy Text; `pageNumber`
     /// counts from 1.
     public static func copiedMessage(pageNumber: Int, hasText: Bool) -> String {

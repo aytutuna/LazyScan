@@ -63,6 +63,32 @@ public static class TextExport
         return $"{char.ToUpperInvariant(pages[0])}{pages[1..]} kept in the queue: press {OutputFormats.SaveTitle(format)} {advice}, or choose PDF to save {them} as scanned.";
     }
 
+    /// <summary>
+    /// What the user reads when a PDF or pictures to be saved at once could not be written, or the
+    /// save was cancelled, and the pages not written went to the queue: "Not saved — the 3 pages are
+    /// kept in the queue: press Save PDF to try again." or "Cancelled — the page is kept in the
+    /// queue."; with <paramref name="written"/> of the <paramref name="pageCount"/> pictures saved,
+    /// "2 of 5 pages saved — the other 3 are kept in the queue: press Save PDF to try again." or
+    /// "Cancelled — 2 of 5 pages saved; the other 3 are kept in the queue.".
+    /// <paramref name="saveTitle"/> is the button that saves them.
+    /// </summary>
+    public static string PagesKeptInQueue(int pageCount, int written, bool cancelled, string saveTitle)
+    {
+        if (written == 0)
+        {
+            string pages = pageCount == 1 ? "the page is" : $"the {pageCount} pages are";
+            return cancelled
+                ? $"Cancelled — {pages} kept in the queue."
+                : $"Not saved — {pages} kept in the queue: press {saveTitle} to try again.";
+        }
+        int rest = pageCount - written;
+        string others = rest == 1 ? "the other one is" : $"the other {rest} are";
+        string saved = $"{written} of {pageCount} pages saved";
+        return cancelled
+            ? $"Cancelled — {saved}; {others} kept in the queue."
+            : $"{saved} — {others} kept in the queue: press {saveTitle} to try again.";
+    }
+
     /// <summary>An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a full stop.</summary>
     private static string Reason(string message)
     {

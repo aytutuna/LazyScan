@@ -627,6 +627,52 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(try savedPDFs(), [])
     }
 
+    /// A save folder that cannot be made: it would be inside a file.
+    private func folderInsideAFile() throws -> String {
+        let file: URL = folder.appendingPathComponent("Not a folder")
+        try Data().write(to: file)
+        return file.appendingPathComponent("Scans").path
+    }
+
+    @MainActor
+    func test_pagesSavedAsTheyAreScanned_whenTheFileCannotBeWritten_waitInTheQueue() async throws {
+        let state = makeState()
+        state.settings.format = .pdf
+        state.settings.pdfSearchable = false
+        state.settings.documentMultiPage = false
+        state.settings.destinationPath = try folderInsideAFile()
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertEqual(state.scannedPages.count, 1)
+        XCTAssertEqual(state.statusMessage,
+                       TextExport.pagesKeptInQueue(pageCount: 1, written: 0, cancelled: false, saveTitle: "Save PDF"))
+        XCTAssertNotNil(state.errorMessage)
+        XCTAssertEqual(try savedPDFs(), [])
+    }
+
+    @MainActor
+    func test_picturesSavedAsTheyAreScanned_whenTheFilesCannotBeWritten_waitInTheQueue() async throws {
+        // The Save that saves them: the phone saves the queue as pictures, the Mac as one PDF.
+        let titles: [(TroubleshootPlatform, String)] = [(.mac, "Save PDF"), (.ios, "Save 2 JPEGs")]
+        for (platform, saveTitle) in titles {
+            let state = makeState()
+            state.platform = platform
+            state.settings.format = .jpeg
+            state.settings.documentMultiPage = false
+            state.settings.destinationPath = try folderInsideAFile()
+            let pages: [ScannedPage] = [seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 400, height: 520, dpi: 50)]
+            XCTAssertTrue(state.ingest(pages, source: .photo))
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            defer { state.deleteSpoolFiles(of: state.scannedPages) }
+            XCTAssertEqual(state.scannedPages.count, 2)
+            XCTAssertEqual(state.statusMessage,
+                           TextExport.pagesKeptInQueue(pageCount: 2, written: 0, cancelled: false, saveTitle: saveTitle))
+            XCTAssertNotNil(state.errorMessage)
+            XCTAssertEqual(state.lastSavedURLs, [])
+        }
+    }
+
     @MainActor
     func test_savePDF_withTheArchivalOption_writesPDFA_titledWithItsName() async throws {
         let state = makeState()

@@ -292,7 +292,7 @@ public enum IOSShell {
 
     /// Whether the scan screen offers Save, its menu and Export: while it collects pages, and while a document
     /// task holds pages it no longer collects (Collect pages before saving turned off over them, or the pages
-    /// a failed Word or Text save put back), so that queued pages always have a Save.
+    /// a failed save at once put back), so that queued pages always have a Save.
     public static func offersSave(_ settings: ScanSettings, pageCount: Int) -> Bool {
         collectsPages(settings) || (TaskCatalog.flow(of: settings) == .documentQueue && pageCount > 0)
     }

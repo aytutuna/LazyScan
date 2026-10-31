@@ -1583,9 +1583,9 @@ public final class AppState: ObservableObject {
     }
 
     /// Used when documentMultiPage is off: write each scan to disk as soon as it lands, with the
-    /// settings it was scanned with. A Word document or text file is one file: when its text cannot
-    /// be read or it cannot be written (or the save is cancelled) the pages are put in the queue
-    /// instead, as the pages are held nowhere else.
+    /// settings it was scanned with. The pages are held nowhere else, so when a file cannot be written
+    /// (or the text of a Word document or text file cannot be read), or the save is cancelled, the
+    /// pages not written are put in the queue instead; pictures already written are kept and offered.
     private func saveImmediately(_ pages: [ScannedPage], settings s: ScanSettings, flag: CancelFlag) async throws {
         var saved: [URL] = []
         var note = ""
@@ -1606,19 +1606,7 @@ public final class AppState: ObservableObject {
             } catch {
                 // Nothing was written: the pages go to the queue rather than being lost, to be
                 // saved once the text can be read or the file written, or in another format.
-                let spool = spoolDirectory
-                let spooled = await Task.detached(priority: .userInitiated) {
-                    Self.spoolPages(pages, to: spool)
-                }.value
-                scannedPages.append(contentsOf: spooled)
-                let cancelled: Bool
-                switch error {
-                case ScanError.cancelled, is CancellationError:
-                    cancelled = true
-                default:
-                    cancelled = false
-                }
-                if !cancelled { errorMessage = error.localizedDescription }
+                let cancelled = await keepInQueue(pages, after: error)
                 statusMessage = TextExport.keptInQueue(format: s.format, pageCount: pages.count, cancelled: cancelled,
                                                        textUnreadable: error is TextOutputError)
                 return
@@ -1642,37 +1630,76 @@ public final class AppState: ObservableObject {
                 statusMessage = PDFProtection.keptInQueueMessage(pages.count)
                 return
             }
-            let url = try outputURL(fileExtension: "pdf")
-            let options: PDFWriteOptions = try await pdfOptions(s, for: url)
-            let text = s.output.alsoSaveText ? PDFTextCollector() : nil
-            let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
-                try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
-                                            textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                      pages: pages),
-                                            options: options,
-                                            shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                    Task { @MainActor in self?.statusMessage = msg }
-                }
-                return text.map { Self.writeTextBeside(pdf: url, text: $0) }
-            }.value
-            saved = [url]
-            notePDFSize(of: url, protected: options.isProtected)
-            if let problem = textResult?.problem { errorMessage = TextExport.sidecarFailed(problem) }
-            note = pdfSizeSuffix + (textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? "")
-        } else {
-            for page in pages {
-                if flag.isCancelled { throw ScanError.cancelled }
-                let url = try outputURL(fileExtension: s.format.fileExtension)
-                try await Task.detached(priority: .userInitiated) {
-                    try ImageExporter.write(page.image, to: url, format: s.format,
-                                            dpi: page.dpi, jpegQuality: s.jpegQuality, colorMode: page.colorMode)
+            do {
+                let url = try outputURL(fileExtension: "pdf")
+                let options: PDFWriteOptions = try await pdfOptions(s, for: url)
+                let text = s.output.alsoSaveText ? PDFTextCollector() : nil
+                let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
+                    try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
+                                                textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
+                                                                          pages: pages),
+                                                options: options,
+                                                shouldContinue: { !flag.isCancelled }) { [weak self] msg in
+                        Task { @MainActor in self?.statusMessage = msg }
+                    }
+                    return text.map { Self.writeTextBeside(pdf: url, text: $0) }
                 }.value
-                saved.append(url)
+                saved = [url]
+                notePDFSize(of: url, protected: options.isProtected)
+                if let problem = textResult?.problem { errorMessage = TextExport.sidecarFailed(problem) }
+                note = pdfSizeSuffix + (textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? "")
+            } catch {
+                let cancelled = await keepInQueue(pages, after: error)
+                statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: 0, cancelled: cancelled,
+                                                            saveTitle: OutputFormat.pdf.saveTitle)
+                return
+            }
+        } else {
+            do {
+                for page in pages {
+                    if flag.isCancelled { throw ScanError.cancelled }
+                    let url = try outputURL(fileExtension: s.format.fileExtension)
+                    try await Task.detached(priority: .userInitiated) {
+                        try ImageExporter.write(page.image, to: url, format: s.format,
+                                                dpi: page.dpi, jpegQuality: s.jpegQuality, colorMode: page.colorMode)
+                    }.value
+                    saved.append(url)
+                }
+            } catch {
+                let rest = Array(pages.dropFirst(saved.count))
+                let cancelled = await keepInQueue(rest, after: error)
+                if !saved.isEmpty { lastSavedURLs = saved }
+                // The phone saves the queue as pictures, the Mac as one PDF.
+                let saveTitle: String = platform == .ios
+                    ? Self.imagesSaveTitle(s.format, pageCount: scannedPages.count)
+                    : s.format.saveTitle
+                statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: saved.count,
+                                                            cancelled: cancelled, saveTitle: saveTitle)
+                return
             }
         }
         lastSavedURLs = saved
         statusMessage = "Saved \(saved.map(\.lastPathComponent).joined(separator: ", "))\(note)"
         runAfterSave(s.output.afterSave, saved: saved)
+    }
+
+    /// Puts `pages`, which a save at once did not write, in the queue, and shows `error` unless it is a
+    /// cancel. Returns whether it is.
+    private func keepInQueue(_ pages: [ScannedPage], after error: Error) async -> Bool {
+        let spool = spoolDirectory
+        let spooled = await Task.detached(priority: .userInitiated) {
+            Self.spoolPages(pages, to: spool)
+        }.value
+        scannedPages.append(contentsOf: spooled)
+        let cancelled: Bool
+        switch error {
+        case ScanError.cancelled, is CancellationError:
+            cancelled = true
+        default:
+            cancelled = false
+        }
+        if !cancelled { errorMessage = error.localizedDescription }
+        return cancelled
     }
 
     public func saveReviewedPhotos() {

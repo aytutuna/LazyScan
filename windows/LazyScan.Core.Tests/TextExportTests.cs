@@ -81,6 +81,26 @@ public class TextExportTests
     }
 
     [Fact]
+    public void PagesKeptInQueue_SaysWhatWasSaved_AndWhatWaits()
+    {
+        Assert.Equal("Cancelled — the page is kept in the queue.", TextExport.PagesKeptInQueue(1, 0, cancelled: true, "Save PDF"));
+        Assert.Equal("Cancelled — the 3 pages are kept in the queue.", TextExport.PagesKeptInQueue(3, 0, cancelled: true, "Save PDF"));
+        Assert.Equal("Not saved — the page is kept in the queue: press Save PDF to try again.",
+                     TextExport.PagesKeptInQueue(1, 0, cancelled: false, "Save PDF"));
+        Assert.Equal("Not saved — the 3 pages are kept in the queue: press Save PDF to try again.",
+                     TextExport.PagesKeptInQueue(3, 0, cancelled: false, "Save PDF"));
+        // Pictures, some written before the save stopped.
+        Assert.Equal("Cancelled — 2 of 5 pages saved; the other 3 are kept in the queue.",
+                     TextExport.PagesKeptInQueue(5, 2, cancelled: true, "Save 3 JPEGs"));
+        Assert.Equal("2 of 5 pages saved — the other 3 are kept in the queue: press Save 3 JPEGs to try again.",
+                     TextExport.PagesKeptInQueue(5, 2, cancelled: false, "Save 3 JPEGs"));
+        Assert.Equal("Cancelled — 1 of 2 pages saved; the other one is kept in the queue.",
+                     TextExport.PagesKeptInQueue(2, 1, cancelled: true, "Save JPEG"));
+        Assert.Equal("1 of 2 pages saved — the other one is kept in the queue: press Save JPEG to try again.",
+                     TextExport.PagesKeptInQueue(2, 1, cancelled: false, "Save JPEG"));
+    }
+
+    [Fact]
     public void WriteNewFile_NeverReplacesAFile_AndLeavesNoTemporaryFile()
     {
         string directory = Path.Combine(Path.GetTempPath(), "ls-text-" + Guid.NewGuid().ToString("N"));

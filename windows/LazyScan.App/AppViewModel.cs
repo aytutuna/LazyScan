@@ -1803,10 +1803,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Used when DocumentMultiPage is off: write each scan to disk as soon as it lands. The
-    /// pages are held nowhere else, so the files are the only full-resolution copy: a failure
-    /// or Cancel part-way keeps every file already written and reports the partial result. A Word
-    /// document or text file is one file: when its text cannot be read or it cannot be written (or
-    /// the save is cancelled) the pages are put in the queue instead.
+    /// pages are held nowhere else, so when a file cannot be written (or the text of a Word
+    /// document or text file cannot be read), or the save is cancelled, the pages not written are
+    /// put in the queue instead; pictures already written are kept and offered.
     /// </summary>
     private async Task SaveImmediately(List<ScannedPage> pages, ScanSettings s, CancellationToken token)
     {
@@ -1847,7 +1846,18 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             var text = s.Output.AlsoSaveText ? new PdfText() : null;
-            saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text)];
+            try
+            {
+                saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text)];
+            }
+            catch (Exception e)
+            {
+                await KeepInQueue(pages);
+                bool cancelled = IsCancellation(e);
+                if (!cancelled) ErrorMessage = e.Message;
+                StatusMessage = TextExport.PagesKeptInQueue(pages.Count, 0, cancelled, OutputFormats.SaveTitle(OutputFormat.Pdf));
+                return;
+            }
             string? textPath = text is null ? null : await WriteTextBeside(saved[0], text);
             note = PdfSizeSuffix() + (textPath is null ? "" : TextExport.SidecarSuffix(Path.GetFileName(textPath)));
         }
@@ -1863,16 +1873,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         WpfImageCodec.SaveAsNew(page.Image, path, s.Format, page.Dpi, s.JpegQuality, page.ColorMode)));
                 }
             }
-            catch (Exception e) when (saved.Count > 0)
+            catch (Exception e)
             {
-                MarkSaved(saved);
-                string kept = $"{saved.Count} of {pages.Count} pages ({string.Join(", ", saved.Select(Path.GetFileName))})";
-                if (IsCancellation(e))
-                {
-                    StatusMessage = $"Cancelled — saved {kept}.";
-                    return;
-                }
-                throw new IOException($"Saved {kept}; the rest could not be written: {e.Message}", e);
+                if (saved.Count > 0) MarkSaved(saved);
+                await KeepInQueue(pages.Skip(saved.Count).ToList());
+                bool cancelled = IsCancellation(e);
+                if (!cancelled) ErrorMessage = e.Message;
+                // The queue saves pictures as one PDF.
+                StatusMessage = TextExport.PagesKeptInQueue(pages.Count, saved.Count, cancelled, OutputFormats.SaveTitle(s.Format));
+                return;
             }
         }
         MarkSaved(saved);
