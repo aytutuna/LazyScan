@@ -8,6 +8,9 @@ import Foundation
 /// emptying its spool at launch.
 struct QueueRecord: Codable, Sendable {
     var pages: [Page]
+    /// How many pages the queue had when it was recorded, those left out included; nil in a record written
+    /// before it existed.
+    var queued: Int?
 
     struct Page: Codable, Sendable {
         var id: UUID
@@ -41,21 +44,25 @@ struct QueueRecord: Codable, Sendable {
         count == 1 ? "Bringing back 1 page\u{2026}" : "Bringing back \(count) pages\u{2026}"
     }
 
-    /// "3 pages are back from last time."; when none could be read, says so.
-    static func restoredMessage(_ count: Int) -> String {
+    /// "3 pages are back from last time.", or "3 of 4 pages are back from last time." when fewer came back
+    /// than the queue had; when none could be read, says so.
+    static func restoredMessage(_ count: Int, of queued: Int) -> String {
         switch count {
         case 0: return "The pages kept from last time could not be read."
+        case ..<queued:
+            return count == 1 ? "1 of \(queued) pages is back from last time."
+                              : "\(count) of \(queued) pages are back from last time."
         case 1: return "1 page is back from last time."
         default: return "\(count) pages are back from last time."
         }
     }
 
-    /// The record of `pages`; nil when one of them has no file in `spool` (kept in memory because its spill
-    /// failed), which the record could not bring back. A version not shown that is in memory only is left out.
-    init?(_ pages: [ScannedPage], spool: URL) {
+    /// The record of `pages`. A page without a file in `spool` (kept in memory because its spill failed) is
+    /// left out, as the record could not bring it back, and so is a version not shown that is in memory only.
+    init(_ pages: [ScannedPage], spool: URL) {
         var records: [Page] = []
         for page in pages {
-            guard let url = page.fileURL, url.deletingLastPathComponent().path == spool.path else { return nil }
+            guard let url = page.fileURL, url.deletingLastPathComponent().path == spool.path else { continue }
             var alternateFile: String?
             if let other = page.alternate?.fileURL, other.deletingLastPathComponent().path == spool.path {
                 alternateFile = other.lastPathComponent
@@ -71,6 +78,7 @@ struct QueueRecord: Codable, Sendable {
                                 capture: page.capture))
         }
         self.pages = records
+        self.queued = pages.count
     }
 
     /// The record in `spool` when its pages can come back: it reads and the settings the app starts with
@@ -147,14 +155,14 @@ extension QueueRecord.Page {
 }
 
 extension AppState {
-    /// Writes the queue's record beside the spool, or removes it when the queue is empty or could not be
-    /// brought back from its files.
+    /// Writes the queue's record beside the spool, or removes it when the queue is empty or none of its pages
+    /// has a file in the spool.
     func writeQueueRecord() {
         queueRecordTask?.cancel()
         queueRecordTask = nil
         let url = spoolDirectory.appendingPathComponent(QueueRecord.fileName)
-        guard !scannedPages.isEmpty, let record = QueueRecord(scannedPages, spool: spoolDirectory),
-              let data = try? JSONEncoder().encode(record) else {
+        let record = QueueRecord(scannedPages, spool: spoolDirectory)
+        guard !record.pages.isEmpty, let data = try? JSONEncoder().encode(record) else {
             try? FileManager.default.removeItem(at: url)
             return
         }
@@ -196,7 +204,7 @@ extension AppState {
             }
             self.restoringQueue = false
             self.scannedPages = pages + self.scannedPages
-            self.statusMessage = QueueRecord.restoredMessage(pages.count)
+            self.statusMessage = QueueRecord.restoredMessage(pages.count, of: record.queued ?? record.pages.count)
         }
     }
 }

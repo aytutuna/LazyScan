@@ -4,8 +4,8 @@ import XCTest
 @testable import LazyScanKit
 
 // The queue the iPhone keeps (AppState+QueueRecord.swift): recorded beside its spool files and brought back
-// when the next AppState is made, as long as every file is there and the settings save a queue; otherwise
-// the spool is emptied as it always was. Swift only: Windows has no queue record.
+// when the next AppState is made, the pages whose files are there, as long as the settings save a queue;
+// otherwise the spool is emptied as it always was. Swift only: Windows has no queue record.
 
 /// Text recognition that cannot run, so no page is read with Vision here.
 private struct RecordScorer: OrientationScorer {
@@ -188,7 +188,21 @@ final class AppStateQueueRecordTests: XCTestCase {
         let after = makeState()
         try await waitUntil(timeout: 30) { !after.isBusy }
         XCTAssertEqual(after.scannedPages.map(\.id), [kept.id])
+        XCTAssertEqual(after.statusMessage, "1 of 2 pages is back from last time.")
         XCTAssertTrue(spoolNames().contains(kept.fileURL!.lastPathComponent))
+    }
+
+    @MainActor
+    func test_aPageKeptInMemory_isLeftOut_theOthersComeBack() async throws {
+        let before = try await makeQueue()
+        let spooled: [UUID] = before.scannedPages.map(\.id)
+        // No file in the spool, as when its spill failed.
+        before.scannedPages.append(recordPage())
+        before.writeQueueRecord()
+        let after = makeState()
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.map(\.id), spooled)
+        XCTAssertEqual(after.statusMessage, "2 of 3 pages are back from last time.")
     }
 
     @MainActor
@@ -225,6 +239,11 @@ final class AppStateQueueRecordTests: XCTestCase {
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertTrue(after.scannedPages.isEmpty)
         XCTAssertEqual(spoolNames(), [])
+    }
+
+    func test_aRecordWithoutTheQueuedCount_stillDecodes() throws {
+        let record: QueueRecord = try JSONDecoder().decode(QueueRecord.self, from: Data(#"{"pages":[]}"#.utf8))
+        XCTAssertNil(record.queued)
     }
 
     func test_onlyTheIPhonesFiles_keepTheQueue_inApplicationSupport() {
