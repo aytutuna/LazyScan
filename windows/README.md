@@ -1580,8 +1580,9 @@ Known divergences from the macOS app (all documented in the source):
 - Cancelling a multi-file export (photo batch, per-page images) also removes the files that
   batch already wrote, so the review stays open and can simply be saved again.
 - Closing the window quits the app, whereas on macOS the app keeps running. So closing asks
-  first while a scan or save is running, or while pages or detected photos are unsaved. A
-  running operation is then cancelled and allowed to finish its cleanup before the window closes.
+  first while a scan or save is running, or while pages or detected photos are unsaved, as Quit
+  does on the Mac. A running operation is then cancelled and allowed to finish its cleanup
+  before the window closes; the Mac cancels it and quits at once.
 - Rotating a saved JPEG re-encodes it at its own estimated quality (read from the file's
   quantization table) instead of a fixed 95%.
 - Email: the Mac starts a new Mail message with the files attached; Windows has no such route
@@ -1620,7 +1621,7 @@ Known divergences from the macOS app (all documented in the source):
   with `RgbaImage` on Windows and with CoreGraphics on the Mac, so a side can differ by a pixel or
   so. The review is an overlay on Windows and a sheet on the Mac. Closing the window with an
   unsaved card asks first on Windows; on the Mac the app keeps running and the card stays until it
-  is saved or discarded.
+  is saved or discarded, and Quit asks first.
 - Text output: the reading order, paragraphs, text file and Word document are the same code on
   both platforms (the same bytes for the same lines), but the lines come from different
   recognizers (Windows OCR here, Vision on the Mac), so the same scan gives different text. Copy

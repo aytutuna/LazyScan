@@ -3291,6 +3291,12 @@ struct AppStateFiles {
 // LazyScanMac/App/LazyScanApp.swift:
 extension AppState { @MainActor static func makeForMac() -> AppState }   // [ICScannerBackend(), makeDemoBackend()], System* services, AppKitLifecycle(),
                                                                           // setUpCompanionHost with the keychain identity, MacNetworkSource, MacDnsSdAdvertiser
+// LazyScanMac/App/AppDelegate.swift: LazyScanApp's @NSApplicationDelegateAdaptor; the window sets its `state` when it appears
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply   // busy or unsaved work: "Stop it and quit?" / "Quit anyway?",
+                                                                                               // Quit and Cancel (Return does not quit); Quit stops a running scan or save
+    static func unsavedWork(_ state: AppState) -> String?   // the Windows window's closing texts (UnsavedWorkDescription): the queue, else the review, else the ID card
+}
 
 // LazyScanIOS/IOSShell.swift:
 public struct IOSLaunchOptions: Equatable, Sendable {

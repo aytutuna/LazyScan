@@ -7,6 +7,7 @@ import SystemConfiguration
 
 public struct LazyScanApp: App {
     @StateObject private var state = AppState.makeForMac()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     public init() {
         // No tabs: each would be another window over the same state.
@@ -19,7 +20,10 @@ public struct LazyScanApp: App {
             // would override it and force an oversized window on small screens.
             ContentView()
                 .environmentObject(state)
-                .onAppear { NSApp.activate(ignoringOtherApps: true) }
+                .onAppear {
+                    delegate.state = state
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
         .commands {
             // No File > New Window: a second window on the same state would show each sheet and alert twice.
