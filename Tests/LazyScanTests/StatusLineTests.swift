@@ -14,6 +14,7 @@ final class StatusLineTests: XCTestCase {
              "6 pages added \u{00B7} 1 blank"),
             ("Added 2 pages \u{2014} 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.",
              "2 pages added \u{00B7} 1 spread split"),
+            ("Added 2 pages from Aytu's iPhone \u{2014} 3 in queue.", "2 pages added"),
             ("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", "Saved"),
             ("Saved 3 photos to /Users/me/files", "Saved 3 photos"),
             ("Found 3 photos on the bed.", "Found 3 photos"),

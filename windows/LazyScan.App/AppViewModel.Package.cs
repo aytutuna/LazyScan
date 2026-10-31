@@ -178,7 +178,7 @@ public sealed partial class AppViewModel
             if (ReferenceEquals(PendingPackage, package)) PendingPackage = null;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));
             if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-            StatusMessage = $"{CompanionProtocol.AddedMessage(spooled.Count, package.FileName)} {ScannedPages.Count} in queue.";
+            StatusMessage = $"Added {spooled.Count} page{(spooled.Count == 1 ? "" : "s")} from {package.FileName} — {ScannedPages.Count} in queue.";
         });
     }
 

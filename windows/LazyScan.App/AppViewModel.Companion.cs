@@ -308,7 +308,7 @@ public sealed partial class AppViewModel
             added = spooled.Count;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));
             if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-            StatusMessage = $"{CompanionProtocol.AddedMessage(added, phoneName)} {ScannedPages.Count} in queue.";
+            StatusMessage = $"Added {added} page{(added == 1 ? "" : "s")} from {phoneName} — {ScannedPages.Count} in queue.";
         });
         if (problem is not null)
         {

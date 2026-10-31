@@ -132,7 +132,7 @@ final class AppStateCompanionHostTests: XCTestCase {
         XCTAssertEqual(added.map(\.documentLabel), ["Lunch 2026-10-20", nil])
         XCTAssertTrue(added[1].canSwapVersions)
         XCTAssertEqual(state.phoneBarMessage, "2 pages from Aytu's iPhone added to the queue.")
-        XCTAssertEqual(state.statusMessage, "2 pages from Aytu's iPhone added to the queue. 3 in queue.")
+        XCTAssertEqual(state.statusMessage, "Added 2 pages from Aytu's iPhone \u{2014} 3 in queue.")
         XCTAssertNil(state.phoneDocumentsWaitingMessage)
         state.dismissPhoneBar()
         XCTAssertNil(state.phoneBarMessage)

@@ -234,10 +234,10 @@ extension AppState {
                 self.phoneBarMessage = kept
                 return
             }
-            let added = CompanionProtocol.addedMessage(pages.count, phoneName: phoneName)
-            self.statusMessage = "\(added) \(self.scannedPages.count) in queue."
+            let count = pages.count
+            self.statusMessage = "Added \(count) page\(count == 1 ? "" : "s") from \(phoneName) \u{2014} \(self.scannedPages.count) in queue."
             self.companionService?.inbox.release(package)
-            self.phoneBarMessage = added
+            self.phoneBarMessage = CompanionProtocol.addedMessage(count, phoneName: phoneName)
         }
     }
 

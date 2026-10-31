@@ -10,6 +10,7 @@ public class StatusLineTests
     [InlineData("Added 1 page — 3 in queue. Scan more or Save PDF.", "Page 3 added")]
     [InlineData("Added 6 pages from 3 sheets, both sides — 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.", "6 pages added · 1 blank")]
     [InlineData("Added 2 pages — 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.", "2 pages added · 1 spread split")]
+    [InlineData("Added 2 pages from Aytu's iPhone — 3 in queue.", "2 pages added")]
     [InlineData("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", "Saved")]
     [InlineData(@"Saved 3 photos to C:\Users\me\files", "Saved 3 photos")]
     [InlineData("Found 3 photos on the bed.", "Found 3 photos")]
