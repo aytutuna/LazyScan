@@ -217,9 +217,10 @@ public enum InspectorSections {
         return flow == .receiptSplit || flow == .idCard
     }
 
-    /// The format the column shows: receipts and the ID card save a PDF or an image, photos an image, else
-    /// the format.
+    /// The format the column shows: a copy saves a PDF or nothing, receipts and the ID card a PDF or an
+    /// image, photos an image, else the format.
     public static func shownFormat(_ s: ScanSettings) -> OutputFormat {
+        if TaskCatalog.flow(of: s) == .copy { return .pdf }
         if savesPageFormat(s) { return s.format.pageFormat }
         if s.intent == .photo { return s.format.imageFormatOrJPEG }
         return s.format

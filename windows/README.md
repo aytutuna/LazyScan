@@ -701,7 +701,9 @@ by up to 5 mm (printer margins).", or "Larger than the paper: …" for a scan la
 the inspector says it before copying ("Edges may lose up to 5 mm", with a warning glyph, while Fit
 to page is off). Copies are scanned like any scan (they are in the Scans
 tab) but never queued or spooled, so they are printed as scanned: no page is left out as blank,
-cropped or straightened (the Pages and Split sections are hidden for the task); **Also save a PDF** saves
+cropped or straightened (the Pages and Split sections are hidden for the task, and so are Format,
+Collect pages before saving and After saving, since a copy saves a PDF or nothing, and PDF size
+unless the copy is saved as a PDF too); **Also save a PDF** saves
 each copy as "Copy {date} {counter}" after it has gone to the printer, and also when printing failed
 (the error then names the PDF), so the scanned pages are not lost; a Cancel while the PDF is written
 says the copy was sent and the PDF not saved. Without a printer the section says so and has **Look

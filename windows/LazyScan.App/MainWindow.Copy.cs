@@ -105,6 +105,8 @@ public partial class MainWindow
     {
         if (_updatingUi || !IsLoaded) return;
         ViewModel.SetCopyAlsoSavePdf(CopyPdfBox.IsChecked == true);
+        // The PDF size shows for a copy only while it is also saved as a PDF.
+        SyncPdfSizeOptions();
     }
 
     private void RulerPage_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintRulerPage();

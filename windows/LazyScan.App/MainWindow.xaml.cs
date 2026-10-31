@@ -1687,13 +1687,13 @@ public partial class MainWindow : Window
         var s = ViewModel.Settings;
         var flow = TaskCatalog.FlowOf(s);
         bool receipts = flow == TaskFlowKind.ReceiptSplit;
-        // Receipts and the ID card are saved as a PDF or an image: a Word or text format left from before
-        // saves PDFs.
+        // Receipts and the ID card are saved as a PDF or an image (a Word or text format left from before
+        // saves PDFs), a copy as a PDF or not at all: its PDF size counts only while Also save a PDF is on.
         bool pageOnly = InspectorSections.SavesPageFormat(s);
-        var shownFormat = pageOnly ? OutputFormats.PageFormat(s.Format) : s.Format;
+        var shownFormat = InspectorSections.ShownFormat(s);
         bool documents = s.Intent == ScanIntent.Document;
         bool word = documents && shownFormat == OutputFormat.Word;
-        bool pdf = documents && shownFormat == OutputFormat.Pdf;
+        bool pdf = documents && shownFormat == OutputFormat.Pdf && (flow != TaskFlowKind.Copy || s.TaskOptions.CopyAlsoSavePdf);
         WordOptions.Visibility = word ? Visibility.Visible : Visibility.Collapsed;
         string pageImagesHint = DocxWriter.PageImagesHint(s.Output.WordPageImages);
         WordPageImagesBox.ToolTip = pageImagesHint;
@@ -1704,10 +1704,11 @@ public partial class MainWindow : Window
         AutomationProperties.SetHelpText(PdfSizeTrack, $"{s.Output.PdfSize.Hint()}. {s.Output.PdfSize.Detail()}");
         bool savesPdf = pageOnly ? OutputFormats.PageFormat(s.Format) == OutputFormat.Pdf : OutputFormats.SavesPdf(s.Format, s.DocumentMultiPage);
         AlsoSaveTextBox.IsEnabled = savesPdf && (flow == TaskFlowKind.DocumentQueue || receipts);
-        // Receipts are saved from their review, and the ID card from its own: collecting pages does
-        // nothing for them. The text layer of the copy's and the ID card's PDF is never made.
+        // Receipts are saved from their review, the ID card from its own and a copy is printed as it is
+        // scanned: collecting pages does nothing for them. The text layer of the copy's and the ID card's
+        // PDF is never made.
         bool idCard = flow == TaskFlowKind.IdCard;
-        MultiPageBox.Visibility = receipts || idCard ? Visibility.Collapsed : Visibility.Visible;
+        MultiPageBox.Visibility = receipts || idCard || flow == TaskFlowKind.Copy ? Visibility.Collapsed : Visibility.Visible;
         // Shown whenever the save writes a PDF that can carry text: a queue of JPEG pages saves one too.
         SearchableBox.Visibility = WritesPdf(s) && flow != TaskFlowKind.Copy && !idCard ? Visibility.Visible : Visibility.Collapsed;
         string hint = flow switch
@@ -1746,10 +1747,12 @@ public partial class MainWindow : Window
     /// uses chosen: photos are saved as an image, so a PDF or text format shows as JPEG there
     /// (the setting itself is kept for documents). Receipts and the ID card are saved as a PDF or an
     /// image (<see cref="OutputFormats.PageFormat"/>): Word and text are not offered, and show as PDF.
+    /// A copy saves a PDF or nothing, so the format is hidden for it.
     /// </summary>
     private void SyncFormatChoices()
     {
         var s = ViewModel.Settings;
+        FormatRow.Visibility = TaskCatalog.FlowOf(s) == TaskFlowKind.Copy ? Visibility.Collapsed : Visibility.Visible;
         bool pageOnly = InspectorSections.SavesPageFormat(s);
         var offered = OutputFormats.Offered(s.Intent).Where(f => !pageOnly || OutputFormats.PageFormat(f) == f).ToList();
         var labels = offered.Select(f => f.Label()).ToList();

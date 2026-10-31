@@ -929,9 +929,11 @@
                                                           AutomationProperties.HelpText="Turns each photo found on the glass straight (deskew)"
                                                           Checked="Setting_Changed" Unchecked="Setting_Changed" />
                                             </StackPanel>
-                                            <TextBlock Text="Format" Style="{StaticResource FieldLabelText}" />
-                                            <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch"
-                                                      AutomationProperties.Name="Format" SelectionChanged="Format_Changed" />
+                                            <StackPanel x:Name="FormatRow">
+                                                <TextBlock Text="Format" Style="{StaticResource FieldLabelText}" />
+                                                <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="Format" SelectionChanged="Format_Changed" />
+                                            </StackPanel>
                                             <!-- Word output only: each page's picture before its text; label and
                                                  hint (as the tooltip) from DocxWriter in Core. -->
                                             <StackPanel x:Name="WordOptions" Margin="0,8,0,0" Visibility="Collapsed">
@@ -1224,10 +1226,12 @@
                                                       Content="Also save text (.txt)" Margin="0,0,0,8"
                                                       ToolTip="Saves the text in a .txt file next to the PDF"
                                                       Checked="Setting_Changed" Unchecked="Setting_Changed" />
-                                            <TextBlock Text="After saving" Style="{StaticResource FieldLabelText}" />
-                                            <ComboBox x:Name="AfterSaveBox" HorizontalAlignment="Stretch"
-                                                      AutomationProperties.Name="After saving"
-                                                      SelectionChanged="AfterSave_Changed" />
+                                            <StackPanel x:Name="AfterSaveRow">
+                                                <TextBlock Text="After saving" Style="{StaticResource FieldLabelText}" />
+                                                <ComboBox x:Name="AfterSaveBox" HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="After saving"
+                                                          SelectionChanged="AfterSave_Changed" />
+                                            </StackPanel>
                                             <TextBlock Text="File name" Style="{StaticResource FieldLabelText}" Margin="0,12,0,4" />
                                             <DockPanel>
                                                 <Button x:Name="InsertTokenButton" DockPanel.Dock="Right" Style="{StaticResource SubtleButtonStyle}"

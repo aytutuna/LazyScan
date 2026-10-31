@@ -152,6 +152,10 @@ final class InspectorSectionsTests: XCTestCase {
         copy.taskOptions.copyAlsoSavePdf = true
         XCTAssertTrue(InspectorSections.shown(copy).contains(InspectorSections.archive))
         XCTAssertFalse(InspectorSections.textApplies(copy))
+        // A copy saves a PDF or nothing: a format left from before shows as PDF.
+        copy.format = .word
+        XCTAssertEqual(InspectorSections.shownFormat(copy), .pdf)
+        XCTAssertEqual(InspectorSections.summary(InspectorSections.output, for: copy), "PDF \u{00B7} Standard")
 
         // The ID card never goes through the queue and is saved from its review as a PDF or an image.
         var idCard: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())

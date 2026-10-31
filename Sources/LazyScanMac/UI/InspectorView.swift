@@ -484,11 +484,13 @@ struct InspectorView: View {
         section(InspectorSections.output, title: "Output",
                 summary: InspectorSections.outputSummary(state.settings, shownFormat: shownFormat),
                 changed: InspectorSections.outputChanged(state.settings, shownFormat: shownFormat)) {
-            formatPicker
+            if !state.isCopyFlow {
+                formatPicker
+            }
             if shownFormat == .jpeg {
                 jpegQualityRow
             }
-            if shownFormat == .pdf {
+            if pdfSizeShown {
                 pdfSizeRow
             }
             if shownFormat == .word {
@@ -498,7 +500,7 @@ struct InspectorView: View {
                 Toggle("Searchable PDF", isOn: $state.settings.pdfSearchable)
                     .help("Lets you search and copy the text (OCR)")
             }
-            if !state.isReceiptFlow && !state.isIdCardFlow {
+            if !state.isReceiptFlow && !state.isIdCardFlow && !state.isCopyFlow {
                 Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
                     .disabled(addingHint != nil)
                     .help(addingHint ?? "Off: each scan is saved right away")
@@ -520,6 +522,11 @@ struct InspectorView: View {
     private var searchableShown: Bool {
         let writesPDF: Bool = state.settings.format.savesPDF(collectsPages: state.settings.documentMultiPage)
         return writesPDF && !state.isCopyFlow && !state.isIdCardFlow
+    }
+
+    /// The PDF size, for a PDF shown; a copy's PDF is written only while Also save a PDF is on.
+    private var pdfSizeShown: Bool {
+        shownFormat == .pdf && (!state.isCopyFlow || state.settings.taskOptions.copyAlsoSavePdf)
     }
 
     private var formatPicker: some View {
@@ -617,8 +624,10 @@ struct InspectorView: View {
     /// The format a save uses, as the picker shows it: photos are saved as an image, so a PDF or
     /// text format shows as JPEG there, and receipts and the ID card as a PDF or an image, so Word or
     /// text shows as PDF there (the setting itself is kept for documents until another format is
-    /// picked). Twin of the Windows inspector's format box.
+    /// picked). A copy saves a PDF or nothing, so it shows as PDF, without the picker. Twin of the
+    /// Windows inspector's format box.
     private var shownFormat: OutputFormat {
+        if state.isCopyFlow { return .pdf }
         if state.settings.intent == .photo { return state.settings.format.imageFormatOrJPEG }
         return InspectorSections.savesPageFormat(state.settings) ? state.settings.format.pageFormat : state.settings.format
     }
@@ -925,18 +934,27 @@ struct InspectorView: View {
 
     // MARK: More options
 
-    /// The text beside each PDF, what happens after a save, and the file name.
+    /// The text beside each PDF, what happens after a save, and the file name. A copy runs nothing
+    /// after it is printed, so After saving is left out there, and from the header's summary.
     private var moreSection: some View {
         section(InspectorSections.more, title: "More options",
-                summary: InspectorSections.moreSummary(state.settings.output, textShown: alsoSaveTextShown),
-                changed: !InspectorSections.moreSummary(state.settings.output, textShown: alsoSaveTextShown).isEmpty) {
+                summary: moreSummary,
+                changed: !moreSummary.isEmpty) {
             if alsoSaveTextShown {
                 Toggle("Also save text (.txt)", isOn: $state.settings.output.alsoSaveText)
                     .help("Saves the text in a .txt file next to the PDF")
             }
-            afterSavePicker
+            if !state.isCopyFlow {
+                afterSavePicker
+            }
             fileNameRow
         }
+    }
+
+    private var moreSummary: String {
+        var output: OutputOptions = state.settings.output
+        if state.isCopyFlow { output.afterSave = AfterSaveAction.none }
+        return InspectorSections.moreSummary(output, textShown: alsoSaveTextShown)
     }
 
     /// The text of the pages in a .txt file beside each PDF; OCR reads each page once for both. Shown

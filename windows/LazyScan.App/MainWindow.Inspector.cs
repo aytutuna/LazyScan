@@ -133,6 +133,7 @@ public partial class MainWindow
         if (_sections.Count == 0) return;
         var s = ViewModel.Settings;
         bool documents = s.Intent == ScanIntent.Document;
+        bool copy = TaskCatalog.FlowOf(s) == TaskFlowKind.Copy;
         var shownFormat = ShownFormat(s);
         bool textApplies = InspectorSections.TextApplies(s);
 
@@ -142,6 +143,9 @@ public partial class MainWindow
         // copy also saved as a PDF), not only when PDF is the format shown.
         ArchiveSection.Visibility = WritesPdf(s) ? Visibility.Visible : Visibility.Collapsed;
         AlsoSaveTextBox.Visibility = textApplies ? Visibility.Visible : Visibility.Collapsed;
+        // A copy runs nothing after it is printed: After saving is hidden for it, and More's summary
+        // leaves the action out.
+        AfterSaveRow.Visibility = copy ? Visibility.Collapsed : Visibility.Visible;
         var output = _sections.First(x => x.Id == InspectorSections.Output);
         output.Title.Text = documents ? "Output" : "Photos";
 
@@ -181,7 +185,9 @@ public partial class MainWindow
                     locked = s.Output.Protect;
                     break;
                 case InspectorSections.More:
-                    summary = InspectorSections.MoreSummary(s.Output, textApplies);
+                    var more = s.Output.Clone();
+                    if (copy) more.AfterSave = AfterSaveAction.None;
+                    summary = InspectorSections.MoreSummary(more, textApplies);
                     changed = summary.Length > 0;
                     break;
             }
@@ -206,7 +212,7 @@ public partial class MainWindow
 
     /// <summary>
     /// The format the inspector shows: photos save an image (a PDF or text format shows as JPEG),
-    /// receipts and the ID card a PDF or an image (Word and text show as PDF).
+    /// receipts and the ID card a PDF or an image (Word and text show as PDF), and a copy a PDF or nothing (it shows as PDF).
     /// </summary>
     private static OutputFormat ShownFormat(ScanSettings s) => InspectorSections.ShownFormat(s);
 

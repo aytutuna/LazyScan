@@ -158,6 +158,10 @@ public class InspectorSectionsTests
         copy.TaskOptions.CopyAlsoSavePdf = true;
         Assert.Contains(InspectorSections.Archive, InspectorSections.Shown(copy));
         Assert.False(InspectorSections.TextApplies(copy));
+        // A copy saves a PDF or nothing: a format left from before shows as PDF.
+        copy.Format = OutputFormat.Word;
+        Assert.Equal(OutputFormat.Pdf, InspectorSections.ShownFormat(copy));
+        Assert.Equal("PDF · Standard", InspectorSections.Summary(InspectorSections.Output, copy));
 
         // The ID card never goes through the queue and is saved from its review as a PDF or an image.
         var idCard = TaskCatalog.Apply(ScanTask.IdCard, new ScanSettings());

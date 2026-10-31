@@ -206,9 +206,13 @@ public static class InspectorSections
     /// </summary>
     public static bool SavesPageFormat(ScanSettings s) => TaskCatalog.FlowOf(s) is TaskFlowKind.ReceiptSplit or TaskFlowKind.IdCard;
 
-    /// <summary>The format the column shows: receipts and the ID card save a PDF or an image, photos an image, else the format.</summary>
+    /// <summary>
+    /// The format the column shows: a copy saves a PDF or nothing, receipts and the ID card a PDF or an
+    /// image, photos an image, else the format.
+    /// </summary>
     public static OutputFormat ShownFormat(ScanSettings s) =>
-        SavesPageFormat(s) ? OutputFormats.PageFormat(s.Format)
+        TaskCatalog.FlowOf(s) == TaskFlowKind.Copy ? OutputFormat.Pdf
+        : SavesPageFormat(s) ? OutputFormats.PageFormat(s.Format)
         : s.Intent == ScanIntent.Photo ? OutputFormats.ImageFormatOrJpeg(s.Format)
         : s.Format;
 
