@@ -30,6 +30,10 @@ public struct LazyScanApp: App {
             CommandGroup(replacing: .newItem) {}
             // File > Import from iPhone or iPad: Continuity Camera, taken by ContentView's importsItemProviders.
             ImportFromDevicesCommands()
+            // Help > Lazy Scan Help: no help book is registered, so the default item only says help isn't available.
+            CommandGroup(replacing: .help) {
+                Link("Lazy Scan Help", destination: URL(string: "https://scan.mylazy.app/#support")!)
+            }
         }
     }
 }
