@@ -1556,9 +1556,10 @@ public final class AppState: ObservableObject {
                 return
             }
             let text = s.output.alsoSaveText ? PDFTextCollector() : nil
+            // A protected PDF's password is asked for before the file is named (which takes the running
+            // number) and any page is read or written; without it the pages stay collected.
+            _ = try await self.protectionFor(s)
             let url = try self.outputURL(fileExtension: "pdf", label: document.label)
-            // A protected PDF's password is asked for before any page is read or written; without
-            // it the pages stay collected.
             let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
             self.statusMessage = s.pdfSearchable || text != nil ? "Running OCR and building PDF…" : "Building PDF…"
             let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in

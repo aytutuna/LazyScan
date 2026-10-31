@@ -863,7 +863,8 @@ settings and presets keep only the switch (`"protect": true`), and nothing about
 logs, `devices.txt` or the Saved list. The dialog's boxes are emptied when it closes, the
 prepared password bytes and each file's key are wiped when the save ends (the text typed lives
 in .NET strings until the garbage collector reclaims them; that cannot be wiped). Cancel in the
-dialog saves nothing: collected pages stay in the queue, pages scanned while saving as they are
+dialog saves nothing and takes no running number, since the password is asked for before a file
+is named: collected pages stay in the queue, pages scanned while saving as they are
 scanned go to the queue, a split save writes no document. A copy that also saves a PDF asks
 before printing: Cancel still prints the copy, and when the printer then fails the pages go to the
 queue. The status after a save says "password-protected" (split documents and receipts too; the

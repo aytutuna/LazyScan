@@ -381,4 +381,31 @@ final class CaptureFlowTests: XCTestCase {
         XCTAssertEqual(fileNames(spool), [])
         XCTAssertTrue(state.scanHistory.isEmpty)
     }
+
+    @MainActor
+    func test_theIdCard_withoutThePassword_savesNothing_takesNoRunningNumber_andStaysInTheReview() async throws {
+        let state: AppState = makeState(.idCard)
+        state.settings.output.protect = true
+        state.settings.namingTemplate = "Scan {counter}"
+        // A save folder that does not open now: naming a file would say so.
+        state.settings.destinationBookmark = Data("not a bookmark".utf8)
+        state.resolveDestinationBookmark = { (_: Data) -> (folder: URL, bookmark: Data)? in nil }
+        state.askPDFPassword = { nil }
+        let card: CGImage = try XCTUnwrap(ObjectShots.cardPhoto()?.makeCGImage())
+        let quad: Quad = ObjectShots.cardQuad()
+        XCTAssertTrue(state.ingest(CaptureObjects.pages(card, quads: [quad], kind: .idCard), source: .photo))
+        try await waitFor(timeout: 60) { !state.isBusy }
+        state.skipStep()
+        XCTAssertTrue(state.showIdCardReview)
+        let before: String = state.fileNameExample(state.settings.namingTemplate, format: .pdf)
+        state.saveIdCard()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        XCTAssertEqual(state.statusMessage, PDFProtection.notSavedMessage)
+        XCTAssertEqual(state.fileNameExample(state.settings.namingTemplate, format: .pdf), before)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(fileNames(saved), [])
+        XCTAssertTrue(state.showIdCardReview)
+        XCTAssertNotNil(state.idCardFront)
+        state.discardIdCard()
+    }
 }

@@ -247,6 +247,8 @@ extension AppState {
             do {
                 let url: URL
                 if pageFormat == .pdf {
+                    // The password before the file is named, which takes the running number.
+                    _ = try await self.protectionFor(s)
                     url = try self.outputURL(fileExtension: "pdf")
                     let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
                     let page = ScannedPage(image: composed.page, dpi: pageDPI, colorMode: pageMode)

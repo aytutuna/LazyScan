@@ -613,6 +613,36 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_cancellingThePassword_takesNoRunningNumber() async throws {
+        // One document, then a document a page: both ask before a file is named.
+        for split in [SplitMode.none, .sheetCount] {
+            let state = makeState()
+            state.settings.format = .pdf
+            state.settings.pdfSearchable = false
+            state.settings.output.protect = true
+            state.settings.namingTemplate = "Scan {counter}"
+            state.settings.document.splitMode = split
+            // A save folder that does not open now: naming a file would say so.
+            state.settings.destinationBookmark = Data("not a bookmark".utf8)
+            state.resolveDestinationBookmark = { (_: Data) -> (folder: URL, bookmark: Data)? in nil }
+            let asker = SeamPasswordAsker(answer: nil)
+            state.askPDFPassword = { asker.ask() }
+            try await collect(state, pages: 2)
+            defer { state.deleteSpoolFiles(of: state.scannedPages) }
+            // The running number is kept in the user's defaults, so only its move is checked.
+            let before: String = state.fileNameExample(state.settings.namingTemplate, format: .pdf)
+            state.savePDF()
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            XCTAssertEqual(asker.asked, 1, "\(split)")
+            XCTAssertEqual(state.statusMessage, PDFProtection.notSavedMessage, "\(split)")
+            XCTAssertEqual(state.fileNameExample(state.settings.namingTemplate, format: .pdf), before, "\(split)")
+            XCTAssertNil(state.errorMessage, "\(split)")
+            XCTAssertEqual(state.scannedPages.count, 2, "\(split)")
+            XCTAssertEqual(try savedPDFs(), [], "\(split)")
+        }
+    }
+
+    @MainActor
     func test_pagesSavedAsTheyAreScanned_withoutAPassword_waitInTheQueue() async throws {
         let state = makeState()
         state.settings.format = .pdf

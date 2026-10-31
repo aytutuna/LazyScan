@@ -218,8 +218,10 @@ extension AppState {
         var textFiles: [String] = []
         var noText: [String] = []
         var textProblem: String?
-        // The PDFs carry the save's password when the option is on (asked for before the first one).
+        // The PDFs carry the save's password when the option is on, asked for before the first file is
+        // named (which takes the running number).
         var protectedPDFs = false
+        if format == .pdf { _ = try await self.protectionFor(s) }
         // All or nothing (`SavePlan.writeAllOrNothing`, written out here so the work stays on the main actor).
         do {
             for document in plan.documents {

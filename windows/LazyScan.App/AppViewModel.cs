@@ -1787,6 +1787,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             var text = s.Output.AlsoSaveText ? new PdfText() : null;
+            // A protected PDF's password is asked for before the file is named (which takes the running
+            // number) and any page is read or written; without it the pages stay collected.
+            ProtectionFor(s);
             StatusMessage = s.PdfSearchable || text is not null ? "Running OCR and building PDF…" : "Building PDF…";
             NotifyAll();
             string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", label: document.Label), token, text);
@@ -2910,6 +2913,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 if (pageFormat == OutputFormat.Pdf)
                 {
+                    // The password before the file is named, which takes the running number.
+                    ProtectionFor(s);
                     saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, OutputPath(s, "pdf"), token));
                 }
                 else

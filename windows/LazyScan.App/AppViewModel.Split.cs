@@ -341,6 +341,8 @@ public sealed partial class AppViewModel
         // Each PDF written sets the last PDF's size and protection; a save undone puts back the ones before.
         long? lastPdfBytes = LastPdfBytes;
         bool lastPdfProtected = LastPdfProtected;
+        // The PDFs' password is asked for before the first file is named (which takes the running number).
+        if (format == OutputFormat.Pdf) ProtectionFor(s);
         try
         {
             await SavePlan.WriteAllOrNothingAsync(files, async () =>
