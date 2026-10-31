@@ -356,6 +356,7 @@ public partial class MainWindow : Window
         Inspector.IsEnabled = !ViewModel.IsBusy;
         PresetList.IsEnabled = !ViewModel.IsBusy;
         PresetButtons.IsEnabled = !ViewModel.IsBusy;
+        SyncPresetButtons();
         // So is the scanner list: picking another scanner would cancel the scan.
         string? busyHint = ViewModel.IsBusy ? "Wait for the scan to finish" : null;
         DeviceList.IsEnabled = !ViewModel.IsBusy;
@@ -1048,7 +1049,7 @@ public partial class MainWindow : Window
                         "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
         == MessageBoxResult.Yes;
 
-    /// <summary>A preset card was picked: apply it and go to the scan screen.</summary>
+    /// <summary>A preset was picked, on a Start card or in the side pane: apply it and go to the scan screen.</summary>
     private void StartPreset(Preset preset)
     {
         if (ViewModel.IsBusy || !ConfirmDropIdCard()) return;
@@ -2046,14 +2047,35 @@ public partial class MainWindow : Window
 
     private void PresetList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (PresetList.SelectedItem is Preset preset)
+        if (e.OriginalSource is DependencyObject hit
+            && ItemsControl.ContainerFromElement(PresetList, hit) is ListBoxItem { DataContext: Preset preset })
         {
-            if (!ConfirmDropIdCard()) return;
-            ViewModel.ApplyPreset(preset);
-            ViewModel.ClearAppendTarget();
-            PushSettingsToUi();
-            _savedTabStale = true;
+            StartPreset(preset);
         }
+    }
+
+    /// <summary>
+    /// Enter or Space applies the focused row, as a double-click does. The focused row, since Tab
+    /// leaves the first row focused with nothing selected; on the preview, since the list takes
+    /// Space for itself (it selects the row) and KeyDown never sees it.
+    /// </summary>
+    private void PresetList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space) || e.OriginalSource is not ListBoxItem { DataContext: Preset preset }) return;
+        e.Handled = true;
+        StartPreset(preset);
+    }
+
+    private void PresetList_SelectionChanged(object sender, SelectionChangedEventArgs e) => SyncPresetButtons();
+
+    /// <summary>Delete follows the selection and names the preset it removes, since it asks nothing first.</summary>
+    private void SyncPresetButtons()
+    {
+        var selected = PresetList.SelectedItem as Preset;
+        string label = selected is null ? "Delete preset" : $"Delete “{selected.Name}”";
+        DeletePresetButton.IsEnabled = selected is not null && !ViewModel.IsBusy;
+        DeletePresetButton.ToolTip = label;
+        AutomationProperties.SetName(DeletePresetButton, label);
     }
 
     private void SavePreset_Click(object sender, RoutedEventArgs e)
@@ -2070,6 +2092,7 @@ public partial class MainWindow : Window
         if (PresetList.SelectedItem is Preset preset)
         {
             ViewModel.DeletePreset(preset.Id);
+            PresetList.Focus();
         }
     }
 

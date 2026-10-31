@@ -254,9 +254,9 @@
                                 ToolTip="Save settings as a preset"
                                 AutomationProperties.Name="Save the current settings as a preset"
                                 Click="SavePreset_Click" />
-                        <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE74D;"
+                        <Button x:Name="DeletePresetButton" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE74D;"
                                 ToolTip="Delete preset"
-                                AutomationProperties.Name="Delete the selected preset"
+                                AutomationProperties.Name="Delete preset"
                                 Click="DeletePreset_Click" />
                     </StackPanel>
                     <TextBlock Text="Presets" Style="{StaticResource BodyStrongText}" TextWrapping="NoWrap"
@@ -267,6 +267,8 @@
                         Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
                 <ListBox Grid.Row="4" x:Name="PresetList" Style="{StaticResource NavListBoxStyle}"
                          AutomationProperties.Name="Presets"
+                         SelectionChanged="PresetList_SelectionChanged"
+                         PreviewKeyDown="PresetList_PreviewKeyDown"
                          MouseDoubleClick="PresetList_MouseDoubleClick">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -274,7 +276,7 @@
                                 <DockPanel.ToolTip>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Converter={StaticResource PresetSummaryConverter}}" />
-                                        <TextBlock Text="Double-click to apply" Style="{StaticResource CaptionText}" />
+                                        <TextBlock Text="Double-click or press Enter to apply" Style="{StaticResource CaptionText}" />
                                     </StackPanel>
                                 </DockPanel.ToolTip>
                                 <TextBlock x:Name="Glyph" DockPanel.Dock="Left" Margin="0,0,12,0">
