@@ -24,6 +24,8 @@ public struct NamingTemplate {
         let counter = context.counter
         let date = context.date
         let index = context.index
+        let label = Self.cutToBytes(context.label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+                                    maxBytes: Self.maxLabelBytes)
         var result = template
 
         // {counter:N} — zero-padded to N digits.
@@ -45,11 +47,16 @@ public struct NamingTemplate {
             ("{index}", index.map(String.init) ?? ""),
             ("{task}", context.task.map { TaskCatalog.definition($0).fileLabel } ?? context.intent.label),
             ("{docdate}", (context.documentDate ?? DocumentDate(date: date)).text),
-            ("{label}", Self.cutToBytes(context.label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
-                                        maxBytes: Self.maxLabelBytes)),
+            ("{label}", label),
         ]
         for (token, value) in replacements {
             result = result.replacingOccurrences(of: token, with: value)
+        }
+
+        // Put a named document's name in the file even when the template has no {label} token
+        // (the default has none), ahead of the index so the index stays at the end.
+        if !label.isEmpty, !template.contains("{label}") {
+            result += " \(label)"
         }
 
         // In a photo batch, make sure every file gets its index even when the
@@ -138,7 +145,8 @@ public struct NamingContext: Equatable, Sendable {
     /// `ReceiptDateExtractor`); nil gives the date of `date`.
     public var documentDate: DocumentDate?
     /// The document's name for {label}: given to it in the page strip when the queue is split into
-    /// documents (`SaveDocument.label`); nil gives an empty text.
+    /// documents (`SaveDocument.label`); nil gives an empty text. Appended, ahead of the index, when
+    /// the template has no {label}.
     public var label: String?
 
     public init(counter: Int, date: Date, intent: ScanIntent, index: Int? = nil, task: ScanTask? = nil,

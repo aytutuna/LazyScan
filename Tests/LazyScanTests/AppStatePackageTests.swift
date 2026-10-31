@@ -281,7 +281,7 @@ final class AppStatePackageTests: XCTestCase {
         let read = try CompanionPackage.read(contentsOf: url)
         let name = url.deletingPathExtension().lastPathComponent
         XCTAssertEqual(read.title, name)
-        XCTAssertEqual(read.suggestedName, name)
+        XCTAssertNil(read.suggestedName)
         XCTAssertEqual(read.namingTemplate, state.settings.namingTemplate)
         XCTAssertEqual(read.pages.count, 2)
         XCTAssertEqual(read.pages.map(\.image.format), [.jpeg, .jpeg])
@@ -297,7 +297,12 @@ final class AppStatePackageTests: XCTestCase {
 
         await state.openPackage(at: url)
         XCTAssertEqual(state.pendingPackage?.pageCount, 2)
-        XCTAssertEqual(state.pendingPackage?.documentName, name)
+        XCTAssertEqual(state.pendingPackage?.documentName, "")
+
+        // The name the first page was given goes with it, trimmed.
+        state.scannedPages[0] = state.scannedPages[0].withDocumentLabel(" Lease ")
+        let named = try await state.exportPackage(to: folder)
+        XCTAssertEqual(try CompanionPackage.read(contentsOf: named).suggestedName, "Lease")
     }
 
     func test_packageDocument_writesBlackAndWhiteAsTIFF_andKeepsSideAndSheet() throws {

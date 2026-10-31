@@ -162,7 +162,7 @@ struct PagesStripView: View {
             }
             Button("Cancel", role: .cancel) { namingPage = nil }
         } message: {
-            Text("Used for {label} in the file name.")
+            Text("Goes into the file name.")
         }
         .confirmationDialog("Remove all \(state.scannedPages.count) pages?", isPresented: $asksClear,
                             titleVisibility: .visible) {

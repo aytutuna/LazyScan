@@ -1200,7 +1200,8 @@ its sheet from splitting (a second click undoes it); the gap before every other 
 (shown while a split is chosen or the queue is split): one click starts a new document there, one
 click on a document's bar joins it to the document before, and a second click undoes either. A
 page's right-click menu has the same split or join, also without a split chosen, and **Name this
-document…**, which opens a small box over the page: the name is `{label}` in the file name (Enter
+document…**, which opens a small box over the page: the name goes into the file name, in place of
+`{label}` or at the end, before the document's number, when the template has none (Enter
 keeps it, Esc cancels, an empty name removes it; up to 100 characters, and the file name takes at
 most 120 bytes of it, cut between characters). The name stays with its document: when its first
 page is skipped (or a page before it is kept again) the name moves to the document's new first

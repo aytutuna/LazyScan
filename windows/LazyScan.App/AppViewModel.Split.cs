@@ -149,7 +149,7 @@ public sealed partial class AppViewModel
         // A document named by a barcode keeps that name when the user's is removed.
         string? shown = cleaned ?? QueuePlan.Documents.FirstOrDefault(d => d.Pages.Contains(document.Pages[0]))?.Label;
         StatusMessage = cleaned is not null
-            ? $"Document {number} is named “{cleaned}”: {{label}} in the file name."
+            ? $"Document {number} is named “{cleaned}”: it goes into the file name."
             : shown is not null
             ? $"Document {number} is named “{shown}” by its barcode."
             : $"Document {number} has no name.";

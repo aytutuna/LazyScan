@@ -668,7 +668,7 @@
                                                                          MaxLength="{x:Static core:DocumentSplitter.MaxLabelLength}"
                                                                          AutomationProperties.Name="Name this document"
                                                                          KeyDown="NameBox_KeyDown" Tag="{Binding Page.Id}" />
-                                                                <TextBlock Text="Used for {label} in the file name. Enter saves, Esc cancels."
+                                                                <TextBlock Text="Goes into the file name. Enter saves, Esc cancels."
                                                                            Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                                             </StackPanel>
                                                         </Border>

@@ -98,7 +98,7 @@ final class IOSPackageTests: XCTestCase {
         let offered: PendingPackage = try XCTUnwrap(state.pendingPackage)
         XCTAssertEqual(offered.fileName, "Receipt.lsdoc")
         XCTAssertEqual(offered.pageCount, 1)
-        XCTAssertEqual(offered.documentName, "Receipt")
+        XCTAssertEqual(offered.documentName, "")
         XCTAssertTrue(state.scannedPages.isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
 

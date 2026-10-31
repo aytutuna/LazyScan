@@ -180,6 +180,19 @@ final class NamingTemplateTests: XCTestCase {
         XCTAssertEqual(render("{label}"), "Scan")
     }
 
+    func test_labelWithoutTheToken_isAppendedBeforeTheIndex() {
+        var context = NamingContext(counter: 14, date: fixedDate(), intent: .document, label: "Lease")
+        XCTAssertEqual(renderContext("Scan {date} {counter}", context), "Scan 2026-08-13 14 Lease")
+        context.index = 3
+        XCTAssertEqual(renderContext("Scan {date} {counter}", context), "Scan 2026-08-13 14 Lease 3")
+        context.index = nil
+        context.label = "   "
+        XCTAssertEqual(renderContext("Scan {date} {counter}", context), "Scan 2026-08-13 14")
+        // A template with {label} puts the name there only.
+        context.label = "Lease"
+        XCTAssertEqual(renderContext("{label} {counter}", context), "Lease 14")
+    }
+
     func test_docDateToken_withoutADocumentDate_isTheScanDate() {
         XCTAssertEqual(renderContext("Receipt {docdate} {counter}",
                                      NamingContext(counter: 2, date: fixedDate(), intent: .document, task: .receipt)),

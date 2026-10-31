@@ -191,6 +191,17 @@ public class NamingTemplateTests
     }
 
     [Fact]
+    public void LabelWithoutTheToken_IsAppendedBeforeTheIndex()
+    {
+        var context = new NamingContext(14, FixedDate(), ScanIntent.Document) { Label = "Lease" };
+        Assert.Equal("Scan 2026-08-13 14 Lease", Render("Scan {date} {counter}", context));
+        Assert.Equal("Scan 2026-08-13 14 Lease 3", Render("Scan {date} {counter}", context with { Index = 3 }));
+        Assert.Equal("Scan 2026-08-13 14", Render("Scan {date} {counter}", context with { Label = "   " }));
+        // A template with {label} puts the name there only.
+        Assert.Equal("Lease 14", Render("{label} {counter}", context));
+    }
+
+    [Fact]
     public void DocDateToken_WithoutADocumentDate_IsTheScanDate()
     {
         Assert.Equal("Receipt 2026-08-13 2", Render("Receipt {docdate} {counter}",

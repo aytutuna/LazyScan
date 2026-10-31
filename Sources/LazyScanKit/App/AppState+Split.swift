@@ -98,7 +98,7 @@ extension AppState {
         let firstPage = document.pages[0]
         let shown = cleaned ?? queuePlan.documents.first(where: { $0.pages.contains(firstPage) })?.label
         if let cleaned {
-            statusMessage = "Document \(number) is named \u{201C}\(cleaned)\u{201D}: {label} in the file name."
+            statusMessage = "Document \(number) is named \u{201C}\(cleaned)\u{201D}: it goes into the file name."
         } else if let shown {
             statusMessage = "Document \(number) is named \u{201C}\(shown)\u{201D} by its barcode."
         } else {

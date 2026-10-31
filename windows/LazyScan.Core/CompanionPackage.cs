@@ -68,7 +68,7 @@ public sealed record CompanionDocument(string Title, IReadOnlyList<CompanionPage
     /// <summary>The id of the task the document was scanned with (a <see cref="ScanTask"/> id).</summary>
     public string? TaskId { get; init; }
 
-    /// <summary>The file name the sender would give it, without an extension.</summary>
+    /// <summary>The name the sender's document was given (its first page's), without an extension; none without one.</summary>
     public string? SuggestedName { get; init; }
 
     /// <summary>The naming template the sender used (see <see cref="NamingTemplate"/>).</summary>

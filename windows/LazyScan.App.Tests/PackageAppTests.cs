@@ -154,7 +154,7 @@ public sealed class PackageAppTests : IDisposable
         ];
         var document = CompanionPages.ToDocument(pages, "Scan 7", 0.9, page => page.Image);
         Assert.Equal("Scan 7", document.Title);
-        Assert.Equal("Scan 7", document.SuggestedName);
+        Assert.Null(document.SuggestedName);
         var read = CompanionPackage.Read(CompanionPackage.Make(document));
         Assert.Equal(3, read.Pages.Count);
         Assert.Equal(CompanionImageFormat.Jpeg, read.Pages[0].Image.Format);
@@ -166,8 +166,12 @@ public sealed class PackageAppTests : IDisposable
         Assert.Equal(capture, read.Pages[0].Capture);
         // Opened again, the pages are the queue's.
         var offered = PendingPackage.Read(Write("Scan 7.lsdoc", CompanionPackage.Make(document)), PendingPackage.Decode);
-        Assert.Equal("Scan 7", offered.DocumentName);
+        Assert.Equal("", offered.DocumentName);
         Assert.Equal([(40, 60), (40, 60), (64, 32)], offered.Pages.Select(p => (p.Image.Width, p.Image.Height)));
         Assert.Equal(capture, offered.Pages[0].Capture);
+
+        // The name the first page was given goes with it, trimmed.
+        pages[0] = pages[0].WithDocumentLabel(" Lease ");
+        Assert.Equal("Lease", CompanionPages.ToDocument(pages, "Scan 7 Lease", 0.9, page => page.Image).SuggestedName);
     }
 }

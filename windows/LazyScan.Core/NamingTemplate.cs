@@ -43,6 +43,7 @@ public sealed partial class NamingTemplate
         int counter = context.Counter;
         var date = context.Date;
         int? index = context.Index;
+        string label = CutToBytes(context.Label?.Trim() ?? "", MaxLabelBytes);
 
         // {counter:N} — zero-padded to N digits.
         result = PaddedCounterRegex().Replace(result, match =>
@@ -65,11 +66,18 @@ public sealed partial class NamingTemplate
             ("{index}", index?.ToString(CultureInfo.InvariantCulture) ?? ""),
             ("{task}", context.Task is { } task ? TaskCatalog.Definition(task).FileLabel : context.Intent.Label()),
             ("{docdate}", (context.DocumentDate ?? Core.DocumentDate.Of(date)).ToString()),
-            ("{label}", CutToBytes(context.Label?.Trim() ?? "", MaxLabelBytes)),
+            ("{label}", label),
         };
         foreach (var (token, value) in replacements)
         {
             result = result.Replace(token, value);
+        }
+
+        // Put a named document's name in the file even when the template has no {label} token
+        // (the default has none), ahead of the index so the index stays at the end.
+        if (label.Length > 0 && !Template.Contains("{label}"))
+        {
+            result += $" {label}";
         }
 
         // In a photo batch, make sure every file gets its index even when the template has
@@ -203,7 +211,8 @@ public sealed record NamingContext(int Counter, DateTime Date, ScanIntent Intent
 
     /// <summary>
     /// The document's name for {label}: given to it in the page strip when the queue is split into
-    /// documents (<see cref="SaveDocument.Label"/>); null gives an empty text.
+    /// documents (<see cref="SaveDocument.Label"/>); null gives an empty text. Appended, ahead of the
+    /// index, when the template has no {label}.
     /// </summary>
     public string? Label { get; init; }
 }

@@ -81,7 +81,7 @@ public struct PendingPackage {
             }
             pages.append(page)
         }
-        let documentName = (document.suggestedName ?? document.title).trimmingCharacters(in: .whitespacesAndNewlines)
+        let documentName = (document.suggestedName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         return PendingPackage(fileName: name, url: url, pages: pages, documentName: documentName)
     }
 
@@ -236,6 +236,6 @@ extension AppState {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         return CompanionDocument(title: name, pages: packaged,
                                  writer: CompanionWriterInfo(app: "Lazy Scan", appVersion: version, platform: platform),
-                                 suggestedName: name)
+                                 suggestedName: DocumentSplitter.cleaned(pages.first?.documentLabel))
     }
 }

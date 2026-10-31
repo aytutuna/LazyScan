@@ -87,7 +87,7 @@ public struct CompanionDocument {
     public var created: Date?
     /// The id of the task the document was scanned with (a `ScanTask` id).
     public var taskId: String?
-    /// The file name the sender would give it, without an extension.
+    /// The name the sender's document was given (its first page's), without an extension; none without one.
     public var suggestedName: String?
     /// The naming template the sender used (see `NamingTemplate`).
     public var namingTemplate: String?

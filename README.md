@@ -183,7 +183,7 @@ scanners** — including the Epson Perfection V39 II.
   the Mac (no library) and anywhere on the page, at a slant. Nothing is split behind your
   back: the page strip shows each document before saving, separator pages are marked and left
   out, one click on the gap between two pages starts a new document there or joins it to the one
-  before, a separator page can be kept, and a document can be named (`{label}` in the file name).
+  before, a separator page can be kept, and a document can be named (its name goes into the file name).
   **Save 3 PDFs** writes them all or nothing: a save that fails or is cancelled leaves no file
   and keeps the pages. Word and text files are split the same way.
 - **Book or magazine**: scan an open book two pages at a time. Lay it face down with the spine

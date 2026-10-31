@@ -56,8 +56,8 @@ public static class CompanionPages
         return pages;
     }
 
-    /// <summary>The name a document carries: the sender's file name for it, else its title; "" for none.</summary>
-    public static string DocumentName(CompanionDocument document) => (document.SuggestedName ?? document.Title).Trim();
+    /// <summary>The name the sender's document was given; "" for none.</summary>
+    public static string DocumentName(CompanionDocument document) => (document.SuggestedName ?? "").Trim();
 
     /// <summary>
     /// The queue's pages as one document named <paramref name="name"/>, for a package: each page's
@@ -80,7 +80,7 @@ public static class CompanionPages
                                      CompanionImageFormat.Jpeg, image.Width, image.Height, page.Dpi, page.ColorMode);
             packaged.Add(new CompanionPage(picture) { Side = page.Side, SheetIndex = page.SheetIndex, Capture = page.Capture });
         }
-        return new CompanionDocument(name, packaged) { SuggestedName = name };
+        return new CompanionDocument(name, packaged) { SuggestedName = DocumentSplitter.Cleaned(pages.FirstOrDefault()?.DocumentLabel) };
     }
 
     private static RgbaImage Upright(RgbaImage image, int quarterTurns) =>
