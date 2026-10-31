@@ -57,7 +57,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="Scanner" Style="{StaticResource DetailLabelText}" />
+                <TextBlock Grid.Row="0" x:Name="ScannerLabel" Text="Scanner" Style="{StaticResource DetailLabelText}" />
                 <TextBlock Grid.Row="0" Grid.Column="1" x:Name="ScannerText" Style="{StaticResource DetailValueText}" />
                 <TextBlock Grid.Row="1" Text="Address" Style="{StaticResource DetailLabelText}" />
                 <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AddressText" Style="{StaticResource DetailValueText}" />

@@ -21,12 +21,16 @@ public partial class CertificateTrustWindow : Window
         InitializeComponent();
         string name = certificate.DeviceName;
         bool changed = certificate.Verdict == EsclTrustVerdict.Changed;
+        // Add by address asks before the scanner's make and model are read, so its "name" is
+        // only the typed address.
+        bool byAddress = trustAction == AddAction;
+        string scanner = byAddress ? $"the scanner at {certificate.Authority}" : name;
 
         Title = changed ? "Scanner certificate changed" : "Trust this scanner?";
         HeaderGlyph.Text = changed ? "" : "";
         HeaderGlyph.SetResourceReference(ForegroundProperty,
             changed ? "SystemFillColorCautionBrush" : "AccentTextFillColorPrimaryBrush");
-        HeaderText.Text = changed ? $"The certificate of {name} has changed" : $"Trust {name}?";
+        HeaderText.Text = changed ? $"The certificate of {scanner} has changed" : $"Trust {scanner}?";
 
         string trustedOn = certificate.Previous?.Trusted is { } date ? $" on {date.LocalDateTime:d}" : "";
         ExplanationText.Text = changed
@@ -41,6 +45,11 @@ public partial class CertificateTrustWindow : Window
 
         ScannerText.Text = name;
         AddressText.Text = certificate.Authority;
+        if (byAddress)
+        {
+            ScannerLabel.Visibility = Visibility.Collapsed;
+            ScannerText.Visibility = Visibility.Collapsed;
+        }
         if (certificate.Subject.Length > 0)
         {
             SubjectText.Text = certificate.Subject;
