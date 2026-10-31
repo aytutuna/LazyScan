@@ -12,10 +12,13 @@ struct SidebarView: View {
         List(selection: deviceSelection) {
             Section {
                 ForEach(state.devices) { device in
-                    DeviceRow(device: device)
+                    DeviceRow(device: device, frozen: state.isBusy)
                         .tag(device.id)
                         // Simultaneous, so the List still selects the row.
                         .simultaneousGesture(retryTap(device.id))
+                        // Frozen while an operation runs: picking another scanner would cancel the scan.
+                        .selectionDisabled(state.isBusy)
+                        .help(rowHelp)
                 }
                 if !state.hasRealDevices {
                     // Twin of the Windows side pane: what is missing, and the way to find out why.
@@ -81,19 +84,29 @@ struct SidebarView: View {
     // MARK: Helpers
 
     /// Selection is owned by AppState: the setter routes through `userSelectDevice`
-    /// so the model can distinguish user picks from automatic ones.
+    /// so the model can distinguish user picks from automatic ones, and through `leaveIdCard`, which
+    /// asks first while a side of the ID card is held (a scanner without a flatbed ends the task, and a
+    /// scanner's sources are known only once it is open; Cancel leaves the List as it was) and refuses
+    /// while an operation runs, also a deselection, which the frozen rows do not stop.
     private var deviceSelection: Binding<String?> {
         Binding(
             get: { state.selectedDeviceID },
-            set: { state.userSelectDevice($0) }
+            set: { id in
+                let appState = state
+                appState.leaveIdCard { appState.userSelectDevice(id) }
+            }
         )
+    }
+
+    private var rowHelp: String {
+        state.isBusy ? "Wait for the scan to finish" : ""
     }
 
     /// A click on the selected scanner while it is not connected (it was off, or did not answer) opens it
     /// again: the List sets its selection only when it changes. Twin of the Windows `DeviceList_PreviewMouseDown`.
     private func retryTap(_ id: String) -> some Gesture {
         TapGesture().onEnded {
-            guard id == state.selectedDeviceID, !state.isConnected, !state.isConnecting else { return }
+            guard id == state.selectedDeviceID, !state.isBusy, !state.isConnected, !state.isConnecting else { return }
             state.userSelectDevice(id)
         }
     }
@@ -116,6 +129,7 @@ struct SidebarView: View {
 
 private struct DeviceRow: View {
     let device: ScannerInfo
+    let frozen: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -126,6 +140,7 @@ private struct DeviceRow: View {
                 Text(device.name)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .foregroundStyle(nameStyle)
                 Text(device.isDemo ? "Demo (no hardware)" : device.transport)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -135,5 +150,7 @@ private struct DeviceRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
+
+    private var nameStyle: HierarchicalShapeStyle { frozen ? .secondary : .primary }
 }
 #endif

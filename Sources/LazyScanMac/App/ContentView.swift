@@ -89,7 +89,7 @@ struct ContentView: View {
                 IdCardReviewView()
                     .environmentObject(state)
             }
-            // Leaving the ID card task (or picking a task or a preset) with a side scanned and not
+            // Leaving the ID card task (or picking a task, preset or scanner) with a side scanned and not
             // saved asks first (`AppState.leaveIdCard`).
             .alert("Discard the ID card?",
                    isPresented: Binding(

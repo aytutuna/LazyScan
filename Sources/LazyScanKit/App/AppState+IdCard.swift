@@ -346,7 +346,7 @@ extension AppState {
         Task { @MainActor [weak self] in self?.endOfWork() }
     }
 
-    /// Runs `action`, which ends the ID card task (leaving it, picking a task or a preset), at once;
+    /// Runs `action`, which can end the ID card task (leaving it, picking a task, preset or scanner), at once;
     /// while a side of the card is held and not saved, only once the user discards the card
     /// (`pendingIdCardLeave`, asked by `ContentView`). Refused while an operation runs: the card
     /// cannot be discarded then. Twin of the Windows `MainWindow.ConfirmDropIdCard`.

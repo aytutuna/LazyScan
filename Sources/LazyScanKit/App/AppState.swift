@@ -244,7 +244,7 @@ public final class AppState: ObservableObject {
     /// only, and dropped with the sides.
     var idCardCaptureFacts: [UUID: CaptureFacts] = [:]
     /// Something asked for that would end the ID card task while a side is held and not saved
-    /// (leaving it, picking a task or a preset): it waits until the user discards the card
+    /// (leaving it, picking a task, preset or scanner): it waits until the user discards the card
     /// (`ContentView` asks; AppState+IdCard.swift).
     @Published public var pendingIdCardLeave: IdCardLeave?
     /// Bumped for every new picture of the ID card's page; a late one is dropped.
