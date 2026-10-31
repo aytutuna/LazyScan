@@ -62,15 +62,15 @@
             </StackPanel>
         </Grid>
 
-        <!-- Footer: low-emphasis Reset on the left, Cancel and the primary Apply on the right. -->
+        <!-- Footer: low-emphasis Reset on the left, the primary Apply and Cancel on the right. -->
         <DockPanel DockPanel.Dock="Bottom" Margin="20,12,20,16" LastChildFill="False">
             <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="Reset" Style="{StaticResource SubtleButtonStyle}"
                     ui:Icon.Glyph="&#xE7A7;" Margin="-11,0,0,0" Click="Reset_Click" IsEnabled="False"
                     ToolTip="Go back to the detected crop" />
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <Button Content="Cancel" IsCancel="True" MinWidth="96" />
-                <Button Content="Apply" IsDefault="True" MinWidth="96" Margin="8,0,0,0"
+                <Button Content="Apply" IsDefault="True" MinWidth="96"
                         Style="{StaticResource AccentButtonStyle}" Click="Apply_Click" />
+                <Button Content="Cancel" IsCancel="True" MinWidth="96" Margin="8,0,0,0" />
             </StackPanel>
         </DockPanel>
 
