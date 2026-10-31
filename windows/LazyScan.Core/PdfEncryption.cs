@@ -43,13 +43,13 @@ public sealed class PdfProtection : IDisposable
 
     /// <summary>
     /// The warning the dialog shows under its heading: what can't be undone, and that it applies to
-    /// every save from now on.
+    /// this save.
     /// </summary>
-    public const string DialogMessage = "It can't be recovered if forgotten. Every PDF you save now gets it.";
+    public const string DialogMessage = "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.";
 
     /// <summary>The dialog's whole explanation, for screen readers.</summary>
     public const string DialogHelp =
-        "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it.";
+        "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.";
 
     /// <summary>The permissions are requests that PDF apps honor, not locks; the dialog says so (on hover and for screen readers).</summary>
     public const string PermissionsNote =

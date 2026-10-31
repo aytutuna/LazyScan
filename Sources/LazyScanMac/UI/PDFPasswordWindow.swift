@@ -114,7 +114,7 @@ struct PDFPasswordView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(PDFProtection.dialogTitle)
                 .font(.title3.weight(.semibold))
-            // What can't be undone, and that it applies to every save from now on: always shown.
+            // What can't be undone, and that it applies to this save: always shown.
             Label(PDFProtection.dialogMessage, systemImage: "exclamationmark.triangle.fill")
                 .labelStyle(WarningLabelStyle())
                 .padding(.top, 8)

@@ -46,12 +46,12 @@ public final class PDFProtection: @unchecked Sendable {
     public static let dialogTitle = "Set a PDF password"
 
     /// The warning the dialog shows under its heading: what can't be undone, and that it applies to
-    /// every save from now on.
-    public static let dialogMessage = "It can't be recovered if forgotten. Every PDF you save now gets it."
+    /// this save.
+    public static let dialogMessage = "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again."
 
     /// The dialog's whole explanation, for screen readers.
     public static let dialogHelp =
-        "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it."
+        "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again."
 
     /// The permissions are requests that PDF apps honor, not locks; the dialog says so (on hover and
     /// for screen readers).
