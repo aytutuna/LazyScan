@@ -226,7 +226,14 @@ extension AppState {
             }
             let pages = AppState.phonePages(decoded, target: package.target, queueHasPages: queueHasPages)
             let intake = PageIntake(settings: s, source: .phone, generation: nil)
-            guard try await self.ingestPages(pages, intake: intake, flag: flag) != nil else { return }
+            do {
+                guard try await self.ingestPages(pages, intake: intake, flag: flag) != nil else { return }
+            } catch ScanError.cancelled, is CancellationError {
+                let kept = CompanionProtocol.keptMessage(pages.count, phoneName: phoneName, computer: "Mac")
+                self.statusMessage = kept
+                self.phoneBarMessage = kept
+                return
+            }
             let added = CompanionProtocol.addedMessage(pages.count, phoneName: phoneName)
             self.statusMessage = "\(added) \(self.scannedPages.count) in queue."
             self.companionService?.inbox.release(package)

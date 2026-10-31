@@ -259,6 +259,7 @@ public sealed partial class AppViewModel
         int added = 0;
         string? problem = null;
         bool unreadable = false;
+        bool cancelled = false;
         await RunExclusive(async token =>
         {
             SavedBarPaths = null;
@@ -273,6 +274,11 @@ public sealed partial class AppViewModel
                 pages = await Task.Run(() => CompanionPages.ToScannedPages(package.Document, package.Target, queueHasPages,
                                                                            WpfImageCodec.Decode), token);
             }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                throw;
+            }
             catch (Exception e) when (e is NotSupportedException or System.IO.FileFormatException or ArgumentException
                                           or InvalidOperationException or IOException)
             {
@@ -285,6 +291,11 @@ public sealed partial class AppViewModel
             try
             {
                 spooled = await Task.Run(() => SpoolPages(pages, spoolDirectory).Select(p => new PageItem(p)).ToList(), token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                throw;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -308,6 +319,13 @@ public sealed partial class AppViewModel
         // added the next time the app starts.
         if (added > 0 || unreadable) _companion?.Inbox.Release(package);
         if (added > 0) PhoneDocumentArrived?.Invoke(CompanionProtocol.AddedMessage(added, phoneName));
+        if (cancelled)
+        {
+            string kept = CompanionProtocol.KeptMessage(package.Document.Pages.Count, phoneName, "PC");
+            StatusMessage = kept;
+            NotifyAll();
+            PhoneDocumentArrived?.Invoke(kept);
+        }
         AddWaitingPhoneDocuments();
     }
 

@@ -160,6 +160,17 @@ public static class CompanionProtocol
     public static string AddedMessage(int pageCount, string phoneName) =>
         $"{(pageCount == 1 ? "1 page" : $"{pageCount} pages")} from {phoneName} added to the queue.";
 
+    /// <summary>
+    /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
+    /// time Lazy Scan starts." <paramref name="computer"/> is "PC" or "Mac".
+    /// </summary>
+    public static string KeptMessage(int pageCount, string phoneName, string computer) =>
+        pageCount == 1
+            ? $"Cancelled. The page from {phoneName} was not added; it is kept on this {computer} "
+              + "and is added the next time Lazy Scan starts."
+            : $"Cancelled. The {pageCount} pages from {phoneName} were not added; they are kept on this {computer} "
+              + "and are added the next time Lazy Scan starts.";
+
     /// <summary>A JSON body as UTF-8 bytes.</summary>
     internal static byte[] Utf8(string json) => Encoding.UTF8.GetBytes(json);
 

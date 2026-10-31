@@ -84,6 +84,12 @@ public class CompanionProtocolTests
         Assert.Equal("From phone", CompanionProtocol.PageLabel);
         Assert.Equal("1 page from Aytu's iPhone added to the queue.", CompanionProtocol.AddedMessage(1, "Aytu's iPhone"));
         Assert.Equal("3 pages from Pixel added to the queue.", CompanionProtocol.AddedMessage(3, "Pixel"));
+        Assert.Equal(
+            "Cancelled. The page from Aytu's iPhone was not added; it is kept on this PC and is added the next time Lazy Scan starts.",
+            CompanionProtocol.KeptMessage(1, "Aytu's iPhone", "PC"));
+        Assert.Equal(
+            "Cancelled. The 5 pages from Pixel were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+            CompanionProtocol.KeptMessage(5, "Pixel", "Mac"));
     }
 
     [Fact]
