@@ -188,6 +188,57 @@ final class EsclBrowsingTests: XCTestCase {
     }
 
     @MainActor
+    func test_aResolveThatFails_isTriedAgainAfterABackoff_whileTheSearchIsLooking() {
+        prepare()
+        discovery.start()
+        browser(secure: false).send(.ready)
+        browser(secure: true).send(.ready)
+        browser(secure: false).report([fakeBrowseResult("Canon", secure: false, txt: [])])
+        scheduler.fireAll()
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        XCTAssertEqual(scheduler.delays.suffix(1), [5])
+        XCTAssertTrue(discovery.isLooking)
+        XCTAssertEqual(resolver.requests.count, 1)
+
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 2)
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        XCTAssertEqual(scheduler.delays.suffix(1), [15])
+        scheduler.fireAll()
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        XCTAssertEqual(scheduler.delays.suffix(1), [60])
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 4)
+
+        // The last try failing too: no more, and the search stops looking.
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        XCTAssertFalse(discovery.isLooking)
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 4)
+    }
+
+    @MainActor
+    func test_aRetryIsDropped_whenTheSearchPausesOrTheServiceIsResolvedMeanwhile() {
+        prepare()
+        discovery.start()
+        browser(secure: false).report([fakeBrowseResult("Canon", secure: false, txt: [])])
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        discovery.pause()
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 1)
+
+        discovery.resume()
+        browser(secure: false).report([fakeBrowseResult("Canon", secure: false, txt: [])])
+        XCTAssertEqual(resolver.requests.count, 2)
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        discovery.restart()
+        resolver.latest("Canon")?.answer(resolved("CANON.local", 80, ["10.0.0.7"]))
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 3)
+        XCTAssertEqual(discovery.services.count, 1)
+    }
+
+    @MainActor
     func test_aBrowserWaitingWithPolicyDenied_isDenied_untilItIsReady() {
         prepare()
         XCTAssertEqual(EsclLocalNetwork.policyDeniedCode, -65570)

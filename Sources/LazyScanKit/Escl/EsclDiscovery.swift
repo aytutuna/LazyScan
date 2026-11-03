@@ -134,6 +134,8 @@ public final class EsclDiscovery {
     /// ready: a browser is ready at once, the services it finds come after, and each takes up to the
     /// resolver's timeout (5 s) to resolve.
     public var firstSearchTime: TimeInterval = 5
+    /// How long after each failed resolve of an instance the next try waits; none is made after the last.
+    public static let retryDelays: [TimeInterval] = [5, 15, 60]
 
     private let makeBrowser: BrowserFactory
     private let resolver: any EsclServiceResolving
@@ -180,6 +182,10 @@ public final class EsclDiscovery {
         var carried: Bool = false
         /// The number of the resolve started last (`resolveCount`), so a late answer of an earlier one is dropped.
         var attempt: Int = 0
+        /// Resolves that failed since the last one that worked.
+        var failures: Int = 0
+        /// A new resolve is scheduled after a failed one; cleared when one starts or is cancelled.
+        var retrying: Bool = false
 
         init(result: EsclBrowseResult) {
             self.result = result
@@ -260,7 +266,7 @@ public final class EsclDiscovery {
         if firstSearch {
             return true
         }
-        for entry in found where entry.isResolving {
+        for entry in found where entry.isResolving || entry.retrying {
             return true
         }
         return false
@@ -516,6 +522,7 @@ public final class EsclDiscovery {
         let key: String = entry.result.key
         entry.problem = nil
         entry.isResolving = true
+        entry.retrying = false
         let handle: any EsclCancellable = resolver.resolve(entry.result) { [weak self] (outcome: EsclResolveOutcome) -> Void in
             self?.resolved(key, attempt: attempt, outcome)
         }
@@ -527,6 +534,7 @@ public final class EsclDiscovery {
 
     private func cancelResolve(_ entry: Found) {
         entry.isResolving = false
+        entry.retrying = false
         entry.resolving?.cancel()
         entry.resolving = nil
     }
@@ -540,13 +548,29 @@ public final class EsclDiscovery {
         case .resolved(let service):
             entry.resolved = service
             entry.problem = nil
+            entry.failures = 0
         case .failed(let reason):
             entry.problem = reason
+            scheduleRetry(entry)
         case .denied:
             entry.problem = "Local Network access is off"
             deniedElsewhere = true
         }
         changed()
+    }
+
+    private func scheduleRetry(_ entry: Found) {
+        guard entry.failures < EsclDiscovery.retryDelays.count else { return }
+        let delay: TimeInterval = EsclDiscovery.retryDelays[entry.failures]
+        entry.failures += 1
+        entry.retrying = true
+        let attempt: Int = entry.attempt
+        let key: String = entry.result.key
+        schedule(delay) { [weak self] in
+            guard let self, let entry = self.foundEntry(key), entry.retrying, entry.attempt == attempt else { return }
+            self.startResolve(entry)
+            self.changed()
+        }
     }
 
     private func endFirstSearch(_ startedIn: Int) {
