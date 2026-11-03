@@ -222,10 +222,11 @@ extension XCUIApplication {
     /// list, and the list makes its rows only once they come on screen.
     @MainActor
     func growOptions() {
-        let bar: XCUIElement = navigationBars["Scanner"].firstMatch
-        guard bar.waitForExistence(timeout: 10) else { return }
-        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 0.1, thenDragTo: coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)))
+        // The sheet's bar is the row Done sits in; the bar itself has no identifier to ask for.
+        let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
+        guard done.waitForExistence(timeout: 10) else { return }
+        let bar: XCUICoordinate = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: done.frame.midY / frame.height))
+        bar.press(forDuration: 0.1, thenDragTo: coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)))
     }
 
     /// Closes the option group's sheet with Done.
@@ -260,14 +261,14 @@ extension XCUIApplication {
                        file: file, line: line)
     }
 
-    /// The title of the kind picked, in either mode: "Document"; empty when none is.
+    /// The kind picked, in either mode: "document"; empty when none is.
     @MainActor
-    var chipTitle: String {
+    var pickedKind: String {
         for kind in XCUIApplication.printerKinds {
             for id in ["task.\(kind)", "kinds.\(kind)"] {
                 let chip: XCUIElement = descendants(matching: .any)[id].firstMatch
                 if chip.exists && chip.isSelected {
-                    return chip.label
+                    return kind
                 }
             }
         }
@@ -287,10 +288,8 @@ extension XCUIApplication {
     func openPages(_ count: Int, timeout: TimeInterval = 240, file: StaticString = #filePath, line: UInt = #line) {
         waitForScanScreen(file: file, line: line)
         let pages: XCUIElement = pagesButton
-        let label: String = count == 1 ? "1 page" : "\(count) pages"
-        let counted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: pages)
-        XCTAssertEqual(XCTWaiter.wait(for: [counted], timeout: timeout), .completed,
-                       "\(label) on the pages' button", file: file, line: line)
+        XCTAssertTrue(pages.waitForPageCount(count, timeout: timeout), "\(count) on the pages' button",
+                      file: file, line: line)
         pages.tap()
         let cell: XCUIElement = descendants(matching: .any)["page.\(count)"]
         XCTAssertTrue(cell.waitForExistence(timeout: 30), "Page \(count) in the page strip", file: file, line: line)
@@ -323,5 +322,20 @@ extension XCUIApplication {
     private func waitUntilGone(_ element: XCUIElement, _ message: String, file: StaticString, line: UInt) {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 30), .completed, message, file: file, line: line)
+    }
+}
+
+extension XCUIElement {
+    /// The number a pages' button counts: its label says it in digits, in any language.
+    var pageCount: Int? {
+        Int(label.filter(\.isNumber))
+    }
+
+    @MainActor
+    func waitForPageCount(_ count: Int, timeout: TimeInterval) -> Bool {
+        let counted = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            self.pageCount == count
+        }, object: nil)
+        return XCTWaiter.wait(for: [counted], timeout: timeout) == .completed
     }
 }

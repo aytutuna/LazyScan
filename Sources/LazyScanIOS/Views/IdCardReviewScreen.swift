@@ -262,6 +262,7 @@ private struct SideCard: View {
     @State private var thumbnail: CGImage?
 
     private var title: String { side == .front ? IOSReviewText.frontTitle : IOSReviewText.backTitle }
+    private var sideID: String { side == .front ? "front" : "back" }
     private var key: String {
         guard let held = photo else { return "none" }
         return "\(held.region.id.uuidString)-\(held.rotationQuarterTurns)"
@@ -284,12 +285,12 @@ private struct SideCard: View {
                         Image(systemName: "crop")
                     }
                     .accessibilityLabel(Text(IOSReviewText.sideAction(IOSReviewText.fixCropLabel, side: side)))
-                    .accessibilityIdentifier("idcard.crop.\(title.lowercased())")
+                    .accessibilityIdentifier("idcard.crop.\(sideID)")
                     Button(action: onRetake) {
                         Image(systemName: "arrow.clockwise")
                     }
                     .accessibilityLabel(Text(IOSReviewText.sideAction(againLabel, side: side)))
-                    .accessibilityIdentifier("idcard.retake.\(title.lowercased())")
+                    .accessibilityIdentifier("idcard.retake.\(sideID)")
                 }
             }
             .buttonStyle(.borderless)
@@ -312,7 +313,7 @@ private struct SideCard: View {
                     Label(line, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("idcard.note.\(title.lowercased())")
+                        .accessibilityIdentifier("idcard.note.\(sideID)")
                 }
             } else {
                 Text(IOSReviewText.noBackLine)

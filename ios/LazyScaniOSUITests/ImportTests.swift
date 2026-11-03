@@ -69,7 +69,7 @@ final class ImportTests: XCTestCase {
         XCTAssertFalse(app.buttons["import.stop"].exists, "The scan screen's Stop button")
         app.switchToPrinter()
         XCTAssertTrue(app.buttons["save.button"].waitForExistence(timeout: 30), "The printer screen")
-        XCTAssertEqual(app.descendants(matching: .any)["capture.pages"].firstMatch.label, "0 pages",
+        XCTAssertEqual(app.descendants(matching: .any)["capture.pages"].firstMatch.pageCount, 0,
                        "A page came in after Stop")
         XCTAssertFalse(app.buttons["save.button"].isEnabled, "Save with nothing to save")
     }
@@ -85,29 +85,29 @@ final class ImportTests: XCTestCase {
         app.closePages()
 
         app.switchToCamera()
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
         for kind in ["photos", "idCard"] {
             let item: XCUIElement = app.descendants(matching: .any)["kinds.\(kind)"].firstMatch
             XCTAssertTrue(item.waitForExistence(timeout: 30), "The \(kind) kind")
             app.waitUntilEnabled(item, "The \(kind) kind")
             item.tap()
-            let question: XCUIElement = app.alerts["Keep the page?"].firstMatch
+            let question: XCUIElement = app.alerts.firstMatch
             XCTAssertTrue(question.waitForExistence(timeout: 10), "Asked before \(kind)")
             // First match: the Simulator lists an alert's button twice.
-            XCTAssertTrue(question.buttons["Save PDF first"].firstMatch.exists, "Save PDF first")
-            XCTAssertTrue(question.buttons["Discard 1 page"].firstMatch.exists, "Discard 1 page")
-            question.buttons["Cancel"].firstMatch.tap()
+            XCTAssertTrue(question.buttons["keepPages.save"].firstMatch.exists, "Save PDF first")
+            XCTAssertTrue(question.buttons["keepPages.discard"].firstMatch.exists, "Discard 1 page")
+            question.buttons["keepPages.cancel"].firstMatch.tap()
             waitUntilGone(question, timeout: 10)
-            XCTAssertEqual(app.chipTitle, "Document", "Cancel keeps the kind")
-            XCTAssertEqual(app.pagesButton.label, "1 page", "Cancel keeps the page")
+            XCTAssertEqual(app.pickedKind, "document", "Cancel keeps the kind")
+            XCTAssertEqual(app.pagesButton.pageCount, 1, "Cancel keeps the page")
             XCTAssertEqual(app.buttons["save.button"].label, "Save PDF \u{00B7} 1")
         }
 
         // Book is two kinds away in camera mode's row, past the ID card: the printer screen's chip is one tap.
         app.switchToPrinter()
         app.pickTask("book")
-        XCTAssertEqual(app.chipTitle, "Book")
-        XCTAssertEqual(app.pagesButton.label, "1 page", "Book keeps the page")
+        XCTAssertEqual(app.pickedKind, "book")
+        XCTAssertEqual(app.pagesButton.pageCount, 1, "Book keeps the page")
         XCTAssertTrue(app.buttons["save.button"].isEnabled, "Save still has the page")
         XCTAssertFalse(app.alerts.firstMatch.exists, "Nothing asked for Book")
     }

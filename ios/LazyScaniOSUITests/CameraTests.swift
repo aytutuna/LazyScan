@@ -30,7 +30,7 @@ final class CameraTests: XCTestCase {
         XCTAssertFalse(shutter.isEnabled, "No shutter without a camera")
         let pages: XCUIElement = app.descendants(matching: .any)["camera.pages"].firstMatch
         XCTAssertTrue(pages.exists, "The pages")
-        XCTAssertEqual(pages.label, "0 pages")
+        XCTAssertEqual(pages.pageCount, 0)
         XCTAssertFalse(app.buttons["save.button"].exists, "No Save before there are pages")
         XCTAssertTrue(app.buttons["import.photos"].exists, "Photos")
         XCTAssertTrue(app.buttons["import.files"].exists, "Files")
@@ -51,7 +51,7 @@ final class CameraTests: XCTestCase {
                       "The format in Export")
         XCTAssertTrue(app.descendants(matching: .any)["chip.more"].firstMatch.exists, "More of Export")
         app.closeDrawer()
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
     }
 
     @MainActor

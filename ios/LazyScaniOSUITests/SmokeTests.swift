@@ -56,8 +56,7 @@ final class SmokeTests: XCTestCase {
         waitUntilEnabled(scan, timeout: 60)
         scan.tap()
         let pages: XCUIElement = app.descendants(matching: .any)["capture.pages"].firstMatch
-        let counted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "1 page"), object: pages)
-        XCTAssertEqual(XCTWaiter.wait(for: [counted], timeout: 240), .completed, "1 page in the capture bar")
+        XCTAssertTrue(pages.waitForPageCount(1, timeout: 240), "1 page in the capture bar")
 
         let menu: XCUIElement = app.descendants(matching: .any)["save.menu"].firstMatch
         waitUntilEnabled(menu, timeout: 60)
@@ -73,7 +72,7 @@ final class SmokeTests: XCTestCase {
         waitUntilEnabled(close, timeout: 60)
         close.tap()
         XCTAssertTrue(app.buttons["save.button"].waitForExistence(timeout: 30), "Back on the scan screen")
-        XCTAssertEqual(pages.label, "1 page", "The page is still in the queue")
+        XCTAssertEqual(pages.pageCount, 1, "The page is still in the queue")
     }
 
     @MainActor

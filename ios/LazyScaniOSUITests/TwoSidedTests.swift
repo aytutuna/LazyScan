@@ -32,7 +32,7 @@ final class TwoSidedTests: XCTestCase {
         XCTAssertTrue(front.label.contains("Sheet 1, front"), front.label)
         app.closePages()
         app.switchToCamera()
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
         app.openDrawer("camera")
         let bothSides: XCUIElement = app.switches["options.bothSides"].firstMatch
         XCTAssertTrue(bothSides.waitForExistence(timeout: 10), "Both sides in the drawer")
@@ -66,7 +66,7 @@ final class TwoSidedTests: XCTestCase {
         app.turnSwitch("options.bothSides", on: true)
         XCTAssertTrue(way.waitForExistence(timeout: 10), "Flip & capture or fronts first")
         app.closeDrawer()
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
         app.openDrawer("camera")
         app.turnSwitch("options.bothSides", on: false)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: way)

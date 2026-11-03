@@ -128,13 +128,11 @@ final class ScreenshotTests: XCTestCase {
             return
         }
         scan.tap()
-        let counted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "1 page"), object: pages)
-        if XCTWaiter.wait(for: [counted], timeout: 60) == .completed {
+        if pages.waitForPageCount(1, timeout: 60) {
             // A second page, so the grid shows two across.
             if waitUntilEnabled(scan, timeout: 30) {
                 scan.tap()
-                let second = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "2 pages"), object: pages)
-                _ = XCTWaiter.wait(for: [second], timeout: 60)
+                _ = pages.waitForPageCount(2, timeout: 60)
             }
             pages.tap()
             let done: XCUIElement = element(app, "pages.done")
@@ -227,7 +225,7 @@ final class ScreenshotTests: XCTestCase {
         if part.waitForExistence(timeout: 5) {
             Thread.sleep(forTimeInterval: 1)
             shot("12-library-saved")
-            let scans: XCUIElement = part.buttons["Scans"]
+            let scans: XCUIElement = part.buttons.element(boundBy: 1)
             if scans.waitForExistence(timeout: 5) {
                 scans.tap()
                 Thread.sleep(forTimeInterval: 1)

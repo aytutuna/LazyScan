@@ -31,24 +31,36 @@ final class PagesTests: XCTestCase {
             let ticked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: page)
             XCTAssertEqual(XCTWaiter.wait(for: [ticked], timeout: 10), .completed, "Page \(number) ticked")
         }
-        XCTAssertTrue(app.navigationBars["2 Selected"].waitForExistence(timeout: 10), "2 Selected as the title")
+
+        XCTAssertTrue(titleCount(app, is: 2), "The title counts the two selected pages")
 
         let delete: XCUIElement = app.descendants(matching: .any)["pages.deleteSelected"].firstMatch
         // Off until the import is done, as Save is in BatchTests.
         app.waitUntilEnabled(delete, "Delete", timeout: 120)
+        let deleteText: String = delete.label
         delete.tap()
         // By its label: a dialog's button may not keep its identifier. The bar's Delete is the other one.
-        let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Delete",
+        let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteText,
                                                                     "pages.deleteSelected")).firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete")
         confirm.tap()
 
-        XCTAssertTrue(app.navigationBars["1 page"].waitForExistence(timeout: 30), "1 page as the title")
-        XCTAssertFalse(app.descendants(matching: .any)["page.2"].exists, "No second page")
+        let second: XCUIElement = app.descendants(matching: .any)["page.2"]
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: second)
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 30), .completed, "No second page")
+        XCTAssertTrue(titleCount(app, is: 1), "The title counts the remaining page")
         app.closePages()
-        let counted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "1 page"),
-                                                object: app.pagesButton)
-        XCTAssertEqual(XCTWaiter.wait(for: [counted], timeout: 30), .completed, "1 page on the pages' button")
+        XCTAssertTrue(app.pagesButton.waitForPageCount(1, timeout: 30), "1 page on the pages' button")
+    }
+
+    // The sheet's title says its count in digits, in any language.
+    @MainActor
+    private func titleCount(_ app: XCUIApplication, is count: Int) -> Bool {
+        let bar: XCUIElement = app.navigationBars.firstMatch
+        let counted = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            Int((bar.label.isEmpty ? bar.identifier : bar.label).filter(\.isNumber)) == count
+        }, object: nil)
+        return XCTWaiter.wait(for: [counted], timeout: 30) == .completed
     }
 
     @MainActor
@@ -65,8 +77,9 @@ final class PagesTests: XCTestCase {
         XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Delete All")
         // Off until the import is done.
         app.waitUntilEnabled(deleteAll, "Delete All", timeout: 120)
+        let deleteAllText: String = deleteAll.label
         deleteAll.tap()
-        let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Delete All",
+        let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteAllText,
                                                                     "pages.deleteAll")).firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete All")
         confirm.tap()
@@ -75,8 +88,6 @@ final class PagesTests: XCTestCase {
         let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: done)
         XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 30), .completed, "The page strip closed")
         XCTAssertFalse(app.descendants(matching: .any)["page.1"].exists, "No pages left")
-        let counted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "0 pages"),
-                                                object: app.pagesButton)
-        XCTAssertEqual(XCTWaiter.wait(for: [counted], timeout: 30), .completed, "0 pages on the pages' button")
+        XCTAssertTrue(app.pagesButton.waitForPageCount(0, timeout: 30), "0 pages on the pages' button")
     }
 }

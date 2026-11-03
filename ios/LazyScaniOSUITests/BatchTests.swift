@@ -32,7 +32,7 @@ final class BatchTests: XCTestCase {
         XCTAssertTrue(last.label.contains("Document 2"), last.label)
         app.closePages()
         XCTAssertTrue(app.buttons["task.newDocument"].exists, "New document")
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
         app.switchToPrinter()
         app.openOptions("Export")
         let separate: XCUIElement = app.switches["options.separate"].firstMatch
@@ -69,12 +69,13 @@ final class BatchTests: XCTestCase {
         XCTAssertTrue(sheet.waitForExistence(timeout: 10), "Separator sheet")
         app.closeOptions()
         XCTAssertTrue(app.buttons["task.newDocument"].exists, "New document")
-        XCTAssertEqual(app.chipTitle, "Document")
+        XCTAssertEqual(app.pickedKind, "document")
 
         app.openOptions("Export")
         let kind: XCUIElement = app.descendants(matching: .any)["separator.kind"].firstMatch
         XCTAssertTrue(kind.waitForExistence(timeout: 10), "Patch code or QR code")
-        kind.buttons["QR code"].tap()
+        // The segments are Patch code, then QR code.
+        kind.buttons.element(boundBy: 1).tap()
         XCTAssertTrue(app.textFields["separator.name"].waitForExistence(timeout: 10), "The QR sheet's name")
 
         app.turnSwitch("options.separate", on: false)
