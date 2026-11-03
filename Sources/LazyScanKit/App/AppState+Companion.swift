@@ -7,9 +7,11 @@ import Foundation
 
 /// The companion's texts on the phone.
 public enum CompanionText {
-    public static let clientIsolationReason = "This network keeps devices apart (client isolation). Use another Wi-Fi."
-    public static let clientIsolationSyncFolderReason =
-        "This network keeps devices apart (client isolation). Documents go to the cloud folder instead."
+    public static let localNetworkOffReason = "Local Network access is off for Lazy Scan. Turn it on in Settings."
+    public static let refusedReason =
+        "The computer is on this network but refused the connection. Check its firewall, or run the phone troubleshooter on the computer."
+    public static let refusedSyncFolderReason =
+        "The computer is on this network but refused the connection. Documents go to the cloud folder instead."
     public static let notPairedMessage =
         "Pair this device with a computer first: choose Pair a phone in Lazy Scan on the computer and scan its code."
     public static let outboxFullMessage =
@@ -526,17 +528,21 @@ extension AppState {
         }
     }
 
-    /// Why the paired desktop does not answer: the network keeps devices apart when the desktop is
-    /// seen on it (`companionDesktopSeenOnNetwork`), and then the cloud folder is used when one is set
-    /// for a desktop that handed out a sync key; else it is not on this network.
+    /// Why the paired desktop does not answer: Local Network access is off (`companionAccessDenied`); else
+    /// the desktop is seen on the network (`companionDesktopSeenOnNetwork`) and refuses the connection,
+    /// and then the cloud folder is used when one is set for a desktop that handed out a sync key; else
+    /// it is not on this network.
     func companionUnreachableReason(_ desktop: PairedDesktop) -> String {
+        if companionAccessDenied?() == true {
+            return CompanionText.localNetworkOffReason
+        }
         guard companionDesktopSeenOnNetwork?(desktop.id) == true else {
             return CompanionText.notOnNetworkReason(desktop.name)
         }
         if desktop.syncFolderBookmark != nil, companionStore?.syncKey(for: desktop) != nil {
-            return CompanionText.clientIsolationSyncFolderReason
+            return CompanionText.refusedSyncFolderReason
         }
-        return CompanionText.clientIsolationReason
+        return CompanionText.refusedReason
     }
 
     // MARK: - Private

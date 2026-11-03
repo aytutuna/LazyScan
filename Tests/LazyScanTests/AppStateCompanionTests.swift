@@ -219,8 +219,12 @@ final class AppStateCompanionTests: XCTestCase {
             return true
         }
         await state.checkDesktop()
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.clientIsolationReason))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.refusedReason))
         XCTAssertEqual(asked, [CompanionLink.desktopId])
+
+        state.companionAccessDenied = { true }
+        await state.checkDesktop()
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.localNetworkOffReason))
         XCTAssertNotNil(try secrets.load(for: CompanionLink.desktopId))
     }
 
@@ -792,11 +796,11 @@ final class AppStateCompanionTests: XCTestCase {
         state.companionDesktopSeenOnNetwork = { _ in true }
 
         await state.checkDesktop()
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.clientIsolationReason))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.refusedReason))
 
         setSyncFolder(state, folder)
         await state.checkDesktop()
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.clientIsolationSyncFolderReason))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: CompanionText.refusedSyncFolderReason))
 
         state.companionDesktopSeenOnNetwork = { _ in false }
         await state.checkDesktop()

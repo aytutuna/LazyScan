@@ -323,9 +323,12 @@ public final class AppState: ObservableObject {
     /// moved into (`ScanSettings.rebasedDestinationPath`); nil on the Mac. Set by `makeForIOS`.
     public package(set) var documentsFolder: URL?
     /// Whether the desktop with this id is seen on the network the phone is on (its DNS-SD browser),
-    /// so a desktop that does not answer is told from a network that keeps devices apart
+    /// so a desktop that does not answer is told from one that is not on the network
     /// (`companionUnreachableReason`). Set by the iPhone's shell; nil: not known.
     public var companionDesktopSeenOnNetwork: ((String) -> Bool)?
+    /// Whether Local Network access is off for the app, which is why no desktop answers
+    /// (`companionUnreachableReason`). Set by the iPhone's shell; nil: not known.
+    public var companionAccessDenied: (() -> Bool)?
     /// Opens the cloud sync folder of `PairedDesktop.syncFolderBookmark` and gives it with the bookmark to
     /// keep, made again when the old one is stale; nil when it no longer resolves (`openSyncFolder`). Set
     /// by `makeForIOS`, like `resolveDestinationBookmark`; without it no sync folder is used.

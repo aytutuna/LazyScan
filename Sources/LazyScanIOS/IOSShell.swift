@@ -737,6 +737,9 @@ public enum IOSShell {
             state.companionDesktopSeenOnNetwork = { [weak browser] (desktopId: String) -> Bool in
                 browser?.isSeen(desktopId) ?? false
             }
+            state.companionAccessDenied = { [weak browser] () -> Bool in
+                browser?.accessDenied ?? false
+            }
             browser.onFound = { [weak state] (desktopId: String, addresses: [String], port: Int) -> Void in
                 guard let state else { return }
                 Task { @MainActor in
