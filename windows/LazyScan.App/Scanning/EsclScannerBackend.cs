@@ -374,7 +374,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                     if (!trustedHere && e.CanTrust && e.Verdict == EsclTrustVerdict.Changed
                         && interactive && ConfirmCertificate is { } confirm && await confirm(e))
                     {
-                        TrustCertificate(e, record.Uuid, record.Info.Name);
+                        TrustCertificate(e, e.DeviceUuid ?? record.Uuid, record.Info.Name);
                         trustedHere = true;
                         continue;
                     }

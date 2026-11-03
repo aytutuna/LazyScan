@@ -555,7 +555,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     if !trustedHere && error.canTrust && error.verdict == .changed && interactive,
                        let confirm = confirmCertificate {
                         if await confirm(error) {
-                            trustCertificate(error, deviceUuid: record.uuid, name: record.info.name)
+                            trustCertificate(error, deviceUuid: error.deviceUuid ?? record.uuid, name: record.info.name)
                             trustedHere = true
                             continue
                         }
