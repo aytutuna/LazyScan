@@ -1,0 +1,6 @@
+"NSCameraUsageDescription" = "Lazy Scan, belge ve fotoğrafları taramak, bilgisayarınızın eşleştirme kodunu okumak için kamerayı kullanır. Taradıklarınız, siz paylaşmadıkça bu aygıtta kalır.";
+"NSLocalNetworkUsageDescription" = "Lazy Scan, tarama yapabilmeniz için yerel ağınızdaki tarayıcıları (tarama yapabilen yazıcılar dahil), taramalarınızı gönderebilmeniz için de eşleştirdiğiniz bilgisayarı arar.";
+"NSPhotoLibraryAddUsageDescription" = "Lazy Scan, bir taramayı fotoğraf arşivinize yalnızca Paylaş menüsünde Görüntüyü Kaydet'e dokunduğunuzda ekler.";
+"Lazy Scan document" = "Lazy Scan belgesi";
+"PDF document" = "PDF belgesi";
+"Image" = "Görüntü";

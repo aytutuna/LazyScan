@@ -1,0 +1,34 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Allow copying" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kopyalamaya izin ver" } } }
+    },
+    "Allow copying text and images" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Metin ve görüntüleri kopyalamaya izin ver" } } }
+    },
+    "Allow printing" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazdırmaya izin ver" } } }
+    },
+    "Cancel" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Vazgeç" } } }
+    },
+    "Confirm" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Doğrula" } } }
+    },
+    "Password" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Parola" } } }
+    },
+    "Save" : {
+      "extractionState" : "manual",
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kaydet" } } }
+    }
+  },
+  "version" : "1.0"
+}
