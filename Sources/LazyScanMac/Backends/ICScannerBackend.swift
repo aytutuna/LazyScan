@@ -454,6 +454,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
             try? FileManager.default.removeItem(at: url)
         }
         guard !pages.isEmpty else {
+            if unitType == .documentFeeder { throw ScanError.scannerProblem(.feederEmpty) }
             throw ScanError.scanFailed("The scanner did not return any image data.")
         }
         // A feeder that reads the last sheet first: back into reading order, each sheet's front
@@ -578,6 +579,8 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
             switch code {
             case .scanOperationCanceled, .downloadCanceled, .deleteFilesCanceled:
                 return .cancelled
+            case .scannerInUseByLocalUser, .scannerInUseByRemoteUser:
+                return .scannerProblem(.busy)
             default:
                 break
             }
@@ -630,7 +633,12 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     nonisolated func device(_ device: ICDevice, didOpenSessionWithError error: Error?) {
         performOnMainActor {
             if let error {
-                self.resumeOpen(.failure(ScanError.sessionFailed(error.localizedDescription)))
+                let mapped = self.mapScanError(error)
+                if case .scannerProblem = mapped {
+                    self.resumeOpen(.failure(mapped))
+                } else {
+                    self.resumeOpen(.failure(ScanError.sessionFailed(error.localizedDescription)))
+                }
             } else {
                 self.resumeOpen(.success(()))
             }
