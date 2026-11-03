@@ -59,11 +59,11 @@ public class TextExportTests
         Assert.Equal("The text could not be read: no OCR language pack is installed (Settings → Time & Language → Language).",
                      TextExport.RecognitionFailed(
                          "Scan failed: OCR failed: no OCR language pack is installed (Settings → Time & Language → Language)."));
-        Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Tarama başarısız: {0}" };
+        Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Tarama başarısız: {0}", ["OCR failed: {0}"] = "OCR başarısız: {0}" };
         try
         {
             Assert.Equal("The text could not be read: the request failed.",
-                         TextExport.RecognitionFailed("Tarama başarısız: OCR failed: the request failed"));
+                         TextExport.RecognitionFailed("Tarama başarısız: OCR başarısız: the request failed"));
         }
         finally { Loc.Table = null; }
         Assert.Equal("The text could not be read: the request failed.", TextExport.RecognitionFailed("OCR failed: the request failed"));

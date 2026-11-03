@@ -49,13 +49,13 @@ public enum DocxWriter {
     public static let emuPerTwip = 635
 
     /// The page pictures switch (`OutputOptions.wordPageImages`) as the inspector shows it.
-    public static let pageImagesLabel = "Include page images"
+    public static var pageImagesLabel: String { L10n.t("Include page images") }
 
     /// What the page pictures switch does, on and off: its tooltip.
     public static func pageImagesHint(on: Bool) -> String {
         on
-            ? "Each page's picture, then its editable text"
-            : "Only the editable text, without page pictures"
+            ? L10n.t("Each page's picture, then its editable text")
+            : L10n.t("Only the editable text, without page pictures")
     }
 
     /// The relationship type of a picture's part.
@@ -86,9 +86,9 @@ public enum DocxWriter {
     public static let maxPackageBytes = 2_000_000_000
 
     /// Why a Word document over `maxPackageBytes` is not written, and what to do instead.
-    public static let tooLargeMessage: String =
-        "The Word document would be larger than 2 GB, too large to write. Save fewer pages in each document, "
-        + "choose a smaller page image size, or turn off \"Include page images\"."
+    public static var tooLargeMessage: String {
+        L10n.t("The Word document would be larger than 2 GB, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off \"{0}\".", pageImagesLabel)
+    }
 
     /// The size in bytes of the .docx file `make` writes for `pages` and `pictures`, worked out
     /// without writing it; a save checks it against `maxPackageBytes` first.

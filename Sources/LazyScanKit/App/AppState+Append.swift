@@ -58,7 +58,7 @@ extension AppState {
                 var yes = false
                 if let ask = self.confirmAppend { yes = await ask(question) }
                 if !yes {
-                    self.statusMessage = "Nothing was added to \(name)."
+                    self.statusMessage = L10n.t("Nothing was added to {0}.", name)
                     return
                 }
             }
@@ -68,7 +68,7 @@ extension AppState {
             }
             let pages: [ScannedPage] = collected
             let count: Int = pages.count
-            self.statusMessage = s.pdfSearchable ? "Running OCR and adding pages…" : "Adding pages…"
+            self.statusMessage = s.pdfSearchable ? L10n.t("Running OCR and adding pages…") : L10n.t("Adding pages…")
             let result: PDFAppendResult = try await Task.detached(priority: .userInitiated) { () throws -> PDFAppendResult in
                 let report: (String) -> Void = { [weak self] msg in
                     Task { @MainActor in self?.statusMessage = msg }

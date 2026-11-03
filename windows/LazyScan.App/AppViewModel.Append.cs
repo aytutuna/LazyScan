@@ -81,11 +81,11 @@ public sealed partial class AppViewModel
             var target = await Task.Run(() => PdfAppender.Inspect(targetPath), token);
             if (target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true)
             {
-                StatusMessage = $"Nothing was added to {name}.";
+                StatusMessage = Loc.T("Nothing was added to {0}.", name);
                 return;
             }
             var pages = plan.Documents.SelectMany(d => d.Pages).ToList();
-            StatusMessage = s.PdfSearchable ? "Running OCR and adding pages…" : "Adding pages…";
+            StatusMessage = s.PdfSearchable ? Loc.T("Running OCR and adding pages…") : Loc.T("Adding pages…");
             NotifyAll();
             var inputs = await PdfPageInputs(pages, s, token);
             StatusMessage = Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name);

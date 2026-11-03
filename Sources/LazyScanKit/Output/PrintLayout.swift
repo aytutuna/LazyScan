@@ -54,7 +54,7 @@ public struct PrinterPaper: Equatable, Sendable {
     /// "Letter (8.5 × 11 in)", "A4 (210 × 297 mm)", or "8.27 × 11.69 in" for a size without a name.
     public var description: String {
         if let size { return "\(size.label) (\(size.detail))" }
-        return "\(PrintLayout.inchesText(Double(paper.width))) \u{00D7} \(PrintLayout.inchesText(Double(paper.height))) in"
+        return L10n.t("{0} × {1} in", PrintLayout.inchesText(Double(paper.width)), PrintLayout.inchesText(Double(paper.height)))
     }
 }
 
@@ -171,8 +171,8 @@ public enum PrintLayout {
         let beyondPaper = clippedInches(placement.rect,
                                         printable: CGRect(x: 0, y: 0, width: Double(paper.width), height: Double(paper.height)))
         return beyondPaper > clipWarningInches
-            ? "Larger than the paper: up to \(millimetres(beyondPaper)) mm is cut off. Turn on Fit to page to print all of it."
-            : "Edges may be cut by up to \(millimetres(placement.clippedInches)) mm (printer margins)."
+            ? L10n.t("Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.", millimetres(beyondPaper))
+            : L10n.t("Edges may be cut by up to {0} mm (printer margins).", millimetres(placement.clippedInches))
     }
 
     /// Inches as whole millimetres, rounded up (at least 1).
@@ -296,15 +296,15 @@ public enum PrintCalibration {
 /// What the app says about printing. Twin of C# `PrintText`.
 public enum PrintText {
     /// Why the Copy task (and printing anything) cannot be started: no printer is installed.
-    public static let noPrinterReason = "Needs a printer"
+    public static var noPrinterReason: String { L10n.t("Needs a printer") }
 
     /// The error when there is nothing to print on.
-    public static let noPrinterMessage = "No printer is installed. Add a printer, then try again."
+    public static var noPrinterMessage: String { L10n.t("No printer is installed. Add a printer, then try again.") }
 
     /// Why a copy is fitted to the page although real size was not asked for: a page's real size is not
     /// known (a camera page that matched no known size), so printing it at a made-up size would be wrong.
     /// Twin of C# `PrintText.RealSizeUnavailable`.
-    public static let realSizeUnavailable = "Some pages have no known size, so the copy is fitted to the page."
+    public static var realSizeUnavailable: String { L10n.t("Some pages have no known size, so the copy is fitted to the page.") }
 
     /// "Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."
     public static func sent(pageCount: Int, copies: Int, printerName: String) -> String {
@@ -316,13 +316,13 @@ public enum PrintText {
     }
 
     /// "Actual size" or "Fit to page".
-    public static func modeLabel(fitToPage: Bool) -> String { fitToPage ? "Fit to page" : "Actual size" }
+    public static func modeLabel(fitToPage: Bool) -> String { fitToPage ? L10n.t("Fit to page") : L10n.t("Actual size") }
 
     /// What the paper size picker says for a copy: on the glass, Automatic scans the part the
     /// printer's paper covers (a copier copies the sheet it prints on); otherwise as `PaperSizes.hint`.
     public static func copyPaperHint(_ size: PaperSize, source: ScanSource) -> String {
         size == .auto && source == .flatbed
-            ? "The printer's paper size, from the glass corner"
+            ? L10n.t("The printer's paper size, from the glass corner")
             : PaperSizes.hint(size, source: source)
     }
 }

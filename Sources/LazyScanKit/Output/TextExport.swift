@@ -109,7 +109,7 @@ public enum TextExport {
     /// full stop.
     private static func reason(_ message: String) -> String {
         var reason = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        for prefix in [L10n.t("Scan failed: {0}", ""), "OCR failed: "] where reason.hasPrefix(prefix) {
+        for prefix in [L10n.t("Scan failed: {0}", ""), L10n.t("OCR failed: {0}", "")] where reason.hasPrefix(prefix) {
             reason = String(reason.dropFirst(prefix.count))
         }
         if reason.isEmpty { reason = L10n.t("the text recognition did not work") }

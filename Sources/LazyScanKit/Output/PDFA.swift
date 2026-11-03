@@ -92,20 +92,21 @@ public enum PDFA {
     public static let outputConditionIdentifier = "sRGB IEC61966-2.1"
 
     /// The archival switch in the inspector's Archive & password section.
-    public static let optionLabel = "Archival PDF (PDF/A)"
+    public static var optionLabel: String { L10n.t("Archival PDF (PDF/A)") }
 
     /// What the switch does, on hover.
-    public static let optionHint = "Made to look the same for years. Can't have a password."
+    public static var optionHint: String { L10n.t("Made to look the same for years. Can't have a password.") }
 
     /// What the switch does, for screen readers.
-    public static let optionHelp =
-        "Made to be kept for years: a PDF/A file holds everything it needs to look the same later. PDF/A files can't have a password."
+    public static var optionHelp: String {
+        L10n.t("Made to be kept for years: a PDF/A file holds everything it needs to look the same later. PDF/A files can't have a password.")
+    }
 
     /// Why the switch is greyed out while the password is on, shown next to it.
-    public static let notWithPasswordReason = "Not with a password"
+    public static var notWithPasswordReason: String { L10n.t("Not with a password") }
 
     /// Why the password option is greyed out while the archival option is on, and the other way round.
-    public static let cannotProtectNote = "PDF/A can't be password-protected."
+    public static var cannotProtectNote: String { L10n.t("PDF/A can't be password-protected.") }
 
     /// The sRGB color profile embedded as the output intent: "sRGB-v2-magic.icc" from
     /// Compact-ICC-Profiles by Clinton Ingram (https://github.com/saucecontrol/Compact-ICC-Profiles),

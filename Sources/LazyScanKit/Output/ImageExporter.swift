@@ -21,12 +21,12 @@ public enum ImageExporter {
 
         if BilevelTIFF.applies(format, colorMode) {
             guard let pixels = RgbaImage(cgImage: image) else {
-                throw ScanError.exportFailed("Could not read the page to write \(url.lastPathComponent).")
+                throw ScanError.exportFailed(L10n.t("Could not read the page to write {0}.", url.lastPathComponent))
             }
             do {
                 try BilevelTIFF.make(pixels, dpi: dpi).write(to: url, options: .atomic)
             } catch {
-                throw ScanError.exportFailed("Could not write \(url.lastPathComponent).")
+                throw ScanError.exportFailed(L10n.t("Could not write {0}.", url.lastPathComponent))
             }
             return
         }
@@ -34,7 +34,7 @@ public enum ImageExporter {
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL,
                                                                 utType.identifier as CFString,
                                                                 1, nil) else {
-            throw ScanError.exportFailed("Could not create \(format.label) file at \(url.path).")
+            throw ScanError.exportFailed(L10n.t("Could not create {0} file at {1}.", format.label, url.path))
         }
 
         var properties: [CFString: Any] = [
@@ -53,7 +53,7 @@ public enum ImageExporter {
 
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else {
-            throw ScanError.exportFailed("Could not write \(url.lastPathComponent).")
+            throw ScanError.exportFailed(L10n.t("Could not write {0}.", url.lastPathComponent))
         }
     }
 }

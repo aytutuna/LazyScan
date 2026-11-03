@@ -99,7 +99,7 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
 
     /// <summary>The error when a split save fails: nothing of it is kept, and the queue is still there.</summary>
     public static string NotSavedMessage(string reason) =>
-        $"None of the documents was saved; the pages are still in the queue. {reason}";
+        Loc.T("None of the documents was saved; the pages are still in the queue. {0}", reason);
 
     /// <summary>
     /// Runs <paramref name="write"/>, which records every file it writes in <paramref name="files"/>;

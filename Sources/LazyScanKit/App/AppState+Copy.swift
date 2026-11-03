@@ -33,7 +33,7 @@ extension AppState {
     public var copyMarginWarning: String? {
         guard let setup = copySetup, !settings.taskOptions.copyFitToPage,
               setup.paper.largestMargin > PrintLayout.clipWarningInches else { return nil }
-        return "Edges may be cut by up to \(PrintLayout.millimetres(setup.paper.largestMargin)) mm (printer margins)."
+        return L10n.t("Edges may be cut by up to {0} mm (printer margins).", PrintLayout.millimetres(setup.paper.largestMargin))
     }
 
     /// Reads the installed printers, the default printer's paper (for Automatic paper of the ID card)

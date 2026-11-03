@@ -121,8 +121,9 @@ public struct SendProbe: Equatable, Sendable {
 
 public enum SaveActions {
     /// Shown when the files are shown in their folder because they could not be shared.
-    public static let showInFolderMessage =
-        "Sharing is not available here, so the file is shown in its folder. Attach it from there."
+    public static var showInFolderMessage: String {
+        L10n.t("Sharing is not available here, so the file is shown in its folder. Attach it from there.")
+    }
 
     private static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "tif", "tiff"]
 

@@ -10,7 +10,7 @@ namespace LazyScan.App.Services;
 /// version could not be moved into place either and was left at <see cref="TempPath"/>.
 /// </summary>
 public sealed class TempFileKeptException(string tempPath, Exception inner)
-    : IOException($"The new version was kept as {tempPath}.", inner)
+    : IOException(Loc.T("The new version was kept as {0}.", tempPath), inner)
 {
     public string TempPath { get; } = tempPath;
 }
@@ -84,7 +84,7 @@ public static class WpfImageCodec
         }
         catch (Exception e) when (e is not ScanException)
         {
-            throw ScanException.ExportFailed($"Could not write {Path.GetFileName(path)}: {e.Message}");
+            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
         }
     }
 
@@ -135,7 +135,7 @@ public static class WpfImageCodec
         catch (Exception e)
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
-            throw ScanException.ExportFailed($"Could not write {Path.GetFileName(path)}: {e.Message}");
+            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
         }
     }
 
@@ -176,7 +176,7 @@ public static class WpfImageCodec
                 }
             }
             try { File.Delete(tmp); } catch { /* best effort */ }
-            throw ScanException.ExportFailed($"Could not write {Path.GetFileName(path)}: {e.Message}");
+            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
         }
     }
 
@@ -205,7 +205,7 @@ public static class WpfImageCodec
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
             if (e is ScanException) throw;
-            throw ScanException.ExportFailed($"Could not write {Path.GetFileName(path)}: {e.Message}");
+            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
         }
     }
 

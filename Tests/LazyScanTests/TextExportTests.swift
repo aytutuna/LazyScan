@@ -54,8 +54,8 @@ final class TextExportTests: XCTestCase {
             TextExport.recognitionFailed(
                 "Scan failed: OCR failed: no OCR language pack is installed (Settings \u{2192} Time & Language \u{2192} Language)."),
             "The text could not be read: no OCR language pack is installed (Settings \u{2192} Time & Language \u{2192} Language).")
-        L10n.withTable(["Scan failed: {0}": "Tarama başarısız: {0}"], language: "tr") {
-            XCTAssertEqual(TextExport.recognitionFailed("Tarama başarısız: OCR failed: the request failed"),
+        L10n.withTable(["Scan failed: {0}": "Tarama başarısız: {0}", "OCR failed: {0}": "OCR başarısız: {0}"], language: "tr") {
+            XCTAssertEqual(TextExport.recognitionFailed("Tarama başarısız: OCR başarısız: the request failed"),
                            "The text could not be read: the request failed.")
         }
         XCTAssertEqual(TextExport.recognitionFailed("OCR failed: the request failed"),

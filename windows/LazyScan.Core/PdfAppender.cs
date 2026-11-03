@@ -112,53 +112,55 @@ public sealed record PdfAppendOptions
 /// </summary>
 public static class PdfAppender
 {
-    public const string ButtonLabel = "Add to existing PDF…";
-    public const string ButtonHint = "Add the pages to the end of a PDF you choose";
-    public const string SavedMenuLabel = "Add the scanned pages to this PDF";
-    public const string SavedMenuHint = "Add the pages waiting to be saved to the end of this PDF";
-    public const string PickerTitle = "Add the pages to which PDF?";
-    public const string ConfirmQuestion = "Add the pages anyway?";
+    public static string ButtonLabel => Loc.T("Add to existing PDF…");
+    public static string ButtonHint => Loc.T("Add the pages to the end of a PDF you choose");
+    public static string SavedMenuLabel => Loc.T("Add the scanned pages to this PDF");
+    public static string SavedMenuHint => Loc.T("Add the pages waiting to be saved to the end of this PDF");
+    public static string PickerTitle => Loc.T("Add the pages to which PDF?");
+    public static string ConfirmQuestion => Loc.T("Add the pages anyway?");
 
     /// <summary>The Save button while the queue goes into a picked PDF (the app's AppendTarget).</summary>
-    public static string SaveTitle(string fileName) => $"Add to {fileName}";
+    public static string SaveTitle(string fileName) => Loc.T("Add to {0}", fileName);
 
     /// <summary>Said after adding pages while Protect with a password is on: the file decides, and it has none.</summary>
-    public const string NoPasswordNote = "The file has no password, so the added pages have none either.";
+    public static string NoPasswordNote => Loc.T("The file has no password, so the added pages have none either.");
 
     /// <summary>Why pages could not be added to <paramref name="fileName"/>.</summary>
     public static string Message(PdfAppendProblem problem, string fileName) => problem switch
     {
-        PdfAppendProblem.NotPdf => $"{fileName} is not a PDF, so pages can't be added to it.",
-        PdfAppendProblem.Damaged => $"{fileName} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.",
-        PdfAppendProblem.Encrypted => $"{fileName} is password-protected, so pages can't be added to it. Save them as a new PDF instead.",
-        PdfAppendProblem.Unsupported => $"{fileName} is laid out in a way pages can't be added to here. Save them as a new PDF instead.",
-        PdfAppendProblem.ReadOnly => $"{fileName} can't be changed: it is read-only, or you don't have permission to change it.",
-        PdfAppendProblem.InUse => $"{fileName} is open in another app. Close it there, then add the pages again.",
-        PdfAppendProblem.Missing => $"{fileName} is no longer in its folder. It may have been moved, renamed or deleted.",
-        PdfAppendProblem.Changed => $"{fileName} was changed by another app while the pages were being added, so it was left as it was. Try again.",
-        PdfAppendProblem.NotWritten => $"The pages could not be added to {fileName}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.",
+        PdfAppendProblem.NotPdf => Loc.T("{0} is not a PDF, so pages can't be added to it.", fileName),
+        PdfAppendProblem.Damaged => Loc.T("{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.", fileName),
+        PdfAppendProblem.Encrypted => Loc.T("{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.", fileName),
+        PdfAppendProblem.Unsupported => Loc.T("{0} is laid out in a way pages can't be added to here. Save them as a new PDF instead.", fileName),
+        PdfAppendProblem.ReadOnly => Loc.T("{0} can't be changed: it is read-only, or you don't have permission to change it.", fileName),
+        PdfAppendProblem.InUse => Loc.T("{0} is open in another app. Close it there, then add the pages again.", fileName),
+        PdfAppendProblem.Missing => Loc.T("{0} is no longer in its folder. It may have been moved, renamed or deleted.", fileName),
+        PdfAppendProblem.Changed => Loc.T("{0} was changed by another app while the pages were being added, so it was left as it was. Try again.", fileName),
+        PdfAppendProblem.NotWritten => Loc.T("The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.", fileName),
         PdfAppendProblem.LeftAsBackup => LeftAsBackupMessage(fileName, null),
-        _ =>$"The pages could not be added to {fileName}: the updated file did not check out, so the original was left as it was.",
+        _ => Loc.T("The pages could not be added to {0}: the updated file did not check out, so the original was left as it was.", fileName),
     };
 
     /// <summary>
     /// For <see cref="PdfAppendProblem.LeftAsBackup"/>: where the unchanged file is now, so the user
     /// can find it (<paramref name="backupName"/>, the backup's file name; null: not known).
     /// </summary>
-    public static string LeftAsBackupMessage(string fileName, string? backupName) =>
-        $"The pages could not be added to {fileName}, and the file could not be put back under its name. It is unchanged, in the same folder, "
-        + (backupName is null ? "under a name ending in .pdf.bak" : $"named {backupName}")
-        + $". Rename it back to {fileName}, then add the pages again.";
+    public static string LeftAsBackupMessage(string fileName, string? backupName) => backupName is null
+        ? Loc.T("The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, under a name ending in .pdf.bak. Rename it back to {0}, then add the pages again.",
+            fileName)
+        : Loc.T("The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, named {1}. Rename it back to {0}, then add the pages again.",
+            fileName, backupName);
 
     public static string SignedWarning(string fileName) =>
-        $"{fileName} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.";
+        Loc.T("{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.", fileName);
 
     /// <summary>For a certified file (<see cref="PdfReaderLite.IsCertified"/>): no certification allows adding pages.</summary>
     public static string CertifiedWarning(string fileName) =>
-        $"{fileName} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.";
+        Loc.T("{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.", fileName);
 
     public static string PdfAWarning(string fileName, int part, string? conformance) =>
-        $"{fileName} is a PDF/A-{part}{conformance?.ToLowerInvariant()} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.";
+        Loc.T("{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.",
+            fileName, part.ToString(), conformance?.ToLowerInvariant());
 
     /// <summary>"Added 2 pages to Contract.pdf (now 11 pages, 1.4 MB)", as a save says "Saved …".</summary>
     public static string AddedMessage(int added, string fileName, int pageCount, string? size) =>
@@ -255,7 +257,7 @@ public static class PdfAppender
         for (int i = 0; i < pages.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested) throw ScanException.Cancelled();
-            progress?.Invoke($"Adding page {i + 1} of {pages.Count}…");
+            progress?.Invoke(Loc.T("Adding page {0} of {1}…", i + 1, pages.Count));
             var page = pages[i];
             string extra = " /Rotate 0";
             if (rootHasCropBox)

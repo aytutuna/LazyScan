@@ -43,12 +43,12 @@ public static class DocxWriter
     public const long EmuPerPoint = 12700, EmuPerTwip = 635;
 
     /// <summary>The page pictures switch (<see cref="OutputOptions.WordPageImages"/>) as the inspector shows it.</summary>
-    public const string PageImagesLabel = "Include page images";
+    public static string PageImagesLabel => Loc.T("Include page images");
 
     /// <summary>What the page pictures switch does, on and off: its tooltip.</summary>
     public static string PageImagesHint(bool on) => on
-        ? "Each page's picture, then its editable text"
-        : "Only the editable text, without page pictures";
+        ? Loc.T("Each page's picture, then its editable text")
+        : Loc.T("Only the editable text, without page pictures");
 
     /// <summary>The relationship type of a picture's part.</summary>
     public const string ImageRelationshipType = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image";
@@ -81,9 +81,8 @@ public static class DocxWriter
     public const long MaxPackageBytes = 2_000_000_000;
 
     /// <summary>Why a Word document over <see cref="MaxPackageBytes"/> is not written, and what to do instead.</summary>
-    public const string TooLargeMessage =
-        "The Word document would be larger than 2 GB, too large to write. Save fewer pages in each document, "
-        + "choose a smaller page image size, or turn off \"Include page images\".";
+    public static string TooLargeMessage =>
+        Loc.T("The Word document would be larger than 2 GB, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off \"{0}\".", PageImagesLabel);
 
     /// <summary>
     /// The size in bytes of the .docx file <see cref="Make"/> writes for <paramref name="pages"/>

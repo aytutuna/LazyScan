@@ -19,15 +19,15 @@ public readonly record struct NamingInsertion(string Text, int Caret);
 public static class NamingTokens
 {
     /// <summary>The Insert menu's parts, in order.</summary>
-    public static IReadOnlyList<NamingToken> All { get; } =
+    public static IReadOnlyList<NamingToken> All =>
     [
-        new("Date", "{date}", "Scan date, e.g. 2026-08-13"),
-        new("Time", "{time}", "Scan time, e.g. 14.05.32"),
-        new("Number", "{counter}", "Running number"),
-        new("Mode", "{intent}", "“Document” or “Photos”"),
-        new("Task", "{task}", "The task, e.g. “Receipt”"),
-        new("Document name", "{label}", "The document’s name, given in the page strip"),
-        new("Receipt date", "{docdate}", "The date printed on a receipt"),
+        new(Loc.T("Date"), "{date}", Loc.T("Scan date, e.g. 2026-08-13")),
+        new(Loc.T("Time"), "{time}", Loc.T("Scan time, e.g. 14.05.32")),
+        new(Loc.T("Number"), "{counter}", Loc.T("Running number")),
+        new(Loc.T("Mode"), "{intent}", Loc.T("“Document” or “Photos”")),
+        new(Loc.T("Task"), "{task}", Loc.T("The task, e.g. “Receipt”")),
+        new(Loc.T("Document name"), "{label}", Loc.T("The document’s name, given in the page strip")),
+        new(Loc.T("Receipt date"), "{docdate}", Loc.T("The date printed on a receipt")),
     ];
 
     /// <summary>Every token <see cref="NamingTemplate"/> replaces; {counter:N} is known as well.</summary>
@@ -35,10 +35,10 @@ public static class NamingTokens
         ["{date}", "{time}", "{year}", "{month}", "{day}", "{counter}", "{intent}", "{index}", "{task}", "{docdate}", "{label}"];
 
     /// <summary>The line under a blank file name: the last name is kept.</summary>
-    public const string EmptyProblem = "Needs a file name";
+    public static string EmptyProblem => Loc.T("Needs a file name");
 
     /// <summary>The line under a file name with a token <see cref="NamingTemplate"/> does not know (it stays as typed).</summary>
-    public static string UnknownProblem(string token) => $"Unknown part {token}";
+    public static string UnknownProblem(string token) => Loc.T("Unknown part {0}", token);
 
     /// <summary>
     /// <paramref name="token"/> put into <paramref name="text"/> at <paramref name="offset"/> (kept within

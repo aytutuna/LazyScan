@@ -105,13 +105,13 @@ public enum PDFWriter {
     public static func writeFile(_ pages: [PDFPageInput], to url: URL, progress: ((String) -> Void)? = nil,
                                  shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
-            throw ScanError.exportFailed("Could not write to \(url.path).")
+            throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
         }
         let handle: FileHandle
         do {
             handle = try FileHandle(forWritingTo: url)
         } catch {
-            throw ScanError.exportFailed("Could not write to \(url.path).")
+            throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
         }
         defer { try? handle.close() }
         do {
@@ -121,7 +121,7 @@ public enum PDFWriter {
         } catch let error as ScanError {
             throw error
         } catch {
-            throw ScanError.exportFailed("Could not write \(url.lastPathComponent): \(error.localizedDescription)")
+            throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
         }
     }
 
@@ -207,7 +207,7 @@ public enum PDFWriter {
 
         for i in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
-            progress?("Writing page \(i + 1) of \(pages.count)…")
+            progress?(L10n.t("Writing page {0} of {1}…", i + 1, pages.count))
             let pageObject = firstPageObject + i * 3
             try writePage(w, pageObject: pageObject, imageObject: pageObject + 1, contentsObject: pageObject + 2,
                           parent: "2 0 R", index: i, page: pages[i], fontObject: fontObject, codes: codes,

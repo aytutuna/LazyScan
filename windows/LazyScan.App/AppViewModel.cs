@@ -3339,7 +3339,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         var protection = ProtectionFor(s);
         var inputs = await PdfPageInputs(pages, s, token, text, knownLines);
 
-        StatusMessage = "Writing PDF…";
+        StatusMessage = Loc.T("Writing PDF…");
         NotifyAll();
         // Protected with the password when that option is on, else PDF/A when the archival option
         // is; titled with the file's name (WriteNewFile retitles the file when it has to take
@@ -3379,7 +3379,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             else if (s.PdfSearchable || text is { Problem: null })
             {
-                StatusMessage = $"OCR page {i + 1} of {pages.Count}…";
+                StatusMessage = Loc.T("OCR page {0} of {1}…", i + 1, pages.Count);
                 NotifyAll();
                 // If OCR fails for a page, the PDF is still produced without a text layer (and
                 // without the text file beside it). Cancel stops waiting at once (the recognizer

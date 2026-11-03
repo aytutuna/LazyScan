@@ -306,7 +306,7 @@ public static class PdfBuilder
         for (int i = 0; i < pages.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested) throw ScanException.Cancelled();
-            progress?.Invoke($"Writing page {i + 1} of {pages.Count}…");
+            progress?.Invoke(Loc.T("Writing page {0} of {1}…", i + 1, pages.Count));
             WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), "2 0 R", i, pages[i], fontObject, codes, "");
         }
 

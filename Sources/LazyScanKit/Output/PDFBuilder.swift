@@ -137,12 +137,12 @@ public enum PDFBuilder {
             let prepared = preparePage(page)
             var lines: [OCRLine]? = nil
             if let textLayer {
-                progress?("OCR page \(index + 1) of \(pages.count)…")
+                progress?(L10n.t("OCR page {0} of {1}…", index + 1, pages.count))
                 // A page without lines (OCR failed or found nothing) is still written, without a text layer.
                 lines = textLayer(index, prepared)
             }
             guard let stored = storedImage(prepared, colorMode: page.colorMode, dpi: page.dpi, pdfSize: pdfSize) else {
-                throw ScanError.exportFailed("Page \(index + 1) could not be stored in the PDF.")
+                throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
             }
             inputs.append(PDFPageInput(image: stored, pixelWidth: prepared.pixelWidth,
                                        pixelHeight: prepared.pixelHeight, dpi: page.dpi, ocrLines: lines))

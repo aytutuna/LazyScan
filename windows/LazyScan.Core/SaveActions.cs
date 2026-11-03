@@ -81,8 +81,8 @@ public sealed record SendProbe(bool CanCompose, bool CanShare);
 public static class SaveActions
 {
     /// <summary>Shown when the files are shown in their folder because they could not be shared.</summary>
-    public const string ShowInFolderMessage =
-        "Sharing is not available here, so the file is shown in its folder. Attach it from there.";
+    public static string ShowInFolderMessage =>
+        Loc.T("Sharing is not available here, so the file is shown in its folder. Attach it from there.");
 
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".tif", ".tiff"];
 

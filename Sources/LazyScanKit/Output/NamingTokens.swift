@@ -29,26 +29,28 @@ public struct NamingInsertion: Equatable, Sendable {
 /// name the next file gets, and what is wrong with a template. Twin of C# `NamingTokens`.
 public enum NamingTokens {
     /// The Insert menu's parts, in order.
-    public static let all: [NamingToken] = [
-        NamingToken(label: "Date", token: "{date}", help: "Scan date, e.g. 2026-08-13"),
-        NamingToken(label: "Time", token: "{time}", help: "Scan time, e.g. 14.05.32"),
-        NamingToken(label: "Number", token: "{counter}", help: "Running number"),
-        NamingToken(label: "Mode", token: "{intent}", help: "\u{201C}Document\u{201D} or \u{201C}Photos\u{201D}"),
-        NamingToken(label: "Task", token: "{task}", help: "The task, e.g. \u{201C}Receipt\u{201D}"),
-        NamingToken(label: "Document name", token: "{label}", help: "The document\u{2019}s name, given in the page strip"),
-        NamingToken(label: "Receipt date", token: "{docdate}", help: "The date printed on a receipt"),
-    ]
+    public static var all: [NamingToken] {
+        [
+            NamingToken(label: L10n.t("Date"), token: "{date}", help: L10n.t("Scan date, e.g. 2026-08-13")),
+            NamingToken(label: L10n.t("Time"), token: "{time}", help: L10n.t("Scan time, e.g. 14.05.32")),
+            NamingToken(label: L10n.t("Number"), token: "{counter}", help: L10n.t("Running number")),
+            NamingToken(label: L10n.t("Mode"), token: "{intent}", help: L10n.t("“Document” or “Photos”")),
+            NamingToken(label: L10n.t("Task"), token: "{task}", help: L10n.t("The task, e.g. “Receipt”")),
+            NamingToken(label: L10n.t("Document name"), token: "{label}", help: L10n.t("The document’s name, given in the page strip")),
+            NamingToken(label: L10n.t("Receipt date"), token: "{docdate}", help: L10n.t("The date printed on a receipt")),
+        ]
+    }
 
     /// Every token `NamingTemplate` replaces; {counter:N} is known as well.
     public static let known: [String] = ["{date}", "{time}", "{year}", "{month}", "{day}", "{counter}", "{intent}",
                                          "{index}", "{task}", "{docdate}", "{label}"]
 
     /// The line under a blank file name: the last name is kept.
-    public static let emptyProblem = "Needs a file name"
+    public static var emptyProblem: String { L10n.t("Needs a file name") }
 
     /// The line under a file name with a token `NamingTemplate` does not know (it stays as typed).
     public static func unknownProblem(_ token: String) -> String {
-        "Unknown part \(token)"
+        L10n.t("Unknown part {0}", token)
     }
 
     /// `token` put into `text` at `offset` (in characters, kept within the text), with a space before it

@@ -38,7 +38,7 @@ public enum OCRService {
         do {
             try handler.perform([request])
         } catch {
-            throw ScanError.scanFailed("OCR failed: \(error.localizedDescription)")
+            throw ScanError.scanFailed(L10n.t("OCR failed: {0}", error.localizedDescription))
         }
 
         let observations = request.results ?? []
@@ -65,7 +65,7 @@ public enum OCRService {
         do {
             try handler.perform([request])
         } catch {
-            throw ScanError.scanFailed("OCR failed: \(error.localizedDescription)")
+            throw ScanError.scanFailed(L10n.t("OCR failed: {0}", error.localizedDescription))
         }
         let lines: [String] = (request.results ?? []).compactMap { observation in
             guard let candidate = observation.topCandidates(1).first,
@@ -87,7 +87,7 @@ public struct VisionOrientationScorer: OrientationScorer {
 
     public func score(_ image: RgbaImage) throws -> OrientationScore {
         guard let cgImage = image.makeCGImage() else {
-            throw ScanError.scanFailed("OCR failed: the page could not be prepared for reading.")
+            throw ScanError.scanFailed(L10n.t("OCR failed: {0}", L10n.t("the page could not be prepared for reading.")))
         }
         return try OCRService.orientationScore(in: cgImage)
     }

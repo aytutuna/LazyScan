@@ -52,7 +52,7 @@ public sealed record PrinterPaper(SizeD Paper, RectD Printable)
     /// <summary>"Letter (8.5 × 11 in)", "A4 (210 × 297 mm)", or "8.27 × 11.69 in" for a size without a name.</summary>
     public string Description => Size is { } size
         ? $"{size.Label()} ({size.Detail()})"
-        : $"{Loc.Decimal(Paper.Width, 0, 2)} × {Loc.Decimal(Paper.Height, 0, 2)} in";
+        : Loc.T("{0} × {1} in", Loc.Decimal(Paper.Width, 0, 2), Loc.Decimal(Paper.Height, 0, 2));
 }
 
 /// <summary>
@@ -156,8 +156,8 @@ public static class PrintLayout
         if (!placement.IsClipped) return null;
         double beyondPaper = ClippedInches(placement.Rect, new RectD(0, 0, paper.Width, paper.Height));
         return beyondPaper > ClipWarningInches
-            ? $"Larger than the paper: up to {Millimetres(beyondPaper)} mm is cut off. Turn on Fit to page to print all of it."
-            : $"Edges may be cut by up to {Millimetres(placement.ClippedInches)} mm (printer margins).";
+            ? Loc.T("Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.", Millimetres(beyondPaper))
+            : Loc.T("Edges may be cut by up to {0} mm (printer margins).", Millimetres(placement.ClippedInches));
     }
 
     /// <summary>Inches as whole millimetres, rounded up (at least 1).</summary>
@@ -268,16 +268,16 @@ public static class PrintCalibration
 public static class PrintText
 {
     /// <summary>Why the Copy task (and printing anything) cannot be started: no printer is installed.</summary>
-    public const string NoPrinterReason = "Needs a printer";
+    public static string NoPrinterReason => Loc.T("Needs a printer");
 
     /// <summary>The error when there is nothing to print on.</summary>
-    public const string NoPrinterMessage = "No printer is installed. Add a printer, then try again.";
+    public static string NoPrinterMessage => Loc.T("No printer is installed. Add a printer, then try again.");
 
     /// <summary>
     /// Why a copy is fitted to the page although real size was not asked for: a page's real size is not
     /// known (a camera page that matched no known size), so printing it at a made-up size would be wrong.
     /// </summary>
-    public const string RealSizeUnavailable = "Some pages have no known size, so the copy is fitted to the page.";
+    public static string RealSizeUnavailable => Loc.T("Some pages have no known size, so the copy is fitted to the page.");
 
     /// <summary>"Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."</summary>
     public static string Sent(int pageCount, int copies, string printerName)
@@ -288,7 +288,7 @@ public static class PrintText
     }
 
     /// <summary>"Actual size" or "Fit to page".</summary>
-    public static string ModeLabel(bool fitToPage) => fitToPage ? "Fit to page" : "Actual size";
+    public static string ModeLabel(bool fitToPage) => fitToPage ? Loc.T("Fit to page") : Loc.T("Actual size");
 
     /// <summary>
     /// What the paper size picker says for a copy: on the glass, Automatic scans the part the
@@ -297,6 +297,6 @@ public static class PrintText
     /// </summary>
     public static string CopyPaperHint(PaperSize size, ScanSource source) =>
         size == PaperSize.Auto && source == ScanSource.Flatbed
-            ? "The printer's paper size, from the glass corner"
+            ? Loc.T("The printer's paper size, from the glass corner")
             : PaperSizes.Hint(size, source);
 }

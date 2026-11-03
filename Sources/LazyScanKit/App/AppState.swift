@@ -2498,7 +2498,7 @@ public final class AppState: ObservableObject {
         do {
             try data.write(to: url, options: .atomic)
         } catch {
-            throw ScanError.exportFailed("Could not write \(url.lastPathComponent): \(error.localizedDescription)")
+            throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
         }
         return TextExport.hasText(ocrPages)
     }

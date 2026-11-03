@@ -86,20 +86,20 @@ public static class PdfA
     public const string OutputConditionIdentifier = "sRGB IEC61966-2.1";
 
     /// <summary>The archival switch in the inspector's Archive &amp; password section.</summary>
-    public const string OptionLabel = "Archival PDF (PDF/A)";
+    public static string OptionLabel => Loc.T("Archival PDF (PDF/A)");
 
     /// <summary>What the switch does, on hover.</summary>
-    public const string OptionHint = "Made to look the same for years. Can't have a password.";
+    public static string OptionHint => Loc.T("Made to look the same for years. Can't have a password.");
 
     /// <summary>What the switch does, for screen readers.</summary>
-    public const string OptionHelp =
-        "Made to be kept for years: a PDF/A file holds everything it needs to look the same later. PDF/A files can't have a password.";
+    public static string OptionHelp =>
+        Loc.T("Made to be kept for years: a PDF/A file holds everything it needs to look the same later. PDF/A files can't have a password.");
 
     /// <summary>Why the switch is greyed out while the password is on, shown next to it.</summary>
-    public const string NotWithPasswordReason = "Not with a password";
+    public static string NotWithPasswordReason => Loc.T("Not with a password");
 
     /// <summary>Why the password option is greyed out while the archival option is on, and the other way round.</summary>
-    public const string CannotProtectNote = "PDF/A can't be password-protected.";
+    public static string CannotProtectNote => Loc.T("PDF/A can't be password-protected.");
 
     /// <summary>
     /// The sRGB color profile embedded as the output intent: "sRGB-v2-magic.icc" from

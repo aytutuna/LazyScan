@@ -112,7 +112,7 @@ public struct SavePlan {
 
     /// The error when a split save fails: nothing of it is kept, and the queue is still there.
     public static func notSavedMessage(_ reason: String) -> String {
-        "None of the documents was saved; the pages are still in the queue. \(reason)"
+        L10n.t("None of the documents was saved; the pages are still in the queue. {0}", reason)
     }
 
     /// Why a document could not be written, for `notSavedMessage`: the message of a saving error

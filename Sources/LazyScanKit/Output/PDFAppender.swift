@@ -155,78 +155,76 @@ public struct PDFAppendOptions: Sendable {
 /// (`FileManager.replaceItemAt`, keeping the original's creation date and permissions). Every failure
 /// is a `PDFAppendError` whose message is for the user.
 public enum PDFAppender {
-    public static let buttonLabel = "Add to existing PDF…"
-    public static let buttonHint = "Add the pages to the end of a PDF you choose"
-    public static let savedMenuLabel = "Add the scanned pages to this PDF"
-    public static let savedMenuHint = "Add the pages waiting to be saved to the end of this PDF"
-    public static let pickerTitle = "Add the pages to which PDF?"
-    public static let confirmQuestion = "Add the pages anyway?"
+    public static var buttonLabel: String { L10n.t("Add to existing PDF…") }
+    public static var buttonHint: String { L10n.t("Add the pages to the end of a PDF you choose") }
+    public static var savedMenuLabel: String { L10n.t("Add the scanned pages to this PDF") }
+    public static var savedMenuHint: String { L10n.t("Add the pages waiting to be saved to the end of this PDF") }
+    public static var pickerTitle: String { L10n.t("Add the pages to which PDF?") }
+    public static var confirmQuestion: String { L10n.t("Add the pages anyway?") }
 
     /// The other item of the Save button's menu, beside `buttonLabel`.
-    public static let saveAsNewLabel = "Save as new PDF"
+    public static var saveAsNewLabel: String { L10n.t("Save as new PDF") }
 
     /// The Save button while the queue goes into a picked PDF (`AppState.appendTarget`).
     public static func saveTitle(_ fileName: String) -> String {
-        "Add to \(fileName)"
+        L10n.t("Add to {0}", fileName)
     }
 
     /// Said after adding pages while Protect with a password is on: the file decides, and it has none.
-    public static let noPasswordNote = "The file has no password, so the added pages have none either."
+    public static var noPasswordNote: String { L10n.t("The file has no password, so the added pages have none either.") }
 
     /// Why pages could not be added to `fileName`.
     public static func message(_ problem: PDFAppendProblem, _ fileName: String) -> String {
         switch problem {
         case .notPdf:
-            return "\(fileName) is not a PDF, so pages can't be added to it."
+            return L10n.t("{0} is not a PDF, so pages can't be added to it.", fileName)
         case .damaged:
-            return "\(fileName) looks damaged, so pages can't be added to it safely. Save them as a new PDF instead."
+            return L10n.t("{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.", fileName)
         case .encrypted:
-            return "\(fileName) is password-protected, so pages can't be added to it. Save them as a new PDF instead."
+            return L10n.t("{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.", fileName)
         case .unsupported:
-            return "\(fileName) is laid out in a way pages can't be added to here. Save them as a new PDF instead."
+            return L10n.t("{0} is laid out in a way pages can't be added to here. Save them as a new PDF instead.", fileName)
         case .readOnly:
-            return "\(fileName) can't be changed: it is read-only, or you don't have permission to change it."
+            return L10n.t("{0} can't be changed: it is read-only, or you don't have permission to change it.", fileName)
         case .inUse:
-            return "\(fileName) is open in another app. Close it there, then add the pages again."
+            return L10n.t("{0} is open in another app. Close it there, then add the pages again.", fileName)
         case .missing:
-            return "\(fileName) is no longer in its folder. It may have been moved, renamed or deleted."
+            return L10n.t("{0} is no longer in its folder. It may have been moved, renamed or deleted.", fileName)
         case .changed:
-            return "\(fileName) was changed by another app while the pages were being added, so it was left as it was. Try again."
+            return L10n.t("{0} was changed by another app while the pages were being added, so it was left as it was. Try again.", fileName)
         case .notWritten:
-            return "The pages could not be added to \(fileName): the updated file could not be written in its folder (the disk may be full), so the original was left as it was."
+            return L10n.t("The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.", fileName)
         case .leftAsBackup:
             return leftAsBackupMessage(fileName, backupName: nil)
         case .notVerified:
-            return "The pages could not be added to \(fileName): the updated file did not check out, so the original was left as it was."
+            return L10n.t("The pages could not be added to {0}: the updated file did not check out, so the original was left as it was.", fileName)
         }
     }
 
     /// For `PDFAppendProblem.leftAsBackup`: where the unchanged file is now, so the user can find it
     /// (`backupName`, the backup's file name; nil: not known).
     public static func leftAsBackupMessage(_ fileName: String, backupName: String?) -> String {
-        var text = "The pages could not be added to \(fileName), and the file could not be put back under its name. "
-        text += "It is unchanged, in the same folder, "
         if let backupName {
-            text += "named \(backupName)"
-        } else {
-            text += "under a name ending in .pdf.bak"
+            return L10n.t("The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, named {1}. Rename it back to {0}, then add the pages again.",
+                          fileName, backupName)
         }
-        text += ". Rename it back to \(fileName), then add the pages again."
-        return text
+        return L10n.t("The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, under a name ending in .pdf.bak. Rename it back to {0}, then add the pages again.",
+                      fileName)
     }
 
     public static func signedWarning(_ fileName: String) -> String {
-        "\(fileName) is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed."
+        L10n.t("{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.", fileName)
     }
 
     /// For a certified file (`PDFReaderLite.isCertified`): no certification allows adding pages.
     public static func certifiedWarning(_ fileName: String) -> String {
-        "\(fileName) is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid."
+        L10n.t("{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.", fileName)
     }
 
     public static func pdfAWarning(_ fileName: String, part: Int, conformance: String?) -> String {
         let level = conformance?.lowercased() ?? ""
-        return "\(fileName) is a PDF/A-\(part)\(level) file. The added pages may not meet that standard, so it may no longer pass as PDF/A."
+        return L10n.t("{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.",
+                      fileName, String(part), level)
     }
 
     /// "Added 2 pages to Contract.pdf (now 11 pages, 1.4 MB)", as a save says "Saved …".
@@ -345,7 +343,7 @@ public enum PDFAppender {
         var kids: [any PDFObject] = oldKids.items
         for i in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
-            progress?("Adding page \(i + 1) of \(pages.count)…")
+            progress?(L10n.t("Adding page {0} of {1}…", i + 1, pages.count))
             let page = pages[i]
             var extra = " /Rotate 0"
             if rootHasCropBox {

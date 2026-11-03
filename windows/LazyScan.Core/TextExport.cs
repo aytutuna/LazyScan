@@ -118,7 +118,7 @@ public static class TextExport
     private static string Reason(string message)
     {
         string reason = message.Trim();
-        foreach (string prefix in new[] { Loc.T("Scan failed: {0}", ""), "OCR failed: " })
+        foreach (string prefix in new[] { Loc.T("Scan failed: {0}", ""), Loc.T("OCR failed: {0}", "") })
         {
             if (reason.StartsWith(prefix, StringComparison.Ordinal)) reason = reason[prefix.Length..];
         }
