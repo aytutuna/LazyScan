@@ -4,7 +4,7 @@ import XCTest
 @testable import LazyScanKit
 
 // Mirrors windows/LazyScan.Core.Tests/EsclClientTests.cs (the same 18 cases, a C# theory being
-// one test here over the same rows). EsclClient and EsclScannerSession against a URLProtocol stub that
+// one test here over the same rows), plus the page reader case, which is Swift only. EsclClient and EsclScannerSession against a URLProtocol stub that
 // plays a device, as the C# stub HttpMessageHandler does; retry waits run on a fake clock. Pages are
 // "read" by a stub reader: a file holding "PAGE w h" becomes a w×h image, anything else is unreadable.
 // Differences: ScanError.scannerProblem has no detail text, so the "(HTTP 409)" the C# message ends with
