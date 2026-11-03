@@ -185,7 +185,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                 byte[] data;
                 try
                 {
-                    using var doc = await SendWithRetry(ct => _jobHttp.GetAsync(next, ct), token).ConfigureAwait(false);
+                    using var doc = await SendWithRetry(ct => _jobHttp.GetAsync(next, HttpCompletionOption.ResponseHeadersRead, ct), token).ConfigureAwait(false);
                     if (doc.StatusCode == HttpStatusCode.NotFound)
                     {
                         // Job complete. A feeder job that ends before its first page usually
@@ -205,7 +205,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                         stop = ScanStop.From(failure);
                         break;
                     }
-                    data = await doc.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
+                    data = await ReadBody(doc, token).ConfigureAwait(false);
                 }
                 catch (HttpRequestException e)
                 {
@@ -243,6 +243,26 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
             if (!finished) TrackCleanup(DeleteQuietly(jobUri));
         }
         return new EsclJobResult(pages, stop);
+    }
+
+    /// <summary>
+    /// A page's bytes. The job timeout only covers the wait for the headers; the transfer may
+    /// take as long as it keeps moving, so it is cut off after <see cref="EsclClientOptions.JobTimeout"/>
+    /// without data (the idle timeout URLSession applies on the Swift side).
+    /// </summary>
+    private async Task<byte[]> ReadBody(HttpResponseMessage doc, CancellationToken token)
+    {
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(token);
+        await using var stream = await doc.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        while (true)
+        {
+            idle.CancelAfter(_options.JobTimeout);
+            int read = await stream.ReadAsync(chunk, idle.Token).ConfigureAwait(false);
+            if (read == 0) return buffer.ToArray();
+            buffer.Write(chunk, 0, read);
+        }
     }
 
     /// <summary>
