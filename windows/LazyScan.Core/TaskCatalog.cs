@@ -458,23 +458,51 @@ public static class TaskCatalog
     /// <summary>
     /// The steps the scan screen guides: turning the stack over by hand
     /// (<see cref="DocumentSides.ManualSteps"/>) whenever these settings scan both sides that
-    /// way, otherwise the stored task's steps while it fits; null when there is nothing to guide.
+    /// way, otherwise the stored task's steps while it fits (Photos, Restore and Receipts load the
+    /// feeder instead of laying pages on the glass when it is the source); null when there is nothing to guide.
     /// </summary>
     public static IReadOnlyList<TaskStep>? GuidedSteps(ScanSettings settings, ScannerCapabilities? capabilities)
     {
         if (DocumentSides.UsesManualSteps(settings, capabilities)) return DocumentSides.ManualSteps;
-        return settings.Task is { } task && Fits(task, settings) ? Definition(task).Steps : null;
+        if (settings.Task is not { } task || !Fits(task, settings)) return null;
+        if (settings.Source == ScanSource.DocumentFeeder && FeederStep(task) is { } feederStep) return [feederStep];
+        return Definition(task).Steps;
     }
+
+    private static readonly ScanTask[] FeederTasks = [ScanTask.Photos, ScanTask.PhotoRestore, ScanTask.Receipt];
+
+    /// <summary>The single step of a task that lays pages on the glass, worded for the feeder; null for other tasks.</summary>
+    private static TaskStep? FeederStep(ScanTask task) => task switch
+    {
+        ScanTask.Photos => Definition(task).Steps[0] with
+        {
+            Prompt = "Load the photos in the feeder and scan.",
+            Help = "Each photo is cropped and straightened. Check each one before saving.",
+        },
+        ScanTask.PhotoRestore => Definition(task).Steps[0] with { Prompt = "Load the photos in the feeder and scan." },
+        ScanTask.Receipt => Definition(task).Steps[0] with
+        {
+            Prompt = "Load the receipts in the feeder, one per sheet, and scan.",
+            Help = "Each one is straightened and made easy to read. Check them before saving.",
+        },
+        _ => null,
+    };
 
     /// <summary>
     /// A guided step as the banner and the Scan button word it for these settings. The flow keeps the
     /// task's own steps, and a change of source or of Collect pages before saving does not start it
     /// again, so the words follow the settings here: Document to PDF's step is Stack from feeder's while the
     /// feeder is the source, and says each scan is saved right away while Collect pages before saving
-    /// is off; Quick scan's says its scans are collected while it is on. Other steps are their task's own.
+    /// is off; Quick scan's says its scans are collected while it is on. The photo and receipt steps load
+    /// the feeder while it is the source. Other steps are their task's own.
     /// </summary>
     public static TaskStep ShownStep(TaskStep step, ScanSettings settings)
     {
+        if (settings.Source == ScanSource.DocumentFeeder)
+        {
+            foreach (var task in FeederTasks)
+                if (step == Definition(task).Steps[0]) return FeederStep(task)!;
+        }
         if (step == Definition(ScanTask.Document).Steps[0])
         {
             bool feeder = settings.Source == ScanSource.DocumentFeeder;

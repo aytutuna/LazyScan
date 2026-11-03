@@ -455,19 +455,46 @@ public enum TaskCatalog {
 
     /// The steps the scan screen guides: turning the stack over by hand
     /// (`DocumentSides.manualSteps`) whenever these settings scan both sides that way, otherwise
-    /// the stored task's steps while it fits; nil when there is nothing to guide.
+    /// the stored task's steps while it fits (Photos, Restore and Receipts load the feeder instead of
+    /// laying pages on the glass when it is the source); nil when there is nothing to guide.
     public static func guidedSteps(_ settings: ScanSettings, capabilities: ScannerCapabilities?) -> [TaskStep]? {
         if DocumentSides.usesManualSteps(settings, capabilities: capabilities) { return DocumentSides.manualSteps }
         guard let task = settings.task, fits(task, settings) else { return nil }
+        if settings.source == .documentFeeder, let step = feederStep(task) { return [step] }
         return TaskCatalog.definition(task).steps
+    }
+
+    private static let feederTasks: [ScanTask] = [.photos, .photoRestore, .receipt]
+
+    /// The single step of a task that lays pages on the glass, worded for the feeder; nil for other tasks.
+    private static func feederStep(_ task: ScanTask) -> TaskStep? {
+        let step: TaskStep = definition(task).steps[0]
+        switch task {
+        case .photos:
+            return reworded(step, prompt: "Load the photos in the feeder and scan.",
+                            help: "Each photo is cropped and straightened. Check each one before saving.")
+        case .photoRestore:
+            return reworded(step, prompt: "Load the photos in the feeder and scan.", help: step.help)
+        case .receipt:
+            return reworded(step, prompt: "Load the receipts in the feeder, one per sheet, and scan.",
+                            help: "Each one is straightened and made easy to read. Check them before saving.")
+        default:
+            return nil
+        }
     }
 
     /// A guided step as the banner and the Scan button word it for these settings. The flow keeps the
     /// task's own steps, and a change of source or of Collect pages before saving does not start it
     /// again, so the words follow the settings here: Document to PDF's step is Stack from feeder's while the
     /// feeder is the source, and says each scan is saved right away while Collect pages before saving
-    /// is off; Quick scan's says its scans are collected while it is on. Other steps are their task's own.
+    /// is off; Quick scan's says its scans are collected while it is on. The photo and receipt steps load
+    /// the feeder while it is the source. Other steps are their task's own.
     public static func shownStep(_ step: TaskStep, settings: ScanSettings) -> TaskStep {
+        if settings.source == .documentFeeder {
+            for task in feederTasks where step == definition(task).steps[0] {
+                if let step = feederStep(task) { return step }
+            }
+        }
         if step == definition(.document).steps[0] {
             let feeder: Bool = settings.source == .documentFeeder
             let shown: TaskStep = feeder ? definition(.feeder).steps[0] : step

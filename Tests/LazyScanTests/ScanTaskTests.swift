@@ -396,6 +396,33 @@ final class ScanTaskTests: XCTestCase {
         XCTAssertNil(TaskCatalog.guidedSteps(byHand, capabilities: nil))
     }
 
+    func test_guidedSteps_photosAndReceiptsLoadTheFeederWhenItIsTheSource() throws {
+        for task in [ScanTask.photos, .photoRestore, .receipt] {
+            let glass = TaskCatalog.apply(task, to: ScanSettings())
+            let own: TaskStep = TaskCatalog.definition(task).steps[0]
+            XCTAssertEqual(TaskCatalog.guidedSteps(glass, capabilities: nil), [own])
+            XCTAssertEqual(TaskCatalog.shownStep(own, settings: glass), own)
+
+            var feeder = glass
+            feeder.source = .documentFeeder
+            let steps: [TaskStep] = try XCTUnwrap(TaskCatalog.guidedSteps(feeder, capabilities: nil))
+            XCTAssertEqual(steps.count, 1)
+            XCTAssertEqual(steps[0].title, own.title)
+            XCTAssertTrue(steps[0].repeats)
+            XCTAssertEqual(TaskCatalog.shownStep(own, settings: feeder), steps[0])
+            XCTAssertFalse(steps[0].prompt.contains("glass"))
+            XCTAssertFalse(steps[0].help.contains("lid"))
+        }
+        var receipts = TaskCatalog.apply(.receipt, to: ScanSettings())
+        receipts.source = .documentFeeder
+        XCTAssertEqual(TaskCatalog.guidedSteps(receipts, capabilities: nil)?.first?.prompt,
+                       "Load the receipts in the feeder, one per sheet, and scan.")
+        var photos = TaskCatalog.apply(.photos, to: ScanSettings())
+        photos.source = .documentFeeder
+        XCTAssertEqual(TaskCatalog.guidedSteps(photos, capabilities: nil)?.first?.prompt,
+                       "Load the photos in the feeder and scan.")
+    }
+
     func test_apply_resetsAdjustmentsToTheTasks() {
         XCTAssertEqual(TaskCatalog.apply(.document, to: customized()).adjustments, AdjustmentSettings())
         var restore = AdjustmentSettings()
@@ -587,7 +614,9 @@ final class ScanTaskTests: XCTestCase {
         XCTAssertEqual(fed.primaryActionLabel, "Scan stack")
         XCTAssertFalse(fed.prompt.contains("face down"))
         // Every other step is its task's own, from the feeder too, as are the steps of a stack turned over by hand.
-        for definition in TaskCatalog.all where definition.task != .document {
+        // Photos, Restore and Receipts word theirs for the feeder.
+        let reworded: [ScanTask] = [.document, .photos, .photoRestore, .receipt]
+        for definition in TaskCatalog.all where !reworded.contains(definition.task) {
             var own = TaskCatalog.apply(definition.task, to: ScanSettings())
             own.source = .documentFeeder
             for step in definition.steps {

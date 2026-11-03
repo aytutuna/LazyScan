@@ -427,6 +427,33 @@ public class ScanTaskTests
     }
 
     [Fact]
+    public void GuidedSteps_PhotosAndReceiptsLoadTheFeederWhenItIsTheSource()
+    {
+        foreach (var task in new[] { ScanTask.Photos, ScanTask.PhotoRestore, ScanTask.Receipt })
+        {
+            var glass = TaskCatalog.Apply(task, new ScanSettings());
+            Assert.Equal(TaskCatalog.Definition(task).Steps, TaskCatalog.GuidedSteps(glass, null));
+            Assert.Equal(TaskCatalog.Definition(task).Steps[0], TaskCatalog.ShownStep(TaskCatalog.Definition(task).Steps[0], glass));
+
+            var feeder = TaskCatalog.Apply(task, new ScanSettings());
+            feeder.Source = ScanSource.DocumentFeeder;
+            var steps = TaskCatalog.GuidedSteps(feeder, null)!;
+            var step = Assert.Single(steps);
+            Assert.Equal(TaskCatalog.Definition(task).Steps[0].Title, step.Title);
+            Assert.True(step.Repeats);
+            Assert.Equal(step, TaskCatalog.ShownStep(TaskCatalog.Definition(task).Steps[0], feeder));
+            Assert.DoesNotContain("glass", step.Prompt);
+            Assert.DoesNotContain("lid", step.Help);
+        }
+        var receipts = TaskCatalog.Apply(ScanTask.Receipt, new ScanSettings());
+        receipts.Source = ScanSource.DocumentFeeder;
+        Assert.Equal("Load the receipts in the feeder, one per sheet, and scan.", TaskCatalog.GuidedSteps(receipts, null)![0].Prompt);
+        var photos = TaskCatalog.Apply(ScanTask.Photos, new ScanSettings());
+        photos.Source = ScanSource.DocumentFeeder;
+        Assert.Equal("Load the photos in the feeder and scan.", TaskCatalog.GuidedSteps(photos, null)![0].Prompt);
+    }
+
+    [Fact]
     public void Apply_ResetsAdjustmentsToTheTasks()
     {
         var s = TaskCatalog.Apply(ScanTask.Document, Customized());
@@ -634,7 +661,8 @@ public class ScanTaskTests
         Assert.Equal("Scan stack", fed.PrimaryActionLabel);
         Assert.DoesNotContain("face down", fed.Prompt);
         // Every other step is its task's own, from the feeder too, as are the steps of a stack turned over by hand.
-        foreach (var definition in TaskCatalog.All.Where(d => d.Task != ScanTask.Document))
+        // Photos, Restore and Receipts word theirs for the feeder.
+        foreach (var definition in TaskCatalog.All.Where(d => d.Task is not (ScanTask.Document or ScanTask.Photos or ScanTask.PhotoRestore or ScanTask.Receipt)))
         {
             var own = TaskCatalog.Apply(definition.Task, new ScanSettings());
             own.Source = ScanSource.DocumentFeeder;
