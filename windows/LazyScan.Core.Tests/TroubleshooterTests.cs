@@ -613,7 +613,8 @@ public class TroubleshooterTests
     {
         Assert.Equal(NetworkStatus.Offline, Troubleshooter.CombineNetworks([]));
         Assert.Equal(NetworkStatus.PublicNetwork, Troubleshooter.CombineNetworks([NetworkStatus.PublicNetwork]));
-        Assert.Equal(NetworkStatus.PrivateNetwork, Troubleshooter.CombineNetworks([NetworkStatus.PublicNetwork, NetworkStatus.PrivateNetwork]));
+        Assert.Equal(NetworkStatus.PublicNetwork, Troubleshooter.CombineNetworks([NetworkStatus.PublicNetwork, NetworkStatus.PrivateNetwork]));
+        Assert.Equal(NetworkStatus.PrivateNetwork, Troubleshooter.CombineNetworks([NetworkStatus.PrivateNetwork]));
         Assert.Equal(NetworkStatus.DomainNetwork, Troubleshooter.CombineNetworks([NetworkStatus.PrivateNetwork, NetworkStatus.DomainNetwork]));
         Assert.Equal(NetworkStatus.Unknown, Troubleshooter.CombineNetworks([NetworkStatus.Unknown]));
         Assert.Equal(NetworkStatus.PublicNetwork, Troubleshooter.CombineNetworks([NetworkStatus.Unknown, NetworkStatus.PublicNetwork]));

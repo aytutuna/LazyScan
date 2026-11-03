@@ -319,16 +319,17 @@ public static class Troubleshooter
     }
 
     /// <summary>
-    /// The network status of a computer connected to these networks: none is offline; a domain
-    /// or private network among them is enough for network scanners to be found there.
+    /// The network status of a computer connected to these networks: none is offline; a public
+    /// network among them wins, since a VPN or other private adapter says nothing about the
+    /// Wi-Fi the scanner is on.
     /// </summary>
     public static NetworkStatus CombineNetworks(IEnumerable<NetworkStatus> connected)
     {
         var all = connected.Where(status => status is not (NetworkStatus.Unknown or NetworkStatus.Offline)).ToList();
         if (all.Count == 0) return connected.Any(status => status == NetworkStatus.Unknown) ? NetworkStatus.Unknown : NetworkStatus.Offline;
+        if (all.Contains(NetworkStatus.PublicNetwork)) return NetworkStatus.PublicNetwork;
         if (all.Contains(NetworkStatus.DomainNetwork)) return NetworkStatus.DomainNetwork;
-        if (all.Contains(NetworkStatus.PrivateNetwork)) return NetworkStatus.PrivateNetwork;
-        return NetworkStatus.PublicNetwork;
+        return NetworkStatus.PrivateNetwork;
     }
 
     /// <summary>

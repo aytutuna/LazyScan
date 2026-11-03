@@ -557,7 +557,8 @@ final class TroubleshooterTests: XCTestCase {
     func test_combineNetworks() {
         XCTAssertEqual(Troubleshooter.combineNetworks([]), .offline)
         XCTAssertEqual(Troubleshooter.combineNetworks([.publicNetwork]), .publicNetwork)
-        XCTAssertEqual(Troubleshooter.combineNetworks([.publicNetwork, .privateNetwork]), .privateNetwork)
+        XCTAssertEqual(Troubleshooter.combineNetworks([.publicNetwork, .privateNetwork]), .publicNetwork)
+        XCTAssertEqual(Troubleshooter.combineNetworks([.privateNetwork]), .privateNetwork)
         XCTAssertEqual(Troubleshooter.combineNetworks([.privateNetwork, .domainNetwork]), .domainNetwork)
         XCTAssertEqual(Troubleshooter.combineNetworks([.unknown]), .unknown)
         XCTAssertEqual(Troubleshooter.combineNetworks([.unknown, .publicNetwork]), .publicNetwork)

@@ -343,14 +343,15 @@ public enum Troubleshooter {
         return text
     }
 
-    /// The network status of a computer connected to these networks: none is offline; a domain or
-    /// private network among them is enough for network scanners to be found there.
+    /// The network status of a computer connected to these networks: none is offline; a public
+    /// network among them wins, since a VPN or other private adapter says nothing about the
+    /// Wi-Fi the scanner is on.
     public static func combineNetworks(_ connected: [NetworkStatus]) -> NetworkStatus {
         let all = connected.filter { $0 != .unknown && $0 != .offline }
         if all.isEmpty { return connected.contains(.unknown) ? .unknown : .offline }
+        if all.contains(.publicNetwork) { return .publicNetwork }
         if all.contains(.domainNetwork) { return .domainNetwork }
-        if all.contains(.privateNetwork) { return .privateNetwork }
-        return .publicNetwork
+        return .privateNetwork
     }
 
     /// What a failed connection or scan tells the troubleshooter; nil for errors that say nothing
