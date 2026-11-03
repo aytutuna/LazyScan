@@ -125,8 +125,8 @@ public class EsclDiscoveryTests
         Assert.Equal(address, ScannerAddress.Parse(address.ToString()));
         Assert.Equal($"fe80::1%{index}", ScannerAddress.Parse($"http://[fe80::1%{LoopbackName}]:8080").Host);
         // A zone of 0 or none at all is no zone; one that names no interface is refused, not dropped.
-        Assert.Equal("fe80::1", ScannerAddress.Parse("[fe80::1%0]").Host);
-        Assert.Equal("fe80::1", ScannerAddress.Parse("[fe80::1%]").Host);
+        Assert.Equal("2001:db8::1", ScannerAddress.Parse("[2001:db8::1%0]").Host);
+        Assert.Equal("2001:db8::1", ScannerAddress.Parse("[2001:db8::1%]").Host);
         Assert.False(ScannerAddress.TryParse("[fe80::1%nosuch0]", out _, out _));
     }
 
@@ -147,6 +147,9 @@ public class EsclDiscoveryTests
     [InlineData("[fe80::1%nosuch0]", "\"fe80::1%nosuch0\" is not a valid IP address or host name.")]
     [InlineData("fe80::1%99999999999", "\"fe80::1%99999999999\" is not a valid IP address or host name.")]
     [InlineData("http://[fe80::1%nosuch0]:8080", "That is not a valid address.")]
+    [InlineData("fe80::1a2b:3c4d:5e6f:7a8b", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.")]
+    [InlineData("[fe80::1%0]:8080", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.")]
+    [InlineData("http://[fe80::1]", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.")]
     public void BadAddressesSayWhatIsWrong(string text, string message)
     {
         Assert.False(ScannerAddress.TryParse(text, out var address, out string error));

@@ -97,7 +97,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
 
     /// <summary>
     /// Parses what a user typed. Accepted: an IPv4 or IPv6 address or host name, optionally
-    /// with a port ("host:8080", "[fe80::1]:8080"), or an http(s) URL with an optional port and
+    /// with a port ("host:8080", "[2001:db8::1]:8080"), or an http(s) URL with an optional port and
     /// resource path (a trailing "/ScannerCapabilities" is dropped). Plain addresses mean HTTP
     /// on port 80 at /eSCL. <paramref name="error"/> says what is wrong, for the user.
     /// </summary>
@@ -166,6 +166,11 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
             error = $"\"{host}\" is not a valid IP address or host name.";
             return false;
         }
+        if (LacksZone(normalized))
+        {
+            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.";
+            return false;
+        }
         address = new ScannerAddress(secure: false, normalized, portNumber, "eSCL");
         return true;
     }
@@ -199,6 +204,11 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
                 : $"\"{uri.Host}\" is not a valid IP address or host name.";
             return false;
         }
+        if (LacksZone(host))
+        {
+            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.";
+            return false;
+        }
         string path = Uri.UnescapeDataString(uri.AbsolutePath).Trim('/');
         const string capabilities = "ScannerCapabilities";
         if (path.Equals(capabilities, StringComparison.OrdinalIgnoreCase)) path = "";
@@ -209,6 +219,10 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         address = new ScannerAddress(secure, host, uri.Port, path.Length == 0 ? "eSCL" : path);
         return true;
     }
+
+    /// <summary>A link-local IPv6 address with no zone: it cannot be reached, as discovery also finds.</summary>
+    private static bool LacksZone(string host) =>
+        host.Contains(':') && ParseIPv6(host) is { IsIPv6LinkLocal: true, ScopeId: 0 };
 
     private static bool TryPort(string text, out int port) =>
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out port) && port is >= 1 and <= 65535;

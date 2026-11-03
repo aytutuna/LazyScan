@@ -148,8 +148,8 @@ final class EsclDiscoveryTests: XCTestCase {
         XCTAssertEqual(try ScannerAddress.parse(address.description), address)
         XCTAssertEqual(try ScannerAddress.parse("http://[fe80::1%\(loopbackName)]:8080").host, "fe80::1%\(index)")
         // A zone of 0 or none at all is no zone; one that names no interface is refused, not dropped.
-        XCTAssertEqual(try ScannerAddress.parse("[fe80::1%0]").host, "fe80::1")
-        XCTAssertEqual(try ScannerAddress.parse("[fe80::1%]").host, "fe80::1")
+        XCTAssertEqual(try ScannerAddress.parse("[2001:db8::1%0]").host, "2001:db8::1")
+        XCTAssertEqual(try ScannerAddress.parse("[2001:db8::1%]").host, "2001:db8::1")
         var error: String = ""
         XCTAssertNil(ScannerAddress.tryParse("[fe80::1%nosuch0]", error: &error))
     }
@@ -180,6 +180,9 @@ final class EsclDiscoveryTests: XCTestCase {
             ["[fe80::1%nosuch0]", "\"fe80::1%nosuch0\" is not a valid IP address or host name."],
             ["fe80::1%99999999999", "\"fe80::1%99999999999\" is not a valid IP address or host name."],
             ["http://[fe80::1%nosuch0]:8080", "That is not a valid address."],
+            ["fe80::1a2b:3c4d:5e6f:7a8b", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."],
+            ["[fe80::1%0]:8080", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."],
+            ["http://[fe80::1]", "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."],
         ]
         for row in rows {
             var error: String = ""

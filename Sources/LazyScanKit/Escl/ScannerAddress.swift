@@ -117,7 +117,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
     }
 
     /// Parses what a user typed. Accepted: an IPv4 or IPv6 address or host name, optionally with a
-    /// port ("host:8080", "[fe80::1]:8080"), or an http(s) URL with an optional port and resource path
+    /// port ("host:8080", "[2001:db8::1]:8080"), or an http(s) URL with an optional port and resource path
     /// (a trailing "/ScannerCapabilities" is dropped). Plain addresses mean HTTP on port 80 at /eSCL.
     /// nil when it is none of these, with what is wrong, for the user, in `error`.
     public static func tryParse(_ text: String?, error: inout String) -> ScannerAddress? {
@@ -182,7 +182,17 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
             error = "\"\(host)\" is not a valid IP address or host name."
             return nil
         }
+        if lacksZone(normalized) {
+            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."
+            return nil
+        }
         return ScannerAddress(secure: false, host: normalized, port: portNumber, resourcePath: "eSCL")
+    }
+
+    /// A link-local IPv6 address with no zone: it cannot be reached, as discovery also finds.
+    private static func lacksZone(_ host: String) -> Bool {
+        guard host.contains(":"), let ip = EsclHostText.ipv6(host) else { return false }
+        return ip.isLinkLocal && ip.zone == 0
     }
 
     private static func tryParseUrl(_ value: String, error: inout String) -> ScannerAddress? {
@@ -210,6 +220,10 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
             } else {
                 error = "\"\(parts.host.lowercased())\" is not a valid IP address or host name."
             }
+            return nil
+        }
+        if lacksZone(host) {
+            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."
             return nil
         }
         let decoded: String = EsclUrlText.removeDotSegments(parts.path).removingPercentEncoding
