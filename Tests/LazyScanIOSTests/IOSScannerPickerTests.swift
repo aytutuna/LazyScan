@@ -480,6 +480,7 @@ final class IOSScannerPickerTests: XCTestCase {
         XCTAssertTrue(model.accessDenied)
         XCTAssertEqual(model.message, IOSNetworkText.deniedLine)
         XCTAssertEqual(reported.value, 1)
+        XCTAssertEqual(checker.firstUses.count, 3)
         XCTAssertTrue(checker.added.isEmpty)
     }
 

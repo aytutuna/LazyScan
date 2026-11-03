@@ -256,7 +256,17 @@ public final class IOSAddScannerModel: ObservableObject {
             if Task.isCancelled {
                 return false
             }
-            // A bare host that did not answer over HTTP may serve eSCL over HTTPS.
+            if result.noAnswer, let probe = localNetwork {
+                let denied: Bool = await probe.isDenied(host: typed.host, port: typed.port)
+                if denied {
+                    accessDenied = true
+                    message = IOSNetworkText.deniedLine
+                    onDenied?()
+                    return false
+                }
+            }
+            // A bare host that did not answer over HTTP may serve eSCL over HTTPS; not worth a second wait
+            // when Local Network access is what stopped the first.
             if result.noAnswer, let https {
                 address = https
                 message = IOSNetworkText.connecting(address)
@@ -293,15 +303,6 @@ public final class IOSAddScannerModel: ObservableObject {
                 addedDeviceID = checker.addAddress(address, capabilities: capabilities)
                 message = nil
                 return true
-            }
-            if result.noAnswer, let probe = localNetwork {
-                let denied: Bool = await probe.isDenied(host: typed.host, port: typed.port)
-                if denied {
-                    accessDenied = true
-                    message = IOSNetworkText.deniedLine
-                    onDenied?()
-                    return false
-                }
             }
             message = result.certificate?.message ?? result.error ?? "No scanner answered at \(address)."
             return false
