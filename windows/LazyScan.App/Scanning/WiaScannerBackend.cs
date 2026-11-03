@@ -408,6 +408,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     private bool? _supportsDuplex;
     /// <summary>The source selected by the last <see cref="PrepareItemCore"/> scans both sides (WIA thread only).</summary>
     private bool _preparedTwoSided;
+    private int _preparedDpi;
 
     public Task<ScannerCapabilities> GetCapabilitiesAsync() => RunSta(() =>
     {
@@ -519,7 +520,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                     {
                         RgbaImage image = Transfer(item);
                         if (_cancelRequested) throw ScanException.Cancelled();
-                        pages.Add(new ScannedPage(image, settings.Resolution, settings.ColorMode));
+                        pages.Add(new ScannedPage(image, _preparedDpi, settings.ColorMode));
                     }
                 }
                 finally
@@ -561,7 +562,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                 return;
             }
             if (_cancelRequested) throw ScanException.Cancelled();
-            pages.Add(new ScannedPage(image, settings.Resolution, settings.ColorMode));
+            pages.Add(new ScannedPage(image, _preparedDpi, settings.ColorMode));
             ProgressHandler?.Invoke(new ScanProgress($"Transferred sheet {pages.Count}…"));
         }
     }
@@ -630,8 +631,21 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             ColorMode.Grayscale => 2,
             _ => 4, // text/threshold
         });
+        // The nearest value the source accepts, then what the driver took: the extents and
+        // the pages' resolution follow that, not the request.
+        try
+        {
+            List<int>? valid = ValidResolutions(props[WiaScannerBackend.HorizontalResolution]);
+            if (valid is { Count: > 0 }) dpi = valid.MinBy(v => Math.Abs(v - dpi));
+        }
+        catch
+        {
+            // no list: ask for the request as is
+        }
         WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.HorizontalResolution, dpi);
         WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.VerticalResolution, dpi);
+        if (ToInt(WiaScannerBackend.TryGetProperty(props, WiaScannerBackend.HorizontalResolution)) is > 0 and var taken) dpi = taken;
+        _preparedDpi = dpi;
 
         // The paper's area on the feeder, in pixels at the chosen resolution, for drivers that
         // take the extents rather than the page size.
@@ -738,31 +752,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             WiaScannerBackend.TrySetProperty(device.Properties, WiaScannerBackend.DocumentHandlingSelect,
                 unit == ScanSource.DocumentFeeder ? WiaScannerBackend.HandlingFeeder : WiaScannerBackend.HandlingFlatbed);
             dynamic item = device.Items[1];
-            dynamic property = item.Properties[WiaScannerBackend.HorizontalResolution];
-            int subType = Convert.ToInt32((object)property.SubType);
-            var supported = new List<int>();
-            if (subType == 2)
-            {
-                dynamic values = property.SubTypeValues;
-                int count = values.Count;
-                for (int i = 1; i <= count; i++) // WIA vectors are 1-based
-                {
-                    object value = values[i];
-                    int dpi = Convert.ToInt32(value);
-                    if (dpi > 0) supported.Add(dpi);
-                }
-            }
-            else if (subType == 1)
-            {
-                int min = Convert.ToInt32((object)property.SubTypeMin);
-                int max = Convert.ToInt32((object)property.SubTypeMax);
-                int step = Convert.ToInt32((object)property.SubTypeStep);
-                supported.AddRange(ResolutionList.ExpandRange(min, max, step).Where(v => v > 0));
-            }
-            else
-            {
-                return null;
-            }
+            List<int>? supported = ValidResolutions(item.Properties[WiaScannerBackend.HorizontalResolution]);
+            if (supported is null) return null;
             object? optical = WiaScannerBackend.TryGetProperty(device.Properties, WiaScannerBackend.OpticalXResolution);
             int native = ToInt(optical) ?? 0;
             var list = ResolutionList.Build(preferred: null, supported, native);
@@ -772,6 +763,36 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         {
             return null;
         }
+    }
+
+    /// <summary>The valid values of a resolution property (WiaSubType List = 2 or Range = 1); null for any other kind.</summary>
+    private static List<int>? ValidResolutions(dynamic property)
+    {
+        int subType = Convert.ToInt32((object)property.SubType);
+        var supported = new List<int>();
+        if (subType == 2)
+        {
+            dynamic values = property.SubTypeValues;
+            int count = values.Count;
+            for (int i = 1; i <= count; i++) // WIA vectors are 1-based
+            {
+                object value = values[i];
+                int dpi = Convert.ToInt32(value);
+                if (dpi > 0) supported.Add(dpi);
+            }
+        }
+        else if (subType == 1)
+        {
+            int min = Convert.ToInt32((object)property.SubTypeMin);
+            int max = Convert.ToInt32((object)property.SubTypeMax);
+            int step = Convert.ToInt32((object)property.SubTypeStep);
+            supported.AddRange(ResolutionList.ExpandRange(min, max, step).Where(v => v > 0));
+        }
+        else
+        {
+            return null;
+        }
+        return supported;
     }
 
     /// <summary>A numeric property value; null when missing or not a number.</summary>
