@@ -10,6 +10,14 @@ public enum ScanIntent: String, Codable, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
+        case .document: return L10n.t("Document")
+        case .photo: return L10n.t("Photos")
+        }
+    }
+
+    /// The {intent} file name token: English whatever the language, so names match across devices.
+    public var fileLabel: String {
+        switch self {
         case .document: return "Document"
         case .photo: return "Photos"
         }
@@ -24,9 +32,9 @@ public enum ColorMode: String, Codable, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .color: return "Color"
-        case .grayscale: return "Grayscale"
-        case .blackWhite: return "Black & White"
+        case .color: return L10n.t("Color")
+        case .grayscale: return L10n.t("Grayscale")
+        case .blackWhite: return L10n.t("Black & White")
         }
     }
 }
@@ -38,16 +46,16 @@ public enum ScanSource: String, Codable, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .flatbed: return "Flatbed"
-        case .documentFeeder: return "Document feeder"
+        case .flatbed: return L10n.t("Flatbed")
+        case .documentFeeder: return L10n.t("Document feeder")
         }
     }
 
     /// The source's tooltip: what the plain name stands for.
     public var hint: String {
         switch self {
-        case .flatbed: return "The scanner's glass"
-        case .documentFeeder: return "Automatic document feeder (ADF)"
+        case .flatbed: return L10n.t("The scanner's glass")
+        case .documentFeeder: return L10n.t("Automatic document feeder (ADF)")
         }
     }
 }
@@ -65,7 +73,7 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
         case .jpeg: return "JPEG"
         case .png: return "PNG"
         case .tiff: return "TIFF"
-        case .text: return "Text (.txt)"
+        case .text: return L10n.t("Text (.txt)")
         case .word: return "Word (.docx)"
         }
     }
@@ -153,20 +161,20 @@ public enum PDFSizePreset: String, Codable, CaseIterable, Identifiable, Sendable
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .standard: return "Standard"
-        case .best: return "Best"
-        case .compact: return "Compact"
-        case .smallest: return "Smallest"
+        case .standard: return L10n.t("Standard")
+        case .best: return L10n.t("Best")
+        case .compact: return L10n.t("Compact")
+        case .smallest: return L10n.t("Smallest")
         }
     }
 
     /// What the size is for, in a few words: the segment's tooltip.
     public var hint: String {
         switch self {
-        case .standard: return "Good for most documents"
-        case .best: return "Full quality, largest files"
-        case .compact: return "Smaller, for email and uploads"
-        case .smallest: return "Smallest, for strict size limits"
+        case .standard: return L10n.t("Good for most documents")
+        case .best: return L10n.t("Full quality, largest files")
+        case .compact: return L10n.t("Smaller, for email and uploads")
+        case .smallest: return L10n.t("Smallest, for strict size limits")
         }
     }
 
@@ -174,10 +182,10 @@ public enum PDFSizePreset: String, Codable, CaseIterable, Identifiable, Sendable
     public var detail: String {
         switch self {
         // Black & white pages are CCITT G4 up to their own, higher limit on both platforms.
-        case .standard: return "Up to 300 dpi (black & white 600), gray pages saved in gray."
-        case .best: return "Full resolution, high quality."
-        case .compact: return "Up to 200 dpi (black & white 300), more compression."
-        case .smallest: return "Up to 150 dpi (black & white 300), most compression."
+        case .standard: return L10n.t("Up to 300 dpi (black & white 600), gray pages saved in gray.")
+        case .best: return L10n.t("Full resolution, high quality.")
+        case .compact: return L10n.t("Up to 200 dpi (black & white 300), more compression.")
+        case .smallest: return L10n.t("Up to 150 dpi (black & white 300), most compression.")
         }
     }
 
@@ -199,18 +207,18 @@ public enum DuplexMode: String, Codable, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .off: return "One side"
-        case .both: return "Both sides"
-        case .manual: return "Both sides, turned by hand"
+        case .off: return L10n.t("One side")
+        case .both: return L10n.t("Both sides")
+        case .manual: return L10n.t("Both sides, turned by hand")
         }
     }
 
     /// What the choice does, in a few words: its tooltip.
     public var hint: String {
         switch self {
-        case .off: return "Front only"
-        case .both: return "Both sides in one pass"
-        case .manual: return "Scan the fronts, flip the stack, scan the backs"
+        case .off: return L10n.t("Front only")
+        case .both: return L10n.t("Both sides in one pass")
+        case .manual: return L10n.t("Scan the fronts, flip the stack, scan the backs")
         }
     }
 }
@@ -225,13 +233,13 @@ public enum DuplexBinding: String, Codable, CaseIterable, Identifiable, Sendable
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .longEdge: return "Long edge (book)"
-        case .shortEdge: return "Short edge (calendar)"
+        case .longEdge: return L10n.t("Long edge (book)")
+        case .shortEdge: return L10n.t("Short edge (calendar)")
         }
     }
 
     /// The Flip on picker's tooltip. Twin of C# `DuplexBindings.PickerHint`.
-    public static let pickerHint = "Which edge the sheets turn on"
+    public static var pickerHint: String { L10n.t("Which edge the sheets turn on") }
 }
 
 /// How much may be on a page for it to count as blank (`DocumentOptions.blankSensitivity`,
@@ -247,18 +255,18 @@ public enum BlankSensitivity: String, Codable, CaseIterable, Identifiable, Senda
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .low: return "Low"
-        case .medium: return "Medium"
-        case .high: return "High"
+        case .low: return L10n.t("Low")
+        case .medium: return L10n.t("Medium")
+        case .high: return L10n.t("High")
         }
     }
 
     /// What counts as blank at that level, in a few words: the segment's tooltip.
     public var hint: String {
         switch self {
-        case .low: return "Only empty pages"
-        case .medium: return "Also dust or a page number"
-        case .high: return "Also pages with small marks"
+        case .low: return L10n.t("Only empty pages")
+        case .medium: return L10n.t("Also dust or a page number")
+        case .high: return L10n.t("Also pages with small marks")
         }
     }
 
@@ -267,7 +275,7 @@ public enum BlankSensitivity: String, Codable, CaseIterable, Identifiable, Senda
 
     /// The line that stays visible under the levels at High: pages with a few marks may be left out.
     /// Twin of C# `BlankSensitivities.HighWarning`.
-    public static let highWarning = "Check flagged pages before saving"
+    public static var highWarning: String { L10n.t("Check flagged pages before saving") }
 }
 
 /// The user's say over whether a queued page is saved (`ScannedPage.inclusion`): `.automatic`
@@ -310,22 +318,22 @@ public enum SplitMode: String, Codable, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .none: return "Off"
-        case .separatorSheet: return "At separator sheets"
-        case .blankSheet: return "At blank sheets"
-        case .sheetCount: return "Every few sheets"
-        case .barcode: return "At QR codes or barcodes"
+        case .none: return L10n.t("Off")
+        case .separatorSheet: return L10n.t("At separator sheets")
+        case .blankSheet: return L10n.t("At blank sheets")
+        case .sheetCount: return L10n.t("Every few sheets")
+        case .barcode: return L10n.t("At QR codes or barcodes")
         }
     }
 
     /// How the stack is split, in a few words: the choice's tooltip.
     public var hint: String {
         switch self {
-        case .none: return "All pages in one document"
-        case .separatorSheet: return "A separator sheet starts each document"
-        case .blankSheet: return "A blank sheet between documents splits them"
-        case .sheetCount: return "A new document every few sheets"
-        case .barcode: return "A code starts each document and can name it"
+        case .none: return L10n.t("All pages in one document")
+        case .separatorSheet: return L10n.t("A separator sheet starts each document")
+        case .blankSheet: return L10n.t("A blank sheet between documents splits them")
+        case .sheetCount: return L10n.t("A new document every few sheets")
+        case .barcode: return L10n.t("A code starts each document and can name it")
         }
     }
 
@@ -333,8 +341,8 @@ public enum SplitMode: String, Codable, CaseIterable, Identifiable, Sendable {
     /// left out"); empty where the choice's own controls say it (every few sheets, codes).
     public var caption: String {
         switch self {
-        case .separatorSheet: return "Separator sheets are left out"
-        case .blankSheet: return "Blank sheets are left out"
+        case .separatorSheet: return L10n.t("Separator sheets are left out")
+        case .blankSheet: return L10n.t("Blank sheets are left out")
         case .none, .sheetCount, .barcode: return ""
         }
     }
@@ -343,15 +351,15 @@ public enum SplitMode: String, Codable, CaseIterable, Identifiable, Sendable {
     public var steps: String {
         switch self {
         case .none:
-            return "All the pages are saved as one document. Right-click a page to start a new document there."
+            return L10n.t("All the pages are saved as one document. Right-click a page to start a new document there.")
         case .separatorSheet:
-            return "1. Save or print a separator sheet. 2. Put one in front of each document after the first. 3. Scan the stack. 4. Check the dividers in the page strip, then save."
+            return L10n.t("1. Save or print a separator sheet. 2. Put one in front of each document after the first. 3. Scan the stack. 4. Check the dividers in the page strip, then save.")
         case .blankSheet:
-            return "Put an empty sheet between documents. With both sides scanned, only a sheet blank on both sides splits."
+            return L10n.t("Put an empty sheet between documents. With both sides scanned, only a sheet blank on both sides splits.")
         case .sheetCount:
-            return "A new document starts every few sheets, for forms that all have the same number of sheets. Check the dividers in the page strip, then save."
+            return L10n.t("A new document starts every few sheets, for forms that all have the same number of sheets. Check the dividers in the page strip, then save.")
         case .barcode:
-            return "1. Print a QR sheet, one per document, with a name or without. 2. Put it in front of the document. 3. Scan: the sheet is left out and its name names the document. Only codes starting with LS-SEP count."
+            return L10n.t("1. Print a QR sheet, one per document, with a name or without. 2. Put it in front of the document. 3. Scan: the sheet is left out and its name names the document. Only codes starting with LS-SEP count.")
         }
     }
 
@@ -1363,12 +1371,12 @@ public enum ScanError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .deviceUnavailable(let s): return "Scanner unavailable: \(s)"
-        case .sessionFailed(let s): return "Could not open a session with the scanner: \(s)"
-        case .scanFailed(let s): return "Scan failed: \(s)"
-        case .cancelled: return "The scan was cancelled."
-        case .exportFailed(let s): return "Saving failed: \(s)"
-        case .unsupported(let s): return "Unsupported: \(s)"
+        case .deviceUnavailable(let s): return L10n.t("Scanner unavailable: {0}", s)
+        case .sessionFailed(let s): return L10n.t("Could not open a session with the scanner: {0}", s)
+        case .scanFailed(let s): return L10n.t("Scan failed: {0}", s)
+        case .cancelled: return L10n.t("The scan was cancelled.")
+        case .exportFailed(let s): return L10n.t("Saving failed: {0}", s)
+        case .unsupported(let s): return L10n.t("Unsupported: {0}", s)
         case .scannerProblem(let p): return ScannerProblems.describe(p)
         }
     }

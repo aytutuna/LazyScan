@@ -167,4 +167,21 @@ public class PaperSizeTests
         Assert.Equal("Too big for this feeder", PaperSizes.DoesNotFitReason(ScanSource.DocumentFeeder));
         Assert.Equal("Using the selected area", PaperSizes.SelectedAreaNote);
     }
+
+    [Fact]
+    public void DetailUsesTheCulturesDecimalSeparator()
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+            Assert.Equal("8,5 × 11 in", PaperSize.Letter.Detail());
+            Assert.Equal("85,6 × 54 mm", PaperSize.IdCard.Detail());
+            Assert.Equal("210 × 297 mm", PaperSize.A4.Detail());
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+        }
+    }
 }

@@ -56,6 +56,13 @@ final class NamingTemplateTests: XCTestCase {
         XCTAssertEqual(render("{intent}", intent: .photo), "Photos")
     }
 
+    func test_intentToken_staysEnglishInAnotherLanguage() {
+        L10n.withTable(["Document": "Belge", "Photos": "Fotoğraflar"], language: "tr") {
+            XCTAssertEqual(render("{intent}", intent: .document), "Document")
+            XCTAssertEqual(render("{task}", intent: .photo), "Photos")
+        }
+    }
+
     func test_indexTokenSubstituted() {
         XCTAssertEqual(render("Photo {index}", index: 7), "Photo 7")
     }

@@ -176,6 +176,14 @@ public static class ModelLabels
 {
     public static string Label(this ScanIntent intent) => intent switch
     {
+        ScanIntent.Document => Loc.T("Document"),
+        ScanIntent.Photo => Loc.T("Photos"),
+        _ => intent.ToString(),
+    };
+
+    /// <summary>The {intent} file name token: English whatever the language, so names match across devices.</summary>
+    public static string FileLabel(this ScanIntent intent) => intent switch
+    {
         ScanIntent.Document => "Document",
         ScanIntent.Photo => "Photos",
         _ => intent.ToString(),
@@ -183,24 +191,24 @@ public static class ModelLabels
 
     public static string Label(this ColorMode mode) => mode switch
     {
-        ColorMode.Color => "Color",
-        ColorMode.Grayscale => "Grayscale",
-        ColorMode.BlackWhite => "Black & White",
+        ColorMode.Color => Loc.T("Color"),
+        ColorMode.Grayscale => Loc.T("Grayscale"),
+        ColorMode.BlackWhite => Loc.T("Black & White"),
         _ => mode.ToString(),
     };
 
     public static string Label(this ScanSource source) => source switch
     {
-        ScanSource.Flatbed => "Flatbed",
-        ScanSource.DocumentFeeder => "Document feeder",
+        ScanSource.Flatbed => Loc.T("Flatbed"),
+        ScanSource.DocumentFeeder => Loc.T("Document feeder"),
         _ => source.ToString(),
     };
 
     /// <summary>The source's tooltip: what the plain name stands for.</summary>
     public static string Hint(this ScanSource source) => source switch
     {
-        ScanSource.DocumentFeeder => "Automatic document feeder (ADF)",
-        _ => "The scanner's glass",
+        ScanSource.DocumentFeeder => Loc.T("Automatic document feeder (ADF)"),
+        _ => Loc.T("The scanner's glass"),
     };
 
     public static string Label(this OutputFormat format) => format switch
@@ -209,118 +217,118 @@ public static class ModelLabels
         OutputFormat.Jpeg => "JPEG",
         OutputFormat.Png => "PNG",
         OutputFormat.Tiff => "TIFF",
-        OutputFormat.Text => "Text (.txt)",
+        OutputFormat.Text => Loc.T("Text (.txt)"),
         OutputFormat.Word => "Word (.docx)",
         _ => format.ToString(),
     };
 
     public static string Label(this PdfSizePreset preset) => preset switch
     {
-        PdfSizePreset.Standard => "Standard",
-        PdfSizePreset.Best => "Best",
-        PdfSizePreset.Compact => "Compact",
-        PdfSizePreset.Smallest => "Smallest",
+        PdfSizePreset.Standard => Loc.T("Standard"),
+        PdfSizePreset.Best => Loc.T("Best"),
+        PdfSizePreset.Compact => Loc.T("Compact"),
+        PdfSizePreset.Smallest => Loc.T("Smallest"),
         _ => preset.ToString(),
     };
 
     /// <summary>What the size is for, in a few words: the segment's tooltip.</summary>
     public static string Hint(this PdfSizePreset preset) => preset switch
     {
-        PdfSizePreset.Standard => "Good for most documents",
-        PdfSizePreset.Best => "Full quality, largest files",
-        PdfSizePreset.Compact => "Smaller, for email and uploads",
-        PdfSizePreset.Smallest => "Smallest, for strict size limits",
+        PdfSizePreset.Standard => Loc.T("Good for most documents"),
+        PdfSizePreset.Best => Loc.T("Full quality, largest files"),
+        PdfSizePreset.Compact => Loc.T("Smaller, for email and uploads"),
+        PdfSizePreset.Smallest => Loc.T("Smallest, for strict size limits"),
         _ => "",
     };
 
     /// <summary>How the size stores the pages, for screen readers (the segment's help text).</summary>
     public static string Detail(this PdfSizePreset preset) => preset switch
     {
-        PdfSizePreset.Standard => "Up to 300 dpi (black & white 600), gray pages saved in gray.",
-        PdfSizePreset.Best => "Full resolution, high quality.",
-        PdfSizePreset.Compact => "Up to 200 dpi (black & white 300), more compression.",
-        PdfSizePreset.Smallest => "Up to 150 dpi (black & white 300), most compression.",
+        PdfSizePreset.Standard => Loc.T("Up to 300 dpi (black & white 600), gray pages saved in gray."),
+        PdfSizePreset.Best => Loc.T("Full resolution, high quality."),
+        PdfSizePreset.Compact => Loc.T("Up to 200 dpi (black & white 300), more compression."),
+        PdfSizePreset.Smallest => Loc.T("Up to 150 dpi (black & white 300), most compression."),
         _ => "",
     };
 
     public static string Label(this AfterSaveAction action) => action switch
     {
-        AfterSaveAction.None => "Do nothing",
-        AfterSaveAction.Open => "Open",
-        AfterSaveAction.Reveal => "Show in folder",
-        AfterSaveAction.Share => "Share…",
+        AfterSaveAction.None => Loc.T("Do nothing"),
+        AfterSaveAction.Open => Loc.T("Open"),
+        AfterSaveAction.Reveal => Loc.T("Show in folder"),
+        AfterSaveAction.Share => Loc.T("Share…"),
         _ => action.ToString(),
     };
 
     /// <summary>What the after-save action does, in a few words: its tooltip.</summary>
     public static string Hint(this AfterSaveAction action) => action switch
     {
-        AfterSaveAction.None => "Stay here",
-        AfterSaveAction.Open => "Open the file (several: show the folder)",
-        AfterSaveAction.Reveal => "Show the files in their folder",
-        AfterSaveAction.Share => "Email or send to an app",
+        AfterSaveAction.None => Loc.T("Stay here"),
+        AfterSaveAction.Open => Loc.T("Open the file (several: show the folder)"),
+        AfterSaveAction.Reveal => Loc.T("Show the files in their folder"),
+        AfterSaveAction.Share => Loc.T("Email or send to an app"),
         _ => "",
     };
 
     public static string Label(this DuplexMode mode) => mode switch
     {
-        DuplexMode.Off => "One side",
-        DuplexMode.Both => "Both sides",
-        DuplexMode.Manual => "Both sides, turned by hand",
+        DuplexMode.Off => Loc.T("One side"),
+        DuplexMode.Both => Loc.T("Both sides"),
+        DuplexMode.Manual => Loc.T("Both sides, turned by hand"),
         _ => mode.ToString(),
     };
 
     /// <summary>What the choice does, in a few words: its tooltip.</summary>
     public static string Hint(this DuplexMode mode) => mode switch
     {
-        DuplexMode.Off => "Front only",
-        DuplexMode.Both => "Both sides in one pass",
-        DuplexMode.Manual => "Scan the fronts, flip the stack, scan the backs",
+        DuplexMode.Off => Loc.T("Front only"),
+        DuplexMode.Both => Loc.T("Both sides in one pass"),
+        DuplexMode.Manual => Loc.T("Scan the fronts, flip the stack, scan the backs"),
         _ => "",
     };
 
     public static string Label(this DuplexBinding binding) => binding switch
     {
-        DuplexBinding.LongEdge => "Long edge (book)",
-        DuplexBinding.ShortEdge => "Short edge (calendar)",
+        DuplexBinding.LongEdge => Loc.T("Long edge (book)"),
+        DuplexBinding.ShortEdge => Loc.T("Short edge (calendar)"),
         _ => binding.ToString(),
     };
 
     public static string Label(this BlankSensitivity sensitivity) => sensitivity switch
     {
-        BlankSensitivity.Low => "Low",
-        BlankSensitivity.Medium => "Medium",
-        BlankSensitivity.High => "High",
+        BlankSensitivity.Low => Loc.T("Low"),
+        BlankSensitivity.Medium => Loc.T("Medium"),
+        BlankSensitivity.High => Loc.T("High"),
         _ => sensitivity.ToString(),
     };
 
     /// <summary>What counts as blank at that level, in a few words: the segment's tooltip.</summary>
     public static string Hint(this BlankSensitivity sensitivity) => sensitivity switch
     {
-        BlankSensitivity.Low => "Only empty pages",
-        BlankSensitivity.Medium => "Also dust or a page number",
-        BlankSensitivity.High => "Also pages with small marks",
+        BlankSensitivity.Low => Loc.T("Only empty pages"),
+        BlankSensitivity.Medium => Loc.T("Also dust or a page number"),
+        BlankSensitivity.High => Loc.T("Also pages with small marks"),
         _ => "",
     };
 
     public static string Label(this SplitMode mode) => mode switch
     {
-        SplitMode.None => "Off",
-        SplitMode.SeparatorSheet => "At separator sheets",
-        SplitMode.BlankSheet => "At blank sheets",
-        SplitMode.SheetCount => "Every few sheets",
-        SplitMode.Barcode => "At QR codes or barcodes",
+        SplitMode.None => Loc.T("Off"),
+        SplitMode.SeparatorSheet => Loc.T("At separator sheets"),
+        SplitMode.BlankSheet => Loc.T("At blank sheets"),
+        SplitMode.SheetCount => Loc.T("Every few sheets"),
+        SplitMode.Barcode => Loc.T("At QR codes or barcodes"),
         _ => mode.ToString(),
     };
 
     /// <summary>How the stack is split, in a few words: the choice's tooltip.</summary>
     public static string Hint(this SplitMode mode) => mode switch
     {
-        SplitMode.None => "All pages in one document",
-        SplitMode.SeparatorSheet => "A separator sheet starts each document",
-        SplitMode.BlankSheet => "A blank sheet between documents splits them",
-        SplitMode.SheetCount => "A new document every few sheets",
-        SplitMode.Barcode => "A code starts each document and can name it",
+        SplitMode.None => Loc.T("All pages in one document"),
+        SplitMode.SeparatorSheet => Loc.T("A separator sheet starts each document"),
+        SplitMode.BlankSheet => Loc.T("A blank sheet between documents splits them"),
+        SplitMode.SheetCount => Loc.T("A new document every few sheets"),
+        SplitMode.Barcode => Loc.T("A code starts each document and can name it"),
         _ => "",
     };
 
@@ -330,33 +338,30 @@ public static class ModelLabels
     /// </summary>
     public static string Caption(this SplitMode mode) => mode switch
     {
-        SplitMode.SeparatorSheet => "Separator sheets are left out",
-        SplitMode.BlankSheet => "Blank sheets are left out",
+        SplitMode.SeparatorSheet => Loc.T("Separator sheets are left out"),
+        SplitMode.BlankSheet => Loc.T("Blank sheets are left out"),
         _ => "",
     };
 
     /// <summary>How it works, step by step: what the ⓘ next to "Split into documents" shows.</summary>
     public static string Steps(this SplitMode mode) => mode switch
     {
-        SplitMode.None => "All the pages are saved as one document. Right-click a page to start a new document there.",
-        SplitMode.SeparatorSheet => "1. Save or print a separator sheet. 2. Put one in front of each document after the first. "
-                                    + "3. Scan the stack. 4. Check the dividers in the page strip, then save.",
-        SplitMode.BlankSheet => "Put an empty sheet between documents. With both sides scanned, only a sheet blank on both sides splits.",
-        SplitMode.SheetCount => "A new document starts every few sheets, for forms that all have the same number of sheets. "
-                                + "Check the dividers in the page strip, then save.",
-        SplitMode.Barcode => "1. Print a QR sheet, one per document, with a name or without. 2. Put it in front of the document. "
-                             + "3. Scan: the sheet is left out and its name names the document. Only codes starting with LS-SEP count.",
+        SplitMode.None => Loc.T("All the pages are saved as one document. Right-click a page to start a new document there."),
+        SplitMode.SeparatorSheet => Loc.T("1. Save or print a separator sheet. 2. Put one in front of each document after the first. 3. Scan the stack. 4. Check the dividers in the page strip, then save."),
+        SplitMode.BlankSheet => Loc.T("Put an empty sheet between documents. With both sides scanned, only a sheet blank on both sides splits."),
+        SplitMode.SheetCount => Loc.T("A new document starts every few sheets, for forms that all have the same number of sheets. Check the dividers in the page strip, then save."),
+        SplitMode.Barcode => Loc.T("1. Print a QR sheet, one per document, with a name or without. 2. Put it in front of the document. 3. Scan: the sheet is left out and its name names the document. Only codes starting with LS-SEP count."),
         _ => "",
     };
 
     public static string Label(this FileAction action) => action switch
     {
-        FileAction.Open => "Open",
-        FileAction.OpenWith => "Open with…",
-        FileAction.Reveal => "Show in folder",
-        FileAction.Share => "Share…",
-        FileAction.Email => "Email…",
-        FileAction.Copy => "Copy",
+        FileAction.Open => Loc.T("Open"),
+        FileAction.OpenWith => Loc.T("Open with…"),
+        FileAction.Reveal => Loc.T("Show in folder"),
+        FileAction.Share => Loc.T("Share…"),
+        FileAction.Email => Loc.T("Email…"),
+        FileAction.Copy => Loc.T("Copy"),
         _ => action.ToString(),
     };
 
@@ -737,13 +742,13 @@ public static class BlankSensitivities
         [BlankSensitivity.Low, BlankSensitivity.Medium, BlankSensitivity.High];
 
     /// <summary>The line that stays visible under the levels at High: pages with a few marks may be left out.</summary>
-    public const string HighWarning = "Check flagged pages before saving";
+    public static string HighWarning => Loc.T("Check flagged pages before saving");
 }
 
 public static class DuplexBindings
 {
     /// <summary>The Flip on picker's tooltip.</summary>
-    public const string PickerHint = "Which edge the sheets turn on";
+    public static string PickerHint => Loc.T("Which edge the sheets turn on");
 }
 
 public static class SplitModes
@@ -1734,15 +1739,15 @@ public sealed class ScanException : Exception
     }
 
     public static ScanException DeviceUnavailable(string detail) =>
-        new(ScanErrorKind.DeviceUnavailable, $"Scanner unavailable: {detail}");
+        new(ScanErrorKind.DeviceUnavailable, Loc.T("Scanner unavailable: {0}", detail));
     public static ScanException SessionFailed(string detail) =>
-        new(ScanErrorKind.SessionFailed, $"Could not open a session with the scanner: {detail}");
+        new(ScanErrorKind.SessionFailed, Loc.T("Could not open a session with the scanner: {0}", detail));
     public static ScanException ScanFailed(string detail) =>
-        new(ScanErrorKind.ScanFailed, $"Scan failed: {detail}");
+        new(ScanErrorKind.ScanFailed, Loc.T("Scan failed: {0}", detail));
     public static ScanException Cancelled() =>
-        new(ScanErrorKind.Cancelled, "The scan was cancelled.");
+        new(ScanErrorKind.Cancelled, Loc.T("The scan was cancelled."));
     public static ScanException ExportFailed(string detail) =>
-        new(ScanErrorKind.ExportFailed, $"Saving failed: {detail}");
+        new(ScanErrorKind.ExportFailed, Loc.T("Saving failed: {0}", detail));
     public static ScanException Unsupported(string detail) =>
-        new(ScanErrorKind.Unsupported, $"Unsupported: {detail}");
+        new(ScanErrorKind.Unsupported, Loc.T("Unsupported: {0}", detail));
 }

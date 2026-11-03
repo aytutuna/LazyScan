@@ -17,20 +17,20 @@ public enum AfterSaveAction: String, Codable, CaseIterable, Identifiable, Sendab
 
     public var label: String {
         switch self {
-        case .none: return "Do nothing"
-        case .open: return "Open"
-        case .reveal: return "Show in folder"
-        case .share: return "Share\u{2026}"
+        case .none: return L10n.t("Do nothing")
+        case .open: return L10n.t("Open")
+        case .reveal: return L10n.t("Show in folder")
+        case .share: return L10n.t("Share…")
         }
     }
 
     /// What the after-save action does, in a few words: its tooltip.
     public var hint: String {
         switch self {
-        case .none: return "Stay here"
-        case .open: return "Open the file (several: show the folder)"
-        case .reveal: return "Show the files in their folder"
-        case .share: return "Email or send to an app"
+        case .none: return L10n.t("Stay here")
+        case .open: return L10n.t("Open the file (several: show the folder)")
+        case .reveal: return L10n.t("Show the files in their folder")
+        case .share: return L10n.t("Email or send to an app")
         }
     }
 }
@@ -49,12 +49,12 @@ public enum FileAction: String, CaseIterable, Identifiable, Sendable {
 
     public var label: String {
         switch self {
-        case .open: return "Open"
-        case .openWith: return "Open with\u{2026}"
-        case .reveal: return "Show in folder"
-        case .share: return "Share\u{2026}"
-        case .email: return "Email\u{2026}"
-        case .copy: return "Copy"
+        case .open: return L10n.t("Open")
+        case .openWith: return L10n.t("Open with…")
+        case .reveal: return L10n.t("Show in folder")
+        case .share: return L10n.t("Share…")
+        case .email: return L10n.t("Email…")
+        case .copy: return L10n.t("Copy")
         }
     }
 }

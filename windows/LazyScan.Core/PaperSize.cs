@@ -154,11 +154,11 @@ public static class PaperSizes
         bool feeder = source == ScanSource.DocumentFeeder;
         if (size == PaperSize.Auto)
         {
-            return feeder ? "The sheet size the feeder takes." : "The whole glass, or the area selected on the preview.";
+            return feeder ? Loc.T("The sheet size the feeder takes.") : Loc.T("The whole glass, or the area selected on the preview.");
         }
         return feeder
-            ? "Sheets of this size, from the feeder."
-            : "From the glass corner. A preview selection replaces it.";
+            ? Loc.T("Sheets of this size, from the feeder.")
+            : Loc.T("From the glass corner. A preview selection replaces it.");
     }
 
     /// <summary>
@@ -166,18 +166,18 @@ public static class PaperSizes
     /// shows it after the size's name, greyed out ("A3 (297 × 420 mm) · Too big for this glass").
     /// </summary>
     public static string DoesNotFitReason(ScanSource source) =>
-        $"Too big for this {(source == ScanSource.DocumentFeeder ? "feeder" : "glass")}";
+        source == ScanSource.DocumentFeeder ? Loc.T("Too big for this feeder") : Loc.T("Too big for this glass");
 
     /// <summary>
     /// The live line under the paper size while an area of the preview is selected: the scan takes
     /// that area, whatever the size says.
     /// </summary>
-    public const string SelectedAreaNote = "Using the selected area";
+    public static string SelectedAreaNote => Loc.T("Using the selected area");
 
     /// <summary>What a picker shows: "Automatic", "Letter", "B5 (JIS)", "ID card".</summary>
     public static string Label(this PaperSize size) => size switch
     {
-        PaperSize.Auto => "Automatic",
+        PaperSize.Auto => Loc.T("Automatic"),
         PaperSize.Letter => "Letter",
         PaperSize.Legal => "Legal",
         PaperSize.Executive => "Executive",
@@ -185,22 +185,22 @@ public static class PaperSizes
         PaperSize.A5 => "A5",
         PaperSize.A6 => "A6",
         PaperSize.B5Jis => "B5 (JIS)",
-        PaperSize.IdCard => "ID card",
+        PaperSize.IdCard => Loc.T("ID card"),
         _ => size.ToString(),
     };
 
     /// <summary>The dimensions as people know them: "8.5 × 11 in", "210 × 297 mm"; for Automatic, what it scans.</summary>
     public static string Detail(this PaperSize size) => size switch
     {
-        PaperSize.Auto => "The whole glass, or the sheet in the feeder",
-        PaperSize.Letter => "8.5 × 11 in",
-        PaperSize.Legal => "8.5 × 14 in",
-        PaperSize.Executive => "7.25 × 10.5 in",
-        PaperSize.A4 => "210 × 297 mm",
-        PaperSize.A5 => "148 × 210 mm",
-        PaperSize.A6 => "105 × 148 mm",
-        PaperSize.B5Jis => "182 × 257 mm",
-        PaperSize.IdCard => "85.6 × 54 mm",
+        PaperSize.Auto => Loc.T("The whole glass, or the sheet in the feeder"),
+        PaperSize.Letter => Loc.T("{0} × {1} in", 8.5, 11),
+        PaperSize.Legal => Loc.T("{0} × {1} in", 8.5, 14),
+        PaperSize.Executive => Loc.T("{0} × {1} in", 7.25, 10.5),
+        PaperSize.A4 => Loc.T("{0} × {1} mm", 210, 297),
+        PaperSize.A5 => Loc.T("{0} × {1} mm", 148, 210),
+        PaperSize.A6 => Loc.T("{0} × {1} mm", 105, 148),
+        PaperSize.B5Jis => Loc.T("{0} × {1} mm", 182, 257),
+        PaperSize.IdCard => Loc.T("{0} × {1} mm", 85.6, 54),
         _ => "",
     };
 }

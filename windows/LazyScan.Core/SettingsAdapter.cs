@@ -43,8 +43,8 @@ public static class SettingsAdapter
             if (fallback != s.Source)
             {
                 notes.Add(new SettingsNote(SettingsChange.Source, fallback == ScanSource.DocumentFeeder
-                    ? "This scanner has no flatbed, so the document feeder is used."
-                    : "This scanner has no document feeder, so the flatbed is used."));
+                    ? Loc.T("This scanner has no flatbed, so the document feeder is used.")
+                    : Loc.T("This scanner has no document feeder, so the flatbed is used.")));
                 s.Source = fallback;
             }
         }
@@ -52,7 +52,7 @@ public static class SettingsAdapter
         if (s.Source == ScanSource.DocumentFeeder && s.Duplex == DuplexMode.Both && !capabilities.SupportsDuplex)
         {
             notes.Add(new SettingsNote(SettingsChange.Duplex,
-                "This scanner's feeder scans one side at a time, so you'll turn the stack over by hand."));
+                Loc.T("This scanner's feeder scans one side at a time, so you'll turn the stack over by hand.")));
             s.Duplex = DuplexMode.Manual;
         }
 
@@ -61,7 +61,9 @@ public static class SettingsAdapter
         if (!PaperSizes.Fits(s.PaperSize, area))
         {
             notes.Add(new SettingsNote(SettingsChange.PaperSize,
-                $"{s.PaperSize.Label()} paper does not fit this scanner's {(feeder ? "feeder" : "glass")}, so the paper size is Automatic."));
+                feeder
+                    ? Loc.T("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", s.PaperSize.Label())
+                    : Loc.T("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", s.PaperSize.Label())));
             s.PaperSize = PaperSize.Auto;
         }
 
@@ -69,7 +71,7 @@ public static class SettingsAdapter
         if (resolution != s.Resolution)
         {
             notes.Add(new SettingsNote(SettingsChange.Resolution,
-                $"This scanner does not offer {s.Resolution} dpi, so {resolution} dpi is used."));
+                Loc.T("This scanner does not offer {0} dpi, so {1} dpi is used.", s.Resolution.ToString(), resolution.ToString())));
             s.Resolution = resolution;
         }
         return new AdaptedSettings(s, notes);

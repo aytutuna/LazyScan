@@ -43,9 +43,9 @@ public struct NamingTemplate {
             ("{month}", formatted(date, "MM")),
             ("{day}", formatted(date, "dd")),
             ("{counter}", String(counter)),
-            ("{intent}", context.intent.label),
+            ("{intent}", context.intent.fileLabel),
             ("{index}", index.map(String.init) ?? ""),
-            ("{task}", context.task.map { TaskCatalog.definition($0).fileLabel } ?? context.intent.label),
+            ("{task}", context.task.map { TaskCatalog.definition($0).fileLabel } ?? context.intent.fileLabel),
             ("{docdate}", (context.documentDate ?? DocumentDate(date: date)).text),
             ("{label}", label),
         ]

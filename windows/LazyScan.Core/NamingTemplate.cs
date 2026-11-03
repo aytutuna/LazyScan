@@ -62,9 +62,9 @@ public sealed partial class NamingTemplate
             ("{month}", date.ToString("MM", CultureInfo.InvariantCulture)),
             ("{day}", date.ToString("dd", CultureInfo.InvariantCulture)),
             ("{counter}", counter.ToString(CultureInfo.InvariantCulture)),
-            ("{intent}", context.Intent.Label()),
+            ("{intent}", context.Intent.FileLabel()),
             ("{index}", index?.ToString(CultureInfo.InvariantCulture) ?? ""),
-            ("{task}", context.Task is { } task ? TaskCatalog.Definition(task).FileLabel : context.Intent.Label()),
+            ("{task}", context.Task is { } task ? TaskCatalog.Definition(task).FileLabel : context.Intent.FileLabel()),
             ("{docdate}", (context.DocumentDate ?? Core.DocumentDate.Of(date)).ToString()),
             ("{label}", label),
         };

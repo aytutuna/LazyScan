@@ -75,17 +75,18 @@ public struct QueueCollation: Equatable, Sendable {
 
 public enum DocumentSides {
     /// Why the sides cannot be chosen while the flatbed is the source.
-    public static let feederOnlyReason = "Two-sided scanning uses the document feeder."
+    public static var feederOnlyReason: String { L10n.t("Two-sided scanning uses the document feeder.") }
 
     /// The short reason shown next to Sides while the flatbed of a scanner with a feeder is the source.
-    public static let needsFeederReason = "Needs the feeder"
+    public static var needsFeederReason: String { L10n.t("Needs the feeder") }
 
     /// Why "Both sides" is not offered: the feeder cannot scan both sides in one pass.
-    public static let oneSidedFeederReason =
-        "This scanner's feeder scans one side at a time. To scan both sides, turn the stack over by hand."
+    public static var oneSidedFeederReason: String {
+        L10n.t("This scanner's feeder scans one side at a time. To scan both sides, turn the stack over by hand.")
+    }
 
     /// Why Import photos and the package banner's buttons are greyed out while a stack is turned over by hand.
-    public static let notWhileTurningOverReason = "Not while the stack is turned over by hand"
+    public static var notWhileTurningOverReason: String { L10n.t("Not while the stack is turned over by hand") }
 
     /// The step that scans the fronts of a stack turned over by hand.
     public static let frontsStepID = "fronts"
@@ -189,13 +190,13 @@ public enum DocumentSides {
     public static func manualUnavailableReason(_ settings: ScanSettings) -> String? {
         let flow = TaskCatalog.flow(of: settings)
         if flow == .copy {
-            return "Copies are made from one side of each sheet; turn the stack over and copy again."
+            return L10n.t("Copies are made from one side of each sheet; turn the stack over and copy again.")
         }
         if flow != .documentQueue {
-            return "Turning the stack over by hand works for documents, not photos."
+            return L10n.t("Turning the stack over by hand works for documents, not photos.")
         }
         if !settings.documentMultiPage {
-            return "Turning the stack over by hand needs Collect pages before saving."
+            return L10n.t("Turning the stack over by hand needs Collect pages before saving.")
         }
         return nil
     }
@@ -204,17 +205,15 @@ public enum DocumentSides {
     /// "Back" before its sheet is known; nil for a page without a side.
     public static func sideLabel(side: PageSide?, sheetIndex: Int?) -> String? {
         guard let side else { return nil }
-        guard let sheetIndex else { return side == .front ? "Front" : "Back" }
-        let word: String = side == .front ? "front" : "back"
-        return "\(sheetIndex + 1) \u{00B7} \(word)"
+        guard let sheetIndex else { return side == .front ? L10n.t("Front") : L10n.t("Back") }
+        return side == .front ? L10n.t("{0} · front", sheetIndex + 1) : L10n.t("{0} · back", sheetIndex + 1)
     }
 
     /// The badge spelled out for VoiceOver: "Sheet 2, back", or "Front" / "Back"; nil for a page without a side.
     public static func sideName(side: PageSide?, sheetIndex: Int?) -> String? {
         guard let side else { return nil }
-        guard let sheetIndex else { return side == .front ? "Front" : "Back" }
-        let word: String = side == .front ? "front" : "back"
-        return "Sheet \(sheetIndex + 1), \(word)"
+        guard let sheetIndex else { return side == .front ? L10n.t("Front") : L10n.t("Back") }
+        return side == .front ? L10n.t("Sheet {0}, front", sheetIndex + 1) : L10n.t("Sheet {0}, back", sheetIndex + 1)
     }
 
     /// "3 fronts but 2 backs", "1 front but 2 backs".

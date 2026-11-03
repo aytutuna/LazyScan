@@ -25,7 +25,7 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
     /// What a picker shows: "Automatic", "Letter", "B5 (JIS)", "ID card".
     public var label: String {
         switch self {
-        case .auto: return "Automatic"
+        case .auto: return L10n.t("Automatic")
         case .letter: return "Letter"
         case .legal: return "Legal"
         case .executive: return "Executive"
@@ -33,22 +33,22 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .a5: return "A5"
         case .a6: return "A6"
         case .b5Jis: return "B5 (JIS)"
-        case .idCard: return "ID card"
+        case .idCard: return L10n.t("ID card")
         }
     }
 
     /// The dimensions as people know them: "8.5 × 11 in", "210 × 297 mm"; for Automatic, what it scans.
     public var detail: String {
         switch self {
-        case .auto: return "The whole glass, or the sheet in the feeder"
-        case .letter: return "8.5 \u{00D7} 11 in"
-        case .legal: return "8.5 \u{00D7} 14 in"
-        case .executive: return "7.25 \u{00D7} 10.5 in"
-        case .a4: return "210 \u{00D7} 297 mm"
-        case .a5: return "148 \u{00D7} 210 mm"
-        case .a6: return "105 \u{00D7} 148 mm"
-        case .b5Jis: return "182 \u{00D7} 257 mm"
-        case .idCard: return "85.6 \u{00D7} 54 mm"
+        case .auto: return L10n.t("The whole glass, or the sheet in the feeder")
+        case .letter: return L10n.t("{0} × {1} in", 8.5, 11)
+        case .legal: return L10n.t("{0} × {1} in", 8.5, 14)
+        case .executive: return L10n.t("{0} × {1} in", 7.25, 10.5)
+        case .a4: return L10n.t("{0} × {1} mm", 210, 297)
+        case .a5: return L10n.t("{0} × {1} mm", 148, 210)
+        case .a6: return L10n.t("{0} × {1} mm", 105, 148)
+        case .b5Jis: return L10n.t("{0} × {1} mm", 182, 257)
+        case .idCard: return L10n.t("{0} × {1} mm", 85.6, 54)
         }
     }
 }
@@ -143,21 +143,20 @@ public enum PaperSizes {
     public static func hint(_ size: PaperSize, source: ScanSource) -> String {
         let feeder = source == .documentFeeder
         if size == .auto {
-            return feeder ? "The sheet size the feeder takes." : "The whole glass, or the area selected on the preview."
+            return feeder ? L10n.t("The sheet size the feeder takes.") : L10n.t("The whole glass, or the area selected on the preview.")
         }
         return feeder
-            ? "Sheets of this size, from the feeder."
-            : "From the glass corner. A preview selection replaces it."
+            ? L10n.t("Sheets of this size, from the feeder.")
+            : L10n.t("From the glass corner. A preview selection replaces it.")
     }
 
     /// Why a size is not offered: it is larger than the glass or the feeder of the scanner. The picker
     /// shows it after the size's name, greyed out ("A3 (297 × 420 mm) · Too big for this glass").
     public static func doesNotFitReason(source: ScanSource) -> String {
-        let part: String = source == .documentFeeder ? "feeder" : "glass"
-        return "Too big for this \(part)"
+        source == .documentFeeder ? L10n.t("Too big for this feeder") : L10n.t("Too big for this glass")
     }
 
     /// The live line under the paper size while an area of the preview is selected: the scan takes
     /// that area, whatever the size says.
-    public static let selectedAreaNote = "Using the selected area"
+    public static var selectedAreaNote: String { L10n.t("Using the selected area") }
 }

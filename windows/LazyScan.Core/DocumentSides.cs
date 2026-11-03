@@ -48,17 +48,17 @@ public sealed record QueueCollation(IReadOnlyList<Guid> Order, IReadOnlyDictiona
 public static class DocumentSides
 {
     /// <summary>Why the sides cannot be chosen while the flatbed is the source (the tooltip of <see cref="NeedsFeederReason"/>).</summary>
-    public const string FeederOnlyReason = "Two-sided scanning uses the document feeder.";
+    public static string FeederOnlyReason => Loc.T("Two-sided scanning uses the document feeder.");
 
     /// <summary>The short reason shown next to Sides while the flatbed of a scanner with a feeder is the source.</summary>
-    public const string NeedsFeederReason = "Needs the feeder";
+    public static string NeedsFeederReason => Loc.T("Needs the feeder");
 
     /// <summary>Why "Both sides" is not offered: the feeder cannot scan both sides in one pass.</summary>
-    public const string OneSidedFeederReason =
-        "This scanner's feeder scans one side at a time. To scan both sides, turn the stack over by hand.";
+    public static string OneSidedFeederReason =>
+        Loc.T("This scanner's feeder scans one side at a time. To scan both sides, turn the stack over by hand.");
 
     /// <summary>Why Import photos and the package bar's buttons are greyed out while a stack is turned over by hand.</summary>
-    public const string NotWhileTurningOverReason = "Not while the stack is turned over by hand";
+    public static string NotWhileTurningOverReason => Loc.T("Not while the stack is turned over by hand");
 
     /// <summary>The step that scans the fronts of a stack turned over by hand.</summary>
     public const string FrontsStepId = "fronts";
@@ -184,11 +184,11 @@ public static class DocumentSides
     {
         var flow = TaskCatalog.FlowOf(settings);
         if (flow == TaskFlowKind.Copy)
-            return "Copies are made from one side of each sheet; turn the stack over and copy again.";
+            return Loc.T("Copies are made from one side of each sheet; turn the stack over and copy again.");
         if (flow != TaskFlowKind.DocumentQueue)
-            return "Turning the stack over by hand works for documents, not photos.";
+            return Loc.T("Turning the stack over by hand works for documents, not photos.");
         if (!settings.DocumentMultiPage)
-            return "Turning the stack over by hand needs Collect pages before saving.";
+            return Loc.T("Turning the stack over by hand needs Collect pages before saving.");
         return null;
     }
 
@@ -199,21 +199,21 @@ public static class DocumentSides
     public static string? SideLabel(PageSide? side, int? sheetIndex) => side switch
     {
         null => null,
-        { } s when sheetIndex is { } sheet => $"{sheet + 1} · {SideWord(s)}",
-        PageSide.Front => "Front",
-        _ => "Back",
+        PageSide.Front when sheetIndex is { } sheet => Loc.T("{0} · front", sheet + 1),
+        PageSide.Back when sheetIndex is { } sheet => Loc.T("{0} · back", sheet + 1),
+        PageSide.Front => Loc.T("Front"),
+        _ => Loc.T("Back"),
     };
 
     /// <summary>The badge spelled out for screen readers: "Sheet 2, back", or "Front" / "Back"; null for a page without a side.</summary>
     public static string? SideName(PageSide? side, int? sheetIndex) => side switch
     {
         null => null,
-        { } s when sheetIndex is { } sheet => $"Sheet {sheet + 1}, {SideWord(s)}",
-        PageSide.Front => "Front",
-        _ => "Back",
+        PageSide.Front when sheetIndex is { } sheet => Loc.T("Sheet {0}, front", sheet + 1),
+        PageSide.Back when sheetIndex is { } sheet => Loc.T("Sheet {0}, back", sheet + 1),
+        PageSide.Front => Loc.T("Front"),
+        _ => Loc.T("Back"),
     };
-
-    private static string SideWord(PageSide side) => side == PageSide.Front ? "front" : "back";
 
     /// <summary>"3 fronts but 2 backs", "1 front but 2 backs".</summary>
     public static string CountMessage(int fronts, int backs) =>

@@ -139,4 +139,12 @@ final class PaperSizeTests: XCTestCase {
         XCTAssertEqual(PaperSizes.doesNotFitReason(source: .documentFeeder), "Too big for this feeder")
         XCTAssertEqual(PaperSizes.selectedAreaNote, "Using the selected area")
     }
+
+    func test_detail_usesTheLanguagesDecimalSeparator() {
+        L10n.withTable([:], language: "tr") {
+            XCTAssertEqual(PaperSize.letter.detail, "8,5 × 11 in")
+            XCTAssertEqual(PaperSize.idCard.detail, "85,6 × 54 mm")
+            XCTAssertEqual(PaperSize.a4.detail, "210 × 297 mm")
+        }
+    }
 }

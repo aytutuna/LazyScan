@@ -51,6 +51,18 @@ public class NamingTemplateTests
     }
 
     [Fact]
+    public void IntentTokenStaysEnglishInAnotherLanguage()
+    {
+        Loc.Table = new Dictionary<string, string> { ["Document"] = "Belge", ["Photos"] = "Fotoğraflar" };
+        try
+        {
+            Assert.Equal("Document", Render("{intent}", intent: ScanIntent.Document));
+            Assert.Equal("Photos", Render("{task}", intent: ScanIntent.Photo));
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
     public void IndexTokenSubstituted() => Assert.Equal("Photo 7", Render("Photo {index}", index: 7));
 
     [Fact]
