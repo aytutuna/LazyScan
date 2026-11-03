@@ -3467,7 +3467,7 @@ public enum IOSNetworkText { /* explanationTitle "Find scanners on your Wi-Fi", 
     public nonisolated static func isDenied(_ reason: NWPath.UnsatisfiedReason?) -> Bool }   // .localNetworkDenied
 @MainActor public protocol IOSNetworkStatusReading: AnyObject { var status: NetworkStatus { get } }
 @MainActor public final class IOSNetworkPath: IOSNetworkStatusReading {   // NWPathMonitor
-    public nonisolated static func status(satisfied: Bool, wifi: Bool, wired: Bool) -> NetworkStatus }
+    public nonisolated static func status(wifi: Bool, wired: Bool) -> NetworkStatus }
 @MainActor public final class IOSTroubleshooterService: TroubleshooterService {
     public convenience init(); public init(openURL: @escaping @MainActor (URL) -> Void, pasteboard: UIPasteboard,
                                            network: (any IOSNetworkStatusReading)?) }

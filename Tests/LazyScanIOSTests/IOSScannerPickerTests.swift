@@ -574,10 +574,9 @@ final class IOSScannerPickerTests: XCTestCase {
 
         status.status = .offline
         XCTAssertEqual(service.addSystemStatus(to: DiscoverySnapshot(platform: .ios)).network, .offline)
-        XCTAssertEqual(IOSNetworkPath.status(satisfied: true, wifi: true, wired: false), .privateNetwork)
-        XCTAssertEqual(IOSNetworkPath.status(satisfied: true, wifi: false, wired: true), .privateNetwork)
-        XCTAssertEqual(IOSNetworkPath.status(satisfied: true, wifi: false, wired: false), .offline)
-        XCTAssertEqual(IOSNetworkPath.status(satisfied: false, wifi: true, wired: false), .offline)
+        XCTAssertEqual(IOSNetworkPath.status(wifi: true, wired: false), .privateNetwork)
+        XCTAssertEqual(IOSNetworkPath.status(wifi: false, wired: true), .privateNetwork)
+        XCTAssertEqual(IOSNetworkPath.status(wifi: false, wired: false), .offline)
 
         XCTAssertTrue(IOSLocalNetworkProbe.isDenied(NWPath.UnsatisfiedReason.localNetworkDenied))
         XCTAssertFalse(IOSLocalNetworkProbe.isDenied(NWPath.UnsatisfiedReason.notAvailable))

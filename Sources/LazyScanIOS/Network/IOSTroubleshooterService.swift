@@ -20,10 +20,13 @@ public final class IOSNetworkPath: IOSNetworkStatusReading {
 
     public init() {
         monitor.pathUpdateHandler = { [weak self] (path: NWPath) -> Void in
-            let satisfied: Bool = path.status == NWPath.Status.satisfied
-            let wifi: Bool = path.usesInterfaceType(NWInterface.InterfaceType.wifi)
-            let wired: Bool = path.usesInterfaceType(NWInterface.InterfaceType.wiredEthernet)
-            let status: NetworkStatus = IOSNetworkPath.status(satisfied: satisfied, wifi: wifi, wired: wired)
+            // availableInterfaces, not usesInterfaceType: a Wi-Fi network without internet is not the default route
+            let types: [NWInterface.InterfaceType] = path.availableInterfaces.map { (interface: NWInterface) -> NWInterface.InterfaceType in
+                interface.type
+            }
+            let wifi: Bool = types.contains(NWInterface.InterfaceType.wifi)
+            let wired: Bool = types.contains(NWInterface.InterfaceType.wiredEthernet)
+            let status: NetworkStatus = IOSNetworkPath.status(wifi: wifi, wired: wired)
             MainActor.assumeIsolated {
                 self?.status = status
             }
@@ -31,9 +34,10 @@ public final class IOSNetworkPath: IOSNetworkStatusReading {
         monitor.start(queue: DispatchQueue.main)
     }
 
-    /// The troubleshooter's network for a path: a usable Wi-Fi or wired network is where scanners are found.
-    public nonisolated static func status(satisfied: Bool, wifi: Bool, wired: Bool) -> NetworkStatus {
-        if satisfied && (wifi || wired) {
+    /// The troubleshooter's network for a path: a Wi-Fi or wired network is where scanners are found, with or
+    /// without internet on it.
+    public nonisolated static func status(wifi: Bool, wired: Bool) -> NetworkStatus {
+        if wifi || wired {
             return .privateNetwork
         }
         return .offline
