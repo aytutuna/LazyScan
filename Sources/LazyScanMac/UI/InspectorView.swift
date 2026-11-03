@@ -1250,7 +1250,7 @@ struct InspectorView: View {
     /// Scan has help only while it waits for the scanner.
     private var scanHelp: String { notConnectedHelp ?? "" }
 
-    /// Why Scan and Preview are off while no scanner is connected: the selected one is still connecting, it would
+    /// Why Scan is off while no scanner is connected (Preview gives `AppState.previewUnavailableReason`): the selected one is still connecting, it would
     /// not connect, or none is selected; nil once it is connected. Twin of the Windows window's `NotConnectedHint`.
     private var notConnectedHelp: String? {
         guard !state.isConnected else { return nil }
