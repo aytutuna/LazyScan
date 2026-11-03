@@ -142,7 +142,7 @@ extension AppState {
         let document: Data? = await Task.detached(priority: .userInitiated) {
             PrintDocument.makePDF(pages: printPages, paper: paper)
         }.value
-        guard let document else { throw PrintError.failed("The copy could not be prepared for printing.") }
+        guard let document else { throw PrintError.failed(L10n.t("The copy could not be prepared for printing.")) }
         if flag.isCancelled { throw ScanError.cancelled }
         // A protected PDF's password is asked for before printing. No answer still prints the copy;
         // the PDF is then not written.
@@ -155,7 +155,7 @@ extension AppState {
             }
         }
         let copies = PrintCopies.clamp(options.copyCount)
-        statusMessage = "Printing on \(setup.printerName)\u{2026}"
+        statusMessage = L10n.t("Printing on {0}…", setup.printerName)
         let job = PrintJob(printerName: setup.printerName, jobName: "Copy", paper: setup.paper, copies: copies)
         var printError: Error?
         do {
@@ -166,7 +166,7 @@ extension AppState {
                 printed = try await printService.print(document, job: job)
             }
             guard printed else {
-                statusMessage = "Printing cancelled."
+                statusMessage = L10n.t("Printing cancelled.")
                 return false
             }
         } catch {
@@ -206,7 +206,7 @@ extension AppState {
             throw AppState.copyNotPrinted(printError, setup: setup,
                                           pdfNote: " \(PDFProtection.keptInQueueMessage(pages.count))")
         }
-        statusMessage = "Saving the PDF\u{2026}"
+        statusMessage = L10n.t("Saving the PDF…")
         // After a copy went to the printer, a PDF that cannot be written is reported, not undone.
         let url: URL
         var protected = false
@@ -223,24 +223,24 @@ extension AppState {
         } catch {
             if AppState.isCancellation(error) || AppState.isPasswordNotGiven(error) {
                 if let printError {
-                    throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " The PDF was not saved (cancelled).")
+                    throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " " + L10n.t("The PDF was not saved (cancelled)."))
                 }
                 // The copy has gone to the printer: only the PDF was cancelled.
                 statusMessage = AppState.isPasswordNotGiven(error)
                     ? "\(sent) \(PDFProtection.notSavedMessage)"
-                    : "\(sent) PDF not saved (cancelled)."
+                    : L10n.t("{0} PDF not saved (cancelled).", sent)
                 return true
             }
             guard let printError else { throw error }
             throw AppState.copyNotPrinted(printError, setup: setup,
-                                          pdfNote: " The PDF could not be saved either: \(error.localizedDescription)")
+                                          pdfNote: " " + L10n.t("The PDF could not be saved either: {0}", error.localizedDescription))
         }
         lastSavedURLs = [url]
         notePDFSize(of: url, protected: protected)
         if let printError {
-            throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " The scan was saved as \(url.lastPathComponent).")
+            throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " " + L10n.t("The scan was saved as {0}.", url.lastPathComponent))
         }
-        statusMessage = "\(sent) Saved \(url.lastPathComponent)\(pdfSizeSuffix).\(warningNote)"
+        statusMessage = L10n.t("{0} Saved {1}{2}.{3}", sent, url.lastPathComponent, pdfSizeSuffix, warningNote)
         return true
     }
 
@@ -254,7 +254,7 @@ extension AppState {
     nonisolated static func copyNotPrinted(_ printError: Error, setup: PrinterSetup, pdfNote: String) -> PrintError {
         let reason = printError is PrintError
             ? printError.localizedDescription
-            : "Could not print on \(setup.printerName): \(printError.localizedDescription)"
+            : L10n.t("Could not print on {0}: {1}", setup.printerName, printError.localizedDescription)
         return PrintError.failed(reason + pdfNote)
     }
 
@@ -272,7 +272,7 @@ extension AppState {
     func holdCopy(_ pages: [ScannedPage], areaSelected: Bool) {
         copyPages = pages
         copyAreaSelected = areaSelected
-        statusMessage = "Copy ready to print."
+        statusMessage = L10n.t("Copy ready to print.")
     }
 
     /// Print… on the phone: the pages Save would write, at full resolution, held on the copy screen as a
@@ -303,7 +303,7 @@ extension AppState {
             self.refreshPrinters()
             self.holdCopy(full, areaSelected: false)
             self.copyIsOfQueue = true
-            self.statusMessage = "Ready to print."
+            self.statusMessage = L10n.t("Ready to print.")
         }
     }
 
@@ -342,7 +342,7 @@ extension AppState {
         copyPages = []
         statusMessage = ofQueue
             ? L10n.plural(scannedPages.count, one: "{0} page in the queue.", other: "{0} pages in the queue.")
-            : "Copy discarded."
+            : L10n.t("Copy discarded.")
     }
 
     /// Prints the ID card's page: both sides at real size, laid out on the paper of the review (or the
@@ -369,7 +369,7 @@ extension AppState {
                 guard let data = PrintDocument.makePDF(pages: [page], paper: paperInches) else { return nil }
                 return (data, layout)
             }.value
-            guard let drawn else { throw PrintError.failed("The page could not be drawn.") }
+            guard let drawn else { throw PrintError.failed(L10n.t("The page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             let layout = drawn.1
             // The page is the paper; what matters is whether the printer's margins reach the card.
@@ -380,16 +380,18 @@ extension AppState {
             let placement = PrintPlacement(rect: CGRect(x: 0, y: 0, width: Double(paperInches.width),
                                                         height: Double(paperInches.height)),
                                            scale: 1, quarterTurns: 0, clippedInches: clipped)
-            self.statusMessage = "Printing the ID card on \(setup.printerName)\u{2026}"
+            self.statusMessage = L10n.t("Printing the ID card on {0}…", setup.printerName)
             let job = PrintJob(printerName: setup.printerName, jobName: "ID card", paper: setup.paper, copies: 1)
             guard try await self.printService.print(drawn.0, job: job) else {
-                self.statusMessage = "Printing cancelled."
+                self.statusMessage = L10n.t("Printing cancelled.")
                 return
             }
-            let size = layout.scaledToFit ? "made smaller to fit" : "at real size"
+            let printer = self.printedOn(setup, s)
+            let sent = layout.scaledToFit
+                ? L10n.t("Sent the ID card to {0} on {1}, made smaller to fit.", printer, setup.paper.description)
+                : L10n.t("Sent the ID card to {0} on {1}, at real size.", printer, setup.paper.description)
             let warning = PrintLayout.clipWarning(placement, paper: paperInches)
-            self.statusMessage = "Sent the ID card to \(self.printedOn(setup, s)) on \(setup.paper.description), \(size)."
-                + (warning.map { " \($0)" } ?? "")
+            self.statusMessage = sent + (warning.map { " \($0)" } ?? "")
         }
     }
 
@@ -409,15 +411,15 @@ extension AppState {
                 return PrintDocument.makePDF(pages: [PrintPage(image: image, dpi: dpi, placement: placement)],
                                              paper: paper.paper)
             }.value
-            guard let document else { throw PrintError.failed("The ruler test page could not be drawn.") }
+            guard let document else { throw PrintError.failed(L10n.t("The ruler test page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
-            self.statusMessage = "Printing the ruler test page on \(setup.printerName)\u{2026}"
+            self.statusMessage = L10n.t("Printing the ruler test page on {0}…", setup.printerName)
             let job = PrintJob(printerName: setup.printerName, jobName: "Ruler test page", paper: paper, copies: 1)
             guard try await self.printService.print(document, job: job) else {
-                self.statusMessage = "Printing cancelled."
+                self.statusMessage = L10n.t("Printing cancelled.")
                 return
             }
-            self.statusMessage = "Sent the ruler test page to \(self.printedOn(setup, s)). At real size each square measures 1 inch (2.54 cm) and each tick 1 cm."
+            self.statusMessage = L10n.t("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", self.printedOn(setup, s))
         }
     }
 }

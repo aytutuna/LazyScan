@@ -135,7 +135,7 @@ public sealed partial class AppViewModel
 
     /// <summary>The spread's full-resolution pixels: from memory, or read from its spool file.</summary>
     private static RgbaImage LoadSpread(SpreadSource source) =>
-        source.Image ?? WpfImageCodec.Load(source.FilePath ?? throw new InvalidOperationException("The spread is no longer available."));
+        source.Image ?? WpfImageCodec.Load(source.FilePath ?? throw new InvalidOperationException(Loc.T("The spread is no longer available.")));
 
     /// <summary>
     /// The split dialog's Split: the spread the page was cut from is cut again along

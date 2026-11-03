@@ -272,7 +272,7 @@ public final class AppState: ObservableObject {
     /// A share or a send of the queue is reading its spooled pages (`queueReaders`). Swift only.
     public var readsQueue: Bool { queueReaders > 0 }
     @Published public private(set) var progress: ScanProgress?
-    @Published public internal(set) var statusMessage = "Looking for scanners…"
+    @Published public internal(set) var statusMessage = L10n.t("Looking for scanners…")
     @Published public var errorMessage: String? {
         didSet { errorTitle = nil }
     }
@@ -899,7 +899,7 @@ public final class AppState: ObservableObject {
         if resetsManualSides { self.resetsManualSides = true }
         if selectedDeviceID == nil && session == nil && switchTask == nil {
             // Nothing to close.
-            statusMessage = "Ready"
+            statusMessage = L10n.t("Ready")
             resetManualSidesIfAsked()
         } else {
             selectDevice(nil, interactive: true)
@@ -925,7 +925,7 @@ public final class AppState: ObservableObject {
         refreshDeviceRows()
         // Named at once: this switch waits for the one before, which may still be connecting.
         if let id, let name = devices.first(where: { $0.id == id })?.name {
-            statusMessage = "Connecting to \(name)…"
+            statusMessage = L10n.t("Connecting to {0}…", name)
         }
         switchGeneration += 1
         let generation = switchGeneration
@@ -962,19 +962,20 @@ public final class AppState: ObservableObject {
 
         guard let id else {
             if keepsNoDevice {
-                statusMessage = "Ready"
+                statusMessage = L10n.t("Ready")
                 resetManualSidesIfAsked()
             } else {
-                statusMessage = "No scanner selected."
+                statusMessage = L10n.t("No scanner selected.")
             }
             return
         }
         guard let backend = backends.first(where: { b in b.devices.contains { $0.id == id } }) else {
-            statusMessage = "Scanner is no longer available."
+            statusMessage = L10n.t("Scanner is no longer available.")
             return
         }
-        let name = devices.first(where: { $0.id == id })?.name ?? "scanner"
-        statusMessage = "Connecting to \(name)…"
+        let deviceName = devices.first(where: { $0.id == id })?.name
+        let name = deviceName ?? L10n.t("scanner")
+        statusMessage = L10n.t("Connecting to {0}…", name)
         do {
             let s = try await backend.openSession(deviceID: id, interactive: interactive)
             certificateRefused.remove(id)
@@ -996,18 +997,18 @@ public final class AppState: ObservableObject {
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
             let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
             settings = adapted.settings
-            statusMessage = Self.withNotes("Ready — \(s.info.name)", adapted.notes)
+            statusMessage = Self.withNotes(L10n.t("Ready — {0}", s.info.name), adapted.notes)
         } catch let certificate as EsclCertificateError where certificate.canTrust {
             // The certificate changed and was not trusted. Not chosen on its own again this session;
             // when the app had chosen it, it moves on to another scanner, and choosing this one in the
             // list shows the certificate.
             certificateRefused.insert(id)
-            statusMessage = "Could not connect to \(name)."
-            recordFailure(deviceName: name, error: certificate)
+            statusMessage = L10n.t("Could not connect to {0}.", name)
+            recordFailure(deviceName: deviceName ?? "scanner", error: certificate)
             if interactive {
                 errorMessage = certificate.message
             } else {
-                errorMessage = certificate.message + " To review the new certificate, choose the scanner in the list."
+                errorMessage = L10n.t("{0} To review the new certificate, choose the scanner in the list.", certificate.message)
                 if !userPickedDevice {
                     Task { [weak self] in
                         guard let self, !self.userPickedDevice, self.selectedDeviceID == id,
@@ -1020,8 +1021,8 @@ public final class AppState: ObservableObject {
             // Another scanner was picked meanwhile: no alert or troubleshooter entry for one the user left.
             guard selectedDeviceID == id else { return }
             errorMessage = error.localizedDescription
-            statusMessage = "Could not connect to \(name)."
-            recordFailure(deviceName: name, error: error)
+            statusMessage = L10n.t("Could not connect to {0}.", name)
+            recordFailure(deviceName: deviceName ?? "scanner", error: error)
         }
     }
 
@@ -1031,15 +1032,15 @@ public final class AppState: ObservableObject {
     /// Preview shows it as its help. Twin of the Windows `AppViewModel.PreviewUnavailableReason`.
     public var previewUnavailableReason: String? {
         if !isConnected {
-            guard let id = selectedDeviceID else { return "No scanner selected." }
-            let name = devices.first(where: { $0.id == id })?.name ?? "the scanner"
-            if isConnecting { return "Connecting to \(name)…" }
-            return "Not connected to \(name). Choose it in the list again to retry."
+            guard let id = selectedDeviceID else { return L10n.t("No scanner selected.") }
+            let name = devices.first(where: { $0.id == id })?.name ?? L10n.t("the scanner")
+            if isConnecting { return L10n.t("Connecting to {0}…", name) }
+            return L10n.t("Not connected to {0}. Choose it in the list again to retry.", name)
         }
-        if capabilities?.supportsOverview == false { return "This scanner has no preview." }
+        if capabilities?.supportsOverview == false { return L10n.t("This scanner has no preview.") }
         // The preview shows the flatbed; a feeder scan would ignore a selection drawn on it.
         if settings.source == .documentFeeder {
-            return "Preview needs the flatbed. Choose Flatbed as the source to preview."
+            return L10n.t("Preview needs the flatbed. Choose Flatbed as the source to preview.")
         }
         return nil
     }
@@ -1055,7 +1056,7 @@ public final class AppState: ObservableObject {
             // The session selects one unit at a time: a feeder check under way goes first.
             await self.feederDuplexCheck?.value
             guard self.switchGeneration == generation else { return }
-            self.statusMessage = "Scanning overview…"
+            self.statusMessage = L10n.t("Scanning overview…")
             let image = try await session.performOverviewScan(settings: self.settings)
             // Discard results that arrive after the user switched devices.
             guard self.switchGeneration == generation else { return }
@@ -1064,8 +1065,8 @@ public final class AppState: ObservableObject {
             self.overviewImage = image
             // The phone's preview in the column cannot be dragged: tapping it opens the scan area screen.
             self.statusMessage = self.platform == .ios
-                ? "Overview ready — tap the preview to choose the scan area, then Scan."
-                : "Overview ready — drag on the preview to select an area, then Scan."
+                ? L10n.t("Overview ready — tap the preview to choose the scan area, then Scan.")
+                : L10n.t("Overview ready — drag on the preview to select an area, then Scan.")
         }
     }
 
@@ -1086,7 +1087,7 @@ public final class AppState: ObservableObject {
         runExclusive { flag in
             if self.settings.source == .documentFeeder { await self.checkFeederDuplex() }
             guard self.switchGeneration == generation else { return }
-            self.statusMessage = "Scanning…"
+            self.statusMessage = L10n.t("Scanning…")
             // One snapshot for the whole scan. The scanner is asked for a two-sided scan only
             // when its feeder can do one; turning the stack over by hand scans one side at a
             // time, and the steps say which.
@@ -1116,7 +1117,7 @@ public final class AppState: ObservableObject {
             let scanned = try await session.performScan(settings: s, selection: selection)
             // Discard results that arrive after the user switched devices.
             guard self.switchGeneration == generation else { return }
-            guard !scanned.isEmpty else { throw ScanError.scanFailed("The scanner returned no pages.") }
+            guard !scanned.isEmpty else { throw ScanError.scanFailed(L10n.t("The scanner returned no pages.")) }
             self.clearFailure()
             if flag.isCancelled { throw ScanError.cancelled }
             // A feeder batch cut short (a jam, a dropped connection) still returns its pages;
@@ -1259,7 +1260,7 @@ public final class AppState: ObservableObject {
             marked.source = source
             return marked
         }
-        self.statusMessage = "Processing…"
+        self.statusMessage = L10n.t("Processing…")
         // The clean-up stage: two-sided pages in reading order with their sides marked and the
         // backs turned upright, then the blank-page check and the adjustments. Pixel-heavy work
         // runs off the main actor so the UI stays live; the cancel flag is polled between
@@ -1364,7 +1365,7 @@ public final class AppState: ObservableObject {
             // Full resolution here: the detection overlay maps source-pixel
             // coordinates onto this image (raw and processed share dimensions).
             self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
-            self.statusMessage = "Detecting photos…"
+            self.statusMessage = L10n.t("Detecting photos…")
             let found: [DetectedPhoto] = try await Task.detached(priority: .userInitiated) {
                 var all: [DetectedPhoto] = []
                 for page in processed {
@@ -1400,7 +1401,7 @@ public final class AppState: ObservableObject {
                 guard kept else { return nil }
                 break
             }
-            self.statusMessage = "Finding the card\u{2026}"
+            self.statusMessage = L10n.t("Finding the card…")
             // A back that does not stand out takes the front's place, the card turned over where it
             // lay, when both scans cover the same part of the glass.
             let area = IdCardScanArea(dpi: page.dpi,
@@ -1547,7 +1548,7 @@ public final class AppState: ObservableObject {
             let left = plan.leftOutNote()
             let format = s.format.queueFormat
             if format.isTextFormat {
-                self.statusMessage = "Reading the text of the pages…"
+                self.statusMessage = L10n.t("Reading the text of the pages…")
                 let url = try self.outputURL(fileExtension: format.fileExtension, label: document.label)
                 let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
                 let hasText = try await Task.detached(priority: .userInitiated) {
@@ -1571,7 +1572,7 @@ public final class AppState: ObservableObject {
             _ = try await self.protectionFor(s)
             let url = try self.outputURL(fileExtension: "pdf", label: document.label)
             let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
-            self.statusMessage = s.pdfSearchable || text != nil ? "Running OCR and building PDF…" : "Building PDF…"
+            self.statusMessage = s.pdfSearchable || text != nil ? L10n.t("Running OCR and building PDF…") : L10n.t("Building PDF…")
             let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
                 try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
                                             textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
@@ -1691,7 +1692,7 @@ public final class AppState: ObservableObject {
             }
         }
         lastSavedURLs = saved
-        statusMessage = "Saved \(saved.map(\.lastPathComponent).joined(separator: ", "))\(note)"
+        statusMessage = L10n.t("Saved {0}{1}", saved.map(\.lastPathComponent).joined(separator: ", "), note)
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -1754,7 +1755,7 @@ public final class AppState: ObservableObject {
         isReceiptReview = false
         photoSourceImages = [:]
         resetFlow()
-        statusMessage = receipts ? "Receipts discarded." : "Photo batch discarded."
+        statusMessage = receipts ? L10n.t("Receipts discarded.") : L10n.t("Photo batch discarded.")
         endOfWork()
     }
 
@@ -1908,7 +1909,7 @@ public final class AppState: ObservableObject {
             // Removed while its file was read: nothing to switch, and nothing to report.
             guard scannedPages.contains(where: { $0.id == id }) else { return }
             guard let read else {
-                errorMessage = "The page could not be switched: its file could not be read."
+                errorMessage = L10n.t("The page could not be switched: its file could not be read.")
                 return
             }
             shown = read
@@ -1943,8 +1944,8 @@ public final class AppState: ObservableObject {
         carryDocumentLabels(from: facts)
         let summary = DocumentSplitter.queueSummary(scannedPages, options: settings.document)
         statusMessage = DocumentSplitter.plan(scannedPages, options: settings.document).pages[idx].role != .content
-            ? "Page \(idx + 1) will be left out when you save. \(summary)."
-            : "Page \(idx + 1) will be saved. \(summary)."
+            ? L10n.t("Page {0} will be left out when you save. {1}.", idx + 1, summary)
+            : L10n.t("Page {0} will be saved. {1}.", idx + 1, summary)
     }
 
     public func clearPages() {
@@ -1952,7 +1953,7 @@ public final class AppState: ObservableObject {
         deleteSpoolFiles(of: scannedPages)
         scannedPages = []
         resetFlow()
-        statusMessage = "Page queue cleared."
+        statusMessage = L10n.t("Page queue cleared.")
     }
 
     // MARK: Two-sided scanning
@@ -1994,7 +1995,7 @@ public final class AppState: ObservableObject {
         if settings.duplex == .both,
            DocumentSides.effective(settings, capabilities: sidesCapabilities) == .manual {
             settings.duplex = .manual
-            statusMessage = "This scanner's feeder scans one side at a time, so you'll turn the stack over by hand."
+            statusMessage = L10n.t("This scanner's feeder scans one side at a time, so you'll turn the stack over by hand.")
         } else {
             syncTaskFlow()
         }
@@ -2075,7 +2076,7 @@ public final class AppState: ObservableObject {
         let counts = collation.interleave
         if counts.mismatch && !combineAnyway {
             sidesMismatch = counts.mismatchMessage
-            statusMessage = "\(counts.mismatchMessage ?? ""). Scan the rest of the back sides, scan them again, or combine the pages as they are."
+            statusMessage = L10n.t("{0}. Scan the rest of the back sides, scan them again, or combine the pages as they are.", counts.mismatchMessage ?? "")
             return
         }
         var byID: [UUID: ScannedPage] = [:]
@@ -2107,7 +2108,7 @@ public final class AppState: ObservableObject {
         let removed = taskFlow?.retake(stepID: DocumentSides.backsStepID) ?? []
         removeQueuedPages(removed)
         sidesMismatch = nil
-        statusMessage = "Load the turned-over stack in the feeder again and scan the back sides."
+        statusMessage = L10n.t("Load the turned-over stack in the feeder again and scan the back sides.")
     }
 
     /// The stack stays one-sided: the backs scanned so far leave the queue, the fronts stay (in
@@ -2128,7 +2129,7 @@ public final class AppState: ObservableObject {
     public func scanOneSideOnly() {
         guard !isBusy, settings.duplex != .off else { return }
         settings.duplex = .off
-        statusMessage = "Scanning one side of each sheet."
+        statusMessage = L10n.t("Scanning one side of each sheet.")
     }
 
     private func removeQueuedPages(_ ids: [UUID]) {
@@ -2147,7 +2148,7 @@ public final class AppState: ObservableObject {
         let adapted = SettingsAdapter.adapt(preset.settings(over: settings), to: sidesCapabilities)
         settings = adapted.settings
         openBookmarkedFolder()
-        statusMessage = Self.withNotes("Applied preset “\(preset.name)”.", adapted.notes)
+        statusMessage = Self.withNotes(L10n.t("Applied preset “{0}”.", preset.name), adapted.notes)
     }
 
     public func saveCurrentAsPreset(named name: String) {
@@ -2229,7 +2230,7 @@ public final class AppState: ObservableObject {
             }
         } catch {
             let name = action.label.replacingOccurrences(of: "\u{2026}", with: "")
-            errorMessage = "\(name) did not work: \(Self.describe(error))"
+            errorMessage = L10n.t("{0} did not work: {1}", name, Self.describe(error))
             return false
         }
         return true
@@ -2297,11 +2298,11 @@ public final class AppState: ObservableObject {
 
     private func noDevice() {
         guard let id = selectedDeviceID else {
-            errorMessage = "No scanner selected. Choose one under Scanners (or the Demo Scanner)."
+            errorMessage = L10n.t("No scanner selected. Choose one under Scanners (or the Demo Scanner).")
             return
         }
-        let name = devices.first(where: { $0.id == id })?.name ?? "the scanner"
-        errorMessage = "Not connected to \(name). Turn it on and choose it in the list again, or pick another scanner."
+        let name = devices.first(where: { $0.id == id })?.name ?? L10n.t("the scanner")
+        errorMessage = L10n.t("Not connected to {0}. Turn it on and choose it in the list again, or pick another scanner.", name)
         errorSuggestsTroubleshooter = true
     }
 
@@ -2466,7 +2467,7 @@ public final class AppState: ObservableObject {
         var pictureBytes = 0
         for (index, page) in pages.enumerated() {
             if !shouldContinue() { throw ScanError.cancelled }
-            progress("Reading the text of page \(index + 1) of \(pages.count)…")
+            progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count))
             let prepared = PDFBuilder.preparePage(page)
             let lines = try recognizeForText(prepared.image)
             ocrPages.append(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
@@ -2484,7 +2485,7 @@ public final class AppState: ObservableObject {
             }
         }
         if !shouldContinue() { throw ScanError.cancelled }
-        progress(format == .word ? "Writing the Word document…" : "Writing the text file…")
+        progress(format == .word ? L10n.t("Writing the Word document…") : L10n.t("Writing the text file…"))
         let data: Data
         if format == .word {
             // A package past the limit is refused here: `ZipStore.make` would stop the app past 4 GB.
@@ -2523,7 +2524,7 @@ public final class AppState: ObservableObject {
             await self.pageEditChain?.value
             guard let index = self.scannedPages.firstIndex(where: { $0.id == id }) else { return }
             let page = self.scannedPages[index]
-            self.statusMessage = "Reading the text of page \(index + 1)…"
+            self.statusMessage = L10n.t("Reading the text of page {0}…", index + 1)
             let text = try await Task.detached(priority: .userInitiated) { () throws -> String in
                 let prepared = PDFBuilder.preparePage(page)
                 let lines = try Self.recognizeForText(prepared.image)
@@ -2535,7 +2536,7 @@ public final class AppState: ObservableObject {
                 do {
                     try self.fileActions.copyText(text)
                 } catch {
-                    throw TextOutputError("Copy did not work: \(Self.describe(error))")
+                    throw TextOutputError(L10n.t("Copy did not work: {0}", Self.describe(error)))
                 }
             }
             self.statusMessage = TextExport.copiedMessage(pageNumber: index + 1, hasText: !text.isEmpty)
@@ -2574,7 +2575,7 @@ public final class AppState: ObservableObject {
                 // The picked folder is out of reach now (its drive unplugged, say): this save goes to the
                 // app's folder and the bookmark is kept for the next one.
                 path = ScanSettings.defaultDestinationPath
-                errorMessage = "The save folder could not be opened, so this save went to the app's folder."
+                errorMessage = L10n.t("The save folder could not be opened, so this save went to the app's folder.")
             }
             path = ScanSettings.rebasedDestinationPath((path as NSString).expandingTildeInPath, documents: documentsFolder)
             url = URL(fileURLWithPath: path, isDirectory: true)
@@ -2638,12 +2639,12 @@ public final class AppState: ObservableObject {
             } catch is PDFPasswordNotGiven {
                 statusMessage = PDFProtection.notSavedMessage
             } catch ScanError.cancelled {
-                statusMessage = "Cancelled."
+                statusMessage = L10n.t("Cancelled.")
             } catch is CancellationError {
-                statusMessage = "Cancelled."
+                statusMessage = L10n.t("Cancelled.")
             } catch {
                 errorMessage = error.localizedDescription
-                statusMessage = "Ready."
+                statusMessage = L10n.t("Ready.")
                 // A scan the scanner refused (busy, offline, ...) is what the troubleshooter explains.
                 if error is ScanError, let session = self.session {
                     self.recordFailure(deviceName: session.info.name, error: error)

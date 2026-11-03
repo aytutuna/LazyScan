@@ -59,7 +59,7 @@ public sealed partial class AppViewModel
     /// </summary>
     public string? CopyMarginWarning =>
         _copySetup is { } setup && !Settings.TaskOptions.CopyFitToPage && setup.Paper.LargestMargin > PrintLayout.ClipWarningInches
-            ? $"Edges may lose up to {PrintLayout.Millimetres(setup.Paper.LargestMargin)} mm"
+            ? Loc.T("Edges may lose up to {0} mm", PrintLayout.Millimetres(setup.Paper.LargestMargin))
             : null;
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
@@ -197,7 +197,7 @@ public sealed partial class AppViewModel
     /// </summary>
     private async Task<(PrinterSetup Setup, RectD? Selection)> PrepareCopyAsync(ScanSettings s, RectD? selection)
     {
-        StatusMessage = "Getting the printer ready…";
+        StatusMessage = Loc.T("Getting the printer ready…");
         NotifyAll();
         var setup = await SetupForAsync(s, RequestedPaper(s)) ?? throw new PrintException(PrintText.NoPrinterMessage);
         if (s.Source == ScanSource.Flatbed && SelectionRect is null && s.PaperSize == PaperSize.Auto
@@ -238,7 +238,7 @@ public sealed partial class AppViewModel
             try { ProtectionFor(s); }
             catch (PasswordNotGivenException) { noPassword = true; }
         }
-        StatusMessage = $"Printing on {setup.PrinterName}…";
+        StatusMessage = Loc.T("Printing on {0}…", setup.PrinterName);
         NotifyAll();
         Exception? printError = null;
         try
@@ -269,7 +269,7 @@ public sealed partial class AppViewModel
             await KeepInQueue(pages);
             throw CopyNotPrinted(printError, setup, $" {PdfProtection.KeptInQueueMessage(pages.Count)}");
         }
-        StatusMessage = "Saving the PDF…";
+        StatusMessage = Loc.T("Saving the PDF…");
         NotifyAll();
         // After a copy went to the printer, a PDF that cannot be written is reported, not undone.
         string path;
@@ -279,25 +279,25 @@ public sealed partial class AppViewModel
         }
         catch (Exception e) when (IsCancellation(e))
         {
-            if (printError is not null) throw CopyNotPrinted(printError, setup, " The PDF was not saved (cancelled).");
+            if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The PDF was not saved (cancelled)."));
             // The copy has gone to the printer: only the PDF was cancelled.
             StatusMessage = e is PasswordNotGivenException
                 ? $"{sent} {PdfProtection.NotSavedMessage}"
-                : $"{sent} PDF not saved (cancelled).";
+                : Loc.T("{0} PDF not saved (cancelled).", sent);
             return;
         }
         catch (Exception e) when (printError is not null && e is not OutOfMemoryException)
         {
-            throw CopyNotPrinted(printError, setup, $" The PDF could not be saved either: {e.Message}");
+            throw CopyNotPrinted(printError, setup, " " + Loc.T("The PDF could not be saved either: {0}", e.Message));
         }
         MarkSaved([path]);
-        if (printError is not null) throw CopyNotPrinted(printError, setup, $" The scan was saved as {Path.GetFileName(path)}.");
-        StatusMessage = $"{sent} Saved {Path.GetFileName(path)}{PdfSizeSuffix()}.{warningNote}";
+        if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The scan was saved as {0}.", Path.GetFileName(path)));
+        StatusMessage = Loc.T("{0} Saved {1}{2}.{3}", sent, Path.GetFileName(path), PdfSizeSuffix(), warningNote);
     }
 
     /// <summary>The error of a copy that could not be printed: why, then what became of its PDF.</summary>
     private static PrintException CopyNotPrinted(Exception printError, PrinterSetup setup, string pdfNote) =>
-        new((printError is PrintException ? printError.Message : $"Could not print on {setup.PrinterName}: {printError.Message}") + pdfNote,
+        new((printError is PrintException ? printError.Message : Loc.T("Could not print on {0}: {1}", setup.PrinterName, printError.Message)) + pdfNote,
             printError);
 
     /// <summary>
@@ -318,7 +318,7 @@ public sealed partial class AppViewModel
             var frontPhoto = frontItem.Photo;
             var backPhoto = IdCardBack?.Photo;
             int frontTurns = frontPhoto.RotationQuarterTurns, backTurns = backPhoto?.RotationQuarterTurns ?? 0;
-            StatusMessage = "Getting the printer ready…";
+            StatusMessage = Loc.T("Getting the printer ready…");
             NotifyAll();
             var setup = await SetupForAsync(s, paper) ?? throw new PrintException(PrintText.NoPrinterMessage);
             token.ThrowIfCancellationRequested();
@@ -337,13 +337,14 @@ public sealed partial class AppViewModel
             var job = new PrintJob(setup.PrinterName, "ID card", setup.Paper, paper,
                                    [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1),
                                    Gray: s.ColorMode != ColorMode.Color);
-            StatusMessage = $"Printing the ID card on {setup.PrinterName}…";
+            StatusMessage = Loc.T("Printing the ID card on {0}…", setup.PrinterName);
             NotifyAll();
             await _print.PrintAsync(job, token);
-            string size = layout.ScaledToFit ? "made smaller to fit" : "at real size";
+            string sent = layout.ScaledToFit
+                ? Loc.T("Sent the ID card to {0} on {1}, made smaller to fit.", setup.PrinterName, setup.Paper.Description)
+                : Loc.T("Sent the ID card to {0} on {1}, at real size.", setup.PrinterName, setup.Paper.Description);
             string? warning = PrintLayout.ClipWarning(placement, paperInches);
-            StatusMessage = $"Sent the ID card to {setup.PrinterName} on {setup.Paper.Description}, {size}."
-                            + (warning is null ? "" : $" {warning}");
+            StatusMessage = sent + (warning is null ? "" : $" {warning}");
         });
     }
 
@@ -356,7 +357,7 @@ public sealed partial class AppViewModel
         var s = Settings.Clone();
         return RunExclusive(async token =>
         {
-            StatusMessage = "Getting the printer ready…";
+            StatusMessage = Loc.T("Getting the printer ready…");
             NotifyAll();
             var setup = await SetupForAsync(s, RequestedPaper(s)) ?? throw new PrintException(PrintText.NoPrinterMessage);
             token.ThrowIfCancellationRequested();
@@ -365,10 +366,10 @@ public sealed partial class AppViewModel
             var placement = PrintLayout.Place(page.Width, page.Height, dpi, setup.Paper, PrintMode.ActualSize, PrintAlign.PaperOrigin);
             var job = new PrintJob(setup.PrinterName, "Ruler test page", setup.Paper, RequestedPaper(s),
                                    [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1), Gray: true);
-            StatusMessage = $"Printing the ruler test page on {setup.PrinterName}…";
+            StatusMessage = Loc.T("Printing the ruler test page on {0}…", setup.PrinterName);
             NotifyAll();
             await _print.PrintAsync(job, token);
-            StatusMessage = $"Sent the ruler test page to {setup.PrinterName}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.";
+            StatusMessage = Loc.T("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", setup.PrinterName);
         });
     }
 }

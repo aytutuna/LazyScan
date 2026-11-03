@@ -239,7 +239,7 @@ extension AppState {
                 guard let image = page.makeCGImage() else { return nil }
                 return (page: image, front: f, back: b)
             }.value
-            guard let composed else { throw ScanError.exportFailed("The page could not be drawn.") }
+            guard let composed else { throw ScanError.exportFailed(L10n.t("The page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             var saved: [URL] = []
             // The card is a picture: a PDF or an image, never a text format.

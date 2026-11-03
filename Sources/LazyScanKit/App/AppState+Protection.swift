@@ -14,7 +14,7 @@ struct PDFPasswordNotGiven: LocalizedError {
 
 extension AppState {
     /// What a saved PDF's status says after its size when it has a password: "(412 KB, password-protected)".
-    nonisolated static var protectedNote: String { "password-protected" }
+    nonisolated static var protectedNote: String { L10n.t("password-protected") }
 
     /// What is said in brackets after saved PDFs: their size and "password-protected" when they are
     /// ("412 KB, password-protected"); nil when there is neither. Twin of the Windows `PdfNote`.

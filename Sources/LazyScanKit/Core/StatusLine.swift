@@ -7,8 +7,11 @@ import Foundation
 // The six words are counted on the English text of each piece, whatever the language, so every
 // language shows the same facts and the views only truncate what still does not fit. The settings
 // notes are matched from their catalog entries, so they work in any language. The message heads
-// (Added, Saved, Found, the one-sided mark) are still matched in English: their messages must not
-// get translations until the app hands StatusLine structured input instead of a sentence.
+// (Added, Saved, Found, the one-sided mark, "Ready for “", "Page queue cleared", "Reading the text
+// of page", "Sent ") are still matched in English: their messages ("Saved {0}", "Saved {0}: {1}",
+// "Saved {0}{1}", "Ready for “{0}”.", "Page queue cleared.", "Reading the text of page {0}…", the
+// "Sent the ..." keys) must not get translations until the app hands StatusLine structured input
+// instead of a sentence.
 
 /// The status line's visible text: at most `maxWords` words, facts only. The full sentence stays the
 /// status line's accessibility label, so VoiceOver reads all of it. Twin of C# `StatusLine`.

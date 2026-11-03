@@ -54,7 +54,7 @@ extension AppState {
         guard !isBusy, var sides = cameraSides, sides.canSkipBack else { return }
         sides.skipBack()
         cameraSides = sides
-        statusMessage = "No back side. Next sheet."
+        statusMessage = L10n.t("No back side. Next sheet.")
     }
 
     /// Fronts first: every front is in, the backs come next.
@@ -142,7 +142,7 @@ extension AppState {
             scannedPages[index] = scannedPages[index].withDocumentBreak(.split)
             carryDocumentLabels(from: facts)
             if let number = queuePlan.pages[index].document {
-                statusMessage = "Document \(number) starts at page \(index + 1)."
+                statusMessage = L10n.t("Document {0} starts at page {1}.", number, index + 1)
             }
             return
         }
@@ -162,7 +162,7 @@ extension AppState {
     func holdQuickScan(_ pages: [ScannedPage]) {
         guard let page = pages.last else { return }
         quickScanPage = page
-        statusMessage = "Page ready."
+        statusMessage = L10n.t("Page ready.")
     }
 
     /// Saves the held Quick scan page as a picture (JPEG unless an image format is chosen) in the save
@@ -183,7 +183,7 @@ extension AppState {
             }
             self.lastSavedURLs = [url]
             self.quickScanPage = nil
-            self.statusMessage = "Saved \(url.lastPathComponent)"
+            self.statusMessage = L10n.t("Saved {0}", url.lastPathComponent)
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }
@@ -198,7 +198,7 @@ extension AppState {
     func copyQuickScanText(reading: @escaping @Sendable (ScannedPage) throws -> String) {
         guard let page = quickScanPage else { return }
         runExclusive { flag in
-            self.statusMessage = "Reading the text\u{2026}"
+            self.statusMessage = L10n.t("Reading the text…")
             let text: String = try await Task.detached(priority: .userInitiated) { () throws -> String in
                 try reading(page)
             }.value
@@ -207,10 +207,10 @@ extension AppState {
                 do {
                     try self.copyTextToPasteboard(text)
                 } catch {
-                    throw TextOutputError("Copy did not work: \(error.localizedDescription)")
+                    throw TextOutputError(L10n.t("Copy did not work: {0}", error.localizedDescription))
                 }
             }
-            self.statusMessage = text.isEmpty ? "No text found." : "Text copied."
+            self.statusMessage = text.isEmpty ? L10n.t("No text found.") : L10n.t("Text copied.")
         }
     }
 
@@ -218,7 +218,7 @@ extension AppState {
     public func discardQuickScan() {
         guard !isBusy, quickScanPage != nil else { return }
         quickScanPage = nil
-        statusMessage = "Page discarded."
+        statusMessage = L10n.t("Page discarded.")
     }
 
     /// The text OCR reads on `page`, in reading order with a blank line between paragraphs; the iPhone's page

@@ -26,7 +26,7 @@ extension AppState {
     /// Caption of the Scan button: the current step's action as the settings word it ("Scan page", "Scan
     /// stack" while the feeder scans for Document to PDF: `TaskCatalog.shownStep`), or "Scan".
     public var primaryActionLabel: String {
-        guard let step = taskFlow?.current else { return "Scan" }
+        guard let step = taskFlow?.current else { return L10n.t("Scan|button") }
         return TaskCatalog.shownStep(step, settings: settings).primaryActionLabel
     }
 
@@ -97,7 +97,7 @@ extension AppState {
         if newDocumentPending { newDocumentPending = false }
         settings = adapted.settings
         if let section = InspectorSections.openedBy(task) { sectionsOpenedByTask.insert(section) }
-        statusMessage = Self.withNotes("Ready for \u{201C}\(TaskCatalog.definition(task).title)\u{201D}.",
+        statusMessage = Self.withNotes(L10n.t("Ready for “{0}”.", TaskCatalog.definition(task).title),
                                        adapted.notes)
         return true
     }
@@ -177,7 +177,7 @@ extension AppState {
         guard !isBusy, canSkipStep else { return }
         taskFlow?.skip()
         setIdCardSide(.back, photo: nil, note: nil)
-        statusMessage = "No back side. Check the front, then save."
+        statusMessage = L10n.t("No back side. Check the front, then save.")
         openIdCardReview()
     }
 

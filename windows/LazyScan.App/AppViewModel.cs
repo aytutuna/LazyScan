@@ -130,7 +130,7 @@ public sealed class PageItem : INotifyPropertyChanged
     public bool IsNotSplit => _book is not null && Page.Spread is { IsWhole: true };
 
     /// <summary>The gap's tooltip: what a click does, in two words.</summary>
-    public string? BreakToolTip => BreakLabel is null ? null : StartsDocument ? "Join" : "Split here";
+    public string? BreakToolTip => BreakLabel is null ? null : StartsDocument ? Loc.T("Join|page gap") : Loc.T("Split here");
 
     /// <summary>The page menu's "Split this spread…" or "Change the split…"; null when the page has none.</summary>
     public string? SplitSpreadLabel => _book?.SplitLabel;
@@ -202,7 +202,7 @@ public sealed class PageItem : INotifyPropertyChanged
     public string NameDraft { get; set; } = "";
 
     /// <summary>The button's short text: "Keep" for a left-out page, "Skip" otherwise.</summary>
-    public string? ToggleText => ToggleLabel is null ? null : IsExcluded ? "Keep" : "Skip";
+    public string? ToggleText => ToggleLabel is null ? null : IsExcluded ? Loc.T("Keep|page button") : Loc.T("Skip|page button");
 
     /// <summary>
     /// "Cropped and straightened 2.4°", "As scanned", or null for a page crop and straighten left
@@ -214,7 +214,7 @@ public sealed class PageItem : INotifyPropertyChanged
     public string? GeometryToggleLabel => PageCorrections.ToggleLabel(Page);
 
     /// <summary>The swap button's tooltip: what was done to the page, then what a click does.</summary>
-    public string? GeometryToolTip => GeometryToggleLabel is { } label ? $"{GeometryCaption}. {label}." : null;
+    public string? GeometryToolTip => GeometryToggleLabel is { } label ? Loc.T("{0}. {1}.", GeometryCaption, label) : null;
 
     /// <summary>The swap button's glyph: undo while the changed page shows, redo while the page as scanned shows.</summary>
     public string GeometryGlyph => Page.ShowsOriginal ? "\uE7A6" : "\uE7A7";
@@ -229,7 +229,7 @@ public sealed class PageItem : INotifyPropertyChanged
     public string? UprightToggleLabel => PageTurns.ToggleLabel(Page);
 
     /// <summary>The turn button's tooltip: what was done to the page, then what a click does.</summary>
-    public string? UprightToolTip => UprightToggleLabel is { } label ? $"{UprightCaption}. {label}." : null;
+    public string? UprightToolTip => UprightToggleLabel is { } label ? Loc.T("{0}. {1}.", UprightCaption, label) : null;
 
     /// <summary>
     /// The page's name for screen readers: "Page 3, Sheet 2, back, Blank, skipped, Straightened
@@ -240,7 +240,7 @@ public sealed class PageItem : INotifyPropertyChanged
     public string AccessibleName(int number)
     {
         string? side = DocumentSides.SideName(Page.Side, Page.SheetIndex) ?? _book?.Help ?? PhotoImport.SourceLabel(Page);
-        string name = side is { } label ? $"Page {number}, {label}" : $"Page {number}";
+        string name = side is { } label ? Loc.T("Page {0}, {1}", number, label) : Loc.T("Page {0}", number);
         if (DividerTitle is { } title) name = $"{title}, {name}";
         if (_split?.SeparatorNote is { } note) name = $"{name}, {note}";
         else if (BlankBadge is { } badge) name = $"{name}, {badge}";
@@ -421,7 +421,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     public bool IsBusy { get; private set; }
     public ScanProgress? Progress { get; private set; }
-    public string StatusMessage { get; private set; } = "Looking for scanners…";
+    public string StatusMessage { get; private set; } = Loc.T("Looking for scanners…");
     public string? ErrorMessage { get; set; }
     public List<string> LastSavedPaths { get; private set; } = [];
     /// <summary>Size of the PDF saved last in this session, in bytes; null before the first one.</summary>
@@ -499,7 +499,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// stack" while the feeder scans for Document to PDF: <see cref="TaskCatalog.ShownStep"/>), or "Scan".
     /// </summary>
     public string PrimaryActionLabel =>
-        Flow?.Current is { } step ? TaskCatalog.ShownStep(step, Settings).PrimaryActionLabel : "Scan";
+        Flow?.Current is { } step ? TaskCatalog.ShownStep(step, Settings).PrimaryActionLabel : Loc.T("Scan|button");
 
     /// <summary>The steps guide turning a stack over by hand: fronts, then backs.</summary>
     public bool IsTurningOverByHand => Flow is not null && _flowKey.Manual;
@@ -1288,7 +1288,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // Named at once: this switch waits for the one before, which may still be connecting.
         if (id is not null && DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id) is { } chosen)
         {
-            StatusMessage = $"Connecting to {chosen.Name}…";
+            StatusMessage = Loc.T("Connecting to {0}…", chosen.Name);
         }
         _switchGeneration += 1;
         int generation = _switchGeneration;
@@ -1331,19 +1331,20 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
         if (id is null)
         {
-            StatusMessage = "No scanner selected.";
+            StatusMessage = Loc.T("No scanner selected.");
             NotifyAll();
             return;
         }
         var backend = _backends.FirstOrDefault(b => b.Devices.Any(d => d.Id == id));
         if (backend is null)
         {
-            StatusMessage = "Scanner is no longer available.";
+            StatusMessage = Loc.T("Scanner is no longer available.");
             NotifyAll();
             return;
         }
-        string name = DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id)?.Name ?? "scanner";
-        StatusMessage = $"Connecting to {name}…";
+        string? deviceName = DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id)?.Name;
+        string name = deviceName ?? Loc.T("scanner");
+        StatusMessage = Loc.T("Connecting to {0}…", name);
         NotifyAll();
         try
         {
@@ -1376,7 +1377,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             Settings = adapted.Settings;
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
             SyncTaskFlow();
-            StatusMessage = WithNotes($"Ready — {session.Info.Name}", adapted.Notes);
+            StatusMessage = WithNotes(Loc.T("Ready — {0}", session.Info.Name), adapted.Notes);
         }
         catch (EsclCertificateException e) when (e.CanTrust)
         {
@@ -1384,15 +1385,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // session; when the app had chosen it, it moves on to another scanner, and choosing
             // this one in the list shows the certificate.
             _certificateRefused.Add(id);
-            StatusMessage = $"Could not connect to {name}.";
-            RecordFailure(name, e);
+            StatusMessage = Loc.T("Could not connect to {0}.", name);
+            RecordFailure(deviceName ?? "scanner", e);
             if (interactive)
             {
                 ErrorMessage = e.Message;
             }
             else
             {
-                ErrorMessage = e.Message + " To review the new certificate, choose the scanner in the list.";
+                ErrorMessage = Loc.T("{0} To review the new certificate, choose the scanner in the list.", e.Message);
                 if (!_userPickedDevice)
                 {
                     _ = _dispatcher.BeginInvoke(() =>
@@ -1411,8 +1412,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (SelectedDeviceId == id)
             {
                 ErrorMessage = e.Message;
-                StatusMessage = $"Could not connect to {name}.";
-                RecordFailure(name, e);
+                StatusMessage = Loc.T("Could not connect to {0}.", name);
+                RecordFailure(deviceName ?? "scanner", e);
             }
         }
         NotifyAll();
@@ -1430,14 +1431,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             if (!IsConnected)
             {
-                if (SelectedDeviceId is not { } id) return "No scanner selected.";
-                string name = Devices.FirstOrDefault(d => d.Id == id)?.Name ?? "the scanner";
-                return IsConnecting ? $"Connecting to {name}…" : $"Not connected to {name}. Choose it in the list again to retry.";
+                if (SelectedDeviceId is not { } id) return Loc.T("No scanner selected.");
+                string name = Devices.FirstOrDefault(d => d.Id == id)?.Name ?? Loc.T("the scanner");
+                return IsConnecting ? Loc.T("Connecting to {0}…", name) : Loc.T("Not connected to {0}. Choose it in the list again to retry.", name);
             }
-            if (Capabilities?.SupportsOverview == false) return "This scanner has no preview.";
+            if (Capabilities?.SupportsOverview == false) return Loc.T("This scanner has no preview.");
             // The preview shows the flatbed; a feeder scan would ignore a selection drawn on it.
             return Settings.Source == ScanSource.DocumentFeeder
-                ? "Preview needs the flatbed. Choose Flatbed as the source to preview."
+                ? Loc.T("Preview needs the flatbed. Choose Flatbed as the source to preview.")
                 : null;
         }
     }
@@ -1457,7 +1458,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         var s = Settings.Clone();
         return RunExclusive(async token =>
         {
-            StatusMessage = "Scanning overview…";
+            StatusMessage = Loc.T("Scanning overview…");
             NotifyAll();
             var image = await session.PerformOverviewScanAsync(s);
             // Discard results that arrive after the user switched devices.
@@ -1465,7 +1466,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ClearFailure();
             token.ThrowIfCancellationRequested();
             OverviewImage = image;
-            StatusMessage = "Overview ready — drag on the preview to select an area, then Scan.";
+            StatusMessage = Loc.T("Overview ready — drag on the preview to select an area, then Scan.");
             CanvasImageChanged();
         });
     }
@@ -1513,14 +1514,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 if (_switchGeneration != generation) return;
                 token.ThrowIfCancellationRequested();
             }
-            StatusMessage = "Scanning…";
+            StatusMessage = Loc.T("Scanning…");
             // The bar of the previous save makes way for the new scan.
             SavedBarPaths = null;
             NotifyAll();
             var scanned = await session.PerformScanAsync(s, selection);
             // Discard results that arrive after the user switched devices.
             if (_switchGeneration != generation) return;
-            if (scanned.Count == 0) throw ScanException.ScanFailed("The scanner returned no pages.");
+            if (scanned.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner returned no pages."));
             ClearFailure();
             // A feeder batch cut short (a jam, a dropped connection) still returns its pages;
             // once they are handled the user is told the stack was not finished.
@@ -1529,7 +1530,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // its capabilities were never read) delivered one side of each sheet.
             bool twoSided = sides == DuplexMode.Both && session.LastScanDuplex != false;
             token.ThrowIfCancellationRequested();
-            StatusMessage = "Processing…";
+            StatusMessage = Loc.T("Processing…");
             NotifyAll();
             // The clean-up stage: two-sided pages in reading order with their sides marked and the
             // backs turned upright, then the blank-page check and the adjustments. Pixel-heavy
@@ -1628,7 +1629,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     break;
                 case TaskFlowKind.PhotoSplit:
                     SetLastScan(rawPreview);
-                    StatusMessage = "Detecting photos…";
+                    StatusMessage = Loc.T("Detecting photos…");
                     NotifyAll();
                     var found = await Task.Run(() =>
                     {
@@ -1780,7 +1781,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var format = OutputFormats.QueueFormat(s.Format);
             if (format.IsTextFormat())
             {
-                StatusMessage = "Reading the text of the pages…";
+                StatusMessage = Loc.T("Reading the text of the pages…");
                 NotifyAll();
                 var (written, hasText) = await WriteTextDocument(pages, format, OutputPath(s, format.FileExtension(), label: document.Label), s, token);
                 MarkSaved([written]);
@@ -1795,7 +1796,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
             ProtectionFor(s);
-            StatusMessage = s.PdfSearchable || text is not null ? "Running OCR and building PDF…" : "Building PDF…";
+            StatusMessage = s.PdfSearchable || text is not null ? Loc.T("Running OCR and building PDF…") : Loc.T("Building PDF…");
             NotifyAll();
             string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", label: document.Label), token, text);
             string? textPath = text is null ? null : await WriteTextBeside(path, text);
@@ -1894,7 +1895,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
         }
         MarkSaved(saved);
-        StatusMessage = $"Saved {string.Join(", ", saved.Select(Path.GetFileName))}{note}";
+        StatusMessage = Loc.T("Saved {0}{1}", string.Join(", ", saved.Select(Path.GetFileName)), note);
         RunAfterSave(s.Output.AfterSave, saved);
     }
 
@@ -1927,7 +1928,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     token.ThrowIfCancellationRequested();
                     var photo = photos[index];
                     string path = OutputPath(s, format.FileExtension(), index + 1);
-                    StatusMessage = $"Saving photo {index + 1} of {photos.Count}…";
+                    StatusMessage = Loc.T("Saving photo {0} of {1}…", index + 1, photos.Count);
                     NotifyAll();
                     saved.Add(await Task.Run(() =>
                     {
@@ -1982,7 +1983,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         IsReceiptReview = false;
         _photoSourceImages = [];
         ResetFlow();
-        StatusMessage = receipts ? "Receipts discarded." : "Photo batch discarded.";
+        StatusMessage = receipts ? Loc.T("Receipts discarded.") : Loc.T("Photo batch discarded.");
         NotifyAll();
         EndOfWork();
     }
@@ -2027,7 +2028,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         async Task<bool> Run()
         {
             await Settled(previous);
-            StatusMessage = "Updating crop…";
+            StatusMessage = Loc.T("Updating crop…");
             NotifyAll();
             (RgbaImage, BitmapSource)? result;
             try
@@ -2045,8 +2046,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             catch (Exception e)
             {
-                ErrorMessage = $"The crop could not be applied: {e.Message}";
-                StatusMessage = "Ready.";
+                ErrorMessage = Loc.T("The crop could not be applied: {0}", e.Message);
+                StatusMessage = Loc.T("Ready.");
                 NotifyAll();
                 return false;
             }
@@ -2056,7 +2057,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (index < 0) return false;
             if (result is not { } r)
             {
-                StatusMessage = "That crop could not be extracted.";
+                StatusMessage = Loc.T("That crop could not be extracted.");
                 NotifyAll();
                 return false;
             }
@@ -2141,7 +2142,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             catch (Exception e)
             {
-                ErrorMessage = $"The page could not be rotated: {e.Message}";
+                ErrorMessage = Loc.T("The page could not be rotated: {0}", e.Message);
                 NotifyAll();
                 return;
             }
@@ -2187,8 +2188,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         var queued = ScannedPages.Select(p => p.Page).ToList();
         string summary = DocumentSplitter.QueueSummary(queued, Settings.Document);
         StatusMessage = DocumentSplitter.Plan(queued, Settings.Document).Pages[index].Role != PageRole.Content
-            ? $"Page {index + 1} will be left out when you save. {summary}."
-            : $"Page {index + 1} will be saved. {summary}.";
+            ? Loc.T("Page {0} will be left out when you save. {1}.", index + 1, summary)
+            : Loc.T("Page {0} will be saved. {1}.", index + 1, summary);
         NotifyAll();
     }
 
@@ -2230,7 +2231,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     DeleteSpoolFiles([page]);
                     return;
                 }
-                ErrorMessage = $"The page could not be switched: {e.Message}";
+                ErrorMessage = Loc.T("The page could not be switched: {0}", e.Message);
                 NotifyAll();
                 return;
             }
@@ -2281,7 +2282,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             catch (Exception e)
             {
-                ErrorMessage = $"The page could not be turned: {e.Message}";
+                ErrorMessage = Loc.T("The page could not be turned: {0}", e.Message);
                 NotifyAll();
                 return;
             }
@@ -2303,9 +2304,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private static RgbaImage OtherVersionPreview(ScannedPage page)
     {
-        var other = page.Alternate ?? throw new InvalidOperationException("The page has no other version.");
+        var other = page.Alternate ?? throw new InvalidOperationException(Loc.T("The page has no other version."));
         if (other.Image is { } image) return image;
-        if (other.FilePath is not { } path) throw new InvalidOperationException("The other version of the page is no longer available.");
+        if (other.FilePath is not { } path) throw new InvalidOperationException(Loc.T("The other version of the page is no longer available."));
         var preview = ScanHistory.MakePreview(WpfImageCodec.Load(path), SpoolPreviewMaxSide);
         return ImagePipeline.Rotate(preview, page.RotationQuarterTurns);
     }
@@ -2316,7 +2317,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
         ScannedPages.Clear();
         ResetFlow();
-        StatusMessage = "Page queue cleared.";
+        StatusMessage = Loc.T("Page queue cleared.");
         NotifyAll();
     }
 
@@ -2333,7 +2334,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         Settings = adapted.Settings;
         bool wasBusy = IsBusy;
         SettingsEdited();
-        string applied = WithNotes($"Applied preset “{preset.Name}”.", adapted.Notes);
+        string applied = WithNotes(Loc.T("Applied preset “{0}”.", preset.Name), adapted.Notes);
         // A reading of the queued pages the preset started (split at barcode or QR sheets) says so.
         StatusMessage = !wasBusy && IsBusy ? $"{applied} {StatusMessage}" : applied;
         NotifyAll();
@@ -2365,7 +2366,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsIdCardFlow || HasIdCardCaptures || ShowIdCardReview) ClearIdCard(clearCanvas: true);
         Flow = null;
         SettingsEdited();
-        StatusMessage = WithNotes($"Ready for “{TaskCatalog.Definition(task).Title}”.", adapted.Notes);
+        StatusMessage = WithNotes(Loc.T("Ready for “{0}”.", TaskCatalog.Definition(task).Title), adapted.Notes);
         // Printers come and go: the Copy task reads them again.
         if (task == ScanTask.Copy) _ = RefreshPrintersAsync();
         NotifyAll();
@@ -2397,7 +2398,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || Settings.Duplex == DuplexMode.Off) return;
         Settings.Duplex = DuplexMode.Off;
         SettingsEdited();
-        StatusMessage = "Scanning one side of each sheet.";
+        StatusMessage = Loc.T("Scanning one side of each sheet.");
         NotifyAll();
     }
 
@@ -2523,7 +2524,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (counts.Mismatch && !combineAnyway)
         {
             SidesMismatch = counts.MismatchMessage;
-            StatusMessage = $"{SidesMismatch}. Scan the rest of the back sides, scan them again, or combine the pages as they are.";
+            StatusMessage = Loc.T("{0}. Scan the rest of the back sides, scan them again, or combine the pages as they are.", SidesMismatch);
             return;
         }
         var items = ScannedPages.ToDictionary(item => item.Page.Id);
@@ -2554,7 +2555,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || !AwaitingBacks || Flow is null) return;
         RemoveQueuedPages(Flow.Retake(DocumentSides.BacksStepId));
         SidesMismatch = null;
-        StatusMessage = "Load the turned-over stack in the feeder again and scan the back sides.";
+        StatusMessage = Loc.T("Load the turned-over stack in the feeder again and scan the back sides.");
         NotifyAll();
     }
 
@@ -2599,7 +2600,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || !CanSkipStep || Flow is null) return;
         Flow.Skip();
         SetIdCardSide(PageSide.Back, null, null);
-        StatusMessage = "No back side. Check the front, then save.";
+        StatusMessage = Loc.T("No back side. Check the front, then save.");
         OpenIdCardReview();
         NotifyAll();
     }
@@ -2616,7 +2617,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private async Task CaptureIdCardSide(PageSide side, ScannedPage page, RectD? selection, int generation, CancellationToken token)
     {
-        StatusMessage = "Finding the card…";
+        StatusMessage = Loc.T("Finding the card…");
         NotifyAll();
         var area = new IdCardScanArea(page.Dpi, new SizeD(page.Image.Width, page.Image.Height), selection);
         var fallback = side == PageSide.Back && IdCardFront is { } front
@@ -2750,7 +2751,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         catch (Exception e)
         {
             if (revision != _idCardPreviewRevision) return;
-            ErrorMessage = $"The page could not be drawn: {e.Message}";
+            ErrorMessage = Loc.T("The page could not be drawn: {0}", e.Message);
             NotifyAll();
             return;
         }
@@ -2835,7 +2836,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         async Task<bool> Run()
         {
             await Settled(previous);
-            StatusMessage = "Updating crop…";
+            StatusMessage = Loc.T("Updating crop…");
             NotifyAll();
             (RgbaImage, BitmapSource)? result;
             try
@@ -2850,15 +2851,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             catch (Exception e)
             {
-                ErrorMessage = $"The crop could not be applied: {e.Message}";
-                StatusMessage = "Ready.";
+                ErrorMessage = Loc.T("The crop could not be applied: {0}", e.Message);
+                StatusMessage = Loc.T("Ready.");
                 NotifyAll();
                 return false;
             }
             if (!ReferenceEquals(side == PageSide.Front ? IdCardFront : IdCardBack, item)) return false;
             if (result is not { } r)
             {
-                StatusMessage = "That crop could not be cut out.";
+                StatusMessage = Loc.T("That crop could not be cut out.");
                 NotifyAll();
                 return false;
             }
@@ -3220,7 +3221,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         catch (Exception e)
         {
-            ErrorMessage = $"{action.Label().TrimEnd('…')} did not work: {FileActionErrors.Describe(e)}";
+            ErrorMessage = Loc.T("{0} did not work: {1}", action.Label().TrimEnd('…'), FileActionErrors.Describe(e));
             NotifyAll();
             return false;
         }
@@ -3258,12 +3259,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (SelectedDeviceId is not { } id)
         {
-            ErrorMessage = "No scanner selected. Choose one under Scanners (or the Demo Scanner).";
+            ErrorMessage = Loc.T("No scanner selected. Choose one under Scanners (or the Demo Scanner).");
         }
         else
         {
-            string name = DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id)?.Name ?? "the scanner";
-            ErrorMessage = $"Not connected to {name}. Turn it on and choose it in the list again, or pick another scanner.";
+            string name = DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id)?.Name ?? Loc.T("the scanner");
+            ErrorMessage = Loc.T("Not connected to {0}. Turn it on and choose it in the list again, or pick another scanner.", name);
             ErrorSuggestsTroubleshooter = true;
         }
         NotifyAll();
@@ -3485,7 +3486,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             token.ThrowIfCancellationRequested();
             var page = pages[i];
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
-            StatusMessage = $"Reading the text of page {i + 1} of {pages.Count}…";
+            StatusMessage = Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count);
             NotifyAll();
             ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, token),
                                     prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
@@ -3501,7 +3502,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 if (pictureBytes > DocxWriter.MaxPackageBytes) throw new IOException(DocxWriter.TooLargeMessage);
             }
         }
-        StatusMessage = format == OutputFormat.Word ? "Writing the Word document…" : "Writing the text file…";
+        StatusMessage = format == OutputFormat.Word ? Loc.T("Writing the Word document…") : Loc.T("Writing the text file…");
         NotifyAll();
         byte[] bytes = await Task.Run(() =>
         {
@@ -3554,7 +3555,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             int index = IndexOfPage(id);
             if (index < 0) return;
             var page = ScannedPages[index].Page;
-            StatusMessage = $"Reading the text of page {index + 1}…";
+            StatusMessage = Loc.T("Reading the text of page {0}…", index + 1);
             NotifyAll();
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
             var lines = await RecognizeForText(prepared.Image, token);
@@ -3567,7 +3568,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    throw new InvalidOperationException($"Copy did not work: {e.Message}", e);
+                    throw new InvalidOperationException(Loc.T("Copy did not work: {0}", e.Message), e);
                 }
             }
             StatusMessage = TextExport.CopiedMessage(index + 1, text.Length > 0);
@@ -3595,7 +3596,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             _ => $"{size}, {ProtectedNote}",
         };
 
-    private const string ProtectedNote = "password-protected";
+    private static string ProtectedNote => Loc.T("password-protected");
 
     /// <summary>
     /// The full-resolution UNROTATED pixels from the page's spill file, or null when the page
@@ -3716,12 +3717,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (IsCancellation(e))
         {
-            StatusMessage = "Cancelled.";
+            StatusMessage = Loc.T("Cancelled.");
         }
         catch (Exception e)
         {
             ErrorMessage = e.Message;
-            StatusMessage = "Ready.";
+            StatusMessage = Loc.T("Ready.");
             // A scan the scanner refused (busy, offline, ...) is what the troubleshooter explains.
             if (e is ScanException && _session is { } session) RecordFailure(session.Info.Name, e);
         }

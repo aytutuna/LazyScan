@@ -48,7 +48,7 @@ extension AppState {
                 return
             }
             let name: String = url.lastPathComponent
-            self.statusMessage = "Reading \(name)…"
+            self.statusMessage = L10n.t("Reading {0}…", name)
             let target: PDFAppendTarget = try await Task.detached(priority: .userInitiated) { () throws -> PDFAppendTarget in
                 try Self.accessing(url, writing: false, through: access) { (file: URL) throws -> PDFAppendTarget in
                     try PDFAppender.inspect(path: file.path)

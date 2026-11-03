@@ -469,7 +469,7 @@ public sealed partial class AppViewModel
         string? name = qr ? BarcodeSeparators.Label(QrSheetName) : null;
         return RunExclusive(async token =>
         {
-            StatusMessage = "Getting the printer ready…";
+            StatusMessage = Loc.T("Getting the printer ready…");
             NotifyAll();
             var setup = await SetupForAsync(s, requested: null) ?? throw new PrintException(PrintText.NoPrinterMessage);
             token.ThrowIfCancellationRequested();

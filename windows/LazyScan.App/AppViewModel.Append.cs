@@ -76,7 +76,7 @@ public sealed partial class AppViewModel
                 return;
             }
             string name = Path.GetFileName(targetPath);
-            StatusMessage = $"Reading {name}…";
+            StatusMessage = Loc.T("Reading {0}…", name);
             NotifyAll();
             var target = await Task.Run(() => PdfAppender.Inspect(targetPath), token);
             if (target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true)

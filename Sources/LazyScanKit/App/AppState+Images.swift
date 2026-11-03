@@ -16,8 +16,8 @@ extension AppState {
     /// "Saved 3 JPEG files: Scan 2026-10-21 4 1.jpg …", the status after `saveImages()`.
     public nonisolated static func imagesSavedMessage(_ urls: [URL], format: OutputFormat) -> String {
         let name: String = format.imageFormatOrJPEG.label
-        guard let first = urls.first else { return "Saved nothing." }
-        if urls.count == 1 { return "Saved \(name): \(first.lastPathComponent)" }
+        guard let first = urls.first else { return L10n.t("Saved nothing.") }
+        if urls.count == 1 { return L10n.t("Saved {0}: {1}", name, first.lastPathComponent) }
         return L10n.plural(urls.count, one: "Saved {0} {1} file: {2} …", other: "Saved {0} {1} files: {2} …", name, first.lastPathComponent)
     }
 
@@ -54,7 +54,7 @@ extension AppState {
                 var number: Int = 1
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
-                    self.statusMessage = "Saving page \(number) of \(pages.count)\u{2026}"
+                    self.statusMessage = L10n.t("Saving page {0} of {1}…", number, pages.count)
                     let url: URL = try self.outputURL(fileExtension: format.fileExtension,
                                                       index: pages.count > 1 ? number : nil)
                     let quality: Double = s.jpegQuality
