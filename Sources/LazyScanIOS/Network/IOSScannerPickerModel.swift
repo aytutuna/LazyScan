@@ -140,6 +140,8 @@ public final class IOSScannerPickerModel {
         return IOSAddScannerModel(checker: network?.backend, localNetwork: network == nil ? nil : IOSLocalNetworkProbe(),
                                   onDenied: { () -> Void in
                                       scanners?.reportDenied()
+                                  }, isKnownDenied: { () -> Bool in
+                                      scanners?.accessDenied ?? false
                                   })
     }
 }
@@ -176,6 +178,7 @@ public final class IOSAddScannerModel: ObservableObject {
     private let checker: (any IOSAddressChecking)?
     private let localNetwork: (any IOSLocalNetworkChecking)?
     private let onDenied: (@MainActor () -> Void)?
+    private let isKnownDenied: (@MainActor () -> Bool)?
     private var answer: CheckedContinuation<Bool, Never>?
     private var check: Task<Bool, Never>?
 
@@ -183,11 +186,14 @@ public final class IOSAddScannerModel: ObservableObject {
     ///   - checker: the network connection; nil where network scanners are off (`-demoScanner`).
     ///   - localNetwork: tells a refused Local Network access apart when nothing answers.
     ///   - onDenied: runs when it was refused.
+    ///   - isKnownDenied: true when the discovery already knows it was refused; the check is skipped then,
+    ///     as it would only wait out the connectivity wait.
     public init(checker: (any IOSAddressChecking)?, localNetwork: (any IOSLocalNetworkChecking)?,
-                onDenied: (@MainActor () -> Void)? = nil) {
+                onDenied: (@MainActor () -> Void)? = nil, isKnownDenied: (@MainActor () -> Bool)? = nil) {
         self.checker = checker
         self.localNetwork = localNetwork
         self.onDenied = onDenied
+        self.isKnownDenied = isKnownDenied
     }
 
     /// Checks and adds in the background (the Add button); `done` runs with true once added.
@@ -227,6 +233,11 @@ public final class IOSAddScannerModel: ObservableObject {
         }
         guard let checker else {
             message = IOSNetworkText.networkOff
+            return false
+        }
+        if isKnownDenied?() == true {
+            accessDenied = true
+            message = IOSNetworkText.deniedLine
             return false
         }
         isChecking = true

@@ -483,6 +483,20 @@ final class IOSScannerPickerTests: XCTestCase {
     }
 
     @MainActor
+    func test_addByAddress_whenDiscoveryKnowsItIsDenied_doesNotCheck() async {
+        prepare()
+        let checker: FakeAddressChecker = FakeAddressChecker()
+        let model: IOSAddScannerModel = IOSAddScannerModel(checker: checker, localNetwork: FakeLocalNetwork(),
+                                                           isKnownDenied: { () -> Bool in true })
+        model.text = "192.168.1.50"
+        let added: Bool = await model.add()
+        XCTAssertFalse(added)
+        XCTAssertTrue(model.accessDenied)
+        XCTAssertEqual(model.message, IOSNetworkText.deniedLine)
+        XCTAssertTrue(checker.firstUses.isEmpty)
+    }
+
+    @MainActor
     func test_networkTexts_areShort() {
         prepare()
         let titles: [String] = [IOSNetworkText.explanationTitle, IOSNetworkText.addTitle, IOSNetworkText.certificateTitle,
