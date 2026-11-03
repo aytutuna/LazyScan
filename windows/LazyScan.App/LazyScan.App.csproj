@@ -8,6 +8,8 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>LazyScan.App</RootNamespace>
     <AssemblyName>LazyScan</AssemblyName>
+    <NeutralLanguage>en</NeutralLanguage>
+    <SatelliteResourceLanguages>en;tr</SatelliteResourceLanguages>
     <Product>Lazy Scan</Product>
     <AssemblyTitle>Lazy Scan</AssemblyTitle>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
