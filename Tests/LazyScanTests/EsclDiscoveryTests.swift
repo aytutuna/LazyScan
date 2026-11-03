@@ -154,6 +154,14 @@ final class EsclDiscoveryTests: XCTestCase {
         XCTAssertNil(ScannerAddress.tryParse("[fe80::1%nosuch0]", error: &error))
     }
 
+    func testOnlyABareHostFallsBackToHttps() throws {
+        let fallback: ScannerAddress? = try ScannerAddress.parse("192.168.1.50").httpsFallback(typed: "192.168.1.50")
+        XCTAssertEqual(fallback?.description, "https://192.168.1.50")
+        for text in ["192.168.1.50:8080", "http://192.168.1.50", "https://192.168.1.50", "192.168.1.50/eSCL"] {
+            XCTAssertNil(try ScannerAddress.parse(text).httpsFallback(typed: text), text)
+        }
+    }
+
     func testBadAddressesSayWhatIsWrong() {
         let rows: [[String]] = [
             ["", "Enter the scanner's IP address or host name."],

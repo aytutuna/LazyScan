@@ -232,16 +232,26 @@ public final class IOSAddScannerModel: ObservableObject {
         isChecking = true
         accessDenied = false
         message = IOSNetworkText.connecting(address)
-        let added: Bool = await checkAndAdd(address, checker: checker)
+        let added: Bool = await checkAndAdd(address, https: address.httpsFallback(typed: text), checker: checker)
         isChecking = false
         return added
     }
 
-    private func checkAndAdd(_ address: ScannerAddress, checker: any IOSAddressChecking) async -> Bool {
+    private func checkAndAdd(_ address: ScannerAddress, https: ScannerAddress?, checker: any IOSAddressChecking) async -> Bool {
+        var address: ScannerAddress = address
         do {
             var result: EsclAddressCheck = try await checker.checkAddress(address, firstUse: nil)
             if Task.isCancelled {
                 return false
+            }
+            // A bare host that did not answer over HTTP may serve eSCL over HTTPS.
+            if result.noAnswer, let https {
+                address = https
+                message = IOSNetworkText.connecting(address)
+                result = try await checker.checkAddress(address, firstUse: nil)
+                if Task.isCancelled {
+                    return false
+                }
             }
             // A certificate seen for the first time is trusted once the UUID the scanner reports shows it
             // is not a changed certificate of a scanner trusted before.

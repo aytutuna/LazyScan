@@ -87,6 +87,13 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         hasher.combine(description.lowercased())
     }
 
+    /// The HTTPS address to try when a host typed bare (no scheme, no path) got no answer over HTTP on
+    /// port 80; nil for any other address.
+    public func httpsFallback(typed text: String) -> ScannerAddress? {
+        guard !secure, port == 80, resourcePath == "eSCL", !text.contains("/") else { return nil }
+        return ScannerAddress(secure: true, host: host, port: 443, resourcePath: resourcePath)
+    }
+
     /// An address from its parts (a discovered service); nil when the host or the port is not usable.
     public static func create(secure: Bool, host: String, port: Int, resourcePath: String) -> ScannerAddress? {
         guard port >= 1 && port <= 65535 else { return nil }

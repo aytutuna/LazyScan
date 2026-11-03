@@ -74,6 +74,15 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
 
     public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(ToString());
 
+    /// <summary>
+    /// The HTTPS address to try when a host typed bare (no scheme, no path) got no answer over
+    /// HTTP on port 80; null for any other address.
+    /// </summary>
+    public ScannerAddress? HttpsFallback(string typed) =>
+        !Secure && Port == 80 && ResourcePath == "eSCL" && !typed.Contains('/')
+            ? new ScannerAddress(secure: true, Host, 443, ResourcePath)
+            : null;
+
     /// <summary>An address from its parts (a discovered service); null when the host is not usable.</summary>
     public static ScannerAddress? Create(bool secure, string host, int port, string resourcePath)
     {

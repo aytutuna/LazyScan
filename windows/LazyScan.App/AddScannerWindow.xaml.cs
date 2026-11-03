@@ -48,6 +48,7 @@ public partial class AddScannerWindow : Window
             return;
         }
         var address = parsed!;
+        var https = address.HttpsFallback(AddressBox.Text.Trim());
         using var cancellation = new CancellationTokenSource();
         _check = cancellation;
         ShowProgress($"Connecting to {address}…");
@@ -57,6 +58,14 @@ public partial class AddScannerWindow : Window
             // Closing the dialog cancels, but a check that had already finished still resumes
             // here: nothing may be trusted or added after that.
             if (cancellation.IsCancellationRequested) return;
+            // A bare host that did not answer over HTTP may serve eSCL over HTTPS.
+            if (result.Capabilities is null && result.Certificate is null && https is not null)
+            {
+                address = https;
+                ShowProgress($"Connecting to {address}…");
+                result = await _backend.CheckAddressAsync(address, cancellation.Token);
+                if (cancellation.IsCancellationRequested) return;
+            }
             // A new certificate is trusted once the scanner's UUID shows it is not a changed
             // certificate of a scanner trusted before; a changed one is asked about as such.
             bool firstUseAsked = false, trusted = false;
