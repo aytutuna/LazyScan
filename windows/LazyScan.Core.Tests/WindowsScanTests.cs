@@ -340,6 +340,14 @@ public class WindowsScanTests
     }
 
     [Fact]
+    public void Plan_AutomaticFeederRegionIsCappedForALongPaperFeeder()
+    {
+        var plan = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.Auto), null,
+                                           Feeder with { CanAutoDetectPageSize = false, MaxScanAreaInches = new SizeD(8.5, 196) });
+        Assert.Equal(new RectD(0, 0, 8.5, EsclScanRequest.MaxFeederHeightInches), plan.RegionInches);
+    }
+
+    [Fact]
     public void Plan_FeederPaperSizeAsAnAreaWhenItDoesNotTakeItsName()
     {
         var plan = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.A5), null, Feeder);

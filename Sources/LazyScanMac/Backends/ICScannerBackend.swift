@@ -410,6 +410,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
             var areaInches = CGRect(x: 0, y: 0, width: bed.width, height: bed.height)
             if unitType == .documentFeeder {
                 areaInches = PaperSizes.feederRegionInches(settings.paperSize, max: bed)
+                areaInches.size.height = min(areaInches.height, EsclScanRequest.maxFeederHeightInches)
             }
             if unitType == .flatbed, let selection {
                 let clamped = selection.standardized.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
