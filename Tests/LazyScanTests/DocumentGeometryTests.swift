@@ -212,7 +212,7 @@ final class DocumentGeometryTests: XCTestCase {
         XCTAssertEqual(plan.action, .cropStraightened)
         XCTAssertEqual(plan.basis, .pageEdges)
         assertIn(plan.angleDegrees, TestPages.minus4.degrees - 0.3, TestPages.minus4.degrees + 0.3)
-        XCTAssertEqual(plan.geometry.caption, "Cropped and straightened 4.0°")
+        L10n.withTable([:], language: "en") { XCTAssertEqual(plan.geometry.caption, "Cropped and straightened 4.0°") }
         // Crop only: the box around the sheet, not turned.
         let box = try XCTUnwrap(DocumentGeometry.plan(page, crop: true, straighten: false))
         XCTAssertEqual(box.action, .cropBox)
@@ -222,7 +222,7 @@ final class DocumentGeometryTests: XCTestCase {
         let turn = try XCTUnwrap(DocumentGeometry.plan(page, crop: false, straighten: true))
         XCTAssertEqual(turn.action, .rotate)
         XCTAssertEqual(turn.basis, .pageEdges)
-        XCTAssertEqual(turn.geometry.caption, "Straightened 4.0°")
+        L10n.withTable([:], language: "en") { XCTAssertEqual(turn.geometry.caption, "Straightened 4.0°") }
     }
 
     func test_plan_straightSheet_isCroppedNotTurned() {
@@ -309,7 +309,9 @@ final class DocumentGeometryTests: XCTestCase {
     }
 
     func test_angleText_hasOneDecimal() {
-        XCTAssertEqual(DocumentGeometry.angleText(-2.4361), "2.4°")
-        XCTAssertEqual(DocumentGeometry.angleText(0.25), "0.3°")
+        L10n.withTable([:], language: "en") {
+            XCTAssertEqual(DocumentGeometry.angleText(-2.4361), "2.4°")
+            XCTAssertEqual(DocumentGeometry.angleText(0.25), "0.3°")
+        }
     }
 }

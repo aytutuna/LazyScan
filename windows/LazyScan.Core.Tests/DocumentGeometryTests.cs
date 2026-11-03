@@ -352,6 +352,14 @@ public class DocumentGeometryTests
     {
         Assert.Equal("2.4°", DocumentGeometry.AngleText(-2.4361));
         Assert.Equal("0.3°", DocumentGeometry.AngleText(0.25));
+        var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+        var before = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = tr;
+            Assert.Equal("2,4°", DocumentGeometry.AngleText(-2.4361));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = before; }
     }
 
     private static double RowMean(GrayImage gray, int y)

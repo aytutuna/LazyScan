@@ -93,6 +93,19 @@ final class L10nTests: XCTestCase {
         }
     }
 
+    func testDecimalFollowsTheLanguage() {
+        L10n.withTable([:], language: "en") {
+            XCTAssertEqual(L10n.decimal(2.4, digits: 1...1), "2.4")
+            XCTAssertEqual(L10n.decimal(2, digits: 1...1), "2.0")
+            XCTAssertEqual(L10n.decimal(8.5, digits: 0...2), "8.5")
+            XCTAssertEqual(L10n.decimal(5, digits: 0...2), "5")
+        }
+        L10n.withTable([:], language: "tr") {
+            XCTAssertEqual(L10n.decimal(2.4, digits: 1...1), "2,4")
+            XCTAssertEqual(L10n.decimal(8.27, digits: 0...2), "8,27")
+        }
+    }
+
     func testPluralRules() {
         XCTAssertEqual(L10n.pluralCategory(1, language: "en"), .one)
         XCTAssertEqual(L10n.pluralCategory(2, language: "en"), .other)

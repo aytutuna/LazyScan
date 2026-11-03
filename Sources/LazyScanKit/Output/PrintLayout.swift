@@ -181,12 +181,9 @@ public enum PrintLayout {
         return max(1, Int(mm.rounded(.up)))
     }
 
-    /// A length in inches with at most two decimals and no trailing zeros: "8.27", "5", "7.5".
+    /// A length in inches with at most two decimals and no trailing zeros: "8.27", "5", "7.5" (with the decimal separator of the user's region).
     static func inchesText(_ inches: Double) -> String {
-        var text = String(format: "%.2f", inches)
-        while text.hasSuffix("0") { text.removeLast() }
-        if text.hasSuffix(".") { text.removeLast() }
-        return text
+        L10n.decimal(inches, digits: 0...2)
     }
 
     private static func fitScale(_ width: Double, _ height: Double, _ area: CGRect) -> Double {

@@ -288,7 +288,7 @@ public enum DocumentGeometry {
 
     /// "2.4°": the size of a turn, one decimal (halves rounded up).
     public static func angleText(_ degrees: Double) -> String {
-        String(format: "%.1f°", (abs(degrees) * 10).rounded() / 10)
+        L10n.decimal((abs(degrees) * 10).rounded() / 10, digits: 1...1) + "°"
     }
 
     // MARK: - Correct

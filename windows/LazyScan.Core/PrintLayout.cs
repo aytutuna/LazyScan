@@ -52,7 +52,7 @@ public sealed record PrinterPaper(SizeD Paper, RectD Printable)
     /// <summary>"Letter (8.5 × 11 in)", "A4 (210 × 297 mm)", or "8.27 × 11.69 in" for a size without a name.</summary>
     public string Description => Size is { } size
         ? $"{size.Label()} ({size.Detail()})"
-        : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{Paper.Width:0.##} × {Paper.Height:0.##} in");
+        : $"{Loc.Decimal(Paper.Width, 0, 2)} × {Loc.Decimal(Paper.Height, 0, 2)} in";
 }
 
 /// <summary>

@@ -494,7 +494,7 @@ final class PageProcessorTests: XCTestCase {
 
     func test_pageCorrections_sayWhatWasDone_andWhatOneClickDoes() {
         let changed = corrected()
-        XCTAssertEqual(PageCorrections.caption(changed), "Cropped and straightened 4.0°")
+        L10n.withTable([:], language: "en") { XCTAssertEqual(PageCorrections.caption(changed), "Cropped and straightened 4.0°") }
         XCTAssertEqual(PageCorrections.toggleLabel(changed), "Show as scanned")
         XCTAssertEqual(PageCorrections.swapNote(changed, number: 2), "Page 2 is cropped and straightened again.")
         let original = changed.withVersionsSwapped(sheetImage)
@@ -503,7 +503,7 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertEqual(PageCorrections.swapNote(original, number: 2), "Page 2 is shown as scanned. It is saved that way.")
         let straightened = page(sheetImage).withGeometry(sheetImage, geometry: PageGeometry(cropped: false, angleDegrees: 1.25,
                                                                                              basis: .textLines))
-        XCTAssertEqual(PageCorrections.caption(straightened), "Straightened 1.3°")
+        L10n.withTable([:], language: "en") { XCTAssertEqual(PageCorrections.caption(straightened), "Straightened 1.3°") }
         XCTAssertEqual(PageCorrections.toggleLabel(straightened.withVersionsSwapped(sheetImage)), "Show straightened")
         let cropped = page(sheetImage).withGeometry(sheetImage, geometry: PageGeometry(cropped: true, angleDegrees: 0,
                                                                                         basis: .pageEdges))
@@ -962,7 +962,7 @@ final class PageProcessorTests: XCTestCase {
         let both = straightened.withSpineShadow(softened, result: result)
         XCTAssertTrue(both.alternate?.image === sheetImage)
         XCTAssertEqual(both.geometry, straightened.geometry)
-        XCTAssertEqual(PageCorrections.caption(both), "Straightened 1.5°, spine shadow softened")
+        L10n.withTable([:], language: "en") { XCTAssertEqual(PageCorrections.caption(both), "Straightened 1.5°, spine shadow softened") }
         XCTAssertEqual(PageCorrections.toggleLabel(both), "Show as scanned")
         XCTAssertEqual(PageCorrections.swapNote(both, number: 4), "Page 4 is straightened again, with the spine shadow softened.")
         let original = both.withVersionsSwapped(sheetImage)

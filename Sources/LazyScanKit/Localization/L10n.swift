@@ -75,6 +75,18 @@ public enum L10n {
         return .current
     }
 
+    /// `value` in the user's number format, with between `digits.lowerBound` and `digits.upperBound`
+    /// decimals (halves round up).
+    static func decimal(_ value: Double, digits: ClosedRange<Int>) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = locale()
+        formatter.roundingMode = .halfUp
+        formatter.minimumFractionDigits = digits.lowerBound
+        formatter.maximumFractionDigits = digits.upperBound
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
     private static func describe(_ arg: Any, _ formatter: NumberFormatter) -> String {
         if arg is any BinaryInteger || arg is any BinaryFloatingPoint, let text = formatter.string(for: arg) {
             return text

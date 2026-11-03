@@ -279,7 +279,7 @@ public static class DocumentGeometry
 
     /// <summary>"2.4°": the size of a turn, one decimal (halves rounded up).</summary>
     public static string AngleText(double degrees) =>
-        $"{(Math.Round(Math.Abs(degrees) * 10, MidpointRounding.AwayFromZero) / 10).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}°";
+        Loc.Decimal(Math.Round(Math.Abs(degrees) * 10, MidpointRounding.AwayFromZero) / 10, 1, 1) + "°";
 
     // MARK: - Correct
 

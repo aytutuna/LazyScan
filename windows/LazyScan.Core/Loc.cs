@@ -106,6 +106,13 @@ public static class Loc
         _ => arg?.ToString() ?? "",
     };
 
+    /// <summary>
+    /// <paramref name="value"/> in the current number format, with between <paramref name="minDigits"/>
+    /// and <paramref name="maxDigits"/> decimals.
+    /// </summary>
+    public static string Decimal(double value, int minDigits, int maxDigits) =>
+        value.ToString("#,##0." + new string('0', minDigits) + new string('#', maxDigits - minDigits), CultureInfo.CurrentCulture);
+
     private static string Number(object value) =>
         ((IFormattable)value).ToString("#,##0.###", CultureInfo.CurrentCulture);
 }

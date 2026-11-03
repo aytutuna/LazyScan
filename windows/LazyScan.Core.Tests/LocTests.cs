@@ -139,6 +139,19 @@ public sealed class LocTests
     }
 
     [Fact]
+    public void DecimalFollowsTheCulture()
+    {
+        Assert.Equal("2.0", Loc.Decimal(2, 1, 1));
+        Assert.Equal("8.5", Loc.Decimal(8.5, 0, 2));
+        Assert.Equal("5", Loc.Decimal(5, 0, 2));
+        InTurkish(null, () =>
+        {
+            Assert.Equal("2,4", Loc.Decimal(2.4, 1, 1));
+            Assert.Equal("8,27", Loc.Decimal(8.27, 0, 2));
+        });
+    }
+
+    [Fact]
     public void TurkishCasingKeepsTheDottedI()
     {
         var tr = CultureInfo.GetCultureInfo("tr-TR");
