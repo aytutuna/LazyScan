@@ -129,8 +129,10 @@ public enum DeviceMerge {
     }
 
     /// Groups the entries of all backends into one `DeviceGroup` per scanner, in the order the
-    /// scanners first appear. An entry joins the first group whose every member is the
-    /// `sameDevice`. The primary is the member whose connection (`connectionID`) `overrides`
+    /// scanners first appear. An entry joins the group whose every member is the `sameDevice`;
+    /// when several groups qualify and a hardware id is involved (two network scanners of one
+    /// model) it cannot tell which is its own and stays a group by itself, so the app never
+    /// moves a session onto the other scanner. The primary is the member whose connection (`connectionID`) `overrides`
     /// names for the group's key, when that member is present; otherwise the member matching
     /// the earliest of `rankPatterns` ("backend:transport", "*" matches any text, ASCII case
     /// ignored), the earliest listed among equals.
@@ -138,9 +140,14 @@ public enum DeviceMerge {
                              overrides: [String: String] = [:]) -> [DeviceGroup] {
         var clusters: [[ScannerInfo]] = []
         for device in devices {
-            if let index = clusters.firstIndex(where: { cluster in
-                cluster.allSatisfy { member in sameDevice(member, device) }
-            }) {
+            let matching = clusters.indices.filter { index in
+                clusters[index].allSatisfy { member in sameDevice(member, device) }
+            }
+            let ambiguous = matching.count > 1 && (
+                normalizedHardwareID(device.hardwareID) != nil || matching.contains { index in
+                    clusters[index].contains { member in normalizedHardwareID(member.hardwareID) != nil }
+                })
+            if let index = matching.first, !ambiguous {
                 clusters[index].append(device)
             } else {
                 clusters.append([device])

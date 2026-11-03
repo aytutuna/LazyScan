@@ -190,6 +190,20 @@ public class DeviceMergeTests
     }
 
     [Fact]
+    public void Group_NetworkScannersOfOneModelDoNotTakeEachOthersWiaEntry()
+    {
+        var wiaA = Wia("HP Color LaserJet MFP M479fdw", id: "1");
+        var wiaB = Wia("HP Color LaserJet MFP M479fdw", id: "2");
+        var esclA = Escl("HP Color LaserJet MFP M479fdw", "uuid-a", id: "1");
+        var esclB = Escl("HP Color LaserJet MFP M479fdw", "uuid-b", id: "2");
+        var groups = DeviceMerge.Group([wiaA, wiaB, esclA, esclB], DeviceMerge.WindowsRanking);
+
+        Assert.Equal(4, groups.Count);
+        Assert.All(groups, g => Assert.Single(g.Members));
+        Assert.Equal(4, groups.Select(g => g.Key).Distinct().Count());
+    }
+
+    [Fact]
     public void Group_KeepsDemoAndUnnamedDevicesApartInListOrder()
     {
         var wia = Wia("Demo Scanner");

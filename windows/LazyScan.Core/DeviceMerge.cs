@@ -143,8 +143,10 @@ public static class DeviceMerge
 
     /// <summary>
     /// Groups the entries of all backends into one <see cref="DeviceGroup"/> per scanner, in
-    /// the order the scanners first appear. An entry joins the first group whose every member
-    /// is the <see cref="SameDevice"/>. The primary is the member whose connection
+    /// the order the scanners first appear. An entry joins the group whose every member is the
+    /// <see cref="SameDevice"/>; when several groups qualify and a hardware id is involved (two
+    /// network scanners of one model) it cannot tell which is its own and stays a group by
+    /// itself, so the app never moves a session onto the other scanner. The primary is the member whose connection
     /// (<see cref="ConnectionId"/>) <paramref name="overrides"/> names for the group's key,
     /// when that member is present; otherwise the member matching the earliest of
     /// <paramref name="rankPatterns"/> ("backend:transport", '*' matches any text, ASCII case
@@ -158,9 +160,11 @@ public static class DeviceMerge
         var clusters = new List<List<ScannerInfo>>();
         foreach (var device in devices)
         {
-            var cluster = clusters.FirstOrDefault(c => c.All(member => SameDevice(member, device)));
-            if (cluster is null) clusters.Add([device]);
-            else cluster.Add(device);
+            var matching = clusters.Where(c => c.All(member => SameDevice(member, device))).ToList();
+            bool ambiguous = matching.Count > 1
+                && new[] { device }.Concat(matching.SelectMany(c => c)).Any(m => NormalizedHardwareId(m.HardwareId) is not null);
+            if (matching.Count > 0 && !ambiguous) matching[0].Add(device);
+            else clusters.Add([device]);
         }
 
         var groups = new List<DeviceGroup>();
