@@ -1142,6 +1142,8 @@ struct ScanScreen: View {
                     .accessibilityIdentifier("step.skip")
                 }
             }
+            // The row has no inset, so without this the cell's rounded corners cut off the first letters.
+            .padding(.horizontal, 8)
         }
     }
 
@@ -1207,6 +1209,7 @@ struct ScanScreen: View {
                 .accessibilityIdentifier("step.skip")
             }
         }
+        .padding(.horizontal, 8)
     }
 
     /// The scanner named, with how it is reached, where the list beside the screen picks it.
