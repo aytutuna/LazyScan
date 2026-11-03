@@ -36,6 +36,9 @@ final class InspectorSectionsTests: XCTestCase {
         let s = ScanSettings()
         XCTAssertEqual(InspectorSections.scannerSummary(s), "Flatbed \u{00B7} 300 dpi \u{00B7} Color")
         XCTAssertFalse(InspectorSections.scannerChanged(s))
+        var sharp = ScanSettings()
+        sharp.resolution = 1200
+        XCTAssertEqual(InspectorSections.scannerSummary(sharp), "Flatbed \u{00B7} 1200 dpi \u{00B7} Color")
         XCTAssertEqual(InspectorSections.outputSummary(s, shownFormat: .pdf), "PDF \u{00B7} Standard")
         XCTAssertFalse(InspectorSections.outputChanged(s, shownFormat: .pdf))
         XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "")

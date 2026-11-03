@@ -135,6 +135,46 @@ public class StatusLineTests
             "Added 1 page, one side of each sheet: the scanner did not scan both sides — 4 in queue. Scan more or Save PDF."));
     }
 
+    private static void WithTable(Dictionary<string, string> table, Action body)
+    {
+        Loc.Table = table;
+        try { body(); }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
+    public void Short_FindsTheSettingsNotes_WhateverTheLanguage()
+    {
+        WithTable(new()
+        {
+            ["This scanner does not offer {0} dpi, so {1} dpi is used."] = "{1} dpi kullanılır, {0} dpi yok.",
+            ["{0} dpi used"] = "{0} dpi kullanıldı",
+            ["This scanner has no flatbed, so the document feeder is used."] = "Cam yok, besleyici kullanılır.",
+            ["Feeder used"] = "Besleyici",
+        }, () =>
+        {
+            var low = SettingsAdapter.Adapt(new ScanSettings { Resolution = 600 },
+                                            new ScannerCapabilities { SupportedResolutions = [150, 300] }).Notes;
+            string resolution = $"Applied preset “Invoices”. {string.Join(" ", low.Select(n => n.Message))}";
+            Assert.Equal(["300 dpi kullanıldı"], StatusLine.Warnings(resolution));
+            Assert.Equal("Applied preset “Invoices” · 300 dpi kullanıldı", StatusLine.Short(resolution));
+            var noFlatbed = SettingsAdapter.Adapt(new ScanSettings { Source = ScanSource.Flatbed },
+                                                  new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder] }).Notes;
+            string feeder = $"Saved. {string.Join(" ", noFlatbed.Select(n => n.Message))}";
+            Assert.Equal(["Besleyici"], StatusLine.Warnings(feeder));
+        });
+    }
+
+    [Fact]
+    public void Short_CountsTheEnglishWords_WhateverTheLanguage()
+    {
+        WithTable(new() { ["feeder used|after another fact"] = "besleyici kullanıldı bu sefer lütfen not alın" }, () =>
+        {
+            string message = "Added 3 pages — 3 in queue. This scanner has no flatbed, so the document feeder is used.";
+            Assert.Equal("3 pages added · besleyici kullanıldı bu sefer lütfen not alın", StatusLine.Short(message));
+        });
+    }
+
     [Fact]
     public void Words_CountsTokensWithALetterOrDigit()
     {

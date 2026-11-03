@@ -24,14 +24,14 @@ public enum InspectorSections {
     /// The section's header: "Scanner", "Split into documents"; the task's section is named by its task.
     public static func title(_ section: String) -> String {
         switch section {
-        case task: return "Task"
-        case scanner: return "Scanner"
-        case output: return "Output"
-        case adjustments: return "Adjustments"
-        case pages: return "Pages"
-        case split: return "Split into documents"
-        case archive: return "Archive & password"
-        case more: return "More options"
+        case task: return L10n.t("Task|section")
+        case scanner: return L10n.t("Scanner|section")
+        case output: return L10n.t("Output|section")
+        case adjustments: return L10n.t("Adjustments")
+        case pages: return L10n.t("Pages|section")
+        case split: return L10n.t("Split into documents")
+        case archive: return L10n.t("Archive & password")
+        case more: return L10n.t("More options")
         default: return section
         }
     }
@@ -54,14 +54,14 @@ public enum InspectorSections {
 
     /// "Flatbed · 300 dpi · Color", "Feeder · both sides · 300 dpi · Gray".
     public static func scannerSummary(_ s: ScanSettings) -> String {
-        var parts: [String] = [s.source == .documentFeeder ? "Feeder" : "Flatbed"]
-        if s.source == .documentFeeder && s.duplex != .off { parts.append("both sides") }
-        parts.append("\(s.resolution) dpi")
+        var parts: [String] = [s.source == .documentFeeder ? L10n.t("Feeder|scanner source") : L10n.t("Flatbed")]
+        if s.source == .documentFeeder && s.duplex != .off { parts.append(L10n.t("both sides")) }
+        parts.append(L10n.t("{0} dpi", String(s.resolution)))
         let color: String
         switch s.colorMode {
-        case .grayscale: color = "Gray"
-        case .blackWhite: color = "B&W"
-        case .color: color = "Color"
+        case .grayscale: color = L10n.t("Gray|color mode")
+        case .blackWhite: color = L10n.t("B&W")
+        case .color: color = L10n.t("Color")
         }
         parts.append(color)
         return parts.joined(separator: " \u{00B7} ")
@@ -80,7 +80,7 @@ public enum InspectorSections {
         let format: String
         switch shownFormat {
         case .word: format = "Word"
-        case .text: format = "Text"
+        case .text: format = L10n.t("Text|format")
         default: format = shownFormat.label
         }
         if shownFormat == .pdf && s.intent == .document {
@@ -103,20 +103,20 @@ public enum InspectorSections {
     public static func adjustmentsSummary(_ a: AdjustmentSettings) -> String {
         let sliders: Bool = a.brightness != 0 || a.contrast != 1 || a.saturation != 1 || a.sharpness != 0
         let edited: Bool = sliders || a.descreen || a.restoreFadedColors
-        if edited { return "Edited" }
-        return a.autoEnhance ? "Auto" : ""
+        if edited { return L10n.t("Edited") }
+        return a.autoEnhance ? L10n.t("Auto|enhance") : ""
     }
 
     /// The page options that are on, at most two then "+N": "Skip blank · Upright +1"; "" when none is.
     public static func pagesSummary(_ d: DocumentOptions) -> String {
         var on: [String] = []
-        if d.removeBlankPages { on.append("Skip blank") }
-        if d.autoCrop { on.append("Crop") }
-        if d.autoStraighten { on.append("Straighten") }
-        if d.autoRotate { on.append("Upright") }
-        if d.splitFacingPages { on.append("Facing pages") }
+        if d.removeBlankPages { on.append(L10n.t("Skip blank")) }
+        if d.autoCrop { on.append(L10n.t("Crop|page option")) }
+        if d.autoStraighten { on.append(L10n.t("Straighten")) }
+        if d.autoRotate { on.append(L10n.t("Upright")) }
+        if d.splitFacingPages { on.append(L10n.t("Facing pages")) }
         if on.count <= 2 { return on.joined(separator: " \u{00B7} ") }
-        return "\(on[0]) \u{00B7} \(on[1]) +\(on.count - 2)"
+        return "\(on[0]) \u{00B7} \(on[1]) " + L10n.t("+{0}", on.count - 2)
     }
 
     /// How many page options are on (the header's accessibility label: "Pages, 2 options on").
@@ -129,18 +129,18 @@ public enum InspectorSections {
     public static func splitSummary(_ d: DocumentOptions) -> String {
         let sheets: Int = DocumentSplitter.clampSheetCount(d.splitSheetCount)
         switch d.splitMode {
-        case .separatorSheet: return "Separator sheets"
-        case .blankSheet: return "Blank sheets"
+        case .separatorSheet: return L10n.t("Separator sheets")
+        case .blankSheet: return L10n.t("Blank sheets")
         case .sheetCount: return L10n.plural(sheets, one: "Every sheet", other: "Every {0} sheets")
-        case .barcode: return "QR codes"
-        case .none: return "Off"
+        case .barcode: return L10n.t("QR codes")
+        case .none: return L10n.t("Off")
         }
     }
 
     /// "Off", "PDF/A" or "Password on" (the password wins: the two can't be on together).
     public static func archiveSummary(_ o: OutputOptions) -> String {
-        if o.protect { return "Password on" }
-        return o.archival ? "PDF/A" : "Off"
+        if o.protect { return L10n.t("Password on") }
+        return o.archival ? "PDF/A" : L10n.t("Off")
     }
 
     /// "Open after saving", ".txt", both, or "". `textShown`: Also save text applies (a PDF is saved),
@@ -150,7 +150,7 @@ public enum InspectorSections {
         if o.afterSave != AfterSaveAction.none {
             var label: String = o.afterSave.label
             while label.hasSuffix("\u{2026}") { label.removeLast() }
-            parts.append(label + " after saving")
+            parts.append(L10n.t("{0} after saving", label))
         }
         if textShown && o.alsoSaveText { parts.append(".txt") }
         return parts.joined(separator: " \u{00B7} ")
@@ -197,8 +197,8 @@ public enum InspectorSections {
     /// The task's own section's header: "Photocopy" or "Receipts"; nil for a task without one.
     public static func taskTitle(_ s: ScanSettings) -> String? {
         switch TaskCatalog.flow(of: s) {
-        case .copy: return "Photocopy"
-        case .receiptSplit: return "Receipts"
+        case .copy: return L10n.t("Photocopy")
+        case .receiptSplit: return L10n.t("Receipts")
         default: return nil
         }
     }
@@ -207,7 +207,7 @@ public enum InspectorSections {
     /// the others by `title(_:)`.
     public static func title(_ section: String, for s: ScanSettings) -> String {
         if section == task { return taskTitle(s) ?? title(task) }
-        if section == output && s.intent == .photo { return "Photos" }
+        if section == output && s.intent == .photo { return L10n.t("Photos") }
         return title(section)
     }
 

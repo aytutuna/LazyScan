@@ -378,6 +378,10 @@ public enum StatusLine {
     /// first sentence or what comes before a dash, a colon or a comma, else six words and "…". A setting
     /// changed for the scanner (`SettingsAdapter`'s notes) or a two-sided scan that came back one-sided
     /// keeps a short warning ("… · 300 dpi used", "… · one side only"); when both can't fit, the warnings win.
+    /// The six words are counted on the English text of each piece in every language (the views truncate
+    /// the rest). The settings notes are matched from their catalog entries; the heads (Added, Saved, Found)
+    /// and the one-sided mark are matched in English, so those messages get no translations until the app
+    /// passes StatusLine structured input.
     public static func short(_ message: String, deviceName: String? = nil) -> String
     public static func withWarnings(_ head: String, message: String) -> String
     public static func warnings(_ message: String) -> [String]

@@ -138,6 +138,35 @@ final class StatusLineTests: XCTestCase {
                        "Page 4 added \u{00B7} one side only")
     }
 
+    func test_short_findsTheSettingsNotes_whateverTheLanguage() {
+        let table: [String: String] = [
+            "This scanner does not offer {0} dpi, so {1} dpi is used.": "{1} dpi kullan\u{0131}l\u{0131}r, {0} dpi yok.",
+            "{0} dpi used": "{0} dpi kullan\u{0131}ld\u{0131}",
+            "This scanner has no flatbed, so the document feeder is used.": "Cam yok, besleyici kullan\u{0131}l\u{0131}r.",
+            "Feeder used": "Besleyici",
+        ]
+        L10n.withTable(table, language: "tr") {
+            var six = ScanSettings()
+            six.resolution = 600
+            let resolution = withNotes("Applied preset \u{201C}Invoices\u{201D}.", six, ScannerCapabilities(supportedResolutions: [150, 300]))
+            XCTAssertEqual(StatusLine.warnings(resolution), ["300 dpi kullan\u{0131}ld\u{0131}"])
+            XCTAssertEqual(StatusLine.short(resolution), "Applied preset \u{201C}Invoices\u{201D} \u{00B7} 300 dpi kullan\u{0131}ld\u{0131}")
+            var flatbed = ScanSettings()
+            flatbed.source = .flatbed
+            let feeder = withNotes("Saved.", flatbed, ScannerCapabilities(sources: [.documentFeeder]))
+            XCTAssertEqual(StatusLine.warnings(feeder), ["Besleyici"])
+        }
+    }
+
+    func test_short_countsTheEnglishWords_whateverTheLanguage() {
+        let table: [String: String] = ["feeder used|after another fact": "besleyici kullan\u{0131}ld\u{0131} bu sefer l\u{00FC}tfen not al\u{0131}n"]
+        L10n.withTable(table, language: "tr") {
+            let message = "Added 3 pages \u{2014} 3 in queue. This scanner has no flatbed, so the document feeder is used."
+            XCTAssertEqual(StatusLine.short(message),
+                           "3 pages added \u{00B7} besleyici kullan\u{0131}ld\u{0131} bu sefer l\u{00FC}tfen not al\u{0131}n")
+        }
+    }
+
     func test_words_countsTokensWithALetterOrDigit() {
         XCTAssertEqual(StatusLine.words("Ready \u{2014} Demo Scanner"), 3)
         XCTAssertEqual(StatusLine.words("6 pages added \u{00B7} 1 blank"), 5)

@@ -40,6 +40,7 @@ public class InspectorSectionsTests
         var s = new ScanSettings();
         Assert.Equal("Flatbed · 300 dpi · Color", InspectorSections.ScannerSummary(s));
         Assert.False(InspectorSections.ScannerChanged(s));
+        Assert.Equal("Flatbed · 1200 dpi · Color", InspectorSections.ScannerSummary(new ScanSettings { Resolution = 1200 }));
         Assert.Equal("PDF · Standard", InspectorSections.OutputSummary(s, OutputFormat.Pdf));
         Assert.False(InspectorSections.OutputChanged(s, OutputFormat.Pdf));
         Assert.Equal("", InspectorSections.AdjustmentsSummary(s.Adjustments));

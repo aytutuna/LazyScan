@@ -27,14 +27,14 @@ public static class InspectorSections
     /// <summary>The section's header: "Scanner", "Split into documents"; the task's section is named by its task.</summary>
     public static string Title(string section) => section switch
     {
-        Task => "Task",
-        Scanner => "Scanner",
-        Output => "Output",
-        Adjustments => "Adjustments",
-        Pages => "Pages",
-        Split => "Split into documents",
-        Archive => "Archive & password",
-        More => "More options",
+        Task => Loc.T("Task|section"),
+        Scanner => Loc.T("Scanner|section"),
+        Output => Loc.T("Output|section"),
+        Adjustments => Loc.T("Adjustments"),
+        Pages => Loc.T("Pages|section"),
+        Split => Loc.T("Split into documents"),
+        Archive => Loc.T("Archive & password"),
+        More => Loc.T("More options"),
         _ => section,
     };
 
@@ -56,10 +56,10 @@ public static class InspectorSections
     /// <summary>"Flatbed · 300 dpi · Color", "Feeder · both sides · 300 dpi · Gray".</summary>
     public static string ScannerSummary(ScanSettings s)
     {
-        var parts = new List<string> { s.Source == ScanSource.DocumentFeeder ? "Feeder" : "Flatbed" };
-        if (s.Source == ScanSource.DocumentFeeder && s.Duplex != DuplexMode.Off) parts.Add("both sides");
-        parts.Add($"{s.Resolution} dpi");
-        parts.Add(s.ColorMode switch { ColorMode.Grayscale => "Gray", ColorMode.BlackWhite => "B&W", _ => "Color" });
+        var parts = new List<string> { s.Source == ScanSource.DocumentFeeder ? Loc.T("Feeder|scanner source") : Loc.T("Flatbed") };
+        if (s.Source == ScanSource.DocumentFeeder && s.Duplex != DuplexMode.Off) parts.Add(Loc.T("both sides"));
+        parts.Add(Loc.T("{0} dpi", s.Resolution.ToString()));
+        parts.Add(s.ColorMode switch { ColorMode.Grayscale => Loc.T("Gray|color mode"), ColorMode.BlackWhite => Loc.T("B&W"), _ => Loc.T("Color") });
         return string.Join(" · ", parts);
     }
 
@@ -72,7 +72,7 @@ public static class InspectorSections
     /// <param name="shownFormat">The format the column shows (photos save an image, receipts and the ID card a PDF or an image).</param>
     public static string OutputSummary(ScanSettings s, OutputFormat shownFormat)
     {
-        string format = shownFormat switch { OutputFormat.Word => "Word", OutputFormat.Text => "Text", var f => f.Label() };
+        string format = shownFormat switch { OutputFormat.Word => "Word", OutputFormat.Text => Loc.T("Text|format"), var f => f.Label() };
         return shownFormat == OutputFormat.Pdf && s.Intent == ScanIntent.Document ? $"{format} · {s.Output.PdfSize.Label()}" : format;
     }
 
@@ -92,20 +92,20 @@ public static class InspectorSections
     {
         bool edited = a.Brightness != 0 || a.Contrast != 1 || a.Saturation != 1 || a.Sharpness != 0
                       || a.Descreen || a.RestoreFadedColors;
-        return edited ? "Edited" : a.AutoEnhance ? "Auto" : "";
+        return edited ? Loc.T("Edited") : a.AutoEnhance ? Loc.T("Auto|enhance") : "";
     }
 
     /// <summary>The page options that are on, at most two then "+N": "Skip blank · Upright +1"; "" when none is.</summary>
     public static string PagesSummary(DocumentOptions d)
     {
         var on = new List<string>();
-        if (d.RemoveBlankPages) on.Add("Skip blank");
-        if (d.AutoCrop) on.Add("Crop");
-        if (d.AutoStraighten) on.Add("Straighten");
-        if (d.AutoRotate) on.Add("Upright");
-        if (d.SplitFacingPages) on.Add("Facing pages");
+        if (d.RemoveBlankPages) on.Add(Loc.T("Skip blank"));
+        if (d.AutoCrop) on.Add(Loc.T("Crop|page option"));
+        if (d.AutoStraighten) on.Add(Loc.T("Straighten"));
+        if (d.AutoRotate) on.Add(Loc.T("Upright"));
+        if (d.SplitFacingPages) on.Add(Loc.T("Facing pages"));
         if (on.Count <= 2) return string.Join(" · ", on);
-        return $"{on[0]} · {on[1]} +{on.Count - 2}";
+        return $"{on[0]} · {on[1]} " + Loc.T("+{0}", on.Count - 2);
     }
 
     /// <summary>How many page options are on (the header's accessible name: "Pages, 2 options on").</summary>
@@ -118,23 +118,23 @@ public static class InspectorSections
         int sheets = DocumentSplitter.ClampSheetCount(d.SplitSheetCount);
         return d.SplitMode switch
         {
-            SplitMode.SeparatorSheet => "Separator sheets",
-            SplitMode.BlankSheet => "Blank sheets",
+            SplitMode.SeparatorSheet => Loc.T("Separator sheets"),
+            SplitMode.BlankSheet => Loc.T("Blank sheets"),
             SplitMode.SheetCount => Loc.Plural(sheets, "Every sheet", "Every {0} sheets"),
-            SplitMode.Barcode => "QR codes",
-            _ => "Off",
+            SplitMode.Barcode => Loc.T("QR codes"),
+            _ => Loc.T("Off"),
         };
     }
 
     /// <summary>"Off", "PDF/A" or "Password on" (the password wins: the two can't be on together).</summary>
-    public static string ArchiveSummary(OutputOptions o) => o.Protect ? "Password on" : o.Archival ? "PDF/A" : "Off";
+    public static string ArchiveSummary(OutputOptions o) => o.Protect ? Loc.T("Password on") : o.Archival ? "PDF/A" : Loc.T("Off");
 
     /// <summary>"Open after saving", ".txt", both, or "".</summary>
     /// <param name="textShown">Also save text applies (a PDF is saved), so it counts.</param>
     public static string MoreSummary(OutputOptions o, bool textShown)
     {
         var parts = new List<string>();
-        if (o.AfterSave != AfterSaveAction.None) parts.Add($"{o.AfterSave.Label().TrimEnd('…')} after saving");
+        if (o.AfterSave != AfterSaveAction.None) parts.Add(Loc.T("{0} after saving", o.AfterSave.Label().TrimEnd('…')));
         if (textShown && o.AlsoSaveText) parts.Add(".txt");
         return string.Join(" · ", parts);
     }
@@ -184,8 +184,8 @@ public static class InspectorSections
     /// <summary>The task's own section's header: "Photocopy" or "Receipts"; null for a task without one.</summary>
     public static string? TaskTitle(ScanSettings s) => TaskCatalog.FlowOf(s) switch
     {
-        TaskFlowKind.Copy => "Photocopy",
-        TaskFlowKind.ReceiptSplit => "Receipts",
+        TaskFlowKind.Copy => Loc.T("Photocopy"),
+        TaskFlowKind.ReceiptSplit => Loc.T("Receipts"),
         _ => null,
     };
 
@@ -196,7 +196,7 @@ public static class InspectorSections
     public static string Title(string section, ScanSettings s)
     {
         if (section == Task) return TaskTitle(s) ?? Title(Task);
-        if (section == Output && s.Intent == ScanIntent.Photo) return "Photos";
+        if (section == Output && s.Intent == ScanIntent.Photo) return Loc.T("Photos");
         return Title(section);
     }
 
