@@ -45,49 +45,49 @@ public enum ScannerProblems {
     public static func describe(_ problem: ScannerProblem) -> String {
         switch problem {
         case .feederEmpty:
-            return "Load paper in the feeder, then scan again."
+            return L10n.t("Load paper in the feeder, then scan again.")
         case .paperJam:
-            return "Paper is jammed in the scanner. Clear the jam, then scan again."
+            return L10n.t("Paper is jammed in the scanner. Clear the jam, then scan again.")
         case .paperProblem:
-            return "The scanner could not feed the paper. Check the sheets in the feeder, then scan again."
+            return L10n.t("The scanner could not feed the paper. Check the sheets in the feeder, then scan again.")
         case .multiFeed:
-            return "The scanner pulled in several sheets at once. Fan the stack, load it again, then scan again."
+            return L10n.t("The scanner pulled in several sheets at once. Fan the stack, load it again, then scan again.")
         case .coverOpen:
-            return "The scanner's cover is open. Close it, then scan again."
+            return L10n.t("The scanner's cover is open. Close it, then scan again.")
         case .offline:
-            return "The scanner is offline. Check that it is turned on and connected."
+            return L10n.t("The scanner is offline. Check that it is turned on and connected.")
         case .busy:
-            return "The scanner is busy. Wait until it has finished, then try again."
+            return L10n.t("The scanner is busy. Wait until it has finished, then try again.")
         case .warmingUp:
-            return "The scanner is warming up. Try again in a moment."
+            return L10n.t("The scanner is warming up. Try again in a moment.")
         case .needsAttention:
-            return "The scanner needs attention. Check its display or control panel."
+            return L10n.t("The scanner needs attention. Check its display or control panel.")
         case .communicationError:
-            return "The connection to the scanner was interrupted. Check the cable or network, then try again."
+            return L10n.t("The connection to the scanner was interrupted. Check the cable or network, then try again.")
         case .appSuspended:
-            return "The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again."
+            return L10n.t("The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again.")
         case .unknown:
-            return "The scanner reported a problem. Check the scanner, then try again."
+            return L10n.t("The scanner reported a problem. Check the scanner, then try again.")
         }
     }
 
     /// The title of an error that names no scanner problem.
-    public static let genericTitle = "Something went wrong"
+    public static var genericTitle: String { L10n.t("Something went wrong") }
 
     /// The problem in two or three words, for the title of the error alert: "Paper jam", "Scanner offline".
     public static func title(_ problem: ScannerProblem) -> String {
         switch problem {
-        case .feederEmpty: return "Feeder empty"
-        case .paperJam: return "Paper jam"
-        case .paperProblem: return "Paper problem"
-        case .multiFeed: return "Several sheets fed"
-        case .coverOpen: return "Cover open"
-        case .offline: return "Scanner offline"
-        case .busy: return "Scanner busy"
-        case .warmingUp: return "Warming up"
-        case .needsAttention: return "Needs attention"
-        case .communicationError: return "Connection lost"
-        case .appSuspended: return "App suspended"
+        case .feederEmpty: return L10n.t("Feeder empty")
+        case .paperJam: return L10n.t("Paper jam")
+        case .paperProblem: return L10n.t("Paper problem")
+        case .multiFeed: return L10n.t("Several sheets fed")
+        case .coverOpen: return L10n.t("Cover open")
+        case .offline: return L10n.t("Scanner offline")
+        case .busy: return L10n.t("Scanner busy")
+        case .warmingUp: return L10n.t("Warming up")
+        case .needsAttention: return L10n.t("Needs attention")
+        case .communicationError: return L10n.t("Connection lost")
+        case .appSuspended: return L10n.t("App suspended")
         case .unknown: return genericTitle
         }
     }
@@ -96,18 +96,18 @@ public enum ScannerProblems {
     /// its own (error messages, the status line, the troubleshooter).
     public static func advice(_ problem: ScannerProblem) -> String {
         switch problem {
-        case .feederEmpty: return "Load paper in the feeder, then scan again."
-        case .paperJam: return "Clear the jam, then scan again."
-        case .paperProblem: return "Check the sheets in the feeder, then scan again."
-        case .multiFeed: return "Fan the stack, load it again, then scan again."
-        case .coverOpen: return "Close the cover, then scan again."
-        case .offline: return "Turn it on and check the cable or network."
-        case .busy: return "Wait until it has finished, then try again."
-        case .warmingUp: return "Try again in a moment."
-        case .needsAttention: return "Check its display or control panel."
-        case .communicationError: return "Check the cable or network, then try again."
-        case .appSuspended: return "Keep the app open while scanning, then scan again."
-        case .unknown: return "Check the scanner, then try again."
+        case .feederEmpty: return L10n.t("Load paper in the feeder, then scan again.")
+        case .paperJam: return L10n.t("Clear the jam, then scan again.")
+        case .paperProblem: return L10n.t("Check the sheets in the feeder, then scan again.")
+        case .multiFeed: return L10n.t("Fan the stack, load it again, then scan again.")
+        case .coverOpen: return L10n.t("Close the cover, then scan again.")
+        case .offline: return L10n.t("Turn it on and check the cable or network.")
+        case .busy: return L10n.t("Wait until it has finished, then try again.")
+        case .warmingUp: return L10n.t("Try again in a moment.")
+        case .needsAttention: return L10n.t("Check its display or control panel.")
+        case .communicationError: return L10n.t("Check the cable or network, then try again.")
+        case .appSuspended: return L10n.t("Keep the app open while scanning, then scan again.")
+        case .unknown: return L10n.t("Check the scanner, then try again.")
         }
     }
 

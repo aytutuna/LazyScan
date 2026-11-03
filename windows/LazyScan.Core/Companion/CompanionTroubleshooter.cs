@@ -41,10 +41,8 @@ public static class CompanionTroubleshooter
         if (FirewallCheck(snapshot) is { } firewall) checks.Add(firewall);
         if (SyncFolderCheck(snapshot) is { } syncFolder) checks.Add(syncFolder);
         checks.Add(new TroubleshootCheck(
-            "phoneIsolation", CheckStatus.Tip, "Phone cannot connect on the same Wi-Fi?",
-            "Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other "
-            + "even on the same Wi-Fi. The phone's connection check then says so. Connect this PC to your phone's "
-            + "hotspot instead, or send the document from the phone's share sheet.",
+            "phoneIsolation", CheckStatus.Tip, Loc.T("Phone cannot connect on the same Wi-Fi?"),
+            Loc.T("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this {0} to your phone's hotspot instead, or send the document from the phone's share sheet.", "PC"),
             []));
         return [.. checks.Select((check, index) => (check, index))
                          .OrderBy(pair => Rank(pair.check.Status))
@@ -59,12 +57,12 @@ public static class CompanionTroubleshooter
         var untrusted = snapshot.Networks.Where(n => n.Trust == NetworkTrust.NotTrusted).Select(n => n.Network.Name).ToList();
         return snapshot.Listen switch
         {
-            CompanionListenState.Listening => $"Receiving from phones on {JoinNames(trusted)}.",
-            CompanionListenState.Off => "No phone is paired yet.",
-            CompanionListenState.Offline => "Not connected to a network.",
-            CompanionListenState.NoTrustedNetwork => $"Not receiving from phones on {JoinNames(untrusted)}.",
-            CompanionListenState.Failed => "Could not start receiving from phones.",
-            CompanionListenState.Elsewhere => "Another Lazy Scan window receives from phones.",
+            CompanionListenState.Listening => Loc.T("Receiving from phones on {0}.", JoinNames(trusted)),
+            CompanionListenState.Off => Loc.T("No phone is paired yet."),
+            CompanionListenState.Offline => Loc.T("Not connected to a network."),
+            CompanionListenState.NoTrustedNetwork => Loc.T("Not receiving from phones on {0}.", JoinNames(untrusted)),
+            CompanionListenState.Failed => Loc.T("Could not start receiving from phones."),
+            CompanionListenState.Elsewhere => Loc.T("Another Lazy Scan window receives from phones."),
             _ => "",
         };
     }
@@ -74,7 +72,7 @@ public static class CompanionTroubleshooter
     {
         int problems = checks.Count(check => check.Status == CheckStatus.Problem);
         int warnings = checks.Count(check => check.Status == CheckStatus.Warning);
-        if (problems == 0 && warnings == 0) return "Nothing here stops a paired phone from connecting.";
+        if (problems == 0 && warnings == 0) return Loc.T("Nothing here stops a paired phone from connecting.");
         string problemText = Loc.Plural(problems, "{0} problem", "{0} problems");
         string warningText = Loc.Plural(warnings, "{0} warning", "{0} warnings");
         if (problems > 0 && warnings > 0) return Loc.T("{0} and {1} found.", problemText, warningText);
@@ -84,29 +82,27 @@ public static class CompanionTroubleshooter
     private static TroubleshootCheck? ListenCheck(CompanionSnapshot snapshot) => snapshot.Listen switch
     {
         CompanionListenState.Failed => new TroubleshootCheck(
-            "phoneListening", CheckStatus.Problem, "Lazy Scan could not start receiving",
+            "phoneListening", CheckStatus.Problem, Loc.T("Lazy Scan could not start receiving"),
             JoinSentences(snapshot.ListenError,
-                          "Close other copies of Lazy Scan, then select Refresh. Restarting the PC also helps."),
+                          Loc.T("Close other copies of Lazy Scan, then select Refresh. Restarting the {0} also helps.", "PC")),
             [TroubleshootAction.Refresh]),
         CompanionListenState.Offline => new TroubleshootCheck(
-            "phoneListening", CheckStatus.Problem, "Not connected to a network",
-            "This PC is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, "
-            + "or to your phone's hotspot.",
+            "phoneListening", CheckStatus.Problem, Loc.T("Not connected to a network"),
+            Loc.T("This {0} is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.", "PC"),
             [TroubleshootAction.OpenNetworkSettings, TroubleshootAction.Refresh]),
         CompanionListenState.Elsewhere => new TroubleshootCheck(
-            "phoneListening", CheckStatus.Warning, "Another Lazy Scan window receives from phones",
-            "Documents from phones go to the Lazy Scan window that was opened first. Close it to receive here.",
+            "phoneListening", CheckStatus.Warning, Loc.T("Another Lazy Scan window receives from phones"),
+            Loc.T("Documents from phones go to the Lazy Scan window that was opened first. Close it to receive here."),
             [TroubleshootAction.Refresh]),
         CompanionListenState.Off when !snapshot.PairingOpen => new TroubleshootCheck(
-            "phoneListening", CheckStatus.Tip, "No phone is paired",
-            "Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, "
-            + "this PC does not listen for phones.",
+            "phoneListening", CheckStatus.Tip, Loc.T("No phone is paired"),
+            Loc.T("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this {0} does not listen for phones.", "PC"),
             []),
         CompanionListenState.Listening => new TroubleshootCheck(
-            "phoneListening", CheckStatus.Ok, "Ready for phones",
+            "phoneListening", CheckStatus.Ok, Loc.T("Ready for phones"),
             snapshot.PairedCount switch
             {
-                0 => $"Listening on port {snapshot.Port} while the pairing code is shown.",
+                0 => Loc.T("Listening on port {0} while the pairing code is shown.", snapshot.Port.ToString()),
                 int count => Loc.Plural(count, "Listening on port {1}. {0} phone is paired.", "Listening on port {1}. {0} phones are paired.",
                     snapshot.Port.ToString()),
             },
@@ -118,21 +114,20 @@ public static class CompanionTroubleshooter
     {
         var network = state.Network;
         string id = $"phoneNetwork:{network.Id}";
-        string name = network.Name.Length > 0 ? network.Name : "this network";
+        string name = network.Name.Length > 0 ? network.Name : Loc.T("this network");
         return state.Trust switch
         {
             NetworkTrust.Private => new TroubleshootCheck(
-                id, CheckStatus.Ok, $"{name} is a private network",
-                "Paired phones on this network can send documents to this PC.", []),
+                id, CheckStatus.Ok, Loc.T("{0} is a private network", name),
+                Loc.T("Paired phones on this network can send documents to this {0}.", "PC"), []),
             NetworkTrust.Approved => new TroubleshootCheck(
-                id, CheckStatus.Ok, $"Receiving on {name}, which you allowed",
-                "Paired phones on this network can send documents to this PC.", []),
+                id, CheckStatus.Ok, Loc.T("Receiving on {0}, which you allowed", name),
+                Loc.T("Paired phones on this network can send documents to this {0}.", "PC"), []),
             _ => new TroubleshootCheck(
-                id, CheckStatus.Warning, $"Not receiving on {name}",
-                $"Windows treats {name} as {(network.Category == CompanionNetworkCategory.Domain ? "a work" : "a public")} "
-                + "network, so Lazy Scan does not listen for phones there. If it is your home network, set it to "
-                + "Private in Windows network settings. On a network you trust but cannot change, such as your school's "
-                + "Wi-Fi, turn on Allow receiving on this network.",
+                id, CheckStatus.Warning, Loc.T("Not receiving on {0}", name),
+                network.Category == CompanionNetworkCategory.Domain
+                    ? Loc.T("Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name)
+                    : Loc.T("Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name),
                 [TroubleshootAction.OpenNetworkSettings]),
         };
     }
@@ -143,28 +138,26 @@ public static class CompanionTroubleshooter
         switch (snapshot.Firewall)
         {
             case CompanionFirewallVerdict.Blocked:
-                string rules = snapshot.BlockingRules.Count == 0 ? "the rules for Lazy Scan"
-                    : string.Join(", ", snapshot.BlockingRules.Select(r => $"\"{r}\""));
                 return new TroubleshootCheck(
-                    "phoneFirewall", CheckStatus.Problem, "Windows Firewall blocks Lazy Scan",
-                    "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens "
-                    + "when the firewall's question was cancelled or the network type was not ticked. Someone with "
-                    + "administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select "
-                    + $"Inbound Rules and delete {rules} that block it. Windows then asks again.",
+                    "phoneFirewall", CheckStatus.Problem, Loc.T("Windows Firewall blocks Lazy Scan"),
+                    snapshot.BlockingRules.Count == 0
+                        ? Loc.T("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete the rules for Lazy Scan that block it. Windows then asks again.")
+                        : Loc.T("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete {0} that block it. Windows then asks again.",
+                                 string.Join(", ", snapshot.BlockingRules.Select(r => $"\"{r}\""))),
                     [TroubleshootAction.Refresh]);
             case CompanionFirewallVerdict.WillAsk when wanted:
                 bool approvedPublic = snapshot.Networks.Any(n => n.Trust == NetworkTrust.Approved
                                                                  && n.Network.Category != CompanionNetworkCategory.Private);
                 return new TroubleshootCheck(
-                    "phoneFirewall", CheckStatus.Tip, "Windows Firewall will ask once",
-                    "When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow"
-                    + (approvedPublic ? ", with Public networks ticked for the networks you allowed that Windows treats as public" : "")
-                    + ". Cancel blocks phones until the rule it makes is removed.",
+                    "phoneFirewall", CheckStatus.Tip, Loc.T("Windows Firewall will ask once"),
+                    approvedPublic
+                        ? Loc.T("When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow, with Public networks ticked for the networks you allowed that Windows treats as public. Cancel blocks phones until the rule it makes is removed.")
+                        : Loc.T("When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow. Cancel blocks phones until the rule it makes is removed."),
                     []);
             case CompanionFirewallVerdict.Allowed:
                 return new TroubleshootCheck(
-                    "phoneFirewall", CheckStatus.Ok, "Windows Firewall allows Lazy Scan",
-                    "Phones on the networks you receive on can reach this PC.", []);
+                    "phoneFirewall", CheckStatus.Ok, Loc.T("Windows Firewall allows Lazy Scan"),
+                    Loc.T("Phones on the networks you receive on can reach this PC."), []);
             default:
                 return null;
         }
@@ -177,10 +170,11 @@ public static class CompanionTroubleshooter
             return null;
         }
         return new TroubleshootCheck(
-            "phoneSyncFolder", CheckStatus.Tip, "Phone has not reached this PC lately?",
-            $"No paired phone has connected for {(int)quiet.TotalDays} days. If the phone and this PC are often on a "
-            + "network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. "
-            + "The phone then puts documents there when it cannot reach this PC, and they are added here.",
+            "phoneSyncFolder", CheckStatus.Tip, Loc.T("Phone has not reached this {0} lately?", "PC"),
+            Loc.Plural((int)quiet.TotalDays,
+                       "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
+                       "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
+                       "PC"),
             []);
     }
 
@@ -194,9 +188,9 @@ public static class CompanionTroubleshooter
 
     private static string JoinNames(IReadOnlyList<string> names) => names.Count switch
     {
-        0 => "this network",
+        0 => Loc.T("this network"),
         1 => names[0],
-        _ => string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1],
+        _ => Loc.T("{0} and {1}", string.Join(", ", names.Take(names.Count - 1)), names[^1]),
     };
 
     private static string JoinSentences(string? first, string second)

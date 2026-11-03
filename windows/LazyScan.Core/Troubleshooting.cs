@@ -41,37 +41,37 @@ public static class ScannerProblems
     /// <summary>User-facing text: what happened and what to do about it.</summary>
     public static string Describe(ScannerProblem problem) => problem switch
     {
-        ScannerProblem.FeederEmpty => "Load paper in the feeder, then scan again.",
-        ScannerProblem.PaperJam => "Paper is jammed in the scanner. Clear the jam, then scan again.",
-        ScannerProblem.PaperProblem => "The scanner could not feed the paper. Check the sheets in the feeder, then scan again.",
-        ScannerProblem.MultiFeed => "The scanner pulled in several sheets at once. Fan the stack, load it again, then scan again.",
-        ScannerProblem.CoverOpen => "The scanner's cover is open. Close it, then scan again.",
-        ScannerProblem.Offline => "The scanner is offline. Check that it is turned on and connected.",
-        ScannerProblem.Busy => "The scanner is busy. Wait until it has finished, then try again.",
-        ScannerProblem.WarmingUp => "The scanner is warming up. Try again in a moment.",
-        ScannerProblem.NeedsAttention => "The scanner needs attention. Check its display or control panel.",
-        ScannerProblem.CommunicationError => "The connection to the scanner was interrupted. Check the cable or network, then try again.",
-        ScannerProblem.AppSuspended => "The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again.",
-        _ => "The scanner reported a problem. Check the scanner, then try again.",
+        ScannerProblem.FeederEmpty => Loc.T("Load paper in the feeder, then scan again."),
+        ScannerProblem.PaperJam => Loc.T("Paper is jammed in the scanner. Clear the jam, then scan again."),
+        ScannerProblem.PaperProblem => Loc.T("The scanner could not feed the paper. Check the sheets in the feeder, then scan again."),
+        ScannerProblem.MultiFeed => Loc.T("The scanner pulled in several sheets at once. Fan the stack, load it again, then scan again."),
+        ScannerProblem.CoverOpen => Loc.T("The scanner's cover is open. Close it, then scan again."),
+        ScannerProblem.Offline => Loc.T("The scanner is offline. Check that it is turned on and connected."),
+        ScannerProblem.Busy => Loc.T("The scanner is busy. Wait until it has finished, then try again."),
+        ScannerProblem.WarmingUp => Loc.T("The scanner is warming up. Try again in a moment."),
+        ScannerProblem.NeedsAttention => Loc.T("The scanner needs attention. Check its display or control panel."),
+        ScannerProblem.CommunicationError => Loc.T("The connection to the scanner was interrupted. Check the cable or network, then try again."),
+        ScannerProblem.AppSuspended => Loc.T("The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again."),
+        _ => Loc.T("The scanner reported a problem. Check the scanner, then try again."),
     };
 
     /// <summary>The title of an error that names no scanner problem.</summary>
-    public const string GenericTitle = "Something went wrong";
+    public static string GenericTitle => Loc.T("Something went wrong");
 
     /// <summary>The problem in two or three words, for the title of the error bar: "Paper jam", "Scanner offline".</summary>
     public static string Title(ScannerProblem problem) => problem switch
     {
-        ScannerProblem.FeederEmpty => "Feeder empty",
-        ScannerProblem.PaperJam => "Paper jam",
-        ScannerProblem.PaperProblem => "Paper problem",
-        ScannerProblem.MultiFeed => "Several sheets fed",
-        ScannerProblem.CoverOpen => "Cover open",
-        ScannerProblem.Offline => "Scanner offline",
-        ScannerProblem.Busy => "Scanner busy",
-        ScannerProblem.WarmingUp => "Warming up",
-        ScannerProblem.NeedsAttention => "Needs attention",
-        ScannerProblem.CommunicationError => "Connection lost",
-        ScannerProblem.AppSuspended => "App suspended",
+        ScannerProblem.FeederEmpty => Loc.T("Feeder empty"),
+        ScannerProblem.PaperJam => Loc.T("Paper jam"),
+        ScannerProblem.PaperProblem => Loc.T("Paper problem"),
+        ScannerProblem.MultiFeed => Loc.T("Several sheets fed"),
+        ScannerProblem.CoverOpen => Loc.T("Cover open"),
+        ScannerProblem.Offline => Loc.T("Scanner offline"),
+        ScannerProblem.Busy => Loc.T("Scanner busy"),
+        ScannerProblem.WarmingUp => Loc.T("Warming up"),
+        ScannerProblem.NeedsAttention => Loc.T("Needs attention"),
+        ScannerProblem.CommunicationError => Loc.T("Connection lost"),
+        ScannerProblem.AppSuspended => Loc.T("App suspended"),
         _ => GenericTitle,
     };
 
@@ -81,18 +81,18 @@ public static class ScannerProblems
     /// </summary>
     public static string Advice(ScannerProblem problem) => problem switch
     {
-        ScannerProblem.FeederEmpty => "Load paper in the feeder, then scan again.",
-        ScannerProblem.PaperJam => "Clear the jam, then scan again.",
-        ScannerProblem.PaperProblem => "Check the sheets in the feeder, then scan again.",
-        ScannerProblem.MultiFeed => "Fan the stack, load it again, then scan again.",
-        ScannerProblem.CoverOpen => "Close the cover, then scan again.",
-        ScannerProblem.Offline => "Turn it on and check the cable or network.",
-        ScannerProblem.Busy => "Wait until it has finished, then try again.",
-        ScannerProblem.WarmingUp => "Try again in a moment.",
-        ScannerProblem.NeedsAttention => "Check its display or control panel.",
-        ScannerProblem.CommunicationError => "Check the cable or network, then try again.",
-        ScannerProblem.AppSuspended => "Keep the app open while scanning, then scan again.",
-        _ => "Check the scanner, then try again.",
+        ScannerProblem.FeederEmpty => Loc.T("Load paper in the feeder, then scan again."),
+        ScannerProblem.PaperJam => Loc.T("Clear the jam, then scan again."),
+        ScannerProblem.PaperProblem => Loc.T("Check the sheets in the feeder, then scan again."),
+        ScannerProblem.MultiFeed => Loc.T("Fan the stack, load it again, then scan again."),
+        ScannerProblem.CoverOpen => Loc.T("Close the cover, then scan again."),
+        ScannerProblem.Offline => Loc.T("Turn it on and check the cable or network."),
+        ScannerProblem.Busy => Loc.T("Wait until it has finished, then try again."),
+        ScannerProblem.WarmingUp => Loc.T("Try again in a moment."),
+        ScannerProblem.NeedsAttention => Loc.T("Check its display or control panel."),
+        ScannerProblem.CommunicationError => Loc.T("Check the cable or network, then try again."),
+        ScannerProblem.AppSuspended => Loc.T("Keep the app open while scanning, then scan again."),
+        _ => Loc.T("Check the scanner, then try again."),
     };
 
     /// <summary>The scanner problem an error message describes (its <see cref="Describe"/> text is in it); null when none is.</summary>

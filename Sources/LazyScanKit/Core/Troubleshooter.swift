@@ -253,9 +253,9 @@ public enum Troubleshooter {
             for host in snapshot.manualHosts where !host.listed {
                 checks.append(TroubleshootCheck(
                     id: "manualHost:\(host.address)", status: .warning,
-                    title: "No scanner answers at \(host.address)",
-                    detail: "Check that it is on and its address hasn't changed.",
-                    more: joinSentences(host.problem, "Its network settings page or control panel shows the current address. The app tries the address again every minute."),
+                    title: L10n.t("No scanner answers at {0}", host.address),
+                    detail: L10n.t("Check that it is on and its address hasn't changed."),
+                    more: joinSentences(host.problem, L10n.t("Its network settings page or control panel shows the current address. The app tries the address again every minute.")),
                     actions: [.refresh]))
             }
         }
@@ -273,11 +273,9 @@ public enum Troubleshooter {
 
     /// "No scanner found", "1 scanner found", "3 scanners found" (the demo scanner does not count).
     public static func headline(_ snapshot: DiscoverySnapshot) -> String {
-        switch snapshot.listedScannerCount {
-        case 0: return "No scanner found"
-        case 1: return "1 scanner found"
-        case let count: return "\(count) scanners found"
-        }
+        let count = snapshot.listedScannerCount
+        if count == 0 { return L10n.t("No scanner found") }
+        return L10n.plural(count, one: "{0} scanner found", other: "{0} scanners found")
     }
 
     /// "2 problems and 1 warning found.", or that nothing stops scanners from appearing.
@@ -285,12 +283,12 @@ public enum Troubleshooter {
         let problems = checks.filter { $0.status == .problem }.count
         let warnings = checks.filter { $0.status == .warning }.count
         if problems == 0 && warnings == 0 {
-            return "Nothing here stops scanners from appearing. The tips below cover the usual causes."
+            return L10n.t("Nothing here stops scanners from appearing. The tips below cover the usual causes.")
         }
-        var parts: [String] = []
-        if problems > 0 { parts.append(problems == 1 ? "1 problem" : "\(problems) problems") }
-        if warnings > 0 { parts.append(warnings == 1 ? "1 warning" : "\(warnings) warnings") }
-        return parts.joined(separator: " and ") + " found."
+        let problemText = L10n.plural(problems, one: "{0} problem", other: "{0} problems")
+        let warningText = L10n.plural(warnings, one: "{0} warning", other: "{0} warnings")
+        if problems > 0 && warnings > 0 { return L10n.t("{0} and {1} found.", problemText, warningText) }
+        return L10n.t("{0} found.", problems > 0 ? problemText : warningText)
     }
 
     /// The troubleshooter's one-line headline: what is listed, then how many problems and warnings
@@ -299,48 +297,54 @@ public enum Troubleshooter {
         let problems: Int = checks.filter { $0.status == .problem }.count
         let warnings: Int = checks.filter { $0.status == .warning }.count
         var parts: [String] = []
-        if problems > 0 { parts.append(problems == 1 ? "1 problem" : "\(problems) problems") }
-        if warnings > 0 { parts.append(warnings == 1 ? "1 warning" : "\(warnings) warnings") }
+        if problems > 0 { parts.append(L10n.plural(problems, one: "{0} problem", other: "{0} problems")) }
+        if warnings > 0 { parts.append(L10n.plural(warnings, one: "{0} warning", other: "{0} warnings")) }
         let line: String = headline(snapshot)
-        return parts.isEmpty ? line : line + " \u{00B7} " + parts.joined(separator: ", ")
+        if parts.isEmpty { return line }
+        return line + " \u{00B7} " + (parts.count == 2 ? L10n.t("{0}, {1}", parts[0], parts[1]) : parts[0])
     }
 
     /// The button text for an action.
     public static func label(_ action: TroubleshootAction, platform: TroubleshootPlatform) -> String {
         switch action {
-        case .refresh: return "Refresh"
-        case .addByAddress: return "Add by address\u{2026}"
+        case .refresh: return L10n.t("Refresh")
+        case .addByAddress: return L10n.t("Add by address…")
         case .openScannerSettings:
-            return platform == .windows ? "Scanner settings" : "Printers & Scanners"
-        case .openNetworkSettings: return "Network settings"
-        case .openImageCapture: return "Image Capture"
-        case .copyDiagnostics: return "Copy diagnostics"
-        case .openAppSettings: return "Open Settings"
+            return platform == .windows ? L10n.t("Scanner settings") : L10n.t("Printers & Scanners")
+        case .openNetworkSettings: return L10n.t("Network settings")
+        case .openImageCapture: return L10n.t("Image Capture")
+        case .copyDiagnostics: return L10n.t("Copy diagnostics")
+        case .openAppSettings: return L10n.t("Open Settings")
         }
     }
 
     /// The status as a word, for screen readers and the copied text: "OK", "Tip", "Warning", "Problem".
     public static func statusLabel(_ status: CheckStatus) -> String {
         switch status {
-        case .ok: return "OK"
-        case .tip: return "Tip"
-        case .warning: return "Warning"
-        case .problem: return "Problem"
+        case .ok: return L10n.t("OK")
+        case .tip: return L10n.t("Tip")
+        case .warning: return L10n.t("Warning")
+        case .problem: return L10n.t("Problem")
         }
     }
 
     /// The checks as plain text, for the pasteboard and the device diagnostics file: the heading,
     /// the headline and summary, then one "Status: title" line per check with its detail
-    /// indented below, and its more help (when it has some) on the line after.
-    public static func report(_ snapshot: DiscoverySnapshot, checks: [TroubleshootCheck]) -> String {
-        var text = "Why isn't my scanner listed?\n"
-        text += headline(snapshot) + ". " + summary(checks) + "\n"
-        for check in checks {
-            text += statusLabel(check.status) + ": " + check.title + "\n"
-            text += "  " + check.detail + "\n"
-            if !check.more.isEmpty { text += "  " + check.more + "\n" }
+    /// indented below, and its more help (when it has some) on the line after. Always English: it
+    /// is pasted into support requests. Text the backends stored in the snapshot (a failure's
+    /// message, the 32-bit helper's problem) was worded when it was captured, in the UI language.
+    public static func report(_ snapshot: DiscoverySnapshot) -> String {
+        L10n.withTable([:], language: "en") {
+            let checks = diagnose(snapshot)
+            var text = "Why isn't my scanner listed?\n"
+            text += headline(snapshot) + ". " + summary(checks) + "\n"
+            for check in checks {
+                text += statusLabel(check.status) + ": " + check.title + "\n"
+                text += "  " + check.detail + "\n"
+                if !check.more.isEmpty { text += "  " + check.more + "\n" }
+            }
+            return text
         }
-        return text
     }
 
     /// The network status of a computer connected to these networks: none is offline; a public
@@ -385,16 +389,7 @@ public enum Troubleshooter {
     private static func computer(_ platform: TroubleshootPlatform) -> String {
         switch platform {
         case .windows: return "PC"
-        case .ios: return "device"
-        case .mac: return "Mac"
-        }
-    }
-
-    private static func otherApps(_ platform: TroubleshootPlatform) -> String {
-        switch platform {
-        case .windows: return "Windows Scan or the maker's app"
-        case .ios: return "another device or app"
-        case .mac: return "Image Capture or the maker's app"
+        case .ios, .mac: return "Mac"
         }
     }
 
@@ -406,23 +401,28 @@ public enum Troubleshooter {
     private static func failureCheck(_ failure: ScannerFailure, platform: TroubleshootPlatform) -> TroubleshootCheck {
         let name = failure.deviceName
         if failure.problem == .busy {
+            let more: String
+            switch platform {
+            case .windows: more = L10n.t("A scanner works with one app at a time; Windows Scan or the maker's app may be using it. Wait until the scanner has finished, then choose it again.")
+            case .ios: more = L10n.t("A scanner works with one app at a time; another device or app may be using it. Wait until the scanner has finished, then choose it again.")
+            case .mac: more = L10n.t("A scanner works with one app at a time; Image Capture or the maker's app may be using it. Wait until the scanner has finished, then choose it again.")
+            }
             return TroubleshootCheck(
-                id: "lastFailure", status: .problem, title: "\(name) is busy",
-                detail: "Close other apps using it, then choose it again.",
-                more: "A scanner works with one app at a time; \(otherApps(platform)) may be using it. Wait until the scanner has finished, then choose it again.",
-                actions: [.refresh])
+                id: "lastFailure", status: .problem, title: L10n.t("{0} is busy", name),
+                detail: L10n.t("Close other apps using it, then choose it again."),
+                more: more, actions: [.refresh])
         }
         if let problem = failure.problem {
             return TroubleshootCheck(
-                id: "lastFailure", status: .problem, title: "\(ScannerProblems.title(problem)): \(name)",
+                id: "lastFailure", status: .problem, title: L10n.t("{0}: {1}", ScannerProblems.title(problem), name),
                 detail: ScannerProblems.advice(problem), actions: [.refresh])
         }
         return TroubleshootCheck(
-            id: "lastFailure", status: .warning, title: "Could not connect to \(name)",
-            detail: "Check that it is on, awake and connected.",
+            id: "lastFailure", status: .warning, title: L10n.t("Could not connect to {0}", name),
+            detail: L10n.t("Check that it is on, awake and connected."),
             more: joinSentences(failure.message, platform == .ios
-                                    ? "It must be on the same network as this \(computer(platform))."
-                                    : "It must be connected by its cable or to the same network as this \(computer(platform))."),
+                                    ? L10n.t("It must be on the same network as this device.")
+                                    : L10n.t("It must be connected by its cable or to the same network as this {0}.", computer(platform))),
             actions: [.refresh])
     }
 
@@ -432,21 +432,23 @@ public enum Troubleshooter {
         switch snapshot.network {
         case .offline:
             return TroubleshootCheck(
-                id: "network", status: .problem, title: "Not connected to a network",
-                detail: "Connect to the network the scanner is on, then select Refresh.",
-                more: "This \(computer(snapshot.platform)) is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.",
+                id: "network", status: .problem, title: L10n.t("Not connected to a network"),
+                detail: L10n.t("Connect to the network the scanner is on, then select Refresh."),
+                more: L10n.t("This {0} is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.", computer(snapshot.platform)),
                 actions: [.openNetworkSettings, .refresh])
         case .publicNetwork:
-            let more = "If this is your home or office network, set it to Private in network settings."
+            let more = windows
+                ? L10n.t("If this is your home or office network, set it to Private in network settings. You can also add the scanner by its address.")
+                : L10n.t("If this is your home or office network, set it to Private in network settings.")
             return TroubleshootCheck(
-                id: "network", status: .warning, title: "Network set to Public",
-                detail: "Windows won't find network scanners on a Public network.",
-                more: windows ? more + " You can also add the scanner by its address." : more,
+                id: "network", status: .warning, title: L10n.t("Network set to Public"),
+                detail: L10n.t("Windows won't find network scanners on a Public network."),
+                more: more,
                 actions: windows ? [.openNetworkSettings, .addByAddress] : [.openNetworkSettings])
         case .privateNetwork, .domainNetwork:
             return TroubleshootCheck(
-                id: "network", status: .ok, title: "Connected to a private network",
-                detail: "Network scanners on this network can be found.", actions: [])
+                id: "network", status: .ok, title: L10n.t("Connected to a private network"),
+                detail: L10n.t("Network scanners on this network can be found."), actions: [])
         case .unknown:
             return nil
         }
@@ -458,14 +460,14 @@ public enum Troubleshooter {
         switch network {
         case .offline:
             return TroubleshootCheck(
-                id: "network", status: .problem, title: "Not connected to Wi-Fi",
-                detail: "Join the scanner's Wi-Fi network, then tap Refresh.",
-                more: "Network scanners are found only on Wi-Fi or a wired network. The camera works without one.",
+                id: "network", status: .problem, title: L10n.t("Not connected to Wi-Fi"),
+                detail: L10n.t("Join the scanner's Wi-Fi network, then tap Refresh."),
+                more: L10n.t("Network scanners are found only on Wi-Fi or a wired network. The camera works without one."),
                 actions: [.refresh])
         case .publicNetwork, .privateNetwork, .domainNetwork:
             return TroubleshootCheck(
-                id: "network", status: .ok, title: "Connected to a local network",
-                detail: "Network scanners on this network can be found.", actions: [])
+                id: "network", status: .ok, title: L10n.t("Connected to a local network"),
+                detail: L10n.t("Network scanners on this network can be found."), actions: [])
         case .unknown:
             return nil
         }
@@ -476,10 +478,9 @@ public enum Troubleshooter {
     /// every platform, though only the iPhone and iPad report it.
     private static func localNetworkDeniedCheck() -> TroubleshootCheck {
         TroubleshootCheck(
-            id: "localNetwork", status: .problem, title: "Local Network access is off",
-            detail: "Turn on Local Network for Lazy Scan in Settings.",
-            more: "Without it, the app can't find or reach scanners on your network. Scanners appear as soon as it's on. "
-                + "If it's on already, turn it off and on again.",
+            id: "localNetwork", status: .problem, title: L10n.t("Local Network access is off"),
+            detail: L10n.t("Turn on Local Network for Lazy Scan in Settings."),
+            more: L10n.t("Without it, the app can't find or reach scanners on your network. Scanners appear as soon as it's on. If it's on already, turn it off and on again."),
             actions: [.openAppSettings])
     }
 
@@ -487,31 +488,31 @@ public enum Troubleshooter {
         switch status {
         case .running:
             return TroubleshootCheck(
-                id: "wiaService", status: .ok, title: "Scanner service is on",
-                detail: "Windows Image Acquisition (WIA), which most scanners use, is on.", actions: [])
+                id: "wiaService", status: .ok, title: L10n.t("Scanner service is on"),
+                detail: L10n.t("Windows Image Acquisition (WIA), which most scanners use, is on."), actions: [])
         case .starting:
             return TroubleshootCheck(
-                id: "wiaService", status: .warning, title: "Scanner service is starting",
-                detail: "Wait a moment, then select Refresh.",
-                more: "Windows Image Acquisition (WIA), which most scanners use, is starting.",
+                id: "wiaService", status: .warning, title: L10n.t("Scanner service is starting"),
+                detail: L10n.t("Wait a moment, then select Refresh."),
+                more: L10n.t("Windows Image Acquisition (WIA), which most scanners use, is starting."),
                 actions: [.refresh])
         case .stopped, .stopping, .paused:
             return TroubleshootCheck(
-                id: "wiaService", status: .warning, title: "Scanner service is not running",
-                detail: "Restarting the PC usually starts it again.",
-                more: "Windows Image Acquisition (WIA), which most scanners use, is not running, so those scanners can't appear. To start it now, someone with administrator rights can start Windows Image Acquisition (WIA) in Services.",
+                id: "wiaService", status: .warning, title: L10n.t("Scanner service is not running"),
+                detail: L10n.t("Restarting the PC usually starts it again."),
+                more: L10n.t("Windows Image Acquisition (WIA), which most scanners use, is not running, so those scanners can't appear. To start it now, someone with administrator rights can start Windows Image Acquisition (WIA) in Services."),
                 actions: [.refresh])
         case .disabled:
             return TroubleshootCheck(
-                id: "wiaService", status: .problem, title: "Scanner service is turned off",
-                detail: "An administrator can set it to Automatic in Services.",
-                more: "Windows Image Acquisition (WIA), which most scanners use, is disabled, so those scanners can't appear. Someone with administrator rights can set its startup type to Automatic in Services, then restart the PC.",
+                id: "wiaService", status: .problem, title: L10n.t("Scanner service is turned off"),
+                detail: L10n.t("An administrator can set it to Automatic in Services."),
+                more: L10n.t("Windows Image Acquisition (WIA), which most scanners use, is disabled, so those scanners can't appear. Someone with administrator rights can set its startup type to Automatic in Services, then restart the PC."),
                 actions: [.refresh])
         case .notInstalled:
             return TroubleshootCheck(
-                id: "wiaService", status: .problem, title: "Scanner service is missing",
-                detail: "Scanners with a TWAIN driver and network scanners can still work.",
-                more: "This copy of Windows has no Windows Image Acquisition (WIA) service, which most scanners use.",
+                id: "wiaService", status: .problem, title: L10n.t("Scanner service is missing"),
+                detail: L10n.t("Scanners with a TWAIN driver and network scanners can still work."),
+                more: L10n.t("This copy of Windows has no Windows Image Acquisition (WIA) service, which most scanners use."),
                 actions: [.addByAddress])
         case .unknown:
             return nil
@@ -522,23 +523,24 @@ public enum Troubleshooter {
         switch snapshot.twain {
         case .available:
             let detail: String
-            switch snapshot.twainDriverCount {
-            case 0: detail = "No 64-bit TWAIN scanner driver is installed. Most scanners work without one."
-            case 1: detail = "1 TWAIN scanner driver is installed."
-            case let count: detail = "\(count) TWAIN scanner drivers are installed."
+            let count = snapshot.twainDriverCount
+            if count == 0 {
+                detail = L10n.t("No 64-bit TWAIN scanner driver is installed. Most scanners work without one.")
+            } else {
+                detail = L10n.plural(count, one: "{0} TWAIN scanner driver is installed.", other: "{0} TWAIN scanner drivers are installed.")
             }
-            return TroubleshootCheck(id: "twain", status: .ok, title: "TWAIN is installed", detail: detail, actions: [])
+            return TroubleshootCheck(id: "twain", status: .ok, title: L10n.t("TWAIN is installed"), detail: detail, actions: [])
         case .notInstalled:
             return TroubleshootCheck(
-                id: "twain", status: snapshot.listedScannerCount == 0 ? .warning : .tip, title: "TWAIN is not installed",
-                detail: "Some scanners need their maker's 64-bit TWAIN driver.",
-                more: "Some scanners, often document scanners, work only through their maker's TWAIN driver, which also installs TWAIN. If yours is one of them, install the maker's 64-bit TWAIN driver, then restart Lazy Scan.",
+                id: "twain", status: snapshot.listedScannerCount == 0 ? .warning : .tip, title: L10n.t("TWAIN is not installed"),
+                detail: L10n.t("Some scanners need their maker's 64-bit TWAIN driver."),
+                more: L10n.t("Some scanners, often document scanners, work only through their maker's TWAIN driver, which also installs TWAIN. If yours is one of them, install the maker's 64-bit TWAIN driver, then restart Lazy Scan."),
                 actions: [])
         case .failed:
             return TroubleshootCheck(
-                id: "twain", status: .warning, title: "TWAIN did not start",
-                detail: "Restart Lazy Scan; if that fails, reinstall the maker's TWAIN driver.",
-                more: "TWAIN is installed but would not open, so scanners that use a TWAIN driver are not listed.",
+                id: "twain", status: .warning, title: L10n.t("TWAIN did not start"),
+                detail: L10n.t("Restart Lazy Scan; if that fails, reinstall the maker's TWAIN driver."),
+                more: L10n.t("TWAIN is installed but would not open, so scanners that use a TWAIN driver are not listed."),
                 actions: [.refresh])
         case .unknown:
             return nil
@@ -556,19 +558,23 @@ public enum Troubleshooter {
             }
             return "\"\(name)\""
         }
-        let one = names.count == 1
         let problem = (helperProblem ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let known = !problem.isEmpty
-        let pronoun = one ? "it" : "them"
-        var reach = "Lazy Scan reaches such drivers through its 32-bit TWAIN helper"
-        reach += known ? "." : ", which has not listed \(pronoun) yet."
-        let installed: String = names.joined(separator: ", ") + (one ? " is" : " are") + " installed only for 32-bit apps."
+        let reach: String
+        if known {
+            reach = L10n.t("Lazy Scan reaches such drivers through its 32-bit TWAIN helper.")
+        } else {
+            reach = L10n.plural(names.count, one: "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet.",
+                                other: "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet.")
+        }
+        let installed: String = L10n.plural(names.count, one: "{1} is installed only for 32-bit apps.",
+                                            other: "{1} are installed only for 32-bit apps.", names.joined(separator: ", "))
         return TroubleshootCheck(
             id: "twain32", status: .problem,
-            title: one ? "A TWAIN driver is 32-bit only" : "\(names.count) TWAIN drivers are 32-bit only",
+            title: L10n.plural(names.count, one: "A TWAIN driver is 32-bit only", other: "{0} TWAIN drivers are 32-bit only"),
             detail: installed,
             more: joinSentences(known ? joinSentences(reach, problem) : reach,
-                                "A 64-bit (x64) driver from the maker, where there is one, works without the helper. Many scanners also work through Windows Image Acquisition (WIA) once the maker's full driver package is installed."),
+                                L10n.t("A 64-bit (x64) driver from the maker, where there is one, works without the helper. Many scanners also work through Windows Image Acquisition (WIA) once the maker's full driver package is installed.")),
             actions: [])
     }
 
@@ -576,20 +582,20 @@ public enum Troubleshooter {
         if snapshot.discovery == .denied { return localNetworkDeniedCheck() }
         var reason = (snapshot.discoveryDetail ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         while reason.hasSuffix(".") { reason.removeLast() }
-        let detail = reason.isEmpty ? "" : " (\(reason))"
         if snapshot.platform == .mac {
             switch snapshot.discovery {
             case .searching, .running:
                 return TroubleshootCheck(
-                    id: "discovery", status: .ok, title: "Looking for scanners",
-                    detail: "Scanners appear here as macOS finds them.",
-                    more: "macOS looks for scanners connected by USB, on the network and shared by other Macs.",
+                    id: "discovery", status: .ok, title: L10n.t("Looking for scanners"),
+                    detail: L10n.t("Scanners appear here as macOS finds them."),
+                    more: L10n.t("macOS looks for scanners connected by USB, on the network and shared by other Macs."),
                     actions: [])
             case .off, .unavailable:
                 return TroubleshootCheck(
-                    id: "discovery", status: .warning, title: "Not looking for scanners",
-                    detail: "Select Refresh to start the search again.",
-                    more: "The search for scanners is not running\(detail).",
+                    id: "discovery", status: .warning, title: L10n.t("Not looking for scanners"),
+                    detail: L10n.t("Select Refresh to start the search again."),
+                    more: reason.isEmpty ? L10n.t("The search for scanners is not running.")
+                                         : L10n.t("The search for scanners is not running ({0}).", reason),
                     actions: [.refresh])
             case .unknown, .denied:
                 return nil
@@ -598,27 +604,29 @@ public enum Troubleshooter {
         switch snapshot.discovery {
         case .searching:
             return TroubleshootCheck(
-                id: "discovery", status: .ok, title: "Looking for network scanners",
-                detail: "Scanners on the network appear as they answer.",
-                more: "The search has just started.",
+                id: "discovery", status: .ok, title: L10n.t("Looking for network scanners"),
+                detail: L10n.t("Scanners on the network appear as they answer."),
+                more: L10n.t("The search has just started."),
                 actions: [.addByAddress])
         case .running:
             let found: String
-            switch snapshot.discoveredCount {
-            case 0: found = "No network scanner has been found on this network yet."
-            case 1: found = "1 network scanner found."
-            case let count: found = "\(count) network scanners found."
+            let count = snapshot.discoveredCount
+            if count == 0 {
+                found = L10n.t("No network scanner has been found on this network yet.")
+            } else {
+                found = L10n.plural(count, one: "{0} network scanner found.", other: "{0} network scanners found.")
             }
             return TroubleshootCheck(
-                id: "discovery", status: .ok, title: "Looking for network scanners",
+                id: "discovery", status: .ok, title: L10n.t("Looking for network scanners"),
                 detail: found,
-                more: "A scanner that doesn't appear can be added by its address.",
+                more: L10n.t("A scanner that doesn't appear can be added by its address."),
                 actions: [.addByAddress])
         case .unavailable:
             return TroubleshootCheck(
-                id: "discovery", status: .warning, title: "Network search is not working",
-                detail: "You can still add a network scanner by its address.",
-                more: "\(searchingSystem(snapshot.platform)) could not search the network for scanners\(detail).",
+                id: "discovery", status: .warning, title: L10n.t("Network search is not working"),
+                detail: L10n.t("You can still add a network scanner by its address."),
+                more: reason.isEmpty ? L10n.t("{0} could not search the network for scanners.", searchingSystem(snapshot.platform))
+                                     : L10n.t("{0} could not search the network for scanners ({1}).", searchingSystem(snapshot.platform), reason),
                 actions: [.addByAddress, .refresh])
         case .off, .unknown, .denied:
             return nil
@@ -632,31 +640,33 @@ public enum Troubleshooter {
         var tips: [TroubleshootCheck] = []
         if platform == .windows {
             tips.append(TroubleshootCheck(
-                id: "usb", status: .tip, title: "Connected by USB?",
-                detail: "Connect it directly (no hub) and install the maker's driver.",
-                more: "Windows lists a USB scanner only after its driver is installed. Get it from the maker's website, then select Refresh. Scanner settings show whether Windows sees it.",
+                id: "usb", status: .tip, title: L10n.t("Connected by USB?"),
+                detail: L10n.t("Connect it directly (no hub) and install the maker's driver."),
+                more: L10n.t("Windows lists a USB scanner only after its driver is installed. Get it from the maker's website, then select Refresh. Scanner settings show whether Windows sees it."),
                 actions: [.openScannerSettings, .refresh]))
         } else {
             tips.append(TroubleshootCheck(
-                id: "usb", status: .tip, title: "Connected by USB?",
-                detail: "Connect it directly (no hub) and install the maker's macOS driver.",
-                more: "macOS lists a USB scanner only when it can scan without a driver or its maker's driver is installed. If Image Capture doesn't show it either, macOS doesn't see it.",
+                id: "usb", status: .tip, title: L10n.t("Connected by USB?"),
+                detail: L10n.t("Connect it directly (no hub) and install the maker's macOS driver."),
+                more: L10n.t("macOS lists a USB scanner only when it can scan without a driver or its maker's driver is installed. If Image Capture doesn't show it either, macOS doesn't see it."),
                 actions: [.openImageCapture, .refresh]))
             tips.append(TroubleshootCheck(
-                id: "networkScanner", status: .tip, title: "Scanner on the network?",
-                detail: "The Mac and the scanner must be on the same network.",
-                more: "If macOS asked whether Lazy Scan may find devices on your local network, allow it in System Settings, Privacy & Security, Local Network. A network printer with a scanner added in Printers & Scanners also appears here.",
+                id: "networkScanner", status: .tip, title: L10n.t("Scanner on the network?"),
+                detail: L10n.t("The Mac and the scanner must be on the same network."),
+                more: L10n.t("If macOS asked whether Lazy Scan may find devices on your local network, allow it in System Settings, Privacy & Security, Local Network. A network printer with a scanner added in Printers & Scanners also appears here."),
                 actions: [.openScannerSettings]))
             tips.append(TroubleshootCheck(
-                id: "sharing", status: .tip, title: "Shared by another Mac?",
-                detail: "Turn on Scanner Sharing in that Mac's Sharing settings.",
-                more: "It's in System Settings, General, Sharing. Both Macs must be on the same network.",
+                id: "sharing", status: .tip, title: L10n.t("Shared by another Mac?"),
+                detail: L10n.t("Turn on Scanner Sharing in that Mac's Sharing settings."),
+                more: L10n.t("It's in System Settings, General, Sharing. Both Macs must be on the same network."),
                 actions: []))
         }
         tips.append(TroubleshootCheck(
-            id: "otherApps", status: .tip, title: "Still not listed?",
-            detail: "Wake the scanner and close other scanning apps.",
-            more: "Press a button on the scanner. Close \(otherApps(platform)). Some scanners work only with their maker's app.",
+            id: "otherApps", status: .tip, title: L10n.t("Still not listed?"),
+            detail: L10n.t("Wake the scanner and close other scanning apps."),
+            more: platform == .windows
+                ? L10n.t("Press a button on the scanner. Close Windows Scan or the maker's app. Some scanners work only with their maker's app.")
+                : L10n.t("Press a button on the scanner. Close Image Capture or the maker's app. Some scanners work only with their maker's app."),
             actions: [.refresh]))
         return tips
     }
@@ -666,20 +676,19 @@ public enum Troubleshooter {
     private static func phoneTips() -> [TroubleshootCheck] {
         var tips: [TroubleshootCheck] = []
         tips.append(TroubleshootCheck(
-            id: "networkScanner", status: .tip, title: "Scanner on the network?",
-            detail: "This device and the scanner must be on the same Wi-Fi.",
-            more: "Guest networks and some VPNs hide scanners. Try adding the scanner by its address.",
+            id: "networkScanner", status: .tip, title: L10n.t("Scanner on the network?"),
+            detail: L10n.t("This device and the scanner must be on the same Wi-Fi."),
+            more: L10n.t("Guest networks and some VPNs hide scanners. Try adding the scanner by its address."),
             actions: [.addByAddress]))
         tips.append(TroubleshootCheck(
-            id: "usb", status: .tip, title: "Connected by USB?",
-            detail: "Use its Wi-Fi connection; iPhone and iPad can't use USB scanners.",
-            more: "Most scanners that print or copy also join Wi-Fi. The scanner's manual shows how.",
+            id: "usb", status: .tip, title: L10n.t("Connected by USB?"),
+            detail: L10n.t("Use its Wi-Fi connection; iPhone and iPad can't use USB scanners."),
+            more: L10n.t("Most scanners that print or copy also join Wi-Fi. The scanner's manual shows how."),
             actions: []))
         tips.append(TroubleshootCheck(
-            id: "otherApps", status: .tip, title: "Still not listed?",
-            detail: "Wake the scanner and close other scanning apps.",
-            more: "Press a button on the scanner. Close scanning apps on other devices. Some scanners work only with "
-                + "Windows (WSD) or their maker's app.",
+            id: "otherApps", status: .tip, title: L10n.t("Still not listed?"),
+            detail: L10n.t("Wake the scanner and close other scanning apps."),
+            more: L10n.t("Press a button on the scanner. Close scanning apps on other devices. Some scanners work only with Windows (WSD) or their maker's app."),
             actions: [.refresh]))
         return tips
     }

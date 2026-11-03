@@ -11,8 +11,8 @@ public static class Loc
 {
     private static readonly ResourceManager Resources = new("LazyScan.Core.Strings", typeof(Loc).Assembly);
 
-    // Stands in for the resource lookup in tests; flows with the async context, so parallel tests
-    // do not see each other's table.
+    // Stands in for the resource lookup in tests and in Troubleshooter.Report, which is always
+    // English; flows with the async context, so parallel tests do not see each other's table.
     private static readonly AsyncLocal<IReadOnlyDictionary<string, string>?> Override = new();
 
     internal static IReadOnlyDictionary<string, string>? Table

@@ -13,7 +13,8 @@ public enum L10n {
     @TaskLocal static var override: Override?
 
     /// Runs `body` with `table` standing in for the Kit table, so a test can check a language
-    /// without touching the bundle or other tests running in parallel.
+    /// without touching the bundle or other tests running in parallel, and so
+    /// `Troubleshooter.report` can write English whatever the system language is.
     static func withTable<T>(_ table: [String: String], language: String, _ body: () throws -> T) rethrows -> T {
         try $override.withValue(Override(table: table, language: language), operation: body)
     }

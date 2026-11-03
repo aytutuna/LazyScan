@@ -20,15 +20,15 @@ public final class SystemTroubleshooterService: TroubleshooterService {
         switch action {
         case .openScannerSettings:
             guard NSWorkspace.shared.open(Self.printersAndScannersURL) else {
-                throw ScanError.exportFailed("System Settings did not open.")
+                throw ScanError.exportFailed(L10n.t("System Settings did not open."))
             }
         case .openNetworkSettings:
             guard NSWorkspace.shared.open(Self.networkSettingsURL) else {
-                throw ScanError.exportFailed("System Settings did not open.")
+                throw ScanError.exportFailed(L10n.t("System Settings did not open."))
             }
         case .openImageCapture:
             guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.imageCaptureBundleID) else {
-                throw ScanError.exportFailed("Image Capture was not found on this Mac.")
+                throw ScanError.exportFailed(L10n.t("Image Capture was not found on this Mac."))
             }
             NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration(),
                                                completionHandler: nil)
@@ -41,7 +41,7 @@ public final class SystemTroubleshooterService: TroubleshooterService {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
-            throw ScanError.exportFailed("The text could not be put on the pasteboard.")
+            throw ScanError.exportFailed(L10n.t("The text could not be put on the pasteboard."))
         }
     }
 }

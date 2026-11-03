@@ -37,9 +37,8 @@ public enum TwainHelperStatus
 public static class TwainDiagnostics
 {
     /// <summary>What the app tells the user when TWAIN is missing.</summary>
-    public const string NoDataSourceManagerMessage =
-        "TWAIN is not available: the TWAIN Data Source Manager (TWAINDSM.dll) is not installed. "
-        + "Scanner drivers that use TWAIN install it, so install your scanner's TWAIN driver to use it here.";
+    public static string NoDataSourceManagerMessage =>
+        Loc.T("TWAIN is not available: the TWAIN Data Source Manager (TWAINDSM.dll) is not installed. Scanner drivers that use TWAIN install it, so install your scanner's TWAIN driver to use it here.");
 
     /// <summary>
     /// The data source files (*.ds, paths relative to the twain_32 folder) that have no 64-bit
@@ -121,15 +120,12 @@ public static class TwainDiagnostics
     {
         TwainHelperStatus.Available when reachedAny => null,
         TwainHelperStatus.Available =>
-            "It started, but its TWAIN Data Source Manager lists no driver it can use, which happens when a driver "
-            + "did not install completely. Reinstall the scanner maker's driver, then restart Lazy Scan.",
+            Loc.T("It started, but its TWAIN Data Source Manager lists no driver it can use, which happens when a driver did not install completely. Reinstall the scanner maker's driver, then restart Lazy Scan."),
         TwainHelperStatus.NoDataSourceManager =>
-            "It found no 32-bit TWAIN Data Source Manager (TWAINDSM.dll or twain_32.dll) to load the driver with. "
-            + "Reinstall the scanner maker's driver, then restart Lazy Scan.",
-        TwainHelperStatus.Failed when !string.IsNullOrWhiteSpace(cannotRun) => $"It cannot run: {cannotRun.Trim()}",
+            Loc.T("It found no 32-bit TWAIN Data Source Manager (TWAINDSM.dll or twain_32.dll) to load the driver with. Reinstall the scanner maker's driver, then restart Lazy Scan."),
+        TwainHelperStatus.Failed when !string.IsNullOrWhiteSpace(cannotRun) => Loc.T("It cannot run: {0}", cannotRun.Trim()),
         TwainHelperStatus.Failed =>
-            "It did not work this time, and Lazy Scan tries again on its own. If the scanner still does not "
-            + "appear, restart Lazy Scan.",
+            Loc.T("It did not work this time, and Lazy Scan tries again on its own. If the scanner still does not appear, restart Lazy Scan."),
         _ => null,
     };
 

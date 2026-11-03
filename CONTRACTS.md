@@ -175,7 +175,7 @@ public enum Troubleshooter {
     public static func overview(_ snapshot: DiscoverySnapshot, checks: [TroubleshootCheck]) -> String  // "No scanner found · 2 problems, 1 warning"
     public static func label(_ action: TroubleshootAction, platform: TroubleshootPlatform) -> String  // "Add by address…", "Scanner settings" (Mac "Printers & Scanners"), "Network settings", "Image Capture"
     public static func statusLabel(_ status: CheckStatus) -> String           // "OK", "Tip", "Warning", "Problem"
-    public static func report(_ snapshot: DiscoverySnapshot, checks: [TroubleshootCheck]) -> String   // each check's more on the line after its detail
+    public static func report(_ snapshot: DiscoverySnapshot) -> String   // runs diagnose itself, always English; each check's more on the line after its detail
     public static func combineNetworks(_ connected: [NetworkStatus]) -> NetworkStatus
     /// nil for cancelled, export and unsupported errors (and CancellationError).
     public static func failure(deviceName: String, error: Error) -> ScannerFailure?

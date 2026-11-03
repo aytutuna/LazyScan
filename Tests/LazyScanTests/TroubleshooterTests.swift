@@ -540,7 +540,7 @@ final class TroubleshooterTests: XCTestCase {
     func test_report_listsEveryCheckWithItsDetail_andItsMoreHelp() {
         let snapshot = healthyWindows()
         let checks = Troubleshooter.diagnose(snapshot)
-        let lines = Troubleshooter.report(snapshot, checks: checks).components(separatedBy: "\n")
+        let lines = Troubleshooter.report(snapshot).components(separatedBy: "\n")
         XCTAssertEqual(lines[0], "Why isn't my scanner listed?")
         XCTAssertEqual(lines[1], "1 scanner found. Nothing here stops scanners from appearing. The tips below cover the usual causes.")
         XCTAssertEqual(lines[2], "OK: Connected to a private network")
@@ -552,6 +552,15 @@ final class TroubleshooterTests: XCTestCase {
         XCTAssertEqual(lines[lines.count - 1], "")
         let withMore: Int = checks.filter { !$0.more.isEmpty }.count
         XCTAssertEqual(lines.count, 2 + 2 * checks.count + withMore + 1)
+    }
+
+    func test_report_staysEnglishInAnotherLanguage() {
+        let snapshot = healthyWindows()
+        let english = Troubleshooter.report(snapshot)
+        let table = ["Tip": "İpucu", "OK": "Tamam", "Still not listed?": "Hâlâ listelenmiyor mu?"]
+        let turkish = L10n.withTable(table, language: "tr") { Troubleshooter.report(snapshot) }
+        XCTAssertEqual(turkish, english)
+        XCTAssertEqual(L10n.withTable(table, language: "tr") { Troubleshooter.statusLabel(.tip) }, "İpucu")
     }
 
     func test_combineNetworks() {

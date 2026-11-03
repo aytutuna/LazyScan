@@ -594,7 +594,7 @@ public class TroubleshooterTests
     {
         var snapshot = HealthyWindows();
         var checks = Troubleshooter.Diagnose(snapshot);
-        string report = Troubleshooter.Report(snapshot, checks);
+        string report = Troubleshooter.Report(snapshot);
         var lines = report.Split('\n');
         Assert.Equal("Why isn't my scanner listed?", lines[0]);
         Assert.Equal("1 scanner found. Nothing here stops scanners from appearing. The tips below cover the usual causes.", lines[1]);
@@ -606,6 +606,21 @@ public class TroubleshooterTests
                      + "their maker's app.", lines[^2]);
         Assert.Equal("", lines[^1]);
         Assert.Equal(2 + 2 * checks.Count + checks.Count(c => c.More.Length > 0) + 1, lines.Length);
+    }
+
+    [Fact]
+    public void Report_StaysEnglishInAnotherLanguage()
+    {
+        var snapshot = HealthyWindows();
+        string english = Troubleshooter.Report(snapshot);
+        Loc.Table = new Dictionary<string, string> { ["Tip"] = "İpucu", ["Still not listed?"] = "Hâlâ listelenmiyor mu?" };
+        try
+        {
+            Assert.Equal("İpucu", Troubleshooter.StatusLabel(CheckStatus.Tip));
+            Assert.Equal(english, Troubleshooter.Report(snapshot));
+            Assert.Equal("İpucu", Troubleshooter.StatusLabel(CheckStatus.Tip));
+        }
+        finally { Loc.Table = null; }
     }
 
     [Fact]

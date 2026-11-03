@@ -1212,7 +1212,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         + string.Concat(_backends.OfType<Scanning.IBackendDiagnostics>()
                                  .Select(b => b.DiagnosticsReport)
                                  .Where(text => !string.IsNullOrEmpty(text)))
-        + "\n" + Troubleshooter.Report(snapshot, Troubleshooter.Diagnose(snapshot));
+        + "\n" + Troubleshooter.Report(snapshot);
 
     /// <summary>Copies <see cref="DiagnosticsText"/> to the clipboard; a refusal is reported in <see cref="ErrorMessage"/>.</summary>
     public bool CopyDiagnostics(DiscoverySnapshot snapshot)
@@ -1224,7 +1224,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         catch (Exception e)
         {
-            ErrorMessage = $"Copy diagnostics did not work: {FileActionErrors.Describe(e)}";
+            ErrorMessage = Loc.T("Copy diagnostics did not work: {0}", FileActionErrors.Describe(e));
             NotifyAll();
             return false;
         }
@@ -1243,7 +1243,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         catch (Exception e)
         {
-            ErrorMessage = $"{Troubleshooter.Label(action, TroubleshootPlatform.Windows)} did not work: {FileActionErrors.Describe(e)}";
+            ErrorMessage = Loc.T("{0} did not work: {1}", Troubleshooter.Label(action, TroubleshootPlatform.Windows), FileActionErrors.Describe(e));
             NotifyAll();
             return false;
         }

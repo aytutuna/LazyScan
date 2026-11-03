@@ -72,7 +72,7 @@ public final class IOSTroubleshooterService: TroubleshooterService {
         switch action {
         case .openAppSettings:
             guard let url = URL(string: UIApplication.openSettingsURLString) else {
-                throw ScanError.exportFailed("Settings did not open.")
+                throw ScanError.exportFailed(L10n.t("Settings did not open."))
             }
             openURL(url)
         case .refresh, .addByAddress, .openScannerSettings, .openNetworkSettings, .openImageCapture, .copyDiagnostics:

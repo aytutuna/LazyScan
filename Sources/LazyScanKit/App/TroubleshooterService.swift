@@ -33,6 +33,6 @@ final class UnavailableTroubleshooterService: TroubleshooterService {
     }
 
     func copy(_ text: String) throws {
-        throw ScanError.unsupported("The text cannot be copied here.")
+        throw ScanError.unsupported(L10n.t("The text cannot be copied here."))
     }
 }

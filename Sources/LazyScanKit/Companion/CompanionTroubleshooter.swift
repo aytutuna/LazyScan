@@ -98,10 +98,8 @@ public enum CompanionTroubleshooter {
         if let firewall = firewallCheck(snapshot) { checks.append(firewall) }
         if let syncFolder = syncFolderCheck(snapshot, computer: computer) { checks.append(syncFolder) }
         checks.append(TroubleshootCheck(
-            id: "phoneIsolation", status: .tip, title: "Phone cannot connect on the same Wi-Fi?",
-            detail: "Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other "
-                + "even on the same Wi-Fi. The phone's connection check then says so. Connect this \(computer) to your phone's "
-                + "hotspot instead, or send the document from the phone's share sheet.",
+            id: "phoneIsolation", status: .tip, title: L10n.t("Phone cannot connect on the same Wi-Fi?"),
+            detail: L10n.t("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this {0} to your phone's hotspot instead, or send the document from the phone's share sheet.", computer),
             actions: []))
         var ranked: [(check: TroubleshootCheck, index: Int)] = []
         for (index, check) in checks.enumerated() {
@@ -127,12 +125,12 @@ public enum CompanionTroubleshooter {
             }
         }
         switch snapshot.listen {
-        case .listening: return "Receiving from phones on \(joinNames(trusted))."
-        case .off: return "No phone is paired yet."
-        case .offline: return "Not connected to a network."
-        case .noTrustedNetwork: return "Not receiving from phones on \(joinNames(untrusted))."
-        case .failed: return "Could not start receiving from phones."
-        case .elsewhere: return "Another Lazy Scan window receives from phones."
+        case .listening: return L10n.t("Receiving from phones on {0}.", joinNames(trusted))
+        case .off: return L10n.t("No phone is paired yet.")
+        case .offline: return L10n.t("Not connected to a network.")
+        case .noTrustedNetwork: return L10n.t("Not receiving from phones on {0}.", joinNames(untrusted))
+        case .failed: return L10n.t("Could not start receiving from phones.")
+        case .elsewhere: return L10n.t("Another Lazy Scan window receives from phones.")
         }
     }
 
@@ -140,7 +138,7 @@ public enum CompanionTroubleshooter {
     public static func summary(_ checks: [TroubleshootCheck]) -> String {
         let problems = checks.filter { $0.status == .problem }.count
         let warnings = checks.filter { $0.status == .warning }.count
-        if problems == 0 && warnings == 0 { return "Nothing here stops a paired phone from connecting." }
+        if problems == 0 && warnings == 0 { return L10n.t("Nothing here stops a paired phone from connecting.") }
         let problemText = L10n.plural(problems, one: "{0} problem", other: "{0} problems")
         let warningText = L10n.plural(warnings, one: "{0} warning", other: "{0} warnings")
         if problems > 0 && warnings > 0 { return L10n.t("{0} and {1} found.", problemText, warningText) }
@@ -151,35 +149,33 @@ public enum CompanionTroubleshooter {
         switch snapshot.listen {
         case .failed:
             return TroubleshootCheck(
-                id: "phoneListening", status: .problem, title: "Lazy Scan could not start receiving",
+                id: "phoneListening", status: .problem, title: L10n.t("Lazy Scan could not start receiving"),
                 detail: joinSentences(snapshot.listenError,
-                                      "Close other copies of Lazy Scan, then select Refresh. Restarting the \(computer) also helps."),
+                                      L10n.t("Close other copies of Lazy Scan, then select Refresh. Restarting the {0} also helps.", computer)),
                 actions: [.refresh])
         case .offline:
             return TroubleshootCheck(
-                id: "phoneListening", status: .problem, title: "Not connected to a network",
-                detail: "This \(computer) is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, "
-                    + "or to your phone's hotspot.",
+                id: "phoneListening", status: .problem, title: L10n.t("Not connected to a network"),
+                detail: L10n.t("This {0} is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.", computer),
                 actions: [.openNetworkSettings, .refresh])
         case .elsewhere:
             return TroubleshootCheck(
-                id: "phoneListening", status: .warning, title: "Another Lazy Scan window receives from phones",
-                detail: "Documents from phones go to the Lazy Scan window that was opened first. Close it to receive here.",
+                id: "phoneListening", status: .warning, title: L10n.t("Another Lazy Scan window receives from phones"),
+                detail: L10n.t("Documents from phones go to the Lazy Scan window that was opened first. Close it to receive here."),
                 actions: [.refresh])
         case .off where !snapshot.pairingOpen:
             return TroubleshootCheck(
-                id: "phoneListening", status: .tip, title: "No phone is paired",
-                detail: "Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, "
-                    + "this \(computer) does not listen for phones.",
+                id: "phoneListening", status: .tip, title: L10n.t("No phone is paired"),
+                detail: L10n.t("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this {0} does not listen for phones.", computer),
                 actions: [])
         case .listening:
             let detail: String
             switch snapshot.pairedCount {
-            case 0: detail = "Listening on port \(snapshot.port) while the pairing code is shown."
+            case 0: detail = L10n.t("Listening on port {0} while the pairing code is shown.", String(snapshot.port))
             default: detail = L10n.plural(snapshot.pairedCount, one: "Listening on port {1}. {0} phone is paired.",
                                           other: "Listening on port {1}. {0} phones are paired.", String(snapshot.port))
             }
-            return TroubleshootCheck(id: "phoneListening", status: .ok, title: "Ready for phones", detail: detail, actions: [])
+            return TroubleshootCheck(id: "phoneListening", status: .ok, title: L10n.t("Ready for phones"), detail: detail, actions: [])
         default:
             return nil
         }
@@ -189,30 +185,28 @@ public enum CompanionTroubleshooter {
                                       computer: String) -> TroubleshootCheck {
         let network = state.network
         let id = "phoneNetwork:\(network.id)"
-        let name = network.name.isEmpty ? "this network" : network.name
+        let name = network.name.isEmpty ? L10n.t("this network") : network.name
         switch state.trust {
         case .privateNetwork:
             return TroubleshootCheck(
-                id: id, status: .ok, title: "\(name) is a private network",
-                detail: "Paired phones on this network can send documents to this \(computer).", actions: [])
+                id: id, status: .ok, title: L10n.t("{0} is a private network", name),
+                detail: L10n.t("Paired phones on this network can send documents to this {0}.", computer), actions: [])
         case .approved:
             return TroubleshootCheck(
-                id: id, status: .ok, title: "Receiving on \(name), which you allowed",
-                detail: "Paired phones on this network can send documents to this \(computer).", actions: [])
+                id: id, status: .ok, title: L10n.t("Receiving on {0}, which you allowed", name),
+                detail: L10n.t("Paired phones on this network can send documents to this {0}.", computer), actions: [])
         case .notTrusted:
             guard platform == .windows else {
                 return TroubleshootCheck(
-                    id: id, status: .warning, title: "Not receiving on \(name)",
-                    detail: "Lazy Scan listens for phones only on networks you allow. If \(name) is a network you trust, "
-                        + "such as your home Wi-Fi, turn on Allow receiving on this network.",
+                    id: id, status: .warning, title: L10n.t("Not receiving on {0}", name),
+                    detail: L10n.t("Lazy Scan listens for phones only on networks you allow. If {0} is a network you trust, such as your home Wi-Fi, turn on Allow receiving on this network.", name),
                     actions: [])
             }
             return TroubleshootCheck(
-                id: id, status: .warning, title: "Not receiving on \(name)",
-                detail: "Windows treats \(name) as \(network.category == .domainNetwork ? "a work" : "a public") "
-                    + "network, so Lazy Scan does not listen for phones there. If it is your home network, set it to "
-                    + "Private in Windows network settings. On a network you trust but cannot change, such as your school's "
-                    + "Wi-Fi, turn on Allow receiving on this network.",
+                id: id, status: .warning, title: L10n.t("Not receiving on {0}", name),
+                detail: network.category == .domainNetwork
+                    ? L10n.t("Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name)
+                    : L10n.t("Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name),
                 actions: [.openNetworkSettings])
         }
     }
@@ -221,33 +215,28 @@ public enum CompanionTroubleshooter {
         let wanted = snapshot.listen == .listening || snapshot.listen == .noTrustedNetwork
         switch snapshot.firewall {
         case .blocked:
-            var rules = "the rules for Lazy Scan"
-            if !snapshot.blockingRules.isEmpty {
-                var quoted: [String] = []
-                for rule in snapshot.blockingRules {
-                    quoted.append("\"\(rule)\"")
-                }
-                rules = quoted.joined(separator: ", ")
+            var quoted: [String] = []
+            for rule in snapshot.blockingRules {
+                quoted.append("\"\(rule)\"")
             }
             return TroubleshootCheck(
-                id: "phoneFirewall", status: .problem, title: "Windows Firewall blocks Lazy Scan",
-                detail: "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens "
-                    + "when the firewall's question was cancelled or the network type was not ticked. Someone with "
-                    + "administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select "
-                    + "Inbound Rules and delete \(rules) that block it. Windows then asks again.",
+                id: "phoneFirewall", status: .problem, title: L10n.t("Windows Firewall blocks Lazy Scan"),
+                detail: quoted.isEmpty
+                    ? L10n.t("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete the rules for Lazy Scan that block it. Windows then asks again.")
+                    : L10n.t("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete {0} that block it. Windows then asks again.", quoted.joined(separator: ", ")),
                 actions: [.refresh])
         case .willAsk where wanted:
             let approvedPublic = snapshot.networks.contains { $0.trust == .approved && $0.network.category != .privateNetwork }
             return TroubleshootCheck(
-                id: "phoneFirewall", status: .tip, title: "Windows Firewall will ask once",
-                detail: "When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow"
-                    + (approvedPublic ? ", with Public networks ticked for the networks you allowed that Windows treats as public" : "")
-                    + ". Cancel blocks phones until the rule it makes is removed.",
+                id: "phoneFirewall", status: .tip, title: L10n.t("Windows Firewall will ask once"),
+                detail: approvedPublic
+                    ? L10n.t("When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow, with Public networks ticked for the networks you allowed that Windows treats as public. Cancel blocks phones until the rule it makes is removed.")
+                    : L10n.t("When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow. Cancel blocks phones until the rule it makes is removed."),
                 actions: [])
         case .allowed:
             return TroubleshootCheck(
-                id: "phoneFirewall", status: .ok, title: "Windows Firewall allows Lazy Scan",
-                detail: "Phones on the networks you receive on can reach this PC.", actions: [])
+                id: "phoneFirewall", status: .ok, title: L10n.t("Windows Firewall allows Lazy Scan"),
+                detail: L10n.t("Phones on the networks you receive on can reach this PC."), actions: [])
         default:
             return nil
         }
@@ -257,10 +246,11 @@ public enum CompanionTroubleshooter {
         guard snapshot.pairedCount > 0, !snapshot.syncFolderChosen, let quiet = snapshot.phonesQuietFor,
               quiet >= quietTime else { return nil }
         return TroubleshootCheck(
-            id: "phoneSyncFolder", status: .tip, title: "Phone has not reached this \(computer) lately?",
-            detail: "No paired phone has connected for \(Int(quiet / (24 * 60 * 60))) days. If the phone and this \(computer) "
-                + "are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or "
-                + "iCloud Drive. The phone then puts documents there when it cannot reach this \(computer), and they are added here.",
+            id: "phoneSyncFolder", status: .tip, title: L10n.t("Phone has not reached this {0} lately?", computer),
+            detail: L10n.plural(Int(quiet / (24 * 60 * 60)),
+                                one: "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
+                                other: "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
+                                computer),
             actions: [])
     }
 
@@ -275,9 +265,9 @@ public enum CompanionTroubleshooter {
 
     private static func joinNames(_ names: [String]) -> String {
         switch names.count {
-        case 0: return "this network"
+        case 0: return L10n.t("this network")
         case 1: return names[0]
-        default: return names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+        default: return L10n.t("{0} and {1}", names.dropLast().joined(separator: ", "), names[names.count - 1])
         }
     }
 

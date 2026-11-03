@@ -834,7 +834,7 @@ public final class AppState: ObservableObject {
                 text += report + "\n"
             }
         }
-        return text + Troubleshooter.report(snapshot, checks: Troubleshooter.diagnose(snapshot))
+        return text + Troubleshooter.report(snapshot)
     }
 
     /// Copies `diagnosticsText` to the pasteboard. Returns why it did not work, nil when it did.
@@ -846,7 +846,7 @@ public final class AppState: ObservableObject {
             try troubleshooterService.copy(diagnosticsText(snapshot))
             return nil
         } catch {
-            return "Copy diagnostics did not work: \(Self.describe(error))"
+            return L10n.t("Copy diagnostics did not work: {0}", Self.describe(error))
         }
     }
 
@@ -858,7 +858,7 @@ public final class AppState: ObservableObject {
             try troubleshooterService.open(action)
             return nil
         } catch {
-            return "\(Troubleshooter.label(action, platform: platform)) did not work: \(Self.describe(error))"
+            return L10n.t("{0} did not work: {1}", Troubleshooter.label(action, platform: platform), Self.describe(error))
         }
     }
 
