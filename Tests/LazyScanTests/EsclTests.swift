@@ -120,6 +120,14 @@ final class EsclTests: XCTestCase {
         XCTAssertEqual(Array(request.toXml().utf8), Array(expected.utf8))
     }
 
+    func testColorRequestOnAGrayOnlyInputAsksForGrayscale() {
+        let caps: EsclCapabilities = EsclCapabilities(
+            platen: EsclInputCaps(colorModes: ["BlackAndWhite1", "Grayscale8"]))
+        let request: EsclScanRequest = EsclScanRequest.create(caps, source: .flatbed, colorMode: .color,
+                                                              dpi: 300, selection: nil)
+        XCTAssertEqual(request.colorMode, "Grayscale8")
+    }
+
     func testFeederRequestUsesTheFeederSizeAndIgnoresTheSelection() throws {
         let caps: EsclCapabilities = try capabilities(EsclFixtures.platenAndDuplexAdfFile)
         let request: EsclScanRequest = EsclScanRequest.create(caps, source: .documentFeeder, colorMode: .grayscale,

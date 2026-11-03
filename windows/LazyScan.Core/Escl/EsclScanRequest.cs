@@ -78,7 +78,7 @@ public sealed class EsclScanRequest
         }
 
         string[] colorPreference = colorMode == Core.ColorMode.Color
-            ? ["RGB24"]
+            ? ["RGB24", "Grayscale8"]
             : ["Grayscale8", "RGB24"];
         string[] formatPreference = ["image/jpeg", "image/png", "image/tiff"];
 

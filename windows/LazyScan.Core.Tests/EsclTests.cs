@@ -141,6 +141,17 @@ public class EsclTests
     }
 
     [Fact]
+    public void ColorRequestOnAGrayOnlyInputAsksForGrayscale()
+    {
+        var caps = new EsclCapabilities
+        {
+            Platen = new EsclInputCaps { ColorModes = ["BlackAndWhite1", "Grayscale8"] },
+        };
+        var request = EsclScanRequest.Create(caps, ScanSource.Flatbed, ColorMode.Color, 300, selection: null);
+        Assert.Equal("Grayscale8", request.ColorMode);
+    }
+
+    [Fact]
     public void TwoSidedFeederRequestSnapshot()
     {
         var caps = EsclCapabilitiesParser.Parse(PlatenAndDuplexAdf);

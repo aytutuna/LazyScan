@@ -96,7 +96,7 @@ public struct EsclScanRequest: Equatable, Sendable {
             resolution = best
         }
 
-        let colorPreference: [String] = colorMode == .color ? ["RGB24"] : ["Grayscale8", "RGB24"]
+        let colorPreference: [String] = colorMode == .color ? ["RGB24", "Grayscale8"] : ["Grayscale8", "RGB24"]
         let formatPreference: [String] = ["image/jpeg", "image/png", "image/tiff"]
 
         return EsclScanRequest(inputSource: feeder ? "Feeder" : "Platen",
