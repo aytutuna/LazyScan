@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Text;
 using LazyScan.App.Services;
 using LazyScan.Core;
@@ -383,13 +384,27 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
                 {
                     client.Dispose();
-                    failures.Add($"{address}: {(e is OperationCanceledException ? "no answer in time" : e.Message)}");
+                    failures.Add($"{address}: {ConnectionFailure(e)}");
                     break;
                 }
             }
         }
         throw ScanException.SessionFailed($"{record.Info.Name} did not answer ({string.Join("; ", failures)}).");
     }
+
+    /// <summary>
+    /// Why an address did not answer, for the message. A TLS handshake failure that is not about
+    /// trust (the certificate's trust is decided by the validator) is named as such. Twin of
+    /// <c>connectionFailure</c> in the Swift backend.
+    /// </summary>
+    internal static string ConnectionFailure(Exception e) => e switch
+    {
+        OperationCanceledException => "no answer in time",
+        HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError }
+            or HttpRequestException { InnerException: AuthenticationException }
+            => "no secure connection (the scanner's encryption is not accepted by Windows)",
+        _ => e.Message,
+    };
 
     private EsclClient NewClient(ScannerAddress address, EsclCertificateValidator validator, string name) =>
         new(address.BaseUri, validator.CreateHandler(), _decode, name, validator, _clientOptions);
