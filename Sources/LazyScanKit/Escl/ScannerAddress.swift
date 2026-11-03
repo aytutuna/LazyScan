@@ -87,6 +87,17 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         hasher.combine(description.lowercased())
     }
 
+    /// A plain-HTTP host name that is neither unqualified nor ".local" ("brother.fritz.box"): App
+    /// Transport Security refuses it, so the app connects to its IPv4 address instead (`baseURL(resolvedTo:)`).
+    public var needsResolving: Bool {
+        !secure && !isIPv6 && host.contains(".") && !host.hasSuffix(".local") && EsclHostText.ipv4(host) == nil
+    }
+
+    /// The eSCL root at `ip`, an address this host name resolved to, in place of the name.
+    public func baseURL(resolvedTo ip: String) -> URL? {
+        ScannerAddress(secure: secure, host: ip, port: port, resourcePath: resourcePath).baseURL
+    }
+
     /// The HTTPS address to try when a host typed bare (no scheme, no path) got no answer over HTTP on
     /// port 80; nil for any other address.
     public func httpsFallback(typed text: String) -> ScannerAddress? {
@@ -275,6 +286,22 @@ enum EsclHostText {
             name.removeLast()
         }
         return name.lowercased()
+    }
+
+    /// The first IPv4 address `host` resolves to; nil when it does not resolve to one.
+    static func resolveIPv4(_ host: String) async -> String? {
+        await Task.detached { () -> String? in
+            var hints = addrinfo()
+            hints.ai_family = AF_INET
+            var found: UnsafeMutablePointer<addrinfo>?
+            guard getaddrinfo(host, nil, &hints, &found) == 0, let first = found else { return nil }
+            defer { freeaddrinfo(found) }
+            guard let sockaddress = first.pointee.ai_addr else { return nil }
+            var address: in_addr = sockaddress.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
+            var buffer: [CChar] = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN) + 1)
+            guard inet_ntop(AF_INET, &address, &buffer, socklen_t(buffer.count)) != nil else { return nil }
+            return String(cString: buffer)
+        }.value
     }
 
     /// Four decimal numbers of up to three digits, each at most 255, written without leading zeros.

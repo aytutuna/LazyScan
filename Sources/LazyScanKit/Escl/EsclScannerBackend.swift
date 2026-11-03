@@ -325,6 +325,18 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         }
     }
 
+    /// The URL to connect to. A plain-HTTP host name App Transport Security would refuse is resolved
+    /// each time, so a new DHCP lease is followed; the address keeps the name the user typed.
+    private static func connectURL(_ address: ScannerAddress) async -> URL? {
+        guard address.needsResolving else { return address.baseURL }
+        guard let ip: String = await EsclHostText.resolveIPv4(address.host) else { return nil }
+        return address.baseURL(resolvedTo: ip)
+    }
+
+    private static func unusable(_ address: ScannerAddress) -> String {
+        address.needsResolving ? "its name could not be found" : "it is not a usable address"
+    }
+
     private static func manualHost(_ address: ScannerAddress, _ result: EsclAddressCheck) -> ManualHost {
         // A changed certificate still lists the scanner (choosing it asks the user), under the UUID it was
         // trusted with, so it stays one entry with its discovered one. (The name in the pin is often just
@@ -355,9 +367,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let name: String = address.description
         let validator: EsclCertificateValidator = EsclCertificateValidator(store: trust, deviceUuid: nil, deviceName: name,
                                                                            firstUse: firstUse)
-        guard let base: URL = address.baseURL else {
+        guard let base: URL = await EsclScannerBackend.connectURL(address) else {
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: "No scanner answered at \(address) (it is not a usable address).")
+                                    error: "No scanner answered at \(address) (\(EsclScannerBackend.unusable(address))).")
         }
         let client: EsclClient = EsclClient(baseURL: base, deviceName: name, validator: validator, options: clientOptions)
         do {
@@ -523,8 +535,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             while true {
                 let validator: EsclCertificateValidator = EsclCertificateValidator(
                     store: trust, deviceUuid: record.uuid, deviceName: record.info.name, firstUse: firstUse)
-                guard let base: URL = address.baseURL else {
-                    failures.append("\(address): not a usable address")
+                guard let base: URL = await EsclScannerBackend.connectURL(address) else {
+                    failures.append("\(address): \(EsclScannerBackend.unusable(address))")
                     break
                 }
                 let client: EsclClient = EsclClient(baseURL: base, deviceName: record.info.name, validator: validator,

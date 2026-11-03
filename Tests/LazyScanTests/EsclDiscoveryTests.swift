@@ -68,6 +68,17 @@ final class EsclDiscoveryTests: XCTestCase {
 
     // MARK: - Addresses users type
 
+    func testOnlyQualifiedPlainHttpNamesAreResolved() throws {
+        for text in ["brother.fritz.box", "printer.lan:8080", "hp.home"] {
+            XCTAssertTrue(try ScannerAddress.parse(text).needsResolving, text)
+        }
+        for text in ["scanner", "scanner.local", "192.168.1.50", "[2001:db8::5]", "https://brother.fritz.box"] {
+            XCTAssertFalse(try ScannerAddress.parse(text).needsResolving, text)
+        }
+        let address: ScannerAddress = try ScannerAddress.parse("brother.fritz.box:8080")
+        XCTAssertEqual(address.baseURL(resolvedTo: "192.168.1.50")?.absoluteString, "http://192.168.1.50:8080/eSCL/")
+    }
+
     func testAddressesParseAndNormalize() throws {
         struct Row {
             let text: String
