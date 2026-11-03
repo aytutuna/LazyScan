@@ -215,6 +215,14 @@ final class EsclBrowsingTests: XCTestCase {
         XCTAssertFalse(discovery.isLooking)
         scheduler.fireAll()
         XCTAssertEqual(resolver.requests.count, 4)
+
+        // Refresh starts a new round with its own retries.
+        discovery.restart()
+        XCTAssertEqual(resolver.requests.count, 5)
+        resolver.latest("Canon")?.answer(.failed("no answer in time"))
+        XCTAssertEqual(scheduler.delays.suffix(1), [5])
+        scheduler.fireAll()
+        XCTAssertEqual(resolver.requests.count, 6)
     }
 
     @MainActor

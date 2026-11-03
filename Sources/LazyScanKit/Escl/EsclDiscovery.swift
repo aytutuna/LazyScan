@@ -392,6 +392,7 @@ public final class EsclDiscovery {
         deniedElsewhere = false
         startMissing()
         for entry in found where !entry.isResolving {
+            entry.failures = 0
             startResolve(entry)
         }
         changed()
@@ -489,6 +490,9 @@ public final class EsclDiscovery {
                 entry.carried = false
                 entry.result = result
                 if (entry.resolved == nil || again) && !entry.isResolving {
+                    if again {
+                        entry.failures = 0
+                    }
                     startResolve(entry)
                 }
             } else {
