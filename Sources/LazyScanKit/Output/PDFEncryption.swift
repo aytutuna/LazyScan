@@ -190,15 +190,15 @@ public final class PDFProtection: @unchecked Sendable {
     /// the first (compared code unit by code unit, as C# does). A weak password is allowed;
     /// `strengthOf` says so.
     public static func problem(_ password: String, _ confirmation: String) -> String? {
-        if password.utf16.isEmpty { return "Type a password." }
+        if password.utf16.isEmpty { return L10n.t("Type a password.") }
         for unit in password.utf16 where isControl(unit) {
-            return "A password can't contain tabs, line breaks or other control characters."
+            return L10n.t("A password can't contain tabs, line breaks or other control characters.")
         }
         var preparedBytes: [UInt8] = preparePassword(password)
         let empty: Bool = preparedBytes.isEmpty
         PDFEncryption.wipe(&preparedBytes)
-        if empty { return "Type a password." }
-        if !password.utf16.elementsEqual(confirmation.utf16) { return "Passwords don't match" }
+        if empty { return L10n.t("Type a password.") }
+        if !password.utf16.elementsEqual(confirmation.utf16) { return L10n.t("Passwords don't match") }
         return nil
     }
 
@@ -266,9 +266,9 @@ public final class PDFProtection: @unchecked Sendable {
     /// The dialog's short line next to the strength bar ("" when nothing is typed).
     public static func strengthLabel(_ strength: PasswordStrength) -> String {
         switch strength {
-        case .weak: return "Weak \u{00B7} use 12+ characters"
-        case .fair: return "Fair \u{00B7} longer is safer"
-        case .strong: return "Strong"
+        case .weak: return L10n.t("Weak · use 12+ characters")
+        case .fair: return L10n.t("Fair · longer is safer")
+        case .strong: return L10n.t("Strong")
         case .none: return ""
         }
     }
@@ -288,11 +288,11 @@ public final class PDFProtection: @unchecked Sendable {
     public static func strengthHint(_ strength: PasswordStrength) -> String {
         switch strength {
         case .weak:
-            return "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words."
+            return L10n.t("Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.")
         case .fair:
-            return "Fair. A few more characters, or another word, would make it much harder to guess."
+            return L10n.t("Fair. A few more characters, or another word, would make it much harder to guess.")
         case .strong:
-            return "Strong."
+            return L10n.t("Strong.")
         case .none:
             return ""
         }

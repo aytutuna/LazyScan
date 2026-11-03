@@ -35,5 +35,32 @@
       "one": "Kaydedilmedi: korumalı PDF için parola girilmedi. Sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın.",
       "other": "Kaydedilmedi: korumalı PDF için parola girilmedi. {0} sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın."
     }
+  },
+  "Type a password.": {
+    "tr": "Parola girin."
+  },
+  "A password can't contain tabs, line breaks or other control characters.": {
+    "tr": "Parola sekme, satır sonu ya da başka bir denetim karakteri içeremez."
+  },
+  "Passwords don't match": {
+    "tr": "Parolalar eşleşmiyor"
+  },
+  "Weak · use 12+ characters": {
+    "tr": "Zayıf · en az 12 karakter kullanın"
+  },
+  "Fair · longer is safer": {
+    "tr": "Orta · uzadıkça güçlenir"
+  },
+  "Strong": {
+    "tr": "Güçlü"
+  },
+  "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.": {
+    "tr": "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az 12 karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın."
+  },
+  "Fair. A few more characters, or another word, would make it much harder to guess.": {
+    "tr": "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır."
+  },
+  "Strong.": {
+    "tr": "Güçlü."
   }
 }

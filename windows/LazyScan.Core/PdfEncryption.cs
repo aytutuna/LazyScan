@@ -187,13 +187,13 @@ public sealed class PdfProtection : IDisposable
     /// </summary>
     public static string? Problem(string password, string confirmation)
     {
-        if (password.Length == 0) return "Type a password.";
-        if (password.Any(char.IsControl)) return "A password can't contain tabs, line breaks or other control characters.";
+        if (password.Length == 0) return Loc.T("Type a password.");
+        if (password.Any(char.IsControl)) return Loc.T("A password can't contain tabs, line breaks or other control characters.");
         byte[] prepared = PreparePassword(password);
         bool empty = prepared.Length == 0;
         CryptographicOperations.ZeroMemory(prepared);
-        if (empty) return "Type a password.";
-        if (!string.Equals(password, confirmation, StringComparison.Ordinal)) return "Passwords don't match";
+        if (empty) return Loc.T("Type a password.");
+        if (!string.Equals(password, confirmation, StringComparison.Ordinal)) return Loc.T("Passwords don't match");
         return null;
     }
 
@@ -239,9 +239,9 @@ public sealed class PdfProtection : IDisposable
     /// <summary>The dialog's short line next to the strength bar ("" when nothing is typed).</summary>
     public static string StrengthLabel(PasswordStrength strength) => strength switch
     {
-        PasswordStrength.Weak => "Weak · use 12+ characters",
-        PasswordStrength.Fair => "Fair · longer is safer",
-        PasswordStrength.Strong => "Strong",
+        PasswordStrength.Weak => Loc.T("Weak · use 12+ characters"),
+        PasswordStrength.Fair => Loc.T("Fair · longer is safer"),
+        PasswordStrength.Strong => Loc.T("Strong"),
         _ => "",
     };
 
@@ -257,9 +257,9 @@ public sealed class PdfProtection : IDisposable
     /// <summary>The full advice about a password's strength, on hover and for screen readers ("" when nothing is typed).</summary>
     public static string StrengthHint(PasswordStrength strength) => strength switch
     {
-        PasswordStrength.Weak => "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.",
-        PasswordStrength.Fair => "Fair. A few more characters, or another word, would make it much harder to guess.",
-        PasswordStrength.Strong => "Strong.",
+        PasswordStrength.Weak => Loc.T("Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words."),
+        PasswordStrength.Fair => Loc.T("Fair. A few more characters, or another word, would make it much harder to guess."),
+        PasswordStrength.Strong => Loc.T("Strong."),
         _ => "",
     };
 }

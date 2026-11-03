@@ -12,4 +12,25 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Save" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Parola</value>
+  </data>
+  <data name="Confirm|password field" xml:space="preserve">
+    <value>Parolayı yeniden girin</value>
+  </data>
+  <data name="Allow printing" xml:space="preserve">
+    <value>Yazdırmaya izin ver</value>
+  </data>
+  <data name="Allow copying" xml:space="preserve">
+    <value>Kopyalamaya izin ver</value>
+  </data>
+  <data name="Allow copying text and images" xml:space="preserve">
+    <value>Metin ve görüntüleri kopyalamaya izin ver</value>
+  </data>
 </root>
