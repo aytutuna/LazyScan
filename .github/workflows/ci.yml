@@ -45,6 +45,15 @@ jobs:
             Set-Service stisvc -StartupType Manual
             "stisvc: start type set to $((Get-Service stisvc).StartType)"
           }
+      # The generated Turkish files must be what the catalog produces; also fails on a key used in code
+      # that the catalog lacks.
+      - name: Check the generated translations
+        shell: pwsh
+        run: |
+          python scripts/gen_l10n.py
+          if ($LASTEXITCODE -ne 0) { throw 'gen_l10n.py failed' }
+          $changed = git status --porcelain -- ios/LazyScaniOS l10n windows/LazyScan.Core
+          if ($changed) { $changed; git diff; throw 'Generated translation files are out of date: run scripts/gen_l10n.py' }
       # DocAligner's FastViT-T8, the page corner model of every platform (pinned release, SHA-256 checked
       # by the script), into Sources/LazyScanModel/Models before anything builds.
       - name: Fetch the corner model

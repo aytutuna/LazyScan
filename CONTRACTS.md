@@ -2377,9 +2377,10 @@ The C# side, which the Swift port mirrors name for name and byte for byte:
 public enum PasswordStrength { None, Weak, Fair, Strong }        // first member = default
 public sealed class PdfProtection : IDisposable {                // one save's password; Dispose wipes it
     const int MaxPasswordBytes = 127;
-    const string OptionLabel = "Require a password", OptionHint, OptionHelp, NotWithArchivalReason = "Not with PDF/A",
-                 DialogTitle, DialogMessage, DialogHelp, PermissionsNote, PermissionsShortNote, NotSavedMessage;
-    static string KeptInQueueMessage(int pages);
+    // The texts are computed through Loc.T / Loc.Plural from l10n/shared.json (English is the key and the fallback):
+    static string OptionLabel, OptionHint, OptionHelp, NotWithArchivalReason, DialogTitle, DialogMessage, DialogHelp,
+                  PermissionsNote, PermissionsShortNote, NotSavedMessage;
+    static string KeptInQueueMessage(int pages);                 // plural: "The page is" / "The {0} pages are"
     PdfProtection(string password, bool allowPrinting = true, bool allowCopying = true); // throws on Problem
     bool AllowPrinting, AllowCopying; int PermissionFlags;
     internal ReadOnlySpan<byte> Password;                        // prepared; throws once disposed
@@ -2415,8 +2416,8 @@ CryptoKit has none; SHA-256/384/512 CryptoKit's; random bytes `SecRandomCopyByte
 public enum PasswordStrength: String, CaseIterable, Sendable { case none, weak, fair, strong }
 public final class PDFProtection: @unchecked Sendable {
     static let maxPasswordBytes = 127
-    static let optionLabel, optionHint, optionHelp, notWithArchivalReason, dialogTitle, dialogMessage, dialogHelp,
-               permissionsNote, permissionsShortNote, notSavedMessage: String
+    static var optionLabel, optionHint, optionHelp, notWithArchivalReason, dialogTitle, dialogMessage, dialogHelp,
+               permissionsNote, permissionsShortNote, notSavedMessage: String   // computed through L10n.t
     static func keptInQueueMessage(_ pages: Int) -> String
     init(_ password: String, allowPrinting: Bool = true, allowCopying: Bool = true) throws  // throws with `problem`
     let allowPrinting: Bool, allowCopying: Bool; var permissionFlags: Int

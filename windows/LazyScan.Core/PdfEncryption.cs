@@ -26,44 +26,42 @@ public sealed class PdfProtection : IDisposable
     public const int MaxPasswordBytes = 127;
 
     /// <summary>The password switch in the inspector's Archive &amp; password section.</summary>
-    public const string OptionLabel = "Require a password";
+    public static string OptionLabel => Loc.T("Require a password");
 
     /// <summary>What the switch does, on hover.</summary>
-    public const string OptionHint = "PDFs open only with the password. You type it when saving.";
+    public static string OptionHint => Loc.T("PDFs open only with the password. You type it when saving.");
 
     /// <summary>What the switch does, for screen readers: the hover text with what can't be undone.</summary>
-    public const string OptionHelp =
-        "Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.";
+    public static string OptionHelp => Loc.T("Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.");
 
     /// <summary>Why the switch is greyed out while archival PDF (PDF/A) is on, shown next to it.</summary>
-    public const string NotWithArchivalReason = "Not with PDF/A";
+    public static string NotWithArchivalReason => Loc.T("Not with PDF/A");
 
     /// <summary>The dialog's title and heading.</summary>
-    public const string DialogTitle = "Set a PDF password";
+    public static string DialogTitle => Loc.T("Set a PDF password");
 
     /// <summary>
     /// The warning the dialog shows under its heading: what can't be undone, and that it applies to
     /// this save.
     /// </summary>
-    public const string DialogMessage = "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.";
+    public static string DialogMessage => Loc.T("It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.");
 
     /// <summary>The dialog's whole explanation, for screen readers.</summary>
-    public const string DialogHelp =
-        "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.";
+    public static string DialogHelp => Loc.T("Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.");
 
     /// <summary>The permissions are requests that PDF apps honor, not locks; the dialog says so (on hover and for screen readers).</summary>
-    public const string PermissionsNote =
-        "Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.";
+    public static string PermissionsNote => Loc.T("Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.");
 
     /// <summary>The line under the permissions: short, and always shown, so they are not taken for a lock.</summary>
-    public const string PermissionsShortNote = "Some apps ignore these settings.";
+    public static string PermissionsShortNote => Loc.T("Some apps ignore these settings.");
 
     /// <summary>The status when a save that needs a password got none (the dialog was cancelled).</summary>
-    public const string NotSavedMessage = "Not saved: no password was given for the protected PDF.";
+    public static string NotSavedMessage => Loc.T("Not saved: no password was given for the protected PDF.");
 
     /// <summary>The status when pages saved as they were scanned got no password: they wait in the queue.</summary>
-    public static string KeptInQueueMessage(int pages) =>
-        $"Not saved: no password was given for the protected PDF. The {(pages == 1 ? "page is" : $"{pages} pages are")} in the queue: save with a password, or turn the password off.";
+    public static string KeptInQueueMessage(int pages) => Loc.Plural(pages,
+        "Not saved: no password was given for the protected PDF. The page is in the queue: save with a password, or turn the password off.",
+        "Not saved: no password was given for the protected PDF. The {0} pages are in the queue: save with a password, or turn the password off.");
 
     private readonly byte[] _password;
     private readonly byte[] _decomposed;
