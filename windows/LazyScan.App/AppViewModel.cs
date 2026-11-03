@@ -2368,12 +2368,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Leaves the active task: the settings stay as they are, without the task's banner, so
-    /// the scan screen is back to plain settings. Refused while an operation runs: a scan under
-    /// way belongs to the task's steps.
+    /// the scan screen is back to plain settings. Sides turned over by hand go with the task
+    /// while no stack is under way (the Two-sided task's Both sides on a one-sided feeder), else
+    /// their steps would keep the banner up; with fronts or backs queued they stay for that
+    /// stack. Refused while an operation runs: a scan under way belongs to the task's steps.
     /// </summary>
     public void ExitTask()
     {
         if (IsBusy || Settings.TaskId is null) return;
+        if (IsTurningOverByHand && !IsStackUnderWay) Settings.Duplex = DuplexMode.Off;
         Settings.TaskId = null;
         SettingsEdited();
         NotifyAll();

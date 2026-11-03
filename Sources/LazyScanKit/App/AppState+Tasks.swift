@@ -126,11 +126,16 @@ extension AppState {
     }
 
     /// Leaves the active task: the settings stay as they are, without the task's banner, so the
-    /// scan screen is back to plain settings. Refused while an operation runs: a scan under way
-    /// belongs to the task's steps.
+    /// scan screen is back to plain settings. Sides turned over by hand go with the task while no
+    /// stack is under way (the Two-sided task's Both sides on a one-sided feeder), else their
+    /// steps would keep the banner up; with fronts or backs queued they stay for that stack.
+    /// Refused while an operation runs: a scan under way belongs to the task's steps.
     public func exitTask() {
         guard !isBusy, settings.taskId != nil else { return }
-        settings.taskId = nil
+        var updated = settings
+        updated.taskId = nil
+        if isTurningOverByHand && !isStackUnderWay { updated.duplex = .off }
+        settings = updated
     }
 
     /// Keeps the guided steps in line with the settings: turning stacks over by hand gets its

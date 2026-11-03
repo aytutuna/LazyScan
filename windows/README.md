@@ -137,7 +137,8 @@ The main window has four tabs, like the macOS app:
   (`TaskStep.Prompt` and `Help`, worded for the settings by `TaskCatalog.ShownStep`: with the
   feeder as the source Document to PDF asks to load the pages and its button reads **Scan stack**,
   and with **Collect pages before saving** off it says each scan is saved right away);
-  **Change task** goes back to Start and the close button leaves the task (its settings stay).
+  **Change task** goes back to Start and the close button leaves the task (its settings stay, but sides
+  turned over by hand go with it while no stack is under way).
   The task is saved with the settings, so a restart comes back to it. A first run opens on Start,
   later runs on Scan. The task tiles are one Tab stop, the presets another; the arrow keys move
   between tiles and Enter or Space picks one.

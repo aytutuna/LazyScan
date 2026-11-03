@@ -125,8 +125,10 @@ struct TaskBannerView: View {
         .accessibilityLabel(bannerLabel)
     }
 
+    /// With sides by hand the task takes them along (`exitTask()`), so not every setting stays.
     private var exitHelp: String {
-        definition != nil ? "Leave the task (settings stay)" : "Scan one side of each sheet"
+        if definition == nil { return "Scan one side of each sheet" }
+        return state.isTurningOverByHand ? "Leave the task" : "Leave the task (settings stay)"
     }
 
     private var exitLabel: String { definition != nil ? "Leave the task" : "Scan one side only" }

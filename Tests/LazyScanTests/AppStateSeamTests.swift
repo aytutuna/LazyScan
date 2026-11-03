@@ -486,6 +486,39 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_exitTask_turningOverByHand_takesTheSidesAlong_unlessAStackIsUnderWay() async throws {
+        let state = makeState()
+        // The Two-sided task on a feeder that scans one side: its sides are turned over by hand.
+        var settings = state.settings
+        settings.source = .documentFeeder
+        settings.duplex = .manual
+        settings.taskId = ScanTask.twoSided.rawValue
+        state.settings = settings
+        XCTAssertEqual(state.settings.task, .twoSided)
+        XCTAssertTrue(state.isTurningOverByHand)
+
+        // Nothing scanned yet: one leave ends the task and the steps, the feeder scans one side.
+        state.exitTask()
+        XCTAssertNil(state.settings.taskId)
+        XCTAssertEqual(state.settings.duplex, .off)
+        XCTAssertFalse(state.isTurningOverByHand)
+        XCTAssertNil(state.taskFlow)
+
+        // A front in the queue: only the task goes, the steps stay for the stack.
+        state.settings = settings
+        XCTAssertEqual(state.settings.task, .twoSided)
+        XCTAssertTrue(state.ingest([seamPage(width: 300, height: 400, dpi: 50)], source: .scanner))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertTrue(state.isStackUnderWay)
+        state.exitTask()
+        XCTAssertNil(state.settings.taskId)
+        XCTAssertEqual(state.settings.duplex, .manual)
+        XCTAssertTrue(state.isTurningOverByHand)
+        XCTAssertTrue(state.isStackUnderWay)
+        XCTAssertEqual(state.scannedPages.count, 1)
+    }
+
+    @MainActor
     func test_ingest_receipts_areKept_whenAnotherScannerIsChosenMeanwhile() async throws {
         let state = makeState()
         var settings = TaskCatalog.apply(.receipt, to: state.settings)

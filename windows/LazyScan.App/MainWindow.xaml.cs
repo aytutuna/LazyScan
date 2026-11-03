@@ -691,9 +691,10 @@ public partial class MainWindow : Window
         // Without a task the close button stops turning stacks over by hand.
         string exitName = task is not null ? "Leave the task" : "Scan one side only";
         AutomationProperties.SetName(ExitTaskButton, exitName);
-        ExitTaskButton.ToolTip = task is not null
-            ? "Leave the task (settings stay)"
-            : "Scan one side of each sheet";
+        // With sides by hand the task takes them along (ExitTask), so not every setting stays.
+        ExitTaskButton.ToolTip = task is null
+            ? "Scan one side of each sheet"
+            : turningOver ? "Leave the task" : "Leave the task (settings stay)";
         // Not while a scan runs: its result belongs to the task's steps.
         ExitTaskButton.IsEnabled = !ViewModel.IsBusy;
 
