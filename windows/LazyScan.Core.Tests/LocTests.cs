@@ -68,7 +68,7 @@ public sealed class LocTests
         {
             Assert.Equal("Save as PDF", Loc.T("Save as PDF"));
             Assert.Equal("Scan", Loc.T("Scan|noun"));
-            Assert.Equal("2 scans", Loc.Plural(2, "{0} scan", "{0} scans"));
+            Assert.Equal("2 files", Loc.Plural(2, "{0} file", "{0} files"));
         });
 
     [Fact]
@@ -106,6 +106,14 @@ public sealed class LocTests
         {
             Assert.Equal("Sayfa silinsin mi?", Loc.Plural(1, "Delete {0} page?", "Delete {0} pages?"));
             Assert.Equal("1.234 sayfa silinsin mi?", Loc.Plural(1234, "Delete {0} page?", "Delete {0} pages?"));
+        });
+
+    [Fact]
+    public void ScanCountInTurkishKeepsTheNounSingular() =>
+        InTurkish(null, () =>
+        {
+            Assert.Equal("1 tarama", Loc.Plural(1, "{0} scan", "{0} scans"));
+            Assert.Equal("1.234 tarama", Loc.Plural(1234, "{0} scan", "{0} scans"));
         });
 
     [Fact]

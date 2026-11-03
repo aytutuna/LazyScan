@@ -65,7 +65,7 @@ public partial class ScanHistoryView : UserControl
         bool empty = count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         CardsPanel.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
-        CountText.Text = count == 1 ? "1 scan" : $"{count} scans";
+        CountText.Text = Loc.Plural(count, "{0} scan", "{0} scans");
         AutomationProperties.SetHelpText(CountText, "Newest first. Select a scan to enlarge it.");
 
         // A new scan arrived: re-measure so it reads "Just now" rather than against a stale clock.

@@ -76,4 +76,10 @@
   <data name="Strong." xml:space="preserve">
     <value>Güçlü.</value>
   </data>
+  <data name="{0} scan|one" xml:space="preserve">
+    <value>{0} tarama</value>
+  </data>
+  <data name="{0} scan|other" xml:space="preserve">
+    <value>{0} tarama</value>
+  </data>
 </root>

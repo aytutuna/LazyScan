@@ -309,6 +309,13 @@ final class IOSLibraryTests: XCTestCase {
                       rows[1].accessibilityLabel)
         XCTAssertEqual(IOSHistory.countText(1), "1 scan")
         XCTAssertEqual(IOSHistory.countText(13), "13 scans")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let kit = root.appendingPathComponent("ios/LazyScaniOS/tr.lproj/Kit.strings")
+        let table = try XCTUnwrap(NSDictionary(contentsOf: kit) as? [String: String])
+        L10n.withTable(table, language: "tr") {
+            XCTAssertEqual(IOSHistory.countText(1), "1 tarama")
+            XCTAssertEqual(IOSHistory.countText(1234), "1.234 tarama")
+        }
         XCTAssertTrue(IOSHistory.rows([], now: now).isEmpty)
     }
 

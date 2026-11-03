@@ -23,7 +23,7 @@ public enum IOSHistory {
 
     /// "1 scan", "13 scans".
     public static func countText(_ count: Int) -> String {
-        count == 1 ? "1 scan" : "\(count) scans"
+        L10n.plural(count, one: "{0} scan", other: "{0} scans")
     }
 
     public static func rows(_ entries: [ScanHistoryEntry], now: Date, calendar: Calendar = Calendar.current,

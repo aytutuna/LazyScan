@@ -20,3 +20,5 @@
 "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words." = "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az 12 karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın.";
 "Fair. A few more characters, or another word, would make it much harder to guess." = "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır.";
 "Strong." = "Güçlü.";
+"{0} scan|one" = "{0} tarama";
+"{0} scan|other" = "{0} tarama";
