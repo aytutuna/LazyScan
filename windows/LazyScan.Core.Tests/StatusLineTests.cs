@@ -13,7 +13,7 @@ public class StatusLineTests
     [InlineData("Added 2 pages from Aytu's iPhone — 3 in queue.", "2 pages added")]
     [InlineData("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", "Saved")]
     [InlineData(@"Saved 3 photos to C:\Users\me\files", "Saved 3 photos")]
-    [InlineData("Found 3 photos on the bed.", "Found 3 photos")]
+    [InlineData("Found 3 photos.", "Found 3 photos")]
     [InlineData("Front scanned. Turn the card over where it lies and scan the back, or skip it.", "Front scanned")]
     [InlineData("Back scanned. Check the sides, then save.", "Back scanned")]
     [InlineData("Page queue cleared.", "Queue cleared")]
@@ -153,7 +153,7 @@ public class StatusLineTests
     [Fact]
     public void Shown_IsEmptyUnderAReview_AndSavedWhileTheSavedFilesShow()
     {
-        Assert.Equal("", StatusLine.Shown("Found 3 photos on the bed.", "Demo Scanner", reviewShown: true, savedShown: false));
+        Assert.Equal("", StatusLine.Shown("Found 3 photos.", "Demo Scanner", reviewShown: true, savedShown: false));
         Assert.Equal("", StatusLine.Shown("Back scanned. Check the sides, then save.", "Demo Scanner", reviewShown: true, savedShown: false));
         Assert.Equal("Saved", StatusLine.Shown("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", null, reviewShown: false, savedShown: true));
         Assert.Equal("Saved", StatusLine.Shown("Saved 3 photos to C:\\x\\files", null, reviewShown: false, savedShown: true));

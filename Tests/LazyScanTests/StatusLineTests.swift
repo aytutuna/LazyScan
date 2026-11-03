@@ -17,7 +17,7 @@ final class StatusLineTests: XCTestCase {
             ("Added 2 pages from Aytu's iPhone \u{2014} 3 in queue.", "2 pages added"),
             ("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", "Saved"),
             ("Saved 3 photos to /Users/me/files", "Saved 3 photos"),
-            ("Found 3 photos on the bed.", "Found 3 photos"),
+            ("Found 3 photos.", "Found 3 photos"),
             ("Front scanned. Turn the card over where it lies and scan the back, or skip it.", "Front scanned"),
             ("Back scanned. Check the sides, then save.", "Back scanned"),
             ("Page queue cleared.", "Queue cleared"),
@@ -165,7 +165,7 @@ final class StatusLineTests: XCTestCase {
     }
 
     func test_shown_isEmptyUnderAReview_andSavedWhileTheSavedFilesShow() {
-        XCTAssertEqual(StatusLine.shown("Found 3 photos on the bed.", deviceName: "Demo Scanner", reviewShown: true, savedShown: false), "")
+        XCTAssertEqual(StatusLine.shown("Found 3 photos.", deviceName: "Demo Scanner", reviewShown: true, savedShown: false), "")
         XCTAssertEqual(StatusLine.shown("Back scanned. Check the sides, then save.", deviceName: "Demo Scanner",
                                         reviewShown: true, savedShown: false), "")
         XCTAssertEqual(StatusLine.shown("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", deviceName: nil,

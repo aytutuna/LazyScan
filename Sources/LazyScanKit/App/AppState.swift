@@ -1375,7 +1375,7 @@ public final class AppState: ObservableObject {
             self.isReceiptReview = false
             self.recordCaptures(found.map(\.id))
             self.showPhotoReview = !found.isEmpty
-            self.statusMessage = "Found \(found.count) photo\(found.count == 1 ? "" : "s") on the bed."
+            self.statusMessage = "Found \(found.count) photo\(found.count == 1 ? "" : "s")."
         case .idCard:
             guard self.isIdCardFlow else {
                 self.dropIdCardScanOutsideTask()

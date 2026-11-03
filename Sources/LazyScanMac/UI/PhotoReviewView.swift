@@ -23,6 +23,15 @@ struct PhotoReviewView: View {
         state.isReceiptReview ? "Discard \(includedCount) receipts?" : "Discard \(includedCount) photos?"
     }
 
+    /// The sheet blocks Scan, so the hint is for after saving.
+    private var footerHint: String {
+        let pages = state.isReceiptReview ? "receipts" : "photos"
+        if state.settings.source == .documentFeeder {
+            return "After saving, put the next \(pages) in the feeder and scan again."
+        }
+        return "After saving, lay the next \(pages) on the glass and scan again."
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
@@ -52,9 +61,7 @@ struct PhotoReviewView: View {
             Divider()
 
             HStack(spacing: 12) {
-                Text(state.isReceiptReview
-                     ? "Want more? Lay the next receipts on the glass and scan again."
-                     : "Want more? Lay the next photos on the bed and scan another batch.")
+                Text(footerHint)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()

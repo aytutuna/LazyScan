@@ -87,7 +87,7 @@ extension AppState {
         recordCaptures(found.map(\.id))
         showPhotoReview = !found.isEmpty
         if found.isEmpty { photoSourceImages = [:] }
-        statusMessage = "\(Receipts.reviewTitle(found.count)) on the glass."
+        statusMessage = "\(Receipts.reviewTitle(found.count))."
     }
 
     /// Fix crop on a receipt: cut out upright and cleaned up again, as it was found.

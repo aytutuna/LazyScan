@@ -1645,7 +1645,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     RecordCaptures(found.Select(item => item.Photo.Id));
                     ShowPhotoReview = found.Count > 0;
                     if (!ShowPhotoReview) _photoSourceImages = [];
-                    StatusMessage = $"Found {found.Count} photo{(found.Count == 1 ? "" : "s")} on the bed.";
+                    StatusMessage = $"Found {found.Count} photo{(found.Count == 1 ? "" : "s")}.";
                     break;
                 case TaskFlowKind.IdCard:
                     if (!IsIdCardFlow)

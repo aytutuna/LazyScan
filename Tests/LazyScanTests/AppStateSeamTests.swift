@@ -507,7 +507,7 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(switches, 1)
         XCTAssertNil(state.errorMessage)
         XCTAssertTrue(state.isReceiptReview)
-        XCTAssertTrue(state.statusMessage.hasSuffix("on the glass."), state.statusMessage)
+        XCTAssertEqual(state.statusMessage, "\(state.reviewTitle).")
         XCTAssertEqual(state.showPhotoReview, !state.detectedPhotos.isEmpty)
     }
 

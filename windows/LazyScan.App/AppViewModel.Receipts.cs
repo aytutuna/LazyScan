@@ -102,7 +102,7 @@ public sealed partial class AppViewModel
         RecordCaptures(found.Select(item => item.Photo.Id));
         ShowPhotoReview = found.Count > 0;
         if (!ShowPhotoReview) _photoSourceImages = [];
-        StatusMessage = $"{Receipts.ReviewTitle(found.Count)} on the glass.";
+        StatusMessage = $"{Receipts.ReviewTitle(found.Count)}.";
     }
 
     /// <summary>
