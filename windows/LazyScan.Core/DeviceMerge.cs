@@ -157,10 +157,23 @@ public static class DeviceMerge
                                                    IReadOnlyList<string> rankPatterns,
                                                    IReadOnlyDictionary<string, string>? overrides = null)
     {
+        var all = devices.ToList();
+        // An entry without a hardware id that fits two scanners with different ids belongs to neither.
+        bool Rival(ScannerInfo device) =>
+            NormalizedHardwareId(device.HardwareId) is null
+            && all.Where(other => SameDevice(other, device))
+                  .Select(other => NormalizedHardwareId(other.HardwareId))
+                  .OfType<string>().Distinct().Skip(1).Any();
+
         var clusters = new List<List<ScannerInfo>>();
-        foreach (var device in devices)
+        foreach (var device in all)
         {
-            var matching = clusters.Where(c => c.All(member => SameDevice(member, device))).ToList();
+            if (Rival(device))
+            {
+                clusters.Add([device]);
+                continue;
+            }
+            var matching = clusters.Where(c => c.All(member => SameDevice(member, device)) && !c.Any(Rival)).ToList();
             bool ambiguous = matching.Count > 1
                 && new[] { device }.Concat(matching.SelectMany(c => c)).Any(m => NormalizedHardwareId(m.HardwareId) is not null);
             if (matching.Count > 0 && !ambiguous) matching[0].Add(device);

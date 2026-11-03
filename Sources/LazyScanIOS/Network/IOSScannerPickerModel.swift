@@ -249,6 +249,7 @@ public final class IOSAddScannerModel: ObservableObject {
     }
 
     private func checkAndAdd(_ address: ScannerAddress, https: ScannerAddress?, checker: any IOSAddressChecking) async -> Bool {
+        let typed: ScannerAddress = address
         var address: ScannerAddress = address
         do {
             var result: EsclAddressCheck = try await checker.checkAddress(address, firstUse: nil)
@@ -294,7 +295,7 @@ public final class IOSAddScannerModel: ObservableObject {
                 return true
             }
             if result.noAnswer, let probe = localNetwork {
-                let denied: Bool = await probe.isDenied(host: address.host, port: address.port)
+                let denied: Bool = await probe.isDenied(host: typed.host, port: typed.port)
                 if denied {
                     accessDenied = true
                     message = IOSNetworkText.deniedLine

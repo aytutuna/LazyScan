@@ -198,6 +198,18 @@ final class DeviceMergeTests: XCTestCase {
         XCTAssertEqual(Set(groups.map(\.key)).count, 4)
     }
 
+    func test_group_networkScannerDoesNotTakeTheWiaEntryOfAnIdenticalOne() {
+        let name = "HP Color LaserJet MFP M479fdw"
+        let wiaB = wia(name, id: "2")
+        let esclA = escl(name, uuid: "uuid-a", id: "1")
+        let esclB = escl(name, uuid: "uuid-b", id: "2")
+        for order in [[wiaB, esclA, esclB], [esclA, wiaB, esclB]] {
+            let groups = DeviceMerge.group(order, rankPatterns: DeviceMerge.windowsRanking)
+            XCTAssertEqual(groups.count, 3)
+            XCTAssertTrue(groups.allSatisfy { $0.members.count == 1 })
+        }
+    }
+
     func test_group_keepsDemoAndUnnamedDevicesApartInListOrder() {
         let wiaEntry = wia("Demo Scanner")
         let unnamed = twain("Scanner")

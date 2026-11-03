@@ -259,7 +259,16 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
         while (true)
         {
             idle.CancelAfter(_options.JobTimeout);
-            int read = await stream.ReadAsync(chunk, idle.Token).ConfigureAwait(false);
+            int read;
+            try
+            {
+                read = await stream.ReadAsync(chunk, idle.Token).ConfigureAwait(false);
+            }
+            catch (IOException e)
+            {
+                // A dropped connection, as GetAsync's buffering reported it before.
+                throw new HttpRequestException(e.Message, e);
+            }
             if (read == 0) return buffer.ToArray();
             buffer.Write(chunk, 0, read);
         }

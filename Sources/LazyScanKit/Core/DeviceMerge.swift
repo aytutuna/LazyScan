@@ -138,10 +138,23 @@ public enum DeviceMerge {
     /// ignored), the earliest listed among equals.
     public static func group(_ devices: [ScannerInfo], rankPatterns: [String],
                              overrides: [String: String] = [:]) -> [DeviceGroup] {
+        // An entry without a hardware id that fits two scanners with different ids belongs to neither.
+        func rival(_ device: ScannerInfo) -> Bool {
+            guard normalizedHardwareID(device.hardwareID) == nil else { return false }
+            let ids = Set(devices.filter { other in sameDevice(other, device) }
+                .compactMap { other in normalizedHardwareID(other.hardwareID) })
+            return ids.count > 1
+        }
+
         var clusters: [[ScannerInfo]] = []
         for device in devices {
+            if rival(device) {
+                clusters.append([device])
+                continue
+            }
             let matching = clusters.indices.filter { index in
                 clusters[index].allSatisfy { member in sameDevice(member, device) }
+                    && !clusters[index].contains(where: rival)
             }
             let ambiguous = matching.count > 1 && (
                 normalizedHardwareID(device.hardwareID) != nil || matching.contains { index in

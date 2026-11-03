@@ -472,6 +472,7 @@ final class IOSScannerPickerTests: XCTestCase {
         XCTAssertEqual(model.message, "No scanner answered at 192.168.1.50 (it did not answer in time).")
         XCTAssertFalse(model.accessDenied)
         XCTAssertEqual(probe.asked, ["192.168.1.50:80"])
+        XCTAssertEqual(checker.firstUses.count, 2)
 
         probe.denied = true
         let second: Bool = await model.add()
