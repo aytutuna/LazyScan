@@ -160,7 +160,7 @@ public enum SpineShadow {
 
     /// The tooltip of "Soften spine shadow", on (`on`) or off: what it does.
     public static func hint(_ on: Bool) -> String {
-        "Lightens the dark band along the spine"
+        L10n.t("Lightens the dark band along the spine")
     }
 
     /// `image` (scanned at `dpi`) with the shadow along `edge` softened, and what was done; nil when there

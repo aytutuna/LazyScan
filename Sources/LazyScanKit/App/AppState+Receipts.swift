@@ -66,7 +66,7 @@ extension AppState {
     /// meanwhile; pages that belong to no scanner (nil, `ingest`) are kept (`isCurrent`).
     func showReceipts(_ processed: [ScannedPage], settings s: ScanSettings, flag: CancelFlag,
                       generation: Int?) async throws {
-        statusMessage = "Finding receipts\u{2026}"
+        statusMessage = L10n.t("Finding receipts…")
         let found: [DetectedPhoto] = try await Task.detached(priority: .userInitiated) {
             var all: [DetectedPhoto] = []
             for page in processed {
@@ -87,7 +87,7 @@ extension AppState {
         recordCaptures(found.map(\.id))
         showPhotoReview = !found.isEmpty
         if found.isEmpty { photoSourceImages = [:] }
-        statusMessage = "\(Receipts.reviewTitle(found.count))."
+        statusMessage = L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts.")
     }
 
     /// Fix crop on a receipt: cut out upright and cleaned up again, as it was found.
@@ -118,7 +118,7 @@ extension AppState {
             let today = DocumentDate(date: Date())
 
             // 1. Each receipt as shown, its text read once.
-            self.statusMessage = "Reading the receipts\u{2026}"
+            self.statusMessage = L10n.t("Reading the receipts…")
             let read: [ReadReceipt] = try await Task.detached(priority: .userInitiated) { () throws -> [ReadReceipt] in
                 var out: [ReadReceipt] = []
                 for receipt in receipts {
@@ -156,7 +156,7 @@ extension AppState {
             do {
                 if combine {
                     let url = try self.outputURL(fileExtension: "pdf", documentDate: Receipts.combinedDate(read.map(\.date)))
-                    self.statusMessage = "Writing the PDF\u{2026}"
+                    self.statusMessage = L10n.t("Writing the PDF…")
                     let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
                     let text = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?) in
                         try Self.writeReceiptsPDF(read, settings: s, to: url, options: options,
@@ -169,7 +169,7 @@ extension AppState {
                 } else {
                     for (index, receipt) in read.enumerated() {
                         if flag.isCancelled { throw ScanError.cancelled }
-                        self.statusMessage = "Saving receipt \(index + 1) of \(read.count)\u{2026}"
+                        self.statusMessage = L10n.t("Saving receipt {0} of {1}…", index + 1, read.count)
                         let url = try self.outputURL(fileExtension: format.fileExtension, documentDate: receipt.date)
                         if format == .pdf {
                             let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
@@ -241,7 +241,7 @@ extension AppState {
                 text.pages.append(OCRPage.of(found, pixelWidth: receipt.image.width, pixelHeight: receipt.image.height,
                                              dpi: receipt.dpi))
             } else if text.problem == nil {
-                text.problem = receipt.problem ?? "The text could not be read."
+                text.problem = receipt.problem ?? L10n.t("The text could not be read.")
             }
         }
         return writeTextBeside(pdf: url, text: text)

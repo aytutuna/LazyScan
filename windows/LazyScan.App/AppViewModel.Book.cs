@@ -124,7 +124,7 @@ public sealed partial class AppViewModel
         }
         catch (Exception e)
         {
-            ErrorMessage = $"The spread could not be read: {e.Message}";
+            ErrorMessage = Loc.T("The spread could not be read: {0}", e.Message);
             NotifyAll();
             return null;
         }
@@ -163,7 +163,7 @@ public sealed partial class AppViewModel
             int index = IndexOfPage(pageId);
             if (index < 0 || ScannedPages[index].Page is not { SpreadId: { } spreadId } clicked
                 || !_spreads.TryGetValue(spreadId, out var source)) return;
-            StatusMessage = cut is null ? "Joining the pages…" : "Splitting the spread…";
+            StatusMessage = cut is null ? Loc.T("Joining the pages…") : Loc.T("Splitting the spread…");
             NotifyAll();
             var image = await Task.Run(() => LoadSpread(source), token);
             // The spread keeps the sheet and side its pages were given. Its pages are made with the

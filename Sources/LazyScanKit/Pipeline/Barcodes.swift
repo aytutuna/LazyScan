@@ -18,7 +18,7 @@ public enum BarcodeSymbology: Int, CaseIterable, Codable, Sendable {
     /// "QR code", "Code 128", "Code 39", "Data Matrix".
     public var label: String {
         switch self {
-        case .qrCode: return "QR code"
+        case .qrCode: return L10n.t("QR code")
         case .code128: return "Code 128"
         case .code39: return "Code 39"
         case .dataMatrix: return "Data Matrix"
@@ -75,7 +75,7 @@ public enum BarcodeSeparators {
     /// The one line under "Codes are on": what happens to the page or sheet with a code, kept as a
     /// document's first page (`on`) or left out as a separator sheet.
     public static func startsDocumentCaption(_ on: Bool) -> String {
-        on ? "Pages are kept" : "Sheets are left out"
+        on ? L10n.t("Pages are kept") : L10n.t("Sheets are left out")
     }
 
     /// What `DocumentOptions.barcodeStartsDocument` does, on and off, under its switch; off, with the
@@ -83,13 +83,13 @@ public enum BarcodeSeparators {
     /// code when it is empty).
     public static func startsDocumentHint(_ on: Bool, prefix: String? = nil) -> String {
         if on {
-            return "Each page with a barcode or QR code is kept as the first page of a new document, named after the code's text: for documents that carry their own code, such as invoices."
+            return L10n.t("Each page with a barcode or QR code is kept as the first page of a new document, named after the code's text: for documents that carry their own code, such as invoices.")
         }
         let start = Self.prefix(prefix ?? defaultPrefix)
         if start.isEmpty {
-            return "A sheet with a barcode or QR code is a separator sheet: it is left out, and the code's text names the document after it. Print QR separator sheets below, with a name or without."
+            return L10n.t("A sheet with a barcode or QR code is a separator sheet: it is left out, and the code's text names the document after it. Print QR separator sheets below, with a name or without.")
         }
-        return "A sheet whose barcode or QR code starts with \u{201C}\(start)\u{201D} is a separator sheet: it is left out, and the rest of the code's text names the document after it. Other codes are ignored. Print QR separator sheets below, with a name or without."
+        return L10n.t("A sheet whose barcode or QR code starts with “{0}” is a separator sheet: it is left out, and the rest of the code's text names the document after it. Other codes are ignored. Print QR separator sheets below, with a name or without.", start)
     }
 
     /// The prefix as it is compared: `prefix` trimmed. Empty: every code makes a separator sheet.
@@ -275,7 +275,7 @@ public enum BarcodeSeparators {
         if text.count > maxNoteTextLength {
             text = String(text.prefix(maxNoteTextLength - 1)) + "\u{2026}"
         }
-        return "\(reading.symbology.label) \u{201C}\(text)\u{201D}"
+        return L10n.t("{0} “{1}”", reading.symbology.label, text)
     }
 
     /// `text` with a–z made A–Z and every other character as it is.
@@ -438,17 +438,17 @@ public enum QrSeparatorSheet {
     /// The status after the PDF was saved.
     public static func savedMessage(_ fileName: String, name: String?) -> String {
         if let label = BarcodeSeparators.label(name) {
-            return "Saved the QR separator sheet for \u{201C}\(label)\u{201D}: \(fileName). Print it and put it in front of that document; the document is named \u{201C}\(label)\u{201D}."
+            return L10n.t("Saved the QR separator sheet for “{0}”: {1}. Print it and put it in front of that document; the document is named “{0}”.", label, fileName)
         }
-        return "Saved the QR separator sheet: \(fileName). Print as many as you need and put one in front of each document."
+        return L10n.t("Saved the QR separator sheet: {0}. Print as many as you need and put one in front of each document.", fileName)
     }
 
     /// The status after the sheet was sent to `printer`.
     public static func printedMessage(_ printer: String, name: String?) -> String {
         if let label = BarcodeSeparators.label(name) {
-            return "Sent the QR separator sheet for \u{201C}\(label)\u{201D} to \(printer). Put it in front of that document; the document is named \u{201C}\(label)\u{201D}."
+            return L10n.t("Sent the QR separator sheet for “{0}” to {1}. Put it in front of that document; the document is named “{0}”.", label, printer)
         }
-        return "Sent the QR separator sheet to \(printer). Put one in front of each document; print more copies as you need them."
+        return L10n.t("Sent the QR separator sheet to {0}. Put one in front of each document; print more copies as you need them.", printer)
     }
 
     /// The pixels of `hundredths` of an inch at `dpi`, rounded to nearest (halves away from zero).

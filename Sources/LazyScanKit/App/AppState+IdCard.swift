@@ -59,10 +59,10 @@ extension AppState {
         }
         let check = note.map { " \($0)" } ?? ""
         if taskFlow?.current?.id == IdCardSteps.reviewStepID {
-            statusMessage = "\(side == .front ? "Front" : "Back") scanned. Check the sides, then save.\(check)"
+            statusMessage = (side == .front ? L10n.t("Front scanned. Check the sides, then save.") : L10n.t("Back scanned. Check the sides, then save.")) + check
             openIdCardReview()
         } else {
-            statusMessage = "Front scanned. Turn the card over where it lies and scan the back, or skip it.\(check)"
+            statusMessage = L10n.t("Front scanned. Turn the card over where it lies and scan the back, or skip it.") + check
         }
     }
 
@@ -71,7 +71,7 @@ extension AppState {
     /// Twin of the Windows `AppViewModel.DropIdCardScanOutsideTask`.
     func dropIdCardScanOutsideTask() {
         clearIdCard(clearCanvas: true)
-        statusMessage = "The ID card task ended during the scan. Nothing of the card was kept."
+        statusMessage = L10n.t("The ID card task ended during the scan. Nothing of the card was kept.")
     }
 
     /// Puts a side in place (nil: none), dropping the scan the one it replaces came from.
@@ -168,7 +168,7 @@ extension AppState {
         idCardFrontNote = idCardBackNote
         idCardBack = front
         idCardBackNote = frontNote
-        statusMessage = "Front and back swapped."
+        statusMessage = L10n.t("Front and back swapped.")
         refreshIdCardPreview()
     }
 
@@ -203,7 +203,7 @@ extension AppState {
                                         id: photo.id, sourcePageID: photo.sourcePageID, colorMode: photo.colorMode)
             updated.rotationQuarterTurns = (side == .front ? self.idCardFront : self.idCardBack)?.rotationQuarterTurns ?? 0
             self.setIdCardSide(side, photo: updated, note: nil)
-            self.statusMessage = "Crop updated."
+            self.statusMessage = L10n.t("Crop updated.")
             self.refreshIdCardPreview()
         }
     }
@@ -231,7 +231,7 @@ extension AppState {
         // The sides are what they were scanned as, whatever the color mode is now.
         let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
         runExclusive { flag in
-            self.statusMessage = "Saving the ID card\u{2026}"
+            self.statusMessage = L10n.t("Saving the ID card…")
             let composed: (page: CGImage, front: IdCardSide, back: IdCardSide?)? = await Task.detached(priority: .userInitiated) { () -> (page: CGImage, front: IdCardSide, back: IdCardSide?)? in
                 guard let f = AppState.idCardSide(of: front) else { return nil }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }
@@ -280,7 +280,7 @@ extension AppState {
                     for (side, sideImage) in sides {
                         if flag.isCancelled { throw ScanError.cancelled }
                         guard let image = sideImage.image.makeCGImage() else {
-                            throw ScanError.exportFailed("A side of the card could not be saved.")
+                            throw ScanError.exportFailed(L10n.t("A side of the card could not be saved."))
                         }
                         let sideURL = NamingTemplate.uniqueURL(in: folder,
                                                                base: IdCardComposer.sideFileBase(base, side: side),
@@ -306,8 +306,8 @@ extension AppState {
             let name = saved.first?.lastPathComponent ?? ""
             let sizeNote = pageFormat == .pdf ? self.pdfSizeSuffix : ""
             self.statusMessage = saved.count == 1
-                ? "Saved the ID card on one \(paper.label) page: \(name)\(sizeNote)"
-                : "Saved the ID card on one \(paper.label) page: \(name)\(sizeNote), and each side as an image"
+                ? L10n.t("Saved the ID card on one {0} page: {1}{2}", paper.label, name, sizeNote)
+                : L10n.t("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.label, name, sizeNote)
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }
@@ -317,7 +317,7 @@ extension AppState {
         guard !isBusy else { return }
         clearIdCard(clearCanvas: true)
         resetFlow()
-        statusMessage = "ID card discarded. Nothing of it was kept."
+        statusMessage = L10n.t("ID card discarded. Nothing of it was kept.")
         endOfWork()
     }
 

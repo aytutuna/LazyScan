@@ -410,6 +410,6 @@ public enum SeparatorSheet {
 
     /// The status after the PDF was saved.
     public static func savedMessage(_ fileName: String) -> String {
-        "Saved the separator sheet: \(fileName). Print it at actual size (100%), as many as you need, and put one in front of each document after the first."
+        L10n.t("Saved the separator sheet: {0}. Print it at actual size (100%), as many as you need, and put one in front of each document after the first.", fileName)
     }
 }

@@ -92,8 +92,8 @@ public struct PageGeometry: Equatable, Codable, Sendable {
     public var caption: String {
         if basis == .perspective { return PhotoImport.correctedCaption }
         let angle = DocumentGeometry.angleText(angleDegrees)
-        if cropped && straightened { return "Cropped and straightened \(angle)" }
-        return straightened ? "Straightened \(angle)" : "Cropped"
+        if cropped && straightened { return L10n.t("Cropped and straightened {0}", angle) }
+        return straightened ? L10n.t("Straightened {0}", angle) : L10n.t("Cropped")
     }
 }
 

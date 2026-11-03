@@ -45,7 +45,7 @@ public enum GlareDetector {
     public static let analysisLongSide: Int = 400
 
     /// The camera's one line when a card was taken with glare on it.
-    public static let hint: String = "Tilt to avoid glare"
+    public static var hint: String { L10n.t("Tilt to avoid glare") }
 
     /// The glare on `image` inside `region` (its pixels; nil: the whole picture).
     public static func measure(_ image: RgbaImage, region: Quad? = nil) -> GlareReading {

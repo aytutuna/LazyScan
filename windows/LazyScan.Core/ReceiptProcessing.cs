@@ -813,7 +813,7 @@ public static class Receipts
     /// </summary>
     public static string SaveTitle(int included, bool combine, OutputFormat format) =>
         Combines(combine, format, included)
-            ? "Save as One PDF"
+            ? Loc.T("Save as One PDF")
             : Loc.Plural(included, "Save {0} Receipt", "Save {0} Receipts");
 
     /// <summary>The receipts go into one PDF: asked for, saved as PDF, and more than one.</summary>

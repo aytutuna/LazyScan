@@ -454,5 +454,5 @@ public static class SeparatorSheet
 
     /// <summary>The status after the PDF was saved.</summary>
     public static string SavedMessage(string fileName) =>
-        $"Saved the separator sheet: {fileName}. Print it at actual size (100%), as many as you need, and put one in front of each document after the first.";
+        Loc.T("Saved the separator sheet: {0}. Print it at actual size (100%), as many as you need, and put one in front of each document after the first.", fileName);
 }

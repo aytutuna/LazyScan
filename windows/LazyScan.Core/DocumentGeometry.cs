@@ -83,8 +83,8 @@ public sealed record PageGeometry(bool Cropped, double AngleDegrees, GeometryBas
         {
             if (Basis == GeometryBasis.Perspective) return PhotoImport.CorrectedCaption;
             string angle = DocumentGeometry.AngleText(AngleDegrees);
-            if (Cropped && Straightened) return $"Cropped and straightened {angle}";
-            return Straightened ? $"Straightened {angle}" : "Cropped";
+            if (Cropped && Straightened) return Loc.T("Cropped and straightened {0}", angle);
+            return Straightened ? Loc.T("Straightened {0}", angle) : Loc.T("Cropped");
         }
     }
 }

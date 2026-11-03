@@ -2063,7 +2063,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // Rebuild from the CURRENT item so Keep/rotate changes made meanwhile survive.
             var current = DetectedPhotos[index];
             DetectedPhotos[index] = new PhotoItem(current.Photo.Recropped(edited, r.Item1), r.Item2);
-            StatusMessage = "Crop updated.";
+            StatusMessage = Loc.T("Crop updated.");
             NotifyAll();
             return true;
         }
@@ -2654,12 +2654,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         string check = note is null ? "" : $" {note}";
         if (Flow?.Current?.Id == IdCardSteps.ReviewStepId)
         {
-            StatusMessage = $"{(side == PageSide.Front ? "Front" : "Back")} scanned. Check the sides, then save.{check}";
+            StatusMessage = (side == PageSide.Front ? Loc.T("Front scanned. Check the sides, then save.") : Loc.T("Back scanned. Check the sides, then save.")) + check;
             OpenIdCardReview();
         }
         else
         {
-            StatusMessage = $"Front scanned. Turn the card over where it lies and scan the back, or skip it.{check}";
+            StatusMessage = Loc.T("Front scanned. Turn the card over where it lies and scan the back, or skip it.") + check;
         }
     }
 
@@ -2670,7 +2670,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private void DropIdCardScanOutsideTask()
     {
         ClearIdCard(clearCanvas: true);
-        StatusMessage = "The ID card task ended during the scan. Nothing of the card was kept.";
+        StatusMessage = Loc.T("The ID card task ended during the scan. Nothing of the card was kept.");
     }
 
     /// <summary>Puts a side in place (null: none), dropping the scan the one it replaces came from.</summary>
@@ -2785,7 +2785,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || IdCardFront is null || IdCardBack is null) return;
         (IdCardFront, IdCardBack) = (IdCardBack, IdCardFront);
         (IdCardFrontNote, IdCardBackNote) = (IdCardBackNote, IdCardFrontNote);
-        StatusMessage = "Front and back swapped.";
+        StatusMessage = Loc.T("Front and back swapped.");
         _ = RefreshIdCardPreview();
         NotifyAll();
     }
@@ -2863,7 +2863,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return false;
             }
             SetIdCardSide(side, new PhotoItem(item.Photo.Recropped(edited, r.Item1), r.Item2), null);
-            StatusMessage = "Crop updated.";
+            StatusMessage = Loc.T("Crop updated.");
             _ = RefreshIdCardPreview();
             NotifyAll();
             return true;
@@ -2912,7 +2912,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var frontPhoto = frontItem.Photo;
             var backPhoto = IdCardBack?.Photo;
             int frontTurns = frontPhoto.RotationQuarterTurns, backTurns = backPhoto?.RotationQuarterTurns ?? 0;
-            StatusMessage = "Saving the ID card…";
+            StatusMessage = Loc.T("Saving the ID card…");
             NotifyAll();
             // The page at the scan's resolution, at most 600 dpi; each side's own image keeps the scan's.
             int dpi = IdCardComposer.PageDpi(frontPhoto.Dpi);
@@ -2957,8 +2957,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ResetFlow();
             string sizeNote = pageFormat == OutputFormat.Pdf ? PdfSizeSuffix() : "";
             StatusMessage = saved.Count == 1
-                ? $"Saved the ID card on one {paper.Label()} page: {Path.GetFileName(saved[0])}{sizeNote}"
-                : $"Saved the ID card on one {paper.Label()} page: {Path.GetFileName(saved[0])}{sizeNote}, and each side as an image";
+                ? Loc.T("Saved the ID card on one {0} page: {1}{2}", paper.Label(), Path.GetFileName(saved[0]), sizeNote)
+                : Loc.T("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.Label(), Path.GetFileName(saved[0]), sizeNote);
             RunAfterSave(s.Output.AfterSave, saved);
         });
     }
@@ -2969,7 +2969,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy) return;
         ClearIdCard(clearCanvas: true);
         ResetFlow();
-        StatusMessage = "ID card discarded. Nothing of it was kept.";
+        StatusMessage = Loc.T("ID card discarded. Nothing of it was kept.");
         NotifyAll();
         EndOfWork();
     }

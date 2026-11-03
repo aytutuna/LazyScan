@@ -116,41 +116,40 @@ public static class PhotoImport
     /// <summary>The HEIF file types (iPhone photos): Windows reads them only with the HEIF extension installed.</summary>
     public static IReadOnlyList<string> HeifExtensions { get; } = ["heic", "heif", "hif"];
 
-    public const string ButtonLabel = "Import photos of documents…";
+    public static string ButtonLabel => Loc.T("Import photos of documents…");
     /// <summary>The import button's tooltip.</summary>
-    public const string ButtonHint = "Add phone photos of documents as pages";
+    public static string ButtonHint => Loc.T("Add phone photos of documents as pages");
     /// <summary>The import button's full explanation, for screen readers.</summary>
-    public const string ButtonHelp = "Each page is found in the photo and straightened. Your photo files are not changed.";
-    public const string PickerTitle = "Import photos of documents";
+    public static string ButtonHelp => Loc.T("Each page is found in the photo and straightened. Your photo files are not changed.");
+    public static string PickerTitle => Loc.T("Import photos of documents");
     /// <summary>The line under the import link on the empty stage.</summary>
-    public const string DropHint = "or drop them here";
+    public static string DropHint => Loc.T("or drop them here");
     /// <summary>What the window shows while photo files are dragged over it.</summary>
-    public const string DropOverlay = "Drop to add as pages";
+    public static string DropOverlay => Loc.T("Drop to add as pages");
     /// <summary>The page strip's label on a page taken from a photo.</summary>
-    public const string Label = "Photo";
-    public const string LabelHelp = "Imported from a photo";
+    public static string Label => Loc.T("Photo");
+    public static string LabelHelp => Loc.T("Imported from a photo");
     /// <summary>The caption of a page cut out of its photo (<see cref="PageGeometry.Caption"/>).</summary>
-    public const string CorrectedCaption = "Corrected from photo";
+    public static string CorrectedCaption => Loc.T("Corrected from photo");
     /// <summary>The caption of such a page shown as photographed (<see cref="PageCorrections.Caption"/>).</summary>
-    public const string OriginalCaption = "As photographed";
-    public const string EditorTitle = "Check the corners";
-    public const string EditorHelp = "Drag each corner onto a corner of the page.";
+    public static string OriginalCaption => Loc.T("As photographed");
+    public static string EditorTitle => Loc.T("Check the corners");
+    public static string EditorHelp => Loc.T("Drag each corner onto a corner of the page.");
     /// <summary>The corner editor's keys, behind its ⓘ and in the canvas's help text.</summary>
-    public const string EditorKeys = "Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.";
-    public const string UseCornersLabel = "Use corners";
-    public const string WholePhotoLabel = "Use whole photo";
-    public const string SkipLabel = "Skip photo";
-    public const string StopLabel = "Stop import";
-    public const string NoPhotosMessage =
-        "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP).";
+    public static string EditorKeys => Loc.T("Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.");
+    public static string UseCornersLabel => Loc.T("Use corners");
+    public static string WholePhotoLabel => Loc.T("Use whole photo");
+    public static string SkipLabel => Loc.T("Skip photo");
+    public static string StopLabel => Loc.T("Stop import");
+    public static string NoPhotosMessage => Loc.T("None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP).");
     /// <summary>The title <see cref="NotOfferedMessage"/> and <see cref="NoPhotosMessage"/> are shown under: nothing failed.</summary>
-    public const string NotImportedTitle = "Not imported";
+    public static string NotImportedTitle => Loc.T("Not imported");
     /// <summary>Why a file that is no picture (or a damaged one) was not imported (<see cref="UnreadableMessage"/>).</summary>
-    public const string UnreadableDetail = "it is not a picture this app can read, or the file is damaged.";
+    public static string UnreadableDetail => Loc.T("it is not a picture this app can read, or the file is damaged.");
     /// <summary>Why a photo of more than <see cref="MaxPhotoPixels"/> was not imported.</summary>
-    public const string TooLargeDetail = "the photo is too large (more than 150 megapixels).";
+    public static string TooLargeDetail => Loc.T("the photo is too large (more than 150 megapixels).");
     /// <summary>Why a file that went away before it was read was not imported.</summary>
-    public const string MissingDetail = "the file is no longer there.";
+    public static string MissingDetail => Loc.T("the file is no longer there.");
 
     /// <summary><paramref name="path"/> names a file of a type offered for import (by its extension).</summary>
     public static bool IsPhotoFile(string path) => FileExtensions.Contains(ExtensionOf(path));
@@ -174,14 +173,14 @@ public static class PhotoImport
     /// </summary>
     public static string? OwnSaveTaskReason(ScanSettings settings) =>
         settings.Intent == ScanIntent.Document && settings.Task is { } task && !IsOffered(settings)
-            ? $"The {TaskCatalog.Definition(task).Title} task saves its scans on its own"
+            ? Loc.T("The {0} task saves its scans on its own", TaskCatalog.Definition(task).Title)
             : null;
 
     /// <summary>Why photos are not imported with these settings, and what to change to import them.</summary>
     public static string NotOfferedMessage(ScanSettings settings) =>
-        OwnSaveTaskReason(settings) is { } reason
-            ? $"{reason}, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them."
-            : "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.";
+        OwnSaveTaskReason(settings) is not null && settings.Task is { } task
+            ? Loc.T("The {0} task saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.Definition(task).Title)
+            : Loc.T("Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.");
 
     /// <summary>The photo the right way up: <paramref name="stored"/> mirrored and turned as <paramref name="orientation"/> says.</summary>
     public static RgbaImage Oriented(RgbaImage stored, PhotoOrientation orientation)
@@ -381,10 +380,10 @@ public static class PhotoImport
     /// <summary>The corner editor's note on why it is shown; empty for <see cref="PhotoReviewReason.None"/>.</summary>
     public static string ReasonText(PhotoReviewReason reason) => reason switch
     {
-        PhotoReviewReason.Unsure => "The page edges are unclear.",
-        PhotoReviewReason.CutOff => "The page runs off the photo.",
-        PhotoReviewReason.TwoPages => "Two pages found: outline one.",
-        PhotoReviewReason.NothingFound => "No page found in this photo.",
+        PhotoReviewReason.Unsure => Loc.T("The page edges are unclear."),
+        PhotoReviewReason.CutOff => Loc.T("The page runs off the photo."),
+        PhotoReviewReason.TwoPages => Loc.T("Two pages found: outline one."),
+        PhotoReviewReason.NothingFound => Loc.T("No page found in this photo."),
         _ => "",
     };
 
@@ -395,13 +394,13 @@ public static class PhotoImport
     /// </summary>
     public static string ReasonText(PhotoReviewReason reason, CaptureKind kind) => (kind, reason) switch
     {
-        (CaptureKind.IdCard, PhotoReviewReason.Unsure) => "The card's outline is not certain.",
-        (CaptureKind.IdCard, PhotoReviewReason.CutOff) => "The card runs off the photo.",
-        (CaptureKind.IdCard, PhotoReviewReason.NothingFound) => "No card found in this photo.",
-        (CaptureKind.Photo, PhotoReviewReason.Unsure) => "The photo's edges are unclear.",
-        (CaptureKind.Photo, PhotoReviewReason.NothingFound) => "No photo found in this shot.",
-        (CaptureKind.Receipt, PhotoReviewReason.Unsure) => "The receipt's edges are unclear.",
-        (CaptureKind.Receipt, PhotoReviewReason.NothingFound) => "No receipt found in this shot.",
+        (CaptureKind.IdCard, PhotoReviewReason.Unsure) => Loc.T("The card's outline is not certain."),
+        (CaptureKind.IdCard, PhotoReviewReason.CutOff) => Loc.T("The card runs off the photo."),
+        (CaptureKind.IdCard, PhotoReviewReason.NothingFound) => Loc.T("No card found in this photo."),
+        (CaptureKind.Photo, PhotoReviewReason.Unsure) => Loc.T("The photo's edges are unclear."),
+        (CaptureKind.Photo, PhotoReviewReason.NothingFound) => Loc.T("No photo found in this shot."),
+        (CaptureKind.Receipt, PhotoReviewReason.Unsure) => Loc.T("The receipt's edges are unclear."),
+        (CaptureKind.Receipt, PhotoReviewReason.NothingFound) => Loc.T("No receipt found in this shot."),
         _ => ReasonText(reason),
     };
 
@@ -411,32 +410,32 @@ public static class PhotoImport
     /// </summary>
     public static string CornersHelp(CaptureKind kind) => kind switch
     {
-        CaptureKind.Receipt => "Drag each corner onto a corner of the receipt.",
-        CaptureKind.Photo => "Drag each corner onto a corner of the photo.",
-        CaptureKind.IdCard => "Drag each corner onto a corner of the card.",
+        CaptureKind.Receipt => Loc.T("Drag each corner onto a corner of the receipt."),
+        CaptureKind.Photo => Loc.T("Drag each corner onto a corner of the photo."),
+        CaptureKind.IdCard => Loc.T("Drag each corner onto a corner of the card."),
         _ => EditorHelp,
     };
 
     /// <summary>What screen readers call the corner editor's photo with its corners: "Page corners", "Card corners".</summary>
     public static string CornersName(CaptureKind kind) => kind switch
     {
-        CaptureKind.Receipt => "Receipt corners",
-        CaptureKind.Photo => "Photo corners",
-        CaptureKind.IdCard => "Card corners",
-        _ => "Page corners",
+        CaptureKind.Receipt => Loc.T("Receipt corners"),
+        CaptureKind.Photo => Loc.T("Photo corners"),
+        CaptureKind.IdCard => Loc.T("Card corners"),
+        _ => Loc.T("Page corners"),
     };
 
     /// <summary>The corner editor's caption: "Photo 2 of 5" (the file name is its tooltip), or the file name alone for one photo.</summary>
     public static string Counter(int number, int count, string fileName) =>
-        count > 1 ? $"Photo {number} of {count}" : fileName;
+        count > 1 ? Loc.T("Photo {0} of {1}", number, count) : fileName;
 
     /// <summary>The caption with the file name, for its tooltip and screen readers: "Photo 2 of 5: IMG_0042.jpg".</summary>
     public static string CounterName(int number, int count, string fileName) =>
-        count > 1 ? $"Photo {number} of {count}: {fileName}" : fileName;
+        count > 1 ? Loc.T("Photo {0} of {1}: {2}", number, count, fileName) : fileName;
 
     /// <summary>"Importing photo 2 of 5…", or "Importing photo…" for one.</summary>
     public static string ProgressMessage(int number, int count) =>
-        count > 1 ? $"Importing photo {number} of {count}…" : "Importing photo…";
+        count > 1 ? Loc.T("Importing photo {0} of {1}…", number, count) : Loc.T("Importing photo…");
 
     /// <summary>
     /// The progress while page <paramref name="page"/> of a file of <paramref name="pageCount"/> pages
@@ -447,8 +446,8 @@ public static class PhotoImport
     {
         if (pageCount <= 1) return ProgressMessage(number, count);
         return count > 1
-            ? $"Importing photo {number} of {count}, page {page} of {pageCount}…"
-            : $"Importing page {page} of {pageCount}…";
+            ? Loc.T("Importing photo {0} of {1}, page {2} of {3}…", number, count, page, pageCount)
+            : Loc.T("Importing page {0} of {1}…", page, pageCount);
     }
 
     /// <summary>
@@ -456,7 +455,7 @@ public static class PhotoImport
     /// corner editor and the error messages: "fax.tif, page 2 of 5", or the file name alone for one page.
     /// </summary>
     public static string PageName(string fileName, int page, int pageCount) =>
-        pageCount > 1 ? $"{fileName}, page {page} of {pageCount}" : fileName;
+        pageCount > 1 ? Loc.T("{0}, page {1} of {2}", fileName, page, pageCount) : fileName;
 
     /// <summary>
     /// The status after an import: "Added 3 pages from photos — 5 in queue. Scan more or save PDF."
@@ -482,16 +481,15 @@ public static class PhotoImport
                 "Cancelled after adding {0} pages from photos — {1} in queue.", queueCount);
 
     /// <summary>"IMG_0042.jpg could not be opened: …".</summary>
-    public static string UnreadableMessage(string fileName, string detail) => $"{fileName} could not be opened: {detail}";
+    public static string UnreadableMessage(string fileName, string detail) =>
+        Loc.T("{0} could not be opened: {1}", fileName, detail);
 
     /// <summary>
     /// A HEIF photo Windows could not read: most often the HEIF extension (or the HEVC one) is missing,
     /// else the file is damaged (the Mac reads HEIF itself).
     /// </summary>
     public static string HeifUnavailableMessage(string fileName) =>
-        $"{fileName} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store " +
-        "(most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; " +
-        "a phone set to save photos as JPEG avoids this.";
+        Loc.T("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.", fileName);
 
     /// <summary>The lowercase extension of <paramref name="path"/>, without the dot.</summary>
     private static string ExtensionOf(string path)

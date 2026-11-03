@@ -43,7 +43,7 @@ public static class GlareDetector
     public const int AnalysisLongSide = 400;
 
     /// <summary>The camera's one line when a card was taken with glare on it.</summary>
-    public const string Hint = "Tilt to avoid glare";
+    public static string Hint => Loc.T("Tilt to avoid glare");
 
     /// <summary>The glare on <paramref name="image"/> inside <paramref name="region"/> (its pixels; null: the whole picture).</summary>
     public static GlareReading Measure(RgbaImage image, Quad? region = null)

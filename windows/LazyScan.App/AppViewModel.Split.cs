@@ -149,10 +149,10 @@ public sealed partial class AppViewModel
         // A document named by a barcode keeps that name when the user's is removed.
         string? shown = cleaned ?? QueuePlan.Documents.FirstOrDefault(d => d.Pages.Contains(document.Pages[0]))?.Label;
         StatusMessage = cleaned is not null
-            ? $"Document {number} is named “{cleaned}”: it goes into the file name."
+            ? Loc.T("Document {0} is named “{1}”: it goes into the file name.", number, cleaned)
             : shown is not null
-            ? $"Document {number} is named “{shown}” by its barcode."
-            : $"Document {number} has no name.";
+            ? Loc.T("Document {0} is named “{1}” by its barcode.", number, shown)
+            : Loc.T("Document {0} has no name.", number);
         NotifyAll();
     }
 
@@ -282,7 +282,7 @@ public sealed partial class AppViewModel
                         _dispatcher.BeginInvoke(() =>
                         {
                             if (finished || !IsBusy) return;
-                            string message = $"Reading barcodes on queued pages: {done} of {total}…";
+                            string message = Loc.T("Reading barcodes on queued pages: {0} of {1}…", done, total);
                             Progress = new ScanProgress((double)done / total, message);
                             StatusMessage = message;
                             NotifyAll();
@@ -352,7 +352,7 @@ public sealed partial class AppViewModel
                 foreach (var document in plan.Documents)
                 {
                     token.ThrowIfCancellationRequested();
-                    StatusMessage = $"Saving document {document.Number} of {plan.Documents.Count}…";
+                    StatusMessage = Loc.T("Saving document {0} of {1}…", document.Number, plan.Documents.Count);
                     NotifyAll();
                     var pages = document.Pages.ToList();
                     string path = OutputPath(s, format.FileExtension(), plan.FileIndex(document), label: document.Label);
@@ -413,7 +413,7 @@ public sealed partial class AppViewModel
     {
         if (!qr) return PatchCodeDetector.RenderSheet(SeparatorSheet.Code, widthInches, heightInches, SeparatorSheet.Dpi).ToRgba();
         var code = _qrEncoder.Encode(QrSeparatorSheet.Text(name, prefix))
-                   ?? throw new IOException("The name does not fit in a QR code. Use a shorter name.");
+                   ?? throw new IOException(Loc.T("The name does not fit in a QR code. Use a shorter name."));
         return QrSeparatorSheet.Render(code, name, widthInches, heightInches, QrSeparatorSheet.Dpi).ToRgba();
     }
 
@@ -430,7 +430,7 @@ public sealed partial class AppViewModel
         string? name = qr ? BarcodeSeparators.Label(QrSheetName) : null;
         return RunExclusive(async token =>
         {
-            StatusMessage = qr ? "Saving the QR separator sheet…" : "Saving the separator sheet…";
+            StatusMessage = qr ? Loc.T("Saving the QR separator sheet…") : Loc.T("Saving the separator sheet…");
             NotifyAll();
             var paper = SeparatorSheet.Paper(RegionCode);
             var inches = PaperSizes.Inches(paper) ?? new SizeD(8.5, 11);
@@ -479,12 +479,12 @@ public sealed partial class AppViewModel
             var placement = PrintLayout.Place(page.Width, page.Height, dpi, setup.Paper, PrintMode.ActualSize, PrintAlign.PaperOrigin);
             var job = new PrintJob(setup.PrinterName, qr ? QrSeparatorSheet.JobName : "Separator sheet (Patch T)", setup.Paper,
                                    RequestedPaper: null, [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1), Gray: true);
-            StatusMessage = $"Printing the separator sheet on {setup.PrinterName}…";
+            StatusMessage = Loc.T("Printing the separator sheet on {0}…", setup.PrinterName);
             NotifyAll();
             await _print.PrintAsync(job, token);
             StatusMessage = qr
                 ? QrSeparatorSheet.PrintedMessage(setup.PrinterName, name)
-                : $"Sent the separator sheet to {setup.PrinterName}. Put one in front of each document after the first; print more copies as you need them.";
+                : Loc.T("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.PrinterName);
         });
     }
 }

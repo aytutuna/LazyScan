@@ -29,7 +29,7 @@ public partial class MainWindow
     }
 
     /// <summary>The icon button's name, for its tooltip and for screen readers.</summary>
-    private static readonly string ImportName = PhotoImport.ButtonLabel.TrimEnd('…');
+    private static string ImportName => PhotoImport.ButtonLabel.TrimEnd('…');
 
     private void SetUpImport()
     {

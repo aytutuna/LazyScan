@@ -300,8 +300,7 @@ public enum DocumentSplitter {
     }
 
     /// Why Skip blank pages is off while `blankPagesAreSeparators` holds.
-    public static let blankPagesAreSeparatorsHint =
-        "Each blank page splits the stack into documents and is left out: Split into documents is At blank sheets."
+    public static var blankPagesAreSeparatorsHint: String { L10n.t("Each blank page splits the stack into documents and is left out: Split into documents is At blank sheets.") }
 
     /// Whether a click on the gap before page `index` can split or join there: a page saved, other
     /// than the first page saved.
@@ -347,8 +346,8 @@ public enum DocumentSplitter {
 
     /// "Document 2", or "Document 2 · Invoice 0042" when it has a name.
     public static func documentTitle(_ document: PlannedDocument) -> String {
-        if let label = document.label { return "Document \(document.number) · \(label)" }
-        return "Document \(document.number)"
+        if let label = document.label { return L10n.t("Document {0} · {1}", document.number, label) }
+        return L10n.t("Document {0}", document.number)
     }
 
     /// The title over page `index` when it starts a document and the queue is saved as several
@@ -364,20 +363,20 @@ public enum DocumentSplitter {
     public static func breakLabel(_ plan: SplitPlan, _ index: Int) -> String? {
         guard canToggleBreak(plan, index) else { return nil }
         let page = plan.pages[index]
-        if page.startsDocument, let number = page.document { return "Join with document \(number - 1)" }
-        return "Start a new document here"
+        if page.startsDocument, let number = page.document { return L10n.t("Join with document {0}", number - 1) }
+        return L10n.t("Start a new document here")
     }
 
     /// The page strip's note on page `index`: "Separator" for a side of a separator sheet, otherwise
     /// `PageFilter.badge`.
     public static func badge(_ plan: SplitPlan, _ index: Int, page: ScannedPage, options: DocumentOptions) -> String? {
-        plan.pages[index].role == .separator ? "Separator" : PageFilter.badge(page, options: options)
+        plan.pages[index].role == .separator ? L10n.t("Separator") : PageFilter.badge(page, options: options)
     }
 
     /// What one click on page `index` does: "Keep this page" for a separator page, otherwise
     /// `PageFilter.toggleLabel`.
     public static func toggleLabel(_ plan: SplitPlan, _ index: Int, page: ScannedPage, options: DocumentOptions) -> String? {
-        plan.pages[index].role == .separator ? "Keep this page" : PageFilter.toggleLabel(page, options: options)
+        plan.pages[index].role == .separator ? L10n.t("Keep this page") : PageFilter.toggleLabel(page, options: options)
     }
 
     /// What a separator page is, for its help text and screen readers: "Separator sheet (Patch T): a
@@ -392,20 +391,20 @@ public enum DocumentSplitter {
         guard planned.role == .separator else { return nil }
         let what: String
         if let reading = planned.code {
-            what = "Separator sheet (\(BarcodeSeparators.describe(reading)))"
+            what = L10n.t("Separator sheet ({0})", BarcodeSeparators.describe(reading))
         } else if let code = page.patch {
-            what = "Separator sheet (\(code.label))"
+            what = L10n.t("Separator sheet ({0})", code.label)
         } else {
-            what = "Blank separator sheet"
+            what = L10n.t("Blank separator sheet")
         }
         let next = nextSavedPage(plan, after: index)
         if let next = next, !next.startsDocument {
-            return "\(what): the pages after it are joined to the document before. It is not saved."
+            return L10n.t("{0}: the pages after it are joined to the document before. It is not saved.", what)
         }
         if planned.code != nil, let number = next?.document, let name = plan.documents[number - 1].label {
-            return "\(what): a new document named \u{201C}\(name)\u{201D} starts after it. It is not saved."
+            return L10n.t("{0}: a new document named “{1}” starts after it. It is not saved.", what, name)
         }
-        return "\(what): a new document starts after it. It is not saved."
+        return L10n.t("{0}: a new document starts after it. It is not saved.", what)
     }
 
     /// The first page saved after `index`; nil when no page follows.

@@ -39,10 +39,10 @@ public static class CaptureFilters
 
     public static string Label(this CaptureFilter filter) => filter switch
     {
-        CaptureFilter.Original => "Original",
-        CaptureFilter.Grayscale => "Grayscale",
-        CaptureFilter.BlackAndWhite => "B&W",
-        _ => "Enhanced",
+        CaptureFilter.Original => Loc.T("Original"),
+        CaptureFilter.Grayscale => Loc.T("Grayscale"),
+        CaptureFilter.BlackAndWhite => Loc.T("B&W"),
+        _ => Loc.T("Enhanced"),
     };
 
     /// <summary>The clean-up this filter runs; null for <see cref="CaptureFilter.Original"/>.</summary>

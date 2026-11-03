@@ -118,7 +118,7 @@ extension AppState {
             Self.loadSpread(source).map { Self.makePreview($0, maxSide: 1600) ?? $0 }
         }.value
         guard let preview else {
-            errorMessage = "The spread could not be read."
+            errorMessage = L10n.t("The spread could not be read.")
             return nil
         }
         let fraction = part.gutter?.fraction(width: source.width, height: source.height) ?? 0.5
@@ -151,7 +151,7 @@ extension AppState {
             await self.pageEditChain?.value
             guard let page = self.scannedPages.first(where: { $0.id == id }), let spreadID = page.spreadID,
                   let source = self.spreadSources[spreadID] else { return }
-            self.statusMessage = cut == nil ? "Joining the pages\u{2026}" : "Splitting the spread\u{2026}"
+            self.statusMessage = cut == nil ? L10n.t("Joining the pages…") : L10n.t("Splitting the spread…")
             // The spread keeps the sheet and side its pages were given. Its pages are made with the
             // current settings, color mode included: the adjustment step makes the pixels that mode
             // says (black & white thresholded at the user's level); when it does not run (color, no
@@ -160,7 +160,7 @@ extension AppState {
             let sheetIndex = page.sheetIndex
             let pages: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
                 guard let image = Self.loadSpread(source) else {
-                    throw ScanError.scanFailed("The spread could not be read.")
+                    throw ScanError.scanFailed(L10n.t("The spread could not be read."))
                 }
                 var spread = ScannedPage(image: image, dpi: source.dpi, colorMode: s.colorMode, id: spreadID,
                                          createdAt: source.createdAt)

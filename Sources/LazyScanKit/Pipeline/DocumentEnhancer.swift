@@ -29,10 +29,10 @@ public enum CaptureFilter: String, CaseIterable, Codable, Sendable {
 
     public var label: String {
         switch self {
-        case .enhanced: return "Enhanced"
-        case .original: return "Original"
-        case .grayscale: return "Grayscale"
-        case .blackAndWhite: return "B&W"
+        case .enhanced: return L10n.t("Enhanced")
+        case .original: return L10n.t("Original")
+        case .grayscale: return L10n.t("Grayscale")
+        case .blackAndWhite: return L10n.t("B&W")
         }
     }
 

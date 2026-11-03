@@ -700,10 +700,10 @@ public enum BookPages {
     }
 
     /// The badge of a spread kept as one page; the page offers Split… next to it.
-    public static let notSplitBadge = "Not split"
+    public static var notSplitBadge: String { L10n.t("Not split") }
 
     /// Why Split facing pages is greyed out while both sides of each sheet are scanned.
-    public static let notWithTwoSidedReason = "Not with two-sided"
+    public static var notWithTwoSidedReason: String { L10n.t("Not with two-sided") }
 
     /// The badge and its spoken form for every page of the queue, in one pass: "2 · left" and "2 ·
     /// right" ("Spread 2, left page") for the pages cut from the second spread in the queue, each page
@@ -722,12 +722,14 @@ public enum BookPages {
                 number = numbers.count + 1
                 numbers[part.spreadID] = number
             }
+            let shown = number.formatted(.number.grouping(.never))
             if part.isWhole {
-                result[i] = BookPageLabel(label: "\(number) \u{00B7} not split", help: "Spread \(number), not split")
+                result[i] = BookPageLabel(label: L10n.t("{0} · not split", shown), help: L10n.t("Spread {0}, not split", shown))
                 continue
             }
-            let side: String = part.isLeft ? "left" : "right"
-            result[i] = BookPageLabel(label: "\(number) \u{00B7} \(side)", help: "Spread \(number), \(side) page")
+            result[i] = part.isLeft
+                ? BookPageLabel(label: L10n.t("{0} · left", shown), help: L10n.t("Spread {0}, left page", shown))
+                : BookPageLabel(label: L10n.t("{0} · right", shown), help: L10n.t("Spread {0}, right page", shown))
         }
         return result
     }
@@ -777,13 +779,13 @@ public enum BookPages {
     /// for other pages.
     public static func splitActionLabel(_ page: ScannedPage) -> String? {
         guard let part = page.spread else { return nil }
-        return part.isWhole ? "Split this spread\u{2026}" : "Change the split\u{2026}"
+        return part.isWhole ? L10n.t("Split this spread…") : L10n.t("Change the split…")
     }
 
     /// "Join the two pages" for a page cut from a spread; nil for other pages.
     public static func joinActionLabel(_ page: ScannedPage) -> String? {
         guard let part = page.spread, !part.isWhole else { return nil }
-        return "Join the two pages"
+        return L10n.t("Join the two pages")
     }
 
     /// The status after a scan's pages were queued, when spreads were split or kept whole: " 2 spreads
@@ -803,7 +805,8 @@ public enum BookPages {
 
     /// "Spread 2 is split into two pages." or "Spread 2 is one page again."
     public static func splitNote(spreadNumber: Int, split: Bool) -> String {
-        split ? "Spread \(spreadNumber) is split into two pages." : "Spread \(spreadNumber) is one page again."
+        let shown = spreadNumber.formatted(.number.grouping(.never))
+        return split ? L10n.t("Spread {0} is split into two pages.", shown) : L10n.t("Spread {0} is one page again.", shown)
     }
 
     /// The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.
@@ -812,10 +815,10 @@ public enum BookPages {
     /// "As scanned", "90° clockwise", "180°", "90° counterclockwise".
     public static func rotationLabel(_ quarterTurns: Int) -> String {
         switch BookSplitter.normalizedTurns(quarterTurns) {
-        case 1: return "90\u{00B0} clockwise"
-        case 2: return "180\u{00B0}"
-        case 3: return "90\u{00B0} counterclockwise"
-        default: return "As scanned"
+        case 1: return L10n.t("90° clockwise")
+        case 2: return "180°"
+        case 3: return L10n.t("90° counterclockwise")
+        default: return L10n.t("As scanned")
         }
     }
 
@@ -823,14 +826,14 @@ public enum BookPages {
     /// two-sided scans (those show `notWithTwoSidedReason` next to it), else what it does.
     public static func hint(_ settings: ScanSettings) -> String {
         let flow = TaskCatalog.flow(of: settings)
-        if flow == .copy { return "Copies print every page as scanned: spreads are not split." }
-        if flow == .receiptSplit { return "Receipts are found on the glass one by one." }
+        if flow == .copy { return L10n.t("Copies print every page as scanned: spreads are not split.") }
+        if flow == .receiptSplit { return L10n.t("Receipts are found on the glass one by one.") }
         if !settings.documentMultiPage {
-            return "Only for pages collected before saving: a scan saved at once is kept as scanned."
+            return L10n.t("Only for pages collected before saving: a scan saved at once is kept as scanned.")
         }
         if !scansOneSide(settings) {
-            return "Only for one side of each sheet: pages scanned on both sides are kept as scanned."
+            return L10n.t("Only for one side of each sheet: pages scanned on both sides are kept as scanned.")
         }
-        return "Each book scan becomes two pages, cut at the spine."
+        return L10n.t("Each book scan becomes two pages, cut at the spine.")
     }
 }

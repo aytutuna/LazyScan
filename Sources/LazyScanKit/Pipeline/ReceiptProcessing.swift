@@ -713,7 +713,7 @@ public enum Receipts {
     /// receipts go into one PDF (`TaskOptions.receiptCombine`, several kept).
     public static func saveTitle(included: Int, combine: Bool, format: OutputFormat) -> String {
         combines(combine, format: format, count: included)
-            ? "Save as One PDF"
+            ? L10n.t("Save as One PDF")
             : L10n.plural(included, one: "Save {0} Receipt", other: "Save {0} Receipts")
     }
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LazyScan.Core;
 
 // Twin of Sources/LazyScanKit/Pipeline/BookSplitter.swift: same constants, same steps.
@@ -701,10 +703,10 @@ public static class BookPages
     public static bool ScansOneSide(ScanSettings settings) => DocumentSides.Effective(settings, null) == DuplexMode.Off;
 
     /// <summary>The badge of a spread kept as one page; the page offers Split… next to it.</summary>
-    public const string NotSplitBadge = "Not split";
+    public static string NotSplitBadge => Loc.T("Not split");
 
     /// <summary>Why Split facing pages is greyed out while both sides of each sheet are scanned.</summary>
-    public const string NotWithTwoSidedReason = "Not with two-sided";
+    public static string NotWithTwoSidedReason => Loc.T("Not with two-sided");
 
     /// <summary>
     /// The badge and its spoken form for every page of the queue, in one pass: "2 · left" and "2 · right"
@@ -725,13 +727,15 @@ public static class BookPages
                 number = numbers.Count + 1;
                 numbers[part.SpreadId] = number;
             }
+            string shown = number.ToString("D", CultureInfo.CurrentCulture);
             if (part.IsWhole)
             {
-                result[i] = new BookPageLabel($"{number} · not split", $"Spread {number}, not split");
+                result[i] = new BookPageLabel(Loc.T("{0} · not split", shown), Loc.T("Spread {0}, not split", shown));
                 continue;
             }
-            string side = part.IsLeft ? "left" : "right";
-            result[i] = new BookPageLabel($"{number} · {side}", $"Spread {number}, {side} page");
+            result[i] = part.IsLeft
+                ? new BookPageLabel(Loc.T("{0} · left", shown), Loc.T("Spread {0}, left page", shown))
+                : new BookPageLabel(Loc.T("{0} · right", shown), Loc.T("Spread {0}, right page", shown));
         }
         return result;
     }
@@ -781,13 +785,13 @@ public static class BookPages
     public static string? SplitActionLabel(ScannedPage page) => page.Spread switch
     {
         null => null,
-        { IsWhole: true } => "Split this spread…",
-        _ => "Change the split…",
+        { IsWhole: true } => Loc.T("Split this spread…"),
+        _ => Loc.T("Change the split…"),
     };
 
     /// <summary>"Join the two pages" for a page cut from a spread; null for other pages.</summary>
     public static string? JoinActionLabel(ScannedPage page) =>
-        page.Spread is { IsWhole: false } ? "Join the two pages" : null;
+        page.Spread is { IsWhole: false } ? Loc.T("Join the two pages") : null;
 
     /// <summary>
     /// The status after a scan's pages were queued, when spreads were split or kept whole: " 2 spreads
@@ -809,8 +813,11 @@ public static class BookPages
     }
 
     /// <summary>"Spread 2 is split into two pages." or "Spread 2 is one page again."</summary>
-    public static string SplitNote(int spreadNumber, bool split) =>
-        split ? $"Spread {spreadNumber} is split into two pages." : $"Spread {spreadNumber} is one page again.";
+    public static string SplitNote(int spreadNumber, bool split)
+    {
+        string shown = spreadNumber.ToString("D", CultureInfo.CurrentCulture);
+        return split ? Loc.T("Spread {0} is split into two pages.", shown) : Loc.T("Spread {0} is one page again.", shown);
+    }
 
     /// <summary>The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.</summary>
     public static IReadOnlyList<int> RotationChoices { get; } = [0, 1, 2, 3];
@@ -818,10 +825,10 @@ public static class BookPages
     /// <summary>"As scanned", "90° clockwise", "180°", "90° counterclockwise".</summary>
     public static string RotationLabel(int quarterTurns) => BookSplitter.NormalizedTurns(quarterTurns) switch
     {
-        1 => "90° clockwise",
+        1 => Loc.T("90° clockwise"),
         2 => "180°",
-        3 => "90° counterclockwise",
-        _ => "As scanned",
+        3 => Loc.T("90° counterclockwise"),
+        _ => Loc.T("As scanned"),
     };
 
     /// <summary>
@@ -831,10 +838,10 @@ public static class BookPages
     public static string Hint(ScanSettings settings)
     {
         var flow = TaskCatalog.FlowOf(settings);
-        if (flow == TaskFlowKind.Copy) return "Copies print every page as scanned: spreads are not split.";
-        if (flow == TaskFlowKind.ReceiptSplit) return "Receipts are found on the glass one by one.";
-        if (!settings.DocumentMultiPage) return "Only for pages collected before saving: a scan saved at once is kept as scanned.";
-        if (!ScansOneSide(settings)) return "Only for one side of each sheet: pages scanned on both sides are kept as scanned.";
-        return "Each book scan becomes two pages, cut at the spine.";
+        if (flow == TaskFlowKind.Copy) return Loc.T("Copies print every page as scanned: spreads are not split.");
+        if (flow == TaskFlowKind.ReceiptSplit) return Loc.T("Receipts are found on the glass one by one.");
+        if (!settings.DocumentMultiPage) return Loc.T("Only for pages collected before saving: a scan saved at once is kept as scanned.");
+        if (!ScansOneSide(settings)) return Loc.T("Only for one side of each sheet: pages scanned on both sides are kept as scanned.");
+        return Loc.T("Each book scan becomes two pages, cut at the spine.");
     }
 }

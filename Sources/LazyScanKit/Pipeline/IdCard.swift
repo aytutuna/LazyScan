@@ -18,7 +18,7 @@ public enum IdCardPaper: String, Codable, CaseIterable, Identifiable, Sendable {
     /// "Automatic", "A4", "Letter".
     public var label: String {
         switch self {
-        case .auto: return "Automatic"
+        case .auto: return L10n.t("Automatic")
         case .a4: return "A4"
         case .letter: return "Letter"
         }
@@ -42,7 +42,7 @@ public enum IdCardPapers {
     /// How a picker names a choice, Automatic with the paper it is now: "Automatic (A4)", "A4", "Letter".
     public static func choiceLabel(_ paper: IdCardPaper, regionCode: String?, printerPaper: PaperSize? = nil) -> String {
         paper == .auto
-            ? "Automatic (\(resolve(paper, regionCode: regionCode, printerPaper: printerPaper).label))"
+            ? L10n.t("Automatic ({0})", resolve(paper, regionCode: regionCode, printerPaper: printerPaper).label)
             : paper.label
     }
 }
@@ -74,13 +74,13 @@ public enum IdCardSteps {
     }
 
     /// The button that leaves out the back of a card with nothing printed on it.
-    public static let skipBackLabel = "No back side"
+    public static var skipBackLabel: String { L10n.t("No back side") }
 
     /// The ID card review's line on privacy: the scans stay out of the Scans history.
-    public static let privacyNote = "Not kept in Scans history"
+    public static var privacyNote: String { L10n.t("Not kept in Scans history") }
 
     /// The privacy line's full sentence, for its tooltip and VoiceOver.
-    public static let privacyHelp = "The scans stay on this computer and are cleared once you save or discard them."
+    public static var privacyHelp: String { L10n.t("The scans stay on this computer and are cleared once you save or discard them.") }
 
     /// The side a step scans; nil for the review and any other step.
     public static func sideOf(_ stepID: String?) -> PageSide? {
@@ -278,9 +278,9 @@ public enum IdCardDetector {
     public static func note(_ kind: IdCardPickKind) -> String? {
         switch kind {
         case .card: return nil
-        case .largestRegion: return "This does not look like the size of an ID card. Check the crop."
-        case .frontPlace: return "The card did not stand out on this scan, so the place of the front was used. Check the crop."
-        case .wholeScan: return "No card was found, so the whole glass was kept. Fix the crop, or scan again with the lid closed."
+        case .largestRegion: return L10n.t("This does not look like the size of an ID card. Check the crop.")
+        case .frontPlace: return L10n.t("The card did not stand out on this scan, so the place of the front was used. Check the crop.")
+        case .wholeScan: return L10n.t("No card was found, so the whole glass was kept. Fix the crop, or scan again with the lid closed.")
         }
     }
 }
@@ -313,7 +313,7 @@ public enum IdCardLayout {
     public static let edgeMarginInches = 0.25
 
     /// The warning shown when the sides were made smaller to fit the page.
-    public static let notRealSizeMessage = "Too large for the page at real size, so it was made smaller to fit. It is not at real size."
+    public static var notRealSizeMessage: String { L10n.t("Too large for the page at real size, so it was made smaller to fit. It is not at real size.") }
 
     /// The places of a front `front` and back `back` (inches) on `paper`: centred across, the front
     /// 1 in from the top, the back 0.5 in under it, both at real size. When they would come closer
@@ -346,9 +346,12 @@ public enum IdCardLayout {
 
     /// "One A4 page, real size", "Front only, one Letter page, made smaller to fit".
     public static func caption(paper: PaperSize, hasBack: Bool, scaledToFit: Bool) -> String {
-        let lead: String = hasBack ? "One" : "Front only, one"
-        let size: String = scaledToFit ? "made smaller to fit" : "real size"
-        return "\(lead) \(paper.label) page, \(size)"
+        switch (hasBack, scaledToFit) {
+        case (true, false): return L10n.t("One {0} page, real size", paper.label)
+        case (true, true): return L10n.t("One {0} page, made smaller to fit", paper.label)
+        case (false, false): return L10n.t("Front only, one {0} page, real size", paper.label)
+        case (false, true): return L10n.t("Front only, one {0} page, made smaller to fit", paper.label)
+        }
     }
 }
 

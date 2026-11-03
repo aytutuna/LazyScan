@@ -616,10 +616,9 @@ public struct PageProcessor {
 /// `PageFilter`.
 public enum PageFilter {
     /// The message when every queued page is left out, so there is nothing to save.
-    public static let nothingToSaveMessage =
-        "Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save."
+    public static var nothingToSaveMessage: String { L10n.t("Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.") }
     /// The title `nothingToSaveMessage` is shown under: nothing failed.
-    public static let nothingSavedTitle = "Nothing saved"
+    public static var nothingSavedTitle: String { L10n.t("Nothing saved") }
 
     /// The page looks blank at `sensitivity` (false when it was not checked).
     public static func looksBlank(_ page: ScannedPage, sensitivity: BlankSensitivity) -> Bool {
@@ -654,17 +653,17 @@ public enum PageFilter {
     /// other pages.
     public static func badge(_ page: ScannedPage, options: DocumentOptions) -> String? {
         let blank = looksBlank(page, sensitivity: options.blankSensitivity)
-        if isExcluded(page, options: options) { return blank ? "Blank, skipped" : "Skipped" }
-        return blank ? "Looks blank" : nil
+        if isExcluded(page, options: options) { return blank ? L10n.t("Blank, skipped") : L10n.t("Skipped") }
+        return blank ? L10n.t("Looks blank") : nil
     }
 
     /// What one click on the page does, for its button and screen readers: "Keep this page" for a
     /// left-out page, "Skip this page" for a blank-looking page that will be saved; nil when the
     /// page has no such button (it is saved and does not look blank).
     public static func toggleLabel(_ page: ScannedPage, options: DocumentOptions) -> String? {
-        if isExcluded(page, options: options) { return "Keep this page" }
+        if isExcluded(page, options: options) { return L10n.t("Keep this page") }
         return looksBlank(page, sensitivity: options.blankSensitivity) || page.inclusion != .automatic
-            ? "Skip this page"
+            ? L10n.t("Skip this page")
             : nil
     }
 
@@ -699,9 +698,9 @@ public enum PageCorrections {
     /// and "As photographed" for a page taken from a photo; nil for other pages.
     public static func caption(_ page: ScannedPage) -> String? {
         if page.geometry == nil && page.spineShadow == nil { return nil }
-        if page.showsOriginal { return fromPhoto(page) ? PhotoImport.originalCaption : "As scanned" }
-        guard let geometry = page.geometry else { return "Spine shadow softened" }
-        return page.spineShadow == nil ? geometry.caption : "\(geometry.caption), spine shadow softened"
+        if page.showsOriginal { return fromPhoto(page) ? PhotoImport.originalCaption : L10n.t("As scanned") }
+        guard let geometry = page.geometry else { return L10n.t("Spine shadow softened") }
+        return page.spineShadow == nil ? geometry.caption : L10n.t("{0}, spine shadow softened", geometry.caption)
     }
 
     /// What one click on the page's swap button does: "Show as scanned", or back: "Show cropped and
@@ -710,9 +709,19 @@ public enum PageCorrections {
     /// page taken from a photo; nil when the page cannot swap.
     public static func toggleLabel(_ page: ScannedPage) -> String? {
         guard page.canSwapVersions else { return nil }
-        if !page.showsOriginal { return fromPhoto(page) ? "Show as photographed" : "Show as scanned" }
-        guard let geometry = page.geometry else { return "Show with the spine shadow softened" }
-        return page.spineShadow == nil ? "Show \(done(geometry))" : "Show \(done(geometry)), with the spine shadow softened"
+        if !page.showsOriginal { return fromPhoto(page) ? L10n.t("Show as photographed") : L10n.t("Show as scanned") }
+        guard let geometry = page.geometry else { return L10n.t("Show with the spine shadow softened") }
+        let softened = page.spineShadow != nil
+        switch change(geometry) {
+        case .corrected:
+            return softened ? L10n.t("Show corrected, with the spine shadow softened") : L10n.t("Show corrected")
+        case .croppedAndStraightened:
+            return softened ? L10n.t("Show cropped and straightened, with the spine shadow softened") : L10n.t("Show cropped and straightened")
+        case .straightened:
+            return softened ? L10n.t("Show straightened, with the spine shadow softened") : L10n.t("Show straightened")
+        case .cropped:
+            return softened ? L10n.t("Show cropped, with the spine shadow softened") : L10n.t("Show cropped")
+        }
     }
 
     /// The status after a page's versions were swapped: "Page 3 is shown as scanned. It is saved that
@@ -722,13 +731,22 @@ public enum PageCorrections {
     public static func swapNote(_ page: ScannedPage, number: Int) -> String {
         if page.showsOriginal || (page.geometry == nil && page.spineShadow == nil) {
             return fromPhoto(page)
-                ? "Page \(number) is shown as photographed. It is saved that way."
-                : "Page \(number) is shown as scanned. It is saved that way."
+                ? L10n.t("Page {0} is shown as photographed. It is saved that way.", number)
+                : L10n.t("Page {0} is shown as scanned. It is saved that way.", number)
         }
-        guard let geometry = page.geometry else { return "Page \(number) is shown with the spine shadow softened again." }
-        return page.spineShadow == nil
-            ? "Page \(number) is \(done(geometry)) again."
-            : "Page \(number) is \(done(geometry)) again, with the spine shadow softened."
+        guard let geometry = page.geometry else { return L10n.t("Page {0} is shown with the spine shadow softened again.", number) }
+        let softened = page.spineShadow != nil
+        switch change(geometry) {
+        case .corrected:
+            return softened ? L10n.t("Page {0} is corrected again, with the spine shadow softened.", number) : L10n.t("Page {0} is corrected again.", number)
+        case .croppedAndStraightened:
+            return softened ? L10n.t("Page {0} is cropped and straightened again, with the spine shadow softened.", number)
+                : L10n.t("Page {0} is cropped and straightened again.", number)
+        case .straightened:
+            return softened ? L10n.t("Page {0} is straightened again, with the spine shadow softened.", number) : L10n.t("Page {0} is straightened again.", number)
+        case .cropped:
+            return softened ? L10n.t("Page {0} is cropped again, with the spine shadow softened.", number) : L10n.t("Page {0} is cropped again.", number)
+        }
     }
 
     /// The status after a scan's pages were queued, when crop and straighten changed some: " 2
@@ -737,14 +755,22 @@ public enum PageCorrections {
     /// Pages taken from photos are left out: the import's own status tells about them
     /// (`PhotoImport.addedMessage`).
     public static func scanNote(_ added: [ScannedPage]) -> String {
-        let changed = added.compactMap { page -> String? in
+        let changed = added.compactMap { page -> Change? in
             guard let geometry = page.geometry, geometry.basis != .perspective, !page.showsOriginal else { return nil }
-            return done(geometry)
+            return change(geometry)
         }
         var note = ""
         if let first = changed.first {
-            let verb = Set(changed).count == 1 ? first : "cropped or straightened"
-            note = " \(changed.count) \(verb)."
+            let count = changed.count
+            if Set(changed).count > 1 {
+                note = " " + L10n.plural(count, one: "{0} cropped or straightened.", other: "{0} cropped or straightened.")
+            } else {
+                switch first {
+                case .croppedAndStraightened: note = " " + L10n.plural(count, one: "{0} cropped and straightened.", other: "{0} cropped and straightened.")
+                case .straightened: note = " " + L10n.plural(count, one: "{0} straightened.", other: "{0} straightened.")
+                case .cropped, .corrected: note = " " + L10n.plural(count, one: "{0} cropped.", other: "{0} cropped.")
+                }
+            }
         }
         let softened = added.filter { $0.spineShadow != nil && !$0.showsOriginal }.count
         if softened > 0 { note += " " + L10n.plural(softened, one: "Spine shadow softened on {0} page.", other: "Spine shadow softened on {0} pages.") }
@@ -754,11 +780,13 @@ public enum PageCorrections {
     /// The page was taken from a photo along its corners: its other version is the photo.
     private static func fromPhoto(_ page: ScannedPage) -> Bool { page.geometry?.basis == .perspective }
 
-    /// "cropped and straightened", "straightened" or "cropped"; "corrected" for a page taken from a photo.
-    private static func done(_ geometry: PageGeometry) -> String {
-        geometry.basis == .perspective ? "corrected"
-            : geometry.cropped && geometry.straightened ? "cropped and straightened"
-            : geometry.straightened ? "straightened"
-            : "cropped"
+    private enum Change { case corrected, croppedAndStraightened, straightened, cropped }
+
+    /// What was done to the page: corrected for a page taken from a photo.
+    private static func change(_ geometry: PageGeometry) -> Change {
+        geometry.basis == .perspective ? .corrected
+            : geometry.cropped && geometry.straightened ? .croppedAndStraightened
+            : geometry.straightened ? .straightened
+            : .cropped
     }
 }

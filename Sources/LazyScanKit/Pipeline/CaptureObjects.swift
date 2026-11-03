@@ -88,8 +88,7 @@ public enum CaptureObjects {
 
     /// The note on a side of the ID card cut out of a shot whose shape matched no ID-1 card
     /// (`CaptureScaleResult.isRealSize` false): its size is made up.
-    public static let cardNotRealSizeNote: String =
-        "This does not look like the shape of an ID card, so it is not at real size. Fix the crop, or take it again."
+    public static var cardNotRealSizeNote: String { L10n.t("This does not look like the shape of an ID card, so it is not at real size. Fix the crop, or take it again.") }
 
     /// The note on a side of the ID card cut out of a shot: `cardNotRealSizeNote` when it was not measured
     /// at its real size, then `GlareDetector.hint` when the photo shows glare on the card; nil for neither.

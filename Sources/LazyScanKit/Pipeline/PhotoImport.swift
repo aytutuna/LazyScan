@@ -121,41 +121,40 @@ public enum PhotoImport {
     /// The HEIF file types (iPhone photos): Windows reads them only with the HEIF extension installed.
     public static let heifExtensions = ["heic", "heif", "hif"]
 
-    public static let buttonLabel = "Import photos of documents\u{2026}"
+    public static var buttonLabel: String { L10n.t("Import photos of documents…") }
     /// The import button's tooltip.
-    public static let buttonHint = "Add phone photos of documents as pages"
+    public static var buttonHint: String { L10n.t("Add phone photos of documents as pages") }
     /// The import button's full explanation, for VoiceOver.
-    public static let buttonHelp = "Each page is found in the photo and straightened. Your photo files are not changed."
-    public static let pickerTitle = "Import photos of documents"
+    public static var buttonHelp: String { L10n.t("Each page is found in the photo and straightened. Your photo files are not changed.") }
+    public static var pickerTitle: String { L10n.t("Import photos of documents") }
     /// The line under the import link on the empty stage.
-    public static let dropHint = "or drop them here"
+    public static var dropHint: String { L10n.t("or drop them here") }
     /// What the window shows while photo files are dragged over it.
-    public static let dropOverlay = "Drop to add as pages"
+    public static var dropOverlay: String { L10n.t("Drop to add as pages") }
     /// The page strip's label on a page taken from a photo.
-    public static let label = "Photo"
-    public static let labelHelp = "Imported from a photo"
+    public static var label: String { L10n.t("Photo") }
+    public static var labelHelp: String { L10n.t("Imported from a photo") }
     /// The caption of a page cut out of its photo (`PageGeometry.caption`).
-    public static let correctedCaption = "Corrected from photo"
+    public static var correctedCaption: String { L10n.t("Corrected from photo") }
     /// The caption of such a page shown as photographed (`PageCorrections.caption`).
-    public static let originalCaption = "As photographed"
-    public static let editorTitle = "Check the corners"
-    public static let editorHelp = "Drag each corner onto a corner of the page."
+    public static var originalCaption: String { L10n.t("As photographed") }
+    public static var editorTitle: String { L10n.t("Check the corners") }
+    public static var editorHelp: String { L10n.t("Drag each corner onto a corner of the page.") }
     /// The corner editor's keys, behind its info button and in the canvas's VoiceOver help.
-    public static let editorKeys = "Keys 1\u{2013}4 select a corner. Arrow keys move it; Shift takes bigger steps."
-    public static let useCornersLabel = "Use corners"
-    public static let wholePhotoLabel = "Use whole photo"
-    public static let skipLabel = "Skip photo"
-    public static let stopLabel = "Stop import"
-    public static let noPhotosMessage =
-        "None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP)."
+    public static var editorKeys: String { L10n.t("Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.") }
+    public static var useCornersLabel: String { L10n.t("Use corners") }
+    public static var wholePhotoLabel: String { L10n.t("Use whole photo") }
+    public static var skipLabel: String { L10n.t("Skip photo") }
+    public static var stopLabel: String { L10n.t("Stop import") }
+    public static var noPhotosMessage: String { L10n.t("None of those files is a photo that can be imported (JPEG, PNG, HEIC, TIFF, BMP or WebP).") }
     /// The title `notOfferedMessage` and `noPhotosMessage` are shown under: nothing failed.
-    public static let notImportedTitle = "Not imported"
+    public static var notImportedTitle: String { L10n.t("Not imported") }
     /// Why a file that is no picture (or a damaged one) was not imported (`unreadableMessage`).
-    public static let unreadableDetail = "it is not a picture this app can read, or the file is damaged."
+    public static var unreadableDetail: String { L10n.t("it is not a picture this app can read, or the file is damaged.") }
     /// Why a photo of more than `maxPhotoPixels` was not imported.
-    public static let tooLargeDetail = "the photo is too large (more than 150 megapixels)."
+    public static var tooLargeDetail: String { L10n.t("the photo is too large (more than 150 megapixels).") }
     /// Why a file that went away before it was read was not imported.
-    public static let missingDetail = "the file is no longer there."
+    public static var missingDetail: String { L10n.t("the file is no longer there.") }
 
     /// `path` names a file of a type offered for import (by its extension).
     public static func isPhotoFile(_ path: String) -> Bool { fileExtensions.contains(extensionOf(path)) }
@@ -178,15 +177,15 @@ public enum PhotoImport {
     /// Photocopy and Receipts tasks). Nil when no such task is in use.
     public static func ownSaveTaskReason(_ settings: ScanSettings) -> String? {
         guard settings.intent == .document, let task = settings.task, !isOffered(settings) else { return nil }
-        return "The \(TaskCatalog.definition(task).title) task saves its scans on its own"
+        return L10n.t("The {0} task saves its scans on its own", TaskCatalog.definition(task).title)
     }
 
     /// Why photos are not imported with these settings, and what to change to import them.
     public static func notOfferedMessage(for settings: ScanSettings) -> String {
-        if let reason = ownSaveTaskReason(settings) {
-            return "\(reason), so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them."
+        if ownSaveTaskReason(settings) != nil, let task = settings.task {
+            return L10n.t("The {0} task saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.definition(task).title)
         }
-        return "Photos of documents are added to the page queue: choose Document mode, or a document task, to import them."
+        return L10n.t("Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.")
     }
 
     /// The photo the right way up: `stored` mirrored and turned as `orientation` says.
@@ -372,10 +371,10 @@ public enum PhotoImport {
     /// The corner editor's note on why it is shown; empty for `.none`.
     public static func reasonText(_ reason: PhotoReviewReason) -> String {
         switch reason {
-        case .unsure: return "The page edges are unclear."
-        case .cutOff: return "The page runs off the photo."
-        case .twoPages: return "Two pages found: outline one."
-        case .nothingFound: return "No page found in this photo."
+        case .unsure: return L10n.t("The page edges are unclear.")
+        case .cutOff: return L10n.t("The page runs off the photo.")
+        case .twoPages: return L10n.t("Two pages found: outline one.")
+        case .nothingFound: return L10n.t("No page found in this photo.")
         case .none: return ""
         }
     }
@@ -385,13 +384,13 @@ public enum PhotoImport {
     /// is unsure too, however sharp its edges.
     public static func reasonText(_ reason: PhotoReviewReason, kind: CaptureKind) -> String {
         switch (kind, reason) {
-        case (.idCard, .unsure): return "The card's outline is not certain."
-        case (.idCard, .cutOff): return "The card runs off the photo."
-        case (.idCard, .nothingFound): return "No card found in this photo."
-        case (.photo, .unsure): return "The photo's edges are unclear."
-        case (.photo, .nothingFound): return "No photo found in this shot."
-        case (.receipt, .unsure): return "The receipt's edges are unclear."
-        case (.receipt, .nothingFound): return "No receipt found in this shot."
+        case (.idCard, .unsure): return L10n.t("The card's outline is not certain.")
+        case (.idCard, .cutOff): return L10n.t("The card runs off the photo.")
+        case (.idCard, .nothingFound): return L10n.t("No card found in this photo.")
+        case (.photo, .unsure): return L10n.t("The photo's edges are unclear.")
+        case (.photo, .nothingFound): return L10n.t("No photo found in this shot.")
+        case (.receipt, .unsure): return L10n.t("The receipt's edges are unclear.")
+        case (.receipt, .nothingFound): return L10n.t("No receipt found in this shot.")
         default: return reasonText(reason)
         }
     }
@@ -401,36 +400,36 @@ public enum PhotoImport {
     public static func cornersHelp(_ kind: CaptureKind) -> String {
         switch kind {
         case .document: return editorHelp
-        case .receipt: return "Drag each corner onto a corner of the receipt."
-        case .photo: return "Drag each corner onto a corner of the photo."
-        case .idCard: return "Drag each corner onto a corner of the card."
+        case .receipt: return L10n.t("Drag each corner onto a corner of the receipt.")
+        case .photo: return L10n.t("Drag each corner onto a corner of the photo.")
+        case .idCard: return L10n.t("Drag each corner onto a corner of the card.")
         }
     }
 
     /// What VoiceOver calls the corner editor's photo with its corners: "Page corners", "Card corners".
     public static func cornersName(_ kind: CaptureKind) -> String {
         switch kind {
-        case .document: return "Page corners"
-        case .receipt: return "Receipt corners"
-        case .photo: return "Photo corners"
-        case .idCard: return "Card corners"
+        case .document: return L10n.t("Page corners")
+        case .receipt: return L10n.t("Receipt corners")
+        case .photo: return L10n.t("Photo corners")
+        case .idCard: return L10n.t("Card corners")
         }
     }
 
     /// The corner editor's caption: "Photo 2 of 5" (the file name is its tooltip), or the file name alone
     /// for one photo.
     public static func counter(_ number: Int, of count: Int, fileName: String) -> String {
-        count > 1 ? "Photo \(number) of \(count)" : fileName
+        count > 1 ? L10n.t("Photo {0} of {1}", number, count) : fileName
     }
 
     /// The caption with the file name, for its tooltip and VoiceOver: "Photo 2 of 5: IMG_0042.jpg".
     public static func counterName(_ number: Int, of count: Int, fileName: String) -> String {
-        count > 1 ? "Photo \(number) of \(count): \(fileName)" : fileName
+        count > 1 ? L10n.t("Photo {0} of {1}: {2}", number, count, fileName) : fileName
     }
 
     /// "Importing photo 2 of 5…", or "Importing photo…" for one.
     public static func progressMessage(_ number: Int, of count: Int) -> String {
-        count > 1 ? "Importing photo \(number) of \(count)\u{2026}" : "Importing photo\u{2026}"
+        count > 1 ? L10n.t("Importing photo {0} of {1}…", number, count) : L10n.t("Importing photo…")
     }
 
     /// The progress while page `page` of a file of `pageCount` pages (a TIFF of several pages) is
@@ -439,14 +438,14 @@ public enum PhotoImport {
     public static func progressMessage(_ number: Int, of count: Int, page: Int, pageCount: Int) -> String {
         if pageCount <= 1 { return progressMessage(number, of: count) }
         return count > 1
-            ? "Importing photo \(number) of \(count), page \(page) of \(pageCount)\u{2026}"
-            : "Importing page \(page) of \(pageCount)\u{2026}"
+            ? L10n.t("Importing photo {0} of {1}, page {2} of {3}…", number, count, page, pageCount)
+            : L10n.t("Importing page {0} of {1}…", page, pageCount)
     }
 
     /// The name of page `page` of a file of `pageCount` pages, for the corner editor and the error
     /// messages: "fax.tif, page 2 of 5", or the file name alone for one page.
     public static func pageName(_ fileName: String, page: Int, pageCount: Int) -> String {
-        pageCount > 1 ? "\(fileName), page \(page) of \(pageCount)" : fileName
+        pageCount > 1 ? L10n.t("{0}, page {1} of {2}", fileName, page, pageCount) : fileName
     }
 
     /// The status after an import: "Added 3 pages from photos — 5 in queue. Scan more or save PDF."
@@ -472,16 +471,14 @@ public enum PhotoImport {
 
     /// "IMG_0042.jpg could not be opened: …".
     public static func unreadableMessage(_ fileName: String, detail: String) -> String {
-        "\(fileName) could not be opened: \(detail)"
+        L10n.t("{0} could not be opened: {1}", fileName, detail)
     }
 
     /// A HEIF photo Windows could not read: most often the HEIF extension (or the HEVC one) is missing, else
     /// the file is damaged. The Mac reads HEIF itself (ImageIO), so it never shows this; it is here so both
     /// platforms keep the same words.
     public static func heifUnavailableMessage(_ fileName: String) -> String {
-        "\(fileName) could not be opened: HEIC photos need the free \u{201C}HEIF Image Extensions\u{201D} from the Microsoft Store "
-            + "(most iPhone photos also need \u{201C}HEVC Video Extensions\u{201D}). If they are installed, the photo may be damaged; "
-            + "a phone set to save photos as JPEG avoids this."
+        L10n.t("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.", fileName)
     }
 
     /// The lowercase extension of `path`, without the dot.

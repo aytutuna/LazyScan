@@ -262,25 +262,25 @@ public enum PageTurns {
     /// for a turned page; "Turned back as scanned" once the user undid it; nil for other pages.
     public static func caption(_ page: ScannedPage) -> String? {
         guard let turn = page.upright else { return nil }
-        if turn.undone { return "Turned back as scanned" }
+        if turn.undone { return L10n.t("Turned back as scanned") }
         switch turn.quarterTurns {
-        case 1: return "Turned upright 90° clockwise"
-        case 3: return "Turned upright 90° counterclockwise"
-        default: return "Turned upright 180°"
+        case 1: return L10n.t("Turned upright 90° clockwise")
+        case 3: return L10n.t("Turned upright 90° counterclockwise")
+        default: return L10n.t("Turned upright 180°")
         }
     }
 
     /// What one click on the page's turn button does: "Undo turn" or "Turn upright again"; nil for a page not turned.
     public static func toggleLabel(_ page: ScannedPage) -> String? {
         guard let turn = page.upright else { return nil }
-        return turn.undone ? "Turn upright again" : "Undo turn"
+        return turn.undone ? L10n.t("Turn upright again") : L10n.t("Undo turn")
     }
 
     /// The status after the turn of a page was undone or made again: "Page 3 is turned back as
     /// scanned. It is saved that way." or "Page 3 is turned upright again."
     public static func toggleNote(_ page: ScannedPage, number: Int) -> String {
-        if let turn = page.upright, !turn.undone { return "Page \(number) is turned upright again." }
-        return "Page \(number) is turned back as scanned. It is saved that way."
+        if let turn = page.upright, !turn.undone { return L10n.t("Page {0} is turned upright again.", number) }
+        return L10n.t("Page {0} is turned back as scanned. It is saved that way.", number)
     }
 
     /// The status after a scan's pages were queued, when some were turned: " 2 turned upright."
@@ -291,16 +291,16 @@ public enum PageTurns {
     }
 
     /// The status note when pages were to be turned upright but no text can be read (leading space).
-    public static let unavailableNote = " Pages were not turned upright: no text recognition language is installed."
+    public static var unavailableNote: String { " " + L10n.t("Pages were not turned upright: no text recognition language is installed.") }
 
     /// The tooltip of "Rotate pages upright": why it is off for copies, receipts and scans saved at
     /// once, that it needs text recognition (shown next to it), else what it does.
     public static func hint(_ settings: ScanSettings, available: Bool) -> String {
         let flow = TaskCatalog.flow(of: settings)
-        if flow == .copy { return "Copies print every page as scanned: pages are not turned." }
-        if flow == .receiptSplit { return "Receipts are kept the way they lie on the glass." }
-        if !settings.documentMultiPage { return "Only for pages collected before saving: a scan saved at once is kept as scanned." }
-        if !available { return "Needs a text recognition language, and none is installed." }
-        return "Turns sideways or upside-down pages by reading the text"
+        if flow == .copy { return L10n.t("Copies print every page as scanned: pages are not turned.") }
+        if flow == .receiptSplit { return L10n.t("Receipts are kept the way they lie on the glass.") }
+        if !settings.documentMultiPage { return L10n.t("Only for pages collected before saving: a scan saved at once is kept as scanned.") }
+        if !available { return L10n.t("Needs a text recognition language, and none is installed.") }
+        return L10n.t("Turns sideways or upside-down pages by reading the text")
     }
 }

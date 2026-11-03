@@ -155,7 +155,7 @@ public static class SpineShadow
         (PageEdge)(((int)edge + BookSplitter.NormalizedTurns(quarterTurns)) % 4);
 
     /// <summary>The tooltip of "Soften spine shadow", on (<paramref name="on"/>) or off: what it does.</summary>
-    public static string Hint(bool on) => "Lightens the dark band along the spine";
+    public static string Hint(bool on) => Loc.T("Lightens the dark band along the spine");
 
     /// <summary>
     /// <paramref name="image"/> (scanned at <paramref name="dpi"/>) with the shadow along <paramref name="edge"/>

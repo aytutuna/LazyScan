@@ -273,18 +273,18 @@ public static class PageTurns
     public static string? Caption(ScannedPage page) => page.Upright switch
     {
         null => null,
-        { Undone: true } => "Turned back as scanned",
-        { QuarterTurns: 1 } => "Turned upright 90° clockwise",
-        { QuarterTurns: 3 } => "Turned upright 90° counterclockwise",
-        _ => "Turned upright 180°",
+        { Undone: true } => Loc.T("Turned back as scanned"),
+        { QuarterTurns: 1 } => Loc.T("Turned upright 90° clockwise"),
+        { QuarterTurns: 3 } => Loc.T("Turned upright 90° counterclockwise"),
+        _ => Loc.T("Turned upright 180°"),
     };
 
     /// <summary>What one click on the page's turn button does: "Undo turn" or "Turn upright again"; null for a page not turned.</summary>
     public static string? ToggleLabel(ScannedPage page) => page.Upright switch
     {
         null => null,
-        { Undone: true } => "Turn upright again",
-        _ => "Undo turn",
+        { Undone: true } => Loc.T("Turn upright again"),
+        _ => Loc.T("Undo turn"),
     };
 
     /// <summary>
@@ -293,8 +293,8 @@ public static class PageTurns
     /// </summary>
     public static string ToggleNote(ScannedPage page, int number) =>
         page.Upright is { Undone: false }
-            ? $"Page {number} is turned upright again."
-            : $"Page {number} is turned back as scanned. It is saved that way.";
+            ? Loc.T("Page {0} is turned upright again.", number)
+            : Loc.T("Page {0} is turned back as scanned. It is saved that way.", number);
 
     /// <summary>
     /// The status after a scan's pages were queued, when some were turned: " 2 turned upright."
@@ -307,8 +307,8 @@ public static class PageTurns
     }
 
     /// <summary>The status note when pages were to be turned upright but no text can be read (leading space).</summary>
-    public const string UnavailableNote =
-        " Pages were not turned upright: no text recognition language is installed.";
+    public static string UnavailableNote =>
+        " " + Loc.T("Pages were not turned upright: no text recognition language is installed.");
 
     /// <summary>
     /// The tooltip of "Rotate pages upright": why it is off for copies, receipts and scans saved at
@@ -317,10 +317,10 @@ public static class PageTurns
     public static string Hint(ScanSettings settings, bool available)
     {
         var flow = TaskCatalog.FlowOf(settings);
-        if (flow == TaskFlowKind.Copy) return "Copies print every page as scanned: pages are not turned.";
-        if (flow == TaskFlowKind.ReceiptSplit) return "Receipts are kept the way they lie on the glass.";
-        if (!settings.DocumentMultiPage) return "Only for pages collected before saving: a scan saved at once is kept as scanned.";
-        if (!available) return "Needs a text recognition language, and none is installed.";
-        return "Turns sideways or upside-down pages by reading the text";
+        if (flow == TaskFlowKind.Copy) return Loc.T("Copies print every page as scanned: pages are not turned.");
+        if (flow == TaskFlowKind.ReceiptSplit) return Loc.T("Receipts are kept the way they lie on the glass.");
+        if (!settings.DocumentMultiPage) return Loc.T("Only for pages collected before saving: a scan saved at once is kept as scanned.");
+        if (!available) return Loc.T("Needs a text recognition language, and none is installed.");
+        return Loc.T("Turns sideways or upside-down pages by reading the text");
     }
 }

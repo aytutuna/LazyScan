@@ -92,8 +92,7 @@ public static class CaptureObjects
     /// The note on a side of the ID card cut out of a shot whose shape matched no ID-1 card
     /// (<see cref="CaptureScaleResult.IsRealSize"/> false): its size is made up.
     /// </summary>
-    public const string CardNotRealSizeNote =
-        "This does not look like the shape of an ID card, so it is not at real size. Fix the crop, or take it again.";
+    public static string CardNotRealSizeNote => Loc.T("This does not look like the shape of an ID card, so it is not at real size. Fix the crop, or take it again.");
 
     /// <summary>
     /// The note on a side of the ID card cut out of a shot: <see cref="CardNotRealSizeNote"/> when it was

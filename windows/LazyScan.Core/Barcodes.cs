@@ -26,7 +26,7 @@ public static class BarcodeSymbologies
     /// <summary>"QR code", "Code 128", "Code 39", "Data Matrix".</summary>
     public static string Label(this BarcodeSymbology symbology) => symbology switch
     {
-        BarcodeSymbology.QrCode => "QR code",
+        BarcodeSymbology.QrCode => Loc.T("QR code"),
         BarcodeSymbology.Code128 => "Code 128",
         BarcodeSymbology.Code39 => "Code 39",
         BarcodeSymbology.DataMatrix => "Data Matrix",
@@ -94,19 +94,20 @@ public static class BarcodeSeparators
     {
         if (on)
         {
-            return "Each page with a barcode or QR code is kept as the first page of a new document, named after the code's text: for documents that carry their own code, such as invoices.";
+            return Loc.T("Each page with a barcode or QR code is kept as the first page of a new document, named after the code's text: for documents that carry their own code, such as invoices.");
         }
         string start = Prefix(prefix ?? DefaultPrefix);
         return start.Length == 0
-            ? "A sheet with a barcode or QR code is a separator sheet: it is left out, and the code's text names the document after it. Print QR separator sheets below, with a name or without."
-            : $"A sheet whose barcode or QR code starts with “{start}” is a separator sheet: it is left out, and the rest of the code's text names the document after it. Other codes are ignored. Print QR separator sheets below, with a name or without.";
+            ? Loc.T("A sheet with a barcode or QR code is a separator sheet: it is left out, and the code's text names the document after it. Print QR separator sheets below, with a name or without.")
+            : Loc.T("A sheet whose barcode or QR code starts with “{0}” is a separator sheet: it is left out, and the rest of the code's text names the document after it. Other codes are ignored. Print QR separator sheets below, with a name or without.", start);
     }
 
     /// <summary>
     /// The one line under "Codes are on": what happens to the page or sheet with a code, kept as a
     /// document's first page (<paramref name="on"/>) or left out as a separator sheet.
     /// </summary>
-    public static string StartsDocumentCaption(bool on) => on ? "Pages are kept" : "Sheets are left out";
+    public static string StartsDocumentCaption(bool on) =>
+        on ? Loc.T("Pages are kept") : Loc.T("Sheets are left out");
 
     /// <summary>The prefix as it is compared: <paramref name="prefix"/> trimmed. Empty: every code makes a separator sheet.</summary>
     public static string Prefix(string? prefix) => (prefix ?? "").Trim();
@@ -295,7 +296,7 @@ public static class BarcodeSeparators
         {
             text = elements.SubstringByTextElements(0, MaxNoteTextLength - 1) + "…";
         }
-        return $"{reading.Symbology.Label()} “{text}”";
+        return Loc.T("{0} “{1}”", reading.Symbology.Label(), text);
     }
 
     /// <summary><paramref name="text"/> with a–z made A–Z and every other character as it is.</summary>
@@ -474,14 +475,14 @@ public static class QrSeparatorSheet
     /// <summary>The status after the PDF was saved.</summary>
     public static string SavedMessage(string fileName, string? name) =>
         BarcodeSeparators.Label(name) is { } label
-            ? $"Saved the QR separator sheet for “{label}”: {fileName}. Print it and put it in front of that document; the document is named “{label}”."
-            : $"Saved the QR separator sheet: {fileName}. Print as many as you need and put one in front of each document.";
+            ? Loc.T("Saved the QR separator sheet for “{0}”: {1}. Print it and put it in front of that document; the document is named “{0}”.", label, fileName)
+            : Loc.T("Saved the QR separator sheet: {0}. Print as many as you need and put one in front of each document.", fileName);
 
     /// <summary>The status after the sheet was sent to <paramref name="printer"/>.</summary>
     public static string PrintedMessage(string printer, string? name) =>
         BarcodeSeparators.Label(name) is { } label
-            ? $"Sent the QR separator sheet for “{label}” to {printer}. Put it in front of that document; the document is named “{label}”."
-            : $"Sent the QR separator sheet to {printer}. Put one in front of each document; print more copies as you need them.";
+            ? Loc.T("Sent the QR separator sheet for “{0}” to {1}. Put it in front of that document; the document is named “{0}”.", label, printer)
+            : Loc.T("Sent the QR separator sheet to {0}. Put one in front of each document; print more copies as you need them.", printer);
 
     /// <summary>The print job's name.</summary>
     public const string JobName = "Separator sheet (QR code)";

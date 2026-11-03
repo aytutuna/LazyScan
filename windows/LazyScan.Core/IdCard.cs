@@ -37,7 +37,7 @@ public static class IdCardPapers
     {
         IdCardPaper.A4 => "A4",
         IdCardPaper.Letter => "Letter",
-        _ => "Automatic",
+        _ => Loc.T("Automatic"),
     };
 
     /// <summary>The paper the copy is made on: A4 or Letter as chosen; for Automatic the usual paper in <paramref name="regionCode"/>.</summary>
@@ -60,7 +60,7 @@ public static class IdCardPapers
 
     /// <summary>How a picker names a choice, Automatic with the paper it is now: "Automatic (A4)", "A4", "Letter".</summary>
     public static string ChoiceLabel(IdCardPaper paper, string? regionCode, PaperSize? printerPaper) =>
-        paper == IdCardPaper.Auto ? $"Automatic ({Resolve(paper, regionCode, printerPaper).Label()})" : paper.Label();
+        paper == IdCardPaper.Auto ? Loc.T("Automatic ({0})", Resolve(paper, regionCode, printerPaper).Label()) : paper.Label();
 }
 
 /// <summary>The guided steps of the ID card task: the front, the back (skippable), then checking and saving.</summary>
@@ -91,13 +91,13 @@ public static class IdCardSteps
     ];
 
     /// <summary>The button that leaves out the back of a card with nothing printed on it.</summary>
-    public const string SkipBackLabel = "No back side";
+    public static string SkipBackLabel => Loc.T("No back side");
 
     /// <summary>The ID card review's line on privacy: the scans stay out of the Scans history.</summary>
-    public const string PrivacyNote = "Not kept in Scans history";
+    public static string PrivacyNote => Loc.T("Not kept in Scans history");
 
     /// <summary>The privacy line's full sentence, for its tooltip and screen readers.</summary>
-    public const string PrivacyHelp = "The scans stay on this computer and are cleared once you save or discard them.";
+    public static string PrivacyHelp => Loc.T("The scans stay on this computer and are cleared once you save or discard them.");
 
     /// <summary>The side a step scans; null for the review and any other step.</summary>
     public static PageSide? SideOf(string? stepId) => stepId switch
@@ -284,9 +284,9 @@ public static class IdCardDetector
     /// <summary>What to check about a side, by how its card was found; null for a card.</summary>
     public static string? Note(IdCardPickKind kind) => kind switch
     {
-        IdCardPickKind.LargestRegion => "This does not look like the size of an ID card. Check the crop.",
-        IdCardPickKind.FrontPlace => "The card did not stand out on this scan, so the place of the front was used. Check the crop.",
-        IdCardPickKind.WholeScan => "No card was found, so the whole glass was kept. Fix the crop, or scan again with the lid closed.",
+        IdCardPickKind.LargestRegion => Loc.T("This does not look like the size of an ID card. Check the crop."),
+        IdCardPickKind.FrontPlace => Loc.T("The card did not stand out on this scan, so the place of the front was used. Check the crop."),
+        IdCardPickKind.WholeScan => Loc.T("No card was found, so the whole glass was kept. Fix the crop, or scan again with the lid closed."),
         _ => null,
     };
 }
@@ -310,7 +310,7 @@ public static class IdCardLayout
     public const double EdgeMarginInches = 0.25;
 
     /// <summary>The warning shown when the sides were made smaller to fit the page.</summary>
-    public const string NotRealSizeMessage = "Too large for the page at real size, so it was made smaller to fit. It is not at real size.";
+    public static string NotRealSizeMessage => Loc.T("Too large for the page at real size, so it was made smaller to fit. It is not at real size.");
 
     /// <summary>
     /// The places of a front <paramref name="front"/> and back <paramref name="back"/> (inches) on
@@ -341,8 +341,13 @@ public static class IdCardLayout
     }
 
     /// <summary>"One A4 page, real size", "Front only, one Letter page, made smaller to fit".</summary>
-    public static string Caption(PaperSize paper, bool hasBack, bool scaledToFit) =>
-        $"{(hasBack ? "One" : "Front only, one")} {paper.Label()} page, {(scaledToFit ? "made smaller to fit" : "real size")}";
+    public static string Caption(PaperSize paper, bool hasBack, bool scaledToFit) => (hasBack, scaledToFit) switch
+    {
+        (true, false) => Loc.T("One {0} page, real size", paper.Label()),
+        (true, true) => Loc.T("One {0} page, made smaller to fit", paper.Label()),
+        (false, false) => Loc.T("Front only, one {0} page, real size", paper.Label()),
+        (false, true) => Loc.T("Front only, one {0} page, made smaller to fit", paper.Label()),
+    };
 }
 
 /// <summary>One side of a card as cut out of its scan, at the resolution it was scanned at.</summary>

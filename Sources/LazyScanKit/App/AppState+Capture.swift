@@ -111,7 +111,7 @@ extension AppState {
                 self.idCardCaptureFacts[sourceID] = cut.facts
                 let note: String? = CaptureObjects.cardNote(realSize: cut.facts.scale?.isRealSize == true, glare: cut.glare)
                 self.setIdCardSide(side, photo: updated, note: note)
-                self.statusMessage = "Crop updated."
+                self.statusMessage = L10n.t("Crop updated.")
                 self.refreshIdCardPreview()
             } else {
                 guard let index = self.detectedPhotos.firstIndex(where: { (item: DetectedPhoto) -> Bool in item.id == id }) else { return }

@@ -81,7 +81,7 @@ public sealed partial class AppViewModel
     /// <summary>Opens the review on the receipts found on the pages just scanned.</summary>
     private async Task ShowReceipts(List<ScannedPage> processed, ScanSettings s, int generation, CancellationToken token)
     {
-        StatusMessage = "Finding receipts…";
+        StatusMessage = Loc.T("Finding receipts…");
         NotifyAll();
         var found = await Task.Run(() =>
         {
@@ -102,7 +102,7 @@ public sealed partial class AppViewModel
         RecordCaptures(found.Select(item => item.Photo.Id));
         ShowPhotoReview = found.Count > 0;
         if (!ShowPhotoReview) _photoSourceImages = [];
-        StatusMessage = $"{Receipts.ReviewTitle(found.Count)}.";
+        StatusMessage = Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts.");
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed partial class AppViewModel
                 IReadOnlyList<OcrLine>? read = null;
                 if (readsText)
                 {
-                    StatusMessage = $"Reading receipt {i + 1} of {receipts.Count}…";
+                    StatusMessage = Loc.T("Reading receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
                     // A receipt whose text cannot be read is still saved: without a text layer,
                     // named by the scan date.
@@ -170,7 +170,7 @@ public sealed partial class AppViewModel
                 foreach (int i in indices)
                 {
                     if (lines[i] is { } l) text.Pages.Add(OcrPage.Of(l, images[i].Width, images[i].Height, receipts[i].Dpi));
-                    else text.Problem ??= ocrProblem ?? "The text could not be read.";
+                    else text.Problem ??= ocrProblem ?? Loc.T("The text could not be read.");
                 }
                 // A text file that cannot be written is reported; the PDF is kept.
                 if (await WriteTextBeside(pdfPath, text) is { } written) textFiles.Add(written);
@@ -179,7 +179,7 @@ public sealed partial class AppViewModel
             {
                 if (combine)
                 {
-                    StatusMessage = "Writing the PDF…";
+                    StatusMessage = Loc.T("Writing the PDF…");
                     NotifyAll();
                     var pages = images.Select((image, i) => new ScannedPage(image, receipts[i].Dpi, ColorMode.Grayscale)).ToList();
                     string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates)),
@@ -191,7 +191,7 @@ public sealed partial class AppViewModel
                 for (int i = 0; i < receipts.Count; i++)
                 {
                     token.ThrowIfCancellationRequested();
-                    StatusMessage = $"Saving receipt {i + 1} of {receipts.Count}…";
+                    StatusMessage = Loc.T("Saving receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
                     string path = OutputPath(s, format.FileExtension(), documentDate: dates[i]);
                     if (format == OutputFormat.Pdf)

@@ -299,8 +299,7 @@ public static class DocumentSplitter
         options.SplitMode == SplitMode.BlankSheet && sides == DuplexMode.Off;
 
     /// <summary>Why Skip blank pages is off while <see cref="BlankPagesAreSeparators"/> holds.</summary>
-    public const string BlankPagesAreSeparatorsHint =
-        "Each blank page splits the stack into documents and is left out: Split into documents is At blank sheets.";
+    public static string BlankPagesAreSeparatorsHint => Loc.T("Each blank page splits the stack into documents and is left out: Split into documents is At blank sheets.");
 
     /// <summary>
     /// Whether a click on the gap before page <paramref name="index"/> can split or join there: a
@@ -352,7 +351,7 @@ public static class DocumentSplitter
 
     /// <summary>"Document 2", or "Document 2 · Invoice 0042" when it has a name.</summary>
     public static string DocumentTitle(PlannedDocument document) =>
-        document.Label is { } label ? $"Document {document.Number} · {label}" : $"Document {document.Number}";
+        document.Label is { } label ? Loc.T("Document {0} · {1}", document.Number, label) : Loc.T("Document {0}", document.Number);
 
     /// <summary>
     /// The title over page <paramref name="index"/> when it starts a document and the queue is
@@ -371,7 +370,7 @@ public static class DocumentSplitter
     {
         if (!CanToggleBreak(plan, index)) return null;
         var page = plan.Pages[index];
-        return page.StartsDocument ? $"Join with document {page.Document - 1}" : "Start a new document here";
+        return page.StartsDocument ? Loc.T("Join with document {0}", page.Document - 1) : Loc.T("Start a new document here");
     }
 
     /// <summary>
@@ -379,14 +378,14 @@ public static class DocumentSplitter
     /// separator sheet, otherwise <see cref="PageFilter.Badge"/>.
     /// </summary>
     public static string? Badge(SplitPlan plan, int index, ScannedPage page, DocumentOptions options) =>
-        plan.Pages[index].Role == PageRole.Separator ? "Separator" : PageFilter.Badge(page, options);
+        plan.Pages[index].Role == PageRole.Separator ? Loc.T("Separator") : PageFilter.Badge(page, options);
 
     /// <summary>
     /// What one click on page <paramref name="index"/> does: "Keep this page" for a separator page,
     /// otherwise <see cref="PageFilter.ToggleLabel"/>.
     /// </summary>
     public static string? ToggleLabel(SplitPlan plan, int index, ScannedPage page, DocumentOptions options) =>
-        plan.Pages[index].Role == PageRole.Separator ? "Keep this page" : PageFilter.ToggleLabel(page, options);
+        plan.Pages[index].Role == PageRole.Separator ? Loc.T("Keep this page") : PageFilter.ToggleLabel(page, options);
 
     /// <summary>
     /// What a separator page is, for its tooltip and screen readers: "Separator sheet (Patch T): a new
@@ -401,15 +400,15 @@ public static class DocumentSplitter
     {
         var planned = plan.Pages[index];
         if (planned.Role != PageRole.Separator) return null;
-        string what = planned.Code is { } reading ? $"Separator sheet ({BarcodeSeparators.Describe(reading)})"
-                    : page.Patch is { } code ? $"Separator sheet ({code.Label()})"
-                    : "Blank separator sheet";
+        string what = planned.Code is { } reading ? Loc.T("Separator sheet ({0})", BarcodeSeparators.Describe(reading))
+                    : page.Patch is { } code ? Loc.T("Separator sheet ({0})", code.Label())
+                    : Loc.T("Blank separator sheet");
         var next = NextSavedPage(plan, index);
         if (next is { StartsDocument: false })
-            return $"{what}: the pages after it are joined to the document before. It is not saved.";
+            return Loc.T("{0}: the pages after it are joined to the document before. It is not saved.", what);
         if (planned.Code is not null && next is { Document: { } number } && plan.Documents[number - 1].Label is { } name)
-            return $"{what}: a new document named “{name}” starts after it. It is not saved.";
-        return $"{what}: a new document starts after it. It is not saved.";
+            return Loc.T("{0}: a new document named “{1}” starts after it. It is not saved.", what, name);
+        return Loc.T("{0}: a new document starts after it. It is not saved.", what);
     }
 
     /// <summary>The first page saved after <paramref name="index"/>; null when no page follows.</summary>

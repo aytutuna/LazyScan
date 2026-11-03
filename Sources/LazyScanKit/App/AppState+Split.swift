@@ -98,11 +98,11 @@ extension AppState {
         let firstPage = document.pages[0]
         let shown = cleaned ?? queuePlan.documents.first(where: { $0.pages.contains(firstPage) })?.label
         if let cleaned {
-            statusMessage = "Document \(number) is named \u{201C}\(cleaned)\u{201D}: it goes into the file name."
+            statusMessage = L10n.t("Document {0} is named “{1}”: it goes into the file name.", number, cleaned)
         } else if let shown {
-            statusMessage = "Document \(number) is named \u{201C}\(shown)\u{201D} by its barcode."
+            statusMessage = L10n.t("Document {0} is named “{1}” by its barcode.", number, shown)
         } else {
-            statusMessage = "Document \(number) has no name."
+            statusMessage = L10n.t("Document {0} has no name.", number)
         }
     }
 
@@ -164,7 +164,7 @@ extension AppState {
                     let done = results.count
                     await MainActor.run {
                         if !flag.isCancelled {
-                            self.statusMessage = "Reading barcodes on queued pages: \(done) of \(total)\u{2026}"
+                            self.statusMessage = L10n.t("Reading barcodes on queued pages: {0} of {1}…", done, total)
                         }
                     }
                 }
@@ -228,7 +228,7 @@ extension AppState {
         do {
             for document in plan.documents {
                 if flag.isCancelled { throw ScanError.cancelled }
-                self.statusMessage = "Saving document \(document.number) of \(plan.documents.count)\u{2026}"
+                self.statusMessage = L10n.t("Saving document {0} of {1}…", document.number, plan.documents.count)
                 let pages = document.pages
                 let url = try self.outputURL(fileExtension: format.fileExtension, index: plan.fileIndex(document),
                                              label: document.label)
@@ -314,8 +314,8 @@ extension AppState {
         let name = qr ? BarcodeSeparators.label(qrSheetName) : nil
         let code = qr ? qrEncoder.encode(QrSeparatorSheet.text(name, prefix: settings.document.splitBarcodePrefix)) : nil
         runExclusive { flag in
-            if qr && code == nil { throw NotSavedError("The name does not fit in a QR code. Use a shorter name.") }
-            self.statusMessage = qr ? "Saving the QR separator sheet\u{2026}" : "Saving the separator sheet\u{2026}"
+            if qr && code == nil { throw NotSavedError(L10n.t("The name does not fit in a QR code. Use a shorter name.")) }
+            self.statusMessage = qr ? L10n.t("Saving the QR separator sheet…") : L10n.t("Saving the separator sheet…")
             let sheetPaper = SeparatorSheet.paper(regionCode: Self.regionCode)
             let inches = PaperSizes.inches(sheetPaper) ?? CGSize(width: 8.5, height: 11)
             let folder = try self.destinationDirectory()
@@ -335,12 +335,12 @@ extension AppState {
                                         dpi: dpi, ocrLines: nil)
                 return try? PDFWriter.make([page])
             }.value
-            guard let document else { throw NotSavedError("The separator sheet could not be drawn.") }
+            guard let document else { throw NotSavedError(L10n.t("The separator sheet could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             do {
                 try document.write(to: url, options: .withoutOverwriting)
             } catch {
-                throw NotSavedError("The separator sheet could not be saved: \(error.localizedDescription)")
+                throw NotSavedError(L10n.t("The separator sheet could not be saved: {0}", error.localizedDescription))
             }
             self.lastSavedURLs = [url]
             // The sheet is never protected, whatever the last PDF saved was.
@@ -379,7 +379,7 @@ extension AppState {
         let name = qr ? BarcodeSeparators.label(qrSheetName) : nil
         let code = qr ? qrEncoder.encode(QrSeparatorSheet.text(name, prefix: settings.document.splitBarcodePrefix)) : nil
         runExclusive { flag in
-            if qr && code == nil { throw PrintError.failed("The name does not fit in a QR code. Use a shorter name.") }
+            if qr && code == nil { throw PrintError.failed(L10n.t("The name does not fit in a QR code. Use a shorter name.")) }
             guard let setup = self.setupForPrinting(s, requestedPaper: nil) else { throw PrintError.noPrinter }
             let paper = setup.paper
             let dpi = SeparatorSheet.dpi
@@ -392,18 +392,18 @@ extension AppState {
                 return PrintDocument.makePDF(pages: [PrintPage(image: image, dpi: dpi, placement: placement)],
                                              paper: paper.paper)
             }.value
-            guard let document else { throw PrintError.failed("The separator sheet could not be drawn.") }
+            guard let document else { throw PrintError.failed(L10n.t("The separator sheet could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
-            self.statusMessage = "Printing the separator sheet on \(setup.printerName)\u{2026}"
+            self.statusMessage = L10n.t("Printing the separator sheet on {0}…", setup.printerName)
             let job = PrintJob(printerName: setup.printerName, jobName: qr ? QrSeparatorSheet.jobName : "Separator sheet (Patch T)",
                                paper: paper, copies: 1)
             guard try await self.printService.print(document, job: job) else {
-                self.statusMessage = "Printing cancelled."
+                self.statusMessage = L10n.t("Printing cancelled.")
                 return
             }
             self.statusMessage = qr
                 ? QrSeparatorSheet.printedMessage(setup.printerName, name: name)
-                : "Sent the separator sheet to \(setup.printerName). Put one in front of each document after the first; print more copies as you need them."
+                : L10n.t("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.printerName)
         }
     }
 }

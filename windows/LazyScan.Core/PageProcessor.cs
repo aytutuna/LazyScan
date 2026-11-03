@@ -674,8 +674,8 @@ public static class PageFilter
     public static string? Badge(ScannedPage page, DocumentOptions options)
     {
         bool blank = LooksBlank(page, options.BlankSensitivity);
-        if (IsExcluded(page, options)) return blank ? "Blank, skipped" : "Skipped";
-        return blank ? "Looks blank" : null;
+        if (IsExcluded(page, options)) return blank ? Loc.T("Blank, skipped") : Loc.T("Skipped");
+        return blank ? Loc.T("Looks blank") : null;
     }
 
     /// <summary>
@@ -685,9 +685,9 @@ public static class PageFilter
     /// </summary>
     public static string? ToggleLabel(ScannedPage page, DocumentOptions options)
     {
-        if (IsExcluded(page, options)) return "Keep this page";
+        if (IsExcluded(page, options)) return Loc.T("Keep this page");
         return LooksBlank(page, options.BlankSensitivity) || page.Inclusion != PageInclusion.Automatic
-            ? "Skip this page"
+            ? Loc.T("Skip this page")
             : null;
     }
 
@@ -716,10 +716,10 @@ public static class PageFilter
     }
 
     /// <summary>The message when every queued page is left out, so there is nothing to save.</summary>
-    public const string NothingToSaveMessage =
-        "Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.";
+    public static string NothingToSaveMessage =>
+        Loc.T("Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.");
     /// <summary>The title <see cref="NothingToSaveMessage"/> is shown under: nothing failed.</summary>
-    public const string NothingSavedTitle = "Nothing saved";
+    public static string NothingSavedTitle => Loc.T("Nothing saved");
 }
 
 /// <summary>
@@ -737,9 +737,9 @@ public static class PageCorrections
     public static string? Caption(ScannedPage page)
     {
         if (page.Geometry is null && page.SpineShadow is null) return null;
-        if (page.ShowsOriginal) return FromPhoto(page) ? PhotoImport.OriginalCaption : "As scanned";
-        if (page.Geometry is not { } geometry) return "Spine shadow softened";
-        return page.SpineShadow is null ? geometry.Caption : $"{geometry.Caption}, spine shadow softened";
+        if (page.ShowsOriginal) return FromPhoto(page) ? PhotoImport.OriginalCaption : Loc.T("As scanned");
+        if (page.Geometry is not { } geometry) return Loc.T("Spine shadow softened");
+        return page.SpineShadow is null ? geometry.Caption : Loc.T("{0}, spine shadow softened", geometry.Caption);
     }
 
     /// <summary>
@@ -751,9 +751,18 @@ public static class PageCorrections
     public static string? ToggleLabel(ScannedPage page)
     {
         if (!page.CanSwapVersions) return null;
-        if (!page.ShowsOriginal) return FromPhoto(page) ? "Show as photographed" : "Show as scanned";
-        if (page.Geometry is not { } geometry) return "Show with the spine shadow softened";
-        return page.SpineShadow is null ? $"Show {Done(geometry)}" : $"Show {Done(geometry)}, with the spine shadow softened";
+        if (!page.ShowsOriginal) return FromPhoto(page) ? Loc.T("Show as photographed") : Loc.T("Show as scanned");
+        if (page.Geometry is not { } geometry) return Loc.T("Show with the spine shadow softened");
+        bool softened = page.SpineShadow is not null;
+        return ChangeOf(geometry) switch
+        {
+            Change.Corrected => softened ? Loc.T("Show corrected, with the spine shadow softened") : Loc.T("Show corrected"),
+            Change.CroppedAndStraightened => softened
+                ? Loc.T("Show cropped and straightened, with the spine shadow softened")
+                : Loc.T("Show cropped and straightened"),
+            Change.Straightened => softened ? Loc.T("Show straightened, with the spine shadow softened") : Loc.T("Show straightened"),
+            _ => softened ? Loc.T("Show cropped, with the spine shadow softened") : Loc.T("Show cropped"),
+        };
     }
 
     /// <summary>
@@ -768,13 +777,26 @@ public static class PageCorrections
         if (page.ShowsOriginal || (page.Geometry is null && page.SpineShadow is null))
         {
             return FromPhoto(page)
-                ? $"Page {number} is shown as photographed. It is saved that way."
-                : $"Page {number} is shown as scanned. It is saved that way.";
+                ? Loc.T("Page {0} is shown as photographed. It is saved that way.", number)
+                : Loc.T("Page {0} is shown as scanned. It is saved that way.", number);
         }
-        if (page.Geometry is not { } geometry) return $"Page {number} is shown with the spine shadow softened again.";
-        return page.SpineShadow is null
-            ? $"Page {number} is {Done(geometry)} again."
-            : $"Page {number} is {Done(geometry)} again, with the spine shadow softened.";
+        if (page.Geometry is not { } geometry) return Loc.T("Page {0} is shown with the spine shadow softened again.", number);
+        bool softened = page.SpineShadow is not null;
+        return ChangeOf(geometry) switch
+        {
+            Change.Corrected => softened
+                ? Loc.T("Page {0} is corrected again, with the spine shadow softened.", number)
+                : Loc.T("Page {0} is corrected again.", number),
+            Change.CroppedAndStraightened => softened
+                ? Loc.T("Page {0} is cropped and straightened again, with the spine shadow softened.", number)
+                : Loc.T("Page {0} is cropped and straightened again.", number),
+            Change.Straightened => softened
+                ? Loc.T("Page {0} is straightened again, with the spine shadow softened.", number)
+                : Loc.T("Page {0} is straightened again.", number),
+            _ => softened
+                ? Loc.T("Page {0} is cropped again, with the spine shadow softened.", number)
+                : Loc.T("Page {0} is cropped again.", number),
+        };
     }
 
     /// <summary>
@@ -788,12 +810,17 @@ public static class PageCorrections
     {
         var pages = added.ToList();
         var changed = pages.Where(p => p.Geometry is { Basis: not GeometryBasis.Perspective } && !p.ShowsOriginal)
-            .Select(p => Done(p.Geometry!)).ToList();
+            .Select(p => ChangeOf(p.Geometry!)).ToList();
         string note = "";
         if (changed.Count > 0)
         {
-            string verb = changed.Distinct().Count() == 1 ? changed[0] : "cropped or straightened";
-            note = $" {changed.Count} {verb}.";
+            note = " " + (changed.Distinct().Count() > 1 ? Loc.Plural(changed.Count, "{0} cropped or straightened.", "{0} cropped or straightened.")
+                : changed[0] switch
+                {
+                    Change.CroppedAndStraightened => Loc.Plural(changed.Count, "{0} cropped and straightened.", "{0} cropped and straightened."),
+                    Change.Straightened => Loc.Plural(changed.Count, "{0} straightened.", "{0} straightened."),
+                    _ => Loc.Plural(changed.Count, "{0} cropped.", "{0} cropped."),
+                });
         }
         int softened = pages.Count(p => p.SpineShadow is not null && !p.ShowsOriginal);
         if (softened > 0) note += " " + Loc.Plural(softened, "Spine shadow softened on {0} page.", "Spine shadow softened on {0} pages.");
@@ -803,10 +830,12 @@ public static class PageCorrections
     /// <summary>The page was taken from a photo along its corners: its other version is the photo.</summary>
     private static bool FromPhoto(ScannedPage page) => page.Geometry?.Basis == GeometryBasis.Perspective;
 
-    /// <summary>"cropped and straightened", "straightened" or "cropped"; "corrected" for a page taken from a photo.</summary>
-    private static string Done(PageGeometry geometry) =>
-        geometry.Basis == GeometryBasis.Perspective ? "corrected"
-        : geometry.Cropped && geometry.Straightened ? "cropped and straightened"
-        : geometry.Straightened ? "straightened"
-        : "cropped";
+    private enum Change { Corrected, CroppedAndStraightened, Straightened, Cropped }
+
+    /// <summary>What was done to the page: corrected for a page taken from a photo.</summary>
+    private static Change ChangeOf(PageGeometry geometry) =>
+        geometry.Basis == GeometryBasis.Perspective ? Change.Corrected
+        : geometry.Cropped && geometry.Straightened ? Change.CroppedAndStraightened
+        : geometry.Straightened ? Change.Straightened
+        : Change.Cropped;
 }

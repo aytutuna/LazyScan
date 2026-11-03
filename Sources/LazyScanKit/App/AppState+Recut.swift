@@ -71,15 +71,15 @@ public enum PageRecut {
 
     /// "Page 2: Grayscale."
     public static func filterNote(_ filter: CaptureFilter, number: Int) -> String {
-        "Page \(number): \(filter.label)."
+        L10n.t("Page {0}: {1}.", number, filter.label)
     }
 
     /// "Page 2 is cut out again."
     public static func cropNote(number: Int) -> String {
-        "Page \(number) is cut out again."
+        L10n.t("Page {0} is cut out again.", number)
     }
 
-    public static let failedMessage = "The page could not be changed: its photo could not be read."
+    public static var failedMessage: String { L10n.t("The page could not be changed: its photo could not be read.") }
 }
 
 extension AppState {

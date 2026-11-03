@@ -20,7 +20,7 @@ public struct VisionBarcodeReader: BarcodeReader {
 
     public func read(_ image: GrayImage) throws -> [BarcodeReading] {
         guard let cgImage = Self.makeCGImage(image) else {
-            throw ScanError.scanFailed("Barcode reading failed: the page could not be prepared for reading.")
+            throw ScanError.scanFailed(L10n.t("Barcode reading failed: the page could not be prepared for reading."))
         }
         let request = VNDetectBarcodesRequest()
         request.symbologies = Self.kinds.map { $0.0 }
@@ -28,7 +28,7 @@ public struct VisionBarcodeReader: BarcodeReader {
         do {
             try handler.perform([request])
         } catch {
-            throw ScanError.scanFailed("Barcode reading failed: \(error.localizedDescription)")
+            throw ScanError.scanFailed(L10n.t("Barcode reading failed: {0}", error.localizedDescription))
         }
         let width = Double(image.width)
         let height = Double(image.height)
