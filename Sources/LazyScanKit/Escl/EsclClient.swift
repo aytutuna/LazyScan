@@ -621,6 +621,7 @@ public final class EsclClient: @unchecked Sendable {
         }
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.urlCache = nil
+        configuration.connectionProxyDictionary = [:]
         configuration.httpShouldSetCookies = false
         configuration.httpCookieAcceptPolicy = .never
         configuration.httpShouldUsePipelining = false

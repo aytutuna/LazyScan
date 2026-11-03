@@ -355,6 +355,7 @@ public sealed class EsclCertificateValidator(EsclTrustStore store, string? devic
     /// <summary>A handler whose TLS connections are checked by this validator.</summary>
     public HttpMessageHandler CreateHandler() => new HttpClientHandler
     {
+        UseProxy = false,
         ServerCertificateCustomValidationCallback = (request, certificate, _, errors) =>
             Validate(request.RequestUri, certificate, errors),
     };

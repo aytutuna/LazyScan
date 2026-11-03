@@ -126,6 +126,7 @@ public final class CompanionClient: @unchecked Sendable {
         configuration.timeoutIntervalForRequest = CompanionClient.requestTimeout
         configuration.waitsForConnectivity = false
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.connectionProxyDictionary = [:]
         configuration.urlCache = nil
         configuration.httpShouldSetCookies = false
         configuration.httpCookieAcceptPolicy = .never
