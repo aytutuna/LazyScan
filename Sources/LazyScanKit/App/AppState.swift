@@ -1587,7 +1587,7 @@ public final class AppState: ObservableObject {
     /// settings it was scanned with. The pages are held nowhere else, so when a file cannot be written
     /// (or the text of a Word document or text file cannot be read), or the save is cancelled, the
     /// pages not written are put in the queue instead; pictures already written are kept and offered.
-    private func saveImmediately(_ pages: [ScannedPage], settings s: ScanSettings, flag: CancelFlag) async throws {
+    func saveImmediately(_ pages: [ScannedPage], settings s: ScanSettings, flag: CancelFlag) async throws {
         var saved: [URL] = []
         var note = ""
         if s.format.isTextFormat {

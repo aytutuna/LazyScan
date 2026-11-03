@@ -400,7 +400,7 @@ public struct PageProcessor {
                              book: splitsFacingPages(settings) ? BookSplitOptions.of(settings) : nil)
     }
 
-    /// The steps for pages made from imported photos of documents (`PhotoImport`), which always go to
+    /// The steps for pages made from imported photos of documents (`PhotoImport`) collected in
     /// the queue: the blank-page check, the separator-sheet check, reading barcodes when the stack is
     /// split at barcode or QR sheets and `barcodes` can read them, turning pages upright when asked for
     /// and `scorer` can read text, then the adjustments unless they change nothing. Crop and

@@ -379,6 +379,30 @@ final class PhotoImportTests: XCTestCase {
                           PhotoScenes.checksum(photo))
     }
 
+    func testPagesFromPhotosSavedAtOnceGetOnlyAScansSteps() throws {
+        // With Collect pages before saving off (Quick scan) the import saves its pages as a scan's are
+        // saved: never checked or turned unseen, only adjusted.
+        var s = TaskCatalog.apply(.quickScan, to: ScanSettings())
+        XCTAssertFalse(s.documentMultiPage)
+        s.document.autoCrop = true
+        s.document.autoRotate = true
+        s.document.splitMode = .barcode
+        s.adjustments.brightness = 0.2
+        s.colorMode = .grayscale
+        let processor = PageProcessor.forScan(s)
+        XCTAssertEqual(processor.steps.map(\.name), ["adjust"])
+
+        let photo = PhotoScenes.woodScene()
+        let page = try XCTUnwrap(PhotoImport.correctedPage(photo, corners: PhotoImport.plan(photo).corners))
+        let processed = try XCTUnwrap(try processor.process([page]).pages.first)
+        XCTAssertEqual(processed.id, page.id)
+        XCTAssertNil(processed.blank)
+        XCTAssertEqual(processed.colorMode, .grayscale)
+        XCTAssertEqual(processed.geometry?.basis, .perspective)
+        XCTAssertEqual(processed.source, .photo)
+        XCTAssertEqual(processed.alternate?.image?.width, photo.width)
+    }
+
     func testTheStatusTellsWhatTheImportDid() {
         XCTAssertEqual(PhotoImport.addedMessage(added: 3, skipped: 0, failed: 0, queueCount: 5, saveTitle: "save PDF"),
                        "Added 3 pages from photos \u{2014} 5 in queue. Scan more or save PDF.")

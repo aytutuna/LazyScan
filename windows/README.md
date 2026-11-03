@@ -393,7 +393,7 @@ Photos mode are answered with why they are not imported). Each page of a TIFF of
 fax, a scan) becomes a page; a photo of more than 150 megapixels is turned down from its header,
 before its pixels are decoded, and the other photos go on. It is offered wherever the queue
 collects pages (Document mode and the document tasks, also with **Collect pages** off, where the
-pages then wait in the queue); not in Photos mode or the ID card, copy and receipt tasks, nor while
+pages are then saved at once, as a scan's are); not in Photos mode or the ID card, copy and receipt tasks, nor while
 a stack turned over by hand is under way (between stacks it is, and photos never count as its sides).
 
 Each photo is read once into memory and never changed, moved or locked: the spool gets the page and
@@ -411,7 +411,10 @@ corner stays on the photo and the outline stays a page that can be cut out. **Us
 ends the import as **Cancel** does. Every page then goes through the clean-up stage
 like a scan, except crop and straighten (blank-page check, separator sheets, barcodes when the stack
 is split at them, turning upright, the adjustments and color mode), and is added to the queue at
-once, so **Cancel** keeps the pages already added. Its resolution is the one its shape gives when it
+once, so **Cancel** keeps the pages already added. With **Collect pages** off a page gets only the
+adjustments and color mode, as a scan saved at once does, and the pages are saved together once the
+last photo is in; **Cancel** then puts the pages imported so far in the queue, as a cancelled save
+does. Its resolution is the one its shape gives when it
 matches a paper size (A4, Letter, Legal, ID-1 within 3 %: the page then saves at that size), else
 200 dpi. The strip labels the page **Photo**, and its swap button shows it **as photographed** (the
 whole photo, saved that way at the page's resolution) and back. Photos that cannot be read are

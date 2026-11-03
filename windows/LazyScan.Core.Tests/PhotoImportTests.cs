@@ -389,6 +389,32 @@ public class PhotoImportTests
     }
 
     [Fact]
+    public void PagesFromPhotosSavedAtOnceGetOnlyAScansSteps()
+    {
+        // With Collect pages before saving off (Quick scan) the import saves its pages as a scan's are
+        // saved: never checked or turned unseen, only adjusted.
+        var s = TaskCatalog.Apply(ScanTask.QuickScan, new ScanSettings());
+        Assert.False(s.DocumentMultiPage);
+        s.Document.AutoCrop = true;
+        s.Document.AutoRotate = true;
+        s.Document.SplitMode = SplitMode.Barcode;
+        s.Adjustments.Brightness = 0.2;
+        s.ColorMode = ColorMode.Grayscale;
+        var processor = PageProcessor.ForScan(s);
+        Assert.Equal(["adjust"], processor.Steps.Select(step => step.Name));
+
+        var photo = PhotoScenes.WoodScene();
+        var page = PhotoImport.CorrectedPage(photo, PhotoImport.Plan(photo).Corners)!;
+        var processed = processor.Process([page]).Pages.Single();
+        Assert.Equal(page.Id, processed.Id);
+        Assert.Null(processed.Blank);
+        Assert.Equal(ColorMode.Grayscale, processed.ColorMode);
+        Assert.Equal(GeometryBasis.Perspective, processed.Geometry!.Basis);
+        Assert.Equal(PageSource.Photo, processed.Source);
+        Assert.Equal(photo.Width, processed.Alternate!.Image!.Width);
+    }
+
+    [Fact]
     public void TheStatusTellsWhatTheImportDid()
     {
         Assert.Equal("Added 3 pages from photos — 5 in queue. Scan more or save PDF.",

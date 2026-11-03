@@ -405,8 +405,8 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     }
 
     /// <summary>
-    /// The steps for pages made from imported photos of documents (<see cref="PhotoImport"/>), which
-    /// always go to the queue: the blank-page check, the separator-sheet check, reading barcodes when
+    /// The steps for pages made from imported photos of documents (<see cref="PhotoImport"/>) collected
+    /// in the queue: the blank-page check, the separator-sheet check, reading barcodes when
     /// the stack is split at barcode or QR sheets and <paramref name="barcodes"/> can read them, turning
     /// pages upright when asked for and <paramref name="scorer"/> can read text, then the adjustments
     /// unless they change nothing. Crop and straighten, the spine's shadow and splitting facing pages

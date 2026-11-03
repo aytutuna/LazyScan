@@ -198,9 +198,12 @@ extension AppState {
     /// corners; a photo whose page is not found clearly goes to the corner editor (`cornerReview`),
     /// which may also take the whole photo or skip it. Each page goes through the clean-up stage
     /// (`PageProcessor.forPhotoImport`), is spooled with the photo as its other version and added to the
-    /// queue at once, so a Cancel keeps the pages already added. Each page of a TIFF of several pages is
-    /// imported as a photo of its own. Photos that cannot be read (too large ones too) are listed in one
-    /// error at the end; the others are imported. Twin of the Windows `AppViewModel.ImportPhotos`.
+    /// queue at once, so a Cancel keeps the pages already added. With Collect pages before saving off the
+    /// pages are held instead, after a scan's clean-up stage (`PageProcessor.forScan`), and saved together
+    /// once the last photo is in, as a scan's are; a Cancel puts the pages held so far in the queue. Each
+    /// page of a TIFF of several pages is imported as a photo of its own. Photos that cannot be read (too
+    /// large ones too) are listed in one error at the end; the others are imported. Twin of the Windows
+    /// `AppViewModel.ImportPhotos`.
     public func importPhotos(_ urls: [URL]) {
         guard !isBusy else { return }
         let files = PhotoImport.photoFiles(urls.map(\.path)).map { URL(fileURLWithPath: $0) }
@@ -212,6 +215,9 @@ extension AppState {
             return
         }
         let s = settings
+        // With Collect pages before saving off the pages are saved together once the last photo is in, as
+        // a scan's are, and cleaned up as a scan's: pages saved at once are never checked or turned unseen.
+        let savesAtOnce = !s.documentMultiPage
         let scorer = orientationScorer
         let barcodes = barcodeReader
         let model = cornerModel
@@ -294,12 +300,21 @@ extension AppState {
                             continue
                         }
                         // The clean-up stage, then spill the page and the photo it was taken from to disk; keep
-                        // only previews in the queue.
+                        // only previews in the queue. A page to be saved at once is held as it is.
                         let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
-                            let processed = try PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
-                                .process([cleaned], shouldContinue: { !flag.isCancelled }).pages
-                            return (Self.spoolPages(processed, to: spool), Self.makePreview(cleaned.image, maxSide: 2600))
+                            let processor: PageProcessor = savesAtOnce
+                                ? PageProcessor.forScan(s)
+                                : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
+                            let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
+                            let pages: [ScannedPage] = savesAtOnce ? processed : Self.spoolPages(processed, to: spool)
+                            return (pages, Self.makePreview(cleaned.image, maxSide: 2600))
                         }.value
+                        if savesAtOnce {
+                            added.append(contentsOf: done.0)
+                            lastPreview = done.1
+                            lastSize = CGSize(width: cleaned.image.width, height: cleaned.image.height)
+                            continue
+                        }
                         let spooled = done.0
                         if flag.isCancelled {
                             self.deleteSpoolFiles(of: spooled)
@@ -314,23 +329,43 @@ extension AppState {
                     }
                 }
             } catch ScanError.cancelled {
-                // The pages added before Cancel stay in the queue.
+                // The pages added before Cancel stay in the queue; pages held to be saved go there too,
+                // as a save at once that was cancelled leaves them.
                 if let lastPreview { self.setLastScan(preview: lastPreview, pixelSize: lastSize) }
-                self.statusMessage = PhotoImport.cancelledMessage(added: added.count, queueCount: self.scannedPages.count)
+                if savesAtOnce && !added.isEmpty {
+                    let held = added
+                    let spooled = await Task.detached(priority: .userInitiated) {
+                        Self.spoolPages(held, to: spool)
+                    }.value
+                    self.scannedPages.append(contentsOf: spooled)
+                    self.statusMessage = TextExport.pagesKeptInQueue(pageCount: held.count, written: 0, cancelled: true,
+                                                                     saveTitle: s.format.saveTitle)
+                } else {
+                    self.statusMessage = PhotoImport.cancelledMessage(added: added.count, queueCount: self.scannedPages.count)
+                }
                 if !problems.isEmpty { self.errorMessage = problems.joined(separator: "\n") }
                 return
             }
             if let lastPreview { self.setLastScan(preview: lastPreview, pixelSize: lastSize) }
-            self.statusMessage = PhotoImport.addedMessage(added: added.count, skipped: skipped, failed: problems.count,
-                                                          queueCount: self.scannedPages.count,
-                                                          saveTitle: self.settings.format.saveTitle)
-            if !added.isEmpty {
-                self.statusMessage += self.queueScanNote(added, options: s.document)
-                if s.document.autoRotate && !scorer.isAvailable { self.statusMessage += PageTurns.unavailableNote }
-                // Pages queued earlier and never read (a reading stopped) are read once the import is done.
-                if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
+            if savesAtOnce && !added.isEmpty {
+                try await self.saveImmediately(added, settings: s, flag: flag)
+                self.recordCaptures(added.map(\.id))
+            } else {
+                self.statusMessage = PhotoImport.addedMessage(added: added.count, skipped: skipped, failed: problems.count,
+                                                              queueCount: self.scannedPages.count,
+                                                              saveTitle: self.settings.format.saveTitle)
+                if !added.isEmpty {
+                    self.statusMessage += self.queueScanNote(added, options: s.document)
+                    if s.document.autoRotate && !scorer.isAvailable { self.statusMessage += PageTurns.unavailableNote }
+                    // Pages queued earlier and never read (a reading stopped) are read once the import is done.
+                    if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
+                }
             }
-            if !problems.isEmpty { self.errorMessage = problems.joined(separator: "\n") }
+            if !problems.isEmpty {
+                // A failed save at once keeps its message above the unreadable photos.
+                let saveFailed = savesAtOnce && !added.isEmpty ? self.errorMessage : nil
+                self.errorMessage = ([saveFailed].compactMap { $0 } + problems).joined(separator: "\n")
+            }
         }
     }
 
