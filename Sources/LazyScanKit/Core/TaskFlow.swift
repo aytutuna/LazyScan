@@ -20,10 +20,12 @@ public struct TaskStep: Equatable, Sendable {
     /// The fuller guidance behind the banner's info button, read out with the prompt by VoiceOver;
     /// empty when the prompt says it all.
     public let help: String
+    /// The step in one word for the step indicator; empty when the indicator takes it from the title.
+    public let shortWord: String
 
     public init(id: String, title: String, prompt: String, primaryActionLabel: String,
                 skippable: Bool = false, repeats: Bool = false, requiresCapture: Bool = true,
-                help: String = "") {
+                help: String = "", shortWord: String = "") {
         self.id = id
         self.title = title
         self.prompt = prompt
@@ -32,11 +34,14 @@ public struct TaskStep: Equatable, Sendable {
         self.repeats = repeats
         self.requiresCapture = requiresCapture
         self.help = help
+        self.shortWord = shortWord
     }
 
-    /// The step in one word, for a step indicator ("Front · Back · Check"): the title's first word
-    /// after a leading "Scan the" or "Scan", capitalized ("Scan the front sides" is "Front").
+    /// The step in one word, for a step indicator ("Front · Back · Check"): `shortWord`, else the
+    /// title's first word after a leading "Scan the" or "Scan", capitalized ("Scan the front sides"
+    /// is "Front").
     public var word: String {
+        if !shortWord.isEmpty { return shortWord }
         var text: String = title.trimmingCharacters(in: .whitespaces)
         for lead in ["Scan the ", "Scan "] {
             if text.hasPrefix(lead) && text.count > lead.count {
@@ -47,7 +52,7 @@ public struct TaskStep: Equatable, Sendable {
         let parts: [Substring] = text.split(separator: " ", omittingEmptySubsequences: true)
         let first: String = parts.first.map { String($0) } ?? text
         guard let initial: Character = first.first else { return first }
-        return String(initial).uppercased() + String(first.dropFirst())
+        return String(initial).localizedUppercase + String(first.dropFirst())
     }
 
     /// The prompt and the help as one text, for VoiceOver.

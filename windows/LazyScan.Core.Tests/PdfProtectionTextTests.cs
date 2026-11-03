@@ -15,7 +15,7 @@ public sealed class PdfProtectionTextTests
         var table = new Dictionary<string, string>();
         foreach (var entry in doc.RootElement.EnumerateObject())
         {
-            var tr = entry.Value.GetProperty("tr");
+            if (!entry.Value.TryGetProperty("tr", out var tr)) continue;
             if (tr.ValueKind == JsonValueKind.String) table[entry.Name] = tr.GetString()!;
             else foreach (var form in tr.EnumerateObject()) table[entry.Name + "|" + form.Name] = form.Value.GetString()!;
         }

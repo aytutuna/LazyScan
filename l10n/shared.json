@@ -69,5 +69,287 @@
       "one": "{0} tarama",
       "other": "{0} tarama"
     }
-  }
+  },
+  "Saved": {},
+  "Feeder used": {},
+  "feeder used|after another fact": {},
+  "Flatbed used": {},
+  "flatbed used|after another fact": {},
+  "Two-sided by hand": {},
+  "two-sided by hand|after another fact": {},
+  "Paper size Automatic": {},
+  "paper size Automatic|after another fact": {},
+  "{0} dpi used": {},
+  "One side only": {},
+  "one side only|after another fact": {},
+  "Ready — {0}": {},
+  "Ready": {},
+  "Page {0} added": {},
+  "Queue cleared": {},
+  "Reading page {0}…": {},
+  "Reading page {0} of {1}…": {},
+  "Sent to the printer": {},
+  "{0} page added": {
+    "en_other": "{0} pages added"
+  },
+  "{0} blank": {
+    "en_other": "{0} blank"
+  },
+  "{0} spread split": {
+    "en_other": "{0} spreads split"
+  },
+  "Found {0} photo": {
+    "en_other": "Found {0} photos"
+  },
+  "Found {0} receipt": {
+    "en_other": "Found {0} receipts"
+  },
+  "Adding {0} page…": {
+    "en_other": "Adding {0} pages…"
+  },
+  "Saved {0} photo": {
+    "en_other": "Saved {0} photos"
+  },
+  "Saved {0} receipt": {
+    "en_other": "Saved {0} receipts"
+  },
+  "Saved {0} document": {
+    "en_other": "Saved {0} documents"
+  },
+  "Saved {0} file": {
+    "en_other": "Saved {0} files"
+  },
+  "Saved {0} PDF": {
+    "en_other": "Saved {0} PDFs"
+  },
+  "Saved {0} copy": {
+    "en_other": "Saved {0} copies"
+  },
+  "Documents": {},
+  "Photos & images": {},
+  "Other": {},
+  "Document to PDF": {},
+  "Page by page into a searchable PDF.": {},
+  "Scan each page": {},
+  "Place each page face down and scan, then save.": {},
+  "Scan page": {},
+  "Scan the pages one by one. They are collected until you save the PDF.": {},
+  "Stack from feeder": {},
+  "A stack through the feeder into one PDF.": {},
+  "Scan the stack": {},
+  "Load the pages in the feeder and scan.": {},
+  "Scan stack": {},
+  "Add more stacks if you need to, then save the PDF.": {},
+  "Photos": {},
+  "Several photos at once, each cropped and straightened.": {},
+  "Scan the photos": {},
+  "Lay the photos on the glass, apart, and scan.": {},
+  "Scan photos": {},
+  "Leave a little space between photos and close the lid. Check each photo before saving.": {},
+  "Restore old photos": {},
+  "Brings back faded colors; saved as PNG.": {},
+  "Scan the old photos": {},
+  "Colors are restored automatically. Check each photo before saving.": {},
+  "Quick scan": {},
+  "Save part of the glass as an image.": {},
+  "Scan an area": {},
+  "Preview, drag over the part you need, then scan.": {},
+  "Scan|button": {},
+  "Each scan is saved right away.": {},
+  "Email a document": {},
+  "A small PDF, ready to attach.": {},
+  "Scan each page, then save to email it.": {},
+  "Saving opens the share window, so you can email the PDF.": {},
+  "Two-sided document": {},
+  "Both sides of every sheet, in page order.": {},
+  "Both sides of every sheet are scanned and put in order. Then save the PDF.": {},
+  "ID card": {},
+  "Both sides on one page, at real size.": {},
+  "Photocopy": {},
+  "Prints at real size, like a photocopier.": {},
+  "Make a copy": {},
+  "Place the original face down, then copy.": {},
+  "Copy|photocopy button": {},
+  "Or load the feeder. Copies print at real size; choose the printer and number of copies on the right.": {},
+  "Scan to Word": {},
+  "Printed pages into an editable Word file.": {},
+  "Scan each page, then save as Word.": {},
+  "The text is read from the pages into a Word document you can edit.": {},
+  "Receipts": {},
+  "Several at once, small files named by date.": {},
+  "Scan the receipts": {},
+  "Lay up to six receipts apart and scan.": {},
+  "Scan receipts": {},
+  "Each one is found, straightened and made easy to read. Check them before saving.": {},
+  "Separate documents": {},
+  "One stack, a PDF for each document.": {},
+  "Put a separator sheet before each document, then scan.": {},
+  "1. Print separator sheets (Split into documents, on the right). 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the page strip, then save.": {},
+  "Book or magazine": {},
+  "Two pages per scan, split at the spine.": {},
+  "Scan each spread": {},
+  "Open the book face down, spine centered, and scan.": {},
+  "Scan spread": {},
+  "Press it gently flat. Turn the page and scan the next spread; each one becomes two pages.": {},
+  "Archive document": {},
+  "A searchable PDF/A, made to be kept.": {},
+  "Scan each page, then save as PDF/A.": {},
+  "The PDF keeps its best quality, made to be kept for years.": {},
+  "Needs a document feeder": {},
+  "Needs a flatbed": {},
+  "{0} needs a document feeder.": {},
+  "{0} needs a flatbed.": {},
+  "{0} needs a printer.": {},
+  "Load the photos in the feeder and scan.": {},
+  "Each photo is cropped and straightened. Check each one before saving.": {},
+  "Load the receipts in the feeder, one per sheet, and scan.": {},
+  "Each one is straightened and made easy to read. Check them before saving.": {},
+  "Place each page face down and scan.": {},
+  "They are collected until you save.": {},
+  "{0} dpi": {},
+  "{0} {1}|PDF size and format": {},
+  "Facing pages split, right to left": {},
+  "Facing pages split": {},
+  "Split at separator sheets": {},
+  "Split at blank sheets": {},
+  "Split and named at barcodes": {},
+  "Split at barcode sheets": {},
+  "{0} copy": {
+    "en_other": "{0} copies"
+  },
+  "Split every sheet": {
+    "en_other": "Split every {0} sheets"
+  },
+  "Saved {0}-page Word document: {1}": {},
+  "Saved {0}-page Word document: {1} — no text was found": {},
+  "Saved {0}-page text file: {1}": {},
+  "Saved {0}-page text file: {1} — no text was found": {},
+  "and its text, {0}": {},
+  "The text could not be read: {0}": {},
+  "The PDF was saved, but not its text file: {0}": {},
+  "Copied the text of page {0}.": {},
+  "No text was found on page {0}.": {},
+  "the text recognition did not work": {},
+  "The page is kept in the queue: press {1} once the text can be read, or choose PDF to save it as scanned.": {
+    "en_other": "The {0} pages are kept in the queue: press {1} once the text can be read, or choose PDF to save them as scanned."
+  },
+  "The page is kept in the queue: press {1} to try again, or choose PDF to save it as scanned.": {
+    "en_other": "The {0} pages are kept in the queue: press {1} to try again, or choose PDF to save them as scanned."
+  },
+  "Not saved — the page is kept in the queue: press {1} to try again.": {
+    "en_other": "Not saved — the {0} pages are kept in the queue: press {1} to try again."
+  },
+  "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.": {
+    "en_other": "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue."
+  },
+  "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.": {
+    "en_other": "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again."
+  },
+  "Cancelled — the page is kept in the queue.": {
+    "en_other": "Cancelled — the {0} pages are kept in the queue."
+  },
+  "Front side": {},
+  "Place the card face down near a corner and scan.": {},
+  "Scan front": {},
+  "Close the lid before scanning.": {},
+  "Front|step": {},
+  "Back side": {},
+  "Turn the card over where it lies and scan.": {},
+  "Scan back": {},
+  "Nothing printed on the back? Select No back side.": {},
+  "Back|step": {},
+  "Check and save": {},
+  "Check both sides, then save.": {},
+  "Review": {},
+  "Both sides go on one page at real size.": {},
+  "Check|step": {},
+  "Scan the front sides": {},
+  "Load the stack in the feeder and scan the fronts.": {},
+  "Scan fronts": {},
+  "Only the front of each sheet is scanned this time.": {},
+  "Scan the back sides": {},
+  "Turn the stack over, load it again and scan.": {},
+  "Scan backs": {},
+  "Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides.": {},
+  "Save Word": {},
+  "Save Text": {},
+  "Save PDF": {},
+  "— {0} and {1} were left out": {},
+  "— no text was found": {},
+  "— no text was found in {0}": {},
+  "{0} and {1} blank skipped": {},
+  "{0} and {1} skipped": {},
+  "{0} skipped": {},
+  "{0} blank skipped": {},
+  "{0} but {1}": {},
+  "Save {1} Word documents ({0} page)": {
+    "en_other": "Save {1} Word documents ({0} pages)"
+  },
+  "Save {1} text files ({0} page)": {
+    "en_other": "Save {1} text files ({0} pages)"
+  },
+  "Save {1} PDFs ({0} page)": {
+    "en_other": "Save {1} PDFs ({0} pages)"
+  },
+  "— {0} skipped page was left out": {
+    "en_other": "— {0} skipped pages were left out"
+  },
+  "— {0} separator page was left out": {
+    "en_other": "— {0} separator pages were left out"
+  },
+  "{0} separator page": {
+    "en_other": "{0} separator pages"
+  },
+  "{0} skipped page": {
+    "en_other": "{0} skipped pages"
+  },
+  "{0} page": {
+    "en_other": "{0} pages"
+  },
+  "Saved {0} Word document ({1}):": {
+    "en_other": "Saved {0} Word documents ({1}):"
+  },
+  "Saved {0} text file ({1}):": {
+    "en_other": "Saved {0} text files ({1}):"
+  },
+  "Saved {0} PDF ({1}):": {
+    "en_other": "Saved {0} PDFs ({1}):"
+  },
+  "Save Word ({0} page)": {
+    "en_other": "Save Word ({0} pages)"
+  },
+  "Save Text ({0} page)": {
+    "en_other": "Save Text ({0} pages)"
+  },
+  "Save PDF ({0} page)": {
+    "en_other": "Save PDF ({0} pages)"
+  },
+  "{0} document": {
+    "en_other": "{0} documents"
+  },
+  "{0} document to save.": {
+    "en_other": "{0} documents to save."
+  },
+  "Found {0} separator page: {1}": {
+    "en_other": "Found {0} separator pages: {1}"
+  },
+  "{0} front": {
+    "en_other": "{0} fronts"
+  },
+  "{0} back": {
+    "en_other": "{0} backs"
+  },
+  "Every sheet": {
+    "en_other": "Every {0} sheets"
+  },
+  "{1}, {0} option on": {
+    "en_other": "{1}, {0} options on"
+  },
+  "{0} page from {1} added to the queue.": {
+    "en_other": "{0} pages from {1} added to the queue."
+  },
+  "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.": {
+    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts."
+  },
+  "and their text, {0}": {}
 }

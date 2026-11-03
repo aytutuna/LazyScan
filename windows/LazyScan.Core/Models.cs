@@ -420,14 +420,22 @@ public static class OutputFormats
     /// <summary>"Save PDF", "Save Word", "Save Text": the button that saves the collected pages.</summary>
     public static string SaveTitle(OutputFormat format) => QueueFormat(format) switch
     {
-        OutputFormat.Word => "Save Word",
-        OutputFormat.Text => "Save Text",
-        _ => "Save PDF",
+        OutputFormat.Word => Loc.T("Save Word"),
+        OutputFormat.Text => Loc.T("Save Text"),
+        _ => Loc.T("Save PDF"),
     };
 
     /// <summary>"Save PDF (3 pages)", or just the <see cref="SaveTitle"/> when no page would be saved.</summary>
-    public static string SaveTitle(OutputFormat format, int pageCount) =>
-        pageCount > 0 ? $"{SaveTitle(format)} ({pageCount} page{(pageCount == 1 ? "" : "s")})" : SaveTitle(format);
+    public static string SaveTitle(OutputFormat format, int pageCount)
+    {
+        if (pageCount <= 0) return SaveTitle(format);
+        return QueueFormat(format) switch
+        {
+            OutputFormat.Word => Loc.Plural(pageCount, "Save Word ({0} page)", "Save Word ({0} pages)"),
+            OutputFormat.Text => Loc.Plural(pageCount, "Save Text ({0} page)", "Save Text ({0} pages)"),
+            _ => Loc.Plural(pageCount, "Save PDF ({0} page)", "Save PDF ({0} pages)"),
+        };
+    }
 }
 
 // MARK: - Settings

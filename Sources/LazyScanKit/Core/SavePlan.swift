@@ -50,20 +50,21 @@ public struct SavePlan {
     /// The {index} of the document's file name: its number when the queue is split, else none.
     public func fileIndex(_ document: SaveDocument) -> Int? { isSplit ? document.number : nil }
 
-    /// "PDF", "PDFs", "Word document", "text files": what the collected pages are saved as.
-    public static func fileKind(_ format: OutputFormat, count: Int) -> String {
-        switch format.queueFormat {
-        case .word: return count == 1 ? "Word document" : "Word documents"
-        case .text: return count == 1 ? "text file" : "text files"
-        default: return count == 1 ? "PDF" : "PDFs"
-        }
-    }
-
     /// The save button: "Save 3 PDFs (7 pages)" for a split queue, otherwise
     /// `OutputFormat.saveTitle(pageCount:)` ("Save PDF (7 pages)").
     public func saveTitle(_ format: OutputFormat) -> String {
         guard isSplit else { return format.saveTitle(pageCount: pageCount) }
-        return "Save \(documents.count) \(Self.fileKind(format, count: documents.count)) (\(pageCount) page\(pageCount == 1 ? "" : "s"))"
+        switch format.queueFormat {
+        case .word:
+            return L10n.plural(pageCount, one: "Save {1} Word documents ({0} page)",
+                               other: "Save {1} Word documents ({0} pages)", documents.count)
+        case .text:
+            return L10n.plural(pageCount, one: "Save {1} text files ({0} page)",
+                               other: "Save {1} text files ({0} pages)", documents.count)
+        default:
+            return L10n.plural(pageCount, one: "Save {1} PDFs ({0} page)",
+                               other: "Save {1} PDFs ({0} pages)", documents.count)
+        }
     }
 
     /// What was left out, after the saved message: " — 1 skipped page was left out", " — 2 separator
@@ -71,9 +72,15 @@ public struct SavePlan {
     public func leftOutNote() -> String {
         let s = separatorPages, k = skippedPages
         if s == 0 && k == 0 { return "" }
-        if s == 0 { return " — \(k) skipped page\(k == 1 ? " was" : "s were") left out" }
-        if k == 0 { return " — \(s) separator page\(s == 1 ? " was" : "s were") left out" }
-        return " — \(s) separator page\(s == 1 ? "" : "s") and \(k) skipped page\(k == 1 ? "" : "s") were left out"
+        if s == 0 {
+            return " " + L10n.plural(k, one: "— {0} skipped page was left out", other: "— {0} skipped pages were left out")
+        }
+        if k == 0 {
+            return " " + L10n.plural(s, one: "— {0} separator page was left out", other: "— {0} separator pages were left out")
+        }
+        let separators = L10n.plural(s, one: "{0} separator page", other: "{0} separator pages")
+        let skipped = L10n.plural(k, one: "{0} skipped page", other: "{0} skipped pages")
+        return " " + L10n.t("— {0} and {1} were left out", separators, skipped)
     }
 
     /// "Saved 3 PDFs (7 pages, 1.2 MB): A.pdf, B.pdf, C.pdf and their text, A.txt, B.txt, C.txt — 2
@@ -83,18 +90,24 @@ public struct SavePlan {
     /// " — no text was found in B.txt" otherwise).
     public func savedMessage(_ format: OutputFormat, fileNames: [String], size: String? = nil,
                              textFileNames: [String] = [], noTextFound: [String] = []) -> String {
-        let pages = "\(pageCount) page\(pageCount == 1 ? "" : "s")" + (size.map { ", \($0)" } ?? "")
-        let text = textFileNames.isEmpty ? "" : " and their text, " + textFileNames.joined(separator: ", ")
+        let pages = L10n.plural(pageCount, one: "{0} page", other: "{0} pages") + (size.map { ", \($0)" } ?? "")
+        let text = textFileNames.isEmpty ? "" : " " + L10n.t("and their text, {0}", textFileNames.joined(separator: ", "))
         let empty: String
         if noTextFound.isEmpty {
             empty = ""
         } else if noTextFound.count == fileNames.count {
-            empty = " — no text was found"
+            empty = " " + L10n.t("— no text was found")
         } else {
-            empty = " — no text was found in " + noTextFound.joined(separator: ", ")
+            empty = " " + L10n.t("— no text was found in {0}", noTextFound.joined(separator: ", "))
         }
-        return "Saved \(fileNames.count) \(Self.fileKind(format, count: fileNames.count)) (\(pages)): "
-            + fileNames.joined(separator: ", ") + text + empty + leftOutNote()
+        let count: Int = fileNames.count
+        let saved: String
+        switch format.queueFormat {
+        case .word: saved = L10n.plural(count, one: "Saved {0} Word document ({1}):", other: "Saved {0} Word documents ({1}):", pages)
+        case .text: saved = L10n.plural(count, one: "Saved {0} text file ({1}):", other: "Saved {0} text files ({1}):", pages)
+        default: saved = L10n.plural(count, one: "Saved {0} PDF ({1}):", other: "Saved {0} PDFs ({1}):", pages)
+        }
+        return saved + " " + fileNames.joined(separator: ", ") + text + empty + leftOutNote()
     }
 
     /// The error when a split save fails: nothing of it is kept, and the queue is still there.

@@ -74,20 +74,20 @@ public static class IdCardSteps
     /// Front, back, review. Only the front must be captured: the back is skipped for a card with
     /// nothing on its back, and the review captures nothing.
     /// </summary>
-    public static IReadOnlyList<TaskStep> Steps { get; } =
+    public static IReadOnlyList<TaskStep> Steps =>
     [
-        new TaskStep(FrontStepId, "Front side",
-                     "Place the card face down near a corner and scan.",
-                     "Scan front",
-                     Help: "Close the lid before scanning."),
-        new TaskStep(BackStepId, "Back side",
-                     "Turn the card over where it lies and scan.",
-                     "Scan back", Skippable: true, RequiresCapture: false,
-                     Help: $"Nothing printed on the back? Select {SkipBackLabel}."),
-        new TaskStep(ReviewStepId, "Check and save",
-                     "Check both sides, then save.",
-                     "Review", RequiresCapture: false,
-                     Help: "Both sides go on one page at real size."),
+        new TaskStep(FrontStepId, Loc.T("Front side"),
+                     Loc.T("Place the card face down near a corner and scan."),
+                     Loc.T("Scan front"),
+                     Help: Loc.T("Close the lid before scanning."), ShortWord: Loc.T("Front|step")),
+        new TaskStep(BackStepId, Loc.T("Back side"),
+                     Loc.T("Turn the card over where it lies and scan."),
+                     Loc.T("Scan back"), Skippable: true, RequiresCapture: false,
+                     Help: Loc.T("Nothing printed on the back? Select No back side."), ShortWord: Loc.T("Back|step")),
+        new TaskStep(ReviewStepId, Loc.T("Check and save"),
+                     Loc.T("Check both sides, then save."),
+                     Loc.T("Review"), RequiresCapture: false,
+                     Help: Loc.T("Both sides go on one page at real size."), ShortWord: Loc.T("Check|step")),
     ];
 
     /// <summary>The button that leaves out the back of a card with nothing printed on it.</summary>

@@ -56,20 +56,22 @@ public enum IdCardSteps {
 
     /// Front, back, review. Only the front must be captured: the back is skipped for a card with
     /// nothing on its back, and the review captures nothing.
-    public static let steps: [TaskStep] = [
-        TaskStep(id: frontStepID, title: "Front side",
-                 prompt: "Place the card face down near a corner and scan.",
-                 primaryActionLabel: "Scan front",
-                 help: "Close the lid before scanning."),
-        TaskStep(id: backStepID, title: "Back side",
-                 prompt: "Turn the card over where it lies and scan.",
-                 primaryActionLabel: "Scan back", skippable: true, requiresCapture: false,
-                 help: "Nothing printed on the back? Select No back side."),
-        TaskStep(id: reviewStepID, title: "Check and save",
-                 prompt: "Check both sides, then save.",
-                 primaryActionLabel: "Review", requiresCapture: false,
-                 help: "Both sides go on one page at real size."),
-    ]
+    public static var steps: [TaskStep] {
+        [
+            TaskStep(id: frontStepID, title: L10n.t("Front side"),
+                     prompt: L10n.t("Place the card face down near a corner and scan."),
+                     primaryActionLabel: L10n.t("Scan front"),
+                     help: L10n.t("Close the lid before scanning."), shortWord: L10n.t("Front|step")),
+            TaskStep(id: backStepID, title: L10n.t("Back side"),
+                     prompt: L10n.t("Turn the card over where it lies and scan."),
+                     primaryActionLabel: L10n.t("Scan back"), skippable: true, requiresCapture: false,
+                     help: L10n.t("Nothing printed on the back? Select No back side."), shortWord: L10n.t("Back|step")),
+            TaskStep(id: reviewStepID, title: L10n.t("Check and save"),
+                     prompt: L10n.t("Check both sides, then save."),
+                     primaryActionLabel: L10n.t("Review"), requiresCapture: false,
+                     help: L10n.t("Both sides go on one page at real size."), shortWord: L10n.t("Check|step")),
+        ]
+    }
 
     /// The button that leaves out the back of a card with nothing printed on it.
     public static let skipBackLabel = "No back side"

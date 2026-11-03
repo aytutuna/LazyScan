@@ -70,16 +70,17 @@ public static class DocumentSides
     /// scan the backs. Every page is a capture, so both steps repeat; the backs can be left out
     /// ("Keep fronts only").
     /// </summary>
-    public static IReadOnlyList<TaskStep> ManualSteps { get; } =
+    public static IReadOnlyList<TaskStep> ManualSteps =>
     [
-        new TaskStep(FrontsStepId, "Scan the front sides",
-                     "Load the stack in the feeder and scan the fronts.",
-                     "Scan fronts", Repeats: true,
-                     Help: "Only the front of each sheet is scanned this time."),
-        new TaskStep(BacksStepId, "Scan the back sides",
-                     "Turn the stack over, load it again and scan.",
-                     "Scan backs", Skippable: true, Repeats: true, RequiresCapture: false,
-                     Help: "Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
+        new TaskStep(FrontsStepId, Loc.T("Scan the front sides"),
+                     Loc.T("Load the stack in the feeder and scan the fronts."),
+                     Loc.T("Scan fronts"), Repeats: true,
+                     Help: Loc.T("Only the front of each sheet is scanned this time."), ShortWord: Loc.T("Front|step")),
+        new TaskStep(BacksStepId, Loc.T("Scan the back sides"),
+                     Loc.T("Turn the stack over, load it again and scan."),
+                     Loc.T("Scan backs"), Skippable: true, Repeats: true, RequiresCapture: false,
+                     Help: Loc.T("Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
+                     ShortWord: Loc.T("Back|step")),
     ];
 
     /// <summary>
@@ -216,7 +217,7 @@ public static class DocumentSides
 
     /// <summary>"3 fronts but 2 backs", "1 front but 2 backs".</summary>
     public static string CountMessage(int fronts, int backs) =>
-        $"{fronts} front{(fronts == 1 ? "" : "s")} but {backs} back{(backs == 1 ? "" : "s")}";
+        Loc.T("{0} but {1}", Loc.Plural(fronts, "{0} front", "{0} fronts"), Loc.Plural(backs, "{0} back", "{0} backs"));
 
     /// <summary>
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in

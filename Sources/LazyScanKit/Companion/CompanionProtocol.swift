@@ -150,18 +150,17 @@ public enum CompanionProtocol {
 
     /// "3 pages from Aytu's iPhone added to the queue."
     public static func addedMessage(_ pageCount: Int, phoneName: String) -> String {
-        "\(pageCount == 1 ? "1 page" : "\(pageCount) pages") from \(phoneName) added to the queue."
+        L10n.plural(pageCount, one: "{0} page from {1} added to the queue.",
+                    other: "{0} pages from {1} added to the queue.", phoneName)
     }
 
     /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
     /// time Lazy Scan starts." `computer` is "PC" or "Mac".
     public static func keptMessage(_ pageCount: Int, phoneName: String, computer: String) -> String {
-        if pageCount == 1 {
-            return "Cancelled. The page from \(phoneName) was not added; it is kept on this \(computer) "
-                + "and is added the next time Lazy Scan starts."
-        }
-        return "Cancelled. The \(pageCount) pages from \(phoneName) were not added; they are kept on this \(computer) "
-            + "and are added the next time Lazy Scan starts."
+        L10n.plural(pageCount,
+                    one: "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.",
+                    other: "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts.",
+                    phoneName, computer)
     }
 
     static func integer(_ value: Int) -> String { String(value) }

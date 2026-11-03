@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LazyScan.Core;
 
 // Port of Sources/LazyScanKit/Core/TaskCatalog.swift.
@@ -54,9 +56,9 @@ public static class TaskGroups
     /// <summary>"Documents", "Photos &amp; images", "Other".</summary>
     public static string Title(this TaskGroup group) => group switch
     {
-        TaskGroup.Documents => "Documents",
-        TaskGroup.PhotosAndImages => "Photos & images",
-        _ => "Other",
+        TaskGroup.Documents => Loc.T("Documents"),
+        TaskGroup.PhotosAndImages => Loc.T("Photos & images"),
+        _ => Loc.T("Other"),
     };
 }
 
@@ -73,118 +75,116 @@ public sealed record TaskAvailability(bool IsAvailable, string? Reason = null)
 /// </summary>
 public static class TaskCatalog
 {
-    private static readonly TaskDefinition[] Definitions =
+    private static TaskDefinition[] Definitions =>
     [
-        new(ScanTask.Document, "Document to PDF",
-            "Page by page into a searchable PDF.",
+        new(ScanTask.Document, Loc.T("Document to PDF"),
+            Loc.T("Page by page into a searchable PDF."),
             "document", TaskFlowKind.DocumentQueue, ScanIntent.Document, null, "Document",
-            [new TaskStep("scan", "Scan each page",
-                          "Place each page face down and scan, then save.",
-                          "Scan page", Repeats: true,
-                          Help: "Scan the pages one by one. They are collected until you save the PDF.")],
+            [new TaskStep("scan", Loc.T("Scan each page"),
+                          Loc.T("Place each page face down and scan, then save."),
+                          Loc.T("Scan page"), Repeats: true,
+                          Help: Loc.T("Scan the pages one by one. They are collected until you save the PDF."))],
             TaskGroup.Documents),
-        new(ScanTask.Feeder, "Stack from feeder",
-            "A stack through the feeder into one PDF.",
+        new(ScanTask.Feeder, Loc.T("Stack from feeder"),
+            Loc.T("A stack through the feeder into one PDF."),
             "feeder", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.DocumentFeeder, "Document",
-            [new TaskStep("scan", "Scan the stack",
-                          "Load the pages in the feeder and scan.",
-                          "Scan stack", Repeats: true,
-                          Help: "Add more stacks if you need to, then save the PDF.")],
+            [new TaskStep("scan", Loc.T("Scan the stack"),
+                          Loc.T("Load the pages in the feeder and scan."),
+                          Loc.T("Scan stack"), Repeats: true,
+                          Help: Loc.T("Add more stacks if you need to, then save the PDF."))],
             TaskGroup.Documents),
-        new(ScanTask.Photos, "Photos",
-            "Several photos at once, each cropped and straightened.",
+        new(ScanTask.Photos, Loc.T("Photos"),
+            Loc.T("Several photos at once, each cropped and straightened."),
             "photos", TaskFlowKind.PhotoSplit, ScanIntent.Photo, null, "Photo",
-            [new TaskStep("scan", "Scan the photos",
-                          "Lay the photos on the glass, apart, and scan.",
-                          "Scan photos", Repeats: true,
-                          Help: "Leave a little space between photos and close the lid. Check each photo before saving.")],
+            [new TaskStep("scan", Loc.T("Scan the photos"),
+                          Loc.T("Lay the photos on the glass, apart, and scan."),
+                          Loc.T("Scan photos"), Repeats: true,
+                          Help: Loc.T("Leave a little space between photos and close the lid. Check each photo before saving."))],
             TaskGroup.PhotosAndImages),
-        new(ScanTask.PhotoRestore, "Restore old photos",
-            "Brings back faded colors; saved as PNG.",
+        new(ScanTask.PhotoRestore, Loc.T("Restore old photos"),
+            Loc.T("Brings back faded colors; saved as PNG."),
             "restore", TaskFlowKind.PhotoSplit, ScanIntent.Photo, null, "Restored photo",
-            [new TaskStep("scan", "Scan the old photos",
-                          "Lay the photos on the glass, apart, and scan.",
-                          "Scan photos", Repeats: true,
-                          Help: "Colors are restored automatically. Check each photo before saving.")],
+            [new TaskStep("scan", Loc.T("Scan the old photos"),
+                          Loc.T("Lay the photos on the glass, apart, and scan."),
+                          Loc.T("Scan photos"), Repeats: true,
+                          Help: Loc.T("Colors are restored automatically. Check each photo before saving."))],
             TaskGroup.PhotosAndImages),
-        new(ScanTask.QuickScan, "Quick scan",
-            "Save part of the glass as an image.",
+        new(ScanTask.QuickScan, Loc.T("Quick scan"),
+            Loc.T("Save part of the glass as an image."),
             "quick", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.Flatbed, "Scan",
-            [new TaskStep("scan", "Scan an area",
-                          "Preview, drag over the part you need, then scan.",
-                          "Scan", Repeats: true,
-                          Help: "Each scan is saved right away.")],
+            [new TaskStep("scan", Loc.T("Scan an area"),
+                          Loc.T("Preview, drag over the part you need, then scan."),
+                          Loc.T("Scan|button"), Repeats: true,
+                          Help: Loc.T("Each scan is saved right away."))],
             TaskGroup.PhotosAndImages),
-        new(ScanTask.Email, "Email a document",
-            "A small PDF, ready to attach.",
+        new(ScanTask.Email, Loc.T("Email a document"),
+            Loc.T("A small PDF, ready to attach."),
             "email", TaskFlowKind.DocumentQueue, ScanIntent.Document, null, "Document",
-            [new TaskStep("scan", "Scan each page",
-                          "Scan each page, then save to email it.",
-                          "Scan page", Repeats: true,
-                          Help: "Saving opens the share window, so you can email the PDF.")],
+            [new TaskStep("scan", Loc.T("Scan each page"),
+                          Loc.T("Scan each page, then save to email it."),
+                          Loc.T("Scan page"), Repeats: true,
+                          Help: Loc.T("Saving opens the share window, so you can email the PDF."))],
             TaskGroup.Documents),
-        new(ScanTask.TwoSided, "Two-sided document",
-            "Both sides of every sheet, in page order.",
+        new(ScanTask.TwoSided, Loc.T("Two-sided document"),
+            Loc.T("Both sides of every sheet, in page order."),
             "twoSided", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.DocumentFeeder, "Document",
-            [new TaskStep("scan", "Scan the stack",
-                          "Load the pages in the feeder and scan.",
-                          "Scan stack", Repeats: true,
-                          Help: "Both sides of every sheet are scanned and put in order. Then save the PDF.")],
+            [new TaskStep("scan", Loc.T("Scan the stack"),
+                          Loc.T("Load the pages in the feeder and scan."),
+                          Loc.T("Scan stack"), Repeats: true,
+                          Help: Loc.T("Both sides of every sheet are scanned and put in order. Then save the PDF."))],
             TaskGroup.Documents),
-        new(ScanTask.IdCard, "ID card",
-            "Both sides on one page, at real size.",
+        new(ScanTask.IdCard, Loc.T("ID card"),
+            Loc.T("Both sides on one page, at real size."),
             "idCard", TaskFlowKind.IdCard, ScanIntent.Document, ScanSource.Flatbed, "ID card",
             IdCardSteps.Steps,
             TaskGroup.Other),
-        new(ScanTask.Copy, "Photocopy",
-            "Prints at real size, like a photocopier.",
+        new(ScanTask.Copy, Loc.T("Photocopy"),
+            Loc.T("Prints at real size, like a photocopier."),
             "copy", TaskFlowKind.Copy, ScanIntent.Document, null, "Copy",
-            [new TaskStep("scan", "Make a copy",
-                          "Place the original face down, then copy.",
-                          "Copy", Repeats: true,
-                          Help: "Or load the feeder. Copies print at real size; choose the printer and number of copies on the right.")],
+            [new TaskStep("scan", Loc.T("Make a copy"),
+                          Loc.T("Place the original face down, then copy."),
+                          Loc.T("Copy|photocopy button"), Repeats: true,
+                          Help: Loc.T("Or load the feeder. Copies print at real size; choose the printer and number of copies on the right."))],
             TaskGroup.Other),
-        new(ScanTask.Word, "Scan to Word",
-            "Printed pages into an editable Word file.",
+        new(ScanTask.Word, Loc.T("Scan to Word"),
+            Loc.T("Printed pages into an editable Word file."),
             "word", TaskFlowKind.DocumentQueue, ScanIntent.Document, null, "Document",
-            [new TaskStep("scan", "Scan each page",
-                          "Scan each page, then save as Word.",
-                          "Scan page", Repeats: true,
-                          Help: "The text is read from the pages into a Word document you can edit.")],
+            [new TaskStep("scan", Loc.T("Scan each page"),
+                          Loc.T("Scan each page, then save as Word."),
+                          Loc.T("Scan page"), Repeats: true,
+                          Help: Loc.T("The text is read from the pages into a Word document you can edit."))],
             TaskGroup.Documents),
-        new(ScanTask.Receipt, "Receipts",
-            "Several at once, small files named by date.",
+        new(ScanTask.Receipt, Loc.T("Receipts"),
+            Loc.T("Several at once, small files named by date."),
             "receipt", TaskFlowKind.ReceiptSplit, ScanIntent.Document, null, "Receipt",
-            [new TaskStep("scan", "Scan the receipts",
-                          "Lay up to six receipts apart and scan.",
-                          "Scan receipts", Repeats: true,
-                          Help: "Each one is found, straightened and made easy to read. Check them before saving.")],
+            [new TaskStep("scan", Loc.T("Scan the receipts"),
+                          Loc.T("Lay up to six receipts apart and scan."),
+                          Loc.T("Scan receipts"), Repeats: true,
+                          Help: Loc.T("Each one is found, straightened and made easy to read. Check them before saving."))],
             TaskGroup.Other),
-        new(ScanTask.Batch, "Separate documents",
-            "One stack, a PDF for each document.",
+        new(ScanTask.Batch, Loc.T("Separate documents"),
+            Loc.T("One stack, a PDF for each document."),
             "batch", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.DocumentFeeder, "Document",
-            [new TaskStep("scan", "Scan the stack",
-                          "Put a separator sheet before each document, then scan.",
-                          "Scan stack", Repeats: true,
-                          Help: "1. Print separator sheets (Split into documents, on the right). 2. Put one in front of each "
-                                + "document after the first. 3. Load the stack and scan. 4. Check the splits in the page "
-                                + "strip, then save.")],
+            [new TaskStep("scan", Loc.T("Scan the stack"),
+                          Loc.T("Put a separator sheet before each document, then scan."),
+                          Loc.T("Scan stack"), Repeats: true,
+                          Help: Loc.T("1. Print separator sheets (Split into documents, on the right). 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the page strip, then save."))],
             TaskGroup.Documents),
-        new(ScanTask.Book, "Book or magazine",
-            "Two pages per scan, split at the spine.",
+        new(ScanTask.Book, Loc.T("Book or magazine"),
+            Loc.T("Two pages per scan, split at the spine."),
             "book", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.Flatbed, "Book",
-            [new TaskStep("scan", "Scan each spread",
-                          "Open the book face down, spine centered, and scan.",
-                          "Scan spread", Repeats: true,
-                          Help: "Press it gently flat. Turn the page and scan the next spread; each one becomes two pages.")],
+            [new TaskStep("scan", Loc.T("Scan each spread"),
+                          Loc.T("Open the book face down, spine centered, and scan."),
+                          Loc.T("Scan spread"), Repeats: true,
+                          Help: Loc.T("Press it gently flat. Turn the page and scan the next spread; each one becomes two pages."))],
             TaskGroup.Other),
-        new(ScanTask.Archive, "Archive document",
-            "A searchable PDF/A, made to be kept.",
+        new(ScanTask.Archive, Loc.T("Archive document"),
+            Loc.T("A searchable PDF/A, made to be kept."),
             "archive", TaskFlowKind.DocumentQueue, ScanIntent.Document, null, "Document",
-            [new TaskStep("scan", "Scan each page",
-                          "Scan each page, then save as PDF/A.",
-                          "Scan page", Repeats: true,
-                          Help: "The PDF keeps its best quality, made to be kept for years.")],
+            [new TaskStep("scan", Loc.T("Scan each page"),
+                          Loc.T("Scan each page, then save as PDF/A."),
+                          Loc.T("Scan page"), Repeats: true,
+                          Help: Loc.T("The PDF keeps its best quality, made to be kept for years."))],
             TaskGroup.Documents),
     ];
 
@@ -202,9 +202,15 @@ public static class TaskCatalog
     ];
 
     /// <summary>The start screen's groups in order, each with its tasks in <see cref="StartOrder"/>; every task is in one group.</summary>
-    public static IReadOnlyList<TaskGroupSection> Sections =>
-        [.. TaskGroups.All.Select(group => new TaskGroupSection(
-            group, [.. StartOrder.Select(Definition).Where(definition => definition.Group == group)]))];
+    public static IReadOnlyList<TaskGroupSection> Sections
+    {
+        get
+        {
+            var catalog = Definitions;
+            return [.. TaskGroups.All.Select(group => new TaskGroupSection(
+                group, [.. StartOrder.Select(task => catalog.First(d => d.Task == task)).Where(definition => definition.Group == group)]))];
+        }
+    }
 
     /// <summary>Every task, in the order of <see cref="ScanTask"/> (the start screen uses <see cref="StartOrder"/>).</summary>
     public static IReadOnlyList<TaskDefinition> All => Definitions;
@@ -389,20 +395,23 @@ public static class TaskCatalog
     }
 
     /// <summary>Why a task that needs the document feeder cannot be started: the tile's one visible line.</summary>
-    public const string NeedsFeederReason = "Needs a document feeder";
+    public static string NeedsFeederReason => Loc.T("Needs a document feeder");
 
     /// <summary>Why a task that needs the flatbed cannot be started.</summary>
-    public const string NeedsFlatbedReason = "Needs a flatbed";
+    public static string NeedsFlatbedReason => Loc.T("Needs a flatbed");
 
     /// <summary>
     /// The error when a task that cannot be started is picked anyway: its title and the reason, as a
-    /// sentence ("Stack from feeder needs a document feeder.").
+    /// sentence ("Stack from feeder needs a document feeder."). Any reason but the two above is the
+    /// Copy task's missing printer.
     /// </summary>
     public static string UnavailableMessage(ScanTask task, string reason)
     {
         string text = reason.Trim().TrimEnd('.');
-        if (text.Length > 0) text = char.ToLowerInvariant(text[0]) + text[1..];
-        return $"{Definition(task).Title} {text}.";
+        string title = Definition(task).Title;
+        if (text == NeedsFeederReason) return Loc.T("{0} needs a document feeder.", title);
+        if (text == NeedsFlatbedReason) return Loc.T("{0} needs a flatbed.", title);
+        return Loc.T("{0} needs a printer.", title);
     }
 
     /// <summary>
@@ -476,14 +485,14 @@ public static class TaskCatalog
     {
         ScanTask.Photos => Definition(task).Steps[0] with
         {
-            Prompt = "Load the photos in the feeder and scan.",
-            Help = "Each photo is cropped and straightened. Check each one before saving.",
+            Prompt = Loc.T("Load the photos in the feeder and scan."),
+            Help = Loc.T("Each photo is cropped and straightened. Check each one before saving."),
         },
-        ScanTask.PhotoRestore => Definition(task).Steps[0] with { Prompt = "Load the photos in the feeder and scan." },
+        ScanTask.PhotoRestore => Definition(task).Steps[0] with { Prompt = Loc.T("Load the photos in the feeder and scan.") },
         ScanTask.Receipt => Definition(task).Steps[0] with
         {
-            Prompt = "Load the receipts in the feeder, one per sheet, and scan.",
-            Help = "Each one is straightened and made easy to read. Check them before saving.",
+            Prompt = Loc.T("Load the receipts in the feeder, one per sheet, and scan."),
+            Help = Loc.T("Each one is straightened and made easy to read. Check them before saving."),
         },
         _ => null,
     };
@@ -498,24 +507,26 @@ public static class TaskCatalog
     /// </summary>
     public static TaskStep ShownStep(TaskStep step, ScanSettings settings)
     {
+        var catalog = Definitions;
+        TaskStep OwnStep(ScanTask task) => catalog.First(d => d.Task == task).Steps[0];
         if (settings.Source == ScanSource.DocumentFeeder)
         {
             foreach (var task in FeederTasks)
-                if (step == Definition(task).Steps[0]) return FeederStep(task)!;
+                if (step == OwnStep(task)) return FeederStep(task)!;
         }
-        if (step == Definition(ScanTask.Document).Steps[0])
+        if (step == OwnStep(ScanTask.Document))
         {
             bool feeder = settings.Source == ScanSource.DocumentFeeder;
-            var shown = feeder ? Definition(ScanTask.Feeder).Steps[0] : step;
+            var shown = feeder ? OwnStep(ScanTask.Feeder) : step;
             if (settings.DocumentMultiPage) return shown;
             return shown with
             {
-                Prompt = feeder ? shown.Prompt : "Place each page face down and scan.",
-                Help = "Each scan is saved right away.",
+                Prompt = feeder ? shown.Prompt : Loc.T("Place each page face down and scan."),
+                Help = Loc.T("Each scan is saved right away."),
             };
         }
-        if (step != Definition(ScanTask.QuickScan).Steps[0] || !settings.DocumentMultiPage) return step;
-        return step with { Help = "They are collected until you save." };
+        if (step != OwnStep(ScanTask.QuickScan) || !settings.DocumentMultiPage) return step;
+        return step with { Help = Loc.T("They are collected until you save.") };
     }
 
     /// <summary>How a scan with these settings is handled: the stored task's flow while it fits, otherwise by mode.</summary>
@@ -544,21 +555,23 @@ public static class TaskCatalog
     /// </summary>
     public static string Summary(ScanSettings settings)
     {
+        string dpi = Loc.T("{0} dpi", settings.Resolution.ToString(CultureInfo.InvariantCulture));
         if (FlowOf(settings) == TaskFlowKind.Copy)
         {
             // A copy is paper, not a file: its size and count matter, not the format.
             int copies = PrintCopies.Clamp(settings.TaskOptions.CopyCount);
-            return $"{settings.Resolution} dpi · {settings.ColorMode.Label()} · {PrintText.ModeLabel(settings.TaskOptions.CopyFitToPage)}"
-                   + (copies > 1 ? $" · {copies} copies" : "");
+            string count = Loc.Plural(copies, "{0} copy", "{0} copies");
+            return $"{dpi} · {settings.ColorMode.Label()} · {PrintText.ModeLabel(settings.TaskOptions.CopyFitToPage)}"
+                   + (copies > 1 ? $" · {count}" : "");
         }
         string format = settings.Format == OutputFormat.Pdf && settings.Output.PdfSize != PdfSizePreset.Standard
-            ? $"{settings.Output.PdfSize.Label()} {settings.Format.Label()}"
+            ? Loc.T("{0} {1}|PDF size and format", settings.Output.PdfSize.Label(), settings.Format.Label())
             : settings.Format.Label();
         var sides = DocumentSides.Effective(settings, null);
         string twoSided = sides == DuplexMode.Off ? "" : $" · {sides.Label()}";
         string split = SplitSummary(settings) is { } text ? $" · {text}" : "";
         string book = BookSummary(settings) is { } pages ? $" · {pages}" : "";
-        return $"{settings.Resolution} dpi · {settings.ColorMode.Label()} · {format}{twoSided}{split}{book}";
+        return $"{dpi} · {settings.ColorMode.Label()} · {format}{twoSided}{split}{book}";
     }
 
     /// <summary>
@@ -569,7 +582,7 @@ public static class TaskCatalog
     {
         if (settings.Intent != ScanIntent.Document || !settings.DocumentMultiPage || !settings.Document.SplitFacingPages
             || !BookPages.ScansOneSide(settings)) return null;
-        return settings.TaskOptions.BookRightToLeft ? "Facing pages split, right to left" : "Facing pages split";
+        return settings.TaskOptions.BookRightToLeft ? Loc.T("Facing pages split, right to left") : Loc.T("Facing pages split");
     }
 
     /// <summary>
@@ -583,10 +596,10 @@ public static class TaskCatalog
         int sheets = DocumentSplitter.ClampSheetCount(settings.Document.SplitSheetCount);
         return settings.Document.SplitMode switch
         {
-            SplitMode.SeparatorSheet => "Split at separator sheets",
-            SplitMode.BlankSheet => "Split at blank sheets",
-            SplitMode.SheetCount => sheets == 1 ? "Split every sheet" : $"Split every {sheets} sheets",
-            SplitMode.Barcode => settings.Document.BarcodeStartsDocument ? "Split and named at barcodes" : "Split at barcode sheets",
+            SplitMode.SeparatorSheet => Loc.T("Split at separator sheets"),
+            SplitMode.BlankSheet => Loc.T("Split at blank sheets"),
+            SplitMode.SheetCount => Loc.Plural(sheets, "Split every sheet", "Split every {0} sheets"),
+            SplitMode.Barcode => settings.Document.BarcodeStartsDocument ? Loc.T("Split and named at barcodes") : Loc.T("Split at barcode sheets"),
             _ => null,
         };
     }

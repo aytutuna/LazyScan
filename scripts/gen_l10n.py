@@ -40,7 +40,7 @@ def load():
         for lang in LANGUAGES:
             value = entry.get(lang)
             if value is None:
-                errors.append(f"{key!r}: no {lang} text")
+                continue
             elif other is None:
                 if not isinstance(value, str):
                     errors.append(f"{key!r}: {lang} must be a string")
@@ -63,6 +63,8 @@ def rows(data, lang):
     if lang == "en":
         return
     for key, entry in data.items():
+        if lang not in entry:
+            continue
         if "en_other" in entry:
             yield key + "|one", entry[lang]["one"]
             yield key + "|other", entry[lang]["other"]

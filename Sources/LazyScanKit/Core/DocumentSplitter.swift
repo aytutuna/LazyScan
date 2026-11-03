@@ -423,16 +423,23 @@ public enum DocumentSplitter {
     public static func queueSummary(_ pages: [ScannedPage], options: DocumentOptions) -> String {
         let plan = self.plan(pages, options: options)
         let total = pages.count
-        var text = "\(total) page\(total == 1 ? "" : "s")"
-        if plan.isSplit { text += " \u{00B7} \(plan.documents.count) documents" }
+        var text = L10n.plural(total, one: "{0} page", other: "{0} pages")
+        if plan.isSplit {
+            text += " \u{00B7} " + L10n.plural(plan.documents.count, one: "{0} document", other: "{0} documents")
+        }
         let separators = plan.separatorCount
         let skipped = pages.indices.filter { plan.pages[$0].role == .skipped }
         let allBlank = skipped.allSatisfy { PageFilter.looksBlank(pages[$0], sensitivity: options.blankSensitivity) }
-        let skippedText = "\(skipped.count)\(allBlank ? " blank" : "")"
-        let separatorText = "\(separators) separator page\(separators == 1 ? "" : "s")"
-        if separators > 0 && !skipped.isEmpty { return "\(text) \u{00B7} \(separatorText) and \(skippedText) skipped" }
-        if separators > 0 { return "\(text) \u{00B7} \(separatorText) skipped" }
-        if !skipped.isEmpty { return "\(text) \u{00B7} \(skippedText) skipped" }
+        let separatorText = L10n.plural(separators, one: "{0} separator page", other: "{0} separator pages")
+        if separators > 0 && !skipped.isEmpty {
+            let note = allBlank ? L10n.t("{0} and {1} blank skipped", separatorText, skipped.count)
+                : L10n.t("{0} and {1} skipped", separatorText, skipped.count)
+            return "\(text) \u{00B7} \(note)"
+        }
+        if separators > 0 { return "\(text) \u{00B7} " + L10n.t("{0} skipped", separatorText) }
+        if !skipped.isEmpty {
+            return "\(text) \u{00B7} " + (allBlank ? L10n.t("{0} blank skipped", skipped.count) : L10n.t("{0} skipped", skipped.count))
+        }
         return text
     }
 
@@ -441,10 +448,11 @@ public enum DocumentSplitter {
     /// otherwise (leading space); empty when it is one document.
     public static func scanNote(_ plan: SplitPlan, separatorsAdded: Int) -> String {
         let documents = plan.documents.count
-        let toSave = "\(documents) document\(documents == 1 ? "" : "s") to save."
+        let toSave = L10n.plural(documents, one: "{0} document to save.", other: "{0} documents to save.")
         if separatorsAdded > 0 {
-            return " Found \(separatorsAdded) separator page\(separatorsAdded == 1 ? "" : "s"): \(toSave)"
+            return " " + L10n.plural(separatorsAdded, one: "Found {0} separator page: {1}",
+                                     other: "Found {0} separator pages: {1}", toSave)
         }
-        return plan.isSplit ? " \(toSave)" : ""
+        return plan.isSplit ? " " + toSave : ""
     }
 }

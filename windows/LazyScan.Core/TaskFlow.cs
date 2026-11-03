@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LazyScan.Core;
 
 // Port of Sources/LazyScanKit/Core/TaskFlow.swift.
@@ -14,18 +16,21 @@ namespace LazyScan.Core;
 /// The fuller guidance behind the banner's ⓘ, read out with the prompt by screen readers; empty
 /// when the prompt says it all.
 /// </param>
+/// <param name="ShortWord">The step in one word for the step indicator; empty when the indicator takes it from the title.</param>
 public sealed record TaskStep(string Id, string Title, string Prompt, string PrimaryActionLabel,
                               bool Skippable = false, bool Repeats = false, bool RequiresCapture = true,
-                              string Help = "")
+                              string Help = "", string ShortWord = "")
 {
     /// <summary>
-    /// The step in one word, for a step indicator ("Front · Back · Check"): the title's first word
-    /// after a leading "Scan the" or "Scan", capitalized ("Scan the front sides" is "Front").
+    /// The step in one word, for a step indicator ("Front · Back · Check"): <see cref="ShortWord"/>,
+    /// else the title's first word after a leading "Scan the" or "Scan", capitalized ("Scan the front
+    /// sides" is "Front").
     /// </summary>
     public string Word
     {
         get
         {
+            if (ShortWord.Length > 0) return ShortWord;
             string t = Title.Trim();
             foreach (string lead in new[] { "Scan the ", "Scan " })
             {
@@ -36,7 +41,7 @@ public sealed record TaskStep(string Id, string Title, string Prompt, string Pri
                 }
             }
             string word = t.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? t;
-            return word.Length == 0 ? word : char.ToUpperInvariant(word[0]) + word[1..];
+            return word.Length == 0 ? word : char.ToUpper(word[0], CultureInfo.CurrentCulture) + word[1..];
         }
     }
 

@@ -21,22 +21,36 @@ public static class StatusLine
         text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Count(t => WordToken.IsMatch(t));
 
     /// <summary>
-    /// The sentences <see cref="SettingsAdapter"/> adds when a setting had to change for the scanner,
-    /// each with its short form: a warning stays visible, not only in the accessible name.
+    /// A warning's short form, and the form that follows another fact on the line ("Ready — Demo ·
+    /// feeder used"). Written out for each, so a language can start the second one the way it needs to.
     /// </summary>
-    private static readonly (Regex Note, string Short)[] SettingsNotes =
+    private readonly record struct Warning(string Short, string Inline);
+
+    /// <summary>
+    /// The sentences <see cref="SettingsAdapter"/> adds when a setting had to change for the scanner,
+    /// each with its short form (made from the match, for the number it captures): a warning stays
+    /// visible, not only in the accessible name.
+    /// </summary>
+    private static readonly (Regex Note, Func<Match, Warning> Warn)[] SettingsNotes =
     [
-        (new(@"This scanner has no flatbed, so the document feeder is used\."), "Feeder used"),
-        (new(@"This scanner has no document feeder, so the flatbed is used\."), "Flatbed used"),
-        (new(@"This scanner's feeder scans one side at a time, so you'll turn the stack over by hand\."), "Two-sided by hand"),
+        (new(@"This scanner has no flatbed, so the document feeder is used\."),
+         _ => new(Loc.T("Feeder used"), Loc.T("feeder used|after another fact"))),
+        (new(@"This scanner has no document feeder, so the flatbed is used\."),
+         _ => new(Loc.T("Flatbed used"), Loc.T("flatbed used|after another fact"))),
+        (new(@"This scanner's feeder scans one side at a time, so you'll turn the stack over by hand\."),
+         _ => new(Loc.T("Two-sided by hand"), Loc.T("two-sided by hand|after another fact"))),
         (new($@"(?:{string.Join("|", Enum.GetValues<PaperSize>().Select(p => Regex.Escape(p.Label())))}) paper does not fit this scanner's (?:feeder|glass), so the paper size is Automatic\."),
-         "Paper size Automatic"),
-        (new(@"This scanner does not offer \d+ dpi, so (\d+) dpi is used\."), "$1 dpi used"),
+         _ => new(Loc.T("Paper size Automatic"), Loc.T("paper size Automatic|after another fact"))),
+        (new(@"This scanner does not offer \d+ dpi, so (\d+) dpi is used\."),
+         m =>
+         {
+             string text = Loc.T("{0} dpi used", m.Groups[1].Value);
+             return new(text, text);
+         }),
     ];
 
     /// <summary>A two-sided scan came back with one side of each sheet.</summary>
     private const string OneSidedMark = "the scanner did not scan both sides";
-    private const string OneSidedShort = "One side only";
 
     /// <param name="message">The app's status sentence.</param>
     /// <param name="deviceName">The connected scanner, for "Ready — Demo Scanner" after a task is picked.</param>
@@ -49,9 +63,9 @@ public static class StatusLine
     {
         string text = message.Trim();
         if (text.Length == 0) return "";
-        var (shorts, notesAt) = FindWarnings(text);
+        var (warnings, notesAt) = FindWarnings(text);
         string head = notesAt > 0 ? Head(text[..notesAt].Trim(), deviceName) : "";
-        return Compose(head, shorts);
+        return Compose(head, warnings);
     }
 
     /// <summary>
@@ -59,13 +73,15 @@ public static class StatusLine
     /// way <see cref="Short"/> adds them: "Saved · 600 dpi used", or the warnings alone when the line
     /// can't hold both; just <paramref name="head"/> when there are none.
     /// </summary>
-    public static string WithWarnings(string head, string message) => Compose(head, Warnings(message));
+    public static string WithWarnings(string head, string message) => Compose(head, WarningsIn(message));
 
     /// <summary>
     /// The short warnings in <paramref name="message"/>, in the order they come: a setting changed for
     /// the scanner ("600 dpi used"), a two-sided scan that came back one-sided ("One side only").
     /// </summary>
-    public static IReadOnlyList<string> Warnings(string message) => FindWarnings(message.Trim()).Shorts;
+    public static IReadOnlyList<string> Warnings(string message) => WarningsIn(message).Select(w => w.Short).ToList();
+
+    private static IReadOnlyList<Warning> WarningsIn(string message) => FindWarnings(message.Trim()).Warnings;
 
     /// <summary>
     /// What the status line shows while the app is idle: nothing while a review shows its own title
@@ -75,55 +91,51 @@ public static class StatusLine
     public static string Shown(string message, string? deviceName, bool reviewShown, bool savedShown)
     {
         if (reviewShown) return "";
-        if (savedShown && message.TrimStart().StartsWith("Saved", StringComparison.Ordinal)) return WithWarnings("Saved", message);
+        if (savedShown && message.TrimStart().StartsWith("Saved", StringComparison.Ordinal)) return WithWarnings(Loc.T("Saved"), message);
         return Short(message, deviceName);
     }
 
     /// <summary>The warnings in <paramref name="text"/>, and where the first settings note starts (the text's length when none does).</summary>
-    private static (List<string> Shorts, int NotesAt) FindWarnings(string text)
+    private static (List<Warning> Warnings, int NotesAt) FindWarnings(string text)
     {
         // The notes are appended after the message: the message is what comes before the first one.
-        var warnings = new List<(int At, string Short)>();
+        var warnings = new List<(int At, Warning Warning)>();
         int notesAt = text.Length;
-        foreach (var (note, shortForm) in SettingsNotes)
+        foreach (var (note, warn) in SettingsNotes)
         {
             foreach (Match m in note.Matches(text))
             {
-                warnings.Add((m.Index, m.Result(shortForm)));
+                warnings.Add((m.Index, warn(m)));
                 notesAt = Math.Min(notesAt, m.Index);
             }
         }
         int oneSided = text.IndexOf(OneSidedMark, StringComparison.Ordinal);
-        if (oneSided >= 0) warnings.Add((oneSided, OneSidedShort));
-        return (warnings.OrderBy(w => w.At).Select(w => w.Short).ToList(), notesAt);
+        if (oneSided >= 0) warnings.Add((oneSided, new(Loc.T("One side only"), Loc.T("one side only|after another fact"))));
+        return (warnings.OrderBy(w => w.At).Select(w => w.Warning).ToList(), notesAt);
     }
 
     /// <summary>The head, then the warnings while they fit; when the line can't hold both, the warnings win.</summary>
-    private static string Compose(string head, IReadOnlyList<string> shorts)
+    private static string Compose(string head, IReadOnlyList<Warning> warnings)
     {
-        if (shorts.Count == 0) return head;
+        if (warnings.Count == 0) return head;
         if (head.Length > 0)
         {
-            string all = string.Join(" · ", shorts.Select(LowerFirst).Prepend(head));
+            string all = string.Join(" · ", warnings.Select(w => w.Inline).Prepend(head));
             if (Words(all) <= MaxWords) return all;
         }
         // Not room for the message too: the warnings alone, as many as fit, then how many more.
-        string shown = shorts[0];
+        string shown = warnings[0].Short;
         int i = 1;
-        while (i < shorts.Count)
+        while (i < warnings.Count)
         {
-            string next = $"{shown} · {LowerFirst(shorts[i])}";
+            string next = $"{shown} · {warnings[i].Inline}";
             // While more would follow, keep a word free for "+N".
-            if (Words(next) > MaxWords - (i < shorts.Count - 1 ? 1 : 0)) break;
+            if (Words(next) > MaxWords - (i < warnings.Count - 1 ? 1 : 0)) break;
             shown = next;
             i++;
         }
-        return i < shorts.Count ? $"{shown} +{shorts.Count - i}" : shown;
+        return i < warnings.Count ? $"{shown} +{warnings.Count - i}" : shown;
     }
-
-    /// <summary>"Feeder used" after a message reads "… · feeder used"; "300 dpi used" stays as it is.</summary>
-    private static string LowerFirst(string text) =>
-        text.Length > 0 && char.IsUpper(text[0]) ? char.ToLowerInvariant(text[0]) + text[1..] : text;
 
     /// <summary>The short form of the message itself (without the notes after it).</summary>
     private static string Head(string text, string? deviceName)
@@ -131,44 +143,49 @@ public static class StatusLine
         if (text.Length == 0) return "";
         if (text.StartsWith("Ready for “", StringComparison.Ordinal))
         {
-            return deviceName is { Length: > 0 } name ? $"Ready — {name}" : "Ready";
+            return deviceName is { Length: > 0 } name ? Loc.T("Ready — {0}", name) : Loc.T("Ready");
         }
         if (Regex.Match(text, @"^Added (\d+) (?:page|pages)\b") is { Success: true } added)
         {
-            int count = int.Parse(added.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            int count = Count(added.Groups[1]);
             string head = count == 1 && Regex.Match(text, @"— (\d+) in queue") is { Success: true } queue
-                ? $"Page {queue.Groups[1].Value} added"
-                : $"{count} {(count == 1 ? "page" : "pages")} added";
+                ? Loc.T("Page {0} added", Count(queue.Groups[1]))
+                : Loc.Plural(count, "{0} page added", "{0} pages added");
             if (Regex.Match(text, @"(\d+) looks? blank") is { Success: true } blank)
             {
-                head = Append(head, $"{blank.Groups[1].Value} blank");
+                head = Append(head, Loc.Plural(Count(blank.Groups[1]), "{0} blank", "{0} blank"));
             }
-            if (Regex.Match(text, @"(\d+) (spreads?) split into pages") is { Success: true } spreads)
+            if (Regex.Match(text, @"(\d+) spreads? split into pages") is { Success: true } spreads)
             {
-                head = Append(head, $"{spreads.Groups[1].Value} {spreads.Groups[2].Value} split");
+                head = Append(head, Loc.Plural(Count(spreads.Groups[1]), "{0} spread split", "{0} spreads split"));
             }
             return head;
         }
         if (Regex.Match(text, @"^(?:Cancelled — )?Saved (\d+) (photos?|receipts?|documents?|files?|PDFs?|copies)\b",
                         RegexOptions.IgnoreCase) is { Success: true } savedMany)
         {
-            return $"Saved {savedMany.Groups[1].Value} {savedMany.Groups[2].Value}";
+            return SavedHead(Count(savedMany.Groups[1]), savedMany.Groups[2].Value.ToLowerInvariant());
         }
-        if (text.StartsWith("Saved ", StringComparison.Ordinal)) return "Saved";
+        if (text.StartsWith("Saved ", StringComparison.Ordinal)) return Loc.T("Saved");
         if (Regex.Match(text, @"^Found (\d+) (photos?|receipts?)\b") is { Success: true } found)
         {
-            return $"Found {found.Groups[1].Value} {found.Groups[2].Value}";
+            int count = Count(found.Groups[1]);
+            return found.Groups[2].Value.StartsWith("photo", StringComparison.Ordinal)
+                ? Loc.Plural(count, "Found {0} photo", "Found {0} photos")
+                : Loc.Plural(count, "Found {0} receipt", "Found {0} receipts");
         }
-        if (text.StartsWith("Page queue cleared", StringComparison.Ordinal)) return "Queue cleared";
-        if (Regex.Match(text, @"^Reading the text of page (\d+)( of \d+)?…") is { Success: true } reading)
+        if (text.StartsWith("Page queue cleared", StringComparison.Ordinal)) return Loc.T("Queue cleared");
+        if (Regex.Match(text, @"^Reading the text of page (\d+)(?: of (\d+))?…") is { Success: true } reading)
         {
-            return $"Reading page {reading.Groups[1].Value}{reading.Groups[2].Value}…";
+            return reading.Groups[2].Success
+                ? Loc.T("Reading page {0} of {1}…", Count(reading.Groups[1]), Count(reading.Groups[2]))
+                : Loc.T("Reading page {0}…", Count(reading.Groups[1]));
         }
-        if (Regex.Match(text, @"^Adding (\d+) (pages?) to .+…$") is { Success: true } adding)
+        if (Regex.Match(text, @"^Adding (\d+) pages? to .+…$") is { Success: true } adding)
         {
-            return $"Adding {adding.Groups[1].Value} {adding.Groups[2].Value}…";
+            return Loc.Plural(Count(adding.Groups[1]), "Adding {0} page…", "Adding {0} pages…");
         }
-        if (text.StartsWith("Sent ", StringComparison.Ordinal)) return "Sent to the printer";
+        if (text.StartsWith("Sent ", StringComparison.Ordinal)) return Loc.T("Sent to the printer");
 
         // Anything else: its first sentence, then what comes before a dash or a colon, then its whole facts.
         string first = FirstSentence(text);
@@ -199,6 +216,19 @@ public static class StatusLine
         }
         return string.Join(' ', kept).TrimEnd(',', ':', ';', '.', ' ') + "…";
     }
+
+    private static int Count(Group digits) => int.Parse(digits.Value, System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>"Saved 3 photos" for the kind of file <paramref name="noun"/> names (lower case, as the message has it).</summary>
+    private static string SavedHead(int count, string noun) => noun switch
+    {
+        _ when noun.StartsWith("photo", StringComparison.Ordinal) => Loc.Plural(count, "Saved {0} photo", "Saved {0} photos"),
+        _ when noun.StartsWith("receipt", StringComparison.Ordinal) => Loc.Plural(count, "Saved {0} receipt", "Saved {0} receipts"),
+        _ when noun.StartsWith("document", StringComparison.Ordinal) => Loc.Plural(count, "Saved {0} document", "Saved {0} documents"),
+        _ when noun.StartsWith("file", StringComparison.Ordinal) => Loc.Plural(count, "Saved {0} file", "Saved {0} files"),
+        _ when noun.StartsWith("pdf", StringComparison.Ordinal) => Loc.Plural(count, "Saved {0} PDF", "Saved {0} PDFs"),
+        _ => Loc.Plural(count, "Saved {0} copy", "Saved {0} copies"),
+    };
 
     /// <summary>"6 pages added · 1 blank", while the words stay within the limit.</summary>
     private static string Append(string head, string part)

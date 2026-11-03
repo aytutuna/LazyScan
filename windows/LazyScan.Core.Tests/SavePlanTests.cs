@@ -73,9 +73,6 @@ public class SavePlanTests
         Assert.Equal(" — 1 separator page and 2 skipped pages were left out", (one with { SeparatorPages = 1, SkippedPages = 2 }).LeftOutNote());
         Assert.Equal("None of the documents was saved; the pages are still in the queue. The disk is full.",
                      SavePlan.NotSavedMessage("The disk is full."));
-        Assert.Equal(["PDF", "PDFs", "Word document", "Word documents", "text file", "text files"],
-                     new[] { (OutputFormat.Pdf, 1), (OutputFormat.Pdf, 2), (OutputFormat.Word, 1), (OutputFormat.Word, 2),
-                             (OutputFormat.Text, 1), (OutputFormat.Text, 2) }.Select(c => SavePlan.FileKind(c.Item1, c.Item2)));
     }
 
     private static string TempFolder()

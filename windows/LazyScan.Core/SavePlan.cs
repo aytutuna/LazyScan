@@ -36,22 +36,22 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     /// <summary>The {index} of the document's file name: its number when the queue is split, else none.</summary>
     public int? FileIndex(SaveDocument document) => IsSplit ? document.Number : null;
 
-    /// <summary>"PDF", "PDFs", "Word document", "text files": what the collected pages are saved as.</summary>
-    public static string FileKind(OutputFormat format, int count) => OutputFormats.QueueFormat(format) switch
-    {
-        OutputFormat.Word => count == 1 ? "Word document" : "Word documents",
-        OutputFormat.Text => count == 1 ? "text file" : "text files",
-        _ => count == 1 ? "PDF" : "PDFs",
-    };
-
     /// <summary>
     /// The save button: "Save 3 PDFs (7 pages)" for a split queue, otherwise
     /// <see cref="OutputFormats.SaveTitle(OutputFormat, int)"/> ("Save PDF (7 pages)").
     /// </summary>
-    public string SaveTitle(OutputFormat format) =>
-        IsSplit
-            ? $"Save {Documents.Count} {FileKind(format, Documents.Count)} ({PageCount} page{(PageCount == 1 ? "" : "s")})"
-            : OutputFormats.SaveTitle(format, PageCount);
+    public string SaveTitle(OutputFormat format)
+    {
+        if (!IsSplit) return OutputFormats.SaveTitle(format, PageCount);
+        return OutputFormats.QueueFormat(format) switch
+        {
+            OutputFormat.Word => Loc.Plural(PageCount, "Save {1} Word documents ({0} page)",
+                                            "Save {1} Word documents ({0} pages)", Documents.Count),
+            OutputFormat.Text => Loc.Plural(PageCount, "Save {1} text files ({0} page)",
+                                            "Save {1} text files ({0} pages)", Documents.Count),
+            _ => Loc.Plural(PageCount, "Save {1} PDFs ({0} page)", "Save {1} PDFs ({0} pages)", Documents.Count),
+        };
+    }
 
     /// <summary>
     /// What was left out, after the saved message: " — 1 skipped page was left out", " — 2 separator
@@ -61,9 +61,11 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     {
         int s = SeparatorPages, k = SkippedPages;
         if (s == 0 && k == 0) return "";
-        if (s == 0) return $" — {k} skipped page{(k == 1 ? " was" : "s were")} left out";
-        if (k == 0) return $" — {s} separator page{(s == 1 ? " was" : "s were")} left out";
-        return $" — {s} separator page{(s == 1 ? "" : "s")} and {k} skipped page{(k == 1 ? "" : "s")} were left out";
+        if (s == 0) return " " + Loc.Plural(k, "— {0} skipped page was left out", "— {0} skipped pages were left out");
+        if (k == 0) return " " + Loc.Plural(s, "— {0} separator page was left out", "— {0} separator pages were left out");
+        string separators = Loc.Plural(s, "{0} separator page", "{0} separator pages");
+        string skipped = Loc.Plural(k, "{0} skipped page", "{0} skipped pages");
+        return " " + Loc.T("— {0} and {1} were left out", separators, skipped);
     }
 
     /// <summary>
@@ -76,15 +78,23 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     public string SavedMessage(OutputFormat format, IReadOnlyList<string> fileNames, string? size = null,
                                IReadOnlyList<string>? textFileNames = null, IReadOnlyList<string>? noTextFound = null)
     {
-        string pages = $"{PageCount} page{(PageCount == 1 ? "" : "s")}" + (size is null ? "" : $", {size}");
-        string text = textFileNames is { Count: > 0 } names ? " and their text, " + string.Join(", ", names) : "";
+        string pages = Loc.Plural(PageCount, "{0} page", "{0} pages") + (size is null ? "" : $", {size}");
+        string text = textFileNames is { Count: > 0 } names
+            ? " " + Loc.T("and their text, {0}", string.Join(", ", names))
+            : "";
         string empty = noTextFound is not { Count: > 0 } none
             ? ""
             : none.Count == fileNames.Count
-            ? " — no text was found"
-            : " — no text was found in " + string.Join(", ", none);
-        return $"Saved {fileNames.Count} {FileKind(format, fileNames.Count)} ({pages}): "
-               + string.Join(", ", fileNames) + text + empty + LeftOutNote();
+            ? " " + Loc.T("— no text was found")
+            : " " + Loc.T("— no text was found in {0}", string.Join(", ", none));
+        int count = fileNames.Count;
+        string saved = OutputFormats.QueueFormat(format) switch
+        {
+            OutputFormat.Word => Loc.Plural(count, "Saved {0} Word document ({1}):", "Saved {0} Word documents ({1}):", pages),
+            OutputFormat.Text => Loc.Plural(count, "Saved {0} text file ({1}):", "Saved {0} text files ({1}):", pages),
+            _ => Loc.Plural(count, "Saved {0} PDF ({1}):", "Saved {0} PDFs ({1}):", pages),
+        };
+        return saved + " " + string.Join(", ", fileNames) + text + empty + LeftOutNote();
     }
 
     /// <summary>The error when a split save fails: nothing of it is kept, and the queue is still there.</summary>

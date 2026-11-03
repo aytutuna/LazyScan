@@ -131,7 +131,7 @@ public enum InspectorSections {
         switch d.splitMode {
         case .separatorSheet: return "Separator sheets"
         case .blankSheet: return "Blank sheets"
-        case .sheetCount: return sheets == 1 ? "Every sheet" : "Every \(sheets) sheets"
+        case .sheetCount: return L10n.plural(sheets, one: "Every sheet", other: "Every {0} sheets")
         case .barcode: return "QR codes"
         case .none: return "Off"
         }
@@ -166,7 +166,8 @@ public enum InspectorSections {
     public static func pagesHeaderName(_ d: DocumentOptions) -> String {
         let on: Int = pagesOn(d)
         let heading: String = title(pages)
-        return on == 0 ? heading : "\(heading), \(on) option\(on == 1 ? "" : "s") on"
+        return on == 0 ? heading
+            : L10n.plural(on, one: "{1}, {0} option on", other: "{1}, {0} options on", heading)
     }
 
     // MARK: The sections for a setting

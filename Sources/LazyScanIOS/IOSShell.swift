@@ -185,7 +185,8 @@ public enum IOSShell {
 
     private static func reworded(_ step: TaskStep, prompt: String, help: String) -> TaskStep {
         TaskStep(id: step.id, title: step.title, prompt: prompt, primaryActionLabel: step.primaryActionLabel,
-                 skippable: step.skippable, repeats: step.repeats, requiresCapture: step.requiresCapture, help: help)
+                 skippable: step.skippable, repeats: step.repeats, requiresCapture: step.requiresCapture, help: help,
+                 shortWord: step.shortWord)
     }
 
     static let printerTextPrompt = "Preview under Scanner, tap it to choose the area, then scan."

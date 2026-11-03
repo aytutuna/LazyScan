@@ -91,10 +91,6 @@ final class SavePlanTests: XCTestCase {
         XCTAssertEqual(note(separators: 1, skipped: 2), " — 1 separator page and 2 skipped pages were left out")
         XCTAssertEqual(SavePlan.notSavedMessage("The disk is full."),
                        "None of the documents was saved; the pages are still in the queue. The disk is full.")
-        XCTAssertEqual([(OutputFormat.pdf, 1), (OutputFormat.pdf, 2), (OutputFormat.word, 1), (OutputFormat.word, 2),
-                        (OutputFormat.text, 1), (OutputFormat.text, 2)]
-                        .map { SavePlan.fileKind($0.0, count: $0.1) },
-                       ["PDF", "PDFs", "Word document", "Word documents", "text file", "text files"])
     }
 
     private func tempFolder() throws -> URL {

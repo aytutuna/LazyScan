@@ -188,6 +188,11 @@ final class TaskFlowTests: XCTestCase {
         }
     }
 
+    func test_word_prefersTheExplicitShortWord() {
+        XCTAssertEqual(TaskStep(id: "x", title: "Scan an area", prompt: "p", primaryActionLabel: "a", shortWord: "Area").word, "Area")
+        XCTAssertEqual(IdCardSteps.steps.map(\.word), ["Front", "Back", "Check"])
+    }
+
     func test_words_ofEveryTaskWithSteps_areDistinct() {
         var stepLists: [[TaskStep]] = TaskCatalog.all.filter { $0.steps.count > 1 }.map(\.steps)
         stepLists.append(DocumentSides.manualSteps)

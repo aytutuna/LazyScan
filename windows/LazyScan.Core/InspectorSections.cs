@@ -120,7 +120,7 @@ public static class InspectorSections
         {
             SplitMode.SeparatorSheet => "Separator sheets",
             SplitMode.BlankSheet => "Blank sheets",
-            SplitMode.SheetCount => sheets == 1 ? "Every sheet" : $"Every {sheets} sheets",
+            SplitMode.SheetCount => Loc.Plural(sheets, "Every sheet", "Every {0} sheets"),
             SplitMode.Barcode => "QR codes",
             _ => "Off",
         };
@@ -151,7 +151,7 @@ public static class InspectorSections
     {
         int on = PagesOn(d);
         string title = Title(Pages);
-        return on == 0 ? title : $"{title}, {on} option{(on == 1 ? "" : "s")} on";
+        return on == 0 ? title : Loc.Plural(on, "{1}, {0} option on", "{1}, {0} options on", title);
     }
 
     // MARK: - The sections for a setting

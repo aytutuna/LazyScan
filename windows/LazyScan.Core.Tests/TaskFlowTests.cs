@@ -218,6 +218,13 @@ public class TaskFlowTests
     }
 
     [Fact]
+    public void Word_PrefersTheExplicitShortWord()
+    {
+        Assert.Equal("Area", new TaskStep("x", "Scan an area", "p", "a", ShortWord: "Area").Word);
+        Assert.Equal(["Front", "Back", "Check"], IdCardSteps.Steps.Select(s => s.Word));
+    }
+
+    [Fact]
     public void Words_OfEveryTaskWithSteps_AreDistinct()
     {
         foreach (var steps in TaskCatalog.All.Where(t => t.Steps.Count > 1).Select(t => t.Steps).Append(DocumentSides.ManualSteps))

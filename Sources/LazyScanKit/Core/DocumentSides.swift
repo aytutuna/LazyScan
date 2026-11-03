@@ -95,16 +95,19 @@ public enum DocumentSides {
     /// The guided steps of turning a stack over by hand: scan the fronts, turn the stack over,
     /// scan the backs. Every page is a capture, so both steps repeat; the backs can be left out
     /// ("Keep fronts only").
-    public static let manualSteps: [TaskStep] = [
-        TaskStep(id: frontsStepID, title: "Scan the front sides",
-                 prompt: "Load the stack in the feeder and scan the fronts.",
-                 primaryActionLabel: "Scan fronts", repeats: true,
-                 help: "Only the front of each sheet is scanned this time."),
-        TaskStep(id: backsStepID, title: "Scan the back sides",
-                 prompt: "Turn the stack over, load it again and scan.",
-                 primaryActionLabel: "Scan backs", skippable: true, repeats: true, requiresCapture: false,
-                 help: "Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
-    ]
+    public static var manualSteps: [TaskStep] {
+        [
+            TaskStep(id: frontsStepID, title: L10n.t("Scan the front sides"),
+                     prompt: L10n.t("Load the stack in the feeder and scan the fronts."),
+                     primaryActionLabel: L10n.t("Scan fronts"), repeats: true,
+                     help: L10n.t("Only the front of each sheet is scanned this time."), shortWord: L10n.t("Front|step")),
+            TaskStep(id: backsStepID, title: L10n.t("Scan the back sides"),
+                     prompt: L10n.t("Turn the stack over, load it again and scan."),
+                     primaryActionLabel: L10n.t("Scan backs"), skippable: true, repeats: true, requiresCapture: false,
+                     help: L10n.t("Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
+                     shortWord: L10n.t("Back|step")),
+        ]
+    }
 
     /// The sheet and side of each transfer of a feeder scan, in reading order (by sheet, the
     /// front first). One-sided: transfer k is the front of sheet k. Two-sided: transfers come as
@@ -216,7 +219,9 @@ public enum DocumentSides {
 
     /// "3 fronts but 2 backs", "1 front but 2 backs".
     public static func countMessage(fronts: Int, backs: Int) -> String {
-        "\(fronts) front\(fronts == 1 ? "" : "s") but \(backs) back\(backs == 1 ? "" : "s")"
+        let frontsText = L10n.plural(fronts, one: "{0} front", other: "{0} fronts")
+        let backsText = L10n.plural(backs, one: "{0} back", other: "{0} backs")
+        return L10n.t("{0} but {1}", frontsText, backsText)
     }
 
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in reading

@@ -38,7 +38,7 @@ public class ScanTaskTests
                      TaskCatalog.All.Select(d => d.IconKey));
         foreach (var definition in TaskCatalog.All)
         {
-            Assert.Same(definition, TaskCatalog.Definition(definition.Task));
+            Assert.Equal(definition.Task, TaskCatalog.Definition(definition.Task).Task);
             Assert.False(string.IsNullOrWhiteSpace(definition.Subtitle));
         }
         // Every task but the ID card has one repeating scan step.

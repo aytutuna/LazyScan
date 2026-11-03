@@ -122,15 +122,20 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
     /// "Save PDF", "Save Word", "Save Text": the button that saves the collected pages.
     public var saveTitle: String {
         switch queueFormat {
-        case .word: return "Save Word"
-        case .text: return "Save Text"
-        default: return "Save PDF"
+        case .word: return L10n.t("Save Word")
+        case .text: return L10n.t("Save Text")
+        default: return L10n.t("Save PDF")
         }
     }
 
     /// "Save PDF (3 pages)", or just the `saveTitle` when no page would be saved.
     public func saveTitle(pageCount: Int) -> String {
-        pageCount > 0 ? "\(saveTitle) (\(pageCount) page\(pageCount == 1 ? "" : "s"))" : saveTitle
+        guard pageCount > 0 else { return saveTitle }
+        switch queueFormat {
+        case .word: return L10n.plural(pageCount, one: "Save Word ({0} page)", other: "Save Word ({0} pages)")
+        case .text: return L10n.plural(pageCount, one: "Save Text ({0} page)", other: "Save Text ({0} pages)")
+        default: return L10n.plural(pageCount, one: "Save PDF ({0} page)", other: "Save PDF ({0} pages)")
+        }
     }
 }
 

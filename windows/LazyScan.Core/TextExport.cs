@@ -27,24 +27,29 @@ public static class TextExport
     /// </summary>
     public static string SavedMessage(OutputFormat format, int pageCount, string fileName, bool hasText)
     {
-        string kind = format == OutputFormat.Word ? "Word document" : "text file";
-        return $"Saved {pageCount}-page {kind}: {fileName}" + (hasText ? "" : " — no text was found");
+        if (format == OutputFormat.Word)
+        {
+            return hasText ? Loc.T("Saved {0}-page Word document: {1}", pageCount, fileName)
+                : Loc.T("Saved {0}-page Word document: {1} — no text was found", pageCount, fileName);
+        }
+        return hasText ? Loc.T("Saved {0}-page text file: {1}", pageCount, fileName)
+            : Loc.T("Saved {0}-page text file: {1} — no text was found", pageCount, fileName);
     }
 
     /// <summary>" and its text, Scan 1.txt": added after a PDF's name when its text was saved beside it.</summary>
-    public static string SidecarSuffix(string textFileName) => $" and its text, {textFileName}";
+    public static string SidecarSuffix(string textFileName) => " " + Loc.T("and its text, {0}", textFileName);
 
     /// <summary>
     /// What the user reads when the text could not be read: "The text could not be read: no OCR
     /// language pack is installed (…)." from the OCR error's message ("Scan failed: OCR failed: …").
     /// </summary>
-    public static string RecognitionFailed(string ocrMessage) => $"The text could not be read: {Reason(ocrMessage)}";
+    public static string RecognitionFailed(string ocrMessage) => Loc.T("The text could not be read: {0}", Reason(ocrMessage));
 
     /// <summary>
     /// "The PDF was saved, but not its text file: …": the text beside a PDF could not be read or
     /// written (<paramref name="message"/>, an OCR or file error); the PDF is kept.
     /// </summary>
-    public static string SidecarFailed(string message) => $"The PDF was saved, but not its text file: {Reason(message)}";
+    public static string SidecarFailed(string message) => Loc.T("The PDF was saved, but not its text file: {0}", Reason(message));
 
     /// <summary>
     /// What the user reads when a scan to be saved at once as Word or text could not be (its text
@@ -56,11 +61,19 @@ public static class TextExport
     /// </summary>
     public static string KeptInQueue(OutputFormat format, int pageCount, bool cancelled, bool textUnreadable = true)
     {
-        string pages = pageCount == 1 ? "the page is" : $"the {pageCount} pages are";
-        if (cancelled) return $"Cancelled — {pages} kept in the queue.";
-        string them = pageCount == 1 ? "it" : "them";
-        string advice = textUnreadable ? "once the text can be read" : "to try again";
-        return $"{char.ToUpperInvariant(pages[0])}{pages[1..]} kept in the queue: press {OutputFormats.SaveTitle(format)} {advice}, or choose PDF to save {them} as scanned.";
+        if (cancelled) return CancelledInQueue(pageCount);
+        string saveTitle = OutputFormats.SaveTitle(format);
+        if (textUnreadable)
+        {
+            return Loc.Plural(pageCount,
+                "The page is kept in the queue: press {1} once the text can be read, or choose PDF to save it as scanned.",
+                "The {0} pages are kept in the queue: press {1} once the text can be read, or choose PDF to save them as scanned.",
+                saveTitle);
+        }
+        return Loc.Plural(pageCount,
+            "The page is kept in the queue: press {1} to try again, or choose PDF to save it as scanned.",
+            "The {0} pages are kept in the queue: press {1} to try again, or choose PDF to save them as scanned.",
+            saveTitle);
     }
 
     /// <summary>
@@ -76,18 +89,30 @@ public static class TextExport
     {
         if (written == 0)
         {
-            string pages = pageCount == 1 ? "the page is" : $"the {pageCount} pages are";
-            return cancelled
-                ? $"Cancelled — {pages} kept in the queue."
-                : $"Not saved — {pages} kept in the queue: press {saveTitle} to try again.";
+            if (cancelled) return CancelledInQueue(pageCount);
+            return Loc.Plural(pageCount,
+                "Not saved — the page is kept in the queue: press {1} to try again.",
+                "Not saved — the {0} pages are kept in the queue: press {1} to try again.",
+                saveTitle);
         }
         int rest = pageCount - written;
-        string others = rest == 1 ? "the other one is" : $"the other {rest} are";
-        string saved = $"{written} of {pageCount} pages saved";
-        return cancelled
-            ? $"Cancelled — {saved}; {others} kept in the queue."
-            : $"{saved} — {others} kept in the queue: press {saveTitle} to try again.";
+        if (cancelled)
+        {
+            return Loc.Plural(rest,
+                "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.",
+                "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue.",
+                written, pageCount);
+        }
+        return Loc.Plural(rest,
+            "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.",
+            "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again.",
+            written, pageCount, saveTitle);
     }
+
+    private static string CancelledInQueue(int pageCount) =>
+        Loc.Plural(pageCount,
+            "Cancelled — the page is kept in the queue.",
+            "Cancelled — the {0} pages are kept in the queue.");
 
     /// <summary>An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a full stop.</summary>
     private static string Reason(string message)
@@ -97,7 +122,7 @@ public static class TextExport
         {
             if (reason.StartsWith(prefix, StringComparison.Ordinal)) reason = reason[prefix.Length..];
         }
-        if (reason.Length == 0) reason = "the text recognition did not work";
+        if (reason.Length == 0) reason = Loc.T("the text recognition did not work");
         if (!reason.EndsWith('.')) reason += ".";
         return reason;
     }
@@ -107,7 +132,7 @@ public static class TextExport
     /// <paramref name="pageNumber"/> counts from 1.
     /// </summary>
     public static string CopiedMessage(int pageNumber, bool hasText) =>
-        hasText ? $"Copied the text of page {pageNumber}." : $"No text was found on page {pageNumber}.";
+        hasText ? Loc.T("Copied the text of page {0}.", pageNumber) : Loc.T("No text was found on page {0}.", pageNumber);
 
     /// <summary>
     /// Write <paramref name="content"/> to a hidden temporary file next to <paramref name="path"/>

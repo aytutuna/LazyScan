@@ -430,16 +430,23 @@ public static class DocumentSplitter
     {
         var plan = Plan(pages, options);
         int total = pages.Count;
-        string text = $"{total} page{(total == 1 ? "" : "s")}";
-        if (plan.IsSplit) text += $" · {plan.Documents.Count} documents";
+        string text = Loc.Plural(total, "{0} page", "{0} pages");
+        if (plan.IsSplit) text += " · " + Loc.Plural(plan.Documents.Count, "{0} document", "{0} documents");
         int separators = plan.SeparatorCount;
         var skipped = Enumerable.Range(0, pages.Count).Where(i => plan.Pages[i].Role == PageRole.Skipped).ToList();
         bool allBlank = skipped.All(i => PageFilter.LooksBlank(pages[i], options.BlankSensitivity));
-        string skippedText = $"{skipped.Count}{(allBlank ? " blank" : "")}";
-        string separatorText = $"{separators} separator page{(separators == 1 ? "" : "s")}";
-        if (separators > 0 && skipped.Count > 0) return $"{text} · {separatorText} and {skippedText} skipped";
-        if (separators > 0) return $"{text} · {separatorText} skipped";
-        if (skipped.Count > 0) return $"{text} · {skippedText} skipped";
+        string separatorText = Loc.Plural(separators, "{0} separator page", "{0} separator pages");
+        if (separators > 0 && skipped.Count > 0)
+        {
+            return $"{text} · " + (allBlank
+                ? Loc.T("{0} and {1} blank skipped", separatorText, skipped.Count)
+                : Loc.T("{0} and {1} skipped", separatorText, skipped.Count));
+        }
+        if (separators > 0) return $"{text} · " + Loc.T("{0} skipped", separatorText);
+        if (skipped.Count > 0)
+        {
+            return $"{text} · " + (allBlank ? Loc.T("{0} blank skipped", skipped.Count) : Loc.T("{0} skipped", skipped.Count));
+        }
         return text;
     }
 
@@ -451,8 +458,11 @@ public static class DocumentSplitter
     public static string ScanNote(SplitPlan plan, int separatorsAdded)
     {
         int documents = plan.Documents.Count;
-        string toSave = $"{documents} document{(documents == 1 ? "" : "s")} to save.";
-        if (separatorsAdded > 0) return $" Found {separatorsAdded} separator page{(separatorsAdded == 1 ? "" : "s")}: {toSave}";
-        return plan.IsSplit ? $" {toSave}" : "";
+        string toSave = Loc.Plural(documents, "{0} document to save.", "{0} documents to save.");
+        if (separatorsAdded > 0)
+        {
+            return " " + Loc.Plural(separatorsAdded, "Found {0} separator page: {1}", "Found {0} separator pages: {1}", toSave);
+        }
+        return plan.IsSplit ? " " + toSave : "";
     }
 }
