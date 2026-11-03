@@ -178,9 +178,12 @@ public static class TwainRaster
         _ => false,
     };
 
-    /// <summary>Bits per pixel of a pixel type at an ICAP_BITDEPTH (bits per sample): RGB has three samples.</summary>
+    /// <summary>
+    /// Bits per pixel of a pixel type at an ICAP_BITDEPTH: RGB has three samples, but many drivers
+    /// already report 24 for the whole pixel.
+    /// </summary>
     public static int BitsPerPixel(int pixelType, int bitDepth) =>
-        pixelType == TwainPixelTypes.Rgb ? bitDepth * 3 : bitDepth;
+        pixelType == TwainPixelTypes.Rgb && bitDepth != 24 ? bitDepth * 3 : bitDepth;
 
     internal static int MinimumBytesPerRow(int columns, int bitsPerPixel) =>
         (int)(((long)columns * bitsPerPixel + 7) / 8);

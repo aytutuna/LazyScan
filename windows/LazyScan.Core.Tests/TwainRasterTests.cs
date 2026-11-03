@@ -142,6 +142,7 @@ public class TwainRasterTests
     [InlineData(TwainPixelTypes.BlackWhite, 1, 1)]
     [InlineData(TwainPixelTypes.Gray, 8, 8)]
     [InlineData(TwainPixelTypes.Rgb, 8, 24)]
+    [InlineData(TwainPixelTypes.Rgb, 24, 24)]
     public void BitsPerPixel_CountsThreeSamplesForRgb(int pixelType, int bitDepth, int expected)
     {
         Assert.Equal(expected, TwainRaster.BitsPerPixel(pixelType, bitDepth));
