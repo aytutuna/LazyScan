@@ -18,6 +18,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleDevelopmentRegion</key> <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array><string>en</string><string>tr</string></array>
     <key>CFBundleName</key>              <string>Lazy Scan</string>
     <key>CFBundleDisplayName</key>       <string>Lazy Scan</string>
     <key>CFBundleIdentifier</key>        <string>local.lazyscan.app</string>
@@ -59,6 +62,16 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+# Kit.strings is written by scripts/gen_l10n.py; Localizable.strings and InfoPlist.strings are kept by hand.
+# macOS only picks Turkish when the bundle has tr.lproj, so a missing one stops the build.
+for lang in en tr; do
+  mkdir -p "$APP/Contents/Resources/$lang.lproj"
+  cp l10n/mac/$lang.lproj/*.strings "$APP/Contents/Resources/$lang.lproj/"
+done
+for file in Kit Localizable InfoPlist; do
+  [ -f "$APP/Contents/Resources/tr.lproj/$file.strings" ] || { echo "tr.lproj/$file.strings is missing from the bundle" >&2; exit 1; }
+done
 
 # The page corner model and its licence, where FastViTCornerModel looks in a packaged app. Without it
 # (scripts/fetch_docaligner.sh not run) the app finds pages with its own search. ONNX Runtime is linked

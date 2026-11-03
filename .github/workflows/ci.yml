@@ -156,6 +156,15 @@ jobs:
       # The app as developers build it (debug).
       - name: Build
         run: swift build
+      # make_app.sh copies these into the app bundle; no job packages the app, so check them here.
+      - name: Check the Mac localisation files
+        run: |
+          set -euo pipefail
+          for lang in en tr; do
+            for file in Kit Localizable InfoPlist; do
+              plutil -lint "l10n/mac/$lang.lproj/$file.strings"
+            done
+          done
       # The tests run optimized: the image, PDF and OCR code they drive takes many times longer in
       # a debug build (over 40 minutes). -enable-testing keeps @testable imports working in it, and
       # --parallel runs the test classes in several processes at once.
