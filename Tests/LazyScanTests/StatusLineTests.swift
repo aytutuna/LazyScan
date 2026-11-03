@@ -7,6 +7,13 @@ import Foundation
 
 final class StatusLineTests: XCTestCase {
 
+    func test_short_readsCountsWithThousandsSeparators() {
+        L10n.withTable([:], language: "en") {
+            XCTAssertEqual(StatusLine.short("Added 1 page \u{2014} 1,000 in queue."), "Page 1,000 added")
+            XCTAssertEqual(StatusLine.short("Found 1,200 photos."), "Found 1,200 photos")
+        }
+    }
+
     func test_short_isShortAndFactual() {
         let cases: [(String, String)] = [
             ("Added 1 page \u{2014} 3 in queue. Scan more or Save PDF.", "Page 3 added"),

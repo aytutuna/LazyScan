@@ -41,19 +41,19 @@ struct QueueRecord: Codable, Sendable {
 
     /// "Bringing back 3 pages…"
     static func restoringMessage(_ count: Int) -> String {
-        count == 1 ? "Bringing back 1 page\u{2026}" : "Bringing back \(count) pages\u{2026}"
+        L10n.plural(count, one: "Bringing back {0} page…", other: "Bringing back {0} pages…")
     }
 
     /// "3 pages are back from last time.", or "3 of 4 pages are back from last time." when fewer came back
     /// than the queue had; when none could be read, says so.
     static func restoredMessage(_ count: Int, of queued: Int) -> String {
         switch count {
-        case 0: return "The pages kept from last time could not be read."
+        case 0: return L10n.t("The pages kept from last time could not be read.")
         case ..<queued:
-            return count == 1 ? "1 of \(queued) pages is back from last time."
-                              : "\(count) of \(queued) pages are back from last time."
-        case 1: return "1 page is back from last time."
-        default: return "\(count) pages are back from last time."
+            return L10n.plural(count, one: "{0} of {1} pages is back from last time.",
+                               other: "{0} of {1} pages are back from last time.", queued)
+        default:
+            return L10n.plural(count, one: "{0} page is back from last time.", other: "{0} pages are back from last time.")
         }
     }
 

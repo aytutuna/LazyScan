@@ -102,7 +102,8 @@ extension AppState {
         cameraSides = sides
         sidesMismatch = nil
         let sheets: Int = max(counts.fronts, counts.backs)
-        statusMessage = "Put \(sheets) sheet\(sheets == 1 ? "" : "s") in order \u{2014} \(scannedPages.count) in queue."
+        statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order — {1} in queue.", other: "Put {0} sheets in order — {1} in queue.",
+                                    scannedPages.count)
     }
 
     // MARK: Separate documents

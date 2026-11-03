@@ -473,17 +473,17 @@ public enum IOSShell {
     /// The question before something that would leave the queued pages without a Save (a kind,
     /// `AppState.pagesLeftBehind(by:)`, a preset, a document opened as new): "Keep the 3 pages?".
     public static func keepPagesTitle(_ count: Int) -> String {
-        count == 1 ? "Keep the page?" : "Keep the \(count) pages?"
+        L10n.plural(count, one: "Keep the page?", other: "Keep the {0} pages?")
     }
 
     /// The question's line: why the pages would be left (`keepPagesReason`), then what can be done with them,
     /// without saving when Save first is not offered.
     public static func keepPagesLine(_ reason: String, count: Int, canSave: Bool) -> String {
-        let them: String = count == 1 ? "it" : "them"
         if canSave {
-            return "\(reason) Save \(them) first, or discard \(them)."
+            return L10n.plural(count, one: "{1} Save it first, or discard it.", other: "{1} Save them first, or discard them.", reason)
         }
-        return "\(reason) \(count == 1 ? "It" : "They") cannot be saved now: discard \(them), or cancel to keep \(them)."
+        return L10n.plural(count, one: "{1} It cannot be saved now: discard it, or cancel to keep it.",
+                           other: "{1} They cannot be saved now: discard them, or cancel to keep them.", reason)
     }
 
     /// "Photos does not collect pages.", "Photo does not collect pages." in camera mode (`cameraTitle`).
@@ -502,7 +502,7 @@ public enum IOSShell {
     }
 
     public static func discardPagesLabel(_ count: Int) -> String {
-        "Discard \(count) page\(count == 1 ? "" : "s")"
+        L10n.plural(count, one: "Discard {0} page", other: "Discard {0} pages")
     }
 
     /// The question's button that saves the pages as Save would before the kind changes: "Save PDF first",

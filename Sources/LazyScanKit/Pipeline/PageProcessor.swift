@@ -672,10 +672,10 @@ public enum PageFilter {
     public static func queueSummary(_ pages: [ScannedPage], options: DocumentOptions) -> String {
         let total = pages.count
         let excluded = pages.filter { isExcluded($0, options: options) }
-        let text = "\(total) page\(total == 1 ? "" : "s")"
+        let text = L10n.plural(total, one: "{0} page", other: "{0} pages")
         if excluded.isEmpty { return text }
         let allBlank = excluded.allSatisfy { looksBlank($0, sensitivity: options.blankSensitivity) }
-        return "\(text) \u{00B7} \(excluded.count)\(allBlank ? " blank" : "") skipped"
+        return "\(text) \u{00B7} " + (allBlank ? L10n.t("{0} blank skipped", excluded.count) : L10n.t("{0} skipped", excluded.count))
     }
 
     /// The status after a scan's pages were queued, when some look blank: " 2 look blank and will
@@ -683,10 +683,9 @@ public enum PageFilter {
     public static func scanNote(_ added: [ScannedPage], options: DocumentOptions) -> String {
         let blank = added.filter { looksBlank($0, sensitivity: options.blankSensitivity) }.count
         guard blank > 0 else { return "" }
-        let verb = blank == 1 ? "looks" : "look"
-        return options.removeBlankPages
-            ? " \(blank) \(verb) blank and will be skipped."
-            : " \(blank) \(verb) blank."
+        return " " + (options.removeBlankPages
+            ? L10n.plural(blank, one: "{0} looks blank and will be skipped.", other: "{0} look blank and will be skipped.")
+            : L10n.plural(blank, one: "{0} looks blank.", other: "{0} look blank."))
     }
 }
 
@@ -748,7 +747,7 @@ public enum PageCorrections {
             note = " \(changed.count) \(verb)."
         }
         let softened = added.filter { $0.spineShadow != nil && !$0.showsOriginal }.count
-        if softened > 0 { note += " Spine shadow softened on \(softened) page\(softened == 1 ? "" : "s")." }
+        if softened > 0 { note += " " + L10n.plural(softened, one: "Spine shadow softened on {0} page.", other: "Spine shadow softened on {0} pages.") }
         return note
     }
 

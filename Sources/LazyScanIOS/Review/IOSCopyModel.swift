@@ -42,7 +42,7 @@ public enum IOSCopyText {
 
     /// "3 pages".
     public static func pageCount(_ count: Int) -> String {
-        "\(count) pages"
+        L10n.plural(count, one: "{0} page", other: "{0} pages")
     }
 }
 

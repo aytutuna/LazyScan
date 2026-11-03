@@ -467,7 +467,8 @@ public static class CompanionPackage
 
     public static string NotPackageMessage => "This file is not a Lazy Scan document.";
     public static string NoPagesMessage => "This document has no pages.";
-    public static string TooManyPagesMessage => $"This document has more than {MaxPages} pages.";
+    public static string TooManyPagesMessage =>
+        Loc.Plural(MaxPages, "This document has more than {1} page.", "This document has more than {1} pages.", MaxPages.ToString());
     public static string DamagedManifestMessage => "This document cannot be opened: its list of pages is damaged.";
 
     /// <summary>"This document was made by a newer version of Lazy Scan (package format 2). Update Lazy Scan to open it."</summary>

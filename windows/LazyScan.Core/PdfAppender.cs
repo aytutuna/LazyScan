@@ -162,7 +162,8 @@ public static class PdfAppender
 
     /// <summary>"Added 2 pages to Contract.pdf (now 11 pages, 1.4 MB)", as a save says "Saved …".</summary>
     public static string AddedMessage(int added, string fileName, int pageCount, string? size) =>
-        $"Added {added} {(added == 1 ? "page" : "pages")} to {fileName} (now {pageCount} {(pageCount == 1 ? "page" : "pages")}{(size is null ? "" : ", " + size)})";
+        Loc.Plural(added, "Added {0} page to {1} (now {2}{3})", "Added {0} pages to {1} (now {2}{3})",
+            fileName, Loc.Plural(pageCount, "{0} page", "{0} pages"), size is null ? "" : ", " + size);
 
     /// <summary>
     /// The added pages keep the file's PDF/A claim when it is part 1, 2 or 3 at level B or U

@@ -706,7 +706,7 @@ public enum ReceiptDateExtractor {
 public enum Receipts {
     /// "Found 4 receipts", "Found 1 receipt".
     public static func reviewTitle(_ found: Int) -> String {
-        "Found \(found) receipt\(found == 1 ? "" : "s")"
+        L10n.plural(found, one: "Found {0} receipt", other: "Found {0} receipts")
     }
 
     /// The review's save button: "Save 3 Receipts", "Save 1 Receipt"; "Save as One PDF" when the
@@ -714,7 +714,7 @@ public enum Receipts {
     public static func saveTitle(included: Int, combine: Bool, format: OutputFormat) -> String {
         combines(combine, format: format, count: included)
             ? "Save as One PDF"
-            : "Save \(included) Receipt\(included == 1 ? "" : "s")"
+            : L10n.plural(included, one: "Save {0} Receipt", other: "Save {0} Receipts")
     }
 
     /// The receipts go into one PDF: asked for, saved as PDF, and more than one.
@@ -752,20 +752,20 @@ public enum Receipts {
     /// their date (`undated` of them were not). One PDF is named by the earliest date found, so it gets the
     /// note only when no receipt had a date.
     public static func savedMessage(count: Int, fileNames: [String], combined: Bool, undated: Int) -> String {
-        let what = "\(count) receipt\(count == 1 ? "" : "s")"
         let saved = combined
-            ? "Saved \(what) in one PDF: \(fileNames.first ?? "")"
-            : "Saved \(what): \(fileNames.joined(separator: ", "))"
+            ? L10n.plural(count, one: "Saved {0} receipt in one PDF: {1}", other: "Saved {0} receipts in one PDF: {1}", fileNames.first ?? "")
+            : L10n.plural(count, one: "Saved {0} receipt: {1}", other: "Saved {0} receipts: {1}", fileNames.joined(separator: ", "))
         guard undated > 0, !(combined && undated < count) else { return saved }
         let note: String
         if combined {
-            note = "No date was found on them; the PDF is named by today's date."
+            note = L10n.t("No date was found on them; the PDF is named by today's date.")
         } else if count == 1 {
-            note = "No date was found on it; it is named by today's date."
+            note = L10n.t("No date was found on it; it is named by today's date.")
         } else if undated == count {
-            note = "No date was found on them; they are named by today's date."
+            note = L10n.t("No date was found on them; they are named by today's date.")
         } else {
-            note = "No date was found on \(undated) of them; \(undated == 1 ? "it is" : "they are") named by today's date."
+            note = L10n.plural(undated, one: "No date was found on {0} of them; it is named by today's date.",
+                               other: "No date was found on {0} of them; they are named by today's date.")
         }
         return "\(saved). \(note)"
     }

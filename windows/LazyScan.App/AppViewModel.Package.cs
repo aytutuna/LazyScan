@@ -22,7 +22,7 @@ public static class PackageText
 
     /// <summary>"Opened Receipt.lsdoc: 3 pages"</summary>
     public static string OpenedMessage(string fileName, int pageCount) =>
-        $"Opened {fileName}: {pageCount} page{(pageCount == 1 ? "" : "s")}";
+        Loc.Plural(pageCount, "Opened {1}: {0} page", "Opened {1}: {0} pages", fileName);
 
     /// <summary>"Receipt.lsdoc cannot be opened: one of its pictures cannot be read."</summary>
     public static string UnreadablePictureMessage(string fileName) =>
@@ -178,7 +178,8 @@ public sealed partial class AppViewModel
             if (ReferenceEquals(PendingPackage, package)) PendingPackage = null;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));
             if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-            StatusMessage = $"Added {spooled.Count} page{(spooled.Count == 1 ? "" : "s")} from {package.FileName} — {ScannedPages.Count} in queue.";
+            StatusMessage = Loc.Plural(spooled.Count, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
+                package.FileName, ScannedPages.Count);
         });
     }
 

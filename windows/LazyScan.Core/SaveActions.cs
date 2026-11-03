@@ -139,5 +139,5 @@ public static class SaveActions
 
     /// <summary>The title of the share window: the file's name, or "3 files".</summary>
     public static string ShareTitle(IReadOnlyList<string> paths) =>
-        paths.Count == 1 ? Path.GetFileName(paths[0]) : $"{paths.Count} files";
+        paths.Count == 1 ? Path.GetFileName(paths[0]) : Loc.Plural(paths.Count, "{0} file", "{0} files");
 }

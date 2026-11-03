@@ -88,7 +88,7 @@ public sealed partial class AppViewModel
             StatusMessage = s.PdfSearchable ? "Running OCR and adding pages…" : "Adding pages…";
             NotifyAll();
             var inputs = await PdfPageInputs(pages, s, token);
-            StatusMessage = $"Adding {pages.Count} {(pages.Count == 1 ? "page" : "pages")} to {name}…";
+            StatusMessage = Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name);
             NotifyAll();
             var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token), token);
             LastPdfBytes = result.Bytes;

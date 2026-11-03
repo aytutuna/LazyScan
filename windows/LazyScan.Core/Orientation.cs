@@ -303,7 +303,7 @@ public static class PageTurns
     public static string ScanNote(IEnumerable<ScannedPage> added)
     {
         int turned = added.Count(p => p.Upright is { Undone: false });
-        return turned == 0 ? "" : $" {turned} turned upright.";
+        return turned == 0 ? "" : " " + Loc.Plural(turned, "{0} turned upright.", "{0} turned upright.");
     }
 
     /// <summary>The status note when pages were to be turned upright but no text can be read (leading space).</summary>

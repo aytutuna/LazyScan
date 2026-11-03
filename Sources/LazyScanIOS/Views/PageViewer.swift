@@ -60,12 +60,12 @@ enum PageViewerText {
 
     /// "Delete 3 pages?" for the pages picked in the grid.
     static func deletePagesQuestion(_ count: Int) -> String {
-        count == 1 ? "Delete 1 page?" : "Delete \(count) pages?"
+        L10n.plural(count, one: "Delete {0} page?", other: "Delete {0} pages?")
     }
 
     /// "Delete all 3 pages?" for Delete All in the page grid.
     static func deleteAllQuestion(_ count: Int) -> String {
-        count == 1 ? "Delete 1 page?" : "Delete all \(count) pages?"
+        L10n.plural(count, one: "Delete {0} page?|all", other: "Delete all {0} pages?")
     }
 }
 

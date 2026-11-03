@@ -9,8 +9,8 @@ extension AppState {
     /// pictures in `format` (its image format, `OutputFormat.imageFormatOrJPEG`).
     public nonisolated static func imagesSaveTitle(_ format: OutputFormat, pageCount: Int) -> String {
         let name: String = format.imageFormatOrJPEG.label
-        if pageCount > 1 { return "Save \(pageCount) \(name)s" }
-        return "Save \(name)"
+        if pageCount > 1 { return L10n.plural(pageCount, one: "Save {0} {1}", other: "Save {0} {1}s", name) }
+        return L10n.t("Save {0}", name)
     }
 
     /// "Saved 3 JPEG files: Scan 2026-10-21 4 1.jpg …", the status after `saveImages()`.
@@ -18,7 +18,7 @@ extension AppState {
         let name: String = format.imageFormatOrJPEG.label
         guard let first = urls.first else { return "Saved nothing." }
         if urls.count == 1 { return "Saved \(name): \(first.lastPathComponent)" }
-        return "Saved \(urls.count) \(name) files: \(first.lastPathComponent) \u{2026}"
+        return L10n.plural(urls.count, one: "Saved {0} {1} file: {2} …", other: "Saved {0} {1} files: {2} …", name, first.lastPathComponent)
     }
 
     /// Saves the pages the queue would save (`SavePlan`: pages flagged in the strip are left out, now and

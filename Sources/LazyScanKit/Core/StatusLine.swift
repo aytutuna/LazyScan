@@ -162,6 +162,8 @@ public enum StatusLine {
 
     /// The groups of `pattern`'s first match in `text` (group 0 is the whole match; a group that took
     /// no part is ""); nil when it does not match.
+    private static func number(_ digits: String) -> Int { Int(digits.filter(\.isNumber)) ?? 0 }
+
     private static func groups(_ pattern: String, in text: String,
                                options: NSRegularExpression.Options = []) -> [String]? {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return nil }
@@ -184,40 +186,40 @@ public enum StatusLine {
             if let name = deviceName, !name.isEmpty { return L10n.t("Ready — {0}", name) }
             return L10n.t("Ready")
         }
-        if let added = groups("^Added (\\d+) (?:page|pages)\\b", in: text) {
-            let count: Int = Int(added[1]) ?? 0
+        if let added = groups("^Added (\\d[\\d,.\u{00A0}\u{202F}]*) (?:page|pages)\\b", in: text) {
+            let count: Int = number(added[1])
             var head: String
-            if count == 1, let queue = groups("\u{2014} (\\d+) in queue", in: text) {
-                head = L10n.t("Page {0} added", Int(queue[1]) ?? 0)
+            if count == 1, let queue = groups("\u{2014} (\\d[\\d,.\u{00A0}\u{202F}]*) in queue", in: text) {
+                head = L10n.t("Page {0} added", number(queue[1]))
             } else {
                 head = L10n.plural(count, one: "{0} page added", other: "{0} pages added")
             }
-            if let blank = groups("(\\d+) looks? blank", in: text) {
-                head = append(head, L10n.plural(Int(blank[1]) ?? 0, one: "{0} blank", other: "{0} blank"))
+            if let blank = groups("(\\d[\\d,.\u{00A0}\u{202F}]*) looks? blank", in: text) {
+                head = append(head, L10n.plural(number(blank[1]), one: "{0} blank", other: "{0} blank"))
             }
-            if let spreads = groups("(\\d+) spreads? split into pages", in: text) {
-                head = append(head, L10n.plural(Int(spreads[1]) ?? 0, one: "{0} spread split", other: "{0} spreads split"))
+            if let spreads = groups("(\\d[\\d,.\u{00A0}\u{202F}]*) spreads? split into pages", in: text) {
+                head = append(head, L10n.plural(number(spreads[1]), one: "{0} spread split", other: "{0} spreads split"))
             }
             return head
         }
-        let savedPattern: String = "^(?:Cancelled \u{2014} )?Saved (\\d+) (photos?|receipts?|documents?|files?|PDFs?|copies)\\b"
+        let savedPattern: String = "^(?:Cancelled \u{2014} )?Saved (\\d[\\d,.\u{00A0}\u{202F}]*) (photos?|receipts?|documents?|files?|PDFs?|copies)\\b"
         if let saved = groups(savedPattern, in: text, options: [.caseInsensitive]) {
-            return savedHead(Int(saved[1]) ?? 0, noun: saved[2].lowercased())
+            return savedHead(number(saved[1]), noun: saved[2].lowercased())
         }
         if text.hasPrefix("Saved ") { return L10n.t("Saved") }
-        if let found = groups("^Found (\\d+) (photos?|receipts?)\\b", in: text) {
-            let count: Int = Int(found[1]) ?? 0
+        if let found = groups("^Found (\\d[\\d,.\u{00A0}\u{202F}]*) (photos?|receipts?)\\b", in: text) {
+            let count: Int = number(found[1])
             if found[2].hasPrefix("photo") { return L10n.plural(count, one: "Found {0} photo", other: "Found {0} photos") }
             return L10n.plural(count, one: "Found {0} receipt", other: "Found {0} receipts")
         }
         if text.hasPrefix("Page queue cleared") { return L10n.t("Queue cleared") }
-        if let reading = groups("^Reading the text of page (\\d+)(?: of (\\d+))?\u{2026}", in: text) {
-            let page: Int = Int(reading[1]) ?? 0
+        if let reading = groups("^Reading the text of page (\\d[\\d,.\u{00A0}\u{202F}]*)(?: of (\\d[\\d,.\u{00A0}\u{202F}]*))?\u{2026}", in: text) {
+            let page: Int = number(reading[1])
             if reading[2].isEmpty { return L10n.t("Reading page {0}…", page) }
-            return L10n.t("Reading page {0} of {1}…", page, Int(reading[2]) ?? 0)
+            return L10n.t("Reading page {0} of {1}…", page, number(reading[2]))
         }
-        if let adding = groups("^Adding (\\d+) pages? to .+\u{2026}$", in: text) {
-            return L10n.plural(Int(adding[1]) ?? 0, one: "Adding {0} page…", other: "Adding {0} pages…")
+        if let adding = groups("^Adding (\\d[\\d,.\u{00A0}\u{202F}]*) pages? to .+\u{2026}$", in: text) {
+            return L10n.plural(number(adding[1]), one: "Adding {0} page…", other: "Adding {0} pages…")
         }
         if text.hasPrefix("Sent ") { return L10n.t("Sent to the printer") }
 

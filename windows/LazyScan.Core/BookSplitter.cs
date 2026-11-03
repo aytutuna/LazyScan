@@ -799,12 +799,11 @@ public static class BookPages
         var parts = added.Select(p => p.Spread).OfType<SpreadPart>().ToList();
         int split = parts.Where(p => !p.IsWhole).Select(p => p.SpreadId).Distinct().Count();
         int whole = parts.Where(p => p.IsWhole).Select(p => p.SpreadId).Distinct().Count();
-        string note = split == 0 ? "" : $" {split} spread{(split == 1 ? "" : "s")} split into pages.";
+        string note = split == 0 ? "" : " " + Loc.Plural(split, "{0} spread split into pages.", "{0} spreads split into pages.");
         if (whole > 0)
         {
-            note += whole == 1
-                ? " The spine of 1 spread was not found: it was added as one page (Split… on it splits it)."
-                : $" The spine of {whole} spreads was not found: they were added as one page each (Split… on one splits it).";
+            note += " " + Loc.Plural(whole, "The spine of {0} spread was not found: it was added as one page (Split… on it splits it).",
+                "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it).");
         }
         return note;
     }

@@ -311,8 +311,11 @@ public enum PrintText {
 
     /// "Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."
     public static func sent(pageCount: Int, copies: Int, printerName: String) -> String {
-        let pages = "\(pageCount) page\(pageCount == 1 ? "" : "s")"
-        return copies > 1 ? "Sent \(pages) to \(printerName), \(copies) copies." : "Sent \(pages) to \(printerName)."
+        if copies > 1 {
+            return L10n.plural(pageCount, one: "Sent {0} page to {1}, {2} copies.", other: "Sent {0} pages to {1}, {2} copies.",
+                               printerName, copies)
+        }
+        return L10n.plural(pageCount, one: "Sent {0} page to {1}.", other: "Sent {0} pages to {1}.", printerName)
     }
 
     /// "Actual size" or "Fit to page".

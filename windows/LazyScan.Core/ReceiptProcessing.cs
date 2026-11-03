@@ -805,7 +805,7 @@ public static partial class ReceiptDateExtractor
 public static class Receipts
 {
     /// <summary>"Found 4 receipts", "Found 1 receipt".</summary>
-    public static string ReviewTitle(int found) => $"Found {found} receipt{(found == 1 ? "" : "s")}";
+    public static string ReviewTitle(int found) => Loc.Plural(found, "Found {0} receipt", "Found {0} receipts");
 
     /// <summary>
     /// The review's save button: "Save 3 Receipts", "Save 1 Receipt"; "Save as One PDF" when the
@@ -814,7 +814,7 @@ public static class Receipts
     public static string SaveTitle(int included, bool combine, OutputFormat format) =>
         Combines(combine, format, included)
             ? "Save as One PDF"
-            : $"Save {included} Receipt{(included == 1 ? "" : "s")}";
+            : Loc.Plural(included, "Save {0} Receipt", "Save {0} Receipts");
 
     /// <summary>The receipts go into one PDF: asked for, saved as PDF, and more than one.</summary>
     public static bool Combines(bool combine, OutputFormat format, int count) =>
@@ -862,13 +862,15 @@ public static class Receipts
     /// </summary>
     public static string SavedMessage(int count, IReadOnlyList<string> fileNames, bool combined, int undated)
     {
-        string what = $"{count} receipt{(count == 1 ? "" : "s")}";
-        string saved = combined ? $"Saved {what} in one PDF: {fileNames.FirstOrDefault()}" : $"Saved {what}: {string.Join(", ", fileNames)}";
+        string saved = combined
+            ? Loc.Plural(count, "Saved {0} receipt in one PDF: {1}", "Saved {0} receipts in one PDF: {1}", fileNames.FirstOrDefault())
+            : Loc.Plural(count, "Saved {0} receipt: {1}", "Saved {0} receipts: {1}", string.Join(", ", fileNames));
         if (undated <= 0 || (combined && undated < count)) return saved;
-        string note = combined ? "No date was found on them; the PDF is named by today's date."
-            : count == 1 ? "No date was found on it; it is named by today's date."
-            : undated == count ? "No date was found on them; they are named by today's date."
-            : $"No date was found on {undated} of them; {(undated == 1 ? "it is" : "they are")} named by today's date.";
+        string note = combined ? Loc.T("No date was found on them; the PDF is named by today's date.")
+            : count == 1 ? Loc.T("No date was found on it; it is named by today's date.")
+            : undated == count ? Loc.T("No date was found on them; they are named by today's date.")
+            : Loc.Plural(undated, "No date was found on {0} of them; it is named by today's date.",
+                "No date was found on {0} of them; they are named by today's date.");
         return $"{saved}. {note}";
     }
 }

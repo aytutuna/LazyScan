@@ -287,7 +287,7 @@ public enum PageTurns {
     /// (leading space; empty when none was).
     public static func scanNote(_ added: [ScannedPage]) -> String {
         let turned = added.filter { $0.upright?.undone == false }.count
-        return turned == 0 ? "" : " \(turned) turned upright."
+        return turned == 0 ? "" : " " + L10n.plural(turned, one: "{0} turned upright.", other: "{0} turned upright.")
     }
 
     /// The status note when pages were to be turned upright but no text can be read (leading space).

@@ -47,7 +47,7 @@ public enum IOSCompanionText {
             return checking
         case .reachable(_, let queuedPages):
             if queuedPages == 0 { return connected }
-            return connected + " \u{00B7} " + (queuedPages == 1 ? "1 page" : "\(queuedPages) pages") + " queued there"
+            return connected + " \u{00B7} " + L10n.plural(queuedPages, one: "{0} page queued there", other: "{0} pages queued there")
         case .unreachable(let reason):
             return reason
         case .unpaired(let desktopName):
@@ -58,17 +58,17 @@ public enum IOSCompanionText {
     /// "2 documents waiting to be sent".
     public static func waiting(_ count: Int) -> String {
         if count == 0 { return nothingWaiting }
-        return (count == 1 ? "1 document" : "\(count) documents") + " waiting to be sent"
+        return L10n.plural(count, one: "{0} document waiting to be sent", other: "{0} documents waiting to be sent")
     }
 
     /// "2 documents for a computer no longer paired": queued for it before another was paired.
     public static func forUnpairedComputer(_ count: Int) -> String {
-        (count == 1 ? "1 document" : "\(count) documents") + " for a computer no longer paired"
+        L10n.plural(count, one: "{0} document for a computer no longer paired", other: "{0} documents for a computer no longer paired")
     }
 
     /// "2 documents in the cloud folder": put there, not taken by the computer yet.
     public static func inCloudFolder(_ count: Int) -> String {
-        (count == 1 ? "1 document" : "\(count) documents") + " in the cloud folder"
+        L10n.plural(count, one: "{0} document in the cloud folder", other: "{0} documents in the cloud folder")
     }
 }
 

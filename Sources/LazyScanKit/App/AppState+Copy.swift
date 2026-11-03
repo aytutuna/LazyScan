@@ -341,7 +341,7 @@ extension AppState {
         let ofQueue = copyIsOfQueue
         copyPages = []
         statusMessage = ofQueue
-            ? "\(scannedPages.count) page\(scannedPages.count == 1 ? "" : "s") in the queue."
+            ? L10n.plural(scannedPages.count, one: "{0} page in the queue.", other: "{0} pages in the queue.")
             : "Copy discarded."
     }
 

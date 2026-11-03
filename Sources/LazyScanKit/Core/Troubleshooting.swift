@@ -156,9 +156,8 @@ public struct ScanStop: Equatable, Sendable {
 
     /// User-facing text: how many pages were kept, then why scanning stopped.
     public func message(pagesKept: Int) -> String {
-        let kept = pagesKept == 1
-            ? "Scanning stopped after 1 page; it was kept."
-            : "Scanning stopped after \(pagesKept) pages; they were kept."
+        let kept = L10n.plural(pagesKept, one: "Scanning stopped after {0} page; it was kept.",
+                               other: "Scanning stopped after {0} pages; they were kept.")
         let trimmed = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? kept : "\(kept) \(trimmed)"
     }

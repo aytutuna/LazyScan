@@ -696,10 +696,10 @@ public static class PageFilter
     {
         int total = pages.Count;
         var excluded = pages.Where(p => IsExcluded(p, options)).ToList();
-        string text = $"{total} page{(total == 1 ? "" : "s")}";
+        string text = Loc.Plural(total, "{0} page", "{0} pages");
         if (excluded.Count == 0) return text;
         bool allBlank = excluded.All(p => LooksBlank(p, options.BlankSensitivity));
-        return $"{text} · {excluded.Count}{(allBlank ? " blank" : "")} skipped";
+        return $"{text} · " + (allBlank ? Loc.T("{0} blank skipped", excluded.Count) : Loc.T("{0} skipped", excluded.Count));
     }
 
     /// <summary>
@@ -710,10 +710,9 @@ public static class PageFilter
     {
         int blank = added.Count(p => LooksBlank(p, options.BlankSensitivity));
         if (blank == 0) return "";
-        string verb = blank == 1 ? "looks" : "look";
-        return options.RemoveBlankPages
-            ? $" {blank} {verb} blank and will be skipped."
-            : $" {blank} {verb} blank.";
+        return " " + (options.RemoveBlankPages
+            ? Loc.Plural(blank, "{0} looks blank and will be skipped.", "{0} look blank and will be skipped.")
+            : Loc.Plural(blank, "{0} looks blank.", "{0} look blank."));
     }
 
     /// <summary>The message when every queued page is left out, so there is nothing to save.</summary>
@@ -797,7 +796,7 @@ public static class PageCorrections
             note = $" {changed.Count} {verb}.";
         }
         int softened = pages.Count(p => p.SpineShadow is not null && !p.ShowsOriginal);
-        if (softened > 0) note += $" Spine shadow softened on {softened} page{(softened == 1 ? "" : "s")}.";
+        if (softened > 0) note += " " + Loc.Plural(softened, "Spine shadow softened on {0} page.", "Spine shadow softened on {0} pages.");
         return note;
     }
 

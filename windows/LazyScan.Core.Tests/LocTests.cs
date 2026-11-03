@@ -117,6 +117,14 @@ public sealed class LocTests
         });
 
     [Fact]
+    public void PluralContextMarkerStaysInTheKey()
+    {
+        Assert.Equal("Delete 1 page?", Loc.Plural(1, "Delete {0} page?|all", "Delete all {0} pages?"));
+        InTurkish(new() { ["Delete {0} page?|all|one"] = "Sayfa silinsin mi?" }, () =>
+            Assert.Equal("Sayfa silinsin mi?", Loc.Plural(1, "Delete {0} page?|all", "Delete all {0} pages?")));
+    }
+
+    [Fact]
     public void PluralExtraArguments() =>
         Assert.Equal("2 pages in Inbox", Loc.Plural(2, "{0} page in {1}", "{0} pages in {1}", "Inbox"));
 

@@ -237,7 +237,7 @@ public enum IOSCameraText {
     public static let photoFailed = "Photo not taken"
     /// The pages in the queue: "1 page", "3 pages".
     public static func pageCount(_ count: Int) -> String {
-        count == 1 ? "1 page" : "\(count) pages"
+        L10n.plural(count, one: "{0} page", other: "{0} pages")
     }
 
     /// The top bar's button that steps through the photo sizes, for VoiceOver; its value is the size.

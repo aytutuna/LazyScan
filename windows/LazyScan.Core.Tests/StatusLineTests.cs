@@ -35,6 +35,22 @@ public class StatusLineTests
     }
 
     [Fact]
+    public void Short_ReadsCountsWithThousandsSeparators()
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            Assert.Equal("Page 1,000 added", StatusLine.Short("Added 1 page — 1,000 in queue."));
+            Assert.Equal("Found 1,200 photos", StatusLine.Short("Found 1,200 photos."));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+        }
+    }
+
+    [Fact]
     public void Short_ReadyForATask_NamesTheScannerInstead()
     {
         Assert.Equal("Ready — Demo Scanner", StatusLine.Short("Ready for “Document to PDF”.", "Demo Scanner"));

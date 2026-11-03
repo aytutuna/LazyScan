@@ -41,12 +41,12 @@ extension AppState {
         carryDocumentLabels(from: facts)
         let plan = queuePlan
         let documents = plan.documents.count
-        let count = "\(documents) document\(documents == 1 ? "" : "s") to save."
+        let count = L10n.plural(documents, one: "{0} document to save.", other: "{0} documents to save.")
         let page = plan.pages[index]
         if page.startsDocument, let number = page.document, number > 1 {
-            statusMessage = "Document \(number) starts at page \(index + 1). \(count)"
+            statusMessage = L10n.t("Document {0} starts at page {1}. {2}", number, index + 1, count)
         } else {
-            statusMessage = "Page \(index + 1) joins the document before it. \(count)"
+            statusMessage = L10n.t("Page {0} joins the document before it. {1}", index + 1, count)
         }
     }
 
@@ -152,7 +152,7 @@ extension AppState {
         let reader = barcodeReader
         let total = unread.count
         runExclusive { flag in
-            self.statusMessage = "Reading barcodes on \(total) queued page\(total == 1 ? "" : "s")\u{2026}"
+            self.statusMessage = L10n.plural(total, one: "Reading barcodes on {0} queued page…", other: "Reading barcodes on {0} queued pages…")
             let found: [(UUID, [BarcodeReading]?)] = await Task.detached(priority: .userInitiated) { () async -> [(UUID, [BarcodeReading]?)] in
                 var results: [(UUID, [BarcodeReading]?)] = []
                 for page in unread {
@@ -183,7 +183,9 @@ extension AppState {
             let summary = DocumentSplitter.queueSummary(self.scannedPages, options: self.settings.document) + "."
             let left = total - found.count
             if flag.isCancelled && left > 0 {
-                self.statusMessage = "Stopped reading barcodes: \(left) queued \(left == 1 ? "page was" : "pages were") not read, so codes on \(left == 1 ? "it" : "them") do not split the stack yet. They are read after the next scan, or when the split is chosen again. \(summary)"
+                self.statusMessage = L10n.plural(left, one: "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                                                 other: "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                                                 summary)
             } else {
                 self.statusMessage = summary
             }

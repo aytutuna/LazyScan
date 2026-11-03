@@ -79,6 +79,14 @@ final class L10nTests: XCTestCase {
         }
     }
 
+    func testPluralContextMarkerStaysInTheKey() {
+        XCTAssertEqual(L10n.plural(1, one: "Delete {0} page?|all", other: "Delete all {0} pages?"), "Delete 1 page?")
+        let table = ["Delete {0} page?|all|one": "Sayfa silinsin mi?"]
+        L10n.withTable(table, language: "tr") {
+            XCTAssertEqual(L10n.plural(1, one: "Delete {0} page?|all", other: "Delete all {0} pages?"), "Sayfa silinsin mi?")
+        }
+    }
+
     func testPluralExtraArguments() {
         L10n.withTable([:], language: "en") {
             XCTAssertEqual(L10n.plural(2, one: "{0} page in {1}", other: "{0} pages in {1}", "Inbox"), "2 pages in Inbox")

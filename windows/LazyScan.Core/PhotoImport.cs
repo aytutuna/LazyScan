@@ -466,18 +466,20 @@ public static class PhotoImport
     public static string AddedMessage(int added, int skipped, int failed, int queueCount, string saveTitle)
     {
         string text = added > 0
-            ? $"Added {added} page{(added == 1 ? "" : "s")} from photos — {queueCount} in queue. Scan more or {saveTitle}."
-            : "No pages were added.";
-        if (skipped > 0) text += $" {skipped} photo{(skipped == 1 ? " was" : "s were")} skipped.";
-        if (failed > 0) text += $" {failed} photo{(failed == 1 ? "" : "s")} could not be opened.";
+            ? Loc.Plural(added, "Added {0} page from photos — {1} in queue. Scan more or {2}.",
+                "Added {0} pages from photos — {1} in queue. Scan more or {2}.", queueCount, saveTitle)
+            : Loc.T("No pages were added.");
+        if (skipped > 0) text += " " + Loc.Plural(skipped, "{0} photo was skipped.", "{0} photos were skipped.");
+        if (failed > 0) text += " " + Loc.Plural(failed, "{0} photo could not be opened.", "{0} photos could not be opened.");
         return text;
     }
 
     /// <summary>The status after an import was cancelled: "Cancelled." or "Cancelled after adding 2 pages from photos — 4 in queue."</summary>
     public static string CancelledMessage(int added, int queueCount) =>
         added == 0
-            ? "Cancelled."
-            : $"Cancelled after adding {added} page{(added == 1 ? "" : "s")} from photos — {queueCount} in queue.";
+            ? Loc.T("Cancelled.")
+            : Loc.Plural(added, "Cancelled after adding {0} page from photos — {1} in queue.",
+                "Cancelled after adding {0} pages from photos — {1} in queue.", queueCount);
 
     /// <summary>"IMG_0042.jpg could not be opened: …".</summary>
     public static string UnreadableMessage(string fileName, string detail) => $"{fileName} could not be opened: {detail}";

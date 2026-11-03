@@ -351,5 +351,227 @@
   "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.": {
     "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts."
   },
-  "and their text, {0}": {}
+  "and their text, {0}": {},
+  "Keep the page?": {
+    "en_other": "Keep the {0} pages?"
+  },
+  "{1} Save it first, or discard it.": {
+    "en_other": "{1} Save them first, or discard them."
+  },
+  "{1} It cannot be saved now: discard it, or cancel to keep it.": {
+    "en_other": "{1} They cannot be saved now: discard them, or cancel to keep them."
+  },
+  "Discard {0} page": {
+    "en_other": "Discard {0} pages"
+  },
+  "Adding {0} page to {1}…": {
+    "en_other": "Adding {0} pages to {1}…"
+  },
+  "Put {0} sheet in order — {1} in queue.": {
+    "en_other": "Put {0} sheets in order — {1} in queue."
+  },
+  "{0} document is waiting to be sent already. Send it, or remove it first.": {
+    "en_other": "{0} documents are waiting to be sent already. Send them, or remove some first."
+  },
+  "{0} page sent to {1}.": {
+    "en_other": "{0} pages sent to {1}."
+  },
+  "Put {0} document in the cloud folder for {1}.": {
+    "en_other": "Put {0} documents in the cloud folder for {1}."
+  },
+  "your phones": {},
+  "{0} page from {1} will be added to the queue when this two-sided stack is finished.": {
+    "en_other": "{0} pages from {1} will be added to the queue when this two-sided stack is finished."
+  },
+  "{0} page from {1} will be added to the queue when the current step is done.": {
+    "en_other": "{0} pages from {1} will be added to the queue when the current step is done."
+  },
+  "{0} page from {1} is waiting: {2}. Leave the task or pick Document to PDF to add it to the queue.": {
+    "en_other": "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue."
+  },
+  "{0} page from {1} is waiting: choose Document mode, or a document task, with Collect pages before saving on, to add it to the queue.": {
+    "en_other": "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue."
+  },
+  "Added {0} page from {1} — {2} in queue.": {
+    "en_other": "Added {0} pages from {1} — {2} in queue."
+  },
+  "{0} page in the queue.": {
+    "en_other": "{0} pages in the queue."
+  },
+  "Saved {0} {1} file: {2} …": {
+    "en_other": "Saved {0} {1} files: {2} …"
+  },
+  "Opened {1}: {0} page": {
+    "en_other": "Opened {1}: {0} pages"
+  },
+  "The pages kept from last time could not be read.": {},
+  "Bringing back {0} page…": {
+    "en_other": "Bringing back {0} pages…"
+  },
+  "{0} of {1} pages is back from last time.": {
+    "en_other": "{0} of {1} pages are back from last time."
+  },
+  "{0} page is back from last time.": {
+    "en_other": "{0} pages are back from last time."
+  },
+  "Document {0} starts at page {1}. {2}": {},
+  "Page {0} joins the document before it. {1}": {},
+  "Reading barcodes on {0} queued page…": {
+    "en_other": "Reading barcodes on {0} queued pages…"
+  },
+  "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}": {
+    "en_other": "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}"
+  },
+  "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.": {},
+  "Copied {0} and its picture to the clipboard.": {},
+  "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.": {
+    "en_other": "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}."
+  },
+  "{0} sheet": {
+    "en_other": "{0} sheets"
+  },
+  "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
+    "en_other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
+  },
+  "Added {0} page — {1} in queue. Scan more or {2}.": {
+    "en_other": "Added {0} pages — {1} in queue. Scan more or {2}."
+  },
+  "Found {0} photo.": {
+    "en_other": "Found {0} photos."
+  },
+  "Saved {0} photo to {1}": {
+    "en_other": "Saved {0} photos to {1}"
+  },
+  "Scanned {0} front side before the feeder stopped. {1}": {
+    "en_other": "Scanned {0} front sides before the feeder stopped. {1}"
+  },
+  "Scanned {0} front side. Turn the stack over and scan the back sides.": {
+    "en_other": "Scanned {0} front sides. Turn the stack over and scan the back sides."
+  },
+  "{0} front side scanned. Turn the stack over and scan the back sides.": {
+    "en_other": "{0} front sides scanned. Turn the stack over and scan the back sides."
+  },
+  "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.": {
+    "en_other": "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}."
+  },
+  "Kept {0} front side — {1} in queue. Scan another stack or {2}.": {
+    "en_other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}."
+  },
+  "Listening on port {1}. {0} phone is paired.": {
+    "en_other": "Listening on port {1}. {0} phones are paired."
+  },
+  "{0} file": {
+    "en_other": "{0} files"
+  },
+  "Scanning stopped after {0} page; it was kept.": {
+    "en_other": "Scanning stopped after {0} pages; they were kept."
+  },
+  "Added {0} page to {1} (now {2}{3})": {
+    "en_other": "Added {0} pages to {1} (now {2}{3})"
+  },
+  "Sent {0} page to {1}, {2} copies.": {
+    "en_other": "Sent {0} pages to {1}, {2} copies."
+  },
+  "Sent {0} page to {1}.": {
+    "en_other": "Sent {0} pages to {1}."
+  },
+  "{0} spread split into pages.": {
+    "en_other": "{0} spreads split into pages."
+  },
+  "The spine of {0} spread was not found: it was added as one page (Split… on it splits it).": {
+    "en_other": "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it)."
+  },
+  "Save {0} photo": {
+    "en_other": "Save {0} photos"
+  },
+  "{0} turned upright.": {
+    "en_other": "{0} turned upright."
+  },
+  "{0} looks blank and will be skipped.": {
+    "en_other": "{0} look blank and will be skipped."
+  },
+  "{0} looks blank.": {
+    "en_other": "{0} look blank."
+  },
+  "Spine shadow softened on {0} page.": {
+    "en_other": "Spine shadow softened on {0} pages."
+  },
+  "No pages were added.": {},
+  "Cancelled.": {},
+  "Added {0} page from photos — {1} in queue. Scan more or {2}.": {
+    "en_other": "Added {0} pages from photos — {1} in queue. Scan more or {2}."
+  },
+  "{0} photo was skipped.": {
+    "en_other": "{0} photos were skipped."
+  },
+  "{0} photo could not be opened.": {
+    "en_other": "{0} photos could not be opened."
+  },
+  "Cancelled after adding {0} page from photos — {1} in queue.": {
+    "en_other": "Cancelled after adding {0} pages from photos — {1} in queue."
+  },
+  "No date was found on them; the PDF is named by today's date.": {},
+  "No date was found on it; it is named by today's date.": {},
+  "No date was found on them; they are named by today's date.": {},
+  "Save {0} Receipt": {
+    "en_other": "Save {0} Receipts"
+  },
+  "Saved {0} receipt in one PDF: {1}": {
+    "en_other": "Saved {0} receipts in one PDF: {1}"
+  },
+  "Saved {0} receipt: {1}": {
+    "en_other": "Saved {0} receipts: {1}"
+  },
+  "No date was found on {0} of them; it is named by today's date.": {
+    "en_other": "No date was found on {0} of them; they are named by today's date."
+  },
+  "{0} page queued there": {
+    "en_other": "{0} pages queued there"
+  },
+  "{0} document waiting to be sent": {
+    "en_other": "{0} documents waiting to be sent"
+  },
+  "{0} document for a computer no longer paired": {
+    "en_other": "{0} documents for a computer no longer paired"
+  },
+  "{0} document in the cloud folder": {
+    "en_other": "{0} documents in the cloud folder"
+  },
+  "Delete {0} page?": {
+    "en_other": "Delete {0} pages?"
+  },
+  "Delete {0} page?|all": {
+    "en_other": "Delete all {0} pages?"
+  },
+  "{0} file in {1}": {
+    "en_other": "{0} files in {1}"
+  },
+  "This document has more than {1} page.": {
+    "en_other": "This document has more than {1} pages."
+  },
+  "{0} is no longer in its folder. It may have been moved, renamed or deleted.": {},
+  "{0} of the files is no longer in its folder. It may have been moved, renamed or deleted.": {
+    "en_other": "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted."
+  },
+  "Copied {0} to the clipboard.": {},
+  "Copied {0} file to the clipboard.": {
+    "en_other": "Copied {0} files to the clipboard."
+  },
+  "Done with fronts": {},
+  "Done with Fronts": {},
+  "Saved {0}-page PDF: {1}": {
+    "en_other": "Saved {0}-page PDF: {1}"
+  },
+  "Save {0}": {},
+  "Save {0} {1}": {
+    "en_other": "Save {0} {1}s"
+  },
+  "{0} and {1} found.": {},
+  "{0} found.": {},
+  "{0} problem": {
+    "en_other": "{0} problems"
+  },
+  "{0} warning": {
+    "en_other": "{0} warnings"
+  }
 }

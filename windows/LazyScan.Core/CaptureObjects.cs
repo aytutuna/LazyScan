@@ -113,8 +113,8 @@ public static class CaptureObjects
 public static class PhotoReview
 {
     /// <summary>The review's title: "Found 3 photos", "Found 1 photo".</summary>
-    public static string Title(int found) => $"Found {found} photo{(found == 1 ? "" : "s")}";
+    public static string Title(int found) => Loc.Plural(found, "Found {0} photo", "Found {0} photos");
 
     /// <summary>The review's save button: "Save 3 photos", "Save 1 photo".</summary>
-    public static string SaveTitle(int included) => $"Save {included} photo{(included == 1 ? "" : "s")}";
+    public static string SaveTitle(int included) => Loc.Plural(included, "Save {0} photo", "Save {0} photos");
 }

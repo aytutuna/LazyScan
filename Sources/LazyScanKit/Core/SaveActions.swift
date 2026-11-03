@@ -175,6 +175,6 @@ public enum SaveActions {
 
     /// The title of the share window: the file's name, or "3 files".
     public static func shareTitle(_ urls: [URL]) -> String {
-        urls.count == 1 ? urls[0].lastPathComponent : "\(urls.count) files"
+        urls.count == 1 ? urls[0].lastPathComponent : L10n.plural(urls.count, one: "{0} file", other: "{0} files")
     }
 }

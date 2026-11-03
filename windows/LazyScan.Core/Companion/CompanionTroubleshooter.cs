@@ -75,10 +75,10 @@ public static class CompanionTroubleshooter
         int problems = checks.Count(check => check.Status == CheckStatus.Problem);
         int warnings = checks.Count(check => check.Status == CheckStatus.Warning);
         if (problems == 0 && warnings == 0) return "Nothing here stops a paired phone from connecting.";
-        var parts = new List<string>();
-        if (problems > 0) parts.Add(problems == 1 ? "1 problem" : $"{problems} problems");
-        if (warnings > 0) parts.Add(warnings == 1 ? "1 warning" : $"{warnings} warnings");
-        return $"{string.Join(" and ", parts)} found.";
+        string problemText = Loc.Plural(problems, "{0} problem", "{0} problems");
+        string warningText = Loc.Plural(warnings, "{0} warning", "{0} warnings");
+        if (problems > 0 && warnings > 0) return Loc.T("{0} and {1} found.", problemText, warningText);
+        return Loc.T("{0} found.", problems > 0 ? problemText : warningText);
     }
 
     private static TroubleshootCheck? ListenCheck(CompanionSnapshot snapshot) => snapshot.Listen switch
@@ -107,8 +107,8 @@ public static class CompanionTroubleshooter
             snapshot.PairedCount switch
             {
                 0 => $"Listening on port {snapshot.Port} while the pairing code is shown.",
-                1 => $"Listening on port {snapshot.Port}. 1 phone is paired.",
-                int count => $"Listening on port {snapshot.Port}. {count} phones are paired.",
+                int count => Loc.Plural(count, "Listening on port {1}. {0} phone is paired.", "Listening on port {1}. {0} phones are paired.",
+                    snapshot.Port.ToString()),
             },
             []),
         _ => null,

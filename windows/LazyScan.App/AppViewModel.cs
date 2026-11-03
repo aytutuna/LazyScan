@@ -1601,15 +1601,20 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         else if (twoSided)
                         {
                             int sheets = processed.Select(p => p.SheetIndex).Distinct().Count();
-                            StatusMessage = $"Added {n} page{(n == 1 ? "" : "s")} from {sheets} sheet{(sheets == 1 ? "" : "s")}, both sides — {ScannedPages.Count} in queue. Scan more or {OutputFormats.SaveTitle(Settings.Format)}.";
+                            StatusMessage = Loc.Plural(n, "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.",
+                                "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}.",
+                                Loc.Plural(sheets, "{0} sheet", "{0} sheets"), ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
                         }
                         else if (sides == DuplexMode.Both)
                         {
-                            StatusMessage = $"Added {n} page{(n == 1 ? "" : "s")}, one side of each sheet: the scanner did not scan both sides — {ScannedPages.Count} in queue. Scan more or {OutputFormats.SaveTitle(Settings.Format)}.";
+                            StatusMessage = Loc.Plural(n, "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
                         }
                         else
                         {
-                            StatusMessage = $"Added {n} page{(n == 1 ? "" : "s")} — {ScannedPages.Count} in queue. Scan more or {OutputFormats.SaveTitle(Settings.Format)}.";
+                            StatusMessage = Loc.Plural(n, "Added {0} page — {1} in queue. Scan more or {2}.", "Added {0} pages — {1} in queue. Scan more or {2}.",
+                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
                         }
                         StatusMessage += QueueScanNote(processed, s.Document);
                         if (PageProcessor.TurnsPagesUpright(s) && !_orientation.IsAvailable) StatusMessage += PageTurns.UnavailableNote;
@@ -1645,7 +1650,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     RecordCaptures(found.Select(item => item.Photo.Id));
                     ShowPhotoReview = found.Count > 0;
                     if (!ShowPhotoReview) _photoSourceImages = [];
-                    StatusMessage = $"Found {found.Count} photo{(found.Count == 1 ? "" : "s")}.";
+                    StatusMessage = Loc.Plural(found.Count, "Found {0} photo.", "Found {0} photos.");
                     break;
                 case TaskFlowKind.IdCard:
                     if (!IsIdCardFlow)
@@ -1799,7 +1804,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ScannedPages.Clear();
             ResetFlow();
             string textNote = textPath is null ? "" : TextExport.SidecarSuffix(Path.GetFileName(textPath));
-            StatusMessage = $"Saved {pages.Count}-page PDF: {Path.GetFileName(path)}{PdfSizeSuffix()}{textNote}{left}";
+            string savedText = Loc.Plural(pages.Count, "Saved {0}-page PDF: {1}", "Saved {0}-page PDF: {1}", Path.GetFileName(path));
+            StatusMessage = $"{savedText}{PdfSizeSuffix()}{textNote}{left}";
             RunAfterSave(s.Output.AfterSave, [path]);
         });
     }
@@ -1938,7 +1944,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ShowPhotoReview = false;
             _photoSourceImages = [];
             ResetFlow();
-            StatusMessage = $"Saved {saved.Count} photo{(saved.Count == 1 ? "" : "s")} to {s.DestinationPath}";
+            StatusMessage = Loc.Plural(saved.Count, "Saved {0} photo to {1}", "Saved {0} photos to {1}", s.DestinationPath);
             RunAfterSave(s.Output.AfterSave, saved);
         });
     }
@@ -2452,19 +2458,22 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             if (stopped)
             {
-                StatusMessage = $"Scanned {count} front side{(count == 1 ? "" : "s")} before the feeder stopped. {MoreFrontsPrompt}";
+                StatusMessage = Loc.Plural(count, "Scanned {0} front side before the feeder stopped. {1}",
+                    "Scanned {0} front sides before the feeder stopped. {1}", MoreFrontsPrompt);
                 return;
             }
             Flow.Advance();
-            StatusMessage = $"Scanned {count} front side{(count == 1 ? "" : "s")}. Turn the stack over and scan the back sides.";
+            StatusMessage = Loc.Plural(count, "Scanned {0} front side. Turn the stack over and scan the back sides.",
+                "Scanned {0} front sides. Turn the stack over and scan the back sides.");
             return;
         }
         CollateTurnedOverStack(combineAnyway: false);
     }
 
     /// <summary>What to do while the fronts are scanned a part at a time.</summary>
-    private const string MoreFrontsPrompt =
-        "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose Done with fronts.";
+    private static string MoreFrontsPrompt =>
+        Loc.T("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.",
+            Loc.T("Done with fronts"));
 
     /// <summary>Every front is scanned: on to the backs (after a batch cut short, or more fronts).</summary>
     public void FinishFronts()
@@ -2472,7 +2481,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || !CanFinishFronts || Flow is null) return;
         int fronts = QueuedCaptures(DocumentSides.FrontsStepId);
         Flow.Advance();
-        StatusMessage = $"{fronts} front side{(fronts == 1 ? "" : "s")} scanned. Turn the stack over and scan the back sides.";
+        StatusMessage = Loc.Plural(fronts, "{0} front side scanned. Turn the stack over and scan the back sides.",
+            "{0} front sides scanned. Turn the stack over and scan the back sides.");
         NotifyAll();
     }
 
@@ -2525,7 +2535,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         ResetFlow();
         int sheets = Math.Max(counts.Fronts, counts.Backs);
         int pages = counts.Fronts + counts.Backs;
-        StatusMessage = $"Put {sheets} sheet{(sheets == 1 ? "" : "s")} in order ({pages} page{(pages == 1 ? "" : "s")}) — {ScannedPages.Count} in queue. Scan another stack or {OutputFormats.SaveTitle(Settings.Format)}.";
+        StatusMessage = Loc.Plural(sheets, "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.",
+            "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}.",
+            Loc.Plural(pages, "{0} page", "{0} pages"), ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
     }
 
     /// <summary>The backs did not pair up with the fronts, but the pages are combined as they are (the extra pages at the end).</summary>
@@ -2556,7 +2568,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         RemoveQueuedPages(Flow.Captures(DocumentSides.BacksStepId));
         int fronts = Flow.Captures(DocumentSides.FrontsStepId).Count(id => ScannedPages.Any(item => item.Page.Id == id));
         ResetFlow();
-        StatusMessage = $"Kept {fronts} front side{(fronts == 1 ? "" : "s")} — {ScannedPages.Count} in queue. Scan another stack or {OutputFormats.SaveTitle(Settings.Format)}.";
+        StatusMessage = Loc.Plural(fronts, "Kept {0} front side — {1} in queue. Scan another stack or {2}.",
+            "Kept {0} front sides — {1} in queue. Scan another stack or {2}.", ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
         NotifyAll();
     }
 
@@ -3133,7 +3146,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return Path.GetFileName(paths[0]) + (pdf ? PdfSizeSuffix() : "");
         }
         string folder = paths.Count > 0 ? Path.GetFileName(Path.GetDirectoryName(paths[0]) ?? "") : "";
-        return folder.Length > 0 ? $"{paths.Count} files in {folder}" : $"{paths.Count} files";
+        return folder.Length > 0
+            ? Loc.Plural(paths.Count, "{0} file in {1}", "{0} files in {1}", folder)
+            : Loc.Plural(paths.Count, "{0} file", "{0} files");
     }
 
     // MARK: Saved files: open, share, copy
@@ -3167,8 +3182,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (missing.Count > 0)
         {
             ErrorMessage = missing.Count == 1
-                ? $"{Path.GetFileName(missing[0])} is no longer in its folder. It may have been moved, renamed or deleted."
-                : $"{missing.Count} of the files are no longer in their folder. They may have been moved, renamed or deleted.";
+                ? Loc.T("{0} is no longer in its folder. It may have been moved, renamed or deleted.", Path.GetFileName(missing[0]))
+                : Loc.Plural(missing.Count,
+                    "{0} of the files is no longer in its folder. It may have been moved, renamed or deleted.",
+                    "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted.");
             NotifyAll();
             return false;
         }
@@ -3195,8 +3212,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     var content = SaveActions.ClipboardContentFor(paths);
                     _fileActions.Copy(content);
                     StatusMessage = paths.Count == 1
-                        ? $"Copied {Path.GetFileName(paths[0])}{(content.ImageFile is null ? "" : " and its picture")} to the clipboard."
-                        : $"Copied {paths.Count} files to the clipboard.";
+                        ? Loc.T(content.ImageFile is null ? "Copied {0} to the clipboard." : "Copied {0} and its picture to the clipboard.",
+                            Path.GetFileName(paths[0]))
+                        : Loc.Plural(paths.Count, "Copied {0} file to the clipboard.", "Copied {0} files to the clipboard.");
                     break;
             }
         }

@@ -14,8 +14,10 @@ public enum CompanionText {
         "The computer is on this network but refused the connection. Documents go to the cloud folder instead."
     public static let notPairedMessage =
         "Pair this device with a computer first: choose Pair a phone in Lazy Scan on the computer and scan its code."
-    public static let outboxFullMessage =
-        "\(PhoneOutbox.maxItems) documents are waiting to be sent already. Send them, or remove some first."
+    public static var outboxFullMessage: String {
+        L10n.plural(PhoneOutbox.maxItems, one: "{0} document is waiting to be sent already. Send it, or remove it first.",
+                    other: "{0} documents are waiting to be sent already. Send them, or remove some first.")
+    }
     public static let unreachableMessage = "The computer cannot be reached."
     public static let wrongCertificateMessage =
         "The computer that answered is not the one this device was paired with. If pairing was reset there, pair again."
@@ -49,7 +51,7 @@ public enum CompanionText {
 
     /// "3 pages sent to Office PC."
     public static func sentMessage(_ pageCount: Int, desktopName: String) -> String {
-        "\(pageCount == 1 ? "1 page" : "\(pageCount) pages") sent to \(desktopName)."
+        L10n.plural(pageCount, one: "{0} page sent to {1}.", other: "{0} pages sent to {1}.", desktopName)
     }
 
     /// "Scan 12.lsdoc was not sent: This document is too large to send in one piece."
@@ -64,7 +66,8 @@ public enum CompanionText {
 
     /// "Put 3 documents in the cloud folder for Office PC."
     public static func putInSyncFolderMessage(count: Int, desktopName: String) -> String {
-        "Put \(count) documents in the cloud folder for \(desktopName)."
+        L10n.plural(count, one: "Put {0} document in the cloud folder for {1}.", other: "Put {0} documents in the cloud folder for {1}.",
+                    desktopName)
     }
 
     /// "Received Invoice.pdf from Office PC."

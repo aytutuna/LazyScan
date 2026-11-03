@@ -1328,11 +1328,18 @@ public final class AppState: ObservableObject {
                     self.afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
                 } else if twoSided {
                     let sheets = Set(processed.compactMap(\.sheetIndex)).count
-                    self.statusMessage = "Added \(n) page\(n == 1 ? "" : "s") from \(sheets) sheet\(sheets == 1 ? "" : "s"), both sides — \(self.scannedPages.count) in queue. Scan more or \(self.settings.format.saveTitle)."
+                    self.statusMessage = L10n.plural(n, one: "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.",
+                                                     other: "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}.",
+                                                     L10n.plural(sheets, one: "{0} sheet", other: "{0} sheets"),
+                                                     self.scannedPages.count, self.settings.format.saveTitle)
                 } else if intake.askedBothSides {
-                    self.statusMessage = "Added \(n) page\(n == 1 ? "" : "s"), one side of each sheet: the scanner did not scan both sides — \(self.scannedPages.count) in queue. Scan more or \(self.settings.format.saveTitle)."
+                    self.statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                                     other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                                     self.scannedPages.count, self.settings.format.saveTitle)
                 } else {
-                    self.statusMessage = "Added \(n) page\(n == 1 ? "" : "s") — \(self.scannedPages.count) in queue. Scan more or \(self.settings.format.saveTitle)."
+                    self.statusMessage = L10n.plural(n, one: "Added {0} page — {1} in queue. Scan more or {2}.",
+                                                     other: "Added {0} pages — {1} in queue. Scan more or {2}.",
+                                                     self.scannedPages.count, self.settings.format.saveTitle)
                 }
                 // " 2 look blank and will be skipped.", " Found 2 separator pages: 3 documents to save."
                 self.statusMessage += self.queueScanNote(processed, options: s.document)
@@ -1378,7 +1385,7 @@ public final class AppState: ObservableObject {
             self.isReceiptReview = false
             self.recordCaptures(found.map(\.id))
             self.showPhotoReview = !found.isEmpty
-            self.statusMessage = "Found \(found.count) photo\(found.count == 1 ? "" : "s")."
+            self.statusMessage = L10n.plural(found.count, one: "Found {0} photo.", other: "Found {0} photos.")
         case .idCard:
             guard self.isIdCardFlow else {
                 self.dropIdCardScanOutsideTask()
@@ -1581,7 +1588,8 @@ public final class AppState: ObservableObject {
             self.resetFlow()
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
             let textNote = textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? ""
-            self.statusMessage = "Saved \(pages.count)-page PDF: \(url.lastPathComponent)\(self.pdfSizeSuffix)\(textNote)\(left)"
+            let saved = L10n.plural(pages.count, one: "Saved {0}-page PDF: {1}", other: "Saved {0}-page PDF: {1}", url.lastPathComponent)
+            self.statusMessage = "\(saved)\(self.pdfSizeSuffix)\(textNote)\(left)"
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }
@@ -1734,7 +1742,7 @@ public final class AppState: ObservableObject {
             self.photoSourceImages = [:]
             self.resetFlow()
             let folder = saved.first?.deletingLastPathComponent().path ?? s.destinationPath
-            self.statusMessage = "Saved \(saved.count) photo\(saved.count == 1 ? "" : "s") to \(folder)"
+            self.statusMessage = L10n.plural(saved.count, one: "Saved {0} photo to {1}", other: "Saved {0} photos to {1}", folder)
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }
@@ -2003,8 +2011,8 @@ public final class AppState: ObservableObject {
     /// What to do while the fronts are scanned a part at a time. The phone's button is in sentence case,
     /// the Mac's in Title Case.
     private var moreFrontsPrompt: String {
-        let done: String = platform == .ios ? "Done with fronts" : "Done with Fronts"
-        return "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose \(done)."
+        let done: String = platform == .ios ? L10n.t("Done with fronts") : L10n.t("Done with Fronts")
+        return L10n.t("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.", done)
     }
 
     /// After a scan of a stack turned over by hand: the fronts move the steps on to the backs,
@@ -2016,11 +2024,13 @@ public final class AppState: ObservableObject {
         guard taskFlow != nil else { return }
         if side == .front {
             if stopped {
-                statusMessage = "Scanned \(count) front side\(count == 1 ? "" : "s") before the feeder stopped. \(moreFrontsPrompt)"
+                statusMessage = L10n.plural(count, one: "Scanned {0} front side before the feeder stopped. {1}",
+                                            other: "Scanned {0} front sides before the feeder stopped. {1}", moreFrontsPrompt)
                 return
             }
             taskFlow?.advance()
-            statusMessage = "Scanned \(count) front side\(count == 1 ? "" : "s"). Turn the stack over and scan the back sides."
+            statusMessage = L10n.plural(count, one: "Scanned {0} front side. Turn the stack over and scan the back sides.",
+                                        other: "Scanned {0} front sides. Turn the stack over and scan the back sides.")
             return
         }
         collateTurnedOverStack(combineAnyway: false)
@@ -2031,7 +2041,8 @@ public final class AppState: ObservableObject {
         guard !isBusy, canFinishFronts, taskFlow != nil else { return }
         let fronts = queuedCaptures(DocumentSides.frontsStepID)
         taskFlow?.advance()
-        statusMessage = "\(fronts) front side\(fronts == 1 ? "" : "s") scanned. Turn the stack over and scan the back sides."
+        statusMessage = L10n.plural(fronts, one: "{0} front side scanned. Turn the stack over and scan the back sides.",
+                                    other: "{0} front sides scanned. Turn the stack over and scan the back sides.")
     }
 
     /// Back to the fronts before any back was scanned, keeping the fronts scanned so far: for a
@@ -2077,7 +2088,10 @@ public final class AppState: ObservableObject {
         resetFlow()
         let sheets = max(counts.fronts, counts.backs)
         let pages = counts.fronts + counts.backs
-        statusMessage = "Put \(sheets) sheet\(sheets == 1 ? "" : "s") in order (\(pages) page\(pages == 1 ? "" : "s")) — \(scannedPages.count) in queue. Scan another stack or \(settings.format.saveTitle)."
+        statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.",
+                                    other: "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}.",
+                                    L10n.plural(pages, one: "{0} page", other: "{0} pages"), scannedPages.count,
+                                    settings.format.saveTitle)
     }
 
     /// The backs did not pair up with the fronts, but the pages are combined as they are (the
@@ -2104,7 +2118,9 @@ public final class AppState: ObservableObject {
         let queued = Set(scannedPages.map(\.id))
         let fronts = flow.captures(for: DocumentSides.frontsStepID).filter { queued.contains($0) }.count
         resetFlow()
-        statusMessage = "Kept \(fronts) front side\(fronts == 1 ? "" : "s") — \(scannedPages.count) in queue. Scan another stack or \(settings.format.saveTitle)."
+        statusMessage = L10n.plural(fronts, one: "Kept {0} front side — {1} in queue. Scan another stack or {2}.",
+                                    other: "Kept {0} front sides — {1} in queue. Scan another stack or {2}.",
+                                    scannedPages.count, settings.format.saveTitle)
     }
 
     /// Stops turning stacks over by hand (the close button of its banner without a task): feeder
@@ -2180,8 +2196,10 @@ public final class AppState: ObservableObject {
         let missing = urls.filter { !FileManager.default.fileExists(atPath: $0.path) }
         if !missing.isEmpty {
             errorMessage = missing.count == 1
-                ? "\(missing[0].lastPathComponent) is no longer in its folder. It may have been moved, renamed or deleted."
-                : "\(missing.count) of the files are no longer in their folder. They may have been moved, renamed or deleted."
+                ? L10n.t("{0} is no longer in its folder. It may have been moved, renamed or deleted.", missing[0].lastPathComponent)
+                : L10n.plural(missing.count,
+                              one: "{0} of the files is no longer in its folder. It may have been moved, renamed or deleted.",
+                              other: "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted.")
             return false
         }
         do {
@@ -2199,9 +2217,15 @@ public final class AppState: ObservableObject {
             case .copy:
                 let content = SaveActions.clipboardContent(for: urls)
                 try fileActions.copy(content)
-                statusMessage = urls.count == 1
-                    ? "Copied \(urls[0].lastPathComponent)\(content.imageFile == nil ? "" : " and its picture") to the clipboard."
-                    : "Copied \(urls.count) files to the clipboard."
+                if urls.count == 1 {
+                    let name = urls[0].lastPathComponent
+                    statusMessage = content.imageFile == nil
+                        ? L10n.t("Copied {0} to the clipboard.", name)
+                        : L10n.t("Copied {0} and its picture to the clipboard.", name)
+                } else {
+                    statusMessage = L10n.plural(urls.count, one: "Copied {0} file to the clipboard.",
+                                                other: "Copied {0} files to the clipboard.")
+                }
             }
         } catch {
             let name = action.label.replacingOccurrences(of: "\u{2026}", with: "")

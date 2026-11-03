@@ -76,7 +76,7 @@ extension AppState {
                 let inputs: [PDFPageInput] = try PDFBuilder.pageInputs(
                     pages, pdfSize: s.output.pdfSize, progress: report, shouldContinue: { !flag.isCancelled },
                     textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: nil, pages: pages))
-                report("Adding \(count) \(count == 1 ? "page" : "pages") to \(name)…")
+                report(L10n.plural(count, one: "Adding {0} page to {1}…", other: "Adding {0} pages to {1}…", name))
                 return try Self.accessing(url, writing: true, through: access) { (file: URL) throws -> PDFAppendResult in
                     try PDFAppender.appendToFile(path: file.path, pages: inputs,
                                                  shouldContinue: { !flag.isCancelled })

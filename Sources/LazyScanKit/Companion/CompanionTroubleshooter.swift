@@ -141,10 +141,10 @@ public enum CompanionTroubleshooter {
         let problems = checks.filter { $0.status == .problem }.count
         let warnings = checks.filter { $0.status == .warning }.count
         if problems == 0 && warnings == 0 { return "Nothing here stops a paired phone from connecting." }
-        var parts: [String] = []
-        if problems > 0 { parts.append(problems == 1 ? "1 problem" : "\(problems) problems") }
-        if warnings > 0 { parts.append(warnings == 1 ? "1 warning" : "\(warnings) warnings") }
-        return "\(parts.joined(separator: " and ")) found."
+        let problemText = L10n.plural(problems, one: "{0} problem", other: "{0} problems")
+        let warningText = L10n.plural(warnings, one: "{0} warning", other: "{0} warnings")
+        if problems > 0 && warnings > 0 { return L10n.t("{0} and {1} found.", problemText, warningText) }
+        return L10n.t("{0} found.", problems > 0 ? problemText : warningText)
     }
 
     private static func listenCheck(_ snapshot: CompanionSnapshot, computer: String) -> TroubleshootCheck? {
@@ -176,8 +176,8 @@ public enum CompanionTroubleshooter {
             let detail: String
             switch snapshot.pairedCount {
             case 0: detail = "Listening on port \(snapshot.port) while the pairing code is shown."
-            case 1: detail = "Listening on port \(snapshot.port). 1 phone is paired."
-            default: detail = "Listening on port \(snapshot.port). \(snapshot.pairedCount) phones are paired."
+            default: detail = L10n.plural(snapshot.pairedCount, one: "Listening on port {1}. {0} phone is paired.",
+                                          other: "Listening on port {1}. {0} phones are paired.", String(snapshot.port))
             }
             return TroubleshootCheck(id: "phoneListening", status: .ok, title: "Ready for phones", detail: detail, actions: [])
         default:

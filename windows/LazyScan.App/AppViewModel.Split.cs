@@ -76,10 +76,10 @@ public sealed partial class AppViewModel
         CarryDocumentLabels(facts);
         var plan = QueuePlan;
         int documents = plan.Documents.Count;
-        string count = $"{documents} document{(documents == 1 ? "" : "s")} to save.";
+        string count = Loc.Plural(documents, "{0} document to save.", "{0} documents to save.");
         StatusMessage = plan.Pages[index] is { StartsDocument: true, Document: > 1 } page
-            ? $"Document {page.Document} starts at page {index + 1}. {count}"
-            : $"Page {index + 1} joins the document before it. {count}";
+            ? Loc.T("Document {0} starts at page {1}. {2}", page.Document, index + 1, count)
+            : Loc.T("Page {0} joins the document before it. {1}", index + 1, count);
         NotifyAll();
     }
 
@@ -250,7 +250,7 @@ public sealed partial class AppViewModel
         return RunExclusive(async token =>
         {
             int total = unread.Count;
-            StatusMessage = $"Reading barcodes on {total} queued page{(total == 1 ? "" : "s")}…";
+            StatusMessage = Loc.Plural(total, "Reading barcodes on {0} queued page…", "Reading barcodes on {0} queued pages…");
             NotifyAll();
             var reader = _barcodes;
             var found = new List<(Guid Id, IReadOnlyList<BarcodeReading>? Barcodes)>();
@@ -309,7 +309,9 @@ public sealed partial class AppViewModel
             string summary = DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document) + ".";
             int left = total - results.Count;
             StatusMessage = stopped && left > 0
-                ? $"Stopped reading barcodes: {left} queued {(left == 1 ? "page was" : "pages were")} not read, so codes on {(left == 1 ? "it" : "them")} do not split the stack yet. They are read after the next scan, or when the split is chosen again. {summary}"
+                ? Loc.Plural(left, "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                    "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                    summary)
                 : summary;
         });
     }

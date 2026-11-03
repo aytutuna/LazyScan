@@ -27,16 +27,22 @@ public enum CompanionHostText {
     /// the task to leave when one keeps them out.
     public static func waitingMessage(pageCount: Int, from: String, collectsPages: Bool, stackUnderWay: Bool = false,
                                       taskReason: String? = nil) -> String {
-        let what = pageCount == 1 ? "1 page" : "\(pageCount) pages"
-        if stackUnderWay { return "\(what) from \(from) will be added to the queue when this two-sided stack is finished." }
-        if collectsPages { return "\(what) from \(from) will be added to the queue when the current step is done." }
-        let are = pageCount == 1 ? "is" : "are"
-        let them = pageCount == 1 ? "it" : "them"
-        if let taskReason {
-            return "\(what) from \(from) \(are) waiting: \(taskReason). Leave the task or pick Document to PDF to add \(them) to the queue."
+        if stackUnderWay {
+            return L10n.plural(pageCount, one: "{0} page from {1} will be added to the queue when this two-sided stack is finished.",
+                               other: "{0} pages from {1} will be added to the queue when this two-sided stack is finished.", from)
         }
-        return "\(what) from \(from) \(are) waiting: choose Document mode, or a document task, "
-            + "with Collect pages before saving on, to add \(them) to the queue."
+        if collectsPages {
+            return L10n.plural(pageCount, one: "{0} page from {1} will be added to the queue when the current step is done.",
+                               other: "{0} pages from {1} will be added to the queue when the current step is done.", from)
+        }
+        if let taskReason {
+            return L10n.plural(pageCount, one: "{0} page from {1} is waiting: {2}. Leave the task or pick Document to PDF to add it to the queue.",
+                               other: "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue.",
+                               from, taskReason)
+        }
+        return L10n.plural(pageCount, one: "{0} page from {1} is waiting: choose Document mode, or a document task, with Collect pages before saving on, to add it to the queue.",
+                           other: "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue.",
+                           from)
     }
 
     /// "The document from Aytu's iPhone could not be added: one of its pictures could not be read."
@@ -171,7 +177,7 @@ extension AppState {
                 if !names.contains(document.phoneName) { names.append(document.phoneName) }
             }
             let collects = PhotoImport.isOffered(settings) && settings.documentMultiPage
-            let waiting = CompanionHostText.waitingMessage(pageCount: pages, from: names.count == 1 ? names[0] : "your phones",
+            let waiting = CompanionHostText.waitingMessage(pageCount: pages, from: names.count == 1 ? names[0] : L10n.t("your phones"),
                                                            collectsPages: collects, stackUnderWay: isStackUnderWay,
                                                            taskReason: PhotoImport.ownSaveTaskReason(settings))
             if waiting != phoneDocumentsWaitingMessage {
@@ -235,7 +241,8 @@ extension AppState {
                 return
             }
             let count = pages.count
-            self.statusMessage = "Added \(count) page\(count == 1 ? "" : "s") from \(phoneName) \u{2014} \(self.scannedPages.count) in queue."
+            self.statusMessage = L10n.plural(count, one: "Added {0} page from {1} — {2} in queue.", other: "Added {0} pages from {1} — {2} in queue.",
+                                              phoneName, self.scannedPages.count)
             self.companionService?.inbox.release(package)
             self.phoneBarMessage = CompanionProtocol.addedMessage(count, phoneName: phoneName)
         }

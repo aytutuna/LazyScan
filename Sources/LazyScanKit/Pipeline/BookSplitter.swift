@@ -793,11 +793,10 @@ public enum BookPages {
         let parts = added.compactMap(\.spread)
         let split = Set(parts.filter { !$0.isWhole }.map(\.spreadID)).count
         let whole = Set(parts.filter(\.isWhole).map(\.spreadID)).count
-        var note = split == 0 ? "" : " \(split) spread\(split == 1 ? "" : "s") split into pages."
+        var note = split == 0 ? "" : " " + L10n.plural(split, one: "{0} spread split into pages.", other: "{0} spreads split into pages.")
         if whole > 0 {
-            note += whole == 1
-                ? " The spine of 1 spread was not found: it was added as one page (Split\u{2026} on it splits it)."
-                : " The spine of \(whole) spreads was not found: they were added as one page each (Split\u{2026} on one splits it)."
+            note += " " + L10n.plural(whole, one: "The spine of {0} spread was not found: it was added as one page (Split… on it splits it).",
+                                      other: "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it).")
         }
         return note
     }

@@ -23,7 +23,7 @@ public enum PackageText {
 
     /// "Opened Receipt.lsdoc: 3 pages"
     public static func openedMessage(_ fileName: String, pageCount: Int) -> String {
-        "Opened \(fileName): \(pageCount) page\(pageCount == 1 ? "" : "s")"
+        L10n.plural(pageCount, one: "Opened {1}: {0} page", other: "Opened {1}: {0} pages", fileName)
     }
 
     /// "Receipt.lsdoc cannot be opened: one of its pictures cannot be read."

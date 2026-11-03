@@ -140,9 +140,8 @@ public sealed record ScanStop(string Reason, ScannerProblem? Problem = null)
     /// <summary>User-facing text: how many pages were kept, then why scanning stopped.</summary>
     public string Message(int pagesKept)
     {
-        string kept = pagesKept == 1
-            ? "Scanning stopped after 1 page; it was kept."
-            : $"Scanning stopped after {pagesKept} pages; they were kept.";
+        string kept = Loc.Plural(pagesKept, "Scanning stopped after {0} page; it was kept.",
+            "Scanning stopped after {0} pages; they were kept.");
         return string.IsNullOrWhiteSpace(Reason) ? kept : $"{kept} {Reason.Trim()}";
     }
 }

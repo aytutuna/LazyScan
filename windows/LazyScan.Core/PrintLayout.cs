@@ -282,8 +282,9 @@ public static class PrintText
     /// <summary>"Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."</summary>
     public static string Sent(int pageCount, int copies, string printerName)
     {
-        string pages = $"{pageCount} page{(pageCount == 1 ? "" : "s")}";
-        return copies > 1 ? $"Sent {pages} to {printerName}, {copies} copies." : $"Sent {pages} to {printerName}.";
+        return copies > 1
+            ? Loc.Plural(pageCount, "Sent {0} page to {1}, {2} copies.", "Sent {0} pages to {1}, {2} copies.", printerName, copies)
+            : Loc.Plural(pageCount, "Sent {0} page to {1}.", "Sent {0} pages to {1}.", printerName);
     }
 
     /// <summary>"Actual size" or "Fit to page".</summary>

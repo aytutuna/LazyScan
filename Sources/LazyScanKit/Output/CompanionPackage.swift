@@ -472,7 +472,9 @@ public enum CompanionPackage {
 
     public static let notPackageMessage = "This file is not a Lazy Scan document."
     public static let noPagesMessage = "This document has no pages."
-    public static var tooManyPagesMessage: String { "This document has more than \(maxPages) pages." }
+    public static var tooManyPagesMessage: String {
+        L10n.plural(maxPages, one: "This document has more than {1} page.", other: "This document has more than {1} pages.", String(maxPages))
+    }
     public static let damagedManifestMessage = "This document cannot be opened: its list of pages is damaged."
 
     /// "This document was made by a newer version of Lazy Scan (package format 2). Update Lazy Scan to open it."

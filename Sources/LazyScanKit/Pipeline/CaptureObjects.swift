@@ -107,11 +107,11 @@ public enum CaptureObjects {
 public enum PhotoReview {
     /// The review's title: "Found 3 photos", "Found 1 photo".
     public static func title(_ found: Int) -> String {
-        "Found \(found) photo\(found == 1 ? "" : "s")"
+        L10n.plural(found, one: "Found {0} photo", other: "Found {0} photos")
     }
 
     /// The review's save button: "Save 3 photos", "Save 1 photo".
     public static func saveTitle(_ included: Int) -> String {
-        "Save \(included) photo\(included == 1 ? "" : "s")"
+        L10n.plural(included, one: "Save {0} photo", other: "Save {0} photos")
     }
 }

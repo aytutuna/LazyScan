@@ -454,18 +454,20 @@ public enum PhotoImport {
     /// when that happened.
     public static func addedMessage(added: Int, skipped: Int, failed: Int, queueCount: Int, saveTitle: String) -> String {
         var text = added > 0
-            ? "Added \(added) page\(added == 1 ? "" : "s") from photos \u{2014} \(queueCount) in queue. Scan more or \(saveTitle)."
-            : "No pages were added."
-        if skipped > 0 { text += " \(skipped) photo\(skipped == 1 ? " was" : "s were") skipped." }
-        if failed > 0 { text += " \(failed) photo\(failed == 1 ? "" : "s") could not be opened." }
+            ? L10n.plural(added, one: "Added {0} page from photos — {1} in queue. Scan more or {2}.",
+                          other: "Added {0} pages from photos — {1} in queue. Scan more or {2}.", queueCount, saveTitle)
+            : L10n.t("No pages were added.")
+        if skipped > 0 { text += " " + L10n.plural(skipped, one: "{0} photo was skipped.", other: "{0} photos were skipped.") }
+        if failed > 0 { text += " " + L10n.plural(failed, one: "{0} photo could not be opened.", other: "{0} photos could not be opened.") }
         return text
     }
 
     /// The status after an import was cancelled: "Cancelled." or "Cancelled after adding 2 pages from photos — 4 in queue."
     public static func cancelledMessage(added: Int, queueCount: Int) -> String {
         added == 0
-            ? "Cancelled."
-            : "Cancelled after adding \(added) page\(added == 1 ? "" : "s") from photos \u{2014} \(queueCount) in queue."
+            ? L10n.t("Cancelled.")
+            : L10n.plural(added, one: "Cancelled after adding {0} page from photos — {1} in queue.",
+                          other: "Cancelled after adding {0} pages from photos — {1} in queue.", queueCount)
     }
 
     /// "IMG_0042.jpg could not be opened: …".

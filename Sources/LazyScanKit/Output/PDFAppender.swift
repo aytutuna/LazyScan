@@ -231,10 +231,10 @@ public enum PDFAppender {
 
     /// "Added 2 pages to Contract.pdf (now 11 pages, 1.4 MB)", as a save says "Saved …".
     public static func addedMessage(_ added: Int, fileName: String, pageCount: Int, size: String?) -> String {
-        let addedPages = added == 1 ? "page" : "pages"
-        let allPages = pageCount == 1 ? "page" : "pages"
+        let allPages = L10n.plural(pageCount, one: "{0} page", other: "{0} pages")
         let sizeText = size.map { ", " + $0 } ?? ""
-        return "Added \(added) \(addedPages) to \(fileName) (now \(pageCount) \(allPages)\(sizeText))"
+        return L10n.plural(added, one: "Added {0} page to {1} (now {2}{3})", other: "Added {0} pages to {1} (now {2}{3})",
+                           fileName, allPages, sizeText)
     }
 
     /// The added pages keep the file's PDF/A claim when it is part 1, 2 or 3 at level B or U (level A

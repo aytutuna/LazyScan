@@ -145,29 +145,29 @@ public static class StatusLine
         {
             return deviceName is { Length: > 0 } name ? Loc.T("Ready — {0}", name) : Loc.T("Ready");
         }
-        if (Regex.Match(text, @"^Added (\d+) (?:page|pages)\b") is { Success: true } added)
+        if (Regex.Match(text, @"^Added (\d[\d,.\u00A0\u202F]*) (?:page|pages)\b") is { Success: true } added)
         {
             int count = Count(added.Groups[1]);
-            string head = count == 1 && Regex.Match(text, @"— (\d+) in queue") is { Success: true } queue
+            string head = count == 1 && Regex.Match(text, @"— (\d[\d,.\u00A0\u202F]*) in queue") is { Success: true } queue
                 ? Loc.T("Page {0} added", Count(queue.Groups[1]))
                 : Loc.Plural(count, "{0} page added", "{0} pages added");
-            if (Regex.Match(text, @"(\d+) looks? blank") is { Success: true } blank)
+            if (Regex.Match(text, @"(\d[\d,.\u00A0\u202F]*) looks? blank") is { Success: true } blank)
             {
                 head = Append(head, Loc.Plural(Count(blank.Groups[1]), "{0} blank", "{0} blank"));
             }
-            if (Regex.Match(text, @"(\d+) spreads? split into pages") is { Success: true } spreads)
+            if (Regex.Match(text, @"(\d[\d,.\u00A0\u202F]*) spreads? split into pages") is { Success: true } spreads)
             {
                 head = Append(head, Loc.Plural(Count(spreads.Groups[1]), "{0} spread split", "{0} spreads split"));
             }
             return head;
         }
-        if (Regex.Match(text, @"^(?:Cancelled — )?Saved (\d+) (photos?|receipts?|documents?|files?|PDFs?|copies)\b",
+        if (Regex.Match(text, @"^(?:Cancelled — )?Saved (\d[\d,.\u00A0\u202F]*) (photos?|receipts?|documents?|files?|PDFs?|copies)\b",
                         RegexOptions.IgnoreCase) is { Success: true } savedMany)
         {
             return SavedHead(Count(savedMany.Groups[1]), savedMany.Groups[2].Value.ToLowerInvariant());
         }
         if (text.StartsWith("Saved ", StringComparison.Ordinal)) return Loc.T("Saved");
-        if (Regex.Match(text, @"^Found (\d+) (photos?|receipts?)\b") is { Success: true } found)
+        if (Regex.Match(text, @"^Found (\d[\d,.\u00A0\u202F]*) (photos?|receipts?)\b") is { Success: true } found)
         {
             int count = Count(found.Groups[1]);
             return found.Groups[2].Value.StartsWith("photo", StringComparison.Ordinal)
@@ -175,13 +175,13 @@ public static class StatusLine
                 : Loc.Plural(count, "Found {0} receipt", "Found {0} receipts");
         }
         if (text.StartsWith("Page queue cleared", StringComparison.Ordinal)) return Loc.T("Queue cleared");
-        if (Regex.Match(text, @"^Reading the text of page (\d+)(?: of (\d+))?…") is { Success: true } reading)
+        if (Regex.Match(text, @"^Reading the text of page (\d[\d,.\u00A0\u202F]*)(?: of (\d[\d,.\u00A0\u202F]*))?…") is { Success: true } reading)
         {
             return reading.Groups[2].Success
                 ? Loc.T("Reading page {0} of {1}…", Count(reading.Groups[1]), Count(reading.Groups[2]))
                 : Loc.T("Reading page {0}…", Count(reading.Groups[1]));
         }
-        if (Regex.Match(text, @"^Adding (\d+) pages? to .+…$") is { Success: true } adding)
+        if (Regex.Match(text, @"^Adding (\d[\d,.\u00A0\u202F]*) pages? to .+…$") is { Success: true } adding)
         {
             return Loc.Plural(Count(adding.Groups[1]), "Adding {0} page…", "Adding {0} pages…");
         }
@@ -217,7 +217,7 @@ public static class StatusLine
         return string.Join(' ', kept).TrimEnd(',', ':', ';', '.', ' ') + "…";
     }
 
-    private static int Count(Group digits) => int.Parse(digits.Value, System.Globalization.CultureInfo.InvariantCulture);
+    private static int Count(Group digits) => int.Parse(new string(digits.Value.Where(char.IsDigit).ToArray()), System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>"Saved 3 photos" for the kind of file <paramref name="noun"/> names (lower case, as the message has it).</summary>
     private static string SavedHead(int count, string noun) => noun switch
