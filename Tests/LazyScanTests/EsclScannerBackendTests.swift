@@ -187,6 +187,7 @@ final class EsclScannerBackendTests: XCTestCase {
         let backend: EsclScannerBackend = EsclScannerBackend(trust: EsclTrustStore(directory: folder), endpoints: endpoints,
                                                              hosts: hosts, discovery: discovery, clientOptions: options)
         backend.reprobeInterval = 0.05
+        backend.resolveHost = { (host: String) async -> String? in host }
         return backend
     }
 

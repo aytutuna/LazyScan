@@ -61,6 +61,10 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     public let hosts: EsclHostList?
     /// How often addresses that did not answer are tried again while browsing (tests shorten it).
     public var reprobeInterval: TimeInterval = 60
+    /// Looks up the IPv4 address of a host name (tests replace it, as they have no real names).
+    public var resolveHost: @Sendable (String) async -> String? = { (host: String) async -> String? in
+        await EsclHostText.resolveIPv4(host)
+    }
     /// The app may use the local network: searching and checking the addresses added by hand start only
     /// then. The iPhone and iPad first explain why the system is about to ask (`allowNetwork()`); true by
     /// default.
@@ -327,9 +331,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
 
     /// The URL to connect to. A plain-HTTP host name App Transport Security would refuse is resolved
     /// each time, so a new DHCP lease is followed; the address keeps the name the user typed.
-    private static func connectURL(_ address: ScannerAddress) async -> URL? {
+    private func connectURL(_ address: ScannerAddress) async -> URL? {
         guard address.needsResolving else { return address.baseURL }
-        guard let ip: String = await EsclHostText.resolveIPv4(address.host) else { return nil }
+        guard let ip: String = await resolveHost(address.host) else { return nil }
         return address.baseURL(resolvedTo: ip)
     }
 
@@ -367,7 +371,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let name: String = address.description
         let validator: EsclCertificateValidator = EsclCertificateValidator(store: trust, deviceUuid: nil, deviceName: name,
                                                                            firstUse: firstUse)
-        guard let base: URL = await EsclScannerBackend.connectURL(address) else {
+        guard let base: URL = await connectURL(address) else {
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
                                     error: "No scanner answered at \(address) (\(EsclScannerBackend.unusable(address))).")
         }
@@ -535,7 +539,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             while true {
                 let validator: EsclCertificateValidator = EsclCertificateValidator(
                     store: trust, deviceUuid: record.uuid, deviceName: record.info.name, firstUse: firstUse)
-                guard let base: URL = await EsclScannerBackend.connectURL(address) else {
+                guard let base: URL = await connectURL(address) else {
                     failures.append("\(address): \(EsclScannerBackend.unusable(address))")
                     break
                 }
