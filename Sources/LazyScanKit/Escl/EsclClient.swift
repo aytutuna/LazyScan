@@ -79,14 +79,17 @@ public struct EsclHttpError: Error, Equatable, LocalizedError, Sendable {
     }
 }
 
-/// Reads a page a scanner sent (JPEG, PNG, TIFF, ...) with ImageIO, decoded at once so its file can go.
+/// Reads a page a scanner sent (JPEG, PNG, TIFF, ...) with ImageIO. The pixels are decoded when they
+/// are first used, from the file mapped into memory, so a long feeder job holds only the compressed
+/// pages; the mapping outlives the file, which can go.
 public enum EsclPageReader {
     public static func read(_ file: URL) throws -> CGImage {
-        guard let source: CGImageSource = CGImageSourceCreateWithURL(file as CFURL, nil),
+        guard let data: Data = try? Data(contentsOf: file, options: .alwaysMapped),
+              let source: CGImageSource = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0 else {
             throw EsclFormatError("unknown image format")
         }
-        let options: [CFString: Any] = [kCGImageSourceShouldCacheImmediately: true]
+        let options: [CFString: Any] = [kCGImageSourceShouldCache: false]
         guard let image: CGImage = CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary) else {
             throw EsclFormatError("unknown image format")
         }

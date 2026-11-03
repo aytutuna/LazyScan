@@ -2047,7 +2047,7 @@ public struct EsclClientOptions {                  // C#: EsclClientOptions, plu
     public var delay: ((TimeInterval) async throws -> Void)?; public var startClock: (() -> (() -> TimeInterval))?   // fake clocks in tests
     public var configuration: URLSessionConfiguration?   // copied; nil = .ephemeral (tests add a URLProtocol stub)
     public var pageDirectory: URL?                 // where pages are downloaded; nil = AppStateFiles.standard.spoolDirectory
-    public var readPage: ((URL) throws -> CGImage)?   // nil = EsclPageReader.read (ImageIO, decoded at once)
+    public var readPage: ((URL) throws -> CGImage)?   // nil = EsclPageReader.read (ImageIO, decoded on first use)
     public init(requestTimeout: TimeInterval = 10, jobTimeout: TimeInterval = 120, connectivityWait: TimeInterval = 60,
                 retryPolicy: EsclRetryPolicy = .default)
 }

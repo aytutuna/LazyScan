@@ -764,4 +764,14 @@ final class EsclClientTests: XCTestCase {
         await scanner.client.whenCleanedUp()
         XCTAssertEqual(device.requests.last, "DELETE /eSCL/ScanJobs/7")
     }
+
+    func testThePageReaderKeepsAPageAfterItsFileIsGone() throws {
+        let file: URL = pageFolder.appendingPathComponent("reader-page.tiff")
+        try ImageExporter.write(blankImage(width: 30, height: 20), to: file, format: .tiff, dpi: 300, jpegQuality: 1.0)
+        let image: CGImage = try EsclPageReader.read(file)
+        try FileManager.default.removeItem(at: file)
+        XCTAssertEqual(image.width, 30)
+        XCTAssertEqual(image.height, 20)
+        XCTAssertNotNil(image.dataProvider?.data)
+    }
 }
