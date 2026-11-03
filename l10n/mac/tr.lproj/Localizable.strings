@@ -1,7 +1,7 @@
 "Allow copying" = "Kopyalamaya izin ver";
-"Allow copying text and images" = "Metin ve görüntüleri kopyalamaya izin ver";
+"Allow copying text and images" = "Metin ve görüntülerin kopyalanmasına izin ver";
 "Allow printing" = "Yazdırmaya izin ver";
 "Cancel" = "Vazgeç";
-"Confirm" = "Doğrula";
+"Confirm|password field" = "Doğrula";
 "Password" = "Parola";
 "Save" = "Kaydet";

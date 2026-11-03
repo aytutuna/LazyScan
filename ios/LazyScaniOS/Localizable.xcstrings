@@ -7,7 +7,7 @@
     },
     "Allow copying text and images" : {
       "extractionState" : "manual",
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Metin ve görüntüleri kopyalamaya izin ver" } } }
+      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Metin ve görüntülerin kopyalanmasına izin ver" } } }
     },
     "Allow printing" : {
       "extractionState" : "manual",
@@ -17,9 +17,12 @@
       "extractionState" : "manual",
       "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Vazgeç" } } }
     },
-    "Confirm" : {
+    "Confirm|password field" : {
       "extractionState" : "manual",
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Doğrula" } } }
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Confirm" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Doğrula" } }
+      }
     },
     "Password" : {
       "extractionState" : "manual",

@@ -1,12 +1,12 @@
 {
   "Require a password": {
-    "tr": "Parola gerektir"
+    "tr": "Parola koruması"
   },
   "PDFs open only with the password. You type it when saving.": {
-    "tr": "PDF yalnızca parolayla açılır. Parolayı kaydederken girersiniz."
+    "tr": "PDF'ler yalnızca parolayla açılır. Parolayı kaydederken girersiniz."
   },
   "Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.": {
-    "tr": "Kaydedilen PDF'ler yalnızca parolayla açılır. Parolayı her kayıtta girersiniz; parola saklanmaz ve unutulursa kurtarılamaz."
+    "tr": "Kaydedilen PDF'ler yalnızca parolayla açılır. Parolayı her kaydettiğinizde girersiniz; parola saklanmaz ve unutulursa kurtarılamaz."
   },
   "Not with PDF/A": {
     "tr": "PDF/A ile kullanılamaz"
@@ -15,13 +15,13 @@
     "tr": "PDF parolası belirleyin"
   },
   "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.": {
-    "tr": "Parola unutulursa kurtarılamaz. Bu kayıttaki tüm PDF'lere uygulanır; sonraki kayıtta yeniden sorulur."
+    "tr": "Parola unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur."
   },
   "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.": {
-    "tr": "Dosyayı açan herkesin bu parolayı girmesi gerekir. Parola hiçbir yerde saklanmaz ve unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; sonraki kayıtta yeniden sorulur."
+    "tr": "Dosyayı açan herkesin bu parolayı girmesi gerekir. Parola hiçbir yerde saklanmaz ve unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur."
   },
   "Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.": {
-    "tr": "Çoğu PDF uygulaması bu seçimlere uyar, ancak bu seçimler dosyayı kilitlemez: parolayı bilen biri başka bir yazılımla bunları aşabilir."
+    "tr": "Çoğu PDF uygulaması bu seçimlere uyar, ancak bunlar dosyayı kilitlemez: parolayı bilen biri başka bir yazılımla bu sınırları aşabilir."
   },
   "Some apps ignore these settings.": {
     "tr": "Bazı uygulamalar bu ayarları yok sayar."
@@ -46,7 +46,7 @@
     "tr": "Parolalar eşleşmiyor"
   },
   "Weak · use 12+ characters": {
-    "tr": "Zayıf · en az 12 karakter kullanın"
+    "tr": "Zayıf · en az 12 karakter"
   },
   "Fair · longer is safer": {
     "tr": "Orta · uzadıkça güçlenir"

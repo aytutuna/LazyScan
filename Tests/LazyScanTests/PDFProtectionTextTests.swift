@@ -19,7 +19,7 @@ final class PDFProtectionTextTests: XCTestCase {
 
     func test_turkish_texts() throws {
         try L10n.withTable(Self.turkishTable(), language: "tr") {
-            XCTAssertEqual(PDFProtection.optionLabel, "Parola gerektir")
+            XCTAssertEqual(PDFProtection.optionLabel, "Parola koruması")
             XCTAssertEqual(PDFProtection.dialogTitle, "PDF parolası belirleyin")
             XCTAssertEqual(PDFProtection.notWithArchivalReason, "PDF/A ile kullanılamaz")
             XCTAssertEqual(PDFProtection.notSavedMessage, "Kaydedilmedi: korumalı PDF için parola girilmedi.")

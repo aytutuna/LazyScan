@@ -132,9 +132,9 @@ struct PDFPasswordView: View {
             strengthRow
                 .padding(.top, 6)
 
-            Text("Confirm")
+            Text("Confirm|password field")
                 .padding(.top, 12)
-            SecureField("Confirm", text: $form.confirmation)
+            SecureField("Confirm|password field", text: $form.confirmation)
                 .labelsHidden()
                 .focused($focus, equals: .confirmation)
                 .onSubmit { submit() }

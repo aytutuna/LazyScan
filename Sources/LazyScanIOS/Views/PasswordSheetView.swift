@@ -37,7 +37,7 @@ struct PasswordSheetView: View {
                         }
                         .accessibilityIdentifier("password.field")
                     strengthRow
-                    SecureField("Confirm", text: $form.confirmation)
+                    SecureField("Confirm|password field", text: $form.confirmation)
                         .textContentType(.newPassword)
                         .focused($focus, equals: .confirmation)
                         .submitLabel(.done)

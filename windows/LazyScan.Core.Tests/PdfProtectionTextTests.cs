@@ -35,7 +35,7 @@ public sealed class PdfProtectionTextTests
     [Fact]
     public void TurkishTexts() => InTurkish(() =>
     {
-        Assert.Equal("Parola gerektir", PdfProtection.OptionLabel);
+        Assert.Equal("Parola koruması", PdfProtection.OptionLabel);
         Assert.Equal("PDF parolası belirleyin", PdfProtection.DialogTitle);
         Assert.Equal("PDF/A ile kullanılamaz", PdfProtection.NotWithArchivalReason);
         Assert.Equal("Kaydedilmedi: korumalı PDF için parola girilmedi.", PdfProtection.NotSavedMessage);

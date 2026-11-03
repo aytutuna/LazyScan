@@ -21,6 +21,7 @@ Platform chrome may differ: Cancel is Vazgeç on the iPhone and the Mac, İptal 
 | page | Sayfa |
 | sheet | Yaprak |
 | preset | Ön ayar |
+| password protection (Require a password) | Parola koruması |
 | queue | Kuyruk |
 | receipt | Fiş |
 | ID card | Kimlik kartı |
