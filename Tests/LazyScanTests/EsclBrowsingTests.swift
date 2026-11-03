@@ -345,6 +345,30 @@ final class EsclBrowsingTests: XCTestCase {
     }
 
     @MainActor
+    func test_aResolvedServiceIsResolvedAgain_afterAPauseAndOnRefresh_keepingItsAddressesMeanwhile() {
+        prepare()
+        resolver.answers["Epson"] = resolved("EPSON1.local", 80, ["192.168.1.30"])
+        discovery.start()
+        browser(secure: false).report([fakeBrowseResult("Epson", secure: false, txt: [])])
+        XCTAssertEqual(resolver.requests.count, 1)
+
+        discovery.pause()
+        discovery.resume()
+        resolver.answers["Epson"] = nil
+        browser(secure: false).report([fakeBrowseResult("Epson", secure: false, txt: [])])
+        XCTAssertEqual(resolver.requests.count, 2)
+        XCTAssertEqual(discovery.services.first?.addresses, ["192.168.1.30"])
+        resolver.latest("Epson")?.answer(resolved("EPSON1.local", 80, ["192.168.1.31"]))
+        XCTAssertEqual(discovery.services.first?.addresses, ["192.168.1.31"])
+
+        discovery.restart()
+        XCTAssertEqual(resolver.requests.count, 3)
+        XCTAssertEqual(discovery.services.first?.addresses, ["192.168.1.31"])
+        resolver.latest("Epson")?.answer(.failed("no answer in time"))
+        XCTAssertEqual(discovery.services.first?.addresses, ["192.168.1.31"])
+    }
+
+    @MainActor
     func test_theSearchIsLooking_forItsFirstSearchTime_andWhileAServiceResolves() {
         prepare()
         XCTAssertFalse(discovery.isLooking)

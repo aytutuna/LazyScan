@@ -373,9 +373,9 @@ public final class EsclDiscovery {
         changed()
     }
 
-    /// The troubleshooter's Refresh: starts again a browser that failed, and resolves again the instances
-    /// that could not be resolved. A browser that works, or waits for Local Network access (the system
-    /// retries by itself), is left alone.
+    /// The troubleshooter's Refresh: starts again a browser that failed, and resolves every instance again
+    /// (the old addresses stay listed until the answer comes). A browser that works, or waits for Local
+    /// Network access (the system retries by itself), is left alone.
     public func restart() {
         guard !browses.isEmpty else { return }
         var kept: [Browse] = []
@@ -391,7 +391,7 @@ public final class EsclDiscovery {
         browses = kept
         deniedElsewhere = false
         startMissing()
-        for entry in found where entry.resolved == nil && !entry.isResolving {
+        for entry in found where !entry.isResolving {
             startResolve(entry)
         }
         changed()
@@ -484,9 +484,11 @@ public final class EsclDiscovery {
         for result in results where result.secure == browse.secure {
             reported.insert(result.key)
             if let entry = foundEntry(result.key) {
+                // Kept from before a pause: the address may have changed meanwhile, so resolve it again.
+                let again: Bool = entry.carried
                 entry.carried = false
                 entry.result = result
-                if entry.resolved == nil && !entry.isResolving {
+                if (entry.resolved == nil || again) && !entry.isResolving {
                     startResolve(entry)
                 }
             } else {
