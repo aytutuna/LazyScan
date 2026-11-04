@@ -74,7 +74,7 @@ public enum SettingsAdapter {
         let resolution = capabilities.nearestResolution(to: s.resolution)
         if resolution != s.resolution {
             notes.append(SettingsNote(change: .resolution,
-                                      message: L10n.t("This scanner does not offer {0} dpi, so {1} dpi is used.", String(s.resolution), String(resolution)),
+                                      message: L10n.t("This scanner does not offer {0} dpi, so {1} dpi is used.", L10n.plain(s.resolution), L10n.plain(resolution)),
                                       warning: .dpiUsed(resolution)))
             s.resolution = resolution
         }

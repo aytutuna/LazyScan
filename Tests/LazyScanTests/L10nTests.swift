@@ -59,6 +59,14 @@ final class L10nTests: XCTestCase {
         }
     }
 
+    func testPlainNumbersAreNotGrouped() {
+        L10n.withTable([:], language: "tr") {
+            XCTAssertEqual(L10n.plain(1200), "1200")
+            XCTAssertEqual(L10n.t("{0} dpi", L10n.plain(1200)), "1200 dpi")
+            XCTAssertEqual(L10n.t("{0}", 1200), "1.200")
+        }
+    }
+
     func testEnglishPlural() {
         L10n.withTable([:], language: "en") {
             XCTAssertEqual(L10n.plural(1, one: "{0} scan", other: "{0} scans"), "1 scan")

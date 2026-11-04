@@ -140,6 +140,9 @@ public static class Loc
     public static string Decimal(double value, int minDigits, int maxDigits) =>
         value.ToString("#,##0." + new string('0', minDigits) + new string('#', maxDigits - minDigits), CultureInfo.CurrentCulture);
 
+    /// A whole number without grouping, for dpi and version numbers.
+    public static string Plain(int value) => value.ToString(CultureInfo.CurrentCulture);
+
     private static string Number(object value) =>
         ((IFormattable)value).ToString("#,##0.###", CultureInfo.CurrentCulture);
 }

@@ -93,6 +93,15 @@ public enum L10n {
         return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 
+    /// A whole number in the user's digits without grouping, for dpi and version numbers.
+    static func plain(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = locale()
+        formatter.usesGroupingSeparator = false
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
     private static func describe(_ arg: Any, _ formatter: NumberFormatter) -> String {
         if arg is any BinaryInteger || arg is any BinaryFloatingPoint, let text = formatter.string(for: arg) {
             return text

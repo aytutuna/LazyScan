@@ -262,7 +262,7 @@ public sealed class ZipStoreReader : IDisposable
             ZipReadErrorKind.UnsafeName => Loc.T("The archive holds an entry with an unsafe name ({0}).", name),
             ZipReadErrorKind.DuplicateName => Loc.T("The archive holds {0} more than once.", name),
             ZipReadErrorKind.SpecialFile => Loc.T("{0} is a link or a special file, not a plain file.", name),
-            ZipReadErrorKind.TooManyEntries => Loc.T("The archive holds more than {0} entries.", limits.MaxEntries.ToString(CultureInfo.InvariantCulture)),
+            ZipReadErrorKind.TooManyEntries => Loc.T("The archive holds more than {0} entries.", limits.MaxEntries),
             ZipReadErrorKind.TooLarge => entryName is null
                 ? Loc.T("The archive's contents are larger than {0} MB.", Megabytes(limits.MaxTotalBytes))
                 : Loc.T("{0} is larger than {1} MB.", name, Megabytes(limits.MaxEntryBytes)),

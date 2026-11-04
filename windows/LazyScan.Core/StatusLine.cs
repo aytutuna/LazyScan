@@ -123,7 +123,7 @@ public static class StatusLine
             case StatusWarning.PaperAutomatic:
                 return new(MakePiece(() => Loc.T("Paper size Automatic")), MakePiece(() => Loc.T("paper size Automatic|after another fact")));
             case StatusWarning.DpiUsed dpi:
-                var text = MakePiece(() => Loc.T("{0} dpi used", dpi.Dpi.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                var text = MakePiece(() => Loc.T("{0} dpi used", Loc.Plain(dpi.Dpi)));
                 return new(text, text);
             default:
                 return new(MakePiece(() => Loc.T("One side only")), MakePiece(() => Loc.T("one side only|after another fact")));

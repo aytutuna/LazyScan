@@ -343,7 +343,7 @@ final class ZipStoreReaderTests: XCTestCase {
         XCTAssertEqual(ZipStoreReader.message(.unsafeName, entryName: "../a"), "The archive holds an entry with an unsafe name (\"../a\").")
         XCTAssertEqual(ZipStoreReader.message(.duplicateName, entryName: "a.bin"), "The archive holds \"a.bin\" more than once.")
         XCTAssertEqual(ZipStoreReader.message(.specialFile, entryName: "a"), "\"a\" is a link or a special file, not a plain file.")
-        XCTAssertEqual(ZipStoreReader.message(.tooManyEntries), "The archive holds more than 4096 entries.")
+        XCTAssertEqual(ZipStoreReader.message(.tooManyEntries), "The archive holds more than 4,096 entries.")
         XCTAssertEqual(ZipStoreReader.message(.sizeMismatch, entryName: "a.bin"), "\"a.bin\" declares sizes that do not match its data.")
     }
 

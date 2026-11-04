@@ -74,7 +74,7 @@ public static class SettingsAdapter
         if (resolution != s.Resolution)
         {
             notes.Add(new SettingsNote(SettingsChange.Resolution,
-                Loc.T("This scanner does not offer {0} dpi, so {1} dpi is used.", s.Resolution.ToString(), resolution.ToString()),
+                Loc.T("This scanner does not offer {0} dpi, so {1} dpi is used.", Loc.Plain(s.Resolution), Loc.Plain(resolution)),
                 new StatusWarning.DpiUsed(resolution)));
             s.Resolution = resolution;
         }

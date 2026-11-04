@@ -473,18 +473,18 @@ public enum CompanionPackage {
     public static var notPackageMessage: String { L10n.t("This file is not a Lazy Scan document.") }
     public static var noPagesMessage: String { L10n.t("This document has no pages.") }
     public static var tooManyPagesMessage: String {
-        L10n.plural(maxPages, one: "This document has more than {1} page.", other: "This document has more than {1} pages.", String(maxPages))
+        L10n.plural(maxPages, one: "This document has more than {1} page.", other: "This document has more than {1} pages.", maxPages)
     }
     public static var damagedManifestMessage: String { L10n.t("This document cannot be opened: its list of pages is damaged.") }
 
     /// "This document was made by a newer version of Lazy Scan (package format 2). Update Lazy Scan to open it."
     public static func newerVersionMessage(_ version: Int) -> String {
-        L10n.t("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", String(version))
+        L10n.t("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", L10n.plain(version))
     }
 
     /// "Page 3's picture", "Page 3's original picture".
     public static func subject(_ pageNumber: Int, original: Bool) -> String {
-        original ? L10n.t("Page {0}'s original picture", String(pageNumber)) : L10n.t("Page {0}'s picture", String(pageNumber))
+        original ? L10n.t("Page {0}'s original picture", pageNumber) : L10n.t("Page {0}'s picture", pageNumber)
     }
 
     /// Runs `body`, turning an archive the zip reader refuses into `.invalidArchive`.

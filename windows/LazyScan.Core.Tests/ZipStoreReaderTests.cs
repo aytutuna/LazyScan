@@ -389,7 +389,7 @@ public class ZipStoreReaderTests
         Assert.Equal("The archive holds an entry with an unsafe name (\"../a\").", ZipStoreReader.Message(ZipReadErrorKind.UnsafeName, "../a"));
         Assert.Equal("The archive holds \"a.bin\" more than once.", ZipStoreReader.Message(ZipReadErrorKind.DuplicateName, "a.bin"));
         Assert.Equal("\"a\" is a link or a special file, not a plain file.", ZipStoreReader.Message(ZipReadErrorKind.SpecialFile, "a"));
-        Assert.Equal("The archive holds more than 4096 entries.", ZipStoreReader.Message(ZipReadErrorKind.TooManyEntries));
+        Assert.Equal("The archive holds more than 4,096 entries.", ZipStoreReader.Message(ZipReadErrorKind.TooManyEntries));
         Assert.Equal("\"a.bin\" declares sizes that do not match its data.", ZipStoreReader.Message(ZipReadErrorKind.SizeMismatch, "a.bin"));
     }
 

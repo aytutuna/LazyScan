@@ -160,7 +160,7 @@ final class CompanionPackageTests: XCTestCase {
         XCTAssertEqual(assertWriteRefused(.noPages, CompanionDocument(title: "x", pages: []))?.message, "This document has no pages.")
         XCTAssertEqual(assertWriteRefused(.tooManyPages, CompanionDocument(
             title: "x", pages: Array(repeating: CompanionPage(image: jpeg), count: 2001)))?.message,
-                       "This document has more than 2000 pages.")
+                       "This document has more than 2,000 pages.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: with { $0.format = .png })]))?.message,
                        "Page 1's picture is not a PNG file.")
@@ -290,7 +290,7 @@ final class CompanionPackageTests: XCTestCase {
         assertReadRefused(.noPages, package(regex(m, "\"pages\":\\[.*\\]", "\"pages\":[null]")))
         assertReadRefused(.tooManyPages,
                           package(regex(m, "\"pages\":\\[.*\\]", "\"pages\":[" + Array(repeating: "{}", count: 2001).joined(separator: ",") + "]")),
-                          "This document has more than 2000 pages.")
+                          "This document has more than 2,000 pages.")
     }
 
     func test_read_refusesDamagedOrMissingPictures() throws {

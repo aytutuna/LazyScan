@@ -541,7 +541,7 @@ public enum TaskCatalog {
     /// enough for cards and the preset list. A copy says how it prints instead of a format:
     /// "300 dpi · Color · Actual size", "300 dpi · Grayscale · Fit to page · 3 copies".
     public static func summary(_ settings: ScanSettings) -> String {
-        let dpi: String = L10n.t("{0} dpi", String(settings.resolution))
+        let dpi: String = L10n.t("{0} dpi", L10n.plain(settings.resolution))
         if flow(of: settings) == .copy {
             // A copy is paper, not a file: its size and count matter, not the format.
             let copies = PrintCopies.clamp(settings.taskOptions.copyCount)

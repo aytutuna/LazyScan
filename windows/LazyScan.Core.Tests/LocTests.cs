@@ -152,6 +152,17 @@ public sealed class LocTests
     }
 
     [Fact]
+    public void PlainNumbersAreNotGrouped()
+    {
+        InTurkish(null, () =>
+        {
+            Assert.Equal("1200", Loc.Plain(1200));
+            Assert.Equal("1200 dpi", Loc.T("{0} dpi", Loc.Plain(1200)));
+            Assert.Equal("1.200", Loc.T("{0}", 1200));
+        });
+    }
+
+    [Fact]
     public void TurkishCasingKeepsTheDottedI()
     {
         var tr = CultureInfo.GetCultureInfo("tr-TR");

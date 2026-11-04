@@ -186,7 +186,7 @@ public class CompanionPackageTests
     {
         var jpeg = new CompanionImage(DocxFixtures.Jpeg, CompanionImageFormat.Jpeg, 16, 12, 300, ColorMode.Color);
         Assert.Equal("This document has no pages.", AssertWriteRefused(CompanionPackageErrorKind.NoPages, new CompanionDocument("x", [])).Message);
-        Assert.Equal("This document has more than 2000 pages.",
+        Assert.Equal("This document has more than 2,000 pages.",
                      AssertWriteRefused(CompanionPackageErrorKind.TooManyPages,
                                         new CompanionDocument("x", Enumerable.Repeat(new CompanionPage(jpeg), 2001).ToList())).Message);
         Assert.Equal("Page 1's picture is not a PNG file.",
@@ -313,7 +313,7 @@ public class CompanionPackageTests
         AssertReadRefused(CompanionPackageErrorKind.NoPages, Package(Regex(m, "\"pages\":\\[.*\\]", "\"pages\":[null]")));
         AssertReadRefused(CompanionPackageErrorKind.TooManyPages,
                           Package(Regex(m, "\"pages\":\\[.*\\]", "\"pages\":[" + string.Join(",", Enumerable.Repeat("{}", 2001)) + "]")),
-                          "This document has more than 2000 pages.");
+                          "This document has more than 2,000 pages.");
     }
 
     [Fact]

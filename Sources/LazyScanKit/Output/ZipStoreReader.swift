@@ -258,7 +258,7 @@ public final class ZipStoreReader {
         case .specialFile:
             return L10n.t("{0} is a link or a special file, not a plain file.", name)
         case .tooManyEntries:
-            return L10n.t("The archive holds more than {0} entries.", String(limits.maxEntries))
+            return L10n.t("The archive holds more than {0} entries.", limits.maxEntries)
         case .tooLarge:
             return entryName == nil
                 ? L10n.t("The archive's contents are larger than {0} MB.", limits.maxTotalBytes / (1024 * 1024))

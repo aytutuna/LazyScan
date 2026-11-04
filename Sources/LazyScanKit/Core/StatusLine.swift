@@ -141,7 +141,7 @@ public enum StatusLine {
         case .paperAutomatic:
             return Warning(short: piece { L10n.t("Paper size Automatic") }, inline: piece { L10n.t("paper size Automatic|after another fact") })
         case .dpiUsed(let dpi):
-            let text: Piece = piece { L10n.t("{0} dpi used", String(dpi)) }
+            let text: Piece = piece { L10n.t("{0} dpi used", L10n.plain(dpi)) }
             return Warning(short: text, inline: text)
         case .oneSideOnly:
             return Warning(short: piece { L10n.t("One side only") }, inline: piece { L10n.t("one side only|after another fact") })

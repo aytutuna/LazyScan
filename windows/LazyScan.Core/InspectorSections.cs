@@ -58,7 +58,7 @@ public static class InspectorSections
     {
         var parts = new List<string> { s.Source == ScanSource.DocumentFeeder ? Loc.T("Feeder|scanner source") : Loc.T("Flatbed") };
         if (s.Source == ScanSource.DocumentFeeder && s.Duplex != DuplexMode.Off) parts.Add(Loc.T("both sides"));
-        parts.Add(Loc.T("{0} dpi", s.Resolution.ToString()));
+        parts.Add(Loc.T("{0} dpi", Loc.Plain(s.Resolution)));
         parts.Add(s.ColorMode switch { ColorMode.Grayscale => Loc.T("Gray|color mode"), ColorMode.BlackWhite => Loc.T("B&W"), _ => Loc.T("Color") });
         return string.Join(" · ", parts);
     }

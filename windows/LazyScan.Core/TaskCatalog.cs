@@ -555,7 +555,7 @@ public static class TaskCatalog
     /// </summary>
     public static string Summary(ScanSettings settings)
     {
-        string dpi = Loc.T("{0} dpi", settings.Resolution.ToString(CultureInfo.InvariantCulture));
+        string dpi = Loc.T("{0} dpi", Loc.Plain(settings.Resolution));
         if (FlowOf(settings) == TaskFlowKind.Copy)
         {
             // A copy is paper, not a file: its size and count matter, not the format.
