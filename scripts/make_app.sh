@@ -3,6 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# --ship builds only the live, complete languages.
+[ $# -eq 0 ] || [ "$1" = "--ship" ] || { echo "usage: $0 [--ship]" >&2; exit 1; }
+
+echo "==> Generating strings…"
+python3 scripts/gen_l10n.py ${1:+"$1"}
+
 echo "==> Building (release)…"
 swift build -c release
 
@@ -13,6 +19,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/LazyScan"
 
+LANGS=$(cat l10n/out/languages.mac.txt)
+
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -20,7 +28,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <dict>
     <key>CFBundleDevelopmentRegion</key> <string>en</string>
     <key>CFBundleLocalizations</key>
-    <array><string>en</string><string>tr</string></array>
+    <array>@LANGS@</array>
     <key>CFBundleName</key>              <string>Lazy Scan</string>
     <key>CFBundleDisplayName</key>       <string>Lazy Scan</string>
     <key>CFBundleIdentifier</key>        <string>local.lazyscan.app</string>
@@ -61,16 +69,16 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+sed -i.bak "s|@LANGS@|$(for lang in $LANGS; do printf '<string>%s</string>' "$lang"; done)|" "$APP/Contents/Info.plist"
+rm "$APP/Contents/Info.plist.bak"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# Kit.strings is written by scripts/gen_l10n.py; Localizable.strings and InfoPlist.strings are kept by hand.
-# macOS only picks Turkish when the bundle has tr.lproj, so a missing one stops the build.
-for lang in en tr; do
-  mkdir -p "$APP/Contents/Resources/$lang.lproj"
-  cp l10n/mac/$lang.lproj/*.strings "$APP/Contents/Resources/$lang.lproj/"
-done
-for file in Kit Localizable InfoPlist; do
-  [ -f "$APP/Contents/Resources/tr.lproj/$file.strings" ] || { echo "tr.lproj/$file.strings is missing from the bundle" >&2; exit 1; }
+# Kit.strings and InfoPlist.strings come from scripts/gen_l10n.py; Localizable.strings is still kept by hand.
+# macOS only picks a language when the bundle has its lproj, so a missing one stops the build.
+for lang in $LANGS; do
+  [ -d "l10n/out/mac/$lang.lproj" ] || { echo "$lang.lproj is missing from l10n/out/mac" >&2; exit 1; }
+  cp -R "l10n/out/mac/$lang.lproj" "$APP/Contents/Resources/"
+  [ ! -f "l10n/mac/$lang.lproj/Localizable.strings" ] || cp "l10n/mac/$lang.lproj/Localizable.strings" "$APP/Contents/Resources/$lang.lproj/"
 done
 
 # The page corner model and its licence, where FastViTCornerModel looks in a packaged app. Without it
