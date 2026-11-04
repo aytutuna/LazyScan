@@ -129,13 +129,112 @@ public sealed class LocTests
         Assert.Equal("2 pages in Inbox", Loc.Plural(2, "{0} page in {1}", "{0} pages in {1}", "Inbox"));
 
     [Fact]
-    public void PluralRules()
+    public void PluralCategories()
     {
-        Assert.Equal("one", Loc.PluralCategory(1, "en"));
-        Assert.Equal("other", Loc.PluralCategory(2, "en"));
-        Assert.Equal("one", Loc.PluralCategory(1, "tr"));
-        Assert.Equal("other", Loc.PluralCategory(0, "tr"));
-        Assert.Equal("one", Loc.PluralCategory(1, "xx"));
+        Assert.Equal("one", PluralRules.Category(1, "en"));
+        Assert.Equal("other", PluralRules.Category(2, "en"));
+        Assert.Equal("one", PluralRules.Category(1, "tr"));
+        Assert.Equal("other", PluralRules.Category(0, "tr"));
+        Assert.Equal("one", PluralRules.Category(1, "xx"));
+    }
+
+    public static IEnumerable<object[]> PluralSamples()
+    {
+        using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "plural.json")));
+        foreach (var language in json.RootElement.EnumerateObject().Where(p => p.Name != "cldr"))
+        {
+            foreach (var category in language.Value.EnumerateObject())
+            {
+                var samples = category.Value.TryGetProperty("integer", out var integer) ? integer.GetString()! : "";
+                foreach (var sample in samples.Split(','))
+                {
+                    var text = sample.Trim();
+                    if (text.Length == 0 || text == "…" || text.Contains('.') || text.Contains('e')) continue;
+                    var bounds = text.Split('~').Select(Scaled).ToArray();
+                    for (var n = bounds[0]; n <= bounds[^1]; n++)
+                        yield return [language.Name, n, category.Name];
+                }
+            }
+        }
+
+        static int Scaled(string part)
+        {
+            var bits = part.Split('c');
+            return int.Parse(bits[0]) * (int)Math.Pow(10, bits.Length > 1 ? int.Parse(bits[1]) : 0);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(PluralSamples))]
+    public void PluralRuleMatchesTheCldrSamples(string language, int n, string category) =>
+        Assert.Equal(category, PluralRules.Category(n, language));
+
+    [Fact]
+    public void UnknownLanguageUsesTheEnglishRule()
+    {
+        Assert.False(PluralRules.HasRule("xx"));
+        Assert.Equal("one", PluralRules.Category(1, "xx"));
+        Assert.Equal("other", PluralRules.Category(2, "xx"));
+    }
+
+    [Fact]
+    public void PluralWalksTheCultureParents()
+    {
+        var saved = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("zh-HK");
+            Loc.Table = new Dictionary<string, string> { ["{0} file|other"] = "{0} wen" };
+            Assert.Equal("1 wen", Loc.Plural(1, "{0} file", "{0} files"));
+        }
+        finally
+        {
+            Loc.Table = null;
+            CultureInfo.CurrentUICulture = saved;
+        }
+    }
+
+    [Theory]
+    [InlineData("ru-RU", 1, "1 file")]
+    [InlineData("ru-RU", 21, "21 files")]
+    [InlineData("ja-JP", 1, "1 file")]
+    [InlineData("ja-JP", 5, "5 files")]
+    public void PluralWithoutRowsUsesTheEnglishRule(string culture, int n, string expected)
+    {
+        var saved = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            Loc.Table = new Dictionary<string, string>();
+            Assert.Equal(expected, Loc.Plural(n, "{0} file", "{0} files"));
+        }
+        finally
+        {
+            Loc.Table = null;
+            CultureInfo.CurrentUICulture = saved;
+        }
+    }
+
+    [Fact]
+    public void PluralFallsBackToTheOtherRow()
+    {
+        var saved = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
+            Loc.Table = new Dictionary<string, string>
+            {
+                ["{0} file|one"] = "{0} fichier",
+                ["{0} file|other"] = "{0} fichiers",
+            };
+            Assert.Equal("1 fichier", Loc.Plural(1, "{0} file", "{0} files"));
+            Assert.EndsWith(" fichiers", Loc.Plural(1000000, "{0} file", "{0} files"));
+        }
+        finally
+        {
+            Loc.Table = null;
+            CultureInfo.CurrentUICulture = saved;
+        }
     }
 
     [Fact]

@@ -57,30 +57,29 @@ public static class Loc
     public static string Reword(string english) => Lookup(english) ?? english;
 
     /// <summary>
-    /// <paramref name="one"/> when the language's plural rule says so for <paramref name="n"/>, else
+    /// <summary>
+    /// The row for <paramref name="one"/> in the language's plural category for <paramref name="n"/>,
+    /// else its "other" row; with neither, English: <paramref name="one"/> for 1, else
     /// <paramref name="other"/>. {0} is n, written in the current number format, and
     /// <paramref name="args"/> follow from {1}.
     /// </summary>
     public static string Plural(int n, string one, string other, params object?[] args)
     {
-        var category = PluralCategory(n, Language());
-        var english = category == "one" ? one : other;
-        var found = Lookup(one + "|" + category);
-        return Format(found ?? StripContext(english), [n, .. args]);
+        var category = PluralRules.Category(n, Language());
+        var found = Lookup(one + "|" + category) ?? Lookup(one + "|other");
+        return Format(found ?? StripContext(n == 1 ? one : other), [n, .. args]);
     }
 
-    // One rule per language, the CLDR cardinal rules. Add a language here when it gets a column
-    // in the catalog; an unknown language uses the English rule.
-    private static readonly Dictionary<string, Func<int, string>> PluralRules = new()
+    // The rule comes from the first culture in the parent chain that has one, so zh-HK reaches
+    // zh-Hant; with none, PluralRules uses the English rule.
+    private static string Language()
     {
-        ["en"] = n => n == 1 ? "one" : "other",
-        ["tr"] = n => n == 1 ? "one" : "other",
-    };
-
-    internal static string PluralCategory(int n, string language) =>
-        (PluralRules.GetValueOrDefault(language) ?? PluralRules["en"])(n);
-
-    private static string Language() => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        for (var culture = CultureInfo.CurrentUICulture; culture != CultureInfo.InvariantCulture; culture = culture.Parent)
+        {
+            if (PluralRules.HasRule(culture.Name)) return culture.Name;
+        }
+        return "en";
+    }
 
     private static string? Lookup(string key)
     {

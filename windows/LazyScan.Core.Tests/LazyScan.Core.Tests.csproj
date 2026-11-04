@@ -28,4 +28,9 @@
     <None Include="..\..\Tests\Fixtures\Escl\**\*" LinkBase="Fixtures\Escl" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The plural rules and their CLDR samples, shared with the Swift side. -->
+  <ItemGroup>
+    <Content Include="..\..\l10n\plural.json" Link="plural.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
