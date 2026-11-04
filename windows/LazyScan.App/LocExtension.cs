@@ -1,4 +1,3 @@
-using System.Resources;
 using System.Windows.Markup;
 using LazyScan.Core;
 
@@ -10,12 +9,10 @@ namespace LazyScan.App;
 [MarkupExtensionReturnType(typeof(string))]
 public sealed class TExtension : MarkupExtension
 {
-    private static readonly ResourceManager Resources = new("LazyScan.App.Strings", typeof(TExtension).Assembly);
-
     public TExtension(string text) => Text = text;
 
     public string Text { get; }
 
     public override object ProvideValue(IServiceProvider serviceProvider) =>
-        Resources.GetString(Text) ?? Loc.T(Text);
+        Loc.T(Text);
 }

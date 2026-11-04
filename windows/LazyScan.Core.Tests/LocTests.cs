@@ -279,6 +279,18 @@ public sealed class LocTests
     }
 
     [Fact]
+    public void XamlTextResolvesInTurkish() => InTurkish(null, () =>
+    {
+        Assert.Equal("Kaydet", Loc.T("Save"));
+        Assert.Equal("İptal", Loc.T("Cancel"));
+        Assert.Equal("Parola", Loc.T("Password"));
+        Assert.Equal("Parolayı yeniden girin", Loc.T("Confirm|password field"));
+        Assert.Equal("Yazdırmaya izin ver", Loc.T("Allow printing"));
+        Assert.Equal("Kopyalamaya izin ver", Loc.T("Allow copying"));
+        Assert.Equal("Metin ve görüntülerin kopyalanmasına izin ver", Loc.T("Allow copying text and images"));
+    });
+
+    [Fact]
     public void PlainNumbersAreNotGrouped()
     {
         InTurkish(null, () =>
