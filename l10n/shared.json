@@ -1521,5 +1521,20 @@
   "{0} is damaged: its checksum does not match its data.": {},
   "The scanner driver ran out of memory. Try a lower resolution. ({0})": {},
   "The scanner driver reported an error. ({0})": {},
-  "The scanner driver reported an error: {0} ({1})": {}
+  "The scanner driver reported an error: {0} ({1})": {},
+  "{0} scanned page is still in the queue and not saved.": {
+    "en_other": "{0} scanned pages are still in the queue and not saved."
+  },
+  "Replace the page in the queue?": {
+    "en_other": "Replace the {0} pages in the queue?"
+  },
+  "It has not been saved. “{1}” opens in its place.": {
+    "en_other": "They have not been saved. “{1}” opens in their place."
+  },
+  "Remove the page?": {
+    "en_other": "Remove all {0} pages?"
+  },
+  "{0} file saved": {
+    "en_other": "{0} files saved"
+  }
 }

@@ -27,7 +27,7 @@ struct StatusBarView: View {
             Spacer(minLength: 16)
             if !state.lastSavedURLs.isEmpty {
                 if state.lastSavedURLs.count > 1 {
-                    Text("\(state.lastSavedURLs.count) files saved")
+                    Text(L10n.plural(state.lastSavedURLs.count, one: "{0} file saved", other: "{0} files saved"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -55,8 +55,8 @@ struct StatusBarView: View {
         let offered = state.savedFileActions
         // Open with is in the menu for one saved file only (`SaveActions.offered`).
         let moreHelp: String = urls.count == 1
-            ? "More: open with, email and the other actions"
-            : "More: email and the other actions"
+            ? String(localized: "More: open with, email and the other actions")
+            : String(localized: "More: email and the other actions")
         return HStack(spacing: 10) {
             ForEach(offered.filter { Self.barActions.contains($0) }) { action in
                 Button {

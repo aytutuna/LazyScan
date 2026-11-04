@@ -17,14 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.alertStyle = .warning
         if state.isBusy {
-            alert.messageText = "Stop it and quit?"
-            alert.informativeText = "A scan or save is still running." + (unsaved.map { " " + $0 } ?? "")
+            alert.messageText = String(localized: "Stop it and quit?")
+            alert.informativeText = String(localized: "A scan or save is still running.") + (unsaved.map { " " + $0 } ?? "")
         } else {
-            alert.messageText = "Quit anyway?"
+            alert.messageText = String(localized: "Quit anyway?")
             alert.informativeText = unsaved ?? ""
         }
-        let quit = alert.addButton(withTitle: "Quit")
-        alert.addButton(withTitle: "Cancel")
+        let quit = alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         // Return does not quit, as No is the Windows question's default.
         quit.keyEquivalent = ""
         // Quit from the Dock or at logout can come while the app is in the background.
@@ -40,15 +40,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func unsavedWork(_ state: AppState) -> String? {
         let pages = state.scannedPages.count
         if pages > 0 {
-            return "\(pages) scanned page\(pages == 1 ? " is" : "s are") still in the queue and not saved."
+            return L10n.plural(pages, one: "{0} scanned page is still in the queue and not saved.",
+                               other: "{0} scanned pages are still in the queue and not saved.")
         }
         if state.showPhotoReview {
             return state.isReceiptReview
-                ? "The receipts found have not been saved."
-                : "The detected photos have not been saved."
+                ? String(localized: "The receipts found have not been saved.")
+                : String(localized: "The detected photos have not been saved.")
         }
         if state.hasIdCardCaptures {
-            return "The ID card has not been saved."
+            return String(localized: "The ID card has not been saved.")
         }
         return nil
     }

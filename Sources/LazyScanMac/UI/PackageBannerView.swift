@@ -14,11 +14,13 @@ struct PackageBannerView: View {
 
     var body: some View {
         let pageCount: Int = state.scannedPages.count
-        let replaceTitle: String = pageCount == 1 ? "Replace the page in the queue?" : "Replace the \(pageCount) pages in the queue?"
-        let replaceLine: String = pageCount == 1
-            ? "It has not been saved. \u{201C}\(package.fileName)\u{201D} opens in its place."
-            : "They have not been saved. \u{201C}\(package.fileName)\u{201D} opens in their place."
-        let discardLabel: String = "Discard \(pageCount) page\(pageCount == 1 ? "" : "s")"
+        let replaceTitle: String = L10n.plural(pageCount, one: "Replace the page in the queue?",
+                                               other: "Replace the {0} pages in the queue?")
+        let replaceLine: String = L10n.plural(pageCount,
+                                              one: "It has not been saved. “{1}” opens in its place.",
+                                              other: "They have not been saved. “{1}” opens in their place.",
+                                              package.fileName)
+        let discardLabel: String = L10n.plural(pageCount, one: "Discard {0} page", other: "Discard {0} pages")
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "doc.on.doc")
                 .font(.system(size: 15))
@@ -33,9 +35,11 @@ struct PackageBannerView: View {
             Spacer(minLength: 8)
             Group {
                 Button(PackageText.addToPages) { state.addPendingPackageToPages() }
-                    .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason : "Add the pages after the pages in the queue")
+                    .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason
+                        : String(localized: "Add the pages after the pages in the queue"))
                 Button(PackageText.openAsNew) { openAsNew() }
-                    .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason : "Clear the queue and open the document's pages in it")
+                    .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason
+                        : String(localized: "Clear the queue and open the document's pages in it"))
             }
             .disabled(!state.canIngest)
             Button {

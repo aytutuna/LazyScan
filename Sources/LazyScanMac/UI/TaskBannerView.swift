@@ -19,7 +19,7 @@ struct TaskBannerView: View {
     var onChangeTask: () -> Void
 
     /// Title of the banner that guides turning a stack over by hand without a task.
-    static let turningOverTitle = "Two-sided scanning"
+    static var turningOverTitle: String { String(localized: "Two-sided scanning") }
 
     /// The guidance behind the info button is showing.
     @State private var showHelp = false
@@ -85,7 +85,7 @@ struct TaskBannerView: View {
                 // The back of a card with nothing printed on it may be left out. (The backs of a stack
                 // turned over by hand are left out with Keep Fronts Only.)
                 if state.canSkipStep, let step = state.taskFlow?.current {
-                    Button(step.id == IdCardSteps.backStepID ? IdCardSteps.skipBackLabel : "Skip \(step.title.lowercased())") {
+                    Button(step.id == IdCardSteps.backStepID ? IdCardSteps.skipBackLabel : String(localized: "Skip \(step.title.localizedLowercase)")) {
                         state.skipStep()
                     }
                         .controlSize(.small)
@@ -127,13 +127,15 @@ struct TaskBannerView: View {
 
     /// With sides by hand the task takes them along (`exitTask()`), so not every setting stays.
     private var exitHelp: String {
-        if definition == nil { return "Scan one side of each sheet" }
-        return state.isTurningOverByHand ? "Leave the task" : "Leave the task (settings stay)"
+        if definition == nil { return String(localized: "Scan one side of each sheet") }
+        return state.isTurningOverByHand ? String(localized: "Leave the task") : String(localized: "Leave the task (settings stay)")
     }
 
-    private var exitLabel: String { definition != nil ? "Leave the task" : "Scan one side only" }
+    private var exitLabel: String {
+        definition != nil ? String(localized: "Leave the task") : String(localized: "Scan one side only")
+    }
 
-    private var bannerLabel: String { definition != nil ? "Task: \(name)" : name }
+    private var bannerLabel: String { definition != nil ? String(localized: "Task: \(name)") : name }
 
     /// "Front · Back · Check": each step in a word, the current one bold in the accent color; VoiceOver
     /// reads "ID card, step 1 of 3: front side".
@@ -153,7 +155,7 @@ struct TaskBannerView: View {
                 line = line + plain
             }
         }
-        let current: String = flow.current?.title.lowercased() ?? ""
+        let current: String = flow.current?.title.localizedLowercase ?? ""
         return line
             .font(.callout)
             .lineLimit(1)

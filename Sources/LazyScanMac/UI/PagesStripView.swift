@@ -164,7 +164,8 @@ struct PagesStripView: View {
         } message: {
             Text("Goes into the file name.")
         }
-        .confirmationDialog("Remove all \(state.scannedPages.count) pages?", isPresented: $asksClear,
+        .confirmationDialog(L10n.plural(state.scannedPages.count, one: "Remove the page?", other: "Remove all {0} pages?"),
+                            isPresented: $asksClear,
                             titleVisibility: .visible) {
             Button("Remove All", role: .destructive) {
                 state.clearPages()
@@ -194,7 +195,7 @@ struct PagesStripView: View {
     }
 
     private func saveAccessibilityLabel(_ title: String) -> String {
-        lockedSave ? title.replacingOccurrences(of: "PDF", with: "password-protected PDF") : title
+        lockedSave ? title.replacingOccurrences(of: "PDF", with: String(localized: "password-protected PDF", comment: "Replaces the word PDF inside the Save button's title for VoiceOver")) : title
     }
 }
 
@@ -417,20 +418,22 @@ fileprivate struct PageThumbnailCell: View {
     /// phone" for one a paired phone sent.
     private var caption: String {
         guard let side = page.side else {
-            if book.isWhole { return "Page \(pageNumber) \u{00B7} not split" }
+            if book.isWhole { return String(localized: "Page \(pageNumber) \u{00B7} not split") }
             switch page.source {
-            case .photo: return "Page \(pageNumber) \u{00B7} photo"
-            case .phone: return "Page \(pageNumber) \u{00B7} from phone"
-            case .scanner: return "Page \(pageNumber)"
+            case .photo: return String(localized: "Page \(pageNumber) \u{00B7} photo")
+            case .phone: return String(localized: "Page \(pageNumber) \u{00B7} from phone")
+            case .scanner: return String(localized: "Page \(pageNumber)")
             }
         }
-        return "Page \(pageNumber) \u{00B7} \(side == .front ? "front" : "back")"
+        return side == .front
+            ? String(localized: "Page \(pageNumber) \u{00B7} front")
+            : String(localized: "Page \(pageNumber) \u{00B7} back")
     }
 
     /// "Page 3, Sheet 2, back, Blank, skipped, Straightened 1.5°, Turned upright 180°" for screen
     /// readers; the first page of a document after the first starts with its title ("Document 2, Page 3").
     private var accessibilityName: String {
-        var name = "Page \(pageNumber)"
+        var name = String(localized: "Page \(pageNumber)")
         if let title = split.dividerTitle { name = "\(title), \(name)" }
         if let label = DocumentSides.sideName(side: page.side, sheetIndex: page.sheetIndex) ?? book.help
             ?? PhotoImport.sourceLabel(page) {
@@ -505,7 +508,7 @@ fileprivate struct PageThumbnailCell: View {
     @ViewBuilder
     private var blankToggle: some View {
         if let toggleLabel = split.toggleLabel {
-            let toggleTitle: String = split.isExcluded ? "Keep" : "Skip"
+            let toggleTitle: String = split.isExcluded ? String(localized: "Keep") : String(localized: "Skip")
             Button(toggleTitle, action: onToggle)
                 .controlSize(.mini)
                 .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 4, style: .continuous))

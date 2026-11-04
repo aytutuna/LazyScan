@@ -99,7 +99,7 @@ struct SidebarView: View {
     }
 
     private var rowHelp: String {
-        state.isBusy ? "Wait for the scan to finish" : ""
+        state.isBusy ? String(localized: "Wait for the scan to finish") : ""
     }
 
     /// A click on the selected scanner while it is not connected (it was off, or did not answer) opens it
@@ -141,7 +141,7 @@ private struct DeviceRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundStyle(nameStyle)
-                Text(device.isDemo ? "Demo (no hardware)" : device.transport)
+                transport
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -152,5 +152,14 @@ private struct DeviceRow: View {
     }
 
     private var nameStyle: HierarchicalShapeStyle { frozen ? .secondary : .primary }
+
+    private var transport: Text {
+        if device.isDemo { return Text("Demo (no hardware)") }
+        switch device.transport {
+        case "Network": return Text("Network")
+        case "Shared": return Text("Shared")
+        default: return Text(device.transport)
+        }
+    }
 }
 #endif

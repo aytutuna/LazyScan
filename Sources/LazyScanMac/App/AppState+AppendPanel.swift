@@ -8,7 +8,7 @@ extension AppState {
     /// Picks a PDF with the open panel, starting in the save folder, and adds the queued pages to its
     /// end (`appendToPDF(at:)`).
     public func chooseAndAppendToPDF() {
-        guard canAppendPages, let url = choosePDFForAppend(prompt: "Add Pages") else { return }
+        guard canAppendPages, let url = choosePDFForAppend(prompt: String(localized: "Add Pages")) else { return }
         appendToPDF(at: url)
     }
 
@@ -41,8 +41,8 @@ extension AppState {
         alert.alertStyle = .warning
         alert.messageText = PDFAppender.confirmQuestion
         alert.informativeText = details
-        let add = alert.addButton(withTitle: "Add Pages")
-        alert.addButton(withTitle: "Cancel")
+        let add = alert.addButton(withTitle: String(localized: "Add Pages"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         add.keyEquivalent = ""
         return alert.runModal() == .alertFirstButtonReturn
     }

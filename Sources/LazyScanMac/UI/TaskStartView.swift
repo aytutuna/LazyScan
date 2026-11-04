@@ -45,7 +45,7 @@ struct TaskStartView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if !state.presets.isEmpty {
-                    groupHeading("My presets")
+                    groupHeading(String(localized: "My presets"))
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                         ForEach(state.presets) { preset in
                             presetTile(preset)
@@ -110,7 +110,9 @@ struct TaskStartView: View {
         let subtitle: String = card.definition.subtitle
         let help: String = subtitle + "\n" + card.summary
         let reason: String = card.availability.reason ?? ""
-        let hint: String = available ? "\(subtitle) \(card.summary)." : "\(subtitle) \(card.summary). Not available: \(reason)"
+        let hint: String = available
+            ? String(localized: "\(subtitle) \(card.summary).")
+            : String(localized: "\(subtitle) \(card.summary). Not available: \(reason)")
         return Button {
             // Picking a task while the ID card task holds a side asks first.
             let appState = state
@@ -138,13 +140,13 @@ struct TaskStartView: View {
     /// "Add pages to a PDF" is not a task of the catalog: the PDF is picked first, then Document to PDF
     /// is set up with it as the append target, so Save adds the pages scanned next to its end.
     private var addPagesTile: some View {
-        let title = "Add pages to a PDF"
-        let subtitle = "Pick a PDF, then scan the pages to add"
+        let title = String(localized: "Add pages to a PDF")
+        let subtitle = String(localized: "Pick a PDF, then scan the pages to add")
         return Button {
             // The file first: cancelling the panel keeps a held ID card side.
             let appState = state
             let openScanner = onOpenScanner
-            guard let url = appState.choosePDFForAppend(prompt: "Choose") else { return }
+            guard let url = appState.choosePDFForAppend(prompt: String(localized: "Choose")) else { return }
             appState.leaveIdCard {
                 if appState.startTask(.document) {
                     appState.setAppendTarget(url)

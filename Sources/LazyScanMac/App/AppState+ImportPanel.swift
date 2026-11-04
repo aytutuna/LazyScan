@@ -12,7 +12,7 @@ extension AppState {
         let panel = NSOpenPanel()
         panel.title = PhotoImport.pickerTitle
         panel.message = PhotoImport.buttonHint
-        panel.prompt = "Import"
+        panel.prompt = String(localized: "Import")
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = (PhotoImport.fileExtensions + [CompanionPackage.fileExtension])
@@ -65,9 +65,9 @@ extension AppState {
         return true
     }
 
-    private static let deviceBusyMessage =
-        "The picture from your iPhone or iPad was not added while a scan or save was running, a review was open, "
-        + "or the stack was being turned over by hand. Import it again once that has finished."
+    private static var deviceBusyMessage: String {
+        String(localized: "The picture from your iPhone or iPad was not added while a scan or save was running, a review was open, or the stack was being turned over by hand. Import it again once that has finished.")
+    }
 
     /// The file's name is shown by the corner editor and in an error, so it is the provider's suggested
     /// name or the time the picture came over, written like a screenshot's: "Picture 2026-10-29 at

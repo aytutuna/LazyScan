@@ -92,10 +92,12 @@ struct PreviewCanvasView: View {
         if state.activeTaskDefinition != nil || state.isTurningOverByHand { return nil }
         let action: String = state.primaryActionLabel
         if state.previewUnavailableReason == nil {
-            return "Press Preview to see the flatbed, or \(action) to go straight ahead"
+            return String(localized: "Press Preview to see the flatbed, or \(action) to go straight ahead")
         }
-        if state.settings.source == .documentFeeder { return "Load the pages in the feeder and press \(action)" }
-        return "Press \(action) to start"
+        if state.settings.source == .documentFeeder {
+            return String(localized: "Load the pages in the feeder and press \(action)")
+        }
+        return String(localized: "Press \(action) to start")
     }
 
     private var demoSelected: Bool {
@@ -171,9 +173,11 @@ struct PreviewCanvasView: View {
     private func sizeChip(selection: CGRect, rect: CGRect, viewSize: CGSize) -> some View {
         Group {
             if let caps = state.capabilities {
-                let w = Double(selection.width * caps.flatbedSizeInches.width)
-                let h = Double(selection.height * caps.flatbedSizeInches.height)
-                Text(String(format: "%.1f × %.1f in", w, h))
+                let width = Double(selection.width * caps.flatbedSizeInches.width)
+                    .formatted(.number.precision(.fractionLength(1)))
+                let height = Double(selection.height * caps.flatbedSizeInches.height)
+                    .formatted(.number.precision(.fractionLength(1)))
+                Text("\(width) × \(height) in")
                     .font(.caption.monospacedDigit())
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
