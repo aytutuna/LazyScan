@@ -186,7 +186,7 @@ jobs:
           # The corner model was fetched above; its test must find it, never be skipped.
           LAZYSCAN_REQUIRE_CORNER_MODEL: '1'
       # The main views as PNGs (ScreenshotTests), rendered twice: the second run must give the same
-      # images, and every image must hold more than a blank window.
+      # images (but for the history's clock), and every image must hold more than a blank window.
       - name: Render screenshots
         run: |
           set -euo pipefail
@@ -197,7 +197,8 @@ jobs:
           test "$(ls "$RUNNER_TEMP/shots-a" | wc -l | tr -d ' ')" -eq 6
           for f in "$RUNNER_TEMP"/shots-a/*.png; do
             test "$(stat -f %z "$f")" -gt 5000
-            cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
+            # The history cards show the time of the scan.
+            if [ "$(basename "$f")" != history.png ]; then cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"; fi
           done
       - name: Upload screenshots
         if: always()

@@ -54,14 +54,18 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor
     private func makeState(pages: Int) async throws -> AppState {
-        let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
+        let first = AppState(backends: [], presetStore: PresetStore(directory: folder),
                              files: AppStateFiles.all(in: folder))
         var settings = ScanSettings()
         settings.intent = .document
         settings.documentMultiPage = true
         settings.taskId = nil
         settings.destinationPath = folder.path
-        state.settings = settings
+        first.settings = settings
+        // With settings on disk the next state is not a first run, so the window opens on the scanner view.
+        try await Task.sleep(nanoseconds: 800_000_000)
+        let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
+                             files: AppStateFiles.all(in: folder))
         if pages > 0 {
             XCTAssertTrue(state.ingest((0..<pages).map { _ in page(width: 510, height: 660) }, source: .scanner))
             let deadline = Date().addingTimeInterval(20)
