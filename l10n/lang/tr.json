@@ -42,5 +42,9 @@
       "NSLocalNetworkUsageDescription": "Lazy Scan, eşleştirilmiş telefonunuzdan gönderilen belgeleri yerel ağınız üzerinden alır.",
       "Lazy Scan document": "Lazy Scan belgesi"
     }
+  },
+  "views": {
+    "Cancel": "Vazgeç",
+    "Confirm|password field": "Doğrula"
   }
 }

@@ -73,12 +73,11 @@ sed -i.bak "s|@LANGS@|$(for lang in $LANGS; do printf '<string>%s</string>' "$la
 rm "$APP/Contents/Info.plist.bak"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# Kit.strings and InfoPlist.strings come from scripts/gen_l10n.py; Localizable.strings is still kept by hand.
+# Kit.strings, InfoPlist.strings and Localizable.strings come from scripts/gen_l10n.py.
 # macOS only picks a language when the bundle has its lproj, so a missing one stops the build.
 for lang in $LANGS; do
   [ -d "l10n/out/mac/$lang.lproj" ] || { echo "$lang.lproj is missing from l10n/out/mac" >&2; exit 1; }
   cp -R "l10n/out/mac/$lang.lproj" "$APP/Contents/Resources/"
-  [ ! -f "l10n/mac/$lang.lproj/Localizable.strings" ] || cp "l10n/mac/$lang.lproj/Localizable.strings" "$APP/Contents/Resources/$lang.lproj/"
 done
 
 # The page corner model and its licence, where FastViTCornerModel looks in a packaged app. Without it
