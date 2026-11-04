@@ -329,10 +329,13 @@ jobs:
           fi
           unzip -q "$zip" -d "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION"
           echo "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py
       - name: Write the app's project
         run: |
           xcodegen --version
           xcodegen generate --spec ios/project.yml
+          plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.ios.txt)" ios/LazyScaniOS/Info.plist
       # The app and its UI smoke test, built once for the simulator picked above (optimized, as the
       # package's tests are; unsigned, which the Simulator allows), then run without building again.
       - name: Build the app for testing
@@ -345,6 +348,15 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -derivedDataPath "$RUNNER_TEMP/app-build" \
             CODE_SIGNING_ALLOWED=NO
+      - name: Check the app's languages
+        run: |
+          app="$RUNNER_TEMP/app-build/Build/Products/Release-iphonesimulator/LazyScan.app"
+          for lang in $(cat l10n/out/languages.ios.txt); do
+            for file in Kit InfoPlist; do
+              [ -f "$app/$lang.lproj/$file.strings" ] || { echo "$lang.lproj/$file.strings is missing from the app"; exit 1; }
+            done
+          done
+          plutil -p "$app/Info.plist" | grep -A 20 CFBundleLocalizations
       - name: Run the app's smoke test
         timeout-minutes: 30
         run: |
