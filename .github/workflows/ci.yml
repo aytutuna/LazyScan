@@ -185,6 +185,27 @@ jobs:
           LAZYSCAN_PDFA_SAMPLES: ${{ runner.temp }}/pdfa-samples
           # The corner model was fetched above; its test must find it, never be skipped.
           LAZYSCAN_REQUIRE_CORNER_MODEL: '1'
+      # The main views as PNGs (ScreenshotTests), rendered twice: the second run must give the same
+      # images, and every image must hold more than a blank window.
+      - name: Render screenshots
+        run: |
+          set -euo pipefail
+          for run in a b; do
+            LAZYSCAN_SHOTS_DIR="$RUNNER_TEMP/shots-$run" swift test -c release -Xswiftc -enable-testing --filter ScreenshotTests
+          done
+          ls -l "$RUNNER_TEMP/shots-a"
+          test "$(ls "$RUNNER_TEMP/shots-a" | wc -l | tr -d ' ')" -eq 6
+          for f in "$RUNNER_TEMP"/shots-a/*.png; do
+            test "$(stat -f %z "$f")" -gt 5000
+            cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
+          done
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-screenshots
+          path: ${{ runner.temp }}/shots-a
+          if-no-files-found: warn
       # The same pinned veraPDF as the Windows job checks the Swift writer's PDF/A files. It is
       # downloaded here only, pinned to one release and its SHA-256, and never shipped; installed from
       # its release installer the way the official Docker image's Dockerfile does it.
