@@ -27,7 +27,7 @@ import UIKit
 
     /// The name shown for the AirPrint printer: the one picked last, else the generic name. iOS cannot
     /// name a printer before one is picked.
-    public static let genericPrinterName = "AirPrint printer"
+    public static var genericPrinterName: String { String(localized: "AirPrint printer") }
 
     public var printerNames: [String] {
         UIPrintInteractionController.isPrintingAvailable ? [lastPrinterName ?? Self.genericPrinterName] : []
@@ -74,7 +74,7 @@ import UIKit
     private func present(_ document: Data, job: PrintJob, reusePrinter: Bool) async throws -> Bool {
         guard UIPrintInteractionController.isPrintingAvailable else { throw PrintError.noPrinter }
         guard let pdf = IOSPrintRenderer.pdf(from: document) else {
-            throw PrintError.failed("The pages could not be prepared for printing.")
+            throw PrintError.failed(String(localized: "The pages could not be prepared for printing."))
         }
         let copies = PrintCopies.clamp(job.copies)
         let renderer = IOSPrintRenderer(pdf: pdf, copies: copies)
@@ -121,7 +121,7 @@ import UIKit
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
             _ = controller.print(to: printer) { _, completed, error in
                 if let error {
-                    continuation.resume(throwing: PrintError.failed("Could not print on \(printer.displayName): \(error.localizedDescription)"))
+                    continuation.resume(throwing: PrintError.failed(String(localized: "Could not print on \(printer.displayName): \(error.localizedDescription)")))
                 } else {
                     continuation.resume(returning: completed)
                 }

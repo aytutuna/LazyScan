@@ -8,10 +8,10 @@ import Foundation
 /// `AppState.reviewTitle`); the privacy line is `IdCardSteps.privacyNote`.
 public enum IOSReviewText {
     /// Leaves the review, keeping nothing (photos and receipts).
-    public static let cancelLabel = "Cancel"
+    public static var cancelLabel: String { String(localized: "Cancel") }
     /// Whether a photo or receipt is saved.
     public static let keepLabel = "Keep"
-    public static let fixCropLabel = "Fix crop"
+    public static var fixCropLabel: String { String(localized: "Fix crop") }
     public static let rotateLabel = "Rotate"
     /// What the list of photos is for, for VoiceOver.
     public static let listHelp = "Turn Keep off to leave a photo out, or fix its crop."

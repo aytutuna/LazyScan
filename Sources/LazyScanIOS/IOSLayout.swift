@@ -155,8 +155,8 @@ public struct IOSDroppedFile: Transferable, Sendable {
         self.kind = kind
     }
 
-    public static let pdfName = "Dropped PDF"
-    public static let imageName = "Dropped picture"
+    public static var pdfName: String { String(localized: "Dropped PDF") }
+    public static var imageName: String { String(localized: "Dropped picture") }
 
     /// The item the import reads: named by its kind, since a drop carries no file name here.
     public var item: IOSImportItem {

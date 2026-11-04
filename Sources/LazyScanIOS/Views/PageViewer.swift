@@ -13,49 +13,49 @@ struct PageViewerStart: Identifiable {
 
 /// What the page grid and the page viewer say.
 enum PageViewerText {
-    static let rotateLabel = "Rotate"
-    static let filtersLabel = "Filters"
-    static let cropLabel = "Crop"
-    static let textLabel = "Text"
-    static let textTitle = "Text on this page"
-    static let readingText = "Reading the text\u{2026}"
-    static let noText = "No text found on this page"
-    static let textFailed = "The text could not be read"
-    static let copyLabel = "Copy"
-    static let deleteLabel = "Delete"
-    static let deleteAllLabel = "Delete All"
-    static let openHint = "Opens the page"
-    static let deleteQuestion = "Delete this page?"
-    static let deleteMessage = "It is taken out of the pages to save."
-    static let selectLabel = "Select"
-    static let selectAllLabel = "Select All"
-    static let deselectAllLabel = "Deselect All"
-    static let cancelLabel = "Cancel"
-    static let shareLabel = "Share"
-    static let moveLabel = "Move"
-    static let moveToStartLabel = "Move to Beginning"
-    static let moveToEndLabel = "Move to End"
+    static var rotateLabel: String { String(localized: "Rotate") }
+    static var filtersLabel: String { String(localized: "Filters") }
+    static var cropLabel: String { String(localized: "Crop") }
+    static var textLabel: String { String(localized: "Text") }
+    static var textTitle: String { String(localized: "Text on this page") }
+    static var readingText: String { String(localized: "Reading the text\u{2026}") }
+    static var noText: String { String(localized: "No text found on this page") }
+    static var textFailed: String { String(localized: "The text could not be read") }
+    static var copyLabel: String { String(localized: "Copy") }
+    static var deleteLabel: String { String(localized: "Delete") }
+    static var deleteAllLabel: String { String(localized: "Delete All") }
+    static var openHint: String { String(localized: "Opens the page") }
+    static var deleteQuestion: String { String(localized: "Delete this page?") }
+    static var deleteMessage: String { String(localized: "It is taken out of the pages to save.") }
+    static var selectLabel: String { String(localized: "Select") }
+    static var selectAllLabel: String { String(localized: "Select All") }
+    static var deselectAllLabel: String { String(localized: "Deselect All") }
+    static var cancelLabel: String { String(localized: "Cancel") }
+    static var shareLabel: String { String(localized: "Share") }
+    static var moveLabel: String { String(localized: "Move") }
+    static var moveToStartLabel: String { String(localized: "Move to Beginning") }
+    static var moveToEndLabel: String { String(localized: "Move to End") }
     /// The cards of the grid have a sheet's shape (between A4 and Letter); every page is fitted whole in one.
     static let cardAspect: CGFloat = 0.75
 
     /// "3 of 7"
     static func title(number: Int, count: Int) -> String {
-        "\(number) of \(count)"
+        String(localized: "\(number) of \(count)")
     }
 
     /// The filter as VoiceOver says it: "Black and white" for B&W.
     static func filterName(_ filter: CaptureFilter) -> String {
-        filter == .blackAndWhite ? "Black and white" : filter.label
+        filter == .blackAndWhite ? String(localized: "Black and white") : filter.label
     }
 
     /// "Page 3"
     static func pageName(_ number: Int) -> String {
-        "Page \(number)"
+        String(localized: "Page \(number)")
     }
 
     /// The page grid's title while pages are picked: "Select Pages", "2 Selected".
     static func selectedTitle(_ count: Int) -> String {
-        count == 0 ? "Select Pages" : "\(count) Selected"
+        count == 0 ? String(localized: "Select Pages") : String(localized: "\(count) Selected")
     }
 
     /// "Delete 3 pages?" for the pages picked in the grid.
@@ -350,7 +350,7 @@ struct PageViewer: View {
     private func pageView(_ page: ScannedPage, note: String?) -> some View {
         let index: Int = state.scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == page.id }) ?? 0
         let label: String = PageViewerText.title(number: index + 1, count: state.scannedPages.count)
-        let spoken: String = note.map { (text: String) -> String in "Page \(label), \(text)" } ?? "Page \(label)"
+        let spoken: String = note.map { (text: String) -> String in String(localized: "Page \(label), \(text)") } ?? String(localized: "Page \(label)")
         return ZoomablePage(image: shownImage(page))
             .overlay {
                 if state.recuttingPages.contains(page.id) {
@@ -447,7 +447,7 @@ struct PageViewer: View {
             Button(action: toggleFilters) {
                 Label(PageViewerText.filtersLabel, systemImage: "camera.filters")
             }
-            .accessibilityValue(Text(showsFilters ? "Shown" : "Hidden"))
+            .accessibilityValue(Text(showsFilters ? String(localized: "Shown") : String(localized: "Hidden")))
             .accessibilityIdentifier("viewer.filters")
             Spacer()
         }
@@ -856,7 +856,7 @@ struct PageTextSheet: View {
             return
         } catch {
             // The Kit's message starts with the title: the description is the reason alone.
-            let lead: String = PageViewerText.textFailed + ": "
+            let lead: String = L10n.t("The text could not be read: {0}", "")
             let message: String = error.localizedDescription
             problem = message.hasPrefix(lead) ? String(message.dropFirst(lead.count)) : message
         }

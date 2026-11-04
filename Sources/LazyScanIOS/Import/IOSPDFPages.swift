@@ -20,7 +20,7 @@ public enum IOSPDFPages {
     /// The longest side a page is drawn to (a poster is drawn at a lower resolution).
     public static let maxLongSide: Int = 7000
     /// Why a protected PDF is refused.
-    public static let lockedDetail = "it needs a password."
+    public static var lockedDetail: String { String(localized: "it needs a password.") }
 
     /// The document in `data`, named `fileName` in the messages; throws `IOSImportError` (also for a
     /// document without pages).

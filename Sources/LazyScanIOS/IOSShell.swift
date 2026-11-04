@@ -189,11 +189,11 @@ public enum IOSShell {
                  shortWord: step.shortWord)
     }
 
-    static let printerTextPrompt = "Preview under Scanner, tap it to choose the area, then scan."
-    static let printerTextHelp = "Then copy the text, or save the page as a picture."
-    static let printerBatchHelp = "1. Save a separator sheet under Export › Separate documents and print it. 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the pages, then save."
-    static let printerFeederPhotosPrompt = "Feed the photos one by one and scan."
-    static let printerFeederReceiptPrompt = "Feed each receipt and scan."
+    static var printerTextPrompt: String { String(localized: "Preview under Scanner, tap it to choose the area, then scan.") }
+    static var printerTextHelp: String { String(localized: "Then copy the text, or save the page as a picture.") }
+    static var printerBatchHelp: String { String(localized: "1. Save a separator sheet under Export › Separate documents and print it. 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the pages, then save.") }
+    static var printerFeederPhotosPrompt: String { String(localized: "Feed the photos one by one and scan.") }
+    static var printerFeederReceiptPrompt: String { String(localized: "Feed each receipt and scan.") }
 
     /// The flatbed's preview, with its area and Choose area, while the flatbed is the source. With the feeder
     /// the printer screen shows the last scan instead: a feeder scan takes no area, and the one chosen waits
@@ -311,7 +311,7 @@ public enum IOSShell {
     }
 
     /// Why a task is not offered yet: the tile's one visible line.
-    public static let notYetReason = "Not in this version yet"
+    public static var notYetReason: String { String(localized: "Not in this version yet") }
 
     /// Whether a task's scan screen also offers Apple's document scanner (Document, Email, Word), as
     /// "Use Apple's scanner" beside our own camera, the default since I9.
@@ -408,8 +408,8 @@ public enum IOSShell {
 
     /// Printer mode's line while scanners are listed and none is in use, and its card's way to the Scanner
     /// options.
-    public static let noScannerInUse = "No scanner is in use."
-    public static let pickScannerLabel = "Pick a scanner"
+    public static var noScannerInUse: String { String(localized: "No scanner is in use.") }
+    public static var pickScannerLabel: String { String(localized: "Pick a scanner") }
 
     /// Whether our camera takes page after page (continuous capture): the task collects several pages in
     /// the queue, or takes the ID card's front then its back, so the camera stays open after each photo
@@ -467,7 +467,7 @@ public enum IOSShell {
         if savesImages(settings) || plan.isSplit {
             return saveTitle(settings, plan: plan)
         }
-        return "\(settings.format.saveTitle) \u{00B7} \(plan.pageCount)"
+        return String(localized: "\(settings.format.saveTitle) \u{00B7} \(plan.pageCount)")
     }
 
     /// The question before something that would leave the queued pages without a Save (a kind,
@@ -488,17 +488,17 @@ public enum IOSShell {
 
     /// "Photos does not collect pages.", "Photo does not collect pages." in camera mode (`cameraTitle`).
     public static func keepPagesReason(_ kind: IOSScanKind, mode: IOSScanMode = .printer) -> String {
-        "\(mode == .camera ? kind.cameraTitle : kind.title) does not collect pages."
+        String(localized: "\(mode == .camera ? kind.cameraTitle : kind.title) does not collect pages.")
     }
 
     /// "The preset “Receipts” does not collect pages."
     public static func keepPagesReason(preset name: String) -> String {
-        "The preset \u{201C}\(name)\u{201D} does not collect pages."
+        String(localized: "The preset \u{201C}\(name)\u{201D} does not collect pages.")
     }
 
     /// "“Trip.lsdoc” opens in their place."
     public static func keepPagesReason(package fileName: String) -> String {
-        "\u{201C}\(fileName)\u{201D} opens in their place."
+        String(localized: "\u{201C}\(fileName)\u{201D} opens in their place.")
     }
 
     public static func discardPagesLabel(_ count: Int) -> String {
@@ -509,20 +509,20 @@ public enum IOSShell {
     /// "Save 3 JPEGs first", "Add to Contract.pdf first".
     public static func saveFirstLabel(_ settings: ScanSettings, pageCount: Int, target: URL?) -> String {
         if let target {
-            return "\(PDFAppender.saveTitle(target.lastPathComponent)) first"
+            return String(localized: "\(PDFAppender.saveTitle(target.lastPathComponent)) first")
         }
         if savesImages(settings) {
-            return "\(AppState.imagesSaveTitle(settings.format, pageCount: pageCount)) first"
+            return String(localized: "\(AppState.imagesSaveTitle(settings.format, pageCount: pageCount)) first")
         }
-        return "\(settings.format.saveTitle) first"
+        return String(localized: "\(settings.format.saveTitle) first")
     }
 
     /// The question before camera mode ends a stack turned over by hand with pages in: its steps go as the
     /// sides turn back to both (`AppState.userSelectNoDevice`). Keep pages as they are does first what the
     /// stack's own buttons would.
-    public static let finishStackTitle = "Finish the stack first?"
-    public static let finishStackLine = "The front sides wait for their backs. Camera mode ends the stack; the pages stay as they are."
-    public static let keepStackLabel = "Keep pages as they are"
+    public static var finishStackTitle: String { String(localized: "Finish the stack first?") }
+    public static var finishStackLine: String { String(localized: "The front sides wait for their backs. Camera mode ends the stack; the pages stay as they are.") }
+    public static var keepStackLabel: String { String(localized: "Keep pages as they are") }
 
     /// The kinds in camera mode's row under the viewfinder. Receipts are a Document shot that holds several
     /// (`itemsInFrame`) and Text is the page viewer's, so neither is a kind here; printer mode's chips still
@@ -628,9 +628,9 @@ public enum IOSShell {
     public static let packageType: UTType = UTType(exportedAs: "com.lazyscan.package", conformingTo: .data)
 
     /// The Save row's button that shares the queue as one `.lsdoc` (`sharePackage`).
-    public static let sharePackageLabel = "Share as Lazy Scan document"
+    public static var sharePackageLabel: String { String(localized: "Share as Lazy Scan document") }
     /// The package banner's Open as new in a kind that keeps no pages: it switches to Document first.
-    public static let openPackageInDocumentLabel = "Open in Document"
+    public static var openPackageInDocumentLabel: String { String(localized: "Open in Document") }
 
     /// Whether a file opened in this app (AirDrop, Files, Mail) or picked in Files is a Lazy Scan
     /// document: it goes to the scan screen's banner (`openPackage`), never into a task's import.
@@ -839,18 +839,18 @@ public enum IOSShell {
     /// The titles, then the reason as the rest of the sentence: "Needs a flatbed" is "needs a flatbed" for one
     /// kind and "need a flatbed" for several.
     private static func unavailableSentence(_ titles: [String], reason: String) -> String {
-        var rest: String = reason.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
-        if let first = rest.first {
-            rest = String(first).lowercased() + String(rest.dropFirst())
-        }
         var names: String = titles.joined(separator: ", ")
         if titles.count > 1, let last = titles.last {
-            names = "\(titles.dropLast().joined(separator: ", ")) and \(last)"
-            if rest.hasPrefix("needs ") {
-                rest = "need" + String(rest.dropFirst(5))
-            }
+            names = L10n.t("{0} and {1}", titles.dropLast().joined(separator: ", "), last)
         }
-        return "\(names) \(rest)."
+        if reason == TaskCatalog.needsFlatbedReason {
+            return L10n.plural(titles.count, one: "{1} needs a flatbed.", other: "{1} need a flatbed.", names)
+        }
+        if reason == TaskCatalog.needsFeederReason {
+            return L10n.plural(titles.count, one: "{1} needs a document feeder.", other: "{1} need a document feeder.", names)
+        }
+        let trimmed: String = reason.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        return "\(names): \(trimmed)."
     }
 
     // The Options switches below set only what they are about, never through `TaskCatalog.apply`, which
@@ -919,7 +919,7 @@ public enum IOSShell {
         let sheets: Bool = camera
             ? settings.task == .twoSided
             : settings.source == .documentFeeder && settings.duplex != .off
-        return sheets ? "One PDF per sheet" : "One PDF per page"
+        return sheets ? String(localized: "One PDF per sheet") : String(localized: "One PDF per page")
     }
 
     public static func settingEachPage(_ on: Bool, in settings: ScanSettings) -> ScanSettings {
@@ -1032,9 +1032,9 @@ public enum IOSItemsInFrame: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .auto: return "Auto"
-        case .one: return "One"
-        case .several: return "Several"
+        case .auto: return String(localized: "Auto")
+        case .one: return String(localized: "One")
+        case .several: return String(localized: "Several")
         }
     }
 }
@@ -1066,29 +1066,29 @@ public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .document: return "Document"
-        case .photos: return "Photos"
-        case .receipts: return "Receipts"
-        case .idCard: return "ID card"
-        case .book: return "Book"
-        case .text: return "Text"
+        case .document: return String(localized: "Document")
+        case .photos: return String(localized: "Photos")
+        case .receipts: return String(localized: "Receipts")
+        case .idCard: return String(localized: "ID card")
+        case .book: return String(localized: "Book")
+        case .text: return String(localized: "Text")
         }
     }
 
     public var subtitle: String {
         switch self {
-        case .document: return "Pages into a PDF"
-        case .photos: return "Prints and pictures"
-        case .receipts: return "Named by their date"
-        case .idCard: return "Front and back on one page"
-        case .book: return "Pages or whole spreads"
-        case .text: return "One scan, copy its text"
+        case .document: return String(localized: "Pages into a PDF")
+        case .photos: return String(localized: "Prints and pictures")
+        case .receipts: return String(localized: "Named by their date")
+        case .idCard: return String(localized: "Front and back on one page")
+        case .book: return String(localized: "Pages or whole spreads")
+        case .text: return String(localized: "One scan, copy its text")
         }
     }
 
     /// The kind in camera mode's row: one print or several there, so Photo.
     public var cameraTitle: String {
-        self == .photos ? "Photo" : title
+        self == .photos ? String(localized: "Photo") : title
     }
 
     public var symbol: String {
@@ -1126,7 +1126,7 @@ public struct IOSKindTile: Identifiable, Equatable {
     public var id: IOSScanKind { kind }
 
     /// What VoiceOver reads after the title: "Current" for the kind set up now.
-    public var accessibilityValue: String { isCurrent ? "Current" : "" }
+    public var accessibilityValue: String { isCurrent ? String(localized: "Current") : "" }
 }
 
 /// What camera mode does with our camera when it opens (`IOSShell.cameraOnOpen`).

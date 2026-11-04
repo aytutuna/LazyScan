@@ -82,7 +82,7 @@ struct SpreadSplitSheet: View {
     }
 
     private var splitLabel: String {
-        source.isSplit ? "Split here" : "Split"
+        source.isSplit ? String(localized: "Split here") : String(localized: "Split")
     }
 
     /// Where a picture of `width` × `height` lies when fitted into `size`, centred.

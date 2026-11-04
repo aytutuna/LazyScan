@@ -34,7 +34,7 @@ struct PageStripCell: Identifiable {
 
     /// What VoiceOver reads: "Page 2, Sheet 1, back, Document 2, Separator".
     var accessibilityLabel: String {
-        var parts: [String] = ["Page \(number)"]
+        var parts: [String] = [String(localized: "Page \(number)")]
         if let spokenBadge { parts.append(spokenBadge) }
         if let divider { parts.append(divider) }
         if let note { parts.append(note) }
@@ -135,7 +135,7 @@ struct PageStripView: View {
             VStack(alignment: .leading, spacing: 12) {
                 // The sheet's title already gives the count; the line stays for what it adds (documents, separators).
                 if cells.isEmpty || summary != IOSCameraText.pageCount(state.scannedPages.count) {
-                    Text(cells.isEmpty ? "No pages yet" : summary)
+                    Text(cells.isEmpty ? String(localized: "No pages yet") : summary)
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .accessibilityIdentifier("pages.summary")

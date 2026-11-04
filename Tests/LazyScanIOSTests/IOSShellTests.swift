@@ -527,6 +527,22 @@ final class IOSShellTests: XCTestCase {
         XCTAssertNil(IOSShell.unavailableKindsLine(none))
     }
 
+    func test_unavailableKindsLine_matchesATranslatedReason_andPicksThePluralForm() {
+        let table: [String: String] = ["Needs a flatbed": "Düz yatak gerekir", "{0} and {1}": "{0} ve {1}",
+                                       "{1} needs a flatbed.|one": "{1} için düz yatak gerekir.",
+                                       "{1} needs a flatbed.|other": "{1} için düz yatak gerekir (çoğul)."]
+        L10n.withTable(table, language: "tr") {
+            let flatbed: String = TaskCatalog.needsFlatbedReason
+            XCTAssertEqual(flatbed, "Düz yatak gerekir")
+            let one: [IOSKindTile] = IOSShell.kindTiles(everyCard(unavailable: [.idCard: flatbed]), current: .document)
+            let two: [IOSKindTile] = IOSShell.kindTiles(everyCard(unavailable: [.idCard: flatbed, .book: flatbed]),
+                                                        current: .document)
+            XCTAssertEqual(IOSShell.unavailableKindsLine(one), "\(IOSScanKind.idCard.title) için düz yatak gerekir.")
+            XCTAssertTrue(IOSShell.unavailableKindsLine(two)?.hasSuffix(" için düz yatak gerekir (çoğul).") == true)
+            XCTAssertTrue(IOSShell.unavailableKindsLine(two)?.contains(" ve ") == true)
+        }
+    }
+
     func test_unavailableKindsLine_isASentenceForEachReason_inTheChipsOrder() {
         let feeder: String = TaskCatalog.needsFeederReason
         let flatbed: String = TaskCatalog.needsFlatbedReason

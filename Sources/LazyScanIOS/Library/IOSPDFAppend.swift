@@ -53,10 +53,10 @@ public enum IOSPDFAppend {
             let answer: IOSPasswordAnswer = IOSPasswordAnswer(continuation)
             let alert: UIAlertController = UIAlertController(title: PDFAppender.confirmQuestion, message: message,
                                                              preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { (_: UIAlertAction) -> Void in
+            alert.addAction(UIAlertAction(title: String(localized: "Cancel"), style: .cancel) { (_: UIAlertAction) -> Void in
                 answer.give(false)
             })
-            alert.addAction(UIAlertAction(title: "Add Pages", style: .default) { (_: UIAlertAction) -> Void in
+            alert.addAction(UIAlertAction(title: String(localized: "Add Pages"), style: .default) { (_: UIAlertAction) -> Void in
                 answer.give(true)
             })
             top.present(alert, animated: true, completion: nil)

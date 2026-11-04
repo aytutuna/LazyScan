@@ -104,7 +104,7 @@ public final class IOSFileActions: ObservableObject, FileActionService {
 
     public func share(_ urls: [URL], title: String) throws {
         guard !urls.isEmpty else {
-            throw ScanError.unsupported("There is nothing to share.")
+            throw ScanError.unsupported(String(localized: "There is nothing to share."))
         }
         shareRequest = ShareRequest(urls: urls, title: title)
     }
@@ -128,13 +128,13 @@ public final class IOSFileActions: ObservableObject, FileActionService {
             let data: Data? = try? Data(contentsOf: imageURL)
             let type: UTType? = UTType(filenameExtension: imageURL.pathExtension)
             guard let data, let type, type.conforms(to: UTType.image), UIImage(data: data) != nil else {
-                throw ScanError.exportFailed("\(imageURL.lastPathComponent) could not be read.")
+                throw ScanError.exportFailed(String(localized: "\(imageURL.lastPathComponent) could not be read."))
             }
             let item: [String: Any] = [type.identifier: data]
             items.append(item)
         }
         guard !items.isEmpty else {
-            throw ScanError.unsupported("There is nothing to copy.")
+            throw ScanError.unsupported(String(localized: "There is nothing to copy."))
         }
         pasteboard.setItems(items, options: [UIPasteboard.OptionsKey.localOnly: true])
     }

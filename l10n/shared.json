@@ -332,6 +332,21 @@
   "Keep the page?": {
     "en_other": "Keep the {0} pages?"
   },
+  "Text takes one page; the other one was not added.": {
+    "en_other": "Text takes one page; the other {0} were not added."
+  },
+  "The card already has both sides; the other one was not added.": {
+    "en_other": "The card already has both sides; the other {0} were not added."
+  },
+  "Print or discard the copy first; the other one was not added.": {
+    "en_other": "Print or discard the copy first; the other {0} were not added."
+  },
+  "{1} needs a flatbed.": {
+    "en_other": "{1} need a flatbed."
+  },
+  "{1} needs a document feeder.": {
+    "en_other": "{1} need a document feeder."
+  },
   "{1} Save it first, or discard it.": {
     "en_other": "{1} Save them first, or discard them."
   },

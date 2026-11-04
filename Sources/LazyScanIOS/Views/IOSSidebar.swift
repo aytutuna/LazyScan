@@ -117,7 +117,7 @@ struct IOSSidebar: View {
         }
         .disabled(!available || state.isBusy || importer.isImporting || state.readsQueue)
         .accessibilityValue(Text(tile.accessibilityValue))
-        .accessibilityHint(Text(available ? kind.subtitle : "Not available: \(tile.availability.reason ?? "")"))
+        .accessibilityHint(Text(available ? kind.subtitle : String(localized: "Not available: \(tile.availability.reason ?? "")")))
         .accessibilityAddTraits(current ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier("sidebar.task.\(kind.rawValue)")
     }
@@ -131,7 +131,7 @@ struct IOSSidebar: View {
                 .foregroundStyle(available ? Color.primary : Color.secondary)
         }
         .disabled(!available || state.isBusy || importer.isImporting || state.readsQueue)
-        .accessibilityHint(Text(available ? IOSAppendTile.subtitle : "Not available: \(availability.reason ?? "")"))
+        .accessibilityHint(Text(available ? IOSAppendTile.subtitle : String(localized: "Not available: \(availability.reason ?? "")")))
         .accessibilityIdentifier("sidebar.task.appendToPDF")
     }
 

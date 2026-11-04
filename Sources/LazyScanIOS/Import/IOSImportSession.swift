@@ -153,64 +153,61 @@ public struct IOSImportOutcome: Equatable, Sendable {
 /// The iPhone's short texts of importing and the camera.
 public enum IOSImportText {
     /// Our own camera (`CameraScreen`), the default way to take pages.
-    public static let cameraLabel = "Camera"
+    public static var cameraLabel: String { String(localized: "Camera") }
     /// Apple's document scanner (VisionKit), offered beside our camera on the Document, Email and Word tasks.
-    public static let scannerLabel = "Use Apple's scanner"
+    public static var scannerLabel: String { String(localized: "Use Apple's scanner") }
     /// What VoiceOver calls Apple's document scanner's button.
-    public static let scannerName = "Use Apple's document scanner"
+    public static var scannerName: String { String(localized: "Use Apple's document scanner") }
     /// The name of a photo from our camera as an item; the corner editor, the progress and the messages have
     /// words of their own for a shot (below).
-    public static let shotName = "Camera photo"
+    public static var shotName: String { String(localized: "Camera photo") }
     /// In place of Skip photo in a shot's corner editor: the photo is dropped and the page taken again.
-    public static let retakeLabel = "Retake"
-    public static let retakeHint = "Drops this photo. Take it again."
+    public static var retakeLabel: String { String(localized: "Retake") }
+    public static var retakeHint: String { String(localized: "Drops this photo. Take it again.") }
     /// The progress while a shot is read and its page searched.
-    public static let readingShot = "Reading the photo\u{2026}"
+    public static var readingShot: String { String(localized: "Reading the photo\u{2026}") }
     /// A shot that could not be read, and one whose page could not be added.
-    public static let shotUnreadableMessage = "The photo could not be read. Take it again."
-    public static let shotNotAddedMessage = "The photo could not be added. Try again."
+    public static var shotUnreadableMessage: String { String(localized: "The photo could not be read. Take it again.") }
+    public static var shotNotAddedMessage: String { String(localized: "The photo could not be added. Try again.") }
     /// The pages Apple's document scanner took, in the message when they could not be added.
-    public static let scannedPagesName = "Scanned pages"
-    public static let photosLabel = "Photos"
-    public static let filesLabel = "Files"
+    public static var scannedPagesName: String { String(localized: "Scanned pages") }
+    public static var photosLabel: String { String(localized: "Photos") }
+    public static var filesLabel: String { String(localized: "Files") }
     /// Ends the import after the photo or page in hand.
-    public static let stopLabel = "Stop"
+    public static var stopLabel: String { String(localized: "Stop") }
     /// The photo review's Stop: the review opens once for each photo or page an import brings in.
-    public static let stopImportLabel = "Stop import"
-    public static let stopImportHint = "Brings in no more photos or pages; this review stays open"
+    public static var stopImportLabel: String { String(localized: "Stop import") }
+    public static var stopImportHint: String { String(localized: "Brings in no more photos or pages; this review stays open") }
     /// While a PDF's pages come in: "Importing page 2 of 5…".
     public static func importingPage(_ number: Int, of count: Int) -> String {
-        "Importing page \(number) of \(count)\u{2026}"
+        String(localized: "Importing page \(number) of \(count)\u{2026}")
     }
     /// While a file is read: "Importing scan.pdf…".
     public static func importingFile(_ name: String) -> String {
-        "Importing \(name)\u{2026}"
+        String(localized: "Importing \(name)\u{2026}")
     }
     /// A page that was ready but could not be added (something else was running).
     public static func notAddedMessage(_ name: String) -> String {
-        "\(name) could not be added. Try again."
+        String(localized: "\(name) could not be added. Try again.")
     }
     /// A photo the Photos library could not hand over (not downloaded from iCloud, say).
-    public static let photoNotLoadedMessage = "A photo could not be loaded."
+    public static var photoNotLoadedMessage: String { String(localized: "A photo could not be loaded.") }
     /// What a Text import left out once its page was held: "Text takes one page; the other 2 were not added."
     public static func textTakesOneMessage(_ count: Int) -> String {
-        if count == 1 { return "Text takes one page; the other one was not added." }
-        return "Text takes one page; the other \(count) were not added."
+        L10n.plural(count, one: "Text takes one page; the other one was not added.", other: "Text takes one page; the other {0} were not added.")
     }
     /// What an ID card import left out once both sides were in.
     public static func cardFullMessage(_ count: Int) -> String {
-        if count == 1 { return "The card already has both sides; the other one was not added." }
-        return "The card already has both sides; the other \(count) were not added."
+        L10n.plural(count, one: "The card already has both sides; the other one was not added.", other: "The card already has both sides; the other {0} were not added.")
     }
     /// An import refused while a copy is held on the copy screen (the queue's pages after Print…, or a photocopy).
-    public static let copyHeldMessage = "Print or discard the copy first; nothing was imported."
+    public static var copyHeldMessage: String { String(localized: "Print or discard the copy first; nothing was imported.") }
     /// What a photocopy's import left out once its first page was held as the copy.
     public static func copyFullMessage(_ count: Int) -> String {
-        if count == 1 { return "Print or discard the copy first; the other one was not added." }
-        return "Print or discard the copy first; the other \(count) were not added."
+        L10n.plural(count, one: "Print or discard the copy first; the other one was not added.", other: "Print or discard the copy first; the other {0} were not added.")
     }
     /// An import refused while a stack turned over by hand is under way (`AppState.isStackUnderWay`).
-    public static let sidesInProgressMessage = "Finish the front and back sides first; nothing was imported."
+    public static var sidesInProgressMessage: String { String(localized: "Finish the front and back sides first; nothing was imported.") }
 }
 
 /// Brings photos and PDFs into the queue on the iPhone and iPad, one after another: a photo is read

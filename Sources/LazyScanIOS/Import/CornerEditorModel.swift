@@ -188,10 +188,10 @@ struct CornerEditorModel: Equatable {
     /// The name of place `index` on an outline (0 top left … 3 bottom left).
     static func cornerName(_ index: Int) -> String {
         switch index & 3 {
-        case 0: return "Top left corner"
-        case 1: return "Top right corner"
-        case 2: return "Bottom right corner"
-        default: return "Bottom left corner"
+        case 0: return String(localized: "Top left corner")
+        case 1: return String(localized: "Top right corner")
+        case 2: return String(localized: "Bottom right corner")
+        default: return String(localized: "Bottom left corner")
         }
     }
 
@@ -227,7 +227,7 @@ struct CornerEditorModel: Equatable {
         let point: CGPoint = corners[index & 3]
         let left: Int = Int((Double(point.x) / Double(photoWidth) * 100).rounded())
         let top: Int = Int((Double(point.y) / Double(photoHeight) * 100).rounded())
-        return "\(left) percent from the left, \(top) percent from the top"
+        return String(localized: "\(left) percent from the left, \(top) percent from the top")
     }
 
     /// Corner `index` moved one step with VoiceOver's swipe up or down: `outward` away from the page's
