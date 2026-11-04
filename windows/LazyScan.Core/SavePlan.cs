@@ -97,6 +97,13 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         return saved + " " + string.Join(", ", fileNames) + text + empty + LeftOutNote();
     }
 
+    /// <summary>The short status line's kind for <see cref="SavedMessage"/>: "Saved 3 PDFs", or just "Saved" for Word and text.</summary>
+    public StatusHead SavedHead(OutputFormat format, int count) => OutputFormats.QueueFormat(format) switch
+    {
+        OutputFormat.Word or OutputFormat.Text => new StatusHead.Saved(),
+        _ => new StatusHead.SavedFiles(count, FileKind.Pdf),
+    };
+
     /// <summary>The error when a split save fails: nothing of it is kept, and the queue is still there.</summary>
     public static string NotSavedMessage(string reason) =>
         Loc.T("None of the documents was saved; the pages are still in the queue. {0}", reason);

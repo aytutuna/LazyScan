@@ -185,12 +185,12 @@ extension AppState {
         let warning = printPages.lazy.compactMap { PrintLayout.clipWarning($0.placement, paper: paper) }.first
         let warningNote = warning.map { " \($0)" } ?? ""
         guard alsoPDF else {
-            statusMessage = sent + warningNote
+            setStatus(sent + warningNote, StatusDetail(head: .sentToPrinter))
             return true
         }
         if noPassword {
             guard let printError else {
-                statusMessage = "\(sent) \(PDFProtection.notSavedMessage)\(warningNote)"
+                setStatus("\(sent) \(PDFProtection.notSavedMessage)\(warningNote)", StatusDetail(head: .sentToPrinter))
                 return true
             }
             // A held copy stays on its screen, so it is not queued as well.
@@ -226,9 +226,9 @@ extension AppState {
                     throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " " + L10n.t("The PDF was not saved (cancelled)."))
                 }
                 // The copy has gone to the printer: only the PDF was cancelled.
-                statusMessage = AppState.isPasswordNotGiven(error)
+                setStatus(AppState.isPasswordNotGiven(error)
                     ? "\(sent) \(PDFProtection.notSavedMessage)"
-                    : L10n.t("{0} PDF not saved (cancelled).", sent)
+                    : L10n.t("{0} PDF not saved (cancelled).", sent), StatusDetail(head: .sentToPrinter))
                 return true
             }
             guard let printError else { throw error }
@@ -240,7 +240,7 @@ extension AppState {
         if let printError {
             throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " " + L10n.t("The scan was saved as {0}.", url.lastPathComponent))
         }
-        statusMessage = L10n.t("{0} Saved {1}{2}.{3}", sent, url.lastPathComponent, pdfSizeSuffix, warningNote)
+        setStatus(L10n.t("{0} Saved {1}{2}.{3}", sent, url.lastPathComponent, pdfSizeSuffix, warningNote), StatusDetail(head: .sentToPrinter))
         return true
     }
 
@@ -391,7 +391,7 @@ extension AppState {
                 ? L10n.t("Sent the ID card to {0} on {1}, made smaller to fit.", printer, setup.paper.description)
                 : L10n.t("Sent the ID card to {0} on {1}, at real size.", printer, setup.paper.description)
             let warning = PrintLayout.clipWarning(placement, paper: paperInches)
-            self.statusMessage = sent + (warning.map { " \($0)" } ?? "")
+            self.setStatus(sent + (warning.map { " \($0)" } ?? ""), StatusDetail(head: .sentToPrinter))
         }
     }
 
@@ -419,7 +419,8 @@ extension AppState {
                 self.statusMessage = L10n.t("Printing cancelled.")
                 return
             }
-            self.statusMessage = L10n.t("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", self.printedOn(setup, s))
+            self.setStatus(L10n.t("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", self.printedOn(setup, s)),
+                           StatusDetail(head: .sentToPrinter))
         }
     }
 }

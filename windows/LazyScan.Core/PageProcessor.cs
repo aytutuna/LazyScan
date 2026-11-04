@@ -702,13 +702,17 @@ public static class PageFilter
         return $"{text} · " + (allBlank ? Loc.T("{0} blank skipped", excluded.Count) : Loc.T("{0} skipped", excluded.Count));
     }
 
+    /// <summary>How many of <paramref name="added"/> look blank.</summary>
+    public static int BlankCount(IEnumerable<ScannedPage> added, DocumentOptions options) =>
+        added.Count(p => LooksBlank(p, options.BlankSensitivity));
+
     /// <summary>
     /// The status after a scan's pages were queued, when some look blank: " 2 look blank and will
     /// be skipped." or " 1 looks blank." (leading space; empty when none does).
     /// </summary>
     public static string ScanNote(IEnumerable<ScannedPage> added, DocumentOptions options)
     {
-        int blank = added.Count(p => LooksBlank(p, options.BlankSensitivity));
+        int blank = BlankCount(added, options);
         if (blank == 0) return "";
         return " " + (options.RemoveBlankPages
             ? Loc.Plural(blank, "{0} looks blank and will be skipped.", "{0} look blank and will be skipped.")

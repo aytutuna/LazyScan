@@ -73,10 +73,14 @@ extension AppState {
                 let report: (String) -> Void = { [weak self] msg in
                     Task { @MainActor in self?.statusMessage = msg }
                 }
+                let reportAdding: (String, StatusDetail) -> Void = { [weak self] msg, detail in
+                    Task { @MainActor in self?.setStatus(msg, detail) }
+                }
                 let inputs: [PDFPageInput] = try PDFBuilder.pageInputs(
                     pages, pdfSize: s.output.pdfSize, progress: report, shouldContinue: { !flag.isCancelled },
                     textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: nil, pages: pages))
-                report(L10n.plural(count, one: "Adding {0} page to {1}…", other: "Adding {0} pages to {1}…", name))
+                reportAdding(L10n.plural(count, one: "Adding {0} page to {1}…", other: "Adding {0} pages to {1}…", name),
+                             StatusDetail(head: .addingPages(count)))
                 return try Self.accessing(url, writing: true, through: access) { (file: URL) throws -> PDFAppendResult in
                     try PDFAppender.appendToFile(path: file.path, pages: inputs,
                                                  shouldContinue: { !flag.isCancelled })
@@ -97,7 +101,7 @@ extension AppState {
             var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: size)
             message += plan.leftOutNote()
             if s.output.protect { message = L10n.t("{0}. {1}", message, PDFAppender.noPasswordNote) }
-            self.statusMessage = message
+            self.setStatus(message, StatusDetail(head: .pagesAdded(count, queue: nil, blank: 0, split: 0)))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }

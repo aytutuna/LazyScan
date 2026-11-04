@@ -272,7 +272,12 @@ public final class AppState: ObservableObject {
     /// A share or a send of the queue is reading its spooled pages (`queueReaders`). Swift only.
     public var readsQueue: Bool { queueReaders > 0 }
     @Published public private(set) var progress: ScanProgress?
-    @Published public internal(set) var statusMessage = L10n.t("Looking for scanners…")
+    @Published public internal(set) var statusMessage = L10n.t("Looking for scanners…") {
+        didSet { statusDetail = StatusDetail() }
+    }
+    /// What goes with `statusMessage` for the short status line; a new message starts with none, so a
+    /// producer that has any sets it after the message (`setStatus`).
+    @Published public internal(set) var statusDetail = StatusDetail()
     @Published public var errorMessage: String? {
         didSet { errorTitle = nil }
     }
@@ -997,7 +1002,7 @@ public final class AppState: ObservableObject {
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
             let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
             settings = adapted.settings
-            statusMessage = Self.withNotes(L10n.t("Ready — {0}", s.info.name), adapted.notes)
+            setStatus(L10n.t("Ready — {0}", s.info.name), notes: adapted.notes)
         } catch let certificate as EsclCertificateError where certificate.canTrust {
             // The certificate changed and was not trusted. Not chosen on its own again this session;
             // when the app had chosen it, it moves on to another scanner, and choosing this one in the
@@ -1347,6 +1352,10 @@ public final class AppState: ObservableObject {
                 if PageProcessor.turnsPagesUpright(s) && !scorer.isAvailable {
                     self.statusMessage += PageTurns.unavailableNote
                 }
+                if manualSide == nil {
+                    self.statusDetail = StatusDetail(head: self.pagesAdded(processed, options: s.document),
+                                                     warnings: !twoSided && intake.askedBothSides ? [.oneSideOnly] : [])
+                }
                 // The camera's two-sided steps and New document (AppState+CameraTasks.swift).
                 let added: [UUID] = spooled.map(\.id)
                 if let side = intake.cameraSide {
@@ -1386,7 +1395,8 @@ public final class AppState: ObservableObject {
             self.isReceiptReview = false
             self.recordCaptures(found.map(\.id))
             self.showPhotoReview = !found.isEmpty
-            self.statusMessage = L10n.plural(found.count, one: "Found {0} photo.", other: "Found {0} photos.")
+            self.setStatus(L10n.plural(found.count, one: "Found {0} photo.", other: "Found {0} photos."),
+                           StatusDetail(head: .found(found.count, .photo)))
         case .idCard:
             guard self.isIdCardFlow else {
                 self.dropIdCardScanOutsideTask()
@@ -1475,7 +1485,12 @@ public final class AppState: ObservableObject {
         let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
         settings = adapted.settings
         syncTaskFlow()
-        statusMessage = Self.withNotes(statusMessage, adapted.notes)
+        if !adapted.notes.isEmpty {
+            let before: String = statusMessage
+            let detail: StatusDetail = statusDetail
+            setStatus(Self.withNotes(before, adapted.notes),
+                      StatusDetail(head: detail.head, warnings: detail.warnings + adapted.notes.map(\.warning), body: detail.body ?? before))
+        }
     }
 
     private nonisolated static func splitPhotos(from page: ScannedPage, settings s: ScanSettings) -> [DetectedPhoto] {
@@ -1554,15 +1569,16 @@ public final class AppState: ObservableObject {
                 let hasText = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: format, to: url,
                                                pageImages: pageImages,
-                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                        Task { @MainActor in self?.statusMessage = msg }
+                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
+                        Task { @MainActor in self?.setStatus(msg, detail) }
                     }
                 }.value
                 self.lastSavedURLs = [url]
                 self.dropSaved(queued)
                 self.resetFlow()
-                self.statusMessage = TextExport.savedMessage(format: format, pageCount: pages.count,
-                                                             fileName: url.lastPathComponent, hasText: hasText) + left
+                self.setStatus(TextExport.savedMessage(format: format, pageCount: pages.count,
+                                                       fileName: url.lastPathComponent, hasText: hasText) + left,
+                               StatusDetail(head: .saved))
                 self.runAfterSave(s.output.afterSave, saved: [url])
                 return
             }
@@ -1590,7 +1606,7 @@ public final class AppState: ObservableObject {
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
             let textNote = textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? ""
             let saved = L10n.plural(pages.count, one: "Saved {0}-page PDF: {1}", other: "Saved {0}-page PDF: {1}", url.lastPathComponent)
-            self.statusMessage = "\(saved)\(self.pdfSizeSuffix)\(textNote)\(left)"
+            self.setStatus("\(saved)\(self.pdfSizeSuffix)\(textNote)\(left)", StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }
@@ -1611,8 +1627,8 @@ public final class AppState: ObservableObject {
                 hasText = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: s.format, to: target,
                                                pageImages: pageImages,
-                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                        Task { @MainActor in self?.statusMessage = msg }
+                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
+                        Task { @MainActor in self?.setStatus(msg, detail) }
                     }
                 }.value
                 url = target
@@ -1625,8 +1641,9 @@ public final class AppState: ObservableObject {
                 return
             }
             lastSavedURLs = [url]
-            statusMessage = TextExport.savedMessage(format: s.format, pageCount: pages.count,
-                                                    fileName: url.lastPathComponent, hasText: hasText)
+            setStatus(TextExport.savedMessage(format: s.format, pageCount: pages.count,
+                                              fileName: url.lastPathComponent, hasText: hasText),
+                      StatusDetail(head: .saved))
             runAfterSave(s.output.afterSave, saved: [url])
             return
         }
@@ -1692,7 +1709,7 @@ public final class AppState: ObservableObject {
             }
         }
         lastSavedURLs = saved
-        statusMessage = L10n.t("Saved {0}{1}", saved.map(\.lastPathComponent).joined(separator: ", "), note)
+        setStatus(L10n.t("Saved {0}{1}", saved.map(\.lastPathComponent).joined(separator: ", "), note), StatusDetail(head: .saved))
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -1743,7 +1760,8 @@ public final class AppState: ObservableObject {
             self.photoSourceImages = [:]
             self.resetFlow()
             let folder = saved.first?.deletingLastPathComponent().path ?? s.destinationPath
-            self.statusMessage = L10n.plural(saved.count, one: "Saved {0} photo to {1}", other: "Saved {0} photos to {1}", folder)
+            self.setStatus(L10n.plural(saved.count, one: "Saved {0} photo to {1}", other: "Saved {0} photos to {1}", folder),
+                           StatusDetail(head: .savedFiles(saved.count, .photo)))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }
@@ -1953,7 +1971,7 @@ public final class AppState: ObservableObject {
         deleteSpoolFiles(of: scannedPages)
         scannedPages = []
         resetFlow()
-        statusMessage = L10n.t("Page queue cleared.")
+        setStatus(L10n.t("Page queue cleared."), StatusDetail(head: .queueCleared))
     }
 
     // MARK: Two-sided scanning
@@ -2148,7 +2166,7 @@ public final class AppState: ObservableObject {
         let adapted = SettingsAdapter.adapt(preset.settings(over: settings), to: sidesCapabilities)
         settings = adapted.settings
         openBookmarkedFolder()
-        statusMessage = Self.withNotes(L10n.t("Applied preset “{0}”.", preset.name), adapted.notes)
+        setStatus(L10n.t("Applied preset “{0}”.", preset.name), notes: adapted.notes)
     }
 
     public func saveCurrentAsPreset(named name: String) {
@@ -2461,13 +2479,14 @@ public final class AppState: ObservableObject {
     nonisolated static func writeTextDocument(pages: [ScannedPage], format: OutputFormat, to url: URL,
                                                           pageImages: PDFSizePreset? = nil,
                                                           shouldContinue: () -> Bool,
-                                                          progress: (String) -> Void) throws -> Bool {
+                                                          progress: (String, StatusDetail) -> Void) throws -> Bool {
         var ocrPages: [OCRPage] = []
         var pictures: [DocxPicture?] = []
         var pictureBytes = 0
         for (index, page) in pages.enumerated() {
             if !shouldContinue() { throw ScanError.cancelled }
-            progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count))
+            progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count),
+                     StatusDetail(head: .readingPage(index + 1, of: pages.count)))
             let prepared = PDFBuilder.preparePage(page)
             let lines = try recognizeForText(prepared.image)
             ocrPages.append(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
@@ -2524,7 +2543,7 @@ public final class AppState: ObservableObject {
             await self.pageEditChain?.value
             guard let index = self.scannedPages.firstIndex(where: { $0.id == id }) else { return }
             let page = self.scannedPages[index]
-            self.statusMessage = L10n.t("Reading the text of page {0}…", index + 1)
+            self.setStatus(L10n.t("Reading the text of page {0}…", index + 1), StatusDetail(head: .readingPage(index + 1, of: nil)))
             let text = try await Task.detached(priority: .userInitiated) { () throws -> String in
                 let prepared = PDFBuilder.preparePage(page)
                 let lines = try Self.recognizeForText(prepared.image)

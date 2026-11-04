@@ -158,6 +158,7 @@ public sealed partial class AppViewModel
                     if (s.Document.AutoRotate && !_orientation.IsAvailable) StatusMessage += PageTurns.UnavailableNote;
                     // Pages queued earlier and never read (a reading stopped) are read once the import is done.
                     if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
+                    StatusDetail = new StatusDetail(PagesAdded(added, s.Document));
                 }
             }
             // A failed save at once keeps its message above the unreadable photos.

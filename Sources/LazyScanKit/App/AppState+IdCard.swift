@@ -305,9 +305,10 @@ extension AppState {
             self.resetFlow()
             let name = saved.first?.lastPathComponent ?? ""
             let sizeNote = pageFormat == .pdf ? self.pdfSizeSuffix : ""
-            self.statusMessage = saved.count == 1
+            self.setStatus(saved.count == 1
                 ? L10n.t("Saved the ID card on one {0} page: {1}{2}", paper.label, name, sizeNote)
-                : L10n.t("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.label, name, sizeNote)
+                : L10n.t("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.label, name, sizeNote),
+                           StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }

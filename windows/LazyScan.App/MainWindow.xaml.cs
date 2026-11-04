@@ -501,7 +501,7 @@ public partial class MainWindow : Window
         bool isNew = !ReferenceEquals(paths, _shownSavedPaths);
         _shownSavedPaths = paths;
         // The file (or how many and where); its size and the full paths are the tooltip.
-        SavedBarMessage.Text = SavedBarLine(paths, ViewModel.SavedBarNoun);
+        SavedBarMessage.Text = SavedBarLine(paths, ViewModel.SavedBarKind);
         SavedBarText.ToolTip = paths.Count == 1
             ? $"{ViewModel.SavedBarText}{Environment.NewLine}{paths[0]}"
             : string.Join(Environment.NewLine, paths);
@@ -548,16 +548,21 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The bar's line after "Saved ·": the file's name, or "3 photos · Scans" for several, named by
-    /// what was saved (<paramref name="noun"/>: "photos" only when every file is an image).
+    /// what was saved (<paramref name="kind"/>: photos only when every file is an image).
     /// </summary>
-    /// <param name="noun">What the save wrote: "photos", "receipts" or "files".</param>
-    internal static string SavedBarLine(IReadOnlyList<string> paths, string noun = "files")
+    /// <param name="kind">What the save wrote: photos, receipts, else (null) files.</param>
+    internal static string SavedBarLine(IReadOnlyList<string> paths, FileKind? kind = null)
     {
         if (paths.Count == 1) return System.IO.Path.GetFileName(paths[0]);
         bool images = paths.All(p => System.IO.Path.GetExtension(p).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".tif" or ".tiff");
-        if (noun == "photos" && !images) noun = "files";
+        if (kind == FileKind.Photo && !images) kind = null;
         string folder = paths.Count > 0 ? System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(paths[0]) ?? "") : "";
-        string what = $"{paths.Count} {noun}";
+        string what = kind switch
+        {
+            FileKind.Photo => Loc.Plural(paths.Count, "{0} photo", "{0} photos"),
+            FileKind.Receipt => Loc.Plural(paths.Count, "{0} receipt", "{0} receipts"),
+            _ => Loc.Plural(paths.Count, "{0} file", "{0} files"),
+        };
         return folder.Length > 0 ? $"{what} · {folder}" : what;
     }
 

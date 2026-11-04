@@ -178,8 +178,8 @@ public sealed partial class AppViewModel
             if (ReferenceEquals(PendingPackage, package)) PendingPackage = null;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));
             if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-            StatusMessage = Loc.Plural(spooled.Count, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
-                package.FileName, ScannedPages.Count);
+            SetStatus(Loc.Plural(spooled.Count, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
+                package.FileName, ScannedPages.Count), new(new StatusHead.PagesAdded(spooled.Count, ScannedPages.Count, 0, 0)));
         });
     }
 

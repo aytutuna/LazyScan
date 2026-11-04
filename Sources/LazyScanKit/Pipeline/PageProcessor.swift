@@ -677,10 +677,15 @@ public enum PageFilter {
         return "\(text) \u{00B7} " + (allBlank ? L10n.t("{0} blank skipped", excluded.count) : L10n.t("{0} skipped", excluded.count))
     }
 
+    /// How many of `added` look blank.
+    public static func blankCount(_ added: [ScannedPage], options: DocumentOptions) -> Int {
+        added.filter { looksBlank($0, sensitivity: options.blankSensitivity) }.count
+    }
+
     /// The status after a scan's pages were queued, when some look blank: " 2 look blank and will
     /// be skipped." or " 1 looks blank." (leading space; empty when none does).
     public static func scanNote(_ added: [ScannedPage], options: DocumentOptions) -> String {
-        let blank = added.filter { looksBlank($0, sensitivity: options.blankSensitivity) }.count
+        let blank = blankCount(added, options: options)
         guard blank > 0 else { return "" }
         return " " + (options.removeBlankPages
             ? L10n.plural(blank, one: "{0} looks blank and will be skipped.", other: "{0} look blank and will be skipped.")

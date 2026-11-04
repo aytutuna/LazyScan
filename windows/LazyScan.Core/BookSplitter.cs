@@ -793,6 +793,10 @@ public static class BookPages
     public static string? JoinActionLabel(ScannedPage page) =>
         page.Spread is { IsWhole: false } ? Loc.T("Join the two pages") : null;
 
+    /// <summary>How many spreads <paramref name="added"/> has split into pages.</summary>
+    public static int SplitCount(IEnumerable<ScannedPage> added) =>
+        added.Select(p => p.Spread).OfType<SpreadPart>().Where(p => !p.IsWhole).Select(p => p.SpreadId).Distinct().Count();
+
     /// <summary>
     /// The status after a scan's pages were queued, when spreads were split or kept whole: " 2 spreads
     /// split into pages." and " The spine of 1 spread was not found: it was added as one page (Split… on
@@ -801,7 +805,7 @@ public static class BookPages
     public static string ScanNote(IEnumerable<ScannedPage> added)
     {
         var parts = added.Select(p => p.Spread).OfType<SpreadPart>().ToList();
-        int split = parts.Where(p => !p.IsWhole).Select(p => p.SpreadId).Distinct().Count();
+        int split = SplitCount(added);
         int whole = parts.Where(p => p.IsWhole).Select(p => p.SpreadId).Distinct().Count();
         string note = split == 0 ? "" : " " + Loc.Plural(split, "{0} spread split into pages.", "{0} spreads split into pages.");
         if (whole > 0)

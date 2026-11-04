@@ -34,7 +34,8 @@ final class SettingsAdapterTests: XCTestCase {
         // 300 is as near to 200 as to 400: the first listed wins, as before.
         XCTAssertEqual(adapted.settings.resolution, 200)
         XCTAssertEqual(adapted.notes, [SettingsNote(change: .resolution,
-                                                    message: "This scanner does not offer 300 dpi, so 200 dpi is used.")])
+                                                    message: "This scanner does not offer 300 dpi, so 200 dpi is used.",
+                                                    warning: .dpiUsed(200))])
 
         settings.resolution = 1200
         XCTAssertEqual(SettingsAdapter.adapt(settings, to: caps).settings.resolution, 800)
@@ -56,7 +57,8 @@ final class SettingsAdapterTests: XCTestCase {
         let adapted = SettingsAdapter.adapt(settings, to: caps)
         XCTAssertEqual(adapted.settings.source, .flatbed)
         XCTAssertEqual(adapted.notes, [SettingsNote(change: .source,
-                                                    message: "This scanner has no document feeder, so the flatbed is used.")])
+                                                    message: "This scanner has no document feeder, so the flatbed is used.",
+                                                    warning: .flatbedUsed)])
     }
 
     func test_source_noFlatbed_fallsBackToTheFeeder() {
@@ -121,7 +123,8 @@ final class SettingsAdapterTests: XCTestCase {
         let adapted = SettingsAdapter.adapt(settings, to: feederScanner(duplex: false))
         XCTAssertEqual(adapted.settings.duplex, .manual)
         XCTAssertEqual(adapted.notes, [SettingsNote(change: .duplex,
-                                                    message: "This scanner's feeder scans one side at a time, so you'll turn the stack over by hand.")])
+                                                    message: "This scanner's feeder scans one side at a time, so you'll turn the stack over by hand.",
+                                                    warning: .twoSidedByHand)])
     }
 
     func test_duplex_twoSidedFeeder_orTheFlatbed_nothingChanges() {
@@ -162,7 +165,8 @@ final class SettingsAdapterTests: XCTestCase {
         let adapted = SettingsAdapter.adapt(settings, to: caps)
         XCTAssertEqual(adapted.settings.paperSize, .auto)
         XCTAssertEqual(adapted.notes, [SettingsNote(change: .paperSize,
-                                                    message: "Legal paper does not fit this scanner's glass, so the paper size is Automatic.")])
+                                                    message: "Legal paper does not fit this scanner's glass, so the paper size is Automatic.",
+                                                    warning: .paperAutomatic)])
         settings.paperSize = .a4
         XCTAssertEqual(SettingsAdapter.adapt(settings, to: caps).settings.paperSize, .a4)
     }

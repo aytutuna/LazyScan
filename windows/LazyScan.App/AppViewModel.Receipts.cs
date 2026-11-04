@@ -102,7 +102,7 @@ public sealed partial class AppViewModel
         RecordCaptures(found.Select(item => item.Photo.Id));
         ShowPhotoReview = found.Count > 0;
         if (!ShowPhotoReview) _photoSourceImages = [];
-        StatusMessage = Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts.");
+        SetStatus(Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts."), new(new StatusHead.Found(found.Count, FileKind.Receipt)));
     }
 
     /// <summary>
@@ -223,7 +223,8 @@ public sealed partial class AppViewModel
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             bool pdfs = combine || format == OutputFormat.Pdf;
             if (pdfs && names.Count > 0 && PdfNote(null, LastPdfProtected) is { } note) names[^1] += $" ({note})";
-            StatusMessage = Receipts.SavedMessage(receipts.Count, names, combine, undated);
+            SetStatus(Receipts.SavedMessage(receipts.Count, names, combine, undated),
+                      new(new StatusHead.SavedFiles(receipts.Count, FileKind.Receipt)));
             RunAfterSave(s.Output.AfterSave, saved);
         });
     }

@@ -17,6 +17,13 @@ private struct DiskFull: LocalizedError {
 }
 
 final class SavePlanTests: XCTestCase {
+    func test_savedHead_countsPDFs_andIsPlainSavedForWordAndText() {
+        let plan = SavePlan.make([makePage()], options: DocumentOptions())
+        XCTAssertEqual(plan.savedHead(.pdf, count: 2), .savedFiles(2, .pdf))
+        XCTAssertEqual(plan.savedHead(.word, count: 2), .saved)
+        XCTAssertEqual(plan.savedHead(.text, count: 2), .saved)
+    }
+
     func test_make_theDocumentsOfTheSplit_withTheQueuesPages() {
         let queue = [makePage(), makePage(), makePage(patch: .patchT), makePage(blank: true), makePage().withDocumentLabel("Lease")]
         var options = DocumentOptions()

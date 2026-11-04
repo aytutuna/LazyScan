@@ -32,12 +32,12 @@ public class LessTextTests
     [Fact]
     public void SavedBarLine_NamesTheFile_OrCountsWhatWasSavedAndTheirFolder()
     {
-        Assert.Equal("Scan 2026-10-20 1.pdf", MainWindow.SavedBarLine([@"C:\x\files\Scan 2026-10-20 1.pdf"], "photos"));
-        Assert.Equal("3 photos · files", MainWindow.SavedBarLine([@"C:\x\files\a.jpg", @"C:\x\files\b.jpg", @"C:\x\files\c.png"], "photos"));
+        Assert.Equal("Scan 2026-10-20 1.pdf", MainWindow.SavedBarLine([@"C:\x\files\Scan 2026-10-20 1.pdf"], FileKind.Photo));
+        Assert.Equal("3 photos · files", MainWindow.SavedBarLine([@"C:\x\files\a.jpg", @"C:\x\files\b.jpg", @"C:\x\files\c.png"], FileKind.Photo));
         // Receipts and document pages saved as images are not photos.
-        Assert.Equal("3 receipts · files", MainWindow.SavedBarLine([@"C:\x\files\a.jpg", @"C:\x\files\b.jpg", @"C:\x\files\c.jpg"], "receipts"));
+        Assert.Equal("3 receipts · files", MainWindow.SavedBarLine([@"C:\x\files\a.jpg", @"C:\x\files\b.jpg", @"C:\x\files\c.jpg"], FileKind.Receipt));
         Assert.Equal("3 files · files", MainWindow.SavedBarLine([@"C:\x\files\a.png", @"C:\x\files\b.png", @"C:\x\files\c.png"]));
-        Assert.Equal("2 files · files", MainWindow.SavedBarLine([@"C:\x\files\a.pdf", @"C:\x\files\b.jpg"], "photos"));
+        Assert.Equal("2 files · files", MainWindow.SavedBarLine([@"C:\x\files\a.pdf", @"C:\x\files\b.jpg"], FileKind.Photo));
     }
 
     // MARK: - What shows for the format and the split

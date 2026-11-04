@@ -183,7 +183,7 @@ extension AppState {
             }
             self.lastSavedURLs = [url]
             self.quickScanPage = nil
-            self.statusMessage = L10n.t("Saved {0}", url.lastPathComponent)
+            self.setStatus(L10n.t("Saved {0}", url.lastPathComponent), StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }

@@ -359,6 +359,7 @@ extension AppState {
                     if s.document.autoRotate && !scorer.isAvailable { self.statusMessage += PageTurns.unavailableNote }
                     // Pages queued earlier and never read (a reading stopped) are read once the import is done.
                     if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
+                    self.statusDetail = StatusDetail(head: self.pagesAdded(added, options: s.document))
                 }
             }
             if !problems.isEmpty {

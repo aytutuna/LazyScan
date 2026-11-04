@@ -51,13 +51,26 @@ public sealed partial class AppViewModel
     private string QueueScanNote(IReadOnlyList<ScannedPage> added, DocumentOptions options)
     {
         var plan = QueuePlan;
-        var separatorIds = ScannedPages.Where((_, i) => plan.Pages[i].Role == PageRole.Separator)
-            .Select(item => item.Page.Id).ToHashSet();
-        var notSeparators = added.Where(page => !separatorIds.Contains(page.Id)).ToList();
+        var notSeparators = WithoutSeparators(added);
         int separatorsAdded = added.Count - notSeparators.Count;
         return BookPages.ScanNote(added) + PageFilter.ScanNote(notSeparators, options) + PageCorrections.ScanNote(added)
                + PageTurns.ScanNote(added) + DocumentSplitter.ScanNote(plan, separatorsAdded);
     }
+
+    private List<ScannedPage> WithoutSeparators(IReadOnlyList<ScannedPage> added)
+    {
+        var plan = QueuePlan;
+        var separatorIds = ScannedPages.Where((_, i) => plan.Pages[i].Role == PageRole.Separator)
+            .Select(item => item.Page.Id).ToHashSet();
+        return added.Where(page => !separatorIds.Contains(page.Id)).ToList();
+    }
+
+    /// <summary>
+    /// The short status line's kind for the message after a scan's pages were queued: the pages added
+    /// with the blank ones and the spreads split among them (what <see cref="QueueScanNote"/> says in words).
+    /// </summary>
+    private StatusHead PagesAdded(IReadOnlyList<ScannedPage> added, DocumentOptions options) =>
+        new StatusHead.PagesAdded(added.Count, ScannedPages.Count, PageFilter.BlankCount(WithoutSeparators(added), options), BookPages.SplitCount(added));
 
     /// <summary>
     /// One click on the gap before a queued page: a new document starts there, or the page joins the
@@ -392,7 +405,8 @@ public sealed partial class AppViewModel
         string? size = format == OutputFormat.Pdf
             ? PdfNote(totalBytes is { } total ? SavedFiles.SizeText(total) : null, LastPdfProtected)
             : null;
-        StatusMessage = plan.SavedMessage(format, saved.Select(path => Path.GetFileName(path)).ToList(), size, textFiles, noText);
+        SetStatus(plan.SavedMessage(format, saved.Select(path => Path.GetFileName(path)).ToList(), size, textFiles, noText),
+                  new(plan.SavedHead(format, saved.Count)));
         RunAfterSave(s.Output.AfterSave, saved);
     }
 
@@ -450,9 +464,9 @@ public sealed partial class AppViewModel
             try { LastPdfBytes = new FileInfo(written).Length; }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { LastPdfBytes = null; }
             MarkSaved([written]);
-            StatusMessage = qr
+            SetStatus(qr
                 ? QrSeparatorSheet.SavedMessage(Path.GetFileName(written), name)
-                : SeparatorSheet.SavedMessage(Path.GetFileName(written));
+                : SeparatorSheet.SavedMessage(Path.GetFileName(written)), new(new StatusHead.Saved()));
         });
     }
 
@@ -482,9 +496,10 @@ public sealed partial class AppViewModel
             StatusMessage = Loc.T("Printing the separator sheet on {0}…", setup.PrinterName);
             NotifyAll();
             await _print.PrintAsync(job, token);
-            StatusMessage = qr
+            SetStatus(qr
                 ? QrSeparatorSheet.PrintedMessage(setup.PrinterName, name)
-                : Loc.T("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.PrinterName);
+                : Loc.T("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.PrinterName),
+                new(new StatusHead.SentToPrinter()));
         });
     }
 }

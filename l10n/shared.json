@@ -113,17 +113,8 @@
   "Saved {0} receipt": {
     "en_other": "Saved {0} receipts"
   },
-  "Saved {0} document": {
-    "en_other": "Saved {0} documents"
-  },
-  "Saved {0} file": {
-    "en_other": "Saved {0} files"
-  },
   "Saved {0} PDF": {
     "en_other": "Saved {0} PDFs"
-  },
-  "Saved {0} copy": {
-    "en_other": "Saved {0} copies"
   },
   "Documents": {},
   "Photos & images": {},
@@ -462,6 +453,12 @@
   },
   "{0} file": {
     "en_other": "{0} files"
+  },
+  "{0} photo": {
+    "en_other": "{0} photos"
+  },
+  "{0} receipt": {
+    "en_other": "{0} receipts"
   },
   "Scanning stopped after {0} page; it was kept.": {
     "en_other": "Scanning stopped after {0} pages; they were kept."

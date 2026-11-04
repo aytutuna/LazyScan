@@ -6,32 +6,49 @@ namespace LazyScan.Core.Tests;
 // Twin of Tests/LazyScanTests/StatusLineTests.swift: the status line's six words.
 public class StatusLineTests
 {
-    [Theory]
-    [InlineData("Added 1 page — 3 in queue. Scan more or Save PDF.", "Page 3 added")]
-    [InlineData("Added 6 pages from 3 sheets, both sides — 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.", "6 pages added · 1 blank")]
-    [InlineData("Added 2 pages — 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.", "2 pages added · 1 spread split")]
-    [InlineData("Added 2 pages from Aytu's iPhone — 3 in queue.", "2 pages added")]
-    [InlineData("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", "Saved")]
-    [InlineData(@"Saved 3 photos to C:\Users\me\files", "Saved 3 photos")]
-    [InlineData("Found 3 photos.", "Found 3 photos")]
-    [InlineData("Front scanned. Turn the card over where it lies and scan the back, or skip it.", "Front scanned")]
-    [InlineData("Back scanned. Check the sides, then save.", "Back scanned")]
-    [InlineData("Page queue cleared.", "Queue cleared")]
-    [InlineData("Ready — Demo Scanner", "Ready — Demo Scanner")]
-    [InlineData("Overview ready — drag on the preview to select an area, then Scan.", "Overview ready")]
-    [InlineData("Overview ready — tap the preview to choose the scan area, then Scan.", "Overview ready")]
-    [InlineData("Scanning…", "Scanning…")]
-    [InlineData("Reading the text of page 3 of 12…", "Reading page 3 of 12…")]
-    [InlineData("Adding 3 pages to Scan 2026-10-20 1.pdf…", "Adding 3 pages…")]
-    [InlineData("Sent the ruler test page to Office Laser. At real size each square measures 1 inch.", "Sent to the printer")]
-    [InlineData("3 pages sent to MacBook.", "3 pages sent to MacBook")]
-    [InlineData("9 pages · 3 documents.", "9 pages · 3 documents")]
-    [InlineData("9 pages · 3 documents · 2 separator pages skipped.", "9 pages · 3 documents")]
-    [InlineData("12 pages · 4 documents · 2 separator pages and 1 blank skipped.", "12 pages · 4 documents")]
-    [InlineData("24 pages · 5 blank skipped.", "24 pages · 5 blank skipped")]
-    public void Short_IsShortAndFactual(string message, string expected)
+    private static StatusDetail Added(int count, int? queue, int blank = 0, int split = 0, StatusWarning? warning = null) =>
+        new(new StatusHead.PagesAdded(count, queue, blank, split), warning is null ? null : [warning]);
+
+    [Fact]
+    public void Short_IsShortAndFactual()
     {
-        Assert.Equal(expected, StatusLine.Short(message));
+        var cases = new (string Message, StatusDetail Detail, string Expected)[]
+        {
+            ("Added 1 page — 3 in queue. Scan more or Save PDF.", Added(1, 3), "Page 3 added"),
+            ("Added 6 pages from 3 sheets, both sides — 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.",
+             Added(6, 6, blank: 1), "6 pages added · 1 blank"),
+            ("Added 2 pages — 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.",
+             Added(2, 4, split: 1), "2 pages added · 1 spread split"),
+            ("Added 2 pages from Aytu's iPhone — 3 in queue.", Added(2, 3), "2 pages added"),
+            ("Added 1 page to Contract.pdf (now 4 pages, 1.1 MB)", Added(1, null), "1 page added"),
+            ("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", new(new StatusHead.Saved()), "Saved"),
+            (@"Saved 3 photos to C:\Users\me\files", new(new StatusHead.SavedFiles(3, FileKind.Photo)), "Saved 3 photos"),
+            ("Saved 2 receipts: a.pdf, b.pdf", new(new StatusHead.SavedFiles(2, FileKind.Receipt)), "Saved 2 receipts"),
+            ("Saved 1 PDF (7 pages): A.pdf", new(new StatusHead.SavedFiles(1, FileKind.Pdf)), "Saved 1 PDF"),
+            ("Found 3 photos.", new(new StatusHead.Found(3, FileKind.Photo)), "Found 3 photos"),
+            ("Found 1 receipt.", new(new StatusHead.Found(1, FileKind.Receipt)), "Found 1 receipt"),
+            ("Front scanned. Turn the card over where it lies and scan the back, or skip it.", new(), "Front scanned"),
+            ("Back scanned. Check the sides, then save.", new(), "Back scanned"),
+            ("Page queue cleared.", new(new StatusHead.QueueCleared()), "Queue cleared"),
+            ("Ready — Demo Scanner", new(), "Ready — Demo Scanner"),
+            ("Overview ready — drag on the preview to select an area, then Scan.", new(), "Overview ready"),
+            ("Overview ready — tap the preview to choose the scan area, then Scan.", new(), "Overview ready"),
+            ("Scanning…", new(), "Scanning…"),
+            ("Reading the text of page 3 of 12…", new(new StatusHead.ReadingPage(3, 12)), "Reading page 3 of 12…"),
+            ("Reading the text of page 3…", new(new StatusHead.ReadingPage(3, null)), "Reading page 3…"),
+            ("Adding 3 pages to Scan 2026-10-20 1.pdf…", new(new StatusHead.AddingPages(3)), "Adding 3 pages…"),
+            ("Sent the ruler test page to Office Laser. At real size each square measures 1 inch.",
+             new(new StatusHead.SentToPrinter()), "Sent to the printer"),
+            ("3 pages sent to MacBook.", new(), "3 pages sent to MacBook"),
+            ("9 pages · 3 documents.", new(), "9 pages · 3 documents"),
+            ("9 pages · 3 documents · 2 separator pages skipped.", new(), "9 pages · 3 documents"),
+            ("12 pages · 4 documents · 2 separator pages and 1 blank skipped.", new(), "12 pages · 4 documents"),
+            ("24 pages · 5 blank skipped.", new(), "24 pages · 5 blank skipped"),
+        };
+        foreach (var (message, detail, expected) in cases)
+        {
+            Assert.Equal(expected, StatusLine.Short(message, detail));
+        }
     }
 
     [Fact]
@@ -41,8 +58,8 @@ public class StatusLineTests
         try
         {
             System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
-            Assert.Equal("Page 1,000 added", StatusLine.Short("Added 1 page — 1,000 in queue."));
-            Assert.Equal("Found 1,200 photos", StatusLine.Short("Found 1,200 photos."));
+            Assert.Equal("Page 1,000 added", StatusLine.Short("Added 1 page — 1,000 in queue.", Added(1, 1000)));
+            Assert.Equal("Found 1,200 photos", StatusLine.Short("Found 1,200 photos.", new(new StatusHead.Found(1200, FileKind.Photo))));
         }
         finally
         {
@@ -53,8 +70,9 @@ public class StatusLineTests
     [Fact]
     public void Short_ReadyForATask_NamesTheScannerInstead()
     {
-        Assert.Equal("Ready — Demo Scanner", StatusLine.Short("Ready for “Document to PDF”.", "Demo Scanner"));
-        Assert.Equal("Ready", StatusLine.Short("Ready for “Document to PDF”."));
+        var ready = new StatusDetail(new StatusHead.ReadyForTask());
+        Assert.Equal("Ready — Demo Scanner", StatusLine.Short("Ready for “Document to PDF”.", ready, "Demo Scanner"));
+        Assert.Equal("Ready", StatusLine.Short("Ready for “Document to PDF”.", ready));
         Assert.Equal("", StatusLine.Short("   "));
     }
 
@@ -81,11 +99,12 @@ public class StatusLineTests
     }
 
     /// <summary>The status after settings met a scanner, as the apps build it: the message, then each note.</summary>
-    private static string WithNotes(string message, ScanSettings settings, ScannerCapabilities capabilities)
+    private static (string Message, StatusDetail Detail) WithNotes(string message, ScanSettings settings, ScannerCapabilities capabilities,
+                                                                   StatusHead? head = null)
     {
         var notes = SettingsAdapter.Adapt(settings, capabilities).Notes;
         Assert.NotEmpty(notes);
-        return $"{message} {string.Join(" ", notes.Select(n => n.Message))}";
+        return ($"{message} {string.Join(" ", notes.Select(n => n.Message))}", new StatusDetail(head, notes.Select(n => n.Warning).ToList(), message));
     }
 
     [Fact]
@@ -94,35 +113,37 @@ public class StatusLineTests
         // A preset at 600 dpi on a scanner that tops out at 300.
         var resolution = WithNotes("Applied preset “Invoices”.", new ScanSettings { Resolution = 600 },
                                    new ScannerCapabilities { SupportedResolutions = [150, 300] });
-        Assert.Equal("Applied preset “Invoices” · 300 dpi used", StatusLine.Short(resolution));
+        Assert.Equal("Applied preset “Invoices” · 300 dpi used", StatusLine.Short(resolution.Message, resolution.Detail));
         // A longer preset name leaves no room: the warning wins.
         var longName = WithNotes("Applied preset “Monthly office invoices”.", new ScanSettings { Resolution = 600 },
                                  new ScannerCapabilities { SupportedResolutions = [150, 300] });
-        Assert.Equal("300 dpi used", StatusLine.Short(longName));
+        Assert.Equal("300 dpi used", StatusLine.Short(longName.Message, longName.Detail));
         // A scanner without a flatbed connects: no full stop before the note, and the name stays.
         var feeder = WithNotes("Ready — Demo Scanner", new ScanSettings { Source = ScanSource.Flatbed },
                                new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder], FeederSizeInches = new(8.5, 14) });
-        Assert.Equal("Ready — Demo Scanner · feeder used", StatusLine.Short(feeder));
+        Assert.Equal("Ready — Demo Scanner · feeder used", StatusLine.Short(feeder.Message, feeder.Detail));
         // A task is picked: "Ready — device" and the note.
-        string picked = feeder.Replace("Ready — Demo Scanner", "Ready for “Document to PDF”.", StringComparison.Ordinal);
-        Assert.Equal("Ready — Demo Scanner · feeder used", StatusLine.Short(picked, "Demo Scanner"));
+        var picked = WithNotes("Ready for “Document to PDF”.", new ScanSettings { Source = ScanSource.Flatbed },
+                               new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder], FeederSizeInches = new(8.5, 14) },
+                               new StatusHead.ReadyForTask());
+        Assert.Equal("Ready — Demo Scanner · feeder used", StatusLine.Short(picked.Message, picked.Detail, "Demo Scanner"));
         var flatbed = WithNotes("Ready — Demo Scanner", new ScanSettings { Source = ScanSource.DocumentFeeder },
                                 new ScannerCapabilities { Sources = [ScanSource.Flatbed] });
-        Assert.Equal("Ready — Demo Scanner · flatbed used", StatusLine.Short(flatbed));
+        Assert.Equal("Ready — Demo Scanner · flatbed used", StatusLine.Short(flatbed.Message, flatbed.Detail));
         var paper = WithNotes("Ready — Demo Scanner", new ScanSettings { PaperSize = PaperSize.Legal },
                               new ScannerCapabilities());
-        Assert.Equal("Ready — Demo Scanner · paper size Automatic", StatusLine.Short(paper));
+        Assert.Equal("Ready — Demo Scanner · paper size Automatic", StatusLine.Short(paper.Message, paper.Detail));
         var sides = WithNotes("Ready — Demo Scanner", new ScanSettings { Source = ScanSource.DocumentFeeder, Duplex = DuplexMode.Both },
                               new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder], FeederSizeInches = new(8.5, 14) });
-        Assert.Equal("Ready — Demo Scanner · two-sided by hand", StatusLine.Short(sides));
+        Assert.Equal("Ready — Demo Scanner · two-sided by hand", StatusLine.Short(sides.Message, sides.Detail));
         // Every note at once: as many as fit, then how many more.
         var all = WithNotes("Ready — Demo Scanner",
                             new ScanSettings { Source = ScanSource.Flatbed, Duplex = DuplexMode.Both, PaperSize = PaperSize.Legal, Resolution = 600 },
                             new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder], FeederSizeInches = new(8.5, 11), SupportedResolutions = [300] });
-        Assert.Equal("Feeder used · two-sided by hand +2", StatusLine.Short(all));
-        foreach (var message in new[] { resolution, longName, feeder, picked, flatbed, paper, sides, all })
+        Assert.Equal("Feeder used · two-sided by hand +2", StatusLine.Short(all.Message, all.Detail));
+        foreach (var status in new[] { resolution, longName, feeder, picked, flatbed, paper, sides, all })
         {
-            Assert.InRange(StatusLine.Words(StatusLine.Short(message, "Demo Scanner")), 1, StatusLine.MaxWords);
+            Assert.InRange(StatusLine.Words(StatusLine.Short(status.Message, status.Detail, "Demo Scanner")), 1, StatusLine.MaxWords);
         }
     }
 
@@ -130,9 +151,11 @@ public class StatusLineTests
     public void Short_ATwoSidedScanThatCameBackOneSided_SaysSo()
     {
         Assert.Equal("3 pages added · one side only", StatusLine.Short(
-            "Added 3 pages, one side of each sheet: the scanner did not scan both sides — 3 in queue. Scan more or Save PDF."));
+            "Added 3 pages, one side of each sheet: the scanner did not scan both sides — 3 in queue. Scan more or Save PDF.",
+            Added(3, 3, warning: new StatusWarning.OneSideOnly())));
         Assert.Equal("Page 4 added · one side only", StatusLine.Short(
-            "Added 1 page, one side of each sheet: the scanner did not scan both sides — 4 in queue. Scan more or Save PDF."));
+            "Added 1 page, one side of each sheet: the scanner did not scan both sides — 4 in queue. Scan more or Save PDF.",
+            Added(1, 4, warning: new StatusWarning.OneSideOnly())));
     }
 
     private static void WithTable(Dictionary<string, string> table, Action body)
@@ -143,25 +166,43 @@ public class StatusLineTests
     }
 
     [Fact]
-    public void Short_FindsTheSettingsNotes_WhateverTheLanguage()
+    public void Short_CutsTheFirstSentence_OfTextWithoutCase()
+    {
+        Assert.Equal("\u0627\u0644\u0648\u062C\u0647 \u0645\u0645\u0633\u0648\u062D",
+                     StatusLine.Short("\u0627\u0644\u0648\u062C\u0647 \u0645\u0645\u0633\u0648\u062D. \u0627\u0642\u0644\u0628 \u0627\u0644\u0628\u0637\u0627\u0642\u0629 \u0648\u0627\u0645\u0633\u062D \u0627\u0644\u062E\u0644\u0641 \u0623\u0648 \u062A\u062C\u0627\u0648\u0632\u0647."));
+        Assert.Equal("\u8868\u9762\u3092\u30B9\u30AD\u30E3\u30F3\u3057\u307E\u3057\u305F",
+                     StatusLine.Short("\u8868\u9762\u3092\u30B9\u30AD\u30E3\u30F3\u3057\u307E\u3057\u305F\u3002\u88CF\u9762\u3092\u30B9\u30AD\u30E3\u30F3\u3057\u3066\u304F\u3060\u3055\u3044\u3002"));
+    }
+
+    [Fact]
+    public void Short_WorksWithTextInAnyLanguage()
     {
         WithTable(new()
         {
-            ["This scanner does not offer {0} dpi, so {1} dpi is used."] = "{1} dpi kullanılır, {0} dpi yok.",
+            ["{0} page added|other"] = "{0} sayfa eklendi",
+            ["Page {0} added"] = "{0}. sayfa eklendi",
+            ["Saved {0} photo|other"] = "{0} fotoğraf kaydedildi",
+            ["Saved"] = "Kaydedildi",
+            ["Queue cleared"] = "Sıra temizlendi",
             ["{0} dpi used"] = "{0} dpi kullanıldı",
-            ["This scanner has no flatbed, so the document feeder is used."] = "Cam yok, besleyici kullanılır.",
+            ["One side only"] = "Tek yüz",
+            ["one side only|after another fact"] = "tek yüz",
             ["Feeder used"] = "Besleyici",
         }, () =>
         {
-            var low = SettingsAdapter.Adapt(new ScanSettings { Resolution = 600 },
-                                            new ScannerCapabilities { SupportedResolutions = [150, 300] }).Notes;
-            string resolution = $"Applied preset “Invoices”. {string.Join(" ", low.Select(n => n.Message))}";
-            Assert.Equal(["300 dpi kullanıldı"], StatusLine.Warnings(resolution));
-            Assert.Equal("Applied preset “Invoices” · 300 dpi kullanıldı", StatusLine.Short(resolution));
-            var noFlatbed = SettingsAdapter.Adapt(new ScanSettings { Source = ScanSource.Flatbed },
-                                                  new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder] }).Notes;
-            string feeder = $"Saved. {string.Join(" ", noFlatbed.Select(n => n.Message))}";
-            Assert.Equal(["Besleyici"], StatusLine.Warnings(feeder));
+            // Nothing in the sentence is read: any words do for the same kind of message.
+            Assert.Equal("3 sayfa eklendi · tek yüz",
+                         StatusLine.Short("Kuyruğa 3 sayfa eklendi.", Added(3, 5, warning: new StatusWarning.OneSideOnly())));
+            Assert.Equal("5. sayfa eklendi", StatusLine.Short("Kuyruğa bir sayfa eklendi.", Added(1, 5)));
+            Assert.Equal("3 fotoğraf kaydedildi",
+                         StatusLine.Short("3 fotoğraf kaydedildi: C:\\x", new(new StatusHead.SavedFiles(3, FileKind.Photo))));
+            Assert.Equal("Sıra temizlendi", StatusLine.Short("Sıra temizlendi.", new(new StatusHead.QueueCleared())));
+            // Under the saved files' bar: "Saved", with the warnings.
+            Assert.Equal("Kaydedildi · 600 dpi kullanıldı",
+                         StatusLine.Shown("Dosya kaydedildi.", new(new StatusHead.Saved(), [new StatusWarning.DpiUsed(600)]), null,
+                                          reviewShown: false, savedShown: true));
+            Assert.Equal(["Besleyici", "300 dpi kullanıldı"],
+                         StatusLine.Warnings(new(null, [new StatusWarning.FeederUsed(), new StatusWarning.DpiUsed(300)])));
         });
     }
 
@@ -170,8 +211,8 @@ public class StatusLineTests
     {
         WithTable(new() { ["feeder used|after another fact"] = "besleyici kullanıldı bu sefer lütfen not alın" }, () =>
         {
-            string message = "Added 3 pages — 3 in queue. This scanner has no flatbed, so the document feeder is used.";
-            Assert.Equal("3 pages added · besleyici kullanıldı bu sefer lütfen not alın", StatusLine.Short(message));
+            var detail = Added(3, 3, warning: new StatusWarning.FeederUsed());
+            Assert.Equal("3 pages added · besleyici kullanıldı bu sefer lütfen not alın", StatusLine.Short("Added 3 pages — 3 in queue.", detail));
         });
     }
 
@@ -190,31 +231,39 @@ public class StatusLineTests
         var notes = SettingsAdapter.Adapt(new ScanSettings { Resolution = 1200 },
                                           new ScannerCapabilities { SupportedResolutions = [300, 600] }).Notes;
         string message = $"Saved Scan 2026-10-20 1.pdf (412 KB) {string.Join(" ", notes.Select(n => n.Message))}";
-        Assert.Equal(["600 dpi used"], StatusLine.Warnings(message));
-        Assert.Equal("Saved · 600 dpi used", StatusLine.WithWarnings("Saved", message));
-        Assert.Equal("Saved · 600 dpi used", StatusLine.Short(message));
+        var detail = new StatusDetail(new StatusHead.Saved(), notes.Select(n => n.Warning).ToList(), "Saved Scan 2026-10-20 1.pdf (412 KB)");
+        Assert.Equal(["600 dpi used"], StatusLine.Warnings(detail));
+        Assert.Equal("Saved · 600 dpi used", StatusLine.Shown(message, detail, null, reviewShown: false, savedShown: true));
+        Assert.Equal("Saved · 600 dpi used", StatusLine.Short(message, detail));
         // Without a note, just the head.
-        Assert.Empty(StatusLine.Warnings("Saved Scan 2026-10-20 1.pdf (412 KB)"));
-        Assert.Equal("Saved", StatusLine.WithWarnings("Saved", "Saved Scan 2026-10-20 1.pdf (412 KB)"));
+        var plain = new StatusDetail(new StatusHead.Saved());
+        Assert.Empty(StatusLine.Warnings(plain));
+        Assert.Equal("Saved", StatusLine.Shown("Saved Scan 2026-10-20 1.pdf (412 KB)", plain, null, reviewShown: false, savedShown: true));
         // Too many to fit with the head: the warnings win, as on any other line.
         var all = SettingsAdapter.Adapt(
             new ScanSettings { Source = ScanSource.Flatbed, Duplex = DuplexMode.Both, PaperSize = PaperSize.Legal, Resolution = 600 },
             new ScannerCapabilities { Sources = [ScanSource.DocumentFeeder], FeederSizeInches = new(8.5, 11), SupportedResolutions = [300] }).Notes;
         string many = $"Saved Scan 2026-10-20 1.pdf (412 KB) {string.Join(" ", all.Select(n => n.Message))}";
-        string shown = StatusLine.WithWarnings("Saved", many);
-        Assert.Equal(StatusLine.Short(many), shown);
+        var manyDetail = new StatusDetail(new StatusHead.Saved(), all.Select(n => n.Warning).ToList());
+        string shown = StatusLine.Shown(many, manyDetail, null, reviewShown: false, savedShown: true);
+        Assert.Equal(StatusLine.Short(many, manyDetail), shown);
         Assert.InRange(StatusLine.Words(shown), 1, StatusLine.MaxWords);
     }
 
     [Fact]
     public void Shown_IsEmptyUnderAReview_AndSavedWhileTheSavedFilesShow()
     {
-        Assert.Equal("", StatusLine.Shown("Found 3 photos.", "Demo Scanner", reviewShown: true, savedShown: false));
-        Assert.Equal("", StatusLine.Shown("Back scanned. Check the sides, then save.", "Demo Scanner", reviewShown: true, savedShown: false));
-        Assert.Equal("Saved", StatusLine.Shown("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", null, reviewShown: false, savedShown: true));
-        Assert.Equal("Saved", StatusLine.Shown("Saved 3 photos to C:\\x\\files", null, reviewShown: false, savedShown: true));
+        var found = new StatusDetail(new StatusHead.Found(3, FileKind.Photo));
+        Assert.Equal("", StatusLine.Shown("Found 3 photos.", found, "Demo Scanner", reviewShown: true, savedShown: false));
+        Assert.Equal("", StatusLine.Shown("Back scanned. Check the sides, then save.", new(), "Demo Scanner", reviewShown: true, savedShown: false));
+        Assert.Equal("Saved", StatusLine.Shown("Saved 3-page PDF: Scan 2026-10-20 1.pdf (497.7 KB)", new(new StatusHead.Saved()), null,
+                                               reviewShown: false, savedShown: true));
+        Assert.Equal("Saved", StatusLine.Shown("Saved 3 photos to C:\\x\\files", new(new StatusHead.SavedFiles(3, FileKind.Photo)), null,
+                                               reviewShown: false, savedShown: true));
         // Not about a save: the short line, whatever the bar.
-        Assert.Equal("Page 3 added", StatusLine.Shown("Added 1 page — 3 in queue. Scan more or Save PDF.", null, reviewShown: false, savedShown: true));
-        Assert.Equal("Ready — Demo Scanner", StatusLine.Shown("Ready for “Photos”.", "Demo Scanner", reviewShown: false, savedShown: false));
+        Assert.Equal("Page 3 added", StatusLine.Shown("Added 1 page — 3 in queue. Scan more or Save PDF.", Added(1, 3), null,
+                                                      reviewShown: false, savedShown: true));
+        Assert.Equal("Ready — Demo Scanner", StatusLine.Shown("Ready for “Photos”.", new(new StatusHead.ReadyForTask()), "Demo Scanner",
+                                                              reviewShown: false, savedShown: false));
     }
 }

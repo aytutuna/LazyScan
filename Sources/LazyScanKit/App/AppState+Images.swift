@@ -75,7 +75,7 @@ extension AppState {
             self.lastSavedURLs = saved
             self.dropSaved(queued)
             self.resetFlow()
-            self.statusMessage = Self.imagesSavedMessage(saved, format: format) + left
+            self.setStatus(Self.imagesSavedMessage(saved, format: format) + left, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }

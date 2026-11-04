@@ -314,8 +314,8 @@ public sealed partial class AppViewModel
             added = spooled.Count;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));
             if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-            StatusMessage = Loc.Plural(added, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
-                phoneName, ScannedPages.Count);
+            SetStatus(Loc.Plural(added, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
+                phoneName, ScannedPages.Count), new(new StatusHead.PagesAdded(added, ScannedPages.Count, 0, 0)));
         });
         if (problem is not null)
         {

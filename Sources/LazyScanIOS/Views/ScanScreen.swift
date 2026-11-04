@@ -1660,7 +1660,7 @@ struct ScanScreen: View {
         let selected: String? = state.selectedDeviceID
         let device: String? = state.devices.first(where: { (info: ScannerInfo) -> Bool in info.id == selected })?.name
         let savedShown: Bool = idle && !state.lastSavedURLs.isEmpty
-        return StatusLine.shown(statusSentence, deviceName: device, reviewShown: false, savedShown: savedShown)
+        return StatusLine.shown(statusSentence, statusDetail, deviceName: device, reviewShown: false, savedShown: savedShown)
     }
 
     /// The status, or while no scanner is in use and nothing runs, where the search is (as the card says it)
@@ -1668,6 +1668,11 @@ struct ScanScreen: View {
     private var statusSentence: String {
         guard printerNeedsScanner, !state.isBusy, !importer.isImporting else { return state.statusMessage }
         return noScannerLine
+    }
+
+    /// What goes with `statusSentence` for the short line: nothing for the search line.
+    private var statusDetail: StatusDetail {
+        printerNeedsScanner && !state.isBusy && !importer.isImporting ? StatusDetail() : state.statusDetail
     }
 }
 

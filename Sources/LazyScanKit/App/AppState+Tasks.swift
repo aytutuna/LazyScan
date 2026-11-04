@@ -97,8 +97,7 @@ extension AppState {
         if newDocumentPending { newDocumentPending = false }
         settings = adapted.settings
         if let section = InspectorSections.openedBy(task) { sectionsOpenedByTask.insert(section) }
-        statusMessage = Self.withNotes(L10n.t("Ready for “{0}”.", TaskCatalog.definition(task).title),
-                                       adapted.notes)
+        setStatus(L10n.t("Ready for “{0}”.", TaskCatalog.definition(task).title), notes: adapted.notes, head: .readyForTask)
         return true
     }
 
@@ -203,5 +202,16 @@ extension AppState {
 
     static func withNotes(_ message: String, _ notes: [SettingsNote]) -> String {
         notes.isEmpty ? message : ([message] + notes.map(\.message)).joined(separator: " ")
+    }
+
+    /// Says `message` with what the short status line needs to know of it.
+    func setStatus(_ message: String, _ detail: StatusDetail) {
+        statusMessage = message
+        statusDetail = detail
+    }
+
+    /// Says `message` and the settings notes after it; the line keeps a short warning for each note.
+    func setStatus(_ message: String, notes: [SettingsNote], head: StatusHead? = nil) {
+        setStatus(Self.withNotes(message, notes), StatusDetail(head: head, warnings: notes.map(\.warning), body: message))
     }
 }

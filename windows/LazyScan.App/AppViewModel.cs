@@ -421,7 +421,18 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     public bool IsBusy { get; private set; }
     public ScanProgress? Progress { get; private set; }
-    public string StatusMessage { get; private set; } = Loc.T("Looking for scanners…");
+    private string _statusMessage = Loc.T("Looking for scanners…");
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set
+        {
+            _statusMessage = value;
+            StatusDetail = new StatusDetail();
+        }
+    }
+    /// <summary>What goes with <see cref="StatusMessage"/> for the short status line; a new message starts with none, so a producer that has any sets it after the message (<see cref="SetStatus(string, StatusDetail)"/>).</summary>
+    public StatusDetail StatusDetail { get; private set; } = new();
     public string? ErrorMessage { get; set; }
     public List<string> LastSavedPaths { get; private set; } = [];
     /// <summary>Size of the PDF saved last in this session, in bytes; null before the first one.</summary>
@@ -471,8 +482,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     public IReadOnlyList<string>? SavedBarPaths { get; private set; }
 
-    /// <summary>What the last save's several files are, for the Saved bar: "photos", "receipts" or "files".</summary>
-    public string SavedBarNoun { get; private set; } = "files";
+    /// <summary>What the last save's several files are, for the Saved bar: photos, receipts, else (null) files.</summary>
+    public FileKind? SavedBarKind { get; private set; }
     /// <summary>What the bar says was saved: "Scan 2026-10-19 3.pdf (412 KB)", or "3 files in Scans".</summary>
     public string SavedBarText { get; private set; } = "";
 
@@ -1377,7 +1388,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             Settings = adapted.Settings;
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
             SyncTaskFlow();
-            StatusMessage = WithNotes(Loc.T("Ready — {0}", session.Info.Name), adapted.Notes);
+            SetStatus(Loc.T("Ready — {0}", session.Info.Name), adapted.Notes);
         }
         catch (EsclCertificateException e) when (e.CanTrust)
         {
@@ -1619,6 +1630,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         }
                         StatusMessage += QueueScanNote(processed, s.Document);
                         if (PageProcessor.TurnsPagesUpright(s) && !_orientation.IsAvailable) StatusMessage += PageTurns.UnavailableNote;
+                        if (manualSide is null)
+                        {
+                            StatusDetail = new StatusDetail(PagesAdded(processed, s.Document),
+                                                            !twoSided && sides == DuplexMode.Both ? new StatusWarning[] { new StatusWarning.OneSideOnly() } : null);
+                        }
                     }
                     else
                     {
@@ -1651,7 +1667,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     RecordCaptures(found.Select(item => item.Photo.Id));
                     ShowPhotoReview = found.Count > 0;
                     if (!ShowPhotoReview) _photoSourceImages = [];
-                    StatusMessage = Loc.Plural(found.Count, "Found {0} photo.", "Found {0} photos.");
+                    SetStatus(Loc.Plural(found.Count, "Found {0} photo.", "Found {0} photos."), new(new StatusHead.Found(found.Count, FileKind.Photo)));
                     break;
                 case TaskFlowKind.IdCard:
                     if (!IsIdCardFlow)
@@ -1699,7 +1715,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         var adapted = SettingsAdapter.Adapt(Settings, caps);
         Settings = adapted.Settings;
         SyncTaskFlow();
-        StatusMessage = WithNotes(StatusMessage, adapted.Notes);
+        if (adapted.Notes.Count > 0)
+        {
+            string before = StatusMessage;
+            var detail = StatusDetail;
+            SetStatus(WithNotes(before, adapted.Notes),
+                      new(detail.Head, (detail.Warnings ?? []).Concat(adapted.Notes.Select(n => n.Warning)).ToList(), detail.Body ?? before));
+        }
     }
 
     private static List<DetectedPhoto> SplitPhotos(ScannedPage page, ScanSettings s, CancellationToken token)
@@ -1788,7 +1810,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 DeleteSpoolFiles(queued);
                 ScannedPages.Clear();
                 ResetFlow();
-                StatusMessage = TextExport.SavedMessage(format, pages.Count, Path.GetFileName(written), hasText) + left;
+                SetStatus(TextExport.SavedMessage(format, pages.Count, Path.GetFileName(written), hasText) + left, new(new StatusHead.Saved()));
                 RunAfterSave(s.Output.AfterSave, [written]);
                 return;
             }
@@ -1806,7 +1828,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ResetFlow();
             string textNote = textPath is null ? "" : TextExport.SidecarSuffix(Path.GetFileName(textPath));
             string savedText = Loc.Plural(pages.Count, "Saved {0}-page PDF: {1}", "Saved {0}-page PDF: {1}", Path.GetFileName(path));
-            StatusMessage = $"{savedText}{PdfSizeSuffix()}{textNote}{left}";
+            SetStatus($"{savedText}{PdfSizeSuffix()}{textNote}{left}", new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, [path]);
         });
     }
@@ -1841,7 +1863,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             MarkSaved([written]);
-            StatusMessage = TextExport.SavedMessage(s.Format, pages.Count, Path.GetFileName(written), hasText);
+            SetStatus(TextExport.SavedMessage(s.Format, pages.Count, Path.GetFileName(written), hasText), new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, [written]);
             return;
         }
@@ -1895,7 +1917,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
         }
         MarkSaved(saved);
-        StatusMessage = Loc.T("Saved {0}{1}", string.Join(", ", saved.Select(Path.GetFileName)), note);
+        SetStatus(Loc.T("Saved {0}{1}", string.Join(", ", saved.Select(Path.GetFileName)), note), new(new StatusHead.Saved()));
         RunAfterSave(s.Output.AfterSave, saved);
     }
 
@@ -1945,7 +1967,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ShowPhotoReview = false;
             _photoSourceImages = [];
             ResetFlow();
-            StatusMessage = Loc.Plural(saved.Count, "Saved {0} photo to {1}", "Saved {0} photos to {1}", s.DestinationPath);
+            SetStatus(Loc.Plural(saved.Count, "Saved {0} photo to {1}", "Saved {0} photos to {1}", s.DestinationPath),
+                      new(new StatusHead.SavedFiles(saved.Count, FileKind.Photo)));
             RunAfterSave(s.Output.AfterSave, saved);
         });
     }
@@ -2317,7 +2340,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
         ScannedPages.Clear();
         ResetFlow();
-        StatusMessage = Loc.T("Page queue cleared.");
+        SetStatus(Loc.T("Page queue cleared."), new(new StatusHead.QueueCleared()));
         NotifyAll();
     }
 
@@ -2334,9 +2357,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         Settings = adapted.Settings;
         bool wasBusy = IsBusy;
         SettingsEdited();
-        string applied = WithNotes(Loc.T("Applied preset “{0}”.", preset.Name), adapted.Notes);
+        string preface = Loc.T("Applied preset “{0}”.", preset.Name);
+        string applied = WithNotes(preface, adapted.Notes);
         // A reading of the queued pages the preset started (split at barcode or QR sheets) says so.
-        StatusMessage = !wasBusy && IsBusy ? $"{applied} {StatusMessage}" : applied;
+        SetStatus(!wasBusy && IsBusy ? $"{applied} {StatusMessage}" : applied,
+                  new(null, adapted.Notes.Select(n => n.Warning).ToList(), preface));
         NotifyAll();
     }
 
@@ -2366,7 +2391,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsIdCardFlow || HasIdCardCaptures || ShowIdCardReview) ClearIdCard(clearCanvas: true);
         Flow = null;
         SettingsEdited();
-        StatusMessage = WithNotes(Loc.T("Ready for “{0}”.", TaskCatalog.Definition(task).Title), adapted.Notes);
+        SetStatus(Loc.T("Ready for “{0}”.", TaskCatalog.Definition(task).Title), adapted.Notes, new StatusHead.ReadyForTask());
         // Printers come and go: the Copy task reads them again.
         if (task == ScanTask.Copy) _ = RefreshPrintersAsync();
         NotifyAll();
@@ -2957,9 +2982,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ClearIdCard(clearCanvas: true);
             ResetFlow();
             string sizeNote = pageFormat == OutputFormat.Pdf ? PdfSizeSuffix() : "";
-            StatusMessage = saved.Count == 1
+            SetStatus(saved.Count == 1
                 ? Loc.T("Saved the ID card on one {0} page: {1}{2}", paper.Label(), Path.GetFileName(saved[0]), sizeNote)
-                : Loc.T("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.Label(), Path.GetFileName(saved[0]), sizeNote);
+                : Loc.T("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.Label(), Path.GetFileName(saved[0]), sizeNote),
+                new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, saved);
         });
     }
@@ -3007,6 +3033,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     private static string WithNotes(string message, IReadOnlyList<SettingsNote> notes) =>
         notes.Count == 0 ? message : $"{message} {string.Join(" ", notes.Select(n => n.Message))}";
+
+    /// <summary>Says <paramref name="message"/> with what the short status line needs to know of it.</summary>
+    private void SetStatus(string message, StatusDetail detail)
+    {
+        StatusMessage = message;
+        StatusDetail = detail;
+    }
+
+    /// <summary>Says <paramref name="message"/> and the settings notes after it; the line keeps a short warning for each note.</summary>
+    private void SetStatus(string message, IReadOnlyList<SettingsNote> notes, StatusHead? head = null) =>
+        SetStatus(WithNotes(message, notes), new(head, notes.Select(n => n.Warning).ToList(), message));
 
     public void SaveCurrentAsPreset(string name)
     {
@@ -3135,7 +3172,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         SavedRevision++;
         SavedBarPaths = paths.Count > 0 ? [.. paths] : null;
         SavedBarText = SavedSummary(paths);
-        SavedBarNoun = Settings.Intent == ScanIntent.Photo ? "photos" : IsReceiptFlow ? "receipts" : "files";
+        SavedBarKind = Settings.Intent == ScanIntent.Photo ? FileKind.Photo : IsReceiptFlow ? FileKind.Receipt : null;
     }
 
     /// <summary>"Scan 3.pdf (412 KB)" for one file (the size for PDFs), "3 files in Scans" for several.</summary>
@@ -3486,7 +3523,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             token.ThrowIfCancellationRequested();
             var page = pages[i];
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
-            StatusMessage = Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count);
+            SetStatus(Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count), new(new StatusHead.ReadingPage(i + 1, pages.Count)));
             NotifyAll();
             ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, token),
                                     prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
@@ -3555,7 +3592,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             int index = IndexOfPage(id);
             if (index < 0) return;
             var page = ScannedPages[index].Page;
-            StatusMessage = Loc.T("Reading the text of page {0}…", index + 1);
+            SetStatus(Loc.T("Reading the text of page {0}…", index + 1), new(new StatusHead.ReadingPage(index + 1, null)));
             NotifyAll();
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
             var lines = await RecognizeForText(prepared.Image, token);

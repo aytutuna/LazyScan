@@ -88,7 +88,7 @@ public sealed partial class AppViewModel
             StatusMessage = s.PdfSearchable ? Loc.T("Running OCR and adding pages…") : Loc.T("Adding pages…");
             NotifyAll();
             var inputs = await PdfPageInputs(pages, s, token);
-            StatusMessage = Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name);
+            SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
             NotifyAll();
             var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token), token);
             LastPdfBytes = result.Bytes;
@@ -100,7 +100,8 @@ public sealed partial class AppViewModel
             ResetFlow();
             var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
                           + plan.LeftOutNote();
-            StatusMessage = s.Output.Protect ? Loc.T("{0}. {1}", message, PdfAppender.NoPasswordNote) : message;
+            SetStatus(s.Output.Protect ? Loc.T("{0}. {1}", message, PdfAppender.NoPasswordNote) : message,
+                      new(new StatusHead.PagesAdded(pages.Count, null, 0, 0)));
             RunAfterSave(s.Output.AfterSave, [result.Path]);
         });
     }

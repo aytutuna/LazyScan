@@ -12,7 +12,7 @@ public enum SettingsChange
 }
 
 /// <summary>A setting changed to suit the scanner, with a sentence saying so.</summary>
-public sealed record SettingsNote(SettingsChange Change, string Message);
+public sealed record SettingsNote(SettingsChange Change, string Message, StatusWarning Warning);
 
 /// <summary>The settings as the scanner can use them, and what had to change.</summary>
 public sealed record AdaptedSettings(ScanSettings Settings, IReadOnlyList<SettingsNote> Notes);
@@ -44,7 +44,8 @@ public static class SettingsAdapter
             {
                 notes.Add(new SettingsNote(SettingsChange.Source, fallback == ScanSource.DocumentFeeder
                     ? Loc.T("This scanner has no flatbed, so the document feeder is used.")
-                    : Loc.T("This scanner has no document feeder, so the flatbed is used.")));
+                    : Loc.T("This scanner has no document feeder, so the flatbed is used."),
+                    fallback == ScanSource.DocumentFeeder ? new StatusWarning.FeederUsed() : new StatusWarning.FlatbedUsed()));
                 s.Source = fallback;
             }
         }
@@ -52,7 +53,8 @@ public static class SettingsAdapter
         if (s.Source == ScanSource.DocumentFeeder && s.Duplex == DuplexMode.Both && !capabilities.SupportsDuplex)
         {
             notes.Add(new SettingsNote(SettingsChange.Duplex,
-                Loc.T("This scanner's feeder scans one side at a time, so you'll turn the stack over by hand.")));
+                Loc.T("This scanner's feeder scans one side at a time, so you'll turn the stack over by hand."),
+                new StatusWarning.TwoSidedByHand()));
             s.Duplex = DuplexMode.Manual;
         }
 
@@ -63,7 +65,8 @@ public static class SettingsAdapter
             notes.Add(new SettingsNote(SettingsChange.PaperSize,
                 feeder
                     ? Loc.T("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", s.PaperSize.Label())
-                    : Loc.T("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", s.PaperSize.Label())));
+                    : Loc.T("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", s.PaperSize.Label()),
+                new StatusWarning.PaperAutomatic()));
             s.PaperSize = PaperSize.Auto;
         }
 
@@ -71,7 +74,8 @@ public static class SettingsAdapter
         if (resolution != s.Resolution)
         {
             notes.Add(new SettingsNote(SettingsChange.Resolution,
-                Loc.T("This scanner does not offer {0} dpi, so {1} dpi is used.", s.Resolution.ToString(), resolution.ToString())));
+                Loc.T("This scanner does not offer {0} dpi, so {1} dpi is used.", s.Resolution.ToString(), resolution.ToString()),
+                new StatusWarning.DpiUsed(resolution)));
             s.Resolution = resolution;
         }
         return new AdaptedSettings(s, notes);

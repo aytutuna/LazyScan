@@ -788,12 +788,17 @@ public enum BookPages {
         return L10n.t("Join the two pages")
     }
 
+    /// How many spreads `added` has split into pages.
+    public static func splitCount(_ added: [ScannedPage]) -> Int {
+        Set(added.compactMap(\.spread).filter { !$0.isWhole }.map(\.spreadID)).count
+    }
+
     /// The status after a scan's pages were queued, when spreads were split or kept whole: " 2 spreads
     /// split into pages." and " The spine of 1 spread was not found: it was added as one page (Split…
     /// on it splits it)." (leading space; empty for no spread).
     public static func scanNote(_ added: [ScannedPage]) -> String {
         let parts = added.compactMap(\.spread)
-        let split = Set(parts.filter { !$0.isWhole }.map(\.spreadID)).count
+        let split = splitCount(added)
         let whole = Set(parts.filter(\.isWhole).map(\.spreadID)).count
         var note = split == 0 ? "" : " " + L10n.plural(split, one: "{0} spread split into pages.", other: "{0} spreads split into pages.")
         if whole > 0 {

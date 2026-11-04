@@ -28,7 +28,7 @@ public partial class MainWindow
         string full = ViewModel.StatusMessage;
         bool idle = !ViewModel.IsBusy;
         string device = ViewModel.Devices.FirstOrDefault(d => d.Id == ViewModel.SelectedDeviceId)?.Name ?? "";
-        string shown = StatusLine.Shown(full, device,
+        string shown = StatusLine.Shown(full, ViewModel.StatusDetail, device,
                                         reviewShown: idle && (ViewModel.ShowPhotoReview || ViewModel.ShowIdCardReview),
                                         savedShown: idle && ViewModel.SavedBarPaths is not null);
         StatusText.Text = shown;

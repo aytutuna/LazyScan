@@ -242,8 +242,9 @@ extension AppState {
                 return
             }
             let count = pages.count
-            self.statusMessage = L10n.plural(count, one: "Added {0} page from {1} — {2} in queue.", other: "Added {0} pages from {1} — {2} in queue.",
-                                              phoneName, self.scannedPages.count)
+            self.setStatus(L10n.plural(count, one: "Added {0} page from {1} — {2} in queue.", other: "Added {0} pages from {1} — {2} in queue.",
+                                       phoneName, self.scannedPages.count),
+                           StatusDetail(head: .pagesAdded(count, queue: self.scannedPages.count, blank: 0, split: 0)))
             self.companionService?.inbox.release(package)
             self.phoneBarMessage = CompanionProtocol.addedMessage(count, phoneName: phoneName)
         }

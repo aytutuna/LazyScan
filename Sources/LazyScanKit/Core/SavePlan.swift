@@ -110,6 +110,14 @@ public struct SavePlan {
         return saved + " " + fileNames.joined(separator: ", ") + text + empty + leftOutNote()
     }
 
+    /// The short status line's kind for `savedMessage`: "Saved 3 PDFs", or just "Saved" for Word and text.
+    public func savedHead(_ format: OutputFormat, count: Int) -> StatusHead {
+        switch format.queueFormat {
+        case .word, .text: return .saved
+        default: return .savedFiles(count, .pdf)
+        }
+    }
+
     /// The error when a split save fails: nothing of it is kept, and the queue is still there.
     public static func notSavedMessage(_ reason: String) -> String {
         L10n.t("None of the documents was saved; the pages are still in the queue. {0}", reason)

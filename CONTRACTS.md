@@ -370,24 +370,37 @@ Twins of `windows/LazyScan.Core/ScanTask.cs`, `TaskCatalog.cs` and `TaskFlow.cs`
 ### Core/StatusLine.swift, Core/InspectorSections.swift (the short texts both apps show)
 
 ```swift
+public enum FileKind { case photo, receipt, pdf }
+public enum StatusHead {                                          // what a status says about its message
+    case readyForTask, saved, queueCleared, sentToPrinter
+    case pagesAdded(Int, queue: Int?, blank: Int, split: Int)     // queue: the queue's length, shown for one page
+    case savedFiles(Int, FileKind), found(Int, FileKind)
+    case readingPage(Int, of: Int?), addingPages(Int)
+}
+public enum StatusWarning { case feederUsed, flatbedUsed, twoSidedByHand, paperAutomatic, dpiUsed(Int), oneSideOnly }
+public struct StatusDetail {                                      // C#: record StatusDetail
+    public var head: StatusHead?
+    public var warnings: [StatusWarning]                          // in the order they come
+    public var body: String?                                      // a message with no head: the sentence without the notes after it
+}
+// SettingsNote(change:message:warning:) carries its StatusWarning. AppState.statusDetail (C# AppViewModel.StatusDetail)
+// goes with statusMessage and starts empty with every new message; producers set it after the message
+// (setStatus / SetStatus).
 public enum StatusLine {
     public static let maxWords: Int                                   // 6
     public static func words(_ text: String) -> Int                   // tokens with a letter or digit
     /// The status sentence in six words at most, facts only: "Page 3 added", "6 pages added · 1 blank",
-    /// "Saved", "Saved 3 photos", "Ready — Demo Scanner" (for "Ready for “…”." with `deviceName`), else its
+    /// "Saved", "Saved 3 photos", "Ready — Demo Scanner" (head readyForTask with `deviceName`), else its
     /// first sentence or what comes before a dash, a colon or a comma, else six words and "…". A setting
     /// changed for the scanner (`SettingsAdapter`'s notes) or a two-sided scan that came back one-sided
     /// keeps a short warning ("… · 300 dpi used", "… · one side only"); when both can't fit, the warnings win.
     /// The six words are counted on the English text of each piece in every language (the views truncate
-    /// the rest). The settings notes are matched from their catalog entries; the heads (Added, Saved, Found)
-    /// and the one-sided mark are matched in English, so those messages get no translations until the app
-    /// passes StatusLine structured input.
-    public static func short(_ message: String, deviceName: String? = nil) -> String
-    public static func withWarnings(_ head: String, message: String) -> String
-    public static func warnings(_ message: String) -> [String]
+    /// the rest). The kind and the warnings come from the producer, so nothing reads the sentence's language.
+    public static func short(_ message: String, _ detail: StatusDetail = StatusDetail(), deviceName: String? = nil) -> String
+    public static func warnings(_ detail: StatusDetail) -> [String]
     /// "" while a review shows its own title; "Saved" (with warnings) for a message about a save while
     /// the saved files' actions show; else `short`.
-    public static func shown(_ message: String, deviceName: String?, reviewShown: Bool, savedShown: Bool) -> String
+    public static func shown(_ message: String, _ detail: StatusDetail, deviceName: String?, reviewShown: Bool, savedShown: Bool) -> String
 }
 
 public enum InspectorSections {
@@ -430,7 +443,7 @@ Twins of `windows/LazyScan.Core/StatusLine.cs` and `InspectorSections.cs`; `Stat
 
 ```swift
 public enum SettingsChange: String, Sendable { case source, resolution, duplex, paperSize }
-public struct SettingsNote: Equatable, Sendable { public let change: SettingsChange; public let message: String }
+public struct SettingsNote: Equatable, Sendable { public let change: SettingsChange; public let message: String; public let warning: StatusWarning }
 public struct AdaptedSettings: Equatable, Sendable { public let settings: ScanSettings; public let notes: [SettingsNote] }
 
 public enum SettingsAdapter {

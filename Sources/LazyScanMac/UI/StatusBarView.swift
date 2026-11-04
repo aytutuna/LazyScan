@@ -47,7 +47,7 @@ struct StatusBarView: View {
         let device: String? = state.devices.first(where: { $0.id == state.selectedDeviceID })?.name
         let reviewShown: Bool = idle && (state.showPhotoReview || state.showIdCardReview)
         let savedShown: Bool = idle && !state.lastSavedURLs.isEmpty
-        return StatusLine.shown(state.statusMessage, deviceName: device, reviewShown: reviewShown, savedShown: savedShown)
+        return StatusLine.shown(state.statusMessage, state.statusDetail, deviceName: device, reviewShown: reviewShown, savedShown: savedShown)
     }
 
     private var savedActions: some View {

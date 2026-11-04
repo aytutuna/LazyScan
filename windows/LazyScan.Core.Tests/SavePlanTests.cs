@@ -7,6 +7,15 @@ namespace LazyScan.Core.Tests;
 
 public class SavePlanTests
 {
+    [Fact]
+    public void SavedHead_CountsPdfs_AndIsPlainSavedForWordAndText()
+    {
+        var plan = SavePlan.Make([MakePage()], new DocumentOptions());
+        Assert.Equal(new StatusHead.SavedFiles(2, FileKind.Pdf), plan.SavedHead(OutputFormat.Pdf, 2));
+        Assert.Equal(new StatusHead.Saved(), plan.SavedHead(OutputFormat.Word, 2));
+        Assert.Equal(new StatusHead.Saved(), plan.SavedHead(OutputFormat.Text, 2));
+    }
+
     private static ScannedPage MakePage(PatchCode? patch = null, bool blank = false) =>
         new ScannedPage(RgbaImage.Filled(4, 4, 255, 255, 255), 300, ColorMode.Color)
             .WithPatch(patch)

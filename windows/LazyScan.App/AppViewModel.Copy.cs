@@ -255,14 +255,14 @@ public sealed partial class AppViewModel
         string warningNote = warning is null ? "" : $" {warning}";
         if (!options.CopyAlsoSavePdf)
         {
-            StatusMessage = sent + warningNote;
+            SetStatus(sent + warningNote, new(new StatusHead.SentToPrinter()));
             return;
         }
         if (noPassword)
         {
             if (printError is null)
             {
-                StatusMessage = $"{sent} {PdfProtection.NotSavedMessage}{warningNote}";
+                SetStatus($"{sent} {PdfProtection.NotSavedMessage}{warningNote}", new(new StatusHead.SentToPrinter()));
                 return;
             }
             // Neither printed nor saved: the pages wait in the queue rather than being lost.
@@ -281,9 +281,9 @@ public sealed partial class AppViewModel
         {
             if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The PDF was not saved (cancelled)."));
             // The copy has gone to the printer: only the PDF was cancelled.
-            StatusMessage = e is PasswordNotGivenException
+            SetStatus(e is PasswordNotGivenException
                 ? $"{sent} {PdfProtection.NotSavedMessage}"
-                : Loc.T("{0} PDF not saved (cancelled).", sent);
+                : Loc.T("{0} PDF not saved (cancelled).", sent), new(new StatusHead.SentToPrinter()));
             return;
         }
         catch (Exception e) when (printError is not null && e is not OutOfMemoryException)
@@ -292,7 +292,7 @@ public sealed partial class AppViewModel
         }
         MarkSaved([path]);
         if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The scan was saved as {0}.", Path.GetFileName(path)));
-        StatusMessage = Loc.T("{0} Saved {1}{2}.{3}", sent, Path.GetFileName(path), PdfSizeSuffix(), warningNote);
+        SetStatus(Loc.T("{0} Saved {1}{2}.{3}", sent, Path.GetFileName(path), PdfSizeSuffix(), warningNote), new(new StatusHead.SentToPrinter()));
     }
 
     /// <summary>The error of a copy that could not be printed: why, then what became of its PDF.</summary>
@@ -344,7 +344,7 @@ public sealed partial class AppViewModel
                 ? Loc.T("Sent the ID card to {0} on {1}, made smaller to fit.", setup.PrinterName, setup.Paper.Description)
                 : Loc.T("Sent the ID card to {0} on {1}, at real size.", setup.PrinterName, setup.Paper.Description);
             string? warning = PrintLayout.ClipWarning(placement, paperInches);
-            StatusMessage = sent + (warning is null ? "" : $" {warning}");
+            SetStatus(sent + (warning is null ? "" : $" {warning}"), new(new StatusHead.SentToPrinter()));
         });
     }
 
@@ -369,7 +369,8 @@ public sealed partial class AppViewModel
             StatusMessage = Loc.T("Printing the ruler test page on {0}…", setup.PrinterName);
             NotifyAll();
             await _print.PrintAsync(job, token);
-            StatusMessage = Loc.T("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", setup.PrinterName);
+            SetStatus(Loc.T("Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.", setup.PrinterName),
+                      new(new StatusHead.SentToPrinter()));
         });
     }
 }

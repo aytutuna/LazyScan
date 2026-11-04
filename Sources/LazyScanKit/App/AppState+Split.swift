@@ -19,15 +19,28 @@ extension AppState {
     /// found with the documents the queue now makes.
     func queueScanNote(_ added: [ScannedPage], options: DocumentOptions) -> String {
         let plan = queuePlan
-        var separatorIDs = Set<UUID>()
-        for (index, page) in scannedPages.enumerated() where plan.pages[index].role == .separator {
-            separatorIDs.insert(page.id)
-        }
-        let notSeparators = added.filter { !separatorIDs.contains($0.id) }
+        let notSeparators = withoutSeparators(added)
         let separatorsAdded = added.count - notSeparators.count
         return BookPages.scanNote(added) + PageFilter.scanNote(notSeparators, options: options)
             + PageCorrections.scanNote(added) + PageTurns.scanNote(added)
             + DocumentSplitter.scanNote(plan, separatorsAdded: separatorsAdded)
+    }
+
+    private func withoutSeparators(_ added: [ScannedPage]) -> [ScannedPage] {
+        let plan = queuePlan
+        var separatorIDs = Set<UUID>()
+        for (index, page) in scannedPages.enumerated() where plan.pages[index].role == .separator {
+            separatorIDs.insert(page.id)
+        }
+        return added.filter { !separatorIDs.contains($0.id) }
+    }
+
+    /// The short status line's kind for the message after a scan's pages were queued: the pages added
+    /// with the blank ones and the spreads split among them (what `queueScanNote` says in words).
+    func pagesAdded(_ added: [ScannedPage], options: DocumentOptions) -> StatusHead {
+        .pagesAdded(added.count, queue: scannedPages.count,
+                    blank: PageFilter.blankCount(withoutSeparators(added), options: options),
+                    split: BookPages.splitCount(added))
     }
 
     /// One click on the gap before a queued page: a new document starts there, or the page joins
@@ -237,8 +250,8 @@ extension AppState {
                     let hasText = try await Task.detached(priority: .userInitiated) {
                         try Self.writeTextDocument(pages: pages, format: format, to: url,
                                                    pageImages: pageImages,
-                                                   shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                            Task { @MainActor in self?.statusMessage = msg }
+                                                   shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
+                            Task { @MainActor in self?.setStatus(msg, detail) }
                         }
                     }.value
                     files.add(url)
@@ -289,8 +302,9 @@ extension AppState {
         let size: String? = format == .pdf
             ? Self.pdfNote(size: Self.totalSizeText(of: saved), isProtected: protectedPDFs)
             : nil
-        statusMessage = plan.savedMessage(format, fileNames: saved.map(\.lastPathComponent), size: size,
-                                          textFileNames: textFiles, noTextFound: noText)
+        setStatus(plan.savedMessage(format, fileNames: saved.map(\.lastPathComponent), size: size,
+                                    textFileNames: textFiles, noTextFound: noText),
+                  StatusDetail(head: plan.savedHead(format, count: saved.count)))
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -345,9 +359,9 @@ extension AppState {
             self.lastSavedURLs = [url]
             // The sheet is never protected, whatever the last PDF saved was.
             self.notePDFSize(of: url, protected: false)
-            self.statusMessage = qr
+            self.setStatus(qr
                 ? QrSeparatorSheet.savedMessage(url.lastPathComponent, name: name)
-                : SeparatorSheet.savedMessage(url.lastPathComponent)
+                : SeparatorSheet.savedMessage(url.lastPathComponent), StatusDetail(head: .saved))
         }
     }
 
@@ -401,9 +415,10 @@ extension AppState {
                 self.statusMessage = L10n.t("Printing cancelled.")
                 return
             }
-            self.statusMessage = qr
+            self.setStatus(qr
                 ? QrSeparatorSheet.printedMessage(setup.printerName, name: name)
-                : L10n.t("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.printerName)
+                : L10n.t("Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.", setup.printerName),
+                           StatusDetail(head: .sentToPrinter))
         }
     }
 }

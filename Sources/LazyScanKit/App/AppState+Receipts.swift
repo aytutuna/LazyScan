@@ -87,7 +87,8 @@ extension AppState {
         recordCaptures(found.map(\.id))
         showPhotoReview = !found.isEmpty
         if found.isEmpty { photoSourceImages = [:] }
-        statusMessage = L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts.")
+        setStatus(L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts."),
+                  StatusDetail(head: .found(found.count, .receipt)))
     }
 
     /// Fix crop on a receipt: cut out upright and cleaned up again, as it was found.
@@ -214,8 +215,8 @@ extension AppState {
             if pdfs, !names.isEmpty, let note = Self.pdfNote(size: nil, isProtected: protection != nil) {
                 names[names.count - 1] += " (\(note))"
             }
-            self.statusMessage = Receipts.savedMessage(count: read.count, fileNames: names,
-                                                       combined: combine, undated: undated)
+            self.setStatus(Receipts.savedMessage(count: read.count, fileNames: names, combined: combine, undated: undated),
+                           StatusDetail(head: .savedFiles(read.count, .receipt)))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }

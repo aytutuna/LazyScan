@@ -324,6 +324,7 @@ final class AppStateSeamTests: XCTestCase {
         }
         XCTAssertEqual(state.scanHistory.count, 2)
         XCTAssertTrue(state.statusMessage.hasPrefix("Added 2 pages — 2 in queue."), state.statusMessage)
+        XCTAssertEqual(StatusLine.short(state.statusMessage, state.statusDetail), "2 pages added")
         XCTAssertNotNil(state.lastScanImage)
     }
 
@@ -355,6 +356,15 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_aPlainStatusMessage_clearsTheDetailOfTheLastOne() {
+        let state = makeState()
+        state.setStatus("Queue cleared.", StatusDetail(head: .queueCleared))
+        XCTAssertEqual(state.statusDetail.head, .queueCleared)
+        state.statusMessage = "Something else."
+        XCTAssertEqual(state.statusDetail, StatusDetail())
+    }
+
+    @MainActor
     func test_saveImages_writesAPictureAPage_leavesOutSkippedPages_andEmptiesTheQueue() async throws {
         let state = makeState()
         let pages: [ScannedPage] = [seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 300, height: 200, dpi: 50),
@@ -381,6 +391,7 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(sizes, [400, 520, 260, 340])
         XCTAssertTrue(state.scannedPages.isEmpty)
         XCTAssertTrue(state.statusMessage.hasPrefix("Saved 2 JPEG files: "), state.statusMessage)
+        XCTAssertEqual(StatusLine.short(state.statusMessage, state.statusDetail), "Saved")
         // The spool files went with the queue.
         let spool = AppStateFiles.all(in: folder).spoolDirectory
         let left: [String] = (try? FileManager.default.contentsOfDirectory(atPath: spool.path)) ?? []

@@ -37,7 +37,7 @@ struct QuickScanScreen: View {
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(StatusLine.shown(state.statusMessage, deviceName: nil, reviewShown: true, savedShown: false))
+                    Text(StatusLine.shown(state.statusMessage, state.statusDetail, deviceName: nil, reviewShown: true, savedShown: false))
                         .font(.footnote)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(2)
