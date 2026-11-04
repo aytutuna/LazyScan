@@ -1,74 +1,28 @@
 {
-  "Require a password": {
-    "tr": "Parola koruması"
-  },
-  "PDFs open only with the password. You type it when saving.": {
-    "tr": "PDF'ler yalnızca parolayla açılır. Parolayı kaydederken girersiniz."
-  },
-  "Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.": {
-    "tr": "Kaydedilen PDF'ler yalnızca parolayla açılır. Parolayı her kaydettiğinizde girersiniz; parola saklanmaz ve unutulursa kurtarılamaz."
-  },
-  "Not with PDF/A": {
-    "tr": "PDF/A ile kullanılamaz"
-  },
-  "Set a PDF password": {
-    "tr": "PDF parolası belirleyin"
-  },
-  "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.": {
-    "tr": "Parola unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur."
-  },
-  "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.": {
-    "tr": "Dosyayı açan herkesin bu parolayı girmesi gerekir. Parola hiçbir yerde saklanmaz ve unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur."
-  },
-  "Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.": {
-    "tr": "Çoğu PDF uygulaması bu seçimlere uyar, ancak bunlar dosyayı kilitlemez: parolayı bilen biri başka bir yazılımla bu sınırları aşabilir."
-  },
-  "Some apps ignore these settings.": {
-    "tr": "Bazı uygulamalar bu ayarları yok sayar."
-  },
-  "Not saved: no password was given for the protected PDF.": {
-    "tr": "Kaydedilmedi: korumalı PDF için parola girilmedi."
-  },
+  "Require a password": {},
+  "PDFs open only with the password. You type it when saving.": {},
+  "Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.": {},
+  "Not with PDF/A": {},
+  "Set a PDF password": {},
+  "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.": {},
+  "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.": {},
+  "Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.": {},
+  "Some apps ignore these settings.": {},
+  "Not saved: no password was given for the protected PDF.": {},
   "Not saved: no password was given for the protected PDF. The page is in the queue: save with a password, or turn the password off.": {
-    "en_other": "Not saved: no password was given for the protected PDF. The {0} pages are in the queue: save with a password, or turn the password off.",
-    "tr": {
-      "one": "Kaydedilmedi: korumalı PDF için parola girilmedi. Sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın.",
-      "other": "Kaydedilmedi: korumalı PDF için parola girilmedi. {0} sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın."
-    }
+    "other": "Not saved: no password was given for the protected PDF. The {0} pages are in the queue: save with a password, or turn the password off."
   },
-  "Type a password.": {
-    "tr": "Parola girin."
-  },
-  "A password can't contain tabs, line breaks or other control characters.": {
-    "tr": "Parola sekme, satır sonu ya da başka bir denetim karakteri içeremez."
-  },
-  "Passwords don't match": {
-    "tr": "Parolalar eşleşmiyor"
-  },
-  "Weak · use 12+ characters": {
-    "tr": "Zayıf · en az 12 karakter"
-  },
-  "Fair · longer is safer": {
-    "tr": "Orta · uzadıkça güçlenir"
-  },
-  "Strong": {
-    "tr": "Güçlü"
-  },
-  "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.": {
-    "tr": "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az 12 karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın."
-  },
-  "Fair. A few more characters, or another word, would make it much harder to guess.": {
-    "tr": "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır."
-  },
-  "Strong.": {
-    "tr": "Güçlü."
-  },
+  "Type a password.": {},
+  "A password can't contain tabs, line breaks or other control characters.": {},
+  "Passwords don't match": {},
+  "Weak · use 12+ characters": {},
+  "Fair · longer is safer": {},
+  "Strong": {},
+  "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.": {},
+  "Fair. A few more characters, or another word, would make it much harder to guess.": {},
+  "Strong.": {},
   "{0} scan": {
-    "en_other": "{0} scans",
-    "tr": {
-      "one": "{0} tarama",
-      "other": "{0} tarama"
-    }
+    "other": "{0} scans"
   },
   "Saved": {},
   "Feeder used": {},
@@ -90,31 +44,31 @@
   "Reading page {0} of {1}…": {},
   "Sent to the printer": {},
   "{0} page added": {
-    "en_other": "{0} pages added"
+    "other": "{0} pages added"
   },
   "{0} blank": {
-    "en_other": "{0} blank"
+    "other": "{0} blank"
   },
   "{0} spread split": {
-    "en_other": "{0} spreads split"
+    "other": "{0} spreads split"
   },
   "Found {0} photo": {
-    "en_other": "Found {0} photos"
+    "other": "Found {0} photos"
   },
   "Found {0} receipt": {
-    "en_other": "Found {0} receipts"
+    "other": "Found {0} receipts"
   },
   "Adding {0} page…": {
-    "en_other": "Adding {0} pages…"
+    "other": "Adding {0} pages…"
   },
   "Saved {0} photo": {
-    "en_other": "Saved {0} photos"
+    "other": "Saved {0} photos"
   },
   "Saved {0} receipt": {
-    "en_other": "Saved {0} receipts"
+    "other": "Saved {0} receipts"
   },
   "Saved {0} PDF": {
-    "en_other": "Saved {0} PDFs"
+    "other": "Saved {0} PDFs"
   },
   "Documents": {},
   "Photos & images": {},
@@ -207,10 +161,10 @@
   "Split and named at barcodes": {},
   "Split at barcode sheets": {},
   "{0} copy": {
-    "en_other": "{0} copies"
+    "other": "{0} copies"
   },
   "Split every sheet": {
-    "en_other": "Split every {0} sheets"
+    "other": "Split every {0} sheets"
   },
   "Saved {0}-page Word document: {1}": {},
   "Saved {0}-page Word document: {1} — no text was found": {},
@@ -222,22 +176,22 @@
   "No text was found on page {0}.": {},
   "the text recognition did not work": {},
   "The page is kept in the queue: press {1} once the text can be read, or choose PDF to save it as scanned.": {
-    "en_other": "The {0} pages are kept in the queue: press {1} once the text can be read, or choose PDF to save them as scanned."
+    "other": "The {0} pages are kept in the queue: press {1} once the text can be read, or choose PDF to save them as scanned."
   },
   "The page is kept in the queue: press {1} to try again, or choose PDF to save it as scanned.": {
-    "en_other": "The {0} pages are kept in the queue: press {1} to try again, or choose PDF to save them as scanned."
+    "other": "The {0} pages are kept in the queue: press {1} to try again, or choose PDF to save them as scanned."
   },
   "Not saved — the page is kept in the queue: press {1} to try again.": {
-    "en_other": "Not saved — the {0} pages are kept in the queue: press {1} to try again."
+    "other": "Not saved — the {0} pages are kept in the queue: press {1} to try again."
   },
   "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.": {
-    "en_other": "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue."
+    "other": "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue."
   },
   "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.": {
-    "en_other": "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again."
+    "other": "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again."
   },
   "Cancelled — the page is kept in the queue.": {
-    "en_other": "Cancelled — the {0} pages are kept in the queue."
+    "other": "Cancelled — the {0} pages are kept in the queue."
   },
   "Front side": {},
   "Place the card face down near a corner and scan.": {},
@@ -274,310 +228,310 @@
   "{0} blank skipped": {},
   "{0} but {1}": {},
   "Save {1} Word documents ({0} page)": {
-    "en_other": "Save {1} Word documents ({0} pages)"
+    "other": "Save {1} Word documents ({0} pages)"
   },
   "Save {1} text files ({0} page)": {
-    "en_other": "Save {1} text files ({0} pages)"
+    "other": "Save {1} text files ({0} pages)"
   },
   "Save {1} PDFs ({0} page)": {
-    "en_other": "Save {1} PDFs ({0} pages)"
+    "other": "Save {1} PDFs ({0} pages)"
   },
   "Save {1} password-protected PDFs ({0} page)": {
-    "en_other": "Save {1} password-protected PDFs ({0} pages)"
+    "other": "Save {1} password-protected PDFs ({0} pages)"
   },
   "Save password-protected PDF ({0} page)": {
-    "en_other": "Save password-protected PDF ({0} pages)"
+    "other": "Save password-protected PDF ({0} pages)"
   },
   "— {0} skipped page was left out": {
-    "en_other": "— {0} skipped pages were left out"
+    "other": "— {0} skipped pages were left out"
   },
   "— {0} separator page was left out": {
-    "en_other": "— {0} separator pages were left out"
+    "other": "— {0} separator pages were left out"
   },
   "{0} separator page": {
-    "en_other": "{0} separator pages"
+    "other": "{0} separator pages"
   },
   "{0} skipped page": {
-    "en_other": "{0} skipped pages"
+    "other": "{0} skipped pages"
   },
   "{0} page": {
-    "en_other": "{0} pages"
+    "other": "{0} pages"
   },
   "Save Word ({0} page)": {
-    "en_other": "Save Word ({0} pages)"
+    "other": "Save Word ({0} pages)"
   },
   "Save Text ({0} page)": {
-    "en_other": "Save Text ({0} pages)"
+    "other": "Save Text ({0} pages)"
   },
   "Save PDF ({0} page)": {
-    "en_other": "Save PDF ({0} pages)"
+    "other": "Save PDF ({0} pages)"
   },
   "{0} document": {
-    "en_other": "{0} documents"
+    "other": "{0} documents"
   },
   "{0} document to save.": {
-    "en_other": "{0} documents to save."
+    "other": "{0} documents to save."
   },
   "Found {0} separator page: {1}": {
-    "en_other": "Found {0} separator pages: {1}"
+    "other": "Found {0} separator pages: {1}"
   },
   "{0} front": {
-    "en_other": "{0} fronts"
+    "other": "{0} fronts"
   },
   "{0} back": {
-    "en_other": "{0} backs"
+    "other": "{0} backs"
   },
   "Every sheet": {
-    "en_other": "Every {0} sheets"
+    "other": "Every {0} sheets"
   },
   "{1}, {0} option on": {
-    "en_other": "{1}, {0} options on"
+    "other": "{1}, {0} options on"
   },
   "{0} page from {1} added to the queue.": {
-    "en_other": "{0} pages from {1} added to the queue."
+    "other": "{0} pages from {1} added to the queue."
   },
   "Keep the page?": {
-    "en_other": "Keep the {0} pages?"
+    "other": "Keep the {0} pages?"
   },
   "Text takes one page; the other one was not added.": {
-    "en_other": "Text takes one page; the other {0} were not added."
+    "other": "Text takes one page; the other {0} were not added."
   },
   "The card already has both sides; the other one was not added.": {
-    "en_other": "The card already has both sides; the other {0} were not added."
+    "other": "The card already has both sides; the other {0} were not added."
   },
   "Print or discard the copy first; the other one was not added.": {
-    "en_other": "Print or discard the copy first; the other {0} were not added."
+    "other": "Print or discard the copy first; the other {0} were not added."
   },
   "{1} needs a flatbed.": {
-    "en_other": "{1} need a flatbed."
+    "other": "{1} need a flatbed."
   },
   "{1} needs a document feeder.": {
-    "en_other": "{1} need a document feeder."
+    "other": "{1} need a document feeder."
   },
   "{1} Save it first, or discard it.": {
-    "en_other": "{1} Save them first, or discard them."
+    "other": "{1} Save them first, or discard them."
   },
   "{1} It cannot be saved now: discard it, or cancel to keep it.": {
-    "en_other": "{1} They cannot be saved now: discard them, or cancel to keep them."
+    "other": "{1} They cannot be saved now: discard them, or cancel to keep them."
   },
   "Discard {0} page": {
-    "en_other": "Discard {0} pages"
+    "other": "Discard {0} pages"
   },
   "Adding {0} page to {1}…": {
-    "en_other": "Adding {0} pages to {1}…"
+    "other": "Adding {0} pages to {1}…"
   },
   "Put {0} sheet in order — {1} in queue.": {
-    "en_other": "Put {0} sheets in order — {1} in queue."
+    "other": "Put {0} sheets in order — {1} in queue."
   },
   "{0} document is waiting to be sent already. Send it, or remove it first.": {
-    "en_other": "{0} documents are waiting to be sent already. Send them, or remove some first."
+    "other": "{0} documents are waiting to be sent already. Send them, or remove some first."
   },
   "{0} page sent to {1}.": {
-    "en_other": "{0} pages sent to {1}."
+    "other": "{0} pages sent to {1}."
   },
   "Put {0} document in the cloud folder for {1}.": {
-    "en_other": "Put {0} documents in the cloud folder for {1}."
+    "other": "Put {0} documents in the cloud folder for {1}."
   },
   "your phones": {},
   "{0} page from {1} will be added to the queue when this two-sided stack is finished.": {
-    "en_other": "{0} pages from {1} will be added to the queue when this two-sided stack is finished."
+    "other": "{0} pages from {1} will be added to the queue when this two-sided stack is finished."
   },
   "{0} page from {1} will be added to the queue when the current step is done.": {
-    "en_other": "{0} pages from {1} will be added to the queue when the current step is done."
+    "other": "{0} pages from {1} will be added to the queue when the current step is done."
   },
   "{0} page from {1} is waiting: {2}. Leave the task or pick Document to PDF to add it to the queue.": {
-    "en_other": "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue."
+    "other": "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue."
   },
   "{0} page from {1} is waiting: choose Document mode, or a document task, with Collect pages before saving on, to add it to the queue.": {
-    "en_other": "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue."
+    "other": "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue."
   },
   "Added {0} page from {1} — {2} in queue.": {
-    "en_other": "Added {0} pages from {1} — {2} in queue."
+    "other": "Added {0} pages from {1} — {2} in queue."
   },
   "{0} page in the queue.": {
-    "en_other": "{0} pages in the queue."
+    "other": "{0} pages in the queue."
   },
   "Saved {0} {1} file: {2} …": {
-    "en_other": "Saved {0} {1} files: {2} …"
+    "other": "Saved {0} {1} files: {2} …"
   },
   "Opened {1}: {0} page": {
-    "en_other": "Opened {1}: {0} pages"
+    "other": "Opened {1}: {0} pages"
   },
   "The pages kept from last time could not be read.": {},
   "Bringing back {0} page…": {
-    "en_other": "Bringing back {0} pages…"
+    "other": "Bringing back {0} pages…"
   },
   "{0} of {1} pages is back from last time.": {
-    "en_other": "{0} of {1} pages are back from last time."
+    "other": "{0} of {1} pages are back from last time."
   },
   "{0} page is back from last time.": {
-    "en_other": "{0} pages are back from last time."
+    "other": "{0} pages are back from last time."
   },
   "Document {0} starts at page {1}. {2}": {},
   "Page {0} joins the document before it. {1}": {},
   "Reading barcodes on {0} queued page…": {
-    "en_other": "Reading barcodes on {0} queued pages…"
+    "other": "Reading barcodes on {0} queued pages…"
   },
   "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}": {
-    "en_other": "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}"
+    "other": "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}"
   },
   "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.": {},
   "Copied {0} and its picture to the clipboard.": {},
   "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.": {
-    "en_other": "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}."
+    "other": "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}."
   },
   "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.": {
-    "en_other": "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}."
+    "other": "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}."
   },
   "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
-    "en_other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
   },
   "Added {0} page — {1} in queue. Scan more or {2}.": {
-    "en_other": "Added {0} pages — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages — {1} in queue. Scan more or {2}."
   },
   "Found {0} photo.": {
-    "en_other": "Found {0} photos."
+    "other": "Found {0} photos."
   },
   "Saved {0} photo to {1}": {
-    "en_other": "Saved {0} photos to {1}"
+    "other": "Saved {0} photos to {1}"
   },
   "Scanned {0} front side before the feeder stopped. {1}": {
-    "en_other": "Scanned {0} front sides before the feeder stopped. {1}"
+    "other": "Scanned {0} front sides before the feeder stopped. {1}"
   },
   "Scanned {0} front side. Turn the stack over and scan the back sides.": {
-    "en_other": "Scanned {0} front sides. Turn the stack over and scan the back sides."
+    "other": "Scanned {0} front sides. Turn the stack over and scan the back sides."
   },
   "{0} front side scanned. Turn the stack over and scan the back sides.": {
-    "en_other": "{0} front sides scanned. Turn the stack over and scan the back sides."
+    "other": "{0} front sides scanned. Turn the stack over and scan the back sides."
   },
   "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.": {
-    "en_other": "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}."
+    "other": "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}."
   },
   "Kept {0} front side — {1} in queue. Scan another stack or {2}.": {
-    "en_other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}."
+    "other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}."
   },
   "Listening on port {1}. {0} phone is paired.": {
-    "en_other": "Listening on port {1}. {0} phones are paired."
+    "other": "Listening on port {1}. {0} phones are paired."
   },
   "{0} file": {
-    "en_other": "{0} files"
+    "other": "{0} files"
   },
   "{0} photo": {
-    "en_other": "{0} photos"
+    "other": "{0} photos"
   },
   "{0} receipt": {
-    "en_other": "{0} receipts"
+    "other": "{0} receipts"
   },
   "Scanning stopped after {0} page; it was kept.": {
-    "en_other": "Scanning stopped after {0} pages; they were kept."
+    "other": "Scanning stopped after {0} pages; they were kept."
   },
   "Sent {0} page to {1}, {2} copies.": {
-    "en_other": "Sent {0} pages to {1}, {2} copies."
+    "other": "Sent {0} pages to {1}, {2} copies."
   },
   "Sent {0} page to {1}.": {
-    "en_other": "Sent {0} pages to {1}."
+    "other": "Sent {0} pages to {1}."
   },
   "{0} spread split into pages.": {
-    "en_other": "{0} spreads split into pages."
+    "other": "{0} spreads split into pages."
   },
   "The spine of {0} spread was not found: it was added as one page (Split… on it splits it).": {
-    "en_other": "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it)."
+    "other": "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it)."
   },
   "Save {0} photo": {
-    "en_other": "Save {0} photos"
+    "other": "Save {0} photos"
   },
   "{0} turned upright.": {
-    "en_other": "{0} turned upright."
+    "other": "{0} turned upright."
   },
   "{0} looks blank and will be skipped.": {
-    "en_other": "{0} look blank and will be skipped."
+    "other": "{0} look blank and will be skipped."
   },
   "{0} looks blank.": {
-    "en_other": "{0} look blank."
+    "other": "{0} look blank."
   },
   "Spine shadow softened on {0} page.": {
-    "en_other": "Spine shadow softened on {0} pages."
+    "other": "Spine shadow softened on {0} pages."
   },
   "No pages were added.": {},
   "Cancelled.": {},
   "Added {0} page from photos — {1} in queue. Scan more or {2}.": {
-    "en_other": "Added {0} pages from photos — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages from photos — {1} in queue. Scan more or {2}."
   },
   "{0} photo was skipped.": {
-    "en_other": "{0} photos were skipped."
+    "other": "{0} photos were skipped."
   },
   "{0} photo could not be opened.": {
-    "en_other": "{0} photos could not be opened."
+    "other": "{0} photos could not be opened."
   },
   "Cancelled after adding {0} page from photos — {1} in queue.": {
-    "en_other": "Cancelled after adding {0} pages from photos — {1} in queue."
+    "other": "Cancelled after adding {0} pages from photos — {1} in queue."
   },
   "No date was found on them; the PDF is named by today's date.": {},
   "No date was found on it; it is named by today's date.": {},
   "No date was found on them; they are named by today's date.": {},
   "Save {0} Receipt": {
-    "en_other": "Save {0} Receipts"
+    "other": "Save {0} Receipts"
   },
   "Saved {0} receipt in one PDF: {1}": {
-    "en_other": "Saved {0} receipts in one PDF: {1}"
+    "other": "Saved {0} receipts in one PDF: {1}"
   },
   "Saved {0} receipt: {1}": {
-    "en_other": "Saved {0} receipts: {1}"
+    "other": "Saved {0} receipts: {1}"
   },
   "No date was found on {0} of them; it is named by today's date.": {
-    "en_other": "No date was found on {0} of them; they are named by today's date."
+    "other": "No date was found on {0} of them; they are named by today's date."
   },
   "Connected · {0} page queued there": {
-    "en_other": "Connected · {0} pages queued there"
+    "other": "Connected · {0} pages queued there"
   },
   "{0} document waiting to be sent": {
-    "en_other": "{0} documents waiting to be sent"
+    "other": "{0} documents waiting to be sent"
   },
   "{0} document for a computer no longer paired": {
-    "en_other": "{0} documents for a computer no longer paired"
+    "other": "{0} documents for a computer no longer paired"
   },
   "{0} document in the cloud folder": {
-    "en_other": "{0} documents in the cloud folder"
+    "other": "{0} documents in the cloud folder"
   },
   "New document every {0} sheet": {
-    "en_other": "New document every {0} sheets"
+    "other": "New document every {0} sheets"
   },
   "Delete {0} page?": {
-    "en_other": "Delete {0} pages?"
+    "other": "Delete {0} pages?"
   },
   "Delete {0} page?|all": {
-    "en_other": "Delete all {0} pages?"
+    "other": "Delete all {0} pages?"
   },
   "{0} file in {1}": {
-    "en_other": "{0} files in {1}"
+    "other": "{0} files in {1}"
   },
   "This document has more than {1} page.": {
-    "en_other": "This document has more than {1} pages."
+    "other": "This document has more than {1} pages."
   },
   "{0} is no longer in its folder. It may have been moved, renamed or deleted.": {},
   "{0} of the files is no longer in its folder. It may have been moved, renamed or deleted.": {
-    "en_other": "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted."
+    "other": "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted."
   },
   "Copied {0} to the clipboard.": {},
   "Copied {0} file to the clipboard.": {
-    "en_other": "Copied {0} files to the clipboard."
+    "other": "Copied {0} files to the clipboard."
   },
   "Done with fronts": {},
   "Done with Fronts": {},
   "Saved {0}-page PDF: {1}": {
-    "en_other": "Saved {0}-page PDF: {1}"
+    "other": "Saved {0}-page PDF: {1}"
   },
   "Save {0}": {},
   "Save {0} {1}": {
-    "en_other": "Save {0} {1}s"
+    "other": "Save {0} {1}s"
   },
   "{0} and {1} found.": {},
   "{0} found.": {},
   "{0} problem": {
-    "en_other": "{0} problems"
+    "other": "{0} problems"
   },
   "{0} warning": {
-    "en_other": "{0} warnings"
+    "other": "{0} warnings"
   },
   "Two-sided scanning uses the document feeder.": {},
   "Needs the feeder": {},
@@ -771,7 +725,7 @@
   "Phone has not reached this {0} lately?": {},
   "{0} and {1}": {},
   "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.": {
-    "en_other": "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here."
+    "other": "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here."
   },
   "No scanner answers at {0}": {},
   "Check that it is on and its address hasn't changed.": {},
@@ -881,22 +835,22 @@
   "Most scanners that print or copy also join Wi-Fi. The scanner's manual shows how.": {},
   "Press a button on the scanner. Close scanning apps on other devices. Some scanners work only with Windows (WSD) or their maker's app.": {},
   "{0} scanner found": {
-    "en_other": "{0} scanners found"
+    "other": "{0} scanners found"
   },
   "{0} TWAIN scanner driver is installed.": {
-    "en_other": "{0} TWAIN scanner drivers are installed."
+    "other": "{0} TWAIN scanner drivers are installed."
   },
   "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet.": {
-    "en_other": "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet."
+    "other": "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet."
   },
   "{1} is installed only for 32-bit apps.": {
-    "en_other": "{1} are installed only for 32-bit apps."
+    "other": "{1} are installed only for 32-bit apps."
   },
   "A TWAIN driver is 32-bit only": {
-    "en_other": "{0} TWAIN drivers are 32-bit only"
+    "other": "{0} TWAIN drivers are 32-bit only"
   },
   "{0} network scanner found.": {
-    "en_other": "{0} network scanners found."
+    "other": "{0} network scanners found."
   },
   "Load paper in the feeder, then scan again.": {},
   "Paper is jammed in the scanner. Clear the jam, then scan again.": {},
@@ -1069,16 +1023,16 @@
   "Page {0} is cropped again, with the spine shadow softened.": {},
   "Page {0} is cropped again.": {},
   "{0} cropped or straightened.": {
-    "en_other": "{0} cropped or straightened."
+    "other": "{0} cropped or straightened."
   },
   "{0} cropped and straightened.": {
-    "en_other": "{0} cropped and straightened."
+    "other": "{0} cropped and straightened."
   },
   "{0} straightened.": {
-    "en_other": "{0} straightened."
+    "other": "{0} straightened."
   },
   "{0} cropped.": {
-    "en_other": "{0} cropped."
+    "other": "{0} cropped."
   },
   "Saved the separator sheet: {0}. Print it at actual size (100%), as many as you need, and put one in front of each document after the first.": {},
   "Import photos of documents…": {},
@@ -1153,7 +1107,7 @@
   "Saving receipt {0} of {1}…": {},
   "The text could not be read.": {},
   "Found {0} receipt.": {
-    "en_other": "Found {0} receipts."
+    "other": "Found {0} receipts."
   },
   "Page {0}: {1}.": {},
   "Page {0} is cut out again.": {},
@@ -1476,13 +1430,13 @@
   "Page {0}'s original picture": {},
   "Page {0}'s picture": {},
   "Saved {0}-page PDF: {1} ({2}) and its text, {3}": {
-    "en_other": "Saved {0}-page PDF: {1} ({2}) and its text, {3}"
+    "other": "Saved {0}-page PDF: {1} ({2}) and its text, {3}"
   },
   "Saved {0}-page PDF: {1} ({2})": {
-    "en_other": "Saved {0}-page PDF: {1} ({2})"
+    "other": "Saved {0}-page PDF: {1} ({2})"
   },
   "Saved {0}-page PDF: {1} and its text, {2}": {
-    "en_other": "Saved {0}-page PDF: {1} and its text, {2}"
+    "other": "Saved {0}-page PDF: {1} and its text, {2}"
   },
   "Saved {0} ({1}) and its text, {2}": {},
   "Saved {0} ({1})": {},
@@ -1495,33 +1449,33 @@
   "Saved the ID card on one {0} page: {1}": {},
   "Saved the ID card on one {0} page: {1}, and each side as an image": {},
   "{0} page, {1}": {
-    "en_other": "{0} pages, {1}"
+    "other": "{0} pages, {1}"
   },
   "Saved {0} Word document ({1}): {2}": {
-    "en_other": "Saved {0} Word documents ({1}): {2}"
+    "other": "Saved {0} Word documents ({1}): {2}"
   },
   "Saved {0} text file ({1}): {2}": {
-    "en_other": "Saved {0} text files ({1}): {2}"
+    "other": "Saved {0} text files ({1}): {2}"
   },
   "Saved {0} PDF ({1}): {2}": {
-    "en_other": "Saved {0} PDFs ({1}): {2}"
+    "other": "Saved {0} PDFs ({1}): {2}"
   },
   "Saved {0} PDF ({1}): {2} and their text, {3}": {
-    "en_other": "Saved {0} PDFs ({1}): {2} and their text, {3}"
+    "other": "Saved {0} PDFs ({1}): {2} and their text, {3}"
   },
   "Added {0} page to {1} (now {2})": {
-    "en_other": "Added {0} pages to {1} (now {2})"
+    "other": "Added {0} pages to {1} (now {2})"
   },
   "Added {0} page to {1} (now {2}, {3})": {
-    "en_other": "Added {0} pages to {1} (now {2}, {3})"
+    "other": "Added {0} pages to {1} (now {2}, {3})"
   },
   "From phone": {},
   "Sent from a paired phone": {},
   "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {
-    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts."
+    "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts."
   },
   "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {
-    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts."
+    "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts."
   },
   "Network (eSCL)": {},
   "Demo": {},
@@ -1548,22 +1502,22 @@
   "The scanner driver reported an error. ({0})": {},
   "The scanner driver reported an error: {0} ({1})": {},
   "{0} scanned page is still in the queue and not saved.": {
-    "en_other": "{0} scanned pages are still in the queue and not saved."
+    "other": "{0} scanned pages are still in the queue and not saved."
   },
   "Replace the page in the queue?": {
-    "en_other": "Replace the {0} pages in the queue?"
+    "other": "Replace the {0} pages in the queue?"
   },
   "It has not been saved. “{1}” opens in its place.": {
-    "en_other": "They have not been saved. “{1}” opens in their place."
+    "other": "They have not been saved. “{1}” opens in their place."
   },
   "Remove the page?": {
-    "en_other": "Remove all {0} pages?"
+    "other": "Remove all {0} pages?"
   },
   "{0} file saved": {
-    "en_other": "{0} files saved"
+    "other": "{0} files saved"
   },
   "{0} sheet": {
-    "en_other": "{0} sheets"
+    "other": "{0} sheets"
   },
   "Confirm the scanner's certificate to continue.": {},
   "The scanner was not added, because its certificate was not trusted.": {},
@@ -1642,10 +1596,10 @@
   "More about {0}": {},
   "More information": {},
   "Discard {0} receipt?": {
-    "en_other": "Discard {0} receipts?"
+    "other": "Discard {0} receipts?"
   },
   "Discard {0} photo?": {
-    "en_other": "Discard {0} photos?"
+    "other": "Discard {0} photos?"
   },
   "{0} did not respond.": {},
   "The session was closed.": {},
@@ -1692,7 +1646,7 @@
   "Scale the image to fit the window": {},
   "Show the preview at full size and scroll around it": {},
   "{0} min ago": {
-    "en_other": "{0} min ago"
+    "other": "{0} min ago"
   },
   "{0} {1}. Current task.": {},
   "{0} {1}.": {},
@@ -1711,13 +1665,13 @@
   "The original was removed but the rotated copy could not take its name. It was kept as \"{0}\" in the same folder.": {},
   "The rotated copy could not be written.": {},
   "{0} bytes": {
-    "en_other": "{0} bytes"
+    "other": "{0} bytes"
   },
   "The app window is not open.": {},
   "There is nothing to share.": {},
   "The file could not be shared: {0}": {},
   "Saved by Lazy Scan": {
-    "en_other": "{0} files saved by Lazy Scan"
+    "other": "{0} files saved by Lazy Scan"
   },
   "Demo (no hardware)": {},
   "via {0}": {},
@@ -1742,7 +1696,7 @@
   "Skip {0}": {},
   "Nothing is printed on the back: save the front only": {},
   "{1}, {0} page": {
-    "en_other": "{1}, {0} pages"
+    "other": "{1}, {0} pages"
   },
   "Show scanner and preset names": {},
   "Hide scanner and preset names": {},
@@ -1792,13 +1746,13 @@
   "Remove address {0}": {},
   "Delete “{0}”": {},
   "Save {0} Word document": {
-    "en_other": "Save {0} Word documents"
+    "other": "Save {0} Word documents"
   },
   "Save {0} text file": {
-    "en_other": "Save {0} text files"
+    "other": "Save {0} text files"
   },
   "Save {0} PDF": {
-    "en_other": "Save {0} PDFs"
+    "other": "Save {0} PDFs"
   },
   "PDF documents": {},
   "{0} (default)": {},
@@ -1814,7 +1768,7 @@
   "Add its pages after the pages in the queue": {},
   "Clear the queue and open the document in its place": {},
   "The page in the queue has not been saved. “{1}” opens in its place.\n\nDiscard the page?": {
-    "en_other": "The {0} pages in the queue have not been saved. “{1}” opens in their place.\n\nDiscard the pages?"
+    "other": "The {0} pages in the queue have not been saved. “{1}” opens in their place.\n\nDiscard the pages?"
   },
   "The file name has no {docdate}, so the date printed on the receipt is not used.": {},
   "Each file is named by today's date.": {},
@@ -1840,7 +1794,7 @@
   "Prints a Patch T separator sheet at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {},
   "{0}. Save the separator sheet as a PDF to print it elsewhere.": {},
   "sheet": {
-    "en_other": "sheets"
+    "other": "sheets"
   },
   "Still stopping the current operation. Quit now anyway? A file being written may be left incomplete.": {},
   "A scan or save is still running.\n\nStop it and quit?": {},
@@ -1862,17 +1816,17 @@
   "{0} {1}": {},
   "{0}  ({1})": {},
   "Remove {0} page? It has not been saved.": {
-    "en_other": "Remove all {0} pages? They have not been saved."
+    "other": "Remove all {0} pages? They have not been saved."
   },
   "Save preset": {},
   "Preset name": {},
   "Save": {},
   "Choose the save folder": {},
   "The {0} receipt has not been saved.\n\nDiscard it?": {
-    "en_other": "The {0} receipts have not been saved.\n\nDiscard them?"
+    "other": "The {0} receipts have not been saved.\n\nDiscard them?"
   },
   "The {0} photo has not been saved.\n\nDiscard it?": {
-    "en_other": "The {0} photos have not been saved.\n\nDiscard them?"
+    "other": "The {0} photos have not been saved.\n\nDiscard them?"
   },
   "The original scan for this photo is no longer available.": {},
   "Cancel": {},

@@ -7,17 +7,16 @@ namespace LazyScan.Core.Tests;
 
 public sealed class PdfProtectionTextTests
 {
-    // The Turkish rows of l10n/shared.json, as the resource table would hold them.
+    // The rows of l10n/lang/tr.json, as the resource table would hold them.
     private static Dictionary<string, string> TurkishTable([CallerFilePath] string source = "")
     {
-        var catalog = Path.Combine(Path.GetDirectoryName(source)!, "..", "..", "l10n", "shared.json");
+        var catalog = Path.Combine(Path.GetDirectoryName(source)!, "..", "..", "l10n", "lang", "tr.json");
         using var doc = JsonDocument.Parse(File.ReadAllText(catalog));
         var table = new Dictionary<string, string>();
-        foreach (var entry in doc.RootElement.EnumerateObject())
+        foreach (var entry in doc.RootElement.GetProperty("strings").EnumerateObject())
         {
-            if (!entry.Value.TryGetProperty("tr", out var tr)) continue;
-            if (tr.ValueKind == JsonValueKind.String) table[entry.Name] = tr.GetString()!;
-            else foreach (var form in tr.EnumerateObject()) table[entry.Name + "|" + form.Name] = form.Value.GetString()!;
+            if (entry.Value.ValueKind == JsonValueKind.String) table[entry.Name] = entry.Value.GetString()!;
+            else foreach (var form in entry.Value.EnumerateObject()) table[entry.Name + "|" + form.Name] = form.Value.GetString()!;
         }
         return table;
     }

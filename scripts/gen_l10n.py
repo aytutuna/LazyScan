@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generates the Kit.strings files and Strings.tr.resx from l10n/shared.json.
+"""Generates the Kit.strings files and Strings.tr.resx from l10n/shared.json
+and l10n/lang/<lang>.json.
 
 CI runs it and fails if the checked-in output differs.
 """
@@ -11,6 +12,7 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "l10n" / "shared.json"
+LANG_DIR = ROOT / "l10n" / "lang"
 LANGUAGES = ["tr"]
 STRINGS_DIRS = [ROOT / "ios" / "LazyScaniOS", ROOT / "l10n" / "mac"]
 RESX = "windows/LazyScan.Core/Strings.{}.resx"
@@ -36,11 +38,34 @@ def placeholders(text):
     return set(PLACEHOLDER.findall(text))
 
 
+def no_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            sys.exit(f"duplicate key: {key!r}")
+        out[key] = value
+    return out
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=no_duplicates)
+
+
 def load():
-    data = json.loads(CATALOG.read_text(encoding="utf-8"))
+    data = read_json(CATALOG)
     errors = []
+    for lang in LANGUAGES:
+        strings = read_json(LANG_DIR / f"{lang}.json")["strings"]
+        for key in strings:
+            if key not in data:
+                errors.append(f"{key!r}: {lang} has no English entry")
+        for key, entry in data.items():
+            if lang in entry:
+                errors.append(f"{key!r}: {lang} belongs in l10n/lang/{lang}.json")
+            elif key in strings:
+                entry[lang] = strings[key]
     for key, entry in data.items():
-        other = entry.get("en_other")
+        other = entry.get("other")
         for lang in LANGUAGES:
             value = entry.get(lang)
             if value is None:
@@ -69,7 +94,7 @@ def rows(data, lang):
     for key, entry in data.items():
         if lang not in entry:
             continue
-        if "en_other" in entry:
+        if "other" in entry:
             yield key + "|one", entry[lang]["one"]
             yield key + "|other", entry[lang]["other"]
         else:
@@ -142,7 +167,7 @@ def main():
     for key, path in missing.items():
         print(f"missing from the catalog: {key!r} ({path})")
     for key, (path, other) in used.items():
-        if key in data and data[key].get("en_other") != other:
+        if key in data and data[key].get("other") != other:
             print(f"plural text differs from the catalog: {key!r} ({path})")
             missing[key] = path
     for key in data:

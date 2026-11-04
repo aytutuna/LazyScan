@@ -1,0 +1,25 @@
+{
+  "strings": {
+    "Require a password": "Parola koruması",
+    "PDFs open only with the password. You type it when saving.": "PDF'ler yalnızca parolayla açılır. Parolayı kaydederken girersiniz.",
+    "Saved PDFs open only with a password. You type it each time you save: it is never stored, and a forgotten password can't be recovered.": "Kaydedilen PDF'ler yalnızca parolayla açılır. Parolayı her kaydettiğinizde girersiniz; parola saklanmaz ve unutulursa kurtarılamaz.",
+    "Not with PDF/A": "PDF/A ile kullanılamaz",
+    "Set a PDF password": "PDF parolası belirleyin",
+    "It can't be recovered if forgotten. Every PDF of this save gets it; the next save asks again.": "Parola unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur.",
+    "Anyone who opens the file will need this password. It isn't saved anywhere, and it can't be recovered if it's forgotten. Every PDF saved now gets it; the next save asks for it again.": "Dosyayı açan herkesin bu parolayı girmesi gerekir. Parola hiçbir yerde saklanmaz ve unutulursa kurtarılamaz. Şimdi kaydedilecek tüm PDF'lere uygulanır; bir dahaki sefere yeniden sorulur.",
+    "Most PDF apps respect these choices, but they are a request, not a lock: someone with the password can get around them with other software.": "Çoğu PDF uygulaması bu seçimlere uyar, ancak bunlar dosyayı kilitlemez: parolayı bilen biri başka bir yazılımla bu sınırları aşabilir.",
+    "Some apps ignore these settings.": "Bazı uygulamalar bu ayarları yok sayar.",
+    "Not saved: no password was given for the protected PDF.": "Kaydedilmedi: korumalı PDF için parola girilmedi.",
+    "Not saved: no password was given for the protected PDF. The page is in the queue: save with a password, or turn the password off.": {"one": "Kaydedilmedi: korumalı PDF için parola girilmedi. Sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın.", "other": "Kaydedilmedi: korumalı PDF için parola girilmedi. {0} sayfa kuyrukta: parolayla kaydedin ya da parola korumasını kapatın."},
+    "Type a password.": "Parola girin.",
+    "A password can't contain tabs, line breaks or other control characters.": "Parola sekme, satır sonu ya da başka bir denetim karakteri içeremez.",
+    "Passwords don't match": "Parolalar eşleşmiyor",
+    "Weak · use 12+ characters": "Zayıf · en az 12 karakter",
+    "Fair · longer is safer": "Orta · uzadıkça güçlenir",
+    "Strong": "Güçlü",
+    "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.": "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az 12 karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın.",
+    "Fair. A few more characters, or another word, would make it much harder to guess.": "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır.",
+    "Strong.": "Güçlü.",
+    "{0} scan": {"one": "{0} tarama", "other": "{0} tarama"}
+  }
+}
