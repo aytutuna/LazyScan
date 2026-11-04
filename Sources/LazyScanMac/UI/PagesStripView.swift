@@ -114,7 +114,7 @@ struct PagesStripView: View {
                     .fixedSize()
                     .disabled(state.isBusy || saveCount == 0)
                     .help(saveHelp.isEmpty ? (target?.path ?? "") : saveHelp)
-                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle)))
+                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
                 } else {
                     Button {
                         state.savePDF()
@@ -124,7 +124,7 @@ struct PagesStripView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(state.isBusy || saveCount == 0)
                     .help(saveHelp)
-                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle)))
+                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
                 }
 
                 HStack(spacing: 8) {
@@ -194,8 +194,8 @@ struct PagesStripView: View {
         }
     }
 
-    private func saveAccessibilityLabel(_ title: String) -> String {
-        lockedSave ? title.replacingOccurrences(of: "PDF", with: String(localized: "password-protected PDF", comment: "Replaces the word PDF inside the Save button's title for VoiceOver")) : title
+    private func saveAccessibilityLabel(_ title: String, _ plan: SavePlan) -> String {
+        lockedSave ? plan.protectedSaveTitle : title
     }
 }
 

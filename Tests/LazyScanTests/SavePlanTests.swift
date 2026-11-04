@@ -56,7 +56,13 @@ final class SavePlanTests: XCTestCase {
                            separatorPages: 0, skippedPages: 0)
         XCTAssertEqual(one.saveTitle(.pdf), "Save PDF (2 pages)")
         XCTAssertEqual(one.saveTitle(.word), OutputFormat.word.saveTitle(pageCount: 2))
+        XCTAssertEqual(one.protectedSaveTitle, "Save password-protected PDF (2 pages)")
         XCTAssertEqual(one.leftOutNote(), "")
+        let single = SavePlan(documents: [SaveDocument(number: 1, pages: [makePage()], label: nil)],
+                              separatorPages: 0, skippedPages: 0)
+        XCTAssertEqual(single.protectedSaveTitle, "Save password-protected PDF (1 page)")
+        XCTAssertEqual(SavePlan(documents: [], separatorPages: 0, skippedPages: 0).protectedSaveTitle,
+                       "Save password-protected PDF")
 
         let three = SavePlan(documents: [SaveDocument(number: 1, pages: [makePage(), makePage()], label: nil),
                                          SaveDocument(number: 2, pages: [makePage()], label: "Lease"),
@@ -66,6 +72,7 @@ final class SavePlanTests: XCTestCase {
         XCTAssertEqual(three.saveTitle(.jpeg), "Save 3 PDFs (4 pages)")
         XCTAssertEqual(three.saveTitle(.word), "Save 3 Word documents (4 pages)")
         XCTAssertEqual(three.saveTitle(.text), "Save 3 text files (4 pages)")
+        XCTAssertEqual(three.protectedSaveTitle, "Save 3 password-protected PDFs (4 pages)")
         XCTAssertEqual(three.leftOutNote(), " — 2 separator pages and 1 skipped page were left out")
         XCTAssertEqual(three.savedMessage(.pdf, fileNames: ["A.pdf", "B.pdf", "C.pdf"]),
                        "Saved 3 PDFs (4 pages): A.pdf, B.pdf, C.pdf — 2 separator pages and 1 skipped page were left out")

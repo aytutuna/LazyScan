@@ -54,6 +54,22 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     }
 
     /// <summary>
+    /// <see cref="SaveTitle"/> for a PDF that gets a password: "Save password-protected PDF (7 pages)",
+    /// "Save 3 password-protected PDFs (7 pages)".
+    /// </summary>
+    public string ProtectedSaveTitle
+    {
+        get
+        {
+            if (IsSplit)
+                return Loc.Plural(PageCount, "Save {1} password-protected PDFs ({0} page)",
+                                  "Save {1} password-protected PDFs ({0} pages)", Documents.Count);
+            if (PageCount <= 0) return Loc.T("Save password-protected PDF");
+            return Loc.Plural(PageCount, "Save password-protected PDF ({0} page)", "Save password-protected PDF ({0} pages)");
+        }
+    }
+
+    /// <summary>
     /// What was left out, after the saved message: " — 1 skipped page was left out", " — 2 separator
     /// pages were left out", " — 2 separator pages and 1 skipped page were left out"; empty when nothing was.
     /// </summary>

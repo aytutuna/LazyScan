@@ -53,7 +53,11 @@ public class SavePlanTests
         var one = new SavePlan([new SaveDocument(1, [MakePage(), MakePage()], null)], 0, 0);
         Assert.Equal("Save PDF (2 pages)", one.SaveTitle(OutputFormat.Pdf));
         Assert.Equal(OutputFormats.SaveTitle(OutputFormat.Word, 2), one.SaveTitle(OutputFormat.Word));
+        Assert.Equal("Save password-protected PDF (2 pages)", one.ProtectedSaveTitle);
         Assert.Equal("", one.LeftOutNote());
+        var single = new SavePlan([new SaveDocument(1, [MakePage()], null)], 0, 0);
+        Assert.Equal("Save password-protected PDF (1 page)", single.ProtectedSaveTitle);
+        Assert.Equal("Save password-protected PDF", new SavePlan([], 0, 0).ProtectedSaveTitle);
 
         var three = new SavePlan(
             [new SaveDocument(1, [MakePage(), MakePage()], null), new SaveDocument(2, [MakePage()], "Lease"), new SaveDocument(3, [MakePage()], null)],
@@ -62,6 +66,7 @@ public class SavePlanTests
         Assert.Equal("Save 3 PDFs (4 pages)", three.SaveTitle(OutputFormat.Jpeg));
         Assert.Equal("Save 3 Word documents (4 pages)", three.SaveTitle(OutputFormat.Word));
         Assert.Equal("Save 3 text files (4 pages)", three.SaveTitle(OutputFormat.Text));
+        Assert.Equal("Save 3 password-protected PDFs (4 pages)", three.ProtectedSaveTitle);
         Assert.Equal(" — 2 separator pages and 1 skipped page were left out", three.LeftOutNote());
         Assert.Equal("Saved 3 PDFs (4 pages): A.pdf, B.pdf, C.pdf — 2 separator pages and 1 skipped page were left out",
                      three.SavedMessage(OutputFormat.Pdf, ["A.pdf", "B.pdf", "C.pdf"]));

@@ -281,6 +281,12 @@
   "Save {1} PDFs ({0} page)": {
     "en_other": "Save {1} PDFs ({0} pages)"
   },
+  "Save {1} password-protected PDFs ({0} page)": {
+    "en_other": "Save {1} password-protected PDFs ({0} pages)"
+  },
+  "Save password-protected PDF ({0} page)": {
+    "en_other": "Save password-protected PDF ({0} pages)"
+  },
   "— {0} skipped page was left out": {
     "en_other": "— {0} skipped pages were left out"
   },
@@ -1734,9 +1740,6 @@
   "{0}, step {1} of {2}: {3}": {},
   "Skip {0}": {},
   "Nothing is printed on the back: save the front only": {},
-  "Save {0} password-protected PDF": {
-    "en_other": "Save {0} password-protected PDFs"
-  },
   "{1}, {0} page": {
     "en_other": "{1}, {0} pages"
   },

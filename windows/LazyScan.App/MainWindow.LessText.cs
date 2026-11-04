@@ -47,7 +47,7 @@ public partial class MainWindow
     /// <summary>
     /// "Save PDF" with a badge of the pages it saves ("Save 3 PDFs" for a split queue), a lock instead
     /// of the PDF glyph while the PDF gets a password, and its name for screen readers: "Save PDF, 5
-    /// pages" or "Save password-protected PDF, 5 pages". With pages queued but none to save, it is
+    /// pages" or "Save password-protected PDF (5 pages)". With pages queued but none to save, it is
     /// greyed out and its tooltip says why. While a PDF picked on the start screen takes the pages it
     /// reads "Add to Contract.pdf", with the file's path and a × under it, and Collect pages is greyed
     /// out with its tooltip and help text saying why.
@@ -72,11 +72,10 @@ public partial class MainWindow
         SavePdfButton.Content = label;
         SavePdfButton.Tag = saveCount > 0 ? saveCount.ToString(System.Globalization.CultureInfo.CurrentCulture) : null;
         global::LazyScan.App.Icon.SetGlyph(SavePdfButton, locked ? "" : pdf ? "" : "");
-        string spoken = !locked ? label
-            : savePlan.IsSplit ? Loc.Plural(savePlan.Documents.Count, "Save {0} password-protected PDF", "Save {0} password-protected PDFs")
-            : Loc.T("Save password-protected PDF");
-        AutomationProperties.SetName(SavePdfButton,
-            saveCount > 0 ? Loc.Plural(saveCount, "{1}, {0} page", "{1}, {0} pages", spoken) : spoken);
+        string name = locked ? savePlan.ProtectedSaveTitle
+            : saveCount > 0 ? Loc.Plural(saveCount, "{1}, {0} page", "{1}, {0} pages", label)
+            : label;
+        AutomationProperties.SetName(SavePdfButton, name);
         bool nothingToSave = pageCount > 0 && saveCount == 0;
         SavePdfButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : null;
         ToolTipService.SetShowOnDisabled(SavePdfButton, true);

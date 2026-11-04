@@ -67,6 +67,18 @@ public struct SavePlan {
         }
     }
 
+    /// `saveTitle` for a PDF that gets a password, as VoiceOver reads it: "Save password-protected PDF
+    /// (7 pages)", "Save 3 password-protected PDFs (7 pages)".
+    public var protectedSaveTitle: String {
+        if isSplit {
+            return L10n.plural(pageCount, one: "Save {1} password-protected PDFs ({0} page)",
+                               other: "Save {1} password-protected PDFs ({0} pages)", documents.count)
+        }
+        guard pageCount > 0 else { return L10n.t("Save password-protected PDF") }
+        return L10n.plural(pageCount, one: "Save password-protected PDF ({0} page)",
+                           other: "Save password-protected PDF ({0} pages)")
+    }
+
     /// What was left out, after the saved message: " — 1 skipped page was left out", " — 2 separator
     /// pages were left out", " — 2 separator pages and 1 skipped page were left out"; empty when nothing was.
     public func leftOutNote() -> String {
