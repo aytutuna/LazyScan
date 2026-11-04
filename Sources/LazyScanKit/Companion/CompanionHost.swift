@@ -133,7 +133,7 @@ public final class CompanionHost: @unchecked Sendable {
         self.options = options
         networks.onChange = { [weak self] in
             guard let self else { return }
-            Task { await self.refresh() }
+            _ = self.chain { await self.update(restart: false) }
         }
     }
 
