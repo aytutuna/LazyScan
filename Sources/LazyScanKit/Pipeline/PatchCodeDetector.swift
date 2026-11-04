@@ -295,7 +295,7 @@ public enum PatchCodeDetector {
         let title = max(1, roundPixels(5, d))
         let body = max(1, roundPixels(2, d))
         drawText(&pixels, w, h, "SEPARATOR SHEET", top: middle - roundPixels(80, d), cell: title)
-        drawText(&pixels, w, h, code.label.localizedUppercase, top: middle - roundPixels(20, d), cell: title)
+        drawText(&pixels, w, h, code.label.uppercased(), top: middle - roundPixels(20, d), cell: title)
         drawText(&pixels, w, h, "PUT THIS SHEET IN FRONT OF EACH DOCUMENT.", top: middle + roundPixels(50, d), cell: body)
         drawText(&pixels, w, h, "PRINT AT ACTUAL SIZE (100%). DO NOT SHRINK.", top: middle + roundPixels(80, d), cell: body)
         return GrayImage(width: w, height: h, pixels: pixels, dpi: d)
