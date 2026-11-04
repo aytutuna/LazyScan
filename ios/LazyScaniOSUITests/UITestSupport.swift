@@ -253,7 +253,7 @@ extension XCUIApplication {
             let target: XCUIElement = inner.exists ? inner : toggle
             target.tap()
             // The first tap now and then lands while the drawer is still settling and does nothing.
-            if XCTWaiter.wait(for: [turned()], timeout: 3) != .completed {
+            if XCTWaiter.wait(for: [turned()], timeout: 3) != .completed, (toggle.value as? String) != wanted {
                 target.tap()
             }
         }
