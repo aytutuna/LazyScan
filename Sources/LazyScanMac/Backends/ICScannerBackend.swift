@@ -126,7 +126,7 @@ public final class ICScannerBackend: NSObject, ScannerBackend, ScannerBackendDia
 
     public func openSession(deviceID: String) async throws -> any ScannerSession {
         guard let device = scannersByID[deviceID] else {
-            throw ScanError.deviceUnavailable("The selected scanner is not connected.")
+            throw ScanError.deviceUnavailable(reason: { L10n.t("The selected scanner is not connected.") })
         }
         let info = devices.first(where: { $0.id == deviceID }) ?? Self.makeInfo(for: device)
         let session = ICHardwareScannerSession(device: device, info: info)
@@ -238,7 +238,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
                 try? await Task.sleep(nanoseconds: 20_000_000_000)
                 guard let self, self.openContinuation != nil else { return }
                 self.device.delegate = nil
-                self.resumeOpen(.failure(ScanError.deviceUnavailable("\(self.info.name) did not respond.")))
+                self.resumeOpen(.failure(ScanError.deviceUnavailable(reason: { L10n.t("{0} did not respond.", self.info.name) })))
             }
             device.requestOpenSession()
         }
@@ -247,7 +247,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     func close() async {
         guard !isClosing else { return }
         isClosing = true
-        failPendingWork(with: ScanError.sessionFailed("The session was closed."))
+        failPendingWork(with: ScanError.sessionFailed(reason: { L10n.t("The session was closed.") }))
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             closeContinuation = continuation
             // Do not hang forever if the device never answers: race a 3s timeout.
@@ -349,7 +349,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         }
 
         guard !cancelRequested else { throw ScanError.cancelled }
-        progressHandler?(ScanProgress(message: "Warming up…"))
+        progressHandler?(ScanProgress(message: L10n.t("Warming up…")))
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CGImage, Error>) in
             overviewContinuation = continuation
             device.requestOverviewScan()
@@ -429,7 +429,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         do {
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         } catch {
-            throw ScanError.scanFailed("Could not create a download folder: \(error.localizedDescription)")
+            throw ScanError.scanFailed(reason: { L10n.t("Could not create a download folder: {0}", error.localizedDescription) })
         }
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -441,7 +441,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         // Cancel pressed during functional-unit selection/warm-up must not
         // kick off the full scan anyway.
         guard !cancelRequested else { throw ScanError.cancelled }
-        progressHandler?(ScanProgress(message: "Scanning…"))
+        progressHandler?(ScanProgress(message: L10n.t("Scanning…")))
         let urls = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[URL], Error>) in
             scanContinuation = continuation
             device.requestScan()
@@ -456,7 +456,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         }
         guard !pages.isEmpty else {
             if unitType == .documentFeeder { throw ScanError.scannerProblem(.feederEmpty) }
-            throw ScanError.scanFailed("The scanner did not return any image data.")
+            throw ScanError.scanFailed(reason: { L10n.t("The scanner did not return any image data.") })
         }
         // A feeder that reads the last sheet first: back into reading order, each sheet's front
         // before its back, as the app expects of every backend.
@@ -509,17 +509,18 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     }
 
     private func ensureIdle() throws {
-        guard !isClosing else { throw ScanError.sessionFailed("The session is closed.") }
+        guard !isClosing else { throw ScanError.sessionFailed(reason: { L10n.t("The session is closed.") }) }
         guard openContinuation == nil, selectContinuation == nil,
               overviewContinuation == nil, scanContinuation == nil else {
-            throw ScanError.scanFailed("Another scan is already in progress.")
+            throw ScanError.scanFailed(reason: { L10n.t("Another scan is already in progress.") })
         }
     }
 
     private func selectFunctionalUnit(_ type: ICScannerFunctionalUnitType) async throws {
         guard device.selectedFunctionalUnit.type != type else { return }
         guard device.availableFunctionalUnitTypes.contains(NSNumber(value: type.rawValue)) else {
-            throw ScanError.unsupported("This scanner has no \(type == .documentFeeder ? "document feeder" : "flatbed").")
+            throw ScanError.unsupported(type == .documentFeeder ? L10n.t("This scanner has no document feeder.")
+                                                          : L10n.t("This scanner has no flatbed."))
         }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             selectContinuation = continuation
@@ -530,7 +531,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
                 try? await Task.sleep(nanoseconds: 15_000_000_000)
                 guard let self, self.selectContinuation != nil else { return }
                 self.resumeSelect(.failure(ScanError.deviceUnavailable(
-                    "\(self.info.name) did not respond while switching scan source.")))
+                    reason: { L10n.t("{0} did not respond while switching scan source.", self.info.name) })))
             }
             device.requestSelect(type)
         }
@@ -573,7 +574,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     /// Maps ImageCaptureCore errors to ScanError, turning cancellations into `.cancelled`.
     private func mapScanError(_ error: Error?) -> ScanError {
         guard let error else {
-            return cancelRequested ? .cancelled : .scanFailed("An unknown scanner error occurred.")
+            return cancelRequested ? .cancelled : .scanFailed(reason: { L10n.t("An unknown scanner error occurred.") })
         }
         let ns = error as NSError
         if ns.domain == ICErrorDomain, let code = ICReturn.Code(rawValue: ns.code) {
@@ -654,7 +655,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
 
     nonisolated func didRemove(_ device: ICDevice) {
         performOnMainActor {
-            self.failPendingWork(with: ScanError.deviceUnavailable("\(self.info.name) was disconnected."))
+            self.failPendingWork(with: ScanError.deviceUnavailable(reason: { L10n.t("{0} was disconnected.", self.info.name) }))
             self.resumeClose()
         }
     }
@@ -665,9 +666,9 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         performOnMainActor {
             let message: String
             if state == ICScannerStatusWarmingUp {
-                message = "Warming up…"
+                message = L10n.t("Warming up…")
             } else if state == ICScannerStatusWarmUpDone {
-                message = "Scanning…"
+                message = L10n.t("Scanning…")
             } else if let localized, !localized.isEmpty {
                 message = localized
             } else {
@@ -699,7 +700,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     nonisolated func scannerDevice(_ scanner: ICScannerDevice, didScanTo url: URL) {
         performOnMainActor {
             self.scannedURLs.append(url)
-            self.progressHandler?(ScanProgress(message: "Transferring…"))
+            self.progressHandler?(ScanProgress(message: L10n.t("Transferring…")))
         }
     }
 
@@ -710,7 +711,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
             } else if let image = self.device.selectedFunctionalUnit.overviewImage {
                 self.resumeOverview(.success(image))
             } else {
-                self.resumeOverview(.failure(ScanError.scanFailed("The scanner returned no overview image.")))
+                self.resumeOverview(.failure(ScanError.scanFailed(reason: { L10n.t("The scanner returned no overview image.") })))
             }
         }
     }

@@ -37,12 +37,12 @@ struct IdCardReviewView: View {
             ScrollView {
                 HStack(alignment: .top, spacing: 24) {
                     VStack(alignment: .leading, spacing: 12) {
-                        IdCardSideCard(title: "Front", photo: state.idCardFront, note: state.idCardFrontNote,
+                        IdCardSideCard(side: .front, title: String(localized: "Front"), photo: state.idCardFront, note: state.idCardFrontNote,
                                        busy: state.isBusy,
                                        onRotate: { state.rotateIdCardSide(.front) },
                                        onAdjustCrop: { editingPhoto = state.idCardFront },
                                        onRetake: { state.retakeIdCardSide(.front) })
-                        IdCardSideCard(title: "Back", photo: state.idCardBack, note: state.idCardBackNote,
+                        IdCardSideCard(side: .back, title: String(localized: "Back"), photo: state.idCardBack, note: state.idCardBackNote,
                                        busy: state.isBusy,
                                        onRotate: { state.rotateIdCardSide(.back) },
                                        onAdjustCrop: { editingPhoto = state.idCardBack },
@@ -122,7 +122,8 @@ struct IdCardReviewView: View {
                 }
                 .disabled(state.idCardFront == nil || state.isBusy || !state.hasPrinter)
                 .help(state.hasPrinter
-                      ? "Print at real size on \(state.copyPrinterName ?? "the default printer")"
+                      ? (state.copyPrinterName.map { String(localized: "Print at real size on \($0)") }
+                         ?? String(localized: "Print at real size on the default printer"))
                       : PrintText.noPrinterMessage)
                 Button("Discard") {
                     asksDiscard = true
@@ -161,16 +162,21 @@ struct IdCardReviewView: View {
 
     /// "Save PDF", "Save JPEG".
     private var saveTitle: String {
-        state.settings.format.pageFormat == .pdf ? "Save PDF" : "Save \(state.settings.format.pageFormat.label)"
+        state.settings.format.pageFormat == .pdf
+            ? String(localized: "Save PDF")
+            : String(localized: "Save \(state.settings.format.pageFormat.label)")
     }
 
     private var saveHelp: String {
-        let sides = state.idCardBack == nil ? "the front" : "both sides"
-        return "Save \(sides) on one \(state.idCardPaperSize.label) page"
+        let paper = state.idCardPaperSize.label
+        return state.idCardBack == nil
+            ? String(localized: "Save the front on one \(paper) page")
+            : String(localized: "Save both sides on one \(paper) page")
     }
 
     private var discardHelp: String {
-        state.idCardBack == nil ? "Delete the front; can't be undone" : "Delete both sides; can't be undone"
+        state.idCardBack == nil ? String(localized: "Delete the front; can't be undone")
+                                : String(localized: "Delete both sides; can't be undone")
     }
 }
 
@@ -179,6 +185,7 @@ struct IdCardReviewView: View {
 /// One side of the card: its picture (turned as the user turned it), the note about its crop, and
 /// turning, fixing the crop and scanning it again; a missing back offers scanning it.
 fileprivate struct IdCardSideCard: View {
+    let side: PageSide
     let title: String
     let photo: DetectedPhoto?
     let note: String?
@@ -190,7 +197,14 @@ fileprivate struct IdCardSideCard: View {
     @State private var thumbnail: CGImage?
 
     /// "Front side", "Back side: none".
-    private var accessibilityName: String { photo == nil ? "\(title) side: none" : "\(title) side" }
+    private var accessibilityName: String {
+        switch (side, photo == nil) {
+        case (.front, true): String(localized: "Front side: none")
+        case (.front, false): String(localized: "Front side")
+        case (.back, true): String(localized: "Back side: none")
+        case (.back, false): String(localized: "Back side")
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -204,17 +218,17 @@ fileprivate struct IdCardSideCard: View {
                         Image(systemName: "rotate.right")
                     }
                     .help("Rotate")
-                    .accessibilityLabel(Text("Rotate the \(title.lowercased()) 90° clockwise"))
+                    .accessibilityLabel(side == .front ? Text("Rotate the front 90° clockwise") : Text("Rotate the back 90° clockwise"))
                     Button(action: onAdjustCrop) {
                         Image(systemName: "crop")
                     }
                     .help("Fix crop")
-                    .accessibilityLabel(Text("Fix the crop of the \(title.lowercased())"))
+                    .accessibilityLabel(side == .front ? Text("Fix the crop of the front") : Text("Fix the crop of the back"))
                     Button(action: onRetake) {
                         Image(systemName: "arrow.clockwise")
                     }
                     .help("Scan again")
-                    .accessibilityLabel(Text("Scan the \(title.lowercased()) again"))
+                    .accessibilityLabel(side == .front ? Text("Scan the front again") : Text("Scan the back again"))
                 }
             }
             .buttonStyle(.borderless)

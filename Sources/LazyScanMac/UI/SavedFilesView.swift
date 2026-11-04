@@ -59,8 +59,8 @@ struct SavedFilesView: View {
             Image(systemName: "tray")
                 .font(.system(size: 56, weight: .light))
                 .foregroundStyle(.secondary)
-            Text(loadFailed ? "The destination folder could not be read."
-                            : "Nothing saved yet")
+            Text(loadFailed ? String(localized: "The destination folder could not be read.")
+                            : String(localized: "Nothing saved yet"))
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Text(destinationURL.path)
@@ -116,10 +116,10 @@ struct SavedFilesView: View {
         Task {
             let failure: String? = await Task.detached(priority: .userInitiated) { () -> String? in
                 guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-                    return "The file could not be read."
+                    return String(localized: "The file could not be read.")
                 }
                 guard CGImageSourceGetCount(source) == 1 else {
-                    return "It has multiple pages — rotate it in Preview instead."
+                    return String(localized: "It has multiple pages — rotate it in Preview instead.")
                 }
                 // Full-size decode with the EXIF orientation baked in, so the pixels
                 // match what the user sees before rotating them.
@@ -129,7 +129,7 @@ struct SavedFilesView: View {
                     kCGImageSourceThumbnailMaxPixelSize: 100_000,
                 ]
                 guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-                    return "The image could not be decoded."
+                    return String(localized: "The image could not be decoded.")
                 }
                 let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
                 let dpi = (props?[kCGImagePropertyDPIWidth] as? NSNumber)?.intValue ?? 300
@@ -147,12 +147,12 @@ struct SavedFilesView: View {
                     return nil
                 } catch {
                     try? FileManager.default.removeItem(at: tmp)
-                    return "The rotated copy could not be written."
+                    return String(localized: "The rotated copy could not be written.")
                 }
             }.value
             rotatingPaths.remove(url.path)
             if let failure {
-                state.errorMessage = "Could not rotate \(url.lastPathComponent): \(failure)"
+                state.errorMessage = String(localized: "Could not rotate \(url.lastPathComponent): \(failure)")
             } else {
                 reload()
             }

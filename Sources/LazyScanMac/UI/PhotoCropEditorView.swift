@@ -104,8 +104,9 @@ struct PhotoCropEditorView: View {
     }
 
     private var sizeCaption: String {
-        String(format: "%.0f × %.0f px  ·  %.1f°",
-               region.size.width, region.size.height, region.angleDegrees)
+        let pixels = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0))
+        let angle = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))
+        return String(localized: "\(region.size.width.formatted(pixels)) × \(region.size.height.formatted(pixels)) px  ·  \(region.angleDegrees.formatted(angle))°")
     }
 
     /// Aspect-fit frame of the bed image in the editor viewport.

@@ -20,16 +20,20 @@ struct PhotoReviewView: View {
 
     /// "Discard 6 photos?", "Discard 3 receipts?".
     private var discardTitle: String {
-        state.isReceiptReview ? "Discard \(includedCount) receipts?" : "Discard \(includedCount) photos?"
+        state.isReceiptReview
+            ? L10n.plural(includedCount, one: "Discard {0} receipt?", other: "Discard {0} receipts?")
+            : L10n.plural(includedCount, one: "Discard {0} photo?", other: "Discard {0} photos?")
     }
 
     /// The sheet blocks Scan, so the hint is for after saving.
     private var footerHint: String {
-        let pages = state.isReceiptReview ? "receipts" : "photos"
-        if state.settings.source == .documentFeeder {
-            return "After saving, put the next \(pages) in the feeder and scan again."
+        let feeder = state.settings.source == .documentFeeder
+        if state.isReceiptReview {
+            return feeder ? String(localized: "After saving, put the next receipts in the feeder and scan again.")
+                          : String(localized: "After saving, lay the next receipts on the glass and scan again.")
         }
-        return "After saving, lay the next \(pages) on the glass and scan again."
+        return feeder ? String(localized: "After saving, put the next photos in the feeder and scan again.")
+                      : String(localized: "After saving, lay the next photos on the glass and scan again.")
     }
 
     var body: some View {
@@ -206,7 +210,9 @@ fileprivate struct PhotoReviewCard: View {
     private var sizeCaption: String {
         let w = photo.image.width, h = photo.image.height
         let dpi = Double(max(photo.dpi, 1))
-        return String(format: "%d × %d px · %.1f × %.1f in", w, h, Double(w) / dpi, Double(h) / dpi)
+        let inches = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))
+        let wide = (Double(w) / dpi).formatted(inches), high = (Double(h) / dpi).formatted(inches)
+        return String(localized: "\(w) × \(h) px · \(wide) × \(high) in")
     }
 }
 

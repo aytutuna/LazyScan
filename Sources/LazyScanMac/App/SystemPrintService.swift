@@ -39,7 +39,7 @@ import PDFKit
     }
 
     public func print(_ document: Data, job: PrintJob) async throws -> Bool {
-        guard let pdf = PDFDocument(data: document) else { throw PrintError.failed("The pages could not be prepared for printing.") }
+        guard let pdf = PDFDocument(data: document) else { throw PrintError.failed(String(localized: "The pages could not be prepared for printing.")) }
         let info = printInfo(printerName: job.printerName, paper: job.paper.paper)
         info.topMargin = 0
         info.bottomMargin = 0
@@ -51,7 +51,7 @@ import PDFKit
         info.verticalPagination = .clip
         info.dictionary()[NSPrintInfo.AttributeKey.copies.rawValue] = NSNumber(value: PrintCopies.clamp(job.copies))
         guard let operation = pdf.printOperation(for: info, scalingMode: .pageScaleNone, autoRotate: false) else {
-            throw PrintError.failed("The print panel could not be opened.")
+            throw PrintError.failed(String(localized: "The print panel could not be opened."))
         }
         operation.jobTitle = job.jobName
         operation.showsPrintPanel = true

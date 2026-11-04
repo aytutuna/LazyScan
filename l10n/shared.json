@@ -1630,5 +1630,21 @@
   "{0} from the left": {},
   "{0} from the top": {},
   "More about {0}": {},
-  "More information": {}
+  "More information": {},
+  "Discard {0} receipt?": {
+    "en_other": "Discard {0} receipts?"
+  },
+  "Discard {0} photo?": {
+    "en_other": "Discard {0} photos?"
+  },
+  "{0} did not respond.": {},
+  "The session was closed.": {},
+  "Could not create a download folder: {0}": {},
+  "The session is closed.": {},
+  "Another scan is already in progress.": {},
+  "This scanner has no document feeder.": {},
+  "This scanner has no flatbed.": {},
+  "{0} did not respond while switching scan source.": {},
+  "An unknown scanner error occurred.": {},
+  "{0} was disconnected.": {}
 }

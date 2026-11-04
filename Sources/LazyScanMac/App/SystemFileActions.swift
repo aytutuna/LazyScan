@@ -13,13 +13,13 @@ public final class SystemFileActions: FileActionService {
 
     public func open(_ url: URL) throws {
         guard NSWorkspace.shared.open(url) else {
-            throw ScanError.exportFailed("No app could open \(url.lastPathComponent).")
+            throw ScanError.exportFailed(String(localized: "No app could open \(url.lastPathComponent)."))
         }
     }
 
     public func openWith(_ url: URL) throws {
         guard let anchor = Self.anchor() else {
-            throw ScanError.unsupported("The app window is not open.")
+            throw ScanError.unsupported(String(localized: "The app window is not open."))
         }
         let menu = NSMenu(title: "Open With")
         let defaultApp = NSWorkspace.shared.urlForApplication(toOpen: url)
@@ -37,12 +37,12 @@ public final class SystemFileActions: FileActionService {
             menu.addItem(Self.appItem(app, file: url, isDefault: false))
         }
         menu.addItem(.separator())
-        menu.addItem(Self.actionItem("Other\u{2026}") {
+        menu.addItem(Self.actionItem(String(localized: "Other\u{2026}")) {
             let panel = NSOpenPanel()
             panel.allowedContentTypes = [.application]
             panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
-            panel.prompt = "Open"
-            panel.message = "Choose an app to open \(url.lastPathComponent) with."
+            panel.prompt = String(localized: "Open")
+            panel.message = String(localized: "Choose an app to open \(url.lastPathComponent) with.")
             if panel.runModal() == .OK, let app = panel.url {
                 NSWorkspace.shared.open([url], withApplicationAt: app,
                                         configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
@@ -64,7 +64,7 @@ public final class SystemFileActions: FileActionService {
 
     public func share(_ urls: [URL], title: String) throws {
         guard let anchor = Self.anchor() else {
-            throw ScanError.unsupported("The app window is not open.")
+            throw ScanError.unsupported(String(localized: "The app window is not open."))
         }
         let picker = NSSharingServicePicker(items: urls)
         picker.show(relativeTo: NSRect(x: anchor.point.x, y: anchor.point.y, width: 1, height: 1),
@@ -74,7 +74,7 @@ public final class SystemFileActions: FileActionService {
     public func composeEmail(_ urls: [URL]) throws {
         let items: [Any] = urls
         guard let mail = NSSharingService(named: .composeEmail), mail.canPerform(withItems: items) else {
-            throw ScanError.unsupported("No mail app is set up.")
+            throw ScanError.unsupported(String(localized: "No mail app is set up."))
         }
         mail.perform(withItems: items)
     }
@@ -90,11 +90,11 @@ public final class SystemFileActions: FileActionService {
                 _ = item.setData(picture, forType: .tiff)
             }
             guard pasteboard.writeObjects([item]) else {
-                throw ScanError.exportFailed("The pasteboard did not take the file.")
+                throw ScanError.exportFailed(String(localized: "The pasteboard did not take the file."))
             }
         } else {
             guard pasteboard.writeObjects(content.files.map { $0 as NSURL }) else {
-                throw ScanError.exportFailed("The pasteboard did not take the files.")
+                throw ScanError.exportFailed(String(localized: "The pasteboard did not take the files."))
             }
         }
     }
@@ -103,7 +103,7 @@ public final class SystemFileActions: FileActionService {
         let pasteboard = NSPasteboard.general
         _ = pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
-            throw ScanError.exportFailed("The pasteboard did not take the text.")
+            throw ScanError.exportFailed(String(localized: "The pasteboard did not take the text."))
         }
     }
 
@@ -149,7 +149,7 @@ public final class SystemFileActions: FileActionService {
 
     private static func appItem(_ app: URL, file: URL, isDefault: Bool) -> NSMenuItem {
         let name = FileManager.default.displayName(atPath: app.path)
-        let item = actionItem(isDefault ? "\(name) (default)" : name) {
+        let item = actionItem(isDefault ? String(localized: "\(name) (default)") : name) {
             NSWorkspace.shared.open([file], withApplicationAt: app,
                                     configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
         }
@@ -198,12 +198,13 @@ extension FileAction {
     /// What the action does, for tooltips and VoiceOver hints.
     func hint(fileCount: Int) -> String {
         switch self {
-        case .open: return "Open with the default app"
-        case .openWith: return "Choose the app to open it with"
-        case .reveal: return "Show in Finder"
-        case .share: return "Send with Mail, Messages, AirDrop or another app"
-        case .email: return "Attach to a new email in Mail"
-        case .copy: return fileCount == 1 ? "Copy the file to the clipboard" : "Copy the files to the clipboard"
+        case .open: return String(localized: "Open with the default app")
+        case .openWith: return String(localized: "Choose the app to open it with")
+        case .reveal: return String(localized: "Show in Finder")
+        case .share: return String(localized: "Send with Mail, Messages, AirDrop or another app")
+        case .email: return String(localized: "Attach to a new email in Mail")
+        case .copy: return fileCount == 1 ? String(localized: "Copy the file to the clipboard")
+            : String(localized: "Copy the files to the clipboard")
         }
     }
 }

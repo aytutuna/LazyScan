@@ -88,7 +88,7 @@ struct SpreadSplitView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityElement()
                 .accessibilityLabel("Spread")
-                .accessibilityValue("Cut \(Int((fraction * 100).rounded()))% from the \(axis == .vertical ? "left" : "top")")
+                .accessibilityValue(cutDescription)
                 .accessibilityHint(Text("Arrow keys move the cut; Shift takes bigger steps."))
             }
             .frame(minHeight: 360)
@@ -115,7 +115,7 @@ struct SpreadSplitView: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(source.isSplit ? "Split Here" : "Split") {
+                Button(source.isSplit ? String(localized: "Split Here") : String(localized: "Split")) {
                     onDone(.split(axis: axis, fraction: fraction))
                     dismiss()
                 }
@@ -124,6 +124,12 @@ struct SpreadSplitView: View {
         }
         .padding(20)
         .frame(minWidth: 560, minHeight: 520)
+    }
+
+    private var cutDescription: String {
+        let percent = fraction.formatted(.percent.precision(.fractionLength(0)))
+        return axis == .vertical ? String(localized: "Cut \(percent) from the left")
+                                 : String(localized: "Cut \(percent) from the top")
     }
 
     /// The spread's size fitted into `available`, keeping its shape.
