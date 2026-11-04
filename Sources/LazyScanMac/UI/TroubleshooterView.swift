@@ -27,7 +27,7 @@ struct TroubleshooterView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Why isn't my scanner listed?")
                     .font(.title2.weight(.semibold))
-                Text(refreshing ? "Looking for scanners\u{2026}" : Troubleshooter.overview(snapshot, checks: checks))
+                Text(refreshing ? String(localized: "Looking for scanners\u{2026}") : Troubleshooter.overview(snapshot, checks: checks))
                     .font(.headline)
                     .padding(.top, 4)
             }
@@ -110,7 +110,7 @@ struct TroubleshooterView: View {
 
     @MainActor
     private func copyDiagnostics() {
-        footerMessage = state.copyDiagnostics(state.troubleshootSnapshot()) ?? "Copied to the clipboard."
+        footerMessage = state.copyDiagnostics(state.troubleshootSnapshot()) ?? String(localized: "Copied to the clipboard.")
     }
 }
 

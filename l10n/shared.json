@@ -1536,5 +1536,8 @@
   },
   "{0} file saved": {
     "en_other": "{0} files saved"
+  },
+  "{0} sheet": {
+    "en_other": "{0} sheets"
   }
 }

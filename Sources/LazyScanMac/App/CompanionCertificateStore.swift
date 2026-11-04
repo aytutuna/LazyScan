@@ -67,7 +67,7 @@ final class CompanionCertificateStore: CompanionIdentity {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return [] }
         guard status == errSecSuccess, let items = result as? [Any] else {
-            throw CompanionCertificateStore.failure("The keychain could not be read", status)
+            throw CompanionCertificateStore.failure(String(localized: "The keychain could not be read"), status)
         }
         var found: [(certificate: SecCertificate, der: Data, notAfter: Date)] = []
         for item in items {
@@ -95,8 +95,8 @@ final class CompanionCertificateStore: CompanionIdentity {
         ]
         var error: Unmanaged<CFError>?
         guard let key = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
-            let reason = error?.takeRetainedValue().localizedDescription ?? "unknown error"
-            throw SelfSignedCertificateError("The key could not be made: \(reason)")
+            let reason = error?.takeRetainedValue().localizedDescription ?? String(localized: "unknown error")
+            throw SelfSignedCertificateError(String(localized: "The key could not be made: \(reason)"))
         }
         do {
             return try addCertificate(for: key, now: now)
@@ -109,7 +109,7 @@ final class CompanionCertificateStore: CompanionIdentity {
     private func addCertificate(for key: SecKey, now: Date) throws -> (identity: SecIdentity, der: Data) {
         let der = try SelfSignedCertificate.make(hostName: hostName, key: key, now: now)
         guard let certificate = SelfSignedCertificate.certificate(der) else {
-            throw SelfSignedCertificateError("The certificate that was made does not read.")
+            throw SelfSignedCertificateError(String(localized: "The certificate that was made does not read."))
         }
         let item: [String: Any] = [
             kSecClass as String: kSecClassCertificate,
@@ -118,11 +118,11 @@ final class CompanionCertificateStore: CompanionIdentity {
         ]
         let added = SecItemAdd(item as CFDictionary, nil)
         guard added == errSecSuccess else {
-            throw CompanionCertificateStore.failure("The certificate could not be added to the keychain", added)
+            throw CompanionCertificateStore.failure(String(localized: "The certificate could not be added to the keychain"), added)
         }
         guard let identity = CompanionCertificateStore.identity(for: certificate) else {
             CompanionCertificateStore.delete(certificate)
-            throw SelfSignedCertificateError("The keychain did not pair the key with its certificate.")
+            throw SelfSignedCertificateError(String(localized: "The keychain did not pair the key with its certificate."))
         }
         return (identity, der)
     }
@@ -164,8 +164,8 @@ final class CompanionCertificateStore: CompanionIdentity {
     }
 
     private static func failure(_ what: String, _ status: OSStatus) -> SelfSignedCertificateError {
-        let reason = SecCopyErrorMessageString(status, nil) as String? ?? "error \(status)"
-        return SelfSignedCertificateError("\(what): \(reason)")
+        let reason = SecCopyErrorMessageString(status, nil) as String? ?? String(localized: "error \(status)")
+        return SelfSignedCertificateError(String(localized: "\(what): \(reason)"))
     }
 }
 #endif

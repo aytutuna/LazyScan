@@ -37,8 +37,7 @@ struct PhoneView: View {
                 Text(headline(snapshot))
                     .font(.headline)
                     .padding(.top, 4)
-                Text("Documents scanned with Lazy Scan on a paired phone are added to the page queue here. "
-                     + "Nothing goes through the internet: the phone and this Mac talk directly, encrypted, on networks you allow.")
+                Text("Documents scanned with Lazy Scan on a paired phone are added to the page queue here. Nothing goes through the internet: the phone and this Mac talk directly, encrypted, on networks you allow.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -117,7 +116,7 @@ struct PhoneView: View {
             guard let added = after.first(where: { !before.contains($0) }),
                   let device = state.companionService?.devices.devices.first(where: { $0.id == added }) else { return }
             code = nil
-            pairNote = "Paired with \(device.name). Documents sent from it are added to the queue."
+            pairNote = String(localized: "Paired with \(device.name). Documents sent from it are added to the queue.")
         }
         .onAppear {
             state.ensureCompanionHost()
@@ -145,10 +144,10 @@ struct PhoneView: View {
     private func headline(_ snapshot: CompanionSnapshot) -> String {
         guard state.companionService == nil else { return CompanionTroubleshooter.headline(snapshot) }
         if state.companionHostStatus.state == .elsewhere { return CompanionHostText.elsewhereMessage }
-        return CompanionHostText.notStartedMessage(state.companionHostError ?? "unknown error")
+        return CompanionHostText.notStartedMessage(state.companionHostError ?? String(localized: "unknown error"))
     }
 
-    private func sectionTitle(_ title: String) -> some View {
+    private func sectionTitle(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .font(.headline)
             .padding(.top, 6)
@@ -158,12 +157,13 @@ struct PhoneView: View {
     // MARK: - Networks
 
     private func networkCard(_ network: CompanionNetworkState, service: CompanionService?) -> some View {
-        let name = network.network.name.isEmpty ? "Unnamed network" : network.network.name
+        let name = network.network.name.isEmpty ? String(localized: "Unnamed network") : network.network.name
         let receiving = network.trust != .notTrusted
         return VStack(alignment: .leading, spacing: 4) {
             Text(name)
                 .font(.headline)
-            Text(network.network.id.isEmpty ? "Waiting for the network's details" : receiving ? "Receiving allowed" : "Not receiving")
+            Text(network.network.id.isEmpty ? String(localized: "Waiting for the network's details")
+                 : receiving ? String(localized: "Receiving allowed") : String(localized: "Not receiving"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle("Allow receiving on this network", isOn: Binding(
@@ -189,7 +189,7 @@ struct PhoneView: View {
     private func setAllowed(_ network: CompanionNetwork, _ allowed: Bool, service: CompanionService?) async {
         guard let service else { return }
         if !(await service.setNetworkApproved(network, allowed)) {
-            footerMessage = "The setting could not be saved."
+            footerMessage = String(localized: "The setting could not be saved.")
         }
     }
 
@@ -202,10 +202,9 @@ struct PhoneView: View {
 
     private func pairCard(_ service: CompanionService?) -> some View {
         let shown = codeShown(service)
-        let title: String = shown ? "Show a new code" : "Pair a phone"
+        let title: String = shown ? String(localized: "Show a new code") : String(localized: "Pair a phone")
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Open Lazy Scan on your phone, go to Settings \u{203A} My computer, and scan the code shown here. "
-                 + "The code works once, for 5 minutes.")
+            Text("Open Lazy Scan on your phone, go to Settings \u{203A} My computer, and scan the code shown here. The code works once, for 5 minutes.")
                 .fixedSize(horizontal: false, vertical: true)
             Button(title) {
                 Task { await pair() }
@@ -268,8 +267,7 @@ struct PhoneView: View {
                     Text(expiry(at: context.date, service: service))
                         .font(.headline)
                 }
-                Text("Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it "
-                     + "under Settings \u{203A} My computer \u{203A} Enter pairing text, then compare the check code.")
+                Text("Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it under Settings \u{203A} My computer \u{203A} Enter pairing text, then compare the check code.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 4) {
@@ -302,9 +300,10 @@ struct PhoneView: View {
     private func expiry(at now: Date, service: CompanionService?) -> String {
         if let session = service?.pairing {
             let left = Int(session.remaining(at: now).rounded(.up))
-            return "Scan this code with your phone. It works for \(left / 60):\(String(format: "%02d", left % 60)) more."
+            let remaining: String = Duration.seconds(left).formatted(.time(pattern: .minuteSecond(padMinuteToLength: 1)))
+            return String(localized: "Scan this code with your phone. It works for \(remaining) more.")
         }
-        return question.phoneName != nil ? "A phone scanned this code. Allow it below, or not." : ""
+        return question.phoneName != nil ? String(localized: "A phone scanned this code. Allow it below, or not.") : ""
     }
 
     /// Shows a new pairing code, or says why none can be shown.
@@ -335,20 +334,20 @@ struct PhoneView: View {
     private func copyPairingText(_ text: String) {
         let pasteboard = NSPasteboard.general
         _ = pasteboard.clearContents()
-        footerMessage = pasteboard.setString(text, forType: .string) ? "Copied to the clipboard." : "Copy did not work."
+        footerMessage = pasteboard.setString(text, forType: .string)
+            ? String(localized: "Copied to the clipboard.") : String(localized: "Copy did not work.")
     }
 
     static func whyNoCode(_ status: CompanionHostStatus) -> String {
         switch status.state {
         case .offline:
-            return "Connect this Mac to a network first, then choose Pair a phone again."
+            return String(localized: "Connect this Mac to a network first, then choose Pair a phone again.")
         case .noTrustedNetwork:
-            return "This Mac does not receive on the network it is on. Turn on Allow receiving on this network above, "
-                + "then choose Pair a phone again."
+            return String(localized: "This Mac does not receive on the network it is on. Turn on Allow receiving on this network above, then choose Pair a phone again.")
         case .failed:
-            return status.error ?? "Receiving from phones could not start."
+            return status.error ?? String(localized: "Receiving from phones could not start.")
         default:
-            return "No pairing code could be made."
+            return String(localized: "No pairing code could be made.")
         }
     }
 
@@ -380,7 +379,7 @@ struct PhoneView: View {
     // MARK: - Paired phones
 
     private func phoneRow(_ device: PairedDevice, service: CompanionService?) -> some View {
-        let name = device.name.isEmpty ? "Phone" : device.name
+        let name = device.name.isEmpty ? String(localized: "Phone") : device.name
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
@@ -408,19 +407,19 @@ struct PhoneView: View {
     private func remove(_ id: String, service: CompanionService?) async {
         guard let service else { return }
         await service.removeDevice(id)
-        footerMessage = "Removed. That phone can no longer send documents here."
+        footerMessage = String(localized: "Removed. That phone can no longer send documents here.")
     }
 
     /// "Paired 20/10/2026 · last seen today at 14:05".
     static func caption(_ device: PairedDevice) -> String {
         var parts: [String] = []
         if let paired = device.paired {
-            parts.append("Paired \(paired.formatted(date: .numeric, time: .omitted))")
+            parts.append(String(localized: "Paired \(paired.formatted(date: .numeric, time: .omitted))"))
         }
         if let seen = device.lastSeen {
             parts.append(Calendar.current.isDateInToday(seen)
-                ? "last seen today at \(seen.formatted(date: .omitted, time: .shortened))"
-                : "last seen \(seen.formatted(date: .numeric, time: .omitted))")
+                ? String(localized: "last seen today at \(seen.formatted(date: .omitted, time: .shortened))")
+                : String(localized: "last seen \(seen.formatted(date: .numeric, time: .omitted))"))
         }
         return parts.joined(separator: " \u{00B7} ")
     }
@@ -431,8 +430,7 @@ struct PhoneView: View {
         let folder = service?.syncFolder
         let problem = service == nil ? nil : state.syncFolderProblem
         return VStack(alignment: .leading, spacing: 8) {
-            Text("A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; "
-                 + "they are encrypted with a key only this Mac and the phone know.")
+            Text("A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
@@ -470,19 +468,19 @@ struct PhoneView: View {
     }
 
     static func syncFolderStatus(_ folder: URL?, running: Bool) -> String {
-        guard running else { return "Not watching." }
-        guard let folder else { return "Not watching: no folder chosen." }
+        guard running else { return String(localized: "Not watching.") }
+        guard let folder else { return String(localized: "Not watching: no folder chosen.") }
         var isFolder: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder), isFolder.boolValue else {
-            return "Waiting for \(folder.path): the folder is not there now."
+            return String(localized: "Waiting for \(folder.path): the folder is not there now.")
         }
-        return "Watching \(folder.path)."
+        return String(localized: "Watching \(folder.path).")
     }
 
     /// Starts in the folder chosen now, or else in iCloud Drive when it is set up on this Mac.
     private func chooseSyncFolder(_ current: URL?) {
         let panel = NSOpenPanel()
-        panel.title = "Choose the cloud folder"
+        panel.title = String(localized: "Choose the cloud folder")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
@@ -494,14 +492,14 @@ struct PhoneView: View {
         } else if FileManager.default.fileExists(atPath: iCloud.path) {
             panel.directoryURL = iCloud
         }
-        panel.prompt = "Choose"
+        panel.prompt = String(localized: "Choose")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         setSyncFolder(url)
     }
 
     private func setSyncFolder(_ folder: URL?) {
         if !state.setPhoneSyncFolder(folder) {
-            footerMessage = "The setting could not be saved."
+            footerMessage = String(localized: "The setting could not be saved.")
         }
     }
 
@@ -514,10 +512,10 @@ struct PhoneView: View {
             try await service.resetPairing()
             code = nil
             pairNote = nil
-            footerMessage = "Pairing was reset."
+            footerMessage = String(localized: "Pairing was reset.")
         } catch {
             let reason = (error as? SelfSignedCertificateError)?.message ?? error.localizedDescription
-            footerMessage = "Pairing could not be reset: \(reason)"
+            footerMessage = String(localized: "Pairing could not be reset: \(reason)")
         }
     }
 

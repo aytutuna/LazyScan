@@ -171,8 +171,9 @@ struct InspectorView: View {
 
     /// Why the mode and the source cannot be changed while a side of an ID card is held: changing
     /// them would end the task and drop the card. Leaving the task asks first.
-    private static let idCardHeldHint =
-        "The ID card task needs the flatbed in Document mode. Save or discard the card, or leave the task, to change this."
+    private static var idCardHeldHint: String {
+        String(localized: "The ID card task needs the flatbed in Document mode. Save or discard the card, or leave the task, to change this.")
+    }
 
     /// A reason next to a greyed-out control, or a consequence that must not be missed: an icon and a
     /// few words, in secondary text.
@@ -188,13 +189,13 @@ struct InspectorView: View {
     /// The Copy task: where and how the copies print (AppState+Copy.swift). The print panel opens set
     /// to these, at 100 %.
     private var copySection: some View {
-        section(InspectorSections.task, title: "Photocopy", summary: "", changed: false) {
+        section(InspectorSections.task, title: InspectorSections.title(InspectorSections.task, for: state.settings), summary: "", changed: false) {
             if state.hasPrinter {
                 Picker("Printer", selection: Binding(
                     get: { state.copyPrinterName ?? "" },
                     set: { state.setCopyPrinter($0) })) {
                     ForEach(state.printerNames, id: \.self) { name in
-                        Text(name == state.printService.defaultPrinterName ? "\(name) (default)" : name).tag(name)
+                        Text(name == state.printService.defaultPrinterName ? String(localized: "\(name) (default)") : name).tag(name)
                     }
                 }
                 if !state.copyPaperText.isEmpty {
@@ -240,22 +241,23 @@ struct InspectorView: View {
         let options = state.settings.taskOptions
         let pdf: Bool = state.settings.format.pageFormat == .pdf
         let dateUsed: Bool = Receipts.namesByDate(state.settings)
-        return section(InspectorSections.task, title: "Receipts", summary: "", changed: false) {
+        return section(InspectorSections.task, title: InspectorSections.title(InspectorSections.task, for: state.settings), summary: "", changed: false) {
             Toggle("Name by receipt date", isOn: Binding(
                 get: { state.settings.taskOptions.receiptNameByDate },
                 set: { state.setReceiptNameByDate($0) }))
                 .help("Uses the date printed on the receipt, or today")
             if options.receiptNameByDate && !dateUsed {
-                reasonLine("Needs {docdate} in File name")
+                reasonLine(String(localized: "Needs {docdate} in File name"))
                     .help("The file name has no {docdate}, so the date printed on the receipt is not used.")
             }
             Toggle("One PDF for all", isOn: Binding(
                 get: { state.settings.taskOptions.receiptCombine },
                 set: { state.setReceiptCombine($0) }))
                 .disabled(!pdf)
-                .help(pdf ? "Off: a PDF for each receipt" : "Only for PDFs: each receipt is saved as an image of its own.")
+                .help(pdf ? String(localized: "Off: a PDF for each receipt")
+                         : String(localized: "Only for PDFs: each receipt is saved as an image of its own."))
             if !pdf {
-                reasonLine("Only for PDFs")
+                reasonLine(String(localized: "Only for PDFs"))
             }
         }
     }
@@ -263,7 +265,7 @@ struct InspectorView: View {
     // MARK: Scanner
 
     private var scannerSection: some View {
-        section(InspectorSections.scanner, title: "Scanner",
+        section(InspectorSections.scanner, title: InspectorSections.title(InspectorSections.scanner),
                 summary: InspectorSections.scannerSummary(state.settings),
                 changed: InspectorSections.scannerChanged(state.settings)) {
             Picker("Source", selection: $state.settings.source) {
@@ -328,7 +330,7 @@ struct InspectorView: View {
         let s = state.settings
         guard feederSelected else { return DocumentSides.feederOnlyReason }
         if s.duplex == .manual, let reason = DocumentSides.manualUnavailableReason(s) { return reason }
-        if s.duplex == .off, let reason = bothSidesReason { return "\(s.duplex.hint). \(reason)" }
+        if s.duplex == .off, let reason = bothSidesReason { return String(localized: "\(s.duplex.hint). \(reason)") }
         return s.duplex.hint
     }
 
@@ -389,7 +391,7 @@ struct InspectorView: View {
         VStack(alignment: .leading, spacing: 4) {
             Picker("Paper size", selection: $state.settings.paperSize) {
                 ForEach(offeredPaperSizes) { size in
-                    Text(size == .auto ? size.label : "\(size.label) (\(size.detail))").tag(size)
+                    Text(size == .auto ? size.label : String(localized: "\(size.label) (\(size.detail))")).tag(size)
                 }
             }
             .help(paperSizeHint)
@@ -407,7 +409,7 @@ struct InspectorView: View {
                 }
             }
             if offeredPaperSizes.count < PaperSize.allCases.count {
-                reasonLine("Larger sizes left out")
+                reasonLine(String(localized: "Larger sizes left out"))
                     .help(PaperSizes.doesNotFitReason(source: state.settings.source))
             }
         }
@@ -432,9 +434,9 @@ struct InspectorView: View {
         let output: OutputOptions = state.settings.output
         let protect: Bool = output.protect
         let archival: Bool = output.archival && !protect
-        let archivalHelp: String = protect ? "\(PDFA.notWithPasswordReason). \(PDFA.cannotProtectNote)" : PDFA.optionHelp
+        let archivalHelp: String = protect ? String(localized: "\(PDFA.notWithPasswordReason). \(PDFA.cannotProtectNote)") : PDFA.optionHelp
         let protectHelp: String = archival
-            ? "\(PDFProtection.notWithArchivalReason). \(PDFA.cannotProtectNote)"
+            ? String(localized: "\(PDFProtection.notWithArchivalReason). \(PDFA.cannotProtectNote)")
             : PDFProtection.optionHelp
         return section(InspectorSections.archive, title: InspectorSections.title(InspectorSections.archive),
                        summary: InspectorSections.archiveSummary(output),
@@ -481,7 +483,7 @@ struct InspectorView: View {
     // MARK: Output
 
     private var outputSection: some View {
-        section(InspectorSections.output, title: "Output",
+        section(InspectorSections.output, title: InspectorSections.title(InspectorSections.output),
                 summary: InspectorSections.outputSummary(state.settings, shownFormat: shownFormat),
                 changed: InspectorSections.outputChanged(state.settings, shownFormat: shownFormat)) {
             if !state.isCopyFlow {
@@ -503,8 +505,8 @@ struct InspectorView: View {
             if !state.isReceiptFlow && !state.isIdCardFlow && !state.isCopyFlow {
                 Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
                     .disabled(addingHint != nil)
-                    .help(addingHint ?? "Off: each scan is saved right away")
-                    .accessibilityHint(Text(addingHint ?? "On: pages are collected until you \(shownFormat.saveTitle). Off: each scan is saved right away."))
+                    .help(addingHint ?? String(localized: "Off: each scan is saved right away"))
+                    .accessibilityHint(Text(addingHint ?? String(localized: "On: pages are collected until you \(shownFormat.saveTitle). Off: each scan is saved right away.")))
             }
             destinationRow
         }
@@ -514,7 +516,7 @@ struct InspectorView: View {
     /// scan would be saved as a new file while the strip still offers to add to this one.
     private var addingHint: String? {
         guard let target = state.appendTarget else { return nil }
-        return "Pages are collected until they are added to \(target.lastPathComponent). Stop Adding saves new files again."
+        return String(localized: "Pages are collected until they are added to \(target.lastPathComponent). Stop Adding saves new files again.")
     }
 
     /// Searchable PDF applies whenever the save writes a PDF that can carry text: not for Word, text or
@@ -541,10 +543,10 @@ struct InspectorView: View {
         LabeledContent("JPEG quality") {
             HStack(spacing: 8) {
                 Slider(value: $state.settings.jpegQuality, in: 0.5...1)
-                Text("\(Int((state.settings.jpegQuality * 100).rounded()))%")
+                Text(state.settings.jpegQuality.formatted(.percent.precision(.fractionLength(0))))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .frame(width: 38, alignment: .trailing)
+                    .frame(minWidth: 38, alignment: .trailing)
             }
         }
     }
@@ -585,7 +587,7 @@ struct InspectorView: View {
         }
     }
 
-    private func pdfSizePicker(_ name: String) -> some View {
+    private func pdfSizePicker(_ name: LocalizedStringKey) -> some View {
         let size: PDFSizePreset = state.settings.output.pdfSize
         return Picker(name, selection: $state.settings.output.pdfSize) {
             ForEach(PDFSizePreset.displayOrder) { preset in
@@ -649,8 +651,8 @@ struct InspectorView: View {
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = destinationURL
-        panel.prompt = "Choose"
-        panel.message = "Choose where scans are saved."
+        panel.prompt = String(localized: "Choose")
+        panel.message = String(localized: "Choose where scans are saved.")
         if panel.runModal() == .OK, let url = panel.url {
             state.settings.destinationPath = url.path
         }
@@ -661,19 +663,22 @@ struct InspectorView: View {
     /// Photos mode: finding and straightening each photo, the image format and where it is saved. The
     /// smallest photo side and the edge trim show while Find each photo is on: only the finder reads them.
     private var photosSection: some View {
-        section(InspectorSections.output, title: "Photos",
+        section(InspectorSections.output, title: InspectorSections.title(InspectorSections.output, for: state.settings),
                 summary: InspectorSections.outputSummary(state.settings, shownFormat: shownFormat),
                 changed: InspectorSections.outputChanged(state.settings, shownFormat: shownFormat)) {
             Toggle("Find each photo", isOn: $state.settings.photoAutoSplit)
                 .help("Finds each photo on the glass and saves it on its own")
             if state.settings.photoAutoSplit {
                 Stepper(value: $state.settings.photoMinSideInches, in: 0.5...4, step: 0.1) {
-                    LabeledContent("Min photo side",
-                                   value: String(format: "%.1f in", state.settings.photoMinSideInches))
+                    LabeledContent("Min photo side") {
+                        Text("\(state.settings.photoMinSideInches.formatted(.number.precision(.fractionLength(1)))) in")
+                    }
                 }
                 .padding(.leading, 12)
                 Stepper(value: $state.settings.photoCropInsetPixels, in: 0...20) {
-                    LabeledContent("Edge trim", value: "\(state.settings.photoCropInsetPixels) px")
+                    LabeledContent("Edge trim") {
+                        Text("\(state.settings.photoCropInsetPixels) px")
+                    }
                 }
                 .padding(.leading, 12)
             }
@@ -693,12 +698,12 @@ struct InspectorView: View {
     /// pages collected in the queue only, where a changed page can be seen and undone.
     private var pagesSection: some View {
         let d = state.settings.document
-        return section(InspectorSections.pages, title: "Pages",
+        return section(InspectorSections.pages, title: InspectorSections.title(InspectorSections.pages),
                        summary: InspectorSections.pagesSummary(d),
                        changed: !InspectorSections.pagesSummary(d).isEmpty,
                        accessibilityName: InspectorSections.pagesHeaderName(d)) {
             if !collecting {
-                reasonLine("Needs Collect pages")
+                reasonLine(String(localized: "Needs Collect pages"))
                     .help("Only for pages collected before saving: a scan saved at once is kept as scanned.")
             }
             blankPagesRows
@@ -718,11 +723,11 @@ struct InspectorView: View {
         Toggle("Skip blank pages", isOn: $state.settings.document.removeBlankPages)
             .disabled(!collecting || separators)
             .help(separators ? DocumentSplitter.blankPagesAreSeparatorsHint
-                  : "Blank pages are left out. Click Keep on a page to save it.")
+                  : String(localized: "Blank pages are left out. Click Keep on a page to save it."))
             .accessibilityHint(Text(separators ? DocumentSplitter.blankPagesAreSeparatorsHint
-                                    : "Blank pages are marked in the page strip and left out when you save. Click Keep on a page to save it."))
+                                    : String(localized: "Blank pages are marked in the page strip and left out when you save. Click Keep on a page to save it.")))
         if separators {
-            reasonLine("Blank sheets split documents")
+            reasonLine(String(localized: "Blank sheets split documents"))
         }
         if collecting {
             Text("What counts as blank")
@@ -808,7 +813,7 @@ struct InspectorView: View {
     /// or printed on the printer chosen for copies: Patch T, or at QR codes a QR code carrying the name
     /// typed above the buttons. Twin of the Windows inspector's "Split into documents".
     private var splitSection: some View {
-        section(InspectorSections.split, title: "Split into documents",
+        section(InspectorSections.split, title: InspectorSections.title(InspectorSections.split),
                 summary: InspectorSections.splitSummary(state.settings.document),
                 changed: state.settings.document.splitMode != SplitMode.none) {
             splitRows
@@ -819,14 +824,14 @@ struct InspectorView: View {
     private var splitSteps: String {
         collecting
             ? state.settings.document.splitMode.steps
-            : "Only for pages collected before saving: a scan saved at once is one file."
+            : String(localized: "Only for pages collected before saving: a scan saved at once is one file.")
     }
 
     @ViewBuilder
     private var splitRows: some View {
         let mode: SplitMode = state.settings.document.splitMode
         if !collecting {
-            reasonLine("Needs Collect pages")
+            reasonLine(String(localized: "Needs Collect pages"))
         }
         HStack(spacing: 4) {
             Picker("Split", selection: Binding(get: { state.settings.document.splitMode },
@@ -866,8 +871,9 @@ struct InspectorView: View {
             Stepper(value: Binding(get: { DocumentSplitter.clampSheetCount(state.settings.document.splitSheetCount) },
                                    set: { state.setSplitSheetCount($0) }),
                     in: 1...DocumentSplitter.maxSheetCount) {
+                let sheets: Int = DocumentSplitter.clampSheetCount(state.settings.document.splitSheetCount)
                 LabeledContent("New document every",
-                               value: "\(DocumentSplitter.clampSheetCount(state.settings.document.splitSheetCount)) sheets")
+                               value: L10n.plural(sheets, one: "{0} sheet", other: "{0} sheets"))
             }
         }
         if collecting && mode == .barcode {
@@ -910,7 +916,8 @@ struct InspectorView: View {
         let mode: SplitMode = state.settings.document.splitMode
         let qrSheets: Bool = collecting && mode == .barcode && !state.settings.document.barcodeStartsDocument
         if (collecting && mode == .separatorSheet) || qrSheets {
-            let printer: String = state.copyPrinterName ?? "the default printer"
+            let printHelp: String = state.copyPrinterName.map { String(localized: "Prints one now on \($0), at actual size") }
+                ?? String(localized: "Prints one now on the default printer, at actual size")
             HStack(spacing: 8) {
                 Button {
                     state.saveSeparatorSheet()
@@ -919,15 +926,17 @@ struct InspectorView: View {
                 }
                 .disabled(state.isBusy)
                 .help("Saves a PDF of the sheet; print it at 100%")
-                .accessibilityLabel(Text(qrSheets ? "Save QR separator sheet as PDF" : "Save separator sheet as PDF"))
+                .accessibilityLabel(Text(qrSheets ? String(localized: "Save QR separator sheet as PDF")
+                                         : String(localized: "Save separator sheet as PDF")))
                 Button {
                     state.printSeparatorSheet()
                 } label: {
                     Label("Print Sheet", systemImage: "printer")
                 }
                 .disabled(!state.hasPrinter || state.isBusy)
-                .help(state.hasPrinter ? "Prints one now on \(printer), at actual size" : PrintText.noPrinterReason)
-                .accessibilityLabel(Text(qrSheets ? "Print QR separator sheet" : "Print separator sheet"))
+                .help(state.hasPrinter ? printHelp : PrintText.noPrinterReason)
+                .accessibilityLabel(Text(qrSheets ? String(localized: "Print QR separator sheet")
+                                         : String(localized: "Print separator sheet")))
             }
         }
     }
@@ -937,7 +946,7 @@ struct InspectorView: View {
     /// The text beside each PDF, what happens after a save, and the file name. A copy runs nothing
     /// after it is printed, so After saving is left out there, and from the header's summary.
     private var moreSection: some View {
-        section(InspectorSections.more, title: "More options",
+        section(InspectorSections.more, title: InspectorSections.title(InspectorSections.more),
                 summary: moreSummary,
                 changed: !moreSummary.isEmpty) {
             if alsoSaveTextShown {
@@ -1032,7 +1041,7 @@ struct InspectorView: View {
                 ForEach(NamingTokens.all, id: \.token) { part in
                     namingTokenRow(part.token, part.help)
                 }
-                namingTokenRow("{counter:3}", "Zero-padded number, e.g. 007")
+                namingTokenRow("{counter:3}", String(localized: "Zero-padded number, e.g. 007"))
             }
         }
         .padding(14)
@@ -1059,7 +1068,7 @@ struct InspectorView: View {
         let summary: String = InspectorSections.adjustmentsSummary(state.settings.adjustments)
         let color: Bool = state.settings.colorMode == .color
         let colorHelp: String = color ? "" : Self.colorOnlyHelp
-        return section(InspectorSections.adjustments, title: "Adjustments", summary: summary, changed: !summary.isEmpty) {
+        return section(InspectorSections.adjustments, title: InspectorSections.title(InspectorSections.adjustments), summary: summary, changed: !summary.isEmpty) {
             Toggle("Auto-enhance", isOn: $state.settings.adjustments.autoEnhance)
             amountSlider("Brightness", value: brightnessAmount)
             amountSlider("Contrast", value: contrastAmount)
@@ -1082,7 +1091,7 @@ struct InspectorView: View {
                 .disabled(!color)
                 .help(colorHelp)
             if !color {
-                reasonLine("Needs Color")
+                reasonLine(String(localized: "Needs Color"))
                     .help(Self.colorOnlyHelp)
             }
             if state.settings.colorMode == .blackWhite {
@@ -1101,8 +1110,9 @@ struct InspectorView: View {
 
     /// Why Saturation and Restore faded colors are greyed out unless the scan is in color: the page is
     /// turned gray right after them (`ImagePipeline.apply`).
-    private static let colorOnlyHelp =
-        "Saturation and Restore faded colors change nothing on a grayscale or black-and-white scan. Choose Color under Scanner."
+    private static var colorOnlyHelp: String {
+        String(localized: "Saturation and Restore faded colors change nothing on a grayscale or black-and-white scan. Choose Color under Scanner.")
+    }
 
     private func amountSlider(_ title: LocalizedStringKey, value: Binding<Double>) -> some View {
         LabeledContent(title) {
@@ -1117,8 +1127,7 @@ struct InspectorView: View {
     }
 
     private func amountText(_ amount: Double) -> String {
-        let rounded = Int(amount.rounded())
-        return rounded == 0 ? "0" : String(format: "%+d", rounded)
+        Int(amount.rounded()).formatted(.number.sign(strategy: .always(includingZero: false)))
     }
 
     /// Brightness -1...1 ↔ -100...100, linear.
@@ -1216,7 +1225,7 @@ struct InspectorView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(state.isBusy || state.previewUnavailableReason != nil)
-                .help(state.previewUnavailableReason ?? "Quick look at the whole glass")
+                .help(state.previewUnavailableReason ?? String(localized: "Quick look at the whole glass"))
 
                 Button {
                     state.performScan()
@@ -1254,10 +1263,13 @@ struct InspectorView: View {
     /// not connect, or none is selected; nil once it is connected. Twin of the Windows window's `NotConnectedHint`.
     private var notConnectedHelp: String? {
         guard !state.isConnected else { return nil }
-        guard let id = state.selectedDeviceID else { return "No scanner selected." }
-        let name: String = state.devices.first(where: { $0.id == id })?.name ?? "the scanner"
-        if state.isConnecting { return "Connecting to \(name)…" }
-        return "Not connected to \(name). Choose it in the list again to retry."
+        guard let id = state.selectedDeviceID else { return String(localized: "No scanner selected.") }
+        let name: String? = state.devices.first(where: { $0.id == id })?.name
+        if state.isConnecting {
+            return name.map { String(localized: "Connecting to \($0)…") } ?? String(localized: "Connecting to the scanner…")
+        }
+        return name.map { String(localized: "Not connected to \($0). Choose it in the list again to retry.") }
+            ?? String(localized: "Not connected to the scanner. Choose it in the list again to retry.")
     }
 }
 
