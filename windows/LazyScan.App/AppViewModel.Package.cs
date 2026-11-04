@@ -43,6 +43,17 @@ public sealed record PendingPackage(string FileName, IReadOnlyList<ScannedPage> 
         Path.GetExtension(path).Equals("." + CompanionPackage.FileExtension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// The first <c>.lsdoc</c> among a command line's arguments. When the first argument is a <c>lazyscan:</c>
+    /// address the app is only being opened, and the rest is dropped: the scheme's command is
+    /// <c>"exe" "%1"</c>, so an address with a quote in it can add arguments of its own.
+    /// </summary>
+    public static string? PackageIn(IEnumerable<string> args)
+    {
+        var all = args.ToList();
+        return all.Count > 0 && FileAssociation.IsAddress(all[0]) ? null : all.FirstOrDefault(IsPackageFile);
+    }
+
+    /// <summary>
     /// The package at <paramref name="path"/> with every picture decoded. Throws
     /// <see cref="CompanionPackageException"/>: a newer format is refused with
     /// <see cref="CompanionPackage.NewerVersionMessage"/>, a picture that cannot be decoded (or that

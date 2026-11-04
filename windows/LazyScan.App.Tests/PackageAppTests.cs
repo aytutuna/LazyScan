@@ -104,6 +104,19 @@ public sealed class PackageAppTests : IDisposable
     }
 
     [Fact]
+    public void PackageIn_SkipsEverythingAfterALazyScanAddress()
+    {
+        Assert.Equal(@"C:\Scans\Receipt.lsdoc", PendingPackage.PackageIn([@"C:\Scans\Receipt.lsdoc"]));
+        Assert.Equal(@"D:\b.lsdoc", PendingPackage.PackageIn([@"C:\a.pdf", @"D:\b.lsdoc"]));
+        Assert.Null(PendingPackage.PackageIn([]));
+        // The address only opens the app, and what follows it is not read: an address with a quote in it adds arguments.
+        Assert.Null(PendingPackage.PackageIn(["lazyscan:"]));
+        Assert.Null(PendingPackage.PackageIn(["lazyscan:Receipt.lsdoc"]));
+        Assert.Null(PendingPackage.PackageIn([" lazyscan:x", @"C:\Scans\Receipt.lsdoc"]));
+        Assert.Null(PendingPackage.PackageIn(["LazyScan://pair", @"C:\Scans\Receipt.lsdoc"]));
+    }
+
+    [Fact]
     public void NewerPackage_IsRefusedWithTheMessage()
     {
         var entries = CompanionPackage.Entries(Document()).ToList();

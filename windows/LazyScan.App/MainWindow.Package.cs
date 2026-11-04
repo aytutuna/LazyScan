@@ -17,7 +17,7 @@ public partial class MainWindow
     /// <summary>Opens the first <c>.lsdoc</c> among the command line's arguments (File Explorer passes one).</summary>
     private void OpenCommandLinePackage()
     {
-        if (Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(PendingPackage.IsPackageFile) is { } path)
+        if (PendingPackage.PackageIn(Environment.GetCommandLineArgs().Skip(1)) is { } path)
         {
             _ = ViewModel.OpenPackage(path);
         }
