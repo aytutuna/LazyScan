@@ -126,6 +126,7 @@ public sealed class ScanTimeConverter : IMultiValueConverter
     public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Length < 2 || values[0] is not DateTime date || values[1] is not DateTime now) return "";
+        // not the binding culture: it ignores the user's Region overrides
         return Short(date, now, CultureInfo.CurrentCulture);
     }
 
