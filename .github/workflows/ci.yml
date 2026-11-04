@@ -410,28 +410,26 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/app-build" \
             SWIFT_EMIT_LOC_STRINGS=YES \
             CODE_SIGNING_ALLOWED=NO
-      - name: Probe the string data
+      # The view keys the compiler found (SWIFT_EMIT_LOC_STRINGS above), against l10n/keys-ios.json.
+      # A difference goes to the step summary and the list is uploaded; it fails the job only on the
+      # release path, where a new key must be in the list (and translated) before it ships.
+      - name: Extract the view keys
         run: |
-          python3 - "$RUNNER_TEMP/app-build" <<'PY'
-          import json, sys
-          from pathlib import Path
-          seen = {}
-          for p in Path(sys.argv[1]).rglob("*.stringsdata"):
-              d = json.loads(p.read_text())
-              for t, es in d.get("tables", {}).items():
-                  for e in es:
-                      seen.setdefault((d["source"], t, e["key"]), e)
-          srcs = sorted({k[0] for k in seen})
-          print(len(srcs), "sources; first:", srcs[:3], "tables:", sorted({k[1] for k in seen}))
-          print("tests:", [s for s in srcs if "Tests" in s][:3])
-          for (src, t, key), e in sorted(seen.items()):
-              if "SettingsScreen.swift" in src and e["location"]["startingLine"] == 714:
-                  print("714:", src, t, e)
-          for pat in ("%lld", "|", "100%"):
-              hits = [(k[0].split("/")[-1], e) for k, e in seen.items() if pat in k[2]][:3]
-              print(pat, hits)
-          print("empty key:", [(k[0].split("/")[-1], e) for k, e in seen.items() if k[2] == ""][:3])
-          PY
+          status=0
+          python3 scripts/extract_loc.py "$RUNNER_TEMP/app-build" "$RUNNER_TEMP/keys-ios.json" l10n/keys-ios.json > "$RUNNER_TEMP/keys-diff.md" || status=$?
+          cat "$RUNNER_TEMP/keys-diff.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/keys-diff.md"
+          if [ "$status" -eq 3 ] && [ "$GITHUB_REF" != refs/heads/ci/testflight ]; then
+            status=0
+          fi
+          exit "$status"
+      - name: Upload the view keys
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: keys-ios
+          path: ${{ runner.temp }}/keys-ios.json
+          if-no-files-found: warn
       - name: Check the app's languages
         run: |
           set -euo pipefail

@@ -6,7 +6,7 @@ writes one .stringsdata file per source) into a sorted key list.
 
 Reads every *.stringsdata under DIR, keeps table Localizable, drops sources under a Tests
 directory and fails on any other table. Writes OUT as {"keys": [{"key", "comment"}]}. With
-COMMITTED, prints the keys added and removed against that list as Markdown and exits 1 when
+COMMITTED, prints the keys added and removed against that list as Markdown and exits 3 when
 they differ.
 """
 import json
@@ -25,6 +25,8 @@ def collect(root):
             if table != "Localizable":
                 sys.exit("%s: unexpected table %s" % (source, table))
             for entry in entries:
+                if not entry["key"]:
+                    continue
                 if entry["key"] not in keys or not keys[entry["key"]]:
                     keys[entry["key"]] = entry.get("comment") or ""
     return keys
@@ -54,7 +56,7 @@ def main(args):
             print("\n%s\n" % label)
             for item in items:
                 print("- `%s`" % item.replace("`", "'"))
-    return 1
+    return 3
 
 
 if __name__ == "__main__":
