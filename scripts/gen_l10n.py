@@ -13,7 +13,9 @@ from xml.sax.saxutils import escape
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "l10n" / "shared.json"
 LANG_DIR = ROOT / "l10n" / "lang"
-LANGUAGES = ["tr"]
+LANGUAGE_LIST = ROOT / "l10n" / "languages.json"
+PLURAL_RULES = ROOT / "l10n" / "plural.json"
+CATEGORIES = ["zero", "one", "two", "few", "many", "other"]
 STRINGS_DIRS = [ROOT / "ios" / "LazyScaniOS", ROOT / "l10n" / "mac"]
 RESX = "windows/LazyScan.Core/Strings.{}.resx"
 CODE = ["Sources", "windows"]
@@ -49,6 +51,36 @@ def no_duplicates(pairs):
 
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=no_duplicates)
+
+
+def categories(rules):
+    """Categories a translation must cover. many is kept only with a real integer sample."""
+    out = []
+    for name in CATEGORIES:
+        if name not in rules:
+            continue
+        samples = [s.strip() for s in rules[name].get("integer", "").split(",")]
+        if name == "other" or any(s and "c" not in s and s != "…" for s in samples):
+            out.append(name)
+    return out
+
+
+def languages():
+    entries = read_json(LANGUAGE_LIST)
+    plural = read_json(PLURAL_RULES)
+    errors = []
+    for entry in entries:
+        code = entry["code"]
+        if code not in plural:
+            errors.append(f"{code}: no entry in plural.json")
+        elif entry["plural"] != categories(plural[code]):
+            errors.append(f"{code}: plural {','.join(entry['plural'])} differs from plural.json {','.join(categories(plural[code]))}")
+    if errors:
+        sys.exit("\n".join(errors))
+    return [e["code"] for e in entries if (LANG_DIR / f"{e['code']}.json").exists()]
+
+
+LANGUAGES = languages()
 
 
 def load():
