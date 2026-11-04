@@ -1,8 +1,9 @@
 <Window x:Class="LazyScan.App.PhotoCornersWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:LazyScan.App"
         xmlns:ui="clr-namespace:LazyScan.App"
-        Title="Check the corners"
+        Title="{loc:T Check the corners}"
         Width="860" Height="720" MinWidth="560" MinHeight="480"
         FontFamily="{StaticResource TextFontFamily}"
         Icon="{x:Static ui:AppIcon.Image}"
@@ -36,7 +37,7 @@
                                AutomationProperties.LiveSetting="Polite" />
                 </DockPanel>
                 <DockPanel Margin="0,4,0,0" HorizontalAlignment="Left">
-                    <ui:InfoButton x:Name="KeyboardInfoButton" DockPanel.Dock="Right" Label="keyboard use" Heading="Keyboard"
+                    <ui:InfoButton x:Name="KeyboardInfoButton" DockPanel.Dock="Right" Label="keyboard use" Heading="{loc:T Keyboard}"
                                    Margin="4,-4,0,-4" />
                     <TextBlock x:Name="HelpText" Style="{StaticResource CaptionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 </DockPanel>
@@ -54,18 +55,18 @@
 
         <!-- Footer: Reset and the whole photo on the left, the primary choice, Skip and Stop on the right. -->
         <DockPanel DockPanel.Dock="Bottom" Margin="20,12,20,16" LastChildFill="False">
-            <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="Reset" Style="{StaticResource SubtleButtonStyle}"
+            <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="{loc:T Reset}" Style="{StaticResource SubtleButtonStyle}"
                     ui:Icon.Glyph="&#xE7A7;" Margin="-11,0,0,0" Click="Reset_Click" IsEnabled="False"
-                    ToolTip="Go back to the starting corners" />
+                    ToolTip="{loc:T Go back to the starting corners}" />
             <Button x:Name="WholePhotoButton" DockPanel.Dock="Left" Style="{StaticResource SubtleButtonStyle}"
                     ui:Icon.Glyph="&#xE740;" Margin="4,0,0,0" Click="WholePhoto_Click"
-                    AutomationProperties.HelpText="Add the whole photo as the page, as it is" />
+                    AutomationProperties.HelpText="{loc:T Add the whole photo as the page\, as it is}" />
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="UseButton" IsDefault="True" MinWidth="96"
                         Style="{StaticResource AccentButtonStyle}" Click="Use_Click" />
                 <Button x:Name="SkipButton" IsCancel="True" MinWidth="96" Margin="8,0,0,0" Click="Skip_Click" />
                 <Button x:Name="StopButton" Style="{StaticResource SubtleButtonStyle}" Margin="8,0,0,0" Click="Stop_Click"
-                        ToolTip="End the import and keep the pages added so far" />
+                        ToolTip="{loc:T End the import and keep the pages added so far}" />
             </StackPanel>
         </DockPanel>
 
@@ -80,7 +81,7 @@
                 <Image x:Name="DisplayImage" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality"
                        Effect="{DynamicResource PageShadow}" />
                 <Path x:Name="OutsideDim" Fill="{DynamicResource SmokeFillColorDefaultBrush}" IsHitTestVisible="False" />
-                <TextBlock x:Name="LoadingText" Text="Loading…" Style="{StaticResource SecondaryBodyText}"
+                <TextBlock x:Name="LoadingText" Text="{loc:T Loading…}" Style="{StaticResource SecondaryBodyText}"
                            TextAlignment="Center" MaxWidth="360" />
                 <Polygon x:Name="Outline" Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
                          StrokeLineJoin="Miter" IsHitTestVisible="False" />

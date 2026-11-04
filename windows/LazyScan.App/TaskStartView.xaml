@@ -1,6 +1,7 @@
 <UserControl x:Class="LazyScan.App.TaskStartView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:LazyScan.App"
              xmlns:local="clr-namespace:LazyScan.App">
     <!-- The start screen: what are you scanning? The user's presets first (only when there are some),
          then the tasks in three groups. Each tile is an icon and a title; what a task does and what it
@@ -25,7 +26,7 @@
                     <DockPanel DockPanel.Dock="Top">
                         <Border x:Name="CurrentTag" DockPanel.Dock="Right" Style="{StaticResource AccentTagStyle}"
                                 Visibility="Collapsed">
-                            <TextBlock Text="Current" Style="{StaticResource AccentTagText}" />
+                            <TextBlock Text="{loc:T Current}" Style="{StaticResource AccentTagText}" />
                         </Border>
                         <TextBlock x:Name="TileGlyph" Text="{Binding Glyph}" Style="{StaticResource TaskTileGlyphStyle}" />
                     </DockPanel>
@@ -53,18 +54,18 @@
         <StackPanel Margin="0,0,0,16">
             <DockPanel x:Name="Header" Margin="16,20,16,4">
                 <Button DockPanel.Dock="Right" x:Name="GoToScanButton" Style="{StaticResource IconTextButtonStyle}"
-                        local:Icon.Glyph="&#xE8FE;" Content="Go to Scan" VerticalAlignment="Center" Margin="16,0,0,0"
-                        ToolTip="Open the Scan tab without changing your settings"
+                        local:Icon.Glyph="&#xE8FE;" Content="{loc:T Go to Scan}" VerticalAlignment="Center" Margin="16,0,0,0"
+                        ToolTip="{loc:T Open the Scan tab without changing your settings}"
                         Click="GoToScan_Click" />
-                <TextBlock Text="What are you scanning?" Style="{StaticResource TitleText}" TextWrapping="Wrap"
+                <TextBlock Text="{loc:T What are you scanning?}" Style="{StaticResource TitleText}" TextWrapping="Wrap"
                            VerticalAlignment="Center" />
             </DockPanel>
 
             <!-- The user's presets: shown only when there are some. -->
             <StackPanel x:Name="PresetsPanel" Visibility="Collapsed">
-                <TextBlock x:Name="PresetsHeader" Text="My presets" Style="{StaticResource SectionHeaderText}" Margin="16,16,16,2" />
+                <TextBlock x:Name="PresetsHeader" Text="{loc:T My presets}" Style="{StaticResource SectionHeaderText}" Margin="16,16,16,2" />
                 <ItemsControl x:Name="PresetGrid" Margin="10,0,10,0" Focusable="False"
-                              AutomationProperties.Name="My presets"
+                              AutomationProperties.Name="{loc:T My presets}"
                               KeyboardNavigation.TabNavigation="Once"
                               KeyboardNavigation.DirectionalNavigation="Contained">
                     <ItemsControl.ItemsPanel>
@@ -92,8 +93,8 @@
 
             <!-- The tasks, in their groups (TaskGroups): one Tab stop for all the tiles. -->
             <ItemsControl x:Name="TaskGrid" Focusable="False"
-                          AutomationProperties.Name="Tasks"
-                          AutomationProperties.HelpText="Picking a task sets everything up. You can change any setting later."
+                          AutomationProperties.Name="{loc:T Tasks}"
+                          AutomationProperties.HelpText="{loc:T Picking a task sets everything up. You can change any setting later.}"
                           KeyboardNavigation.TabNavigation="Once"
                           KeyboardNavigation.DirectionalNavigation="Contained">
                 <ItemsControl.ItemTemplate>
@@ -120,14 +121,14 @@
                  PDF so that Save adds the scanned pages to it (AppViewModel.AppendTarget). -->
             <WrapPanel Margin="{Binding GridMargin, RelativeSource={RelativeSource AncestorType=local:TaskStartView}}">
                 <Button x:Name="AddToPdfTile" Style="{StaticResource TaskTileButtonStyle}" Click="AddToPdfTile_Click"
-                        AutomationProperties.Name="Add pages to a PDF"
-                        AutomationProperties.HelpText="Pick a PDF, then scan the pages to add">
+                        AutomationProperties.Name="{loc:T Add pages to a PDF}"
+                        AutomationProperties.HelpText="{loc:T Pick a PDF\, then scan the pages to add}">
                     <Button.ToolTip>
-                        <TextBlock Text="Pick a PDF, then scan the pages to add" TextWrapping="Wrap" MaxWidth="280" />
+                        <TextBlock Text="{loc:T Pick a PDF\, then scan the pages to add}" TextWrapping="Wrap" MaxWidth="280" />
                     </Button.ToolTip>
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="&#xE8E5;" Style="{StaticResource TaskTileGlyphStyle}" />
-                        <TextBlock Text="Add pages to a PDF" Style="{StaticResource BodyStrongText}" TextWrapping="Wrap"
+                        <TextBlock Text="{loc:T Add pages to a PDF}" Style="{StaticResource BodyStrongText}" TextWrapping="Wrap"
                                    Margin="0,6,0,0" VerticalAlignment="Top" />
                     </DockPanel>
                 </Button>
