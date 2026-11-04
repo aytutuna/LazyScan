@@ -144,7 +144,7 @@ public static class InspectorSections
     /// 300 dpi · Color").
     /// </summary>
     public static string HeaderName(string title, string summary) =>
-        summary.Length == 0 ? title : $"{title}, {summary}";
+        summary.Length == 0 ? title : Loc.T("{0}, {1}", title, summary);
 
     /// <summary>The Pages header's accessible name: how many options are on ("Pages, 2 options on"), or just "Pages".</summary>
     public static string PagesHeaderName(DocumentOptions d)

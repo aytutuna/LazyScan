@@ -59,16 +59,24 @@ public partial class MainWindow
         string? target = ViewModel.AppendTarget;
         string label = target is not null
             ? PdfAppender.SaveTitle(Path.GetFileName(target))
-            : Regex.Replace(savePlan.SaveTitle(format), @" \(\d+ pages?\)$", "");
+            : !savePlan.IsSplit ? OutputFormats.SaveTitle(format)
+            : OutputFormats.QueueFormat(format) switch
+            {
+                OutputFormat.Word => Loc.Plural(savePlan.Documents.Count, "Save {0} Word document", "Save {0} Word documents"),
+                OutputFormat.Text => Loc.Plural(savePlan.Documents.Count, "Save {0} text file", "Save {0} text files"),
+                _ => Loc.Plural(savePlan.Documents.Count, "Save {0} PDF", "Save {0} PDFs"),
+            };
         bool pdf = target is not null || OutputFormats.QueueFormat(format) == OutputFormat.Pdf;
         // The file decides: pages added to it get no password.
         bool locked = target is null && pdf && ViewModel.Settings.Output.Protect;
         SavePdfButton.Content = label;
         SavePdfButton.Tag = saveCount > 0 ? saveCount.ToString(System.Globalization.CultureInfo.CurrentCulture) : null;
         global::LazyScan.App.Icon.SetGlyph(SavePdfButton, locked ? "" : pdf ? "" : "");
-        string spoken = locked ? label.Replace("PDF", "password-protected PDF", StringComparison.Ordinal) : label;
+        string spoken = !locked ? label
+            : savePlan.IsSplit ? Loc.Plural(savePlan.Documents.Count, "Save {0} password-protected PDF", "Save {0} password-protected PDFs")
+            : Loc.T("Save password-protected PDF");
         AutomationProperties.SetName(SavePdfButton,
-            saveCount > 0 ? $"{spoken}, {saveCount} page{(saveCount == 1 ? "" : "s")}" : spoken);
+            saveCount > 0 ? Loc.Plural(saveCount, "{1}, {0} page", "{1}, {0} pages", spoken) : spoken);
         bool nothingToSave = pageCount > 0 && saveCount == 0;
         SavePdfButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : null;
         ToolTipService.SetShowOnDisabled(SavePdfButton, true);
@@ -84,11 +92,11 @@ public partial class MainWindow
         MultiPageBox.IsEnabled = target is null;
         string? why = target is null
             ? null
-            : $"Pages are collected until they are added to {Path.GetFileName(target)}. The × under Save saves new files again.";
-        MultiPageBox.ToolTip = why ?? "Off: each scan is saved right away";
+            : Loc.T("Pages are collected until they are added to {0}. The × under Save saves new files again.", Path.GetFileName(target));
+        MultiPageBox.ToolTip = why ?? Loc.T("Off: each scan is saved right away");
         var shownFormat = InspectorSections.SavesPageFormat(ViewModel.Settings) ? OutputFormats.PageFormat(format) : format;
         AutomationProperties.SetHelpText(MultiPageBox,
-            why ?? $"On: pages are collected until you {OutputFormats.SaveTitle(shownFormat)}. Off: each scan is saved right away.");
+            why ?? Loc.T("On: pages are collected until you {0}. Off: each scan is saved right away.", OutputFormats.SaveTitle(shownFormat)));
     }
 
     /// <summary>The Save button's ▾: the other ways to save the queue.</summary>

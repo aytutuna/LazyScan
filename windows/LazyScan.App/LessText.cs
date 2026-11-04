@@ -1,3 +1,5 @@
+using LazyScan.Core;
+
 namespace LazyScan.App;
 
 /// <summary>
@@ -10,19 +12,19 @@ namespace LazyScan.App;
 internal static class ShortText
 {
     /// <summary>The empty stage's line without a task.</summary>
-    public const string PlaceOriginal = "Place the original face down, then select Scan.";
+    public static string PlaceOriginal => Loc.T("Place the original face down, then select Scan.");
     /// <summary>The same line while the feeder is the source.</summary>
-    public const string LoadFeeder = "Load the pages in the feeder, then select Scan.";
+    public static string LoadFeeder => Loc.T("Load the pages in the feeder, then select Scan.");
     /// <summary>The chip on a preview until an area is selected.</summary>
-    public const string DragToSelect = "Drag to select an area";
+    public static string DragToSelect => Loc.T("Drag to select an area");
     /// <summary>Saturation and Restore faded colors while the scan is grayscale or black and white.</summary>
-    public const string NeedsColor = "Needs Color";
+    public static string NeedsColor => Loc.T("Needs Color");
     /// <summary>Page clean-up and splitting while each scan is saved at once.</summary>
-    public const string NeedsCollectPages = "Needs Collect pages";
+    public static string NeedsCollectPages => Loc.T("Needs Collect pages");
     /// <summary>Skip blank pages while blank sheets split the stack into documents.</summary>
-    public const string BlankSheetsSplit = "Blank sheets split documents";
+    public static string BlankSheetsSplit => Loc.T("Blank sheets split documents");
     /// <summary>Receipts in one PDF, while they are saved as images.</summary>
-    public const string OnlyForPdfs = "Only for PDFs";
+    public static string OnlyForPdfs => Loc.T("Only for PDFs");
     /// <summary>Name by receipt date while the file name has no {docdate}: the receipt's date is not used.</summary>
-    public const string NeedsDocDate = "Needs {docdate} in File name";
+    public static string NeedsDocDate => Loc.T("Needs {docdate} in File name");
 }

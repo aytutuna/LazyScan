@@ -25,15 +25,16 @@ public partial class MainWindow
 
     private void SetUpInspectorSections()
     {
-        Add(CopyOptions, InspectorSections.Task, "", "Photocopy");
-        Add(ReceiptOptions, InspectorSections.Task, "", "Receipts");
-        Add(ScannerSection, InspectorSections.Scanner, "", "Scanner");
-        Add(OutputSection, InspectorSections.Output, "", "Output");
-        Add(AdjustmentsSection, InspectorSections.Adjustments, "", "Adjustments");
-        Add(PagesSection, InspectorSections.Pages, "", "Pages");
-        Add(SplitSection, InspectorSections.Split, "", "Split into documents");
-        Add(ArchiveSection, InspectorSections.Archive, "", "Archive & password");
-        Add(MoreSection, InspectorSections.More, "", "More options");
+        // TaskTitle needs the settings of a task in progress; these two headers are fixed.
+        Add(CopyOptions, InspectorSections.Task, "", Loc.T("Photocopy"));
+        Add(ReceiptOptions, InspectorSections.Task, "", Loc.T("Receipts"));
+        Add(ScannerSection, InspectorSections.Scanner, "", InspectorSections.Title(InspectorSections.Scanner));
+        Add(OutputSection, InspectorSections.Output, "", InspectorSections.Title(InspectorSections.Output));
+        Add(AdjustmentsSection, InspectorSections.Adjustments, "", InspectorSections.Title(InspectorSections.Adjustments));
+        Add(PagesSection, InspectorSections.Pages, "", InspectorSections.Title(InspectorSections.Pages));
+        Add(SplitSection, InspectorSections.Split, "", InspectorSections.Title(InspectorSections.Split));
+        Add(ArchiveSection, InspectorSections.Archive, "", InspectorSections.Title(InspectorSections.Archive));
+        Add(MoreSection, InspectorSections.More, "", InspectorSections.Title(InspectorSections.More));
 
         Dictionary<string, bool> saved;
         try
@@ -132,7 +133,6 @@ public partial class MainWindow
     {
         if (_sections.Count == 0) return;
         var s = ViewModel.Settings;
-        bool documents = s.Intent == ScanIntent.Document;
         bool copy = TaskCatalog.FlowOf(s) == TaskFlowKind.Copy;
         var shownFormat = ShownFormat(s);
         bool textApplies = InspectorSections.TextApplies(s);
@@ -147,7 +147,7 @@ public partial class MainWindow
         // leaves the action out.
         AfterSaveRow.Visibility = copy ? Visibility.Collapsed : Visibility.Visible;
         var output = _sections.First(x => x.Id == InspectorSections.Output);
-        output.Title.Text = documents ? "Output" : "Photos";
+        output.Title.Text = InspectorSections.Title(InspectorSections.Output, s);
 
         foreach (var section in _sections)
         {
@@ -172,8 +172,7 @@ public partial class MainWindow
                 case InspectorSections.Pages:
                     summary = InspectorSections.PagesSummary(s.Document);
                     changed = summary.Length > 0;
-                    int on = InspectorSections.PagesOn(s.Document);
-                    name = on == 0 ? section.TitleText : $"{section.TitleText}, {on} option{(on == 1 ? "" : "s")} on";
+                    name = InspectorSections.PagesHeaderName(s.Document);
                     break;
                 case InspectorSections.Split:
                     summary = InspectorSections.SplitSummary(s.Document);
@@ -197,7 +196,7 @@ public partial class MainWindow
             section.Lock.Visibility = collapsed && locked ? Visibility.Visible : Visibility.Collapsed;
             section.Dot.Visibility = collapsed && changed ? Visibility.Visible : Visibility.Collapsed;
             AutomationProperties.SetName(section.Expander,
-                name ?? (summary.Length > 0 ? $"{section.TitleText}, {summary}" : section.TitleText));
+                name ?? InspectorSections.HeaderName(section.TitleText, summary));
         }
         SyncFileNamePreview();
     }
@@ -267,6 +266,6 @@ public partial class MainWindow
         string? name = ViewModel.FileNamePreview(template);
         FileNamePreview.Text = name ?? "";
         FileNamePreview.Visibility = name is null ? Visibility.Collapsed : Visibility.Visible;
-        AutomationProperties.SetHelpText(TemplateBox, name is null ? "" : $"The next file is named {name}");
+        AutomationProperties.SetHelpText(TemplateBox, name is null ? "" : Loc.T("The next file is named {0}", name));
     }
 }

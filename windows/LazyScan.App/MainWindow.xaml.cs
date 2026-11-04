@@ -155,7 +155,7 @@ public partial class MainWindow : Window
         Sidebar.Width = compact ? RailWidth : PaneWidth;
         // The toggle is offered only where the pane folds on its own.
         PaneToggleButton.Visibility = narrow ? Visibility.Visible : Visibility.Collapsed;
-        string toggleText = compact ? "Show scanner and preset names" : "Hide scanner and preset names";
+        string toggleText = compact ? Loc.T("Show scanner and preset names") : Loc.T("Hide scanner and preset names");
         PaneToggleButton.ToolTip = toggleText;
         AutomationProperties.SetName(PaneToggleButton, toggleText);
         ScannersHeader.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
@@ -168,19 +168,19 @@ public partial class MainWindow : Window
         {
             AppearanceButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
             AppearanceButton.HorizontalContentAlignment = HorizontalAlignment.Center;
-            AppearanceButton.ToolTip = "Appearance: light, dark, or follow Windows";
+            AppearanceButton.ToolTip = Loc.T("Appearance: light, dark, or follow Windows");
             PhoneButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Center;
-            PhoneButton.ToolTip = "Phone: send documents from your phone to this PC";
+            PhoneButton.ToolTip = Loc.T("Phone: send documents from your phone to this PC");
         }
         else
         {
             AppearanceButton.ClearValue(ContentControl.ContentTemplateProperty);
             AppearanceButton.HorizontalContentAlignment = HorizontalAlignment.Left;
-            AppearanceButton.ToolTip = "Light, dark, or follow Windows";
+            AppearanceButton.ToolTip = Loc.T("Light, dark, or follow Windows");
             PhoneButton.ClearValue(ContentControl.ContentTemplateProperty);
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Left;
-            PhoneButton.ToolTip = "Send documents from your phone to this PC";
+            PhoneButton.ToolTip = Loc.T("Send documents from your phone to this PC");
         }
     }
 
@@ -333,7 +333,7 @@ public partial class MainWindow : Window
         string? previewReason = ViewModel.PreviewUnavailableReason;
         PreviewButton.IsEnabled = !ViewModel.IsBusy && previewReason is null;
         // The tooltip also shows while the button is greyed out (ShowOnDisabled), so it says why.
-        string previewHint = previewReason ?? "Quick look at the whole glass";
+        string previewHint = previewReason ?? Loc.T("Quick look at the whole glass");
         PreviewButton.ToolTip = previewHint;
         AutomationProperties.SetHelpText(PreviewButton, previewHint);
         // Scan has a tooltip only while it waits for the scanner.
@@ -358,7 +358,7 @@ public partial class MainWindow : Window
         PresetButtons.IsEnabled = !ViewModel.IsBusy;
         SyncPresetButtons();
         // So is the scanner list: picking another scanner would cancel the scan.
-        string? busyHint = ViewModel.IsBusy ? "Wait for the scan to finish" : null;
+        string? busyHint = ViewModel.IsBusy ? Loc.T("Wait for the scan to finish") : null;
         DeviceList.IsEnabled = !ViewModel.IsBusy;
         DeviceList.ToolTip = busyHint;
         AutomationProperties.SetHelpText(DeviceList, busyHint ?? "");
@@ -505,14 +505,14 @@ public partial class MainWindow : Window
         SavedBarText.ToolTip = paths.Count == 1
             ? $"{ViewModel.SavedBarText}{Environment.NewLine}{paths[0]}"
             : string.Join(Environment.NewLine, paths);
-        AutomationProperties.SetName(SavedBarText, $"Saved {ViewModel.SavedBarText}");
+        AutomationProperties.SetName(SavedBarText, Loc.T("Saved {0}", ViewModel.SavedBarText));
         var offered = ViewModel.SavedBarActions;
         foreach (var button in SavedBarButtons.Children.OfType<Button>())
         {
             if (button.Tag is not string tag) continue;
             var action = Enum.Parse<FileAction>(tag);
             button.Visibility = offered.Contains(action) ? Visibility.Visible : Visibility.Collapsed;
-            button.ToolTip = action == FileAction.Share ? "Send by email or to an app" : FileActionMenu.Hint(action, paths.Count);
+            button.ToolTip = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, paths.Count);
         }
         SavedBar.Visibility = Visibility.Visible;
         if (isNew) AnnounceWhenShown(SavedBarText);
@@ -634,7 +634,7 @@ public partial class MainWindow : Window
     // MARK: - Tasks
 
     /// <summary>Title of the banner that guides turning a stack over by hand without a task.</summary>
-    internal const string TurningOverTitle = "Two-sided scanning";
+    internal static string TurningOverTitle => Loc.T("Two-sided scanning");
 
     /// <summary>
     /// The banner above the stage: the active task, or turning a stack over by hand, and what to
@@ -656,7 +656,7 @@ public partial class MainWindow : Window
             return;
         }
         string title = task?.Title ?? TurningOverTitle;
-        string name = task is null ? title : $"Task: {title}";
+        string name = task is null ? title : Loc.T("Task: {0}", title);
         bool sameTaskShown = TaskBanner.Visibility == Visibility.Visible && AutomationProperties.GetName(TaskBannerGroup) == name;
         // While a review shows its own title (photos, receipts, the ID card), the banner's guidance is
         // for the next scan: it is hidden under the review, keeping its place so nothing moves.
@@ -672,7 +672,7 @@ public partial class MainWindow : Window
             SetStepIndicator(flow);
             TaskBannerSteps.Visibility = Visibility.Visible;
             AutomationProperties.SetName(TaskBannerSteps,
-                $"{title}, step {flow.StepIndex + 1} of {flow.StepCount}: {step.Title.ToLowerInvariant()}");
+                Loc.T("{0}, step {1} of {2}: {3}", title, flow.StepIndex + 1, flow.StepCount, step.Title.ToLower(CultureInfo.CurrentCulture)));
         }
         else
         {
@@ -694,12 +694,12 @@ public partial class MainWindow : Window
         if (sameTaskShown && promptChanged) AnnounceWhenShown(TaskBannerPrompt);
 
         // Without a task the close button stops turning stacks over by hand.
-        string exitName = task is not null ? "Leave the task" : "Scan one side only";
+        string exitName = task is not null ? Loc.T("Leave the task") : Loc.T("Scan one side only");
         AutomationProperties.SetName(ExitTaskButton, exitName);
         // With sides by hand the task takes them along (ExitTask), so not every setting stays.
         ExitTaskButton.ToolTip = task is null
-            ? "Scan one side of each sheet"
-            : turningOver ? "Leave the task" : "Leave the task (settings stay)";
+            ? Loc.T("Scan one side of each sheet")
+            : turningOver ? Loc.T("Leave the task") : Loc.T("Leave the task (settings stay)");
         // Not while a scan runs: its result belongs to the task's steps.
         ExitTaskButton.IsEnabled = !ViewModel.IsBusy;
 
@@ -728,8 +728,8 @@ public partial class MainWindow : Window
         StepActions.IsEnabled = !ViewModel.IsBusy;
         if (skippable)
         {
-            SkipStepButton.Content = step!.Id == IdCardSteps.BackStepId ? IdCardSteps.SkipBackLabel : $"Skip {step.Title.ToLowerInvariant()}";
-            SkipStepButton.ToolTip = "Nothing is printed on the back: save the front only";
+            SkipStepButton.Content = step!.Id == IdCardSteps.BackStepId ? IdCardSteps.SkipBackLabel : Loc.T("Skip {0}", step.Title.ToLower(CultureInfo.CurrentCulture));
+            SkipStepButton.ToolTip = Loc.T("Nothing is printed on the back: save the front only");
         }
         // The empty stage's title and line say what the banner and the status line say: hidden while
         // the banner shows (the import link stays).
@@ -1111,9 +1111,9 @@ public partial class MainWindow : Window
         };
         foreach (var (appearance, label) in new[]
         {
-            (AppAppearance.System, "Use system setting"),
-            (AppAppearance.Light, "Light"),
-            (AppAppearance.Dark, "Dark"),
+            (AppAppearance.System, Loc.T("Use system setting")),
+            (AppAppearance.Light, Loc.T("Light")),
+            (AppAppearance.Dark, Loc.T("Dark")),
         })
         {
             var item = new MenuItem
@@ -1178,11 +1178,11 @@ public partial class MainWindow : Window
             DriverWindowBox.IsEnabled = !ViewModel.DriverWindowRequired;
             DriverWindowReason.Visibility = ViewModel.DriverWindowRequired ? Visibility.Visible : Visibility.Collapsed;
             string hint = ViewModel.DriverWindowRequired
-                ? "This scanner's driver always shows its own window; resolution, color and area are chosen there."
+                ? Loc.T("This scanner's driver always shows its own window; resolution, color and area are chosen there.")
                 : ViewModel.UseDriverWindow
-                    ? "Scan opens the driver's window; resolution, color and area are chosen there."
-                    : "Scan with the settings above, without the driver's window.";
-            DriverWindowBox.ToolTip = "Resolution, color and area are chosen in the driver's window";
+                    ? Loc.T("Scan opens the driver's window; resolution, color and area are chosen there.")
+                    : Loc.T("Scan with the settings above, without the driver's window.");
+            DriverWindowBox.ToolTip = Loc.T("Resolution, color and area are chosen in the driver's window");
             AutomationProperties.SetHelpText(DriverWindowBox, hint);
         }
         finally
@@ -1285,7 +1285,7 @@ public partial class MainWindow : Window
             : s.Duplex == DuplexMode.Off && bothReason is not null ? $"{s.Duplex.Hint()} {bothReason}"
             : s.Duplex.Hint();
         SidesBox.ToolTip = sidesHelp;
-        AutomationProperties.SetHelpText(SidesBox, feeder ? sidesHelp : $"{DocumentSides.NeedsFeederReason}. {sidesHelp}");
+        AutomationProperties.SetHelpText(SidesBox, feeder ? sidesHelp : Loc.T("{0}. {1}", DocumentSides.NeedsFeederReason, sidesHelp));
         BackBindingOptions.Visibility = feeder && s.Duplex != DuplexMode.Off ? Visibility.Visible : Visibility.Collapsed;
         BackBindingBox.SelectedItem = BackBindingBox.Items.OfType<ComboBoxItem>()
             .FirstOrDefault(i => (DuplexBinding)i.Tag == s.BackBinding);
@@ -1497,19 +1497,19 @@ public partial class MainWindow : Window
         PagesReason.Visibility = collecting ? Visibility.Collapsed : Visibility.Visible;
         SkipBlankReason.Visibility = separators ? Visibility.Visible : Visibility.Collapsed;
         string hint = copy
-            ? "Copies print every page as scanned: blank pages are not left out."
+            ? Loc.T("Copies print every page as scanned: blank pages are not left out.")
             : receipts
-            ? "Receipts are found on the glass and checked before saving: there are no blank pages to leave out."
+            ? Loc.T("Receipts are found on the glass and checked before saving: there are no blank pages to leave out.")
             : separators
             ? DocumentSplitter.BlankPagesAreSeparatorsHint
             : collecting
             ? s.Document.RemoveBlankPages
-                ? "Blank pages are marked in the page strip and left out when you save. Click Keep on a page to save it."
-                : "Blank pages are marked in the page strip. Click Skip on a page to leave it out."
-            : "Only for pages collected before saving: a scan saved at once keeps every page.";
+                ? Loc.T("Blank pages are marked in the page strip and left out when you save. Click Keep on a page to save it.")
+                : Loc.T("Blank pages are marked in the page strip. Click Skip on a page to leave it out.")
+            : Loc.T("Only for pages collected before saving: a scan saved at once keeps every page.");
         // What the switch does is its tooltip; the full explanation (and why it is greyed out) its help text.
         SkipBlankBox.ToolTip = separators ? DocumentSplitter.BlankPagesAreSeparatorsHint
-            : "Blank pages are left out. Click Keep on a page to save it.";
+            : Loc.T("Blank pages are left out. Click Keep on a page to save it.");
         AutomationProperties.SetHelpText(SkipBlankBox, hint);
         // What counts as blank shows while it decides something: whenever collected pages are checked
         // for blanks. High warns to check the flagged pages.
@@ -1553,17 +1553,17 @@ public partial class MainWindow : Window
         AutoCropBox.IsEnabled = collecting;
         AutoStraightenBox.IsEnabled = collecting;
         string hint = copy
-            ? "Copies print every page as scanned: pages are not cropped or straightened."
+            ? Loc.T("Copies print every page as scanned: pages are not cropped or straightened.")
             : receipts
-            ? "Each receipt is cut out along its paper, or around its print, and turned straight on its own."
+            ? Loc.T("Each receipt is cut out along its paper, or around its print, and turned straight on its own.")
             : !collecting
-            ? "Only for pages collected before saving: a scan saved at once is kept as scanned."
+            ? Loc.T("Only for pages collected before saving: a scan saved at once is kept as scanned.")
             : (s.Document.AutoCrop, s.Document.AutoStraighten) switch
             {
-                (true, true) => "Pages are cut out of the scanner background and turned straight when that is clear. Click the arrow on a page to see it as scanned.",
-                (true, false) => "Pages are cut out of the scanner background when that is clear. Click the arrow on a page to see it as scanned.",
-                (false, true) => "Pages that lie at a slant are turned straight when that is clear. Click the arrow on a page to see it as scanned.",
-                _ => "Cut each page out of the scanner background, and turn pages that lie at a slant.",
+                (true, true) => Loc.T("Pages are cut out of the scanner background and turned straight when that is clear. Click the arrow on a page to see it as scanned."),
+                (true, false) => Loc.T("Pages are cut out of the scanner background when that is clear. Click the arrow on a page to see it as scanned."),
+                (false, true) => Loc.T("Pages that lie at a slant are turned straight when that is clear. Click the arrow on a page to see it as scanned."),
+                _ => Loc.T("Cut each page out of the scanner background, and turn pages that lie at a slant."),
             };
         foreach (var box in new[] { AutoCropBox, AutoStraightenBox })
         {
@@ -1676,7 +1676,7 @@ public partial class MainWindow : Window
                 ToolTip = size.Hint(),
                 Style = (Style)FindResource("SegmentedTextItemStyle"),
             };
-            AutomationProperties.SetHelpText(segment, $"{size.Hint()}. {size.Detail()}");
+            AutomationProperties.SetHelpText(segment, Loc.T("{0}. {1}", size.Hint(), size.Detail()));
             segment.Checked += Setting_Changed;
             PdfSizeSegments.Children.Add(segment);
         }
@@ -1706,9 +1706,9 @@ public partial class MainWindow : Window
         WordPageImagesBox.ToolTip = pageImagesHint;
         AutomationProperties.SetHelpText(WordPageImagesBox, pageImagesHint);
         PdfSizeOptions.Visibility = pdf || (word && s.Output.WordPageImages) ? Visibility.Visible : Visibility.Collapsed;
-        PdfSizeLabel.Text = pdf ? "PDF size" : "Page image size";
+        PdfSizeLabel.Text = pdf ? Loc.T("PDF size") : Loc.T("Page image size");
         AutomationProperties.SetName(PdfSizeTrack, PdfSizeLabel.Text);
-        AutomationProperties.SetHelpText(PdfSizeTrack, $"{s.Output.PdfSize.Hint()}. {s.Output.PdfSize.Detail()}");
+        AutomationProperties.SetHelpText(PdfSizeTrack, Loc.T("{0}. {1}", s.Output.PdfSize.Hint(), s.Output.PdfSize.Detail()));
         bool savesPdf = pageOnly ? OutputFormats.PageFormat(s.Format) == OutputFormat.Pdf : OutputFormats.SavesPdf(s.Format, s.DocumentMultiPage);
         AlsoSaveTextBox.IsEnabled = savesPdf && (flow == TaskFlowKind.DocumentQueue || receipts);
         // Receipts are saved from their review, the ID card from its own and a copy is printed as it is
@@ -1720,11 +1720,11 @@ public partial class MainWindow : Window
         SearchableBox.Visibility = WritesPdf(s) && flow != TaskFlowKind.Copy && !idCard ? Visibility.Visible : Visibility.Collapsed;
         string hint = flow switch
         {
-            TaskFlowKind.IdCard => "Not for ID cards: the card is saved as a picture, without its text.",
-            TaskFlowKind.Copy => "Not for copies: the PDF of a copy is saved without its text.",
-            TaskFlowKind.ReceiptSplit when savesPdf => "Writes the text of each receipt beside its PDF, in a .txt file with the same name.",
-            _ when savesPdf => "Writes the text of the pages beside each PDF, in a .txt file with the same name.",
-            _ => "Only for PDFs: Word and text files are the text already, and images have none.",
+            TaskFlowKind.IdCard => Loc.T("Not for ID cards: the card is saved as a picture, without its text."),
+            TaskFlowKind.Copy => Loc.T("Not for copies: the PDF of a copy is saved without its text."),
+            TaskFlowKind.ReceiptSplit when savesPdf => Loc.T("Writes the text of each receipt beside its PDF, in a .txt file with the same name."),
+            _ when savesPdf => Loc.T("Writes the text of the pages beside each PDF, in a .txt file with the same name."),
+            _ => Loc.T("Only for PDFs: Word and text files are the text already, and images have none."),
         };
         AutomationProperties.SetHelpText(AlsoSaveTextBox, hint);
         SyncPdfProtectionOptions();
@@ -1861,7 +1861,7 @@ public partial class MainWindow : Window
         RestoreBox.IsEnabled = color;
         ColorReason.Visibility = color ? Visibility.Collapsed : Visibility.Visible;
         string? tip = color ? null
-            : "Saturation and Restore faded colors change nothing on a grayscale or black-and-white scan. Choose Color under Scanner.";
+            : Loc.T("Saturation and Restore faded colors change nothing on a grayscale or black-and-white scan. Choose Color under Scanner.");
         SaturationSlider.ToolTip = tip;
         RestoreBox.ToolTip = tip;
         AutomationProperties.SetHelpText(SaturationSlider, tip ?? "");
@@ -1968,8 +1968,8 @@ public partial class MainWindow : Window
         {
             var item = new MenuItem
             {
-                Header = $"Remove address {address}",
-                ToolTip = "Stop looking for a scanner at this address. A scanner that is also found automatically stays listed.",
+                Header = Loc.T("Remove address {0}", address),
+                ToolTip = Loc.T("Stop looking for a scanner at this address. A scanner that is also found automatically stays listed."),
             };
             item.Click += (_, _) => ViewModel.NetworkScanners?.RemoveAddress(address);
             menu.Items.Add(item);
@@ -2020,8 +2020,8 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         var automatic = new MenuItem
         {
-            Header = "Automatic",
-            ToolTip = "Use the best available connection",
+            Header = Loc.T("Automatic"),
+            ToolTip = Loc.T("Use the best available connection"),
             IsCheckable = true,
             IsChecked = row.ChosenConnection is null,
         };
@@ -2078,7 +2078,7 @@ public partial class MainWindow : Window
     private void SyncPresetButtons()
     {
         var selected = PresetList.SelectedItem as Preset;
-        string label = selected is null ? "Delete preset" : $"Delete “{selected.Name}”";
+        string label = selected is null ? Loc.T("Delete preset") : Loc.T("Delete “{0}”", selected.Name);
         DeletePresetButton.IsEnabled = selected is not null && !ViewModel.IsBusy;
         DeletePresetButton.ToolTip = label;
         AutomationProperties.SetName(DeletePresetButton, label);

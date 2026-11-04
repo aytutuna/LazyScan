@@ -152,7 +152,7 @@ public sealed class InfoButton : Button
         _heading.Text = Heading ?? "";
         _heading.Visibility = string.IsNullOrEmpty(Heading) ? Visibility.Collapsed : Visibility.Visible;
         _text.Text = InfoText;
-        AutomationProperties.SetName(_panel, string.IsNullOrEmpty(Heading) ? InfoText : $"{Heading}. {InfoText}");
+        AutomationProperties.SetName(_panel, string.IsNullOrEmpty(Heading) ? InfoText : Loc.T("{0}. {1}", Heading, InfoText));
         AutomationProperties.SetHelpText(this, InfoText);
     }
 }

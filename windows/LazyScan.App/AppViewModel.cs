@@ -241,11 +241,11 @@ public sealed class PageItem : INotifyPropertyChanged
     {
         string? side = DocumentSides.SideName(Page.Side, Page.SheetIndex) ?? _book?.Help ?? PhotoImport.SourceLabel(Page);
         string name = side is { } label ? Loc.T("Page {0}, {1}", number, label) : Loc.T("Page {0}", number);
-        if (DividerTitle is { } title) name = $"{title}, {name}";
-        if (_split?.SeparatorNote is { } note) name = $"{name}, {note}";
-        else if (BlankBadge is { } badge) name = $"{name}, {badge}";
-        if (GeometryCaption is { } caption) name = $"{name}, {caption}";
-        return UprightCaption is { } turn ? $"{name}, {turn}" : name;
+        if (DividerTitle is { } title) name = Loc.T("{0}, {1}", title, name);
+        if (_split?.SeparatorNote is { } note) name = Loc.T("{0}, {1}", name, note);
+        else if (BlankBadge is { } badge) name = Loc.T("{0}, {1}", name, badge);
+        if (GeometryCaption is { } caption) name = Loc.T("{0}, {1}", name, caption);
+        return UprightCaption is { } turn ? Loc.T("{0}, {1}", name, turn) : name;
     }
 }
 
@@ -306,14 +306,14 @@ public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chose
     public string ConnectionLabel => DeviceMerge.ConnectionLabel(Info);
     /// <summary>The row's second line: how the scanner is reached.</summary>
     public string Caption =>
-        IsDemo ? "Demo (no hardware)"
-        : HasConnectionChoice ? $"via {ConnectionLabel}"
+        IsDemo ? Loc.T("Demo (no hardware)")
+        : HasConnectionChoice ? Loc.T("via {0}", ConnectionLabel)
         // TWAIN lists installed drivers, so a scanner reached only that way is named for its driver
         // (a 32-bit one says so here too: a long name cuts off its "(32-bit driver)").
-        : Info.Backend == TwainHelperSources.Backend ? "TWAIN (32-bit driver)"
-        : AppViewModel.IsTwain(Info) ? "TWAIN driver"
+        : Info.Backend == TwainHelperSources.Backend ? Loc.T("TWAIN (32-bit driver)")
+        : AppViewModel.IsTwain(Info) ? Loc.T("TWAIN driver")
         : ConnectionLabel;
-    public string ConnectionChooserName => $"Connection for {Name}: {ConnectionLabel}";
+    public string ConnectionChooserName => Loc.T("Connection for {0}: {1}", Name, ConnectionLabel);
 
     /// <summary>Equal for rows that look and behave the same, so an unchanged list is not rebuilt.</summary>
     internal string Signature =>
@@ -452,11 +452,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>The password of the save running now (<see cref="ProtectionFor"/>); null between saves.</summary>
     private PdfProtection? _savePassword;
     /// <summary>"Last PDF: 412 KB", shown under the PDF size choice; empty before the first PDF.</summary>
-    public string LastPdfSizeText => LastPdfBytes is { } bytes ? $"Last PDF: {RoundedSizeText(bytes)}" : "";
+    public string LastPdfSizeText => LastPdfBytes is { } bytes ? Loc.T("Last PDF: {0}", RoundedSizeText(bytes)) : "";
 
     /// <summary>A file size as the inspector shows it: whole kilobytes ("498 KB"), else as <see cref="SavedFiles.SizeText"/> ("1.2 MB").</summary>
     internal static string RoundedSizeText(long bytes) =>
-        bytes >= 1000 && Math.Round(bytes / 1000.0) < 1000 ? $"{Math.Round(bytes / 1000.0):0} KB" : SavedFiles.SizeText(bytes);
+        bytes >= 1000 && Math.Round(bytes / 1000.0) < 1000 ? Loc.T("{0} KB", Math.Round(bytes / 1000.0)) : SavedFiles.SizeText(bytes);
 
     /// <summary>
     /// The name the next file gets with <paramref name="template"/> and the current settings, for the

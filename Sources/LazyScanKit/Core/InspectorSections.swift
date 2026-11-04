@@ -159,7 +159,7 @@ public enum InspectorSections {
     /// The header's accessibility label: the title, then the summary when there is one ("Scanner,
     /// Flatbed · 300 dpi · Color").
     public static func headerName(_ title: String, summary: String) -> String {
-        summary.isEmpty ? title : title + ", " + summary
+        summary.isEmpty ? title : L10n.t("{0}, {1}", title, summary)
     }
 
     /// The Pages header's accessibility label: how many options are on ("Pages, 2 options on"), or just "Pages".

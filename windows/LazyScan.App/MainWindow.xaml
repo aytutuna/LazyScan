@@ -1132,7 +1132,7 @@
                                                 <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static local:ShortText.NeedsCollectPages}" />
                                             </DockPanel>
                                             <DockPanel Margin="{StaticResource LabelSpacing}">
-                                                <local:InfoButton x:Name="SplitInfoButton" DockPanel.Dock="Right" Label="Split into documents"
+                                                <local:InfoButton x:Name="SplitInfoButton" DockPanel.Dock="Right" Label="{loc:T Split into documents}"
                                                                   Heading="{loc:T How it works}" Margin="4,-4,0,-4" />
                                                 <TextBlock Text="{loc:T Split|section}" Style="{StaticResource FieldLabelText}" Margin="0" VerticalAlignment="Center" />
                                             </DockPanel>
