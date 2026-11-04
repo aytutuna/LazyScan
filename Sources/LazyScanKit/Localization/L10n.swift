@@ -31,35 +31,28 @@ public enum L10n {
         format(lookup(english) ?? stripContext(english), args)
     }
 
-    /// `one` when the language's plural rule says so for `n`, else `other`. `{0}` is `n`,
-    /// written with the language's number format, and `args` follow from `{1}`.
+    /// The row for `one` in the language's plural category for `n`, else its `|other` row; with
+    /// neither, English: `one` for 1, else `other`. `{0}` is `n`, written with the language's
+    /// number format, and `args` follow from `{1}`.
     public static func plural(_ n: Int, one: String, other: String, _ args: Any...) -> String {
         let category = pluralCategory(n, language: language())
-        let english = category == .one ? one : other
-        let found = lookup(one + "|" + category.rawValue)
-        return format(found ?? stripContext(english), [n] + args)
+        let found = lookup(one + "|" + category.rawValue) ?? lookup(one + "|other")
+        return format(found ?? stripContext(n == 1 ? one : other), [n] + args)
     }
 
-    enum PluralCategory: String {
-        case one, other
-    }
-
-    // One rule per language, the CLDR cardinal rules. Add a language here when it gets a column
-    // in the catalog; an unknown language uses the English rule.
-    private static let pluralRules: [String: @Sendable (Int) -> PluralCategory] = [
-        "en": { $0 == 1 ? .one : .other },
-        "tr": { $0 == 1 ? .one : .other },
-    ]
-
+    // The generated CLDR rule of the language, found by cutting subtags off the tag until one
+    // has a rule (zh-Hant-HK uses zh-Hant); a tag with none gets the English rule.
     static func pluralCategory(_ n: Int, language: String) -> PluralCategory {
-        let rule = pluralRules[language] ?? pluralRules["en"]!
-        return rule(n)
+        var tag = language.replacingOccurrences(of: "_", with: "-")
+        while !PluralRules.hasRule(tag), let dash = tag.lastIndex(of: "-") {
+            tag = String(tag[..<dash])
+        }
+        return PluralRules.category(n, language: tag)
     }
 
     private static func language() -> String {
         if let override { return override.language }
-        let preferred = Bundle.main.preferredLocalizations.first ?? "en"
-        return String(preferred.prefix { $0 != "-" && $0 != "_" })
+        return Bundle.main.preferredLocalizations.first ?? "en"
     }
 
     private static func lookup(_ key: String) -> String? {

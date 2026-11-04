@@ -120,5 +120,68 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(L10n.pluralCategory(1, language: "tr"), .one)
         XCTAssertEqual(L10n.pluralCategory(0, language: "tr"), .other)
         XCTAssertEqual(L10n.pluralCategory(1, language: "xx"), .one)
+        XCTAssertEqual(L10n.pluralCategory(2, language: "xx"), .other)
+    }
+
+    func testPluralRuleKeyDropsSubtags() {
+        XCTAssertEqual(L10n.pluralCategory(0, language: "zh-Hant-HK"), .other)
+        XCTAssertEqual(L10n.pluralCategory(1, language: "zh-Hant-HK"), .other)
+        XCTAssertEqual(L10n.pluralCategory(1_000_000, language: "pt-PT"), .many)
+        XCTAssertEqual(L10n.pluralCategory(1_000_000, language: "pt-BR"), .many)
+        XCTAssertEqual(L10n.pluralCategory(0, language: "pt-BR"), .one)
+        XCTAssertEqual(L10n.pluralCategory(0, language: "pt_PT"), .other)
+        XCTAssertEqual(L10n.pluralCategory(3, language: "ru-RU"), .few)
+    }
+
+    func testPluralWithoutRowsUsesTheEnglishRule() {
+        L10n.withTable([:], language: "ru") {
+            XCTAssertEqual(L10n.plural(1, one: "{0} scan", other: "{0} scans"), "1 scan")
+            XCTAssertEqual(L10n.plural(21, one: "{0} scan", other: "{0} scans"), "21 scans")
+            XCTAssertEqual(L10n.plural(3, one: "{0} scan", other: "{0} scans"), "3 scans")
+        }
+    }
+
+    func testPluralFallsBackToTheOtherRow() {
+        let table = ["{0} scan|other": "{0} Scans"]
+        L10n.withTable(table, language: "ru") {
+            XCTAssertEqual(L10n.plural(3, one: "{0} scan", other: "{0} scans"), "3 Scans")
+            XCTAssertEqual(L10n.plural(1, one: "{0} scan", other: "{0} scans"), "1 Scans")
+        }
+    }
+
+    func testEverySampleOfEveryLanguage() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("l10n/plural.json"))
+        let languages = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var checked = 0
+        for (language, value) in languages where language != "cldr" {
+            let rules = try XCTUnwrap(value as? [String: [String: String]], language)
+            for (category, entry) in rules {
+                for n in Self.integerSamples(entry["integer"] ?? "") {
+                    XCTAssertEqual(L10n.pluralCategory(n, language: language).rawValue, category, "\(language) \(n)")
+                    checked += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 500)
+    }
+
+    // "0, 2~16, 100, 1c3, …": values, ranges and compact exponents; decimals and the ellipsis are skipped.
+    private static func integerSamples(_ text: String) -> [Int] {
+        var result: [Int] = []
+        for part in text.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+            if let tilde = part.firstIndex(of: "~") {
+                if let low = Int(part[..<tilde]), let high = Int(part[part.index(after: tilde)...]) {
+                    result += Array(low...high)
+                }
+            } else if let c = part.firstIndex(of: "c") {
+                if let base = Int(part[..<c]), let exponent = Int(part[part.index(after: c)...]) {
+                    result.append(base * Int(pow(10, Double(exponent))))
+                }
+            } else if let value = Int(part) {
+                result.append(value)
+            }
+        }
+        return result
     }
 }
