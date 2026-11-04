@@ -271,7 +271,7 @@ struct AppleScannerRow: View {
             .buttonStyle(.borderless)
             .disabled(!scanner.isAvailable || !importer.canImport)
             .accessibilityLabel(Text(IOSImportText.scannerName))
-            .accessibilityHint(Text(scanner.reason ?? "Apple's scanner finds each page and takes it"))
+            .accessibilityHint(Text(scanner.reason ?? String(localized: "Apple's scanner finds each page and takes it")))
             .accessibilityIdentifier("capture.scanner")
             if let reason = scanner.reason {
                 Text(reason)

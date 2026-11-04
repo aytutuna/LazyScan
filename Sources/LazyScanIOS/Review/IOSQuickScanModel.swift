@@ -46,11 +46,11 @@ public final class IOSQuickScanModel: ObservableObject {
     public var format: OutputFormat { state.settings.format.imageFormatOrJPEG }
 
     /// "Save JPEG".
-    public var saveLabel: String { "Save \(format.label)" }
+    public var saveLabel: String { String(localized: "Save \(format.label)") }
 
-    public static let copyTextLabel = "Copy text"
-    public static let discardLabel = "Discard"
-    public static let title = IOSScanKind.text.title
+    public static var copyTextLabel: String { String(localized: "Copy text") }
+    public static var discardLabel: String { String(localized: "Discard") }
+    public static var title: String { IOSScanKind.text.title }
 
     public func save() {
         guard canAct else { return }

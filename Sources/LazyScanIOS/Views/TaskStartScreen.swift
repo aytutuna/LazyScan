@@ -34,7 +34,7 @@ struct TaskStartScreen: View {
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 150, maximum: 280), spacing: 12, alignment: .top)]
 
-    private var openTitle: String { mode == .camera ? IOSImportText.cameraLabel : "Scanner" }
+    private var openTitle: String { mode == .camera ? IOSImportText.cameraLabel : String(localized: "Scanner") }
     private var openSymbol: String { mode == .camera ? "camera" : "scanner" }
 
     var body: some View {
@@ -95,7 +95,7 @@ struct TaskStartScreen: View {
         let title: String = mode == .camera ? kind.cameraTitle : kind.title
         let available: Bool = tile.availability.isAvailable
         let reason: String = tile.availability.reason ?? ""
-        let hint: String = available ? "\(kind.subtitle). \(tile.summary)." : "\(kind.subtitle). Not available: \(reason)"
+        let hint: String = available ? String(localized: "\(kind.subtitle). \(tile.summary).") : String(localized: "\(kind.subtitle). Not available: \(reason)")
         return Button {
             pick(kind.task)
         } label: {
@@ -113,7 +113,7 @@ struct TaskStartScreen: View {
     private func appendButton(_ availability: TaskAvailability) -> some View {
         let available: Bool = availability.isAvailable
         let hint: String = available ? IOSAppendTile.subtitle
-            : "\(IOSAppendTile.subtitle) Not available: \(availability.reason ?? "")"
+            : String(localized: "\(IOSAppendTile.subtitle) Not available: \(availability.reason ?? "")")
         return Button {
             picksPDF = true
         } label: {
@@ -241,8 +241,8 @@ private struct TaskTileLabel: View {
 /// The start screen's "Add pages to a PDF": not a task of the catalog but Document to PDF with a PDF picked
 /// first (`AppState.setAppendTarget`), so it can be picked when Document to PDF can.
 enum IOSAppendTile {
-    static let title = "Add pages to a PDF"
-    static let subtitle = "Pick a PDF, then scan the pages to add"
+    static var title: String { String(localized: "Add pages to a PDF") }
+    static var subtitle: String { String(localized: "Pick a PDF, then scan the pages to add") }
     static let symbol = "doc.badge.plus"
 
     static func availability(_ cards: [TaskCard]) -> TaskAvailability {

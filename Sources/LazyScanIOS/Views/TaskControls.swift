@@ -40,8 +40,8 @@ enum IOSPDFOptions {
     }
 
     /// The pages' text in a .txt file beside the PDF, as the Mac's "Also save text".
-    static let alsoSaveTextLabel = "Also save text (.txt)"
-    static let alsoSaveTextHint = "Saves the text in a .txt file next to the PDF"
+    static var alsoSaveTextLabel: String { String(localized: "Also save text (.txt)") }
+    static var alsoSaveTextHint: String { String(localized: "Saves the text in a .txt file next to the PDF") }
 }
 
 /// The camera's buttons between shots for the task set up: No back side (flip & capture, while a back is
@@ -369,8 +369,8 @@ struct ExportOptions: View {
     /// The segment's short name: "PDF", "JPEG", "Word", "Text".
     static func label(_ format: OutputFormat) -> String {
         switch format {
-        case .word: return "Word"
-        case .text: return "Text"
+        case .word: return String(localized: "Word")
+        case .text: return String(localized: "Text")
         default: return format.label
         }
     }

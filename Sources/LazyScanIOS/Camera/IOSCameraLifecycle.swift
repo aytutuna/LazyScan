@@ -178,81 +178,81 @@ public struct IOSCameraLifecycle: Equatable, Sendable {
 
 /// The camera screen's short texts.
 public enum IOSCameraText {
-    public static let title = "Camera"
-    public static let doneLabel = "Done"
-    public static let shutterLabel = "Take photo"
+    public static var title: String { String(localized: "Camera") }
+    public static var doneLabel: String { String(localized: "Done") }
+    public static var shutterLabel: String { String(localized: "Take photo") }
     /// The automatic shutter's toggle.
-    public static let autoLabel = "Auto"
-    public static let autoHint = "Takes each page once it holds still"
+    public static var autoLabel: String { String(localized: "Auto") }
+    public static var autoHint: String { String(localized: "Takes each page once it holds still") }
     /// The automatic shutter's switch in the options drawer.
-    public static let autoShutterLabel = "Auto shutter"
+    public static var autoShutterLabel: String { String(localized: "Auto shutter") }
     /// Why Separate documents or Both sides is dimmed while the other is on: one task holds either.
-    public static let notWithBothSides = "Not with Both sides"
-    public static let notWithSeparate = "Not with Separate documents"
+    public static var notWithBothSides: String { String(localized: "Not with Both sides") }
+    public static var notWithSeparate: String { String(localized: "Not with Separate documents") }
     /// The options drawer's Items in frame (`IOSItemsInFrame`) and the line under it for `kind`. Photo has no
     /// Several: its Auto cuts out every print found already.
-    public static let itemsInFrameLabel = "Items in frame"
+    public static var itemsInFrameLabel: String { String(localized: "Items in frame") }
     public static func itemsInFrameHint(_ kind: IOSScanKind) -> String {
         if kind == .photos {
-            return "Auto cuts out each print it sees. Pick One to keep only the largest."
+            return String(localized: "Auto cuts out each print it sees. Pick One to keep only the largest.")
         }
-        return "Auto splits the shot when it sees more than one page or photo. Pick One for a page with slips on it."
+        return String(localized: "Auto splits the shot when it sees more than one page or photo. Pick One for a page with slips on it.")
     }
     /// The chevron that swaps the kinds for the options drawer.
-    public static let showOptions = "Show options"
-    public static let hideOptions = "Hide options"
+    public static var showOptions: String { String(localized: "Show options") }
+    public static var hideOptions: String { String(localized: "Hide options") }
     /// Camera mode's button to printer mode, and its hint.
-    public static let printerLabel = "Scanner"
-    public static let printerHint = "Scans with a scanner instead of the camera"
+    public static var printerLabel: String { String(localized: "Scanner") }
+    public static var printerHint: String { String(localized: "Scans with a scanner instead of the camera") }
     /// Printer mode's button back to the camera.
-    public static let cameraModeHint = "Takes the pages with the camera"
+    public static var cameraModeHint: String { String(localized: "Takes the pages with the camera") }
     /// The scan screen's Camera button, whether Auto is on or off.
-    public static let cameraHint = "Opens the camera to take pages"
+    public static var cameraHint: String { String(localized: "Opens the camera to take pages") }
     /// A toggle's spoken value (Auto, the flash).
-    public static let onValue = "On"
-    public static let offValue = "Off"
+    public static var onValue: String { String(localized: "On") }
+    public static var offValue: String { String(localized: "Off") }
     /// Why a page held still is not taken yet (`CaptureQuality`).
-    public static let holdStill = "Hold still"
-    public static let tooDark = "Too dark"
+    public static var holdStill: String { String(localized: "Hold still") }
+    public static var tooDark: String { String(localized: "Too dark") }
     /// The last page taken, beside the count.
-    public static let lastPageLabel = "Last page"
+    public static var lastPageLabel: String { String(localized: "Last page") }
     /// The camera's light, a torch, by the name people know it by (the drawer's group and its switch).
-    public static let flashLabel = "Flash"
-    public static let settingsLabel = "Settings"
+    public static var flashLabel: String { String(localized: "Flash") }
+    public static var settingsLabel: String { String(localized: "Settings") }
     /// The last page and the count: back to the page strip (camera).
-    public static let pagesHint = "Shows the pages taken"
+    public static var pagesHint: String { String(localized: "Shows the pages taken") }
     /// The same button on the scan screen, where the strip opens as a sheet: its pages come from the scanner,
     /// Photos or Files, not from shots.
-    public static let pagesHintScanner = "Shows the pages"
+    public static var pagesHintScanner: String { String(localized: "Shows the pages") }
     /// The card before the first camera permission prompt (`IOSShell.cameraOnOpen`).
-    public static let introLine = "Lazy Scan scans with the camera."
-    public static let introHelp = "iOS asks once for access. Photos and Files work without it."
-    public static let continueLabel = "Continue"
+    public static var introLine: String { String(localized: "Lazy Scan scans with the camera.") }
+    public static var introHelp: String { String(localized: "iOS asks once for access. Photos and Files work without it.") }
+    public static var continueLabel: String { String(localized: "Continue") }
     /// The session could not be set up, or stopped with errors.
-    public static let notStarted = "Camera did not start"
-    public static let tooWarm = "Paused: too warm"
-    public static let inUse = "Camera in use"
-    public static let needsFullScreen = "Needs full screen"
-    public static let paused = "Camera paused"
-    public static let photoFailed = "Photo not taken"
+    public static var notStarted: String { String(localized: "Camera did not start") }
+    public static var tooWarm: String { String(localized: "Paused: too warm") }
+    public static var inUse: String { String(localized: "Camera in use") }
+    public static var needsFullScreen: String { String(localized: "Needs full screen") }
+    public static var paused: String { String(localized: "Camera paused") }
+    public static var photoFailed: String { String(localized: "Photo not taken") }
     /// The pages in the queue: "1 page", "3 pages".
     public static func pageCount(_ count: Int) -> String {
         L10n.plural(count, one: "{0} page", other: "{0} pages")
     }
 
     /// The top bar's button that steps through the photo sizes, for VoiceOver; its value is the size.
-    public static let resolutionLabel = "Camera resolution"
+    public static var resolutionLabel: String { String(localized: "Camera resolution") }
     /// The alert over the camera when a size picked there `warns`.
-    public static let memoryTitle = "Not much memory for this size"
+    public static var memoryTitle: String { String(localized: "Not much memory for this size") }
 
     /// A photo size as the camera's button and Settings show it: "24 MP".
     public static func sizeLabel(_ size: IOSPhotoSize) -> String {
-        "\(IOSCameraLens.megapixels(size)) MP"
+        String(localized: "\(IOSCameraLens.megapixels(size)) MP")
     }
 
     /// "Use 24 MP", the memory alert's buttons.
     public static func useLabel(_ size: IOSPhotoSize) -> String {
-        "Use \(sizeLabel(size))"
+        String(localized: "Use \(sizeLabel(size))")
     }
 
     /// Why a page from a photo of `size` may not fit in this phone's memory (`IOSCameraLens.warns`), with
@@ -260,12 +260,11 @@ public enum IOSCameraText {
     /// the page's in hundreds of megabytes.
     public static func memoryWarning(_ size: IOSPhotoSize, among choices: [IOSPhotoSize], physicalMemory: UInt64) -> String? {
         guard IOSCameraLens.warns(size, physicalMemory: physicalMemory) else { return nil }
-        let gigabytes: Int = IOSCameraLens.gigabytes(physicalMemory)
-        let megabytes: Int = Int((Double(IOSCameraLens.processingBytes(size)) / 100_000_000).rounded()) * 100
-        var text: String = "This iPhone has \(gigabytes) GB of memory. \(sizeLabel(size)) pages need about \(megabytes) MB "
-            + "each while they are processed, so the app may close."
+        let memory: String = ByteCountFormatter.string(fromByteCount: Int64(IOSCameraLens.gigabytes(physicalMemory)) * 1_000_000_000, countStyle: .decimal)
+        let page: String = ByteCountFormatter.string(fromByteCount: Int64((Double(IOSCameraLens.processingBytes(size)) / 100_000_000).rounded()) * 100_000_000, countStyle: .decimal)
+        var text: String = String(localized: "This iPhone has \(memory) of memory. \(sizeLabel(size)) pages need about \(page) each while they are processed, so the app may close.")
         if let safer = IOSCameraLens.saferSize(among: choices, physicalMemory: physicalMemory) {
-            text += " \(sizeLabel(safer)) is safer."
+            text += " " + String(localized: "\(sizeLabel(safer)) is safer.")
         }
         return text
     }
@@ -274,13 +273,13 @@ public enum IOSCameraText {
     public static func shutterHint(_ kind: CaptureKind) -> String {
         switch kind {
         case .document:
-            return "The page is found again in the photo"
+            return String(localized: "The page is found again in the photo")
         case .receipt:
-            return "The receipts are found in the photo"
+            return String(localized: "The receipts are found in the photo")
         case .photo:
-            return "The photos are found in the shot"
+            return String(localized: "The photos are found in the shot")
         case .idCard:
-            return "Takes the side of the card in the frame"
+            return String(localized: "Takes the side of the card in the frame")
         }
     }
 
@@ -288,13 +287,13 @@ public enum IOSCameraText {
     public static func pageFound(_ kind: CaptureKind) -> String {
         switch kind {
         case .document:
-            return "Page found \u{00B7} hold still"
+            return String(localized: "Page found \u{00B7} hold still")
         case .receipt:
-            return "Receipt found \u{00B7} hold still"
+            return String(localized: "Receipt found \u{00B7} hold still")
         case .photo:
-            return "Photo found \u{00B7} hold still"
+            return String(localized: "Photo found \u{00B7} hold still")
         case .idCard:
-            return "Card found \u{00B7} hold still"
+            return String(localized: "Card found \u{00B7} hold still")
         }
     }
 

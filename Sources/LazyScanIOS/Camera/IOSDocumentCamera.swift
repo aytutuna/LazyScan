@@ -49,9 +49,9 @@ public enum IOSCameraAvailability: Equatable, Sendable {
     public var reason: String? {
         switch self {
         case .available: return nil
-        case .noCamera: return "No camera here"
-        case .denied: return "Camera access is off"
-        case .restricted: return "Camera not allowed"
+        case .noCamera: return String(localized: "No camera here")
+        case .denied: return String(localized: "Camera access is off")
+        case .restricted: return String(localized: "Camera not allowed")
         }
     }
 

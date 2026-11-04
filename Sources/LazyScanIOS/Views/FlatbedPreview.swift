@@ -51,17 +51,17 @@ enum IOSCropCommand: CaseIterable {
 
     var name: String {
         switch self {
-        case .wholeGlass: return "Whole glass"
-        case .topHalf: return "Top half"
-        case .bottomHalf: return "Bottom half"
-        case .leftHalf: return "Left half"
-        case .rightHalf: return "Right half"
-        case .moveUp: return "Move area up"
-        case .moveDown: return "Move area down"
-        case .moveLeft: return "Move area left"
-        case .moveRight: return "Move area right"
-        case .larger: return "Make area larger"
-        case .smaller: return "Make area smaller"
+        case .wholeGlass: return String(localized: "Whole glass")
+        case .topHalf: return String(localized: "Top half")
+        case .bottomHalf: return String(localized: "Bottom half")
+        case .leftHalf: return String(localized: "Left half")
+        case .rightHalf: return String(localized: "Right half")
+        case .moveUp: return String(localized: "Move area up")
+        case .moveDown: return String(localized: "Move area down")
+        case .moveLeft: return String(localized: "Move area left")
+        case .moveRight: return String(localized: "Move area right")
+        case .larger: return String(localized: "Make area larger")
+        case .smaller: return String(localized: "Make area smaller")
         }
     }
 }
@@ -224,14 +224,12 @@ enum IOSCropGeometry {
 
     /// The area as VoiceOver reads it: "Whole glass", or its size and place in percent of the glass.
     static func describe(_ area: CGRect?) -> String {
-        guard let area else { return "Whole glass" }
-        return "\(percent(area.width)) wide, \(percent(area.height)) high, \(percent(area.minX)) from the left, "
-            + "\(percent(area.minY)) from the top"
+        guard let area else { return String(localized: "Whole glass") }
+        return String(localized: "\(percent(area.width)) wide, \(percent(area.height)) high, \(percent(area.minX)) from the left, \(percent(area.minY)) from the top")
     }
 
     private static func percent(_ value: CGFloat) -> String {
-        let whole: Int = Int((value * 100).rounded())
-        return "\(whole)%"
+        Double(value).formatted(.percent.precision(.fractionLength(0)))
     }
 
     private static func clamp(_ value: CGFloat, _ low: CGFloat, _ high: CGFloat) -> CGFloat {

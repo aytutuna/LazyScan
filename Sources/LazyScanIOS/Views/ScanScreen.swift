@@ -686,7 +686,7 @@ struct ScanScreen: View {
     private func kindChip(_ tile: IOSKindTile, busy: Bool) -> some View {
         let kind: IOSScanKind = tile.kind
         let available: Bool = tile.availability.isAvailable
-        let hint: String = available ? kind.subtitle : "\(kind.subtitle). Not available: \(tile.availability.reason ?? "")"
+        let hint: String = available ? kind.subtitle : String(localized: "\(kind.subtitle). Not available: \(tile.availability.reason ?? "")")
         return Button {
             pickKind(kind)
         } label: {
@@ -876,12 +876,12 @@ struct ScanScreen: View {
             return "\(device.name) \u{00B7} \(s.source.label)"
         case .book:
             if sourceDevice != nil {
-                let spine: String = "Split at the spine"
+                let spine: String = String(localized: "Split at the spine")
                 return s.taskOptions.bookRightToLeft ? "\(spine) \u{00B7} \(CameraTaskCatalog.rightToLeftLabel)" : spine
             }
             return s.taskOptions.cameraSpreads ? CameraTaskCatalog.wholeSpreadLabel : CameraTaskCatalog.pageByPageLabel
         case .photos:
-            return s.adjustments.restoreFadedColors ? "Restored" : "As taken"
+            return s.adjustments.restoreFadedColors ? String(localized: "Restored") : String(localized: "As taken")
         case .export:
             let format: String = ExportOptions.label(IOSShell.exportFormat(s))
             return IOSShell.offersPDFOptions(s) ? "\(format) \u{00B7} \(s.output.pdfSize.label)" : format
@@ -1466,6 +1466,7 @@ struct ScanScreen: View {
             .font(.footnote)
             .foregroundStyle(Color.secondary)
             .lineLimit(2)
+            .truncationMode(.tail)
             .accessibilityLabel(Text(statusSentence))
             .accessibilityIdentifier("status.line")
         if let device = retryDevice {
@@ -1651,7 +1652,7 @@ struct ScanScreen: View {
 
     /// The Save menu's item that goes back to saving new files.
     static func clearTargetLabel(_ target: URL) -> String {
-        "Stop Adding to \(target.lastPathComponent)"
+        String(localized: "Stop Adding to \(target.lastPathComponent)")
     }
 
     /// The status in six words at most (`StatusLine.shown`), as on the Mac's status bar.
@@ -1689,10 +1690,10 @@ enum ScanOptionGroup: String, Identifiable {
 
     var title: String {
         switch self {
-        case .scanner: return "Scanner"
-        case .book: return "Book"
-        case .photos: return "Photos"
-        case .export: return "Export"
+        case .scanner: return String(localized: "Scanner")
+        case .book: return String(localized: "Book")
+        case .photos: return String(localized: "Photos")
+        case .export: return String(localized: "Export")
         case .afterSave: return IOSAfterSave.title
         }
     }
@@ -1939,7 +1940,7 @@ private struct PreviewArea: View {
                 .buttonStyle(.plain)
                 .disabled(state.isBusy)
                 .accessibilityLabel(Text("Flatbed preview"))
-                .accessibilityValue(Text("Scan area: " + IOSCropGeometry.describe(state.selectionRect)))
+                .accessibilityValue(Text("Scan area: \(IOSCropGeometry.describe(state.selectionRect))"))
                 .accessibilityHint(Text("Opens it full screen to choose the scan area."))
                 .accessibilityIdentifier("flatbed.preview")
             } else if let image {

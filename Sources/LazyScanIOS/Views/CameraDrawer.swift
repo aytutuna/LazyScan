@@ -111,7 +111,7 @@ struct KindsRow: View {
     private func item(_ tile: IOSKindTile, highlighted: Bool, busy: Bool) -> some View {
         let kind: IOSScanKind = tile.kind
         let available: Bool = tile.availability.isAvailable
-        let hint: String = available ? kind.subtitle : "\(kind.subtitle). Not available: \(tile.availability.reason ?? "")"
+        let hint: String = available ? kind.subtitle : String(localized: "\(kind.subtitle). Not available: \(tile.availability.reason ?? "")")
         return Button {
             onKind(kind)
         } label: {
@@ -223,9 +223,9 @@ enum CameraDrawerGroup: String, Identifiable, CaseIterable {
 
     var title: String {
         switch self {
-        case .export: return "Export"
-        case .colour: return "Color"
-        case .quality: return "Quality"
+        case .export: return String(localized: "Export")
+        case .colour: return String(localized: "Color")
+        case .quality: return String(localized: "Quality")
         case .flash: return IOSCameraText.flashLabel
         case .camera: return IOSImportText.cameraLabel
         }
@@ -467,7 +467,7 @@ private struct ExportDrawer: View {
         let output: OutputOptions = s.output
         return HStack(spacing: 6) {
             if IOSShell.shownKind(s) == .document {
-                DrawerChip(title: "Separate documents", isOn: separates, action: toggleSeparate)
+                DrawerChip(title: String(localized: "Separate documents"), isOn: separates, action: toggleSeparate)
                     .disabled(!separates && (!batch.isAvailable || bothSides))
                     .accessibilityHint(Text(separateHint))
                     .accessibilityIdentifier("chip.separate")
@@ -478,19 +478,19 @@ private struct ExportDrawer: View {
                     .accessibilityIdentifier("chip.eachPage")
             }
             if IOSShell.offersPDFOptions(s) {
-                DrawerChip(title: "PDF/A", isOn: IOSPDFOptions.archivalShown(output), action: toggleArchival)
+                DrawerChip(title: String(localized: "PDF/A"), isOn: IOSPDFOptions.archivalShown(output), action: toggleArchival)
                     .disabled(output.protect)
                     .accessibilityHint(Text(output.protect ? PDFA.cannotProtectNote : PDFA.optionHint))
                     .accessibilityIdentifier("chip.archival")
-                DrawerChip(title: "Password", isOn: output.protect, action: toggleProtect)
+                DrawerChip(title: String(localized: "Password"), isOn: output.protect, action: toggleProtect)
                     .disabled(IOSPDFOptions.archivalShown(output))
                     .accessibilityHint(Text(PDFProtection.optionHint))
                     .accessibilityIdentifier("chip.protect")
-                DrawerChip(title: "Also .txt", isOn: output.alsoSaveText, action: toggleAlsoSaveText)
+                DrawerChip(title: String(localized: "Also .txt"), isOn: output.alsoSaveText, action: toggleAlsoSaveText)
                     .accessibilityHint(Text(IOSPDFOptions.alsoSaveTextHint))
                     .accessibilityIdentifier("chip.alsoSaveText")
             }
-            DrawerChip(title: "More\u{2026}", isOn: nil, action: onMore)
+            DrawerChip(title: String(localized: "More\u{2026}"),isOn: nil, action: onMore)
                 .accessibilityHint(Text("Opens all the Export options"))
                 .accessibilityIdentifier("chip.more")
         }
