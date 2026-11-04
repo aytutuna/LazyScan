@@ -36,8 +36,34 @@ public static class TextExport
             : Loc.T("Saved {0}-page text file: {1} — no text was found", pageCount, fileName);
     }
 
-    /// <summary>" and its text, Scan 1.txt": added after a PDF's name when its text was saved beside it.</summary>
-    public static string SidecarSuffix(string textFileName) => " " + Loc.T("and its text, {0}", textFileName);
+    /// <summary>
+    /// "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt": the status after a PDF is saved.
+    /// <paramref name="detail"/> is what goes in brackets after the name (the size, password-protected),
+    /// <paramref name="textFileName"/> the text saved beside the PDF; each may be null.
+    /// </summary>
+    public static string SavedPdfMessage(int pageCount, string fileName, string? detail, string? textFileName) =>
+        (detail, textFileName) switch
+        {
+            (not null, not null) => Loc.Plural(pageCount, "Saved {0}-page PDF: {1} ({2}) and its text, {3}",
+                                               "Saved {0}-page PDF: {1} ({2}) and its text, {3}", fileName, detail, textFileName),
+            (not null, null) => Loc.Plural(pageCount, "Saved {0}-page PDF: {1} ({2})", "Saved {0}-page PDF: {1} ({2})", fileName, detail),
+            (null, not null) => Loc.Plural(pageCount, "Saved {0}-page PDF: {1} and its text, {2}",
+                                           "Saved {0}-page PDF: {1} and its text, {2}", fileName, textFileName),
+            _ => Loc.Plural(pageCount, "Saved {0}-page PDF: {1}", "Saved {0}-page PDF: {1}", fileName),
+        };
+
+    /// <summary>
+    /// "Saved Scan 1.pdf (412 KB) and its text, Scan 1.txt", or "Saved A.jpg, B.jpg": the status after a
+    /// save at once. <paramref name="fileNames"/> is the names joined; the others as in <see cref="SavedPdfMessage"/>.
+    /// </summary>
+    public static string SavedFilesMessage(string fileNames, string? detail, string? textFileName) =>
+        (detail, textFileName) switch
+        {
+            (not null, not null) => Loc.T("Saved {0} ({1}) and its text, {2}", fileNames, detail, textFileName),
+            (not null, null) => Loc.T("Saved {0} ({1})", fileNames, detail),
+            (null, not null) => Loc.T("Saved {0} and its text, {1}", fileNames, textFileName),
+            _ => Loc.T("Saved {0}", fileNames),
+        };
 
     /// <summary>
     /// What the user reads when the text could not be read: "The text could not be read: no OCR

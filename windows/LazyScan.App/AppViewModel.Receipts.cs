@@ -222,7 +222,7 @@ public sealed partial class AppViewModel
             var names = saved.Select(p => Path.GetFileName(p)).ToList();
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             bool pdfs = combine || format == OutputFormat.Pdf;
-            if (pdfs && names.Count > 0 && PdfNote(null, LastPdfProtected) is { } note) names[^1] += $" ({note})";
+            if (pdfs && names.Count > 0 && PdfNote(null, LastPdfProtected) is { } note) names[^1] = Loc.T("{0} ({1})", names[^1], note);
             SetStatus(Receipts.SavedMessage(receipts.Count, names, combine, undated),
                       new(new StatusHead.SavedFiles(receipts.Count, FileKind.Receipt)));
             RunAfterSave(s.Output.AfterSave, saved);

@@ -28,9 +28,34 @@ public enum TextExport {
             : L10n.t("Saved {0}-page text file: {1} — no text was found", pageCount, fileName)
     }
 
-    /// " and its text, Scan 1.txt": added after a PDF's name when its text was saved beside it.
-    public static func sidecarSuffix(_ textFileName: String) -> String {
-        " " + L10n.t("and its text, {0}", textFileName)
+    /// "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt": the status after a PDF is saved.
+    /// `detail` is what goes in brackets after the name (`AppState.pdfDetail`), `textFileName` the text
+    /// saved beside the PDF; each may be nil.
+    public static func savedPDFMessage(pageCount: Int, fileName: String, detail: String?, textFileName: String?) -> String {
+        switch (detail, textFileName) {
+        case let (detail?, text?):
+            return L10n.plural(pageCount, one: "Saved {0}-page PDF: {1} ({2}) and its text, {3}",
+                               other: "Saved {0}-page PDF: {1} ({2}) and its text, {3}", fileName, detail, text)
+        case let (detail?, nil):
+            return L10n.plural(pageCount, one: "Saved {0}-page PDF: {1} ({2})",
+                               other: "Saved {0}-page PDF: {1} ({2})", fileName, detail)
+        case let (nil, text?):
+            return L10n.plural(pageCount, one: "Saved {0}-page PDF: {1} and its text, {2}",
+                               other: "Saved {0}-page PDF: {1} and its text, {2}", fileName, text)
+        case (nil, nil):
+            return L10n.plural(pageCount, one: "Saved {0}-page PDF: {1}", other: "Saved {0}-page PDF: {1}", fileName)
+        }
+    }
+
+    /// "Saved Scan 1.pdf (412 KB) and its text, Scan 1.txt", or "Saved A.jpg, B.jpg": the status after a
+    /// save at once. `fileNames` is the names joined; `detail` and `textFileName` as in `savedPDFMessage`.
+    public static func savedFilesMessage(fileNames: String, detail: String?, textFileName: String?) -> String {
+        switch (detail, textFileName) {
+        case let (detail?, text?): return L10n.t("Saved {0} ({1}) and its text, {2}", fileNames, detail, text)
+        case let (detail?, nil): return L10n.t("Saved {0} ({1})", fileNames, detail)
+        case let (nil, text?): return L10n.t("Saved {0} and its text, {1}", fileNames, text)
+        case (nil, nil): return L10n.t("Saved {0}", fileNames)
+        }
     }
 
     /// What the user reads when the text could not be read: "The text could not be read: no OCR

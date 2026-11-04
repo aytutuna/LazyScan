@@ -213,7 +213,7 @@ extension AppState {
             var names: [String] = saved.map(\.lastPathComponent)
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             if pdfs, !names.isEmpty, let note = Self.pdfNote(size: nil, isProtected: protection != nil) {
-                names[names.count - 1] += " (\(note))"
+                names[names.count - 1] = L10n.t("{0} ({1})", names[names.count - 1], note)
             }
             self.setStatus(Receipts.savedMessage(count: read.count, fileNames: names, combined: combine, undated: undated),
                            StatusDetail(head: .savedFiles(read.count, .receipt)))

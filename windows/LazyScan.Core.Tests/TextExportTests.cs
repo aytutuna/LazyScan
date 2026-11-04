@@ -53,7 +53,15 @@ public class TextExportTests
         Assert.Equal("Saved 3-page Word document: Scan 1.docx", TextExport.SavedMessage(OutputFormat.Word, 3, "Scan 1.docx", true));
         Assert.Equal("Saved 1-page text file: Scan 1.txt — no text was found",
                      TextExport.SavedMessage(OutputFormat.Text, 1, "Scan 1.txt", false));
-        Assert.Equal(" and its text, Scan 1.txt", TextExport.SidecarSuffix("Scan 1.txt"));
+        Assert.Equal("Saved 3-page PDF: Scan 1.pdf", TextExport.SavedPdfMessage(3, "Scan 1.pdf", null, null));
+        Assert.Equal("Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt",
+                     TextExport.SavedPdfMessage(3, "Scan 1.pdf", "412 KB", "Scan 1.txt"));
+        Assert.Equal("Saved Scan 1.pdf and its text, Scan 1.txt", TextExport.SavedFilesMessage("Scan 1.pdf", null, "Scan 1.txt"));
+        Assert.Equal("Saved 3-page PDF: Scan 1.pdf (412 KB)", TextExport.SavedPdfMessage(3, "Scan 1.pdf", "412 KB", null));
+        Assert.Equal("Saved 3-page PDF: Scan 1.pdf and its text, Scan 1.txt", TextExport.SavedPdfMessage(3, "Scan 1.pdf", null, "Scan 1.txt"));
+        Assert.Equal("Saved Scan 1.pdf (412 KB)", TextExport.SavedFilesMessage("Scan 1.pdf", "412 KB", null));
+        Assert.Equal("Saved Scan 1.pdf (412 KB) and its text, Scan 1.txt", TextExport.SavedFilesMessage("Scan 1.pdf", "412 KB", "Scan 1.txt"));
+        Assert.Equal("Saved A.jpg, B.jpg", TextExport.SavedFilesMessage("A.jpg, B.jpg", null, null));
         Assert.Equal("Copied the text of page 2.", TextExport.CopiedMessage(2, true));
         Assert.Equal("No text was found on page 1.", TextExport.CopiedMessage(1, false));
         Assert.Equal("The text could not be read: no OCR language pack is installed (Settings → Time & Language → Language).",

@@ -47,7 +47,21 @@ final class TextExportTests: XCTestCase {
                        "Saved 3-page Word document: Scan 1.docx")
         XCTAssertEqual(TextExport.savedMessage(format: .text, pageCount: 1, fileName: "Scan 1.txt", hasText: false),
                        "Saved 1-page text file: Scan 1.txt \u{2014} no text was found")
-        XCTAssertEqual(TextExport.sidecarSuffix("Scan 1.txt"), " and its text, Scan 1.txt")
+        XCTAssertEqual(TextExport.savedPDFMessage(pageCount: 3, fileName: "Scan 1.pdf", detail: nil, textFileName: nil),
+                       "Saved 3-page PDF: Scan 1.pdf")
+        XCTAssertEqual(TextExport.savedPDFMessage(pageCount: 3, fileName: "Scan 1.pdf", detail: "412 KB", textFileName: "Scan 1.txt"),
+                       "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt")
+        XCTAssertEqual(TextExport.savedFilesMessage(fileNames: "Scan 1.pdf", detail: nil, textFileName: "Scan 1.txt"),
+                       "Saved Scan 1.pdf and its text, Scan 1.txt")
+        XCTAssertEqual(TextExport.savedPDFMessage(pageCount: 3, fileName: "Scan 1.pdf", detail: "412 KB", textFileName: nil),
+                       "Saved 3-page PDF: Scan 1.pdf (412 KB)")
+        XCTAssertEqual(TextExport.savedPDFMessage(pageCount: 3, fileName: "Scan 1.pdf", detail: nil, textFileName: "Scan 1.txt"),
+                       "Saved 3-page PDF: Scan 1.pdf and its text, Scan 1.txt")
+        XCTAssertEqual(TextExport.savedFilesMessage(fileNames: "Scan 1.pdf", detail: "412 KB", textFileName: nil),
+                       "Saved Scan 1.pdf (412 KB)")
+        XCTAssertEqual(TextExport.savedFilesMessage(fileNames: "Scan 1.pdf", detail: "412 KB", textFileName: "Scan 1.txt"),
+                       "Saved Scan 1.pdf (412 KB) and its text, Scan 1.txt")
+        XCTAssertEqual(TextExport.savedFilesMessage(fileNames: "A.jpg, B.jpg", detail: nil, textFileName: nil), "Saved A.jpg, B.jpg")
         XCTAssertEqual(TextExport.copiedMessage(pageNumber: 2, hasText: true), "Copied the text of page 2.")
         XCTAssertEqual(TextExport.copiedMessage(pageNumber: 1, hasText: false), "No text was found on page 1.")
         XCTAssertEqual(

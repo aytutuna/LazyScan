@@ -182,7 +182,7 @@ public sealed partial class AppViewModel
         SettingsEdited();
         if (ScannedPages.Count > 0 && (wasBusy || !IsBusy))
         {
-            StatusMessage = DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document) + ".";
+            StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document));
         }
         NotifyAll();
     }
@@ -196,7 +196,7 @@ public sealed partial class AppViewModel
         if (Settings.Document.BarcodeStartsDocument == on) return;
         Settings.Document.BarcodeStartsDocument = on;
         SettingsEdited();
-        if (ScannedPages.Count > 0) StatusMessage = DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document) + ".";
+        if (ScannedPages.Count > 0) StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document));
         NotifyAll();
     }
 
@@ -319,7 +319,7 @@ public sealed partial class AppViewModel
                 else ScannedPages[index].Page = ScannedPages[index].Page.WithBarcodes(barcodes);
             }
             CarryDocumentLabels(before);
-            string summary = DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document) + ".";
+            string summary = Loc.T("{0}.", DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document));
             int left = total - results.Count;
             StatusMessage = stopped && left > 0
                 ? Loc.Plural(left, "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
@@ -336,7 +336,7 @@ public sealed partial class AppViewModel
         if (Settings.Document.SplitSheetCount == clamped) return;
         Settings.Document.SplitSheetCount = clamped;
         SettingsEdited();
-        if (ScannedPages.Count > 0) StatusMessage = DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document) + ".";
+        if (ScannedPages.Count > 0) StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document));
         NotifyAll();
     }
 

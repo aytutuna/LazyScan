@@ -292,7 +292,10 @@ public sealed partial class AppViewModel
         }
         MarkSaved([path]);
         if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The scan was saved as {0}.", Path.GetFileName(path)));
-        SetStatus(Loc.T("{0} Saved {1}{2}.{3}", sent, Path.GetFileName(path), PdfSizeSuffix(), warningNote), new(new StatusHead.SentToPrinter()));
+        string savedText = PdfDetail() is { } detail
+            ? Loc.T("Saved {0} ({1}).", Path.GetFileName(path), detail)
+            : Loc.T("Saved {0}.", Path.GetFileName(path));
+        SetStatus($"{sent} {savedText}{warningNote}", new(new StatusHead.SentToPrinter()));
     }
 
     /// <summary>The error of a copy that could not be printed: why, then what became of its PDF.</summary>

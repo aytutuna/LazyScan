@@ -41,7 +41,7 @@ extension AppState {
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
                 self.errorTitle = PageFilter.nothingSavedTitle
-                self.statusMessage = DocumentSplitter.queueSummary(queued, options: s.document) + "."
+                self.statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(queued, options: s.document))
                 return
             }
             var pages: [ScannedPage] = []

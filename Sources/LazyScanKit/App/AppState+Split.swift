@@ -124,7 +124,7 @@ extension AppState {
         guard settings.document.splitMode != mode else { return }
         settings.document.splitMode = mode
         if !scannedPages.isEmpty {
-            statusMessage = DocumentSplitter.queueSummary(scannedPages, options: settings.document) + "."
+            statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(scannedPages, options: settings.document))
         }
     }
 
@@ -134,7 +134,7 @@ extension AppState {
         guard settings.document.barcodeStartsDocument != on else { return }
         settings.document.barcodeStartsDocument = on
         if !scannedPages.isEmpty {
-            statusMessage = DocumentSplitter.queueSummary(scannedPages, options: settings.document) + "."
+            statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(scannedPages, options: settings.document))
         }
     }
 
@@ -193,7 +193,7 @@ extension AppState {
                 }
             }
             self.carryDocumentLabels(from: before)
-            let summary = DocumentSplitter.queueSummary(self.scannedPages, options: self.settings.document) + "."
+            let summary = L10n.t("{0}.", DocumentSplitter.queueSummary(self.scannedPages, options: self.settings.document))
             let left = total - found.count
             if flag.isCancelled && left > 0 {
                 self.statusMessage = L10n.plural(left, one: "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
@@ -219,7 +219,7 @@ extension AppState {
         guard settings.document.splitSheetCount != clamped else { return }
         settings.document.splitSheetCount = clamped
         if !scannedPages.isEmpty {
-            statusMessage = DocumentSplitter.queueSummary(scannedPages, options: settings.document) + "."
+            statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(scannedPages, options: settings.document))
         }
     }
 

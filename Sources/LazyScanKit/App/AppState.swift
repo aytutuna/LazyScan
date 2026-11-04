@@ -1334,10 +1334,15 @@ public final class AppState: ObservableObject {
                     self.afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
                 } else if twoSided {
                     let sheets = Set(processed.compactMap(\.sheetIndex)).count
-                    self.statusMessage = L10n.plural(n, one: "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.",
-                                                     other: "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}.",
-                                                     L10n.plural(sheets, one: "{0} sheet", other: "{0} sheets"),
-                                                     self.scannedPages.count, self.settings.format.saveTitle)
+                    if sheets == 1 {
+                        self.statusMessage = L10n.plural(n, one: "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
+                                                         other: "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
+                                                         sheets, self.scannedPages.count, self.settings.format.saveTitle)
+                    } else {
+                        self.statusMessage = L10n.plural(n, one: "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
+                                                         other: "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
+                                                         sheets, self.scannedPages.count, self.settings.format.saveTitle)
+                    }
                 } else if intake.askedBothSides {
                     self.statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
                                                      other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
@@ -1551,7 +1556,7 @@ public final class AppState: ObservableObject {
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
                 self.errorTitle = PageFilter.nothingSavedTitle
-                self.statusMessage = DocumentSplitter.queueSummary(queued, options: s.document) + "."
+                self.statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(queued, options: s.document))
                 return
             }
             if plan.isSplit {
@@ -1604,9 +1609,9 @@ public final class AppState: ObservableObject {
             self.dropSaved(queued)
             self.resetFlow()
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
-            let textNote = textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? ""
-            let saved = L10n.plural(pages.count, one: "Saved {0}-page PDF: {1}", other: "Saved {0}-page PDF: {1}", url.lastPathComponent)
-            self.setStatus("\(saved)\(self.pdfSizeSuffix)\(textNote)\(left)", StatusDetail(head: .saved))
+            let saved = TextExport.savedPDFMessage(pageCount: pages.count, fileName: url.lastPathComponent,
+                                                   detail: self.pdfDetail, textFileName: textResult?.url?.lastPathComponent)
+            self.setStatus(saved + left, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
     }
@@ -1617,7 +1622,8 @@ public final class AppState: ObservableObject {
     /// pages not written are put in the queue instead; pictures already written are kept and offered.
     func saveImmediately(_ pages: [ScannedPage], settings s: ScanSettings, flag: CancelFlag) async throws {
         var saved: [URL] = []
-        var note = ""
+        var detail: String?
+        var textFileName: String?
         if s.format.isTextFormat {
             let url: URL
             let hasText: Bool
@@ -1677,7 +1683,8 @@ public final class AppState: ObservableObject {
                 saved = [url]
                 notePDFSize(of: url, protected: options.isProtected)
                 if let problem = textResult?.problem { errorMessage = TextExport.sidecarFailed(problem) }
-                note = pdfSizeSuffix + (textResult?.url.map { TextExport.sidecarSuffix($0.lastPathComponent) } ?? "")
+                detail = pdfDetail
+                textFileName = textResult?.url?.lastPathComponent
             } catch {
                 let cancelled = await keepInQueue(pages, after: error)
                 statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: 0, cancelled: cancelled,
@@ -1709,7 +1716,9 @@ public final class AppState: ObservableObject {
             }
         }
         lastSavedURLs = saved
-        setStatus(L10n.t("Saved {0}{1}", saved.map(\.lastPathComponent).joined(separator: ", "), note), StatusDetail(head: .saved))
+        setStatus(TextExport.savedFilesMessage(fileNames: saved.map(\.lastPathComponent).joined(separator: ", "),
+                                               detail: detail, textFileName: textFileName),
+                  StatusDetail(head: .saved))
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -2390,12 +2399,11 @@ public final class AppState: ObservableObject {
         lastPDFProtected = protected
     }
 
-    /// " (412 KB)" after the name of the PDF just saved, " (412 KB, password-protected)" when it is
-    /// protected; without a known size, " (password-protected)" or nothing.
-    var pdfSizeSuffix: String {
+    /// "412 KB" for the PDF just saved, "412 KB, password-protected" when it is protected; without a
+    /// known size, "password-protected" or nil: what the status puts in brackets after its name.
+    var pdfDetail: String? {
         let size: String? = lastPDFByteCount.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
-        guard let note = Self.pdfNote(size: size, isProtected: lastPDFProtected) else { return "" }
-        return " (\(note))"
+        return Self.pdfNote(size: size, isProtected: lastPDFProtected)
     }
 
     /// Write the PDF to a hidden temp name and move it into place, so a failed

@@ -240,7 +240,9 @@ extension AppState {
         if let printError {
             throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " " + L10n.t("The scan was saved as {0}.", url.lastPathComponent))
         }
-        setStatus(L10n.t("{0} Saved {1}{2}.{3}", sent, url.lastPathComponent, pdfSizeSuffix, warningNote), StatusDetail(head: .sentToPrinter))
+        let saved: String = pdfDetail.map { L10n.t("Saved {0} ({1}).", url.lastPathComponent, $0) }
+            ?? L10n.t("Saved {0}.", url.lastPathComponent)
+        setStatus("\(sent) \(saved)\(warningNote)", StatusDetail(head: .sentToPrinter))
         return true
     }
 

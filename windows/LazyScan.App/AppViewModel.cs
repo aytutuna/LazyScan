@@ -1613,9 +1613,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         else if (twoSided)
                         {
                             int sheets = processed.Select(p => p.SheetIndex).Distinct().Count();
-                            StatusMessage = Loc.Plural(n, "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.",
-                                "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}.",
-                                Loc.Plural(sheets, "{0} sheet", "{0} sheets"), ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+                            StatusMessage = sheets == 1
+                                ? Loc.Plural(n, "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
+                                    "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
+                                    sheets, ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format))
+                                : Loc.Plural(n, "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
+                                    "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
+                                    sheets, ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
                         }
                         else if (sides == DuplexMode.Both)
                         {
@@ -1789,7 +1793,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 ErrorTitle = PageFilter.NothingSavedTitle;
                 ErrorMessage = PageFilter.NothingToSaveMessage;
-                StatusMessage = DocumentSplitter.QueueSummary(queued, s.Document) + ".";
+                StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(queued, s.Document));
                 return;
             }
             if (plan.IsSplit)
@@ -1826,9 +1830,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
-            string textNote = textPath is null ? "" : TextExport.SidecarSuffix(Path.GetFileName(textPath));
-            string savedText = Loc.Plural(pages.Count, "Saved {0}-page PDF: {1}", "Saved {0}-page PDF: {1}", Path.GetFileName(path));
-            SetStatus($"{savedText}{PdfSizeSuffix()}{textNote}{left}", new(new StatusHead.Saved()));
+            string savedText = TextExport.SavedPdfMessage(pages.Count, Path.GetFileName(path), PdfDetail(),
+                                                          textPath is null ? null : Path.GetFileName(textPath));
+            SetStatus(savedText + left, new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, [path]);
         });
     }
@@ -1842,7 +1846,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private async Task SaveImmediately(List<ScannedPage> pages, ScanSettings s, CancellationToken token)
     {
         var saved = new List<string>();
-        string note = "";
+        string? detail = null, textFileName = null;
         if (s.Format.IsTextFormat())
         {
             string written;
@@ -1891,7 +1895,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             string? textPath = text is null ? null : await WriteTextBeside(saved[0], text);
-            note = PdfSizeSuffix() + (textPath is null ? "" : TextExport.SidecarSuffix(Path.GetFileName(textPath)));
+            detail = PdfDetail();
+            textFileName = textPath is null ? null : Path.GetFileName(textPath);
         }
         else
         {
@@ -1917,7 +1922,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
         }
         MarkSaved(saved);
-        SetStatus(Loc.T("Saved {0}{1}", string.Join(", ", saved.Select(Path.GetFileName)), note), new(new StatusHead.Saved()));
+        SetStatus(TextExport.SavedFilesMessage(string.Join(", ", saved.Select(Path.GetFileName)), detail, textFileName),
+                  new(new StatusHead.Saved()));
         RunAfterSave(s.Output.AfterSave, saved);
     }
 
@@ -2981,10 +2987,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             MarkSaved(saved);
             ClearIdCard(clearCanvas: true);
             ResetFlow();
-            string sizeNote = pageFormat == OutputFormat.Pdf ? PdfSizeSuffix() : "";
-            SetStatus(saved.Count == 1
-                ? Loc.T("Saved the ID card on one {0} page: {1}{2}", paper.Label(), Path.GetFileName(saved[0]), sizeNote)
-                : Loc.T("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.Label(), Path.GetFileName(saved[0]), sizeNote),
+            string? detail = pageFormat == OutputFormat.Pdf ? PdfDetail() : null;
+            string name = Path.GetFileName(saved[0]);
+            SetStatus((detail, saved.Count == 1) switch
+                {
+                    (not null, true) => Loc.T("Saved the ID card on one {0} page: {1} ({2})", paper.Label(), name, detail),
+                    (not null, false) => Loc.T("Saved the ID card on one {0} page: {1} ({2}), and each side as an image", paper.Label(), name, detail),
+                    (null, true) => Loc.T("Saved the ID card on one {0} page: {1}", paper.Label(), name),
+                    _ => Loc.T("Saved the ID card on one {0} page: {1}, and each side as an image", paper.Label(), name),
+                },
                 new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, saved);
         });
@@ -3181,7 +3192,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (paths.Count == 1)
         {
             bool pdf = Path.GetExtension(paths[0]).Equals(".pdf", StringComparison.OrdinalIgnoreCase);
-            return Path.GetFileName(paths[0]) + (pdf ? PdfSizeSuffix() : "");
+            return pdf && PdfDetail() is { } detail
+                ? Loc.T("{0} ({1})", Path.GetFileName(paths[0]), detail)
+                : Path.GetFileName(paths[0]);
         }
         string folder = paths.Count > 0 ? Path.GetFileName(Path.GetDirectoryName(paths[0]) ?? "") : "";
         return folder.Length > 0
@@ -3613,12 +3626,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// " (412 KB)" after the name of the PDF just saved, " (412 KB, password-protected)" when it is
-    /// protected; without a known size, " (password-protected)" or nothing.
+    /// "412 KB" for the PDF just saved, "412 KB, password-protected" when it is protected; without a
+    /// known size, "password-protected" or null: what the status puts in brackets after its name.
     /// </summary>
-    private string PdfSizeSuffix() => PdfNote(LastPdfBytes is { } bytes ? SavedFiles.SizeText(bytes) : null, LastPdfProtected) is { } note
-        ? $" ({note})"
-        : "";
+    private string? PdfDetail() => PdfNote(LastPdfBytes is { } bytes ? SavedFiles.SizeText(bytes) : null, LastPdfProtected);
 
     /// <summary>
     /// What is said in brackets after saved PDFs: their size and "password-protected" when they are

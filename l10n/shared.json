@@ -215,7 +215,6 @@
   "Saved {0}-page Word document: {1} — no text was found": {},
   "Saved {0}-page text file: {1}": {},
   "Saved {0}-page text file: {1} — no text was found": {},
-  "and its text, {0}": {},
   "The text could not be read: {0}": {},
   "The PDF was saved, but not its text file: {0}": {},
   "Copied the text of page {0}.": {},
@@ -297,15 +296,6 @@
   "{0} page": {
     "en_other": "{0} pages"
   },
-  "Saved {0} Word document ({1}):": {
-    "en_other": "Saved {0} Word documents ({1}):"
-  },
-  "Saved {0} text file ({1}):": {
-    "en_other": "Saved {0} text files ({1}):"
-  },
-  "Saved {0} PDF ({1}):": {
-    "en_other": "Saved {0} PDFs ({1}):"
-  },
   "Save Word ({0} page)": {
     "en_other": "Save Word ({0} pages)"
   },
@@ -342,7 +332,6 @@
   "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.": {
     "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts."
   },
-  "and their text, {0}": {},
   "Keep the page?": {
     "en_other": "Keep the {0} pages?"
   },
@@ -415,11 +404,11 @@
   },
   "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.": {},
   "Copied {0} and its picture to the clipboard.": {},
-  "Added {0} page from {1}, both sides — {2} in queue. Scan more or {3}.": {
-    "en_other": "Added {0} pages from {1}, both sides — {2} in queue. Scan more or {3}."
+  "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.": {
+    "en_other": "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}."
   },
-  "{0} sheet": {
-    "en_other": "{0} sheets"
+  "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.": {
+    "en_other": "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}."
   },
   "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
     "en_other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
@@ -462,9 +451,6 @@
   },
   "Scanning stopped after {0} page; it was kept.": {
     "en_other": "Scanning stopped after {0} pages; they were kept."
-  },
-  "Added {0} page to {1} (now {2}{3})": {
-    "en_other": "Added {0} pages to {1} (now {2}{3})"
   },
   "Sent {0} page to {1}, {2} copies.": {
     "en_other": "Sent {0} pages to {1}, {2} copies."
@@ -1138,8 +1124,6 @@
   "Front and back swapped.": {},
   "Saving the ID card…": {},
   "A side of the card could not be saved.": {},
-  "Saved the ID card on one {0} page: {1}{2}": {},
-  "Saved the ID card on one {0} page: {1}{2}, and each side as an image": {},
   "ID card discarded. Nothing of it was kept.": {},
   "Finding receipts…": {},
   "Reading the receipts…": {},
@@ -1262,7 +1246,6 @@
   "{0} PDF not saved (cancelled).": {},
   "The PDF could not be saved either: {0}": {},
   "The scan was saved as {0}.": {},
-  "{0} Saved {1}{2}.{3}": {},
   "Could not print on {0}: {1}": {},
   "Copy ready to print.": {},
   "Ready to print.": {},
@@ -1301,7 +1284,6 @@
   "Reading the text of the pages…": {},
   "Running OCR and building PDF…": {},
   "Building PDF…": {},
-  "Saved {0}{1}": {},
   "password-protected": {},
   "Receipts discarded.": {},
   "Photo batch discarded.": {},
@@ -1470,5 +1452,45 @@
   "{0} is in a format this version of Lazy Scan cannot read.": {},
   "{0} is missing from the document.": {},
   "Page {0}'s original picture": {},
-  "Page {0}'s picture": {}
+  "Page {0}'s picture": {},
+  "Saved {0}-page PDF: {1} ({2}) and its text, {3}": {
+    "en_other": "Saved {0}-page PDF: {1} ({2}) and its text, {3}"
+  },
+  "Saved {0}-page PDF: {1} ({2})": {
+    "en_other": "Saved {0}-page PDF: {1} ({2})"
+  },
+  "Saved {0}-page PDF: {1} and its text, {2}": {
+    "en_other": "Saved {0}-page PDF: {1} and its text, {2}"
+  },
+  "Saved {0} ({1}) and its text, {2}": {},
+  "Saved {0} ({1})": {},
+  "Saved {0} and its text, {1}": {},
+  "Saved {0} ({1}).": {},
+  "Saved {0}.": {},
+  "{0} ({1})": {},
+  "Saved the ID card on one {0} page: {1} ({2})": {},
+  "Saved the ID card on one {0} page: {1} ({2}), and each side as an image": {},
+  "Saved the ID card on one {0} page: {1}": {},
+  "Saved the ID card on one {0} page: {1}, and each side as an image": {},
+  "{0} page, {1}": {
+    "en_other": "{0} pages, {1}"
+  },
+  "Saved {0} Word document ({1}): {2}": {
+    "en_other": "Saved {0} Word documents ({1}): {2}"
+  },
+  "Saved {0} text file ({1}): {2}": {
+    "en_other": "Saved {0} text files ({1}): {2}"
+  },
+  "Saved {0} PDF ({1}): {2}": {
+    "en_other": "Saved {0} PDFs ({1}): {2}"
+  },
+  "Saved {0} PDF ({1}): {2} and their text, {3}": {
+    "en_other": "Saved {0} PDFs ({1}): {2} and their text, {3}"
+  },
+  "Added {0} page to {1} (now {2})": {
+    "en_other": "Added {0} pages to {1} (now {2})"
+  },
+  "Added {0} page to {1} (now {2}, {3})": {
+    "en_other": "Added {0} pages to {1} (now {2}, {3})"
+  }
 }

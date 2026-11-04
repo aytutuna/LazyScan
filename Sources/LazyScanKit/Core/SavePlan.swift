@@ -90,8 +90,9 @@ public struct SavePlan {
     /// " — no text was found in B.txt" otherwise).
     public func savedMessage(_ format: OutputFormat, fileNames: [String], size: String? = nil,
                              textFileNames: [String] = [], noTextFound: [String] = []) -> String {
-        let pages = L10n.plural(pageCount, one: "{0} page", other: "{0} pages") + (size.map { ", \($0)" } ?? "")
-        let text = textFileNames.isEmpty ? "" : " " + L10n.t("and their text, {0}", textFileNames.joined(separator: ", "))
+        let pages: String = size.map { L10n.plural(pageCount, one: "{0} page, {1}", other: "{0} pages, {1}", $0) }
+            ?? L10n.plural(pageCount, one: "{0} page", other: "{0} pages")
+        let names: String = fileNames.joined(separator: ", ")
         let empty: String
         if noTextFound.isEmpty {
             empty = ""
@@ -103,11 +104,20 @@ public struct SavePlan {
         let count: Int = fileNames.count
         let saved: String
         switch format.queueFormat {
-        case .word: saved = L10n.plural(count, one: "Saved {0} Word document ({1}):", other: "Saved {0} Word documents ({1}):", pages)
-        case .text: saved = L10n.plural(count, one: "Saved {0} text file ({1}):", other: "Saved {0} text files ({1}):", pages)
-        default: saved = L10n.plural(count, one: "Saved {0} PDF ({1}):", other: "Saved {0} PDFs ({1}):", pages)
+        case .word:
+            saved = L10n.plural(count, one: "Saved {0} Word document ({1}): {2}", other: "Saved {0} Word documents ({1}): {2}", pages, names)
+        case .text:
+            saved = L10n.plural(count, one: "Saved {0} text file ({1}): {2}", other: "Saved {0} text files ({1}): {2}", pages, names)
+        default:
+            if textFileNames.isEmpty {
+                saved = L10n.plural(count, one: "Saved {0} PDF ({1}): {2}", other: "Saved {0} PDFs ({1}): {2}", pages, names)
+            } else {
+                saved = L10n.plural(count, one: "Saved {0} PDF ({1}): {2} and their text, {3}",
+                                    other: "Saved {0} PDFs ({1}): {2} and their text, {3}",
+                                    pages, names, textFileNames.joined(separator: ", "))
+            }
         }
-        return saved + " " + fileNames.joined(separator: ", ") + text + empty + leftOutNote()
+        return saved + empty + leftOutNote()
     }
 
     /// The short status line's kind for `savedMessage`: "Saved 3 PDFs", or just "Saved" for Word and text.

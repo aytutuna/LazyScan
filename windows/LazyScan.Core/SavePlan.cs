@@ -78,10 +78,10 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     public string SavedMessage(OutputFormat format, IReadOnlyList<string> fileNames, string? size = null,
                                IReadOnlyList<string>? textFileNames = null, IReadOnlyList<string>? noTextFound = null)
     {
-        string pages = Loc.Plural(PageCount, "{0} page", "{0} pages") + (size is null ? "" : $", {size}");
-        string text = textFileNames is { Count: > 0 } names
-            ? " " + Loc.T("and their text, {0}", string.Join(", ", names))
-            : "";
+        string pages = size is null
+            ? Loc.Plural(PageCount, "{0} page", "{0} pages")
+            : Loc.Plural(PageCount, "{0} page, {1}", "{0} pages, {1}", size);
+        string names = string.Join(", ", fileNames);
         string empty = noTextFound is not { Count: > 0 } none
             ? ""
             : none.Count == fileNames.Count
@@ -90,11 +90,14 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         int count = fileNames.Count;
         string saved = OutputFormats.QueueFormat(format) switch
         {
-            OutputFormat.Word => Loc.Plural(count, "Saved {0} Word document ({1}):", "Saved {0} Word documents ({1}):", pages),
-            OutputFormat.Text => Loc.Plural(count, "Saved {0} text file ({1}):", "Saved {0} text files ({1}):", pages),
-            _ => Loc.Plural(count, "Saved {0} PDF ({1}):", "Saved {0} PDFs ({1}):", pages),
+            OutputFormat.Word => Loc.Plural(count, "Saved {0} Word document ({1}): {2}", "Saved {0} Word documents ({1}): {2}", pages, names),
+            OutputFormat.Text => Loc.Plural(count, "Saved {0} text file ({1}): {2}", "Saved {0} text files ({1}): {2}", pages, names),
+            _ when textFileNames is { Count: > 0 } textNames =>
+                Loc.Plural(count, "Saved {0} PDF ({1}): {2} and their text, {3}", "Saved {0} PDFs ({1}): {2} and their text, {3}",
+                           pages, names, string.Join(", ", textNames)),
+            _ => Loc.Plural(count, "Saved {0} PDF ({1}): {2}", "Saved {0} PDFs ({1}): {2}", pages, names),
         };
-        return saved + " " + string.Join(", ", fileNames) + text + empty + LeftOutNote();
+        return saved + empty + LeftOutNote();
     }
 
     /// <summary>The short status line's kind for <see cref="SavedMessage"/>: "Saved 3 PDFs", or just "Saved" for Word and text.</summary>

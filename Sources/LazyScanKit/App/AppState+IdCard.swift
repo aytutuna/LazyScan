@@ -304,11 +304,19 @@ extension AppState {
             self.clearIdCard(clearCanvas: true)
             self.resetFlow()
             let name = saved.first?.lastPathComponent ?? ""
-            let sizeNote = pageFormat == .pdf ? self.pdfSizeSuffix : ""
-            self.setStatus(saved.count == 1
-                ? L10n.t("Saved the ID card on one {0} page: {1}{2}", paper.label, name, sizeNote)
-                : L10n.t("Saved the ID card on one {0} page: {1}{2}, and each side as an image", paper.label, name, sizeNote),
-                           StatusDetail(head: .saved))
+            let detail: String? = pageFormat == .pdf ? self.pdfDetail : nil
+            let message: String
+            switch (detail, saved.count == 1) {
+            case let (detail?, true):
+                message = L10n.t("Saved the ID card on one {0} page: {1} ({2})", paper.label, name, detail)
+            case let (detail?, false):
+                message = L10n.t("Saved the ID card on one {0} page: {1} ({2}), and each side as an image", paper.label, name, detail)
+            case (nil, true):
+                message = L10n.t("Saved the ID card on one {0} page: {1}", paper.label, name)
+            case (nil, false):
+                message = L10n.t("Saved the ID card on one {0} page: {1}, and each side as an image", paper.label, name)
+            }
+            self.setStatus(message, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }
     }

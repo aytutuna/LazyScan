@@ -2731,7 +2731,10 @@ public enum TextExport {
     public static func encode(_ pages: [OCRPage]) -> Data             // UTF-8, no BOM, LF
     public static func hasText(_ pages: [OCRPage]) -> Bool
     public static func savedMessage(format: OutputFormat, pageCount: Int, fileName: String, hasText: Bool) -> String
-    public static func sidecarSuffix(_ textFileName: String) -> String    // " and its text, Scan 1.txt"
+    public static func savedPDFMessage(pageCount: Int, fileName: String, detail: String?, textFileName: String?) -> String
+                                                                          // "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt"
+    public static func savedFilesMessage(fileNames: String, detail: String?, textFileName: String?) -> String
+                                                                          // "Saved Scan 1.pdf (412 KB) and its text, Scan 1.txt"
     public static func recognitionFailed(_ ocrMessage: String) -> String  // "The text could not be read: …"
     public static func sidecarFailed(_ message: String) -> String         // "The PDF was saved, but not its text file: …"
     public static func copiedMessage(pageNumber: Int, hasText: Bool) -> String
