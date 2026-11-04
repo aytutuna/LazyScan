@@ -45,15 +45,13 @@ jobs:
             Set-Service stisvc -StartupType Manual
             "stisvc: start type set to $((Get-Service stisvc).StartType)"
           }
-      # The generated Turkish files must be what the catalog produces; also fails on a key used in code
-      # that the catalog lacks.
-      - name: Check the generated translations
+      # Validates the catalog and every lang file and fails on a key used in code that the catalog lacks;
+      # the report goes to the job summary. The strings themselves are generated into l10n/out.
+      - name: Check the translations
         shell: pwsh
         run: |
-          python scripts/gen_l10n.py
-          if ($LASTEXITCODE -ne 0) { throw 'gen_l10n.py failed' }
-          $changed = git status --porcelain -- ios/LazyScaniOS l10n windows/LazyScan.Core
-          if ($changed) { $changed; git diff; throw 'Generated translation files are out of date: run scripts/gen_l10n.py' }
+          python scripts/gen_l10n.py --check --report | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          if ($LASTEXITCODE -ne 0) { throw 'gen_l10n.py --check failed' }
       - name: Check the generated plural rules
         shell: pwsh
         run: |

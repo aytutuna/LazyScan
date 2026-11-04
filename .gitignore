@@ -12,3 +12,6 @@ windows/.vs/
 # DocAligner's FastViT-T8, fetched by scripts/fetch_docaligner.sh
 Sources/LazyScanModel/Models/*.onnx
 Sources/LazyScanModel/Models/*.part
+
+# Written by scripts/gen_l10n.py
+l10n/out/

@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Generates the Kit.strings files, Strings.tr.resx and the plural rule code from
-l10n/shared.json, l10n/lang/<lang>.json and l10n/plural.json.
+"""Generates the per-platform strings under l10n/out (Kit.strings and InfoPlist.strings for ios and
+mac, Strings.<code>.resx for windows, the language lists and a mode file) and the plural rule code
+from l10n/shared.json, l10n/lang/<lang>.json and l10n/plural.json.
 
-CI runs it and fails if the checked-in output differs. Every lang file is validated against
-the English catalog first.
+l10n/out is cleared on every run and not checked in; CI runs --check and diffs the plural rule
+files. Every lang file is validated against the English catalog first.
 
   --check         validate and scan the code, write nothing
+  --ship          emit only live languages that are complete for the platform; fail if one is not
+  --report        print translated, missing and identical counts per language and platform;
+                  writes nothing
   --sync          append the keys the code uses and the catalog lacks; with --prune, drop unused ones
   --samples       print language, number and category for every integer sample in plural.json
   --prune         remove keys from the lang files that the catalog no longer has
@@ -15,6 +19,7 @@ the English catalog first.
 import html
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -25,8 +30,10 @@ LANG_DIR = ROOT / "l10n" / "lang"
 LANGUAGE_LIST = ROOT / "l10n" / "languages.json"
 PLURAL_RULES = ROOT / "l10n" / "plural.json"
 CATEGORIES = ["zero", "one", "two", "few", "many", "other"]
-STRINGS_DIRS = [ROOT / "ios" / "LazyScaniOS", ROOT / "l10n" / "mac"]
-RESX = "windows/LazyScan.Core/Strings.{}.resx"
+OUT = ROOT / "l10n" / "out"
+PLATFORM_NAMES = ["ios", "mac", "win"]
+IOS_PLIST = ROOT / "ios" / "LazyScaniOS" / "Info.plist"
+MAC_PLIST = ROOT / "scripts" / "make_app.sh"
 PLURAL_SWIFT = ROOT / "Sources" / "LazyScanKit" / "Localization" / "PluralRules.generated.swift"
 PLURAL_CS = ROOT / "windows" / "LazyScan.Core" / "PluralRules.g.cs"
 CODE = ["Sources", "windows"]
@@ -74,6 +81,12 @@ def no_duplicates(pairs):
 
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=no_duplicates)
+
+
+def catalog():
+    """(strings, infoplist) of shared.json."""
+    data = read_json(CATALOG)
+    return data, data.pop("infoplist", {"ios": {}, "mac": {}})
 
 
 def categories(rules):
@@ -124,6 +137,9 @@ def check_doc(code):
     base = doc.get("_base")
     if base is not None and (base not in INFO or base == code):
         errors.append(f"{code}: _base {base!r} is not another language in languages.json")
+    plist = doc.get("infoplist", {})
+    if not isinstance(plist, dict) or set(plist) - {"ios", "mac"} or not all(isinstance(v, dict) for v in plist.values()):
+        errors.append(f"{code}: infoplist holds an ios and a mac object only")
     return errors
 
 
@@ -134,6 +150,15 @@ def merged_strings(code):
     strings = merged_strings(base) if base else {}
     strings.update(doc.get("strings", {}))
     return strings
+
+
+def merged_infoplist(code):
+    doc = lang_doc(code)
+    base = doc.get("_base") or INFO[code].get("base")
+    out = merged_infoplist(base) if base else {"ios": {}, "mac": {}}
+    for platform, entries in doc.get("infoplist", {}).items():
+        out[platform].update(entries)
+    return out
 
 
 def integer_samples(lang, category):
@@ -169,6 +194,41 @@ def check_catalog(data):
         for name in forms:
             if names.setdefault(name.lower(), key) != key:
                 errors.append(f"{key!r}: resx name collides with {names[name.lower()]!r} ignoring case")
+    return errors
+
+
+def plist_source(platform):
+    if platform == "ios":
+        return IOS_PLIST.read_text(encoding="utf-8")
+    return re.search(r"<<'PLIST'\n(.*?)\nPLIST\n", MAC_PLIST.read_text(encoding="utf-8"), re.S).group(1)
+
+
+def check_plist_catalog(plist):
+    if not isinstance(plist, dict) or set(plist) != {"ios", "mac"}:
+        return ["infoplist holds an ios and a mac object"]
+    errors = []
+    for platform, entries in plist.items():
+        source = plist_source(platform)
+        for key, text in entries.items():
+            if not (isinstance(text, str) and text.strip()):
+                errors.append(f"infoplist {platform} {key!r}: must be text")
+            elif f"<key>{key}</key>" not in source and not re.search(
+                    r"<key>CFBundleTypeName</key>\s*<string>" + re.escape(key) + "</string>", source):
+                errors.append(f"infoplist {platform} {key!r}: is not a key or a CFBundleTypeName in the Info.plist")
+    return errors
+
+
+def check_infoplist(lang, plist, table):
+    errors = []
+    for platform, entries in table.items():
+        for key, value in entries.items():
+            label = f"infoplist {platform} {key!r}: {lang}"
+            if key not in plist[platform]:
+                errors.append(f"{label} has no English entry")
+            elif not (isinstance(value, str) and value.strip()):
+                errors.append(f"{label} must be text")
+            elif value == plist[platform][key] and not INFO[lang]["latin"] and LETTER.search(TOKENS.sub("", value)):
+                errors.append(f"{label} is the English text")
     return errors
 
 
@@ -244,32 +304,39 @@ def check_language(data, lang, strings):
 
 
 def load():
-    data = read_json(CATALOG)
-    errors = check_catalog(data)
-    tables, warnings = {}, []
+    data, plist = catalog()
+    errors = check_catalog(data) + check_plist_catalog(plist)
+    tables, infos, warnings = {}, {}, []
     for lang in LANGUAGES:
         doc_errors = check_doc(lang)
         if doc_errors:
             errors += doc_errors
             continue
         tables[lang] = merged_strings(lang)
+        infos[lang] = merged_infoplist(lang)
+        errors += check_infoplist(lang, plist, infos[lang])
         found, warned, same = check_language(data, lang, tables[lang])
         errors += found
         warnings += warned
         if same:
             warnings.append(f"{lang}: {same} values are the same as English")
     for line in warnings:
-        print("warning: " + line)
+        print("warning: " + line, file=sys.stderr)
     if errors:
         sys.exit("\n".join(errors))
-    return data, tables
+    return data, plist, tables, infos
 
 
 def rows(data, tables, lang):
-    """(key, text) pairs for one language. English has none: the call sites carry it."""
-    if lang == "en":
-        return
+    """(key, text) pairs for one language; English is the keys themselves."""
     for key in data:
+        if lang == "en":
+            if "other" in data[key]:
+                yield f"{key}|one", strip_context(key)
+                yield f"{key}|other", strip_context(data[key]["other"])
+            else:
+                yield key, strip_context(key)
+            continue
         value = tables[lang].get(key)
         if value is None:
             continue
@@ -281,38 +348,55 @@ def rows(data, tables, lang):
             yield key, value
 
 
-def lang_text(doc, order):
-    """A lang file with the strings in catalog order, one entry per line; keys the catalog lacks follow."""
+def object_text(value, order, indent):
+    """The entries of an object, one per line, in `order` first; keys it lacks follow."""
     position = {key: i for i, key in enumerate(order)}
+    pad = " " * indent
+    body = ",\n".join(f"{pad}{json.dumps(k, ensure_ascii=False)}: {json.dumps(value[k], ensure_ascii=False)}"
+                      for k in sorted(value, key=lambda k: position.get(k, len(position))))
+    return f"{{\n{body}\n{pad[:-2]}}}" if value else "{}"
+
+
+def lang_text(doc, order, plist_order):
+    """A lang file with the strings in catalog order, one entry per line."""
     out = []
     for name in sorted(doc, key=lambda n: n != "_base"):
         value = doc[name]
-        if not isinstance(value, dict):
-            out.append(f"  {json.dumps(name)}: {json.dumps(value, ensure_ascii=False)}")
-            continue
-        keys = sorted(value, key=lambda k: position.get(k, len(position))) if name == "strings" else list(value)
-        body = ",\n".join(f"    {json.dumps(k, ensure_ascii=False)}: {json.dumps(value[k], ensure_ascii=False)}" for k in keys)
-        out.append(f'  {json.dumps(name)}: {{\n{body}\n  }}' if keys else f"  {json.dumps(name)}: {{}}")
+        if name == "infoplist":
+            text = "{\n" + ",\n".join(f"    {json.dumps(p)}: {object_text(v, plist_order[p], 6)}" for p, v in value.items()) + "\n  }"
+        elif isinstance(value, dict):
+            text = object_text(value, order if name == "strings" else [], 4)
+        else:
+            text = json.dumps(value, ensure_ascii=False)
+        out.append(f"  {json.dumps(name)}: {text}")
     return "{\n" + ",\n".join(out) + "\n}\n"
 
 
 def format_languages(prune):
-    data = read_json(CATALOG)
+    data, plist = catalog()
     for lang in LANGUAGES:
         doc = lang_doc(lang)
         if prune:
             for key in [k for k in doc["strings"] if k not in data]:
                 del doc["strings"][key]
                 print(f"{lang}: removed {key!r}")
-        write(LANG_DIR / f"{lang}.json", lang_text(doc, list(data)))
+            for platform, entries in doc.get("infoplist", {}).items():
+                for key in [k for k in entries if k not in plist[platform]]:
+                    del entries[key]
+                    print(f"{lang}: removed {platform} {key!r}")
+        write(LANG_DIR / f"{lang}.json", lang_text(doc, list(data), {p: list(e) for p, e in plist.items()}))
 
 
 def todo(lang):
     if lang not in INFO:
         sys.exit(f"{lang}: not in languages.json")
-    data = read_json(CATALOG)
+    data, plist = catalog()
     strings = merged_strings(lang)
     required = required_categories(lang)
+    for platform, entries in merged_infoplist(lang).items():
+        for key in plist[platform]:
+            if key not in entries:
+                print(f"infoplist {platform}: {key}\n  English: {plist[platform][key]}")
     for key, entry in data.items():
         have = strings.get(key)
         if "other" in entry:
@@ -418,7 +502,7 @@ def keys_in_code():
 
 
 def sync(prune):
-    data = read_json(CATALOG)
+    data, plist = catalog()
     used, _ = keys_in_code()
     for key, (path, others, _) in used.items():
         if key not in data:
@@ -434,7 +518,8 @@ def sync(prune):
         return f"{{\n{fields}\n  }}" if value else "{}"
 
     body = ",\n".join(f"  {json.dumps(k, ensure_ascii=False)}: {entry(v)}" for k, v in data.items())
-    write(CATALOG, "{\n" + body + "\n}\n")
+    sections = ",\n".join(f"    {json.dumps(p)}: {object_text(e, [], 6)}" for p, e in plist.items())
+    write(CATALOG, "{\n" + body + ',\n  "infoplist": {\n' + sections + "\n  }\n}\n")
 
 
 RULE_TOKEN = re.compile(r"\s*(?:(\d+)|([a-z]+)|(!=|\.\.|[%=,]))")
@@ -639,6 +724,81 @@ def cs_plural():
     return "\n".join(out) + "\n"
 
 
+def coverage(data, plist, used, table, info, lang, platform):
+    """(translated, total, missing plural categories, identical to English) of one language on one platform."""
+    required = required_categories(lang)
+    done = total = lacking = same = 0
+    for key, entry in data.items():
+        if platform not in used.get(key, (None, None, ()))[2]:
+            continue
+        total += 1
+        value = table.get(key)
+        if "other" in entry:
+            have = value if isinstance(value, dict) else {}
+            absent = [c for c in required if c not in have]
+            lacking += len(absent)
+            done += not absent
+            same += sum(t == strip_context(key if c == "one" else entry["other"]) for c, t in have.items())
+        else:
+            done += value is not None
+            same += value == strip_context(key)
+    for key, english in plist.get(platform, {}).items():
+        total += 1
+        value = info.get(platform, {}).get(key)
+        done += value is not None
+        same += value == english
+    return done, total, lacking, same
+
+
+def listed(lang, platform):
+    return platform in INFO[lang]["ship"].split(",")
+
+
+def gate(data, plist, tables, infos, used):
+    """Stops the run when a live language is not complete on a platform it ships on."""
+    errors = []
+    for code, entry in INFO.items():
+        if code == "en" or not entry["live"]:
+            continue
+        for platform in PLATFORM_NAMES:
+            if not listed(code, platform):
+                continue
+            if code not in tables:
+                errors.append(f"{code}: live but has no lang file")
+                break
+            done, total, _, _ = coverage(data, plist, used, tables[code], infos[code], code, platform)
+            if done < total:
+                errors.append(f"{code}: live but only {done} of {total} are translated on {platform}")
+    if errors:
+        sys.exit("\n".join(errors))
+
+
+def report(data, plist, tables, infos, used):
+    print("| Language | Platform | Translated | Total | Missing plural categories | Identical to English |")
+    print("|---|---|---:|---:|---:|---:|")
+    for code in tables:
+        for platform in PLATFORM_NAMES:
+            if listed(code, platform):
+                print(f"| {code} | {platform} | " + " | ".join(map(str, coverage(data, plist, used, tables[code], infos[code], code, platform))) + " |")
+
+
+def emit(data, plist, tables, infos, ship):
+    for platform in PLATFORM_NAMES:
+        codes = ["en"] + [c for c in LANGUAGES if listed(c, platform) and (INFO[c]["live"] or not ship)]
+        write(OUT / f"languages.{platform}.txt", "".join(c + "\n" for c in codes))
+        for code in codes:
+            pairs = list(rows(data, tables, code))
+            if platform == "win":
+                write(OUT / "windows" / f"Strings.{code}.resx", resx_text(pairs))
+                continue
+            folder = OUT / platform / f"{code}.lproj"
+            write(folder / "Kit.strings", strings_text(pairs))
+            english = plist[platform]
+            have = english if code == "en" else infos[code][platform]
+            write(folder / "InfoPlist.strings", strings_text([(k, have[k]) for k in english if k in have]))
+    write(OUT / "mode.txt", f"ship={str(ship).lower()}\n")
+
+
 def main():
     args = sys.argv[1:]
     if "--samples" in args:
@@ -658,18 +818,19 @@ def main():
     if "--fmt" in args or "--prune" in args:
         format_languages("--prune" in args)
         return 0
+    ship = "--ship" in args
+    writes = "--check" not in args and "--report" not in args
+    if writes and OUT.exists():
+        shutil.rmtree(OUT)
     check_samples()
-    data, tables = load()
-    if "--check" not in args:
+    data, plist, tables, infos = load()
+    used, split = keys_in_code()
+    if ship:
+        gate(data, plist, tables, infos, used)
+    if writes:
         write(PLURAL_SWIFT, swift_plural())
         write(PLURAL_CS, cs_plural())
-        for lang in ["en"] + LANGUAGES:
-            pairs = list(rows(data, tables, lang))
-            for folder in STRINGS_DIRS:
-                write(folder / f"{lang}.lproj" / "Kit.strings", strings_text(pairs))
-            if lang != "en":
-                write(ROOT / RESX.format(lang), resx_text(pairs))
-    used, split = keys_in_code()
+        emit(data, plist, tables, infos, ship)
     unused = [k for k in data if k not in used]
     for key, path in split:
         print(f"key split with +: {key!r} ({path})")
@@ -682,6 +843,8 @@ def main():
             missing[key] = path
     for key in unused:
         print(f"in the catalog but not used in code: {key!r}")
+    if "--report" in args:
+        report(data, plist, tables, infos, used)
     return 1 if missing or split or unused else 0
 
 

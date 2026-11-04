@@ -21,5 +21,19 @@
     "Fair. A few more characters, or another word, would make it much harder to guess.": "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır.",
     "Strong.": "Güçlü.",
     "{0} scan": {"one": "{0} tarama", "other": "{0} tarama"}
+  },
+  "infoplist": {
+    "ios": {
+      "NSCameraUsageDescription": "Lazy Scan, belgeleri ve fotoğrafları taramak ve bilgisayarınızın eşleştirme kodunu okumak için kamerayı kullanır. Taradıklarınız siz paylaşmadıkça bu aygıtta kalır.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan, tarama yapabilmeniz için yerel ağınızdaki tarayıcıları ve tarama yapabilen yazıcıları, taramalarınızı gönderebilmeniz için de eşleştirdiğiniz bilgisayarı arar.",
+      "NSPhotoLibraryAddUsageDescription": "Lazy Scan, bir taramayı fotoğraf arşivinize yalnızca Paylaş menüsünde Görüntüyü Kaydet'e dokunduğunuzda ekler.",
+      "Lazy Scan document": "Lazy Scan belgesi",
+      "PDF document": "PDF belgesi",
+      "Image": "Görüntü"
+    },
+    "mac": {
+      "NSLocalNetworkUsageDescription": "Lazy Scan, eşleştirilmiş telefonunuzdan gönderilen belgeleri yerel ağınız üzerinden alır.",
+      "Lazy Scan document": "Lazy Scan belgesi"
+    }
   }
 }

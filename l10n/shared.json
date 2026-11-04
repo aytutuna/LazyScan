@@ -2172,5 +2172,19 @@
   "Looks for scanners again and repeats the checks": {},
   "Copy the results to send to support": {},
   "Copies these checks and the list of connections as text": {},
-  "Checks": {}
+  "Checks": {},
+  "infoplist": {
+    "ios": {
+      "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and for the computer you pair it with, so you can send it your scans.",
+      "NSPhotoLibraryAddUsageDescription": "Lazy Scan adds a scan to your photo library only when you choose Save Image in the share sheet.",
+      "Lazy Scan document": "Lazy Scan document",
+      "PDF document": "PDF document",
+      "Image": "Image"
+    },
+    "mac": {
+      "NSLocalNetworkUsageDescription": "Lazy Scan receives documents from your paired phone on your local network.",
+      "Lazy Scan document": "Lazy Scan document"
+    }
+  }
 }
