@@ -6,8 +6,9 @@ import XCTest
 @testable import LazyScanMac
 
 // Renders the Mac's main views to PNGs for a visual check, in CI and on a developer's Mac. Does nothing
-// unless LAZYSCAN_SHOTS_DIR names the folder for the images. LAZYSCAN_SHOTS_LANG (a language tag) sets
-// AppleLanguages and the views' locale, LAZYSCAN_SHOTS_RTL=1 lays them out right to left.
+// unless LAZYSCAN_SHOTS_DIR names the folder for the images. LAZYSCAN_SHOTS_RTL=1 lays them out right to left.
+// The text is always English: under swift test Bundle.main is the xctest tool, which has no string tables,
+// so a translated render needs the packaged app on a real Mac.
 
 final class ScreenshotTests: XCTestCase {
     private var folder: URL!
@@ -26,9 +27,6 @@ final class ScreenshotTests: XCTestCase {
         // A fixed name, as the inspector shows the save folder.
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        if let lang = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_LANG"], !lang.isEmpty {
-            UserDefaults.standard.register(defaults: ["AppleLanguages": [lang]])
-        }
     }
 
     override func tearDown() async throws {
@@ -62,6 +60,8 @@ final class ScreenshotTests: XCTestCase {
         settings.intent = .document
         settings.documentMultiPage = true
         settings.taskId = nil
+        // No date or counter in the file name preview.
+        settings.namingTemplate = "Scan"
         settings.destinationPath = folder.path
         first.settings = settings
         // With settings on disk the next state is not a first run, so the window opens on the scanner view.
@@ -79,22 +79,22 @@ final class ScreenshotTests: XCTestCase {
         return state
     }
 
-    /// Hosts `view` in a window that is never shown, lets it settle, and writes it as `name`.png.
+    /// Hosts `view` in a titled window parked far off screen (a borderless one never loaded the sidebar rows), lets it settle, and writes it as `name`.png.
     @MainActor
     private func shoot<V: View>(_ name: String, size: CGSize, _ view: V) async throws {
         let env = ProcessInfo.processInfo.environment
         let rtl = env["LAZYSCAN_SHOTS_RTL"] == "1"
-        let locale = Locale(identifier: env["LAZYSCAN_SHOTS_LANG"] ?? "en")
         let root = view
             .environment(\.layoutDirection, rtl ? .rightToLeft : .leftToRight)
-            .environment(\.locale, locale)
             .frame(width: size.width, height: size.height)
             .background(Color(nsColor: .windowBackgroundColor))
         let hosting = NSHostingView(rootView: root)
-        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless],
+        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.titled],
                               backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: .aqua)
         window.contentView = hosting
+        window.setFrameOrigin(CGPoint(x: -10000, y: -10000))
+        window.orderBack(nil)
         hosting.frame = CGRect(origin: .zero, size: size)
         // Photos load off the main thread: give them time, laying out again as they land.
         for _ in 0..<10 {
@@ -106,6 +106,7 @@ final class ScreenshotTests: XCTestCase {
         hosting.cacheDisplay(in: hosting.bounds, to: rep)
         let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
         try png.write(to: outDir.appendingPathComponent("\(name).png"))
+        window.orderOut(nil)
         window.contentView = nil
     }
 
@@ -174,7 +175,14 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor
     func test_history() async throws {
-        let state = try await makeState(pages: 3)
+        let state = try await makeState(pages: 0)
+        let thumbnail = page(width: 255, height: 330).image
+        let day = Date(timeIntervalSince1970: 1_767_225_600)
+        state.scanHistory = [ScanIntent.document, .photo, .document].enumerated().map { i, intent in
+            ScanHistoryEntry(date: day.addingTimeInterval(Double(-i) * 3_700), intent: intent, dpi: 300,
+                             thumbnail: thumbnail, pixelSize: CGSize(width: 2550, height: 3300),
+                             id: UUID(uuidString: "00000000-0000-0000-0000-00000000000\(i + 1)")!)
+        }
         try await shoot("history", size: CGSize(width: 900, height: 600),
                         ScanHistoryView().environmentObject(state))
     }

@@ -196,7 +196,7 @@ public final class AppState: ObservableObject {
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
-    @Published public private(set) var scanHistory: [ScanHistoryEntry] = []
+    @Published public internal(set) var scanHistory: [ScanHistoryEntry] = []
     /// Full-resolution sources of the current photo batch, keyed by scanned-page id and
     /// retained only while the photo review is open, so manual crop corrections can
     /// re-extract each photo from the correct sheet at full quality. For an object a camera's shot was cut

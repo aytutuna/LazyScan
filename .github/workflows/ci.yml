@@ -186,7 +186,7 @@ jobs:
           # The corner model was fetched above; its test must find it, never be skipped.
           LAZYSCAN_REQUIRE_CORNER_MODEL: '1'
       # The main views as PNGs (ScreenshotTests), rendered twice: the second run must give the same
-      # images (but for the history's clock), and every image must hold more than a blank window.
+      # images, and every image must be bigger than a blank window of that size would compress to.
       - name: Render screenshots
         run: |
           set -euo pipefail
@@ -196,10 +196,19 @@ jobs:
           ls -l "$RUNNER_TEMP/shots-a"
           test "$(ls "$RUNNER_TEMP/shots-a" | wc -l | tr -d ' ')" -eq 6
           for f in "$RUNNER_TEMP"/shots-a/*.png; do
-            test "$(stat -f %z "$f")" -gt 5000
-            # The history cards show the time of the scan.
-            if [ "$(basename "$f")" != history.png ]; then cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"; fi
+            test "$(stat -f %z "$f")" -gt 12000
+            cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
           done
+      # Right to left, to see which parts of the window mirror. Not compared.
+      - name: Render screenshots (right to left)
+        run: LAZYSCAN_SHOTS_RTL=1 LAZYSCAN_SHOTS_DIR="$RUNNER_TEMP/shots-rtl" swift test -c release -Xswiftc -enable-testing --filter ScreenshotTests
+      - name: Upload right-to-left screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-screenshots-rtl
+          path: ${{ runner.temp }}/shots-rtl
+          if-no-files-found: warn
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v7
