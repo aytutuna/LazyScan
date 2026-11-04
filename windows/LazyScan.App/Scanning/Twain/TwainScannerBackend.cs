@@ -217,7 +217,7 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     public async Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         if (Availability == TwainAvailability.NoDataSourceManager)
         {
             throw ScanException.DeviceUnavailable(() => TwainDiagnostics.NoDataSourceManagerMessage);
@@ -286,12 +286,12 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
     public async Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
         var caps = _caps ?? await ReadCapabilities();
-        if (!caps.HasFlatbed) throw ScanException.Unsupported("This scanner has no flatbed to preview.");
+        if (!caps.HasFlatbed) throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview."));
         if (!caps.UIControllable)
         {
-            throw ScanException.Unsupported("This scanner's driver always shows its own window, so it cannot preview.");
+            throw ScanException.Unsupported(() => Loc.T("This scanner's driver always shows its own window, so it cannot preview."));
         }
-        ProgressHandler?.Invoke(new ScanProgress("Scanning overview…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         var pages = (await Acquire(TwainScanRequests.ForOverview(caps, _preferNative))).PagesOrThrow();
         _lastScanStop = null;
         return pages[0].Image;
@@ -304,8 +304,8 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         var caps = _caps ?? await ReadCapabilities();
         var request = TwainScanRequests.ForScan(settings, selection, caps, UseDriverWindow, _preferNative);
         ProgressHandler?.Invoke(new ScanProgress(request.ShowDriverWindow
-            ? "Choose the settings in the scanner's window, then start the scan there…"
-            : "Scanning…"));
+            ? Loc.T("Choose the settings in the scanner's window, then start the scan there…")
+            : Loc.T("Scanning…")));
         var result = await Acquire(request);
         var pages = result.PagesOrThrow();
         // Two-sided only when the source confirmed it (TwainScanResult.Duplex); a feeder

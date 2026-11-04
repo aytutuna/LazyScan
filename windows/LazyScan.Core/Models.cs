@@ -1734,11 +1734,13 @@ public sealed class ScanException : Exception
     /// user-facing text (<see cref="ScannerProblems.Describe"/>); <paramref name="detail"/>,
     /// such as a driver error code, is appended in parentheses.
     /// </summary>
-    public static ScanException ForProblem(ScannerProblem problem, string? detail = null)
+    public static ScanException ForProblem(ScannerProblem problem, string? detail = null) => ForProblem(problem, () => detail);
+
+    /// <summary>Like the overload above, for a detail worded with Loc.T, so the report gets it in English too.</summary>
+    public static ScanException ForProblem(ScannerProblem problem, Func<string?> detail)
     {
-        string suffix = string.IsNullOrWhiteSpace(detail) ? "" : $" ({detail})";
-        return new(ScannerProblems.Kind(problem), ScannerProblems.Describe(problem) + suffix,
-                   Loc.English(() => ScannerProblems.Describe(problem)) + suffix, problem);
+        string Text() => ScannerProblems.Describe(problem) + (detail() is { } d && !string.IsNullOrWhiteSpace(d) ? $" ({d})" : "");
+        return new(ScannerProblems.Kind(problem), Text(), Loc.English(Text), problem);
     }
 
     // The detail comes as a function where it is worded with Loc.T, so the report gets it in English too.
@@ -1755,8 +1757,11 @@ public sealed class ScanException : Exception
         Worded(ScanErrorKind.Cancelled, () => Loc.T("The scan was cancelled."));
     public static ScanException ExportFailed(string detail) =>
         Worded(ScanErrorKind.ExportFailed, () => Loc.T("Saving failed: {0}", detail));
-    public static ScanException Unsupported(string detail) =>
-        Worded(ScanErrorKind.Unsupported, () => Loc.T("Unsupported: {0}", detail));
+    public static ScanException Unsupported(string detail) => Unsupported(() => detail);
+    public static ScanException Unsupported(Func<string> detail) =>
+        Worded(ScanErrorKind.Unsupported, () => Loc.T("Unsupported: {0}", detail()));
+
+    internal ScanException WithReport(string reportMessage) => new(Kind, Message, reportMessage, Problem);
 
     private static ScanException Worded(ScanErrorKind kind, Func<string> text) => new(kind, text(), Loc.English(text));
 }

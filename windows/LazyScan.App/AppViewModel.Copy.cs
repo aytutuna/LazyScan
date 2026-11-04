@@ -52,6 +52,7 @@ public sealed partial class AppViewModel
 
     /// <summary>The paper the chosen printer prints copies on, e.g. "Letter (8.5 × 11 in)"; empty while unknown.</summary>
     public string CopyPaperText => _copySetup?.Paper.Description ?? "";
+    public string CopyPaperSpokenText => _copySetup?.Paper.SpokenDescription ?? "";
 
     /// <summary>
     /// "Edges may lose up to 5 mm" when copies at real size from the corner of the paper lose an edge

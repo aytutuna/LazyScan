@@ -188,7 +188,6 @@ internal sealed class TwainThread
     }
 
     /// <summary>The error for a driver that does not answer.</summary>
-    public static ScanException NotResponding() => ScanException.ScanFailed(
-        "The scanner's TWAIN driver is not responding. If it shows a window, close it; otherwise "
-        + "turn the scanner off and on, or restart Lazy Scan.");
+    public static ScanException NotResponding() => ScanException.ScanFailed(() => Loc.T(
+        "The scanner's TWAIN driver is not responding. If it shows a window, close it; otherwise turn the scanner off and on, or restart Lazy Scan."));
 }

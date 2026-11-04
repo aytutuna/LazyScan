@@ -213,7 +213,7 @@ public partial class MainWindow : Window
             try
             {
                 force = MessageBox.Show(this,
-                    "Still stopping the current operation. Quit now anyway? A file being written may be left incomplete.",
+                    Loc.T("Still stopping the current operation. Quit now anyway? A file being written may be left incomplete."),
                     "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
             }
             finally
@@ -231,8 +231,10 @@ public partial class MainWindow : Window
         if (ViewModel.IsBusy || unsaved is not null)
         {
             string message = ViewModel.IsBusy
-                ? $"A scan or save is still running.{(unsaved is null ? "" : " " + unsaved)}\n\nStop it and quit?"
-                : $"{unsaved}\n\nQuit anyway?";
+                ? unsaved is null
+                    ? Loc.T("A scan or save is still running.\n\nStop it and quit?")
+                    : Loc.T("A scan or save is still running. {0}\n\nStop it and quit?", unsaved)
+                : Loc.T("{0}\n\nQuit anyway?", unsaved);
             var answer = MessageBox.Show(this, message, "Lazy Scan", MessageBoxButton.YesNo,
                                          MessageBoxImage.Warning, MessageBoxResult.No);
             if (answer != MessageBoxResult.Yes)
@@ -264,17 +266,17 @@ public partial class MainWindow : Window
         int pages = ViewModel.ScannedPages.Count;
         if (pages > 0)
         {
-            return $"{pages} scanned page{(pages == 1 ? " is" : "s are")} still in the queue and not saved.";
+            return Loc.Plural(pages, "{0} scanned page is still in the queue and not saved.", "{0} scanned pages are still in the queue and not saved.");
         }
         if (ViewModel.ShowPhotoReview)
         {
             return ViewModel.IsReceiptReview
-                ? "The receipts found have not been saved."
-                : "The detected photos have not been saved.";
+                ? Loc.T("The receipts found have not been saved.")
+                : Loc.T("The detected photos have not been saved.");
         }
         if (ViewModel.HasIdCardCaptures)
         {
-            return "The ID card has not been saved.";
+            return Loc.T("The ID card has not been saved.");
         }
         return null;
     }
@@ -397,8 +399,8 @@ public partial class MainWindow : Window
             ReviewTitle.Text = ViewModel.ReviewTitle;
             ReviewSaveButton.Content = ViewModel.ReviewSaveTitle;
             AutomationProperties.SetHelpText(PhotoGrid, ViewModel.IsReceiptReview
-                ? "Untick a receipt to leave it out, or fix its crop."
-                : "Untick a photo to leave it out, or fix its crop.");
+                ? Loc.T("Untick a receipt to leave it out, or fix its crop.")
+                : Loc.T("Untick a photo to leave it out, or fix its crop."));
             PhotoGrid.IsEnabled = !ViewModel.IsBusy;
             // Saving nothing would discard the batch: discarding is the Discard button's job.
             ReviewSaveButton.IsEnabled = !ViewModel.IsBusy && included > 0;
@@ -563,7 +565,7 @@ public partial class MainWindow : Window
             FileKind.Receipt => Loc.Plural(paths.Count, "{0} receipt", "{0} receipts"),
             _ => Loc.Plural(paths.Count, "{0} file", "{0} files"),
         };
-        return folder.Length > 0 ? $"{what} · {folder}" : what;
+        return folder.Length > 0 ? Loc.T("{0} · {1}", what, folder) : what;
     }
 
     /// <summary>Below this bar width (a window under about 1000 DIPs) the action buttons show only their glyphs.</summary>
@@ -712,7 +714,7 @@ public partial class MainWindow : Window
         string? mismatch = awaitingBacks ? ViewModel.SidesMismatch : null;
         string notice = mismatch is null
             ? ""
-            : $"{mismatch}. Scan the rest of the back sides, scan them again, or combine the pages as they are.";
+            : Loc.T("{0}. Scan the rest of the back sides, scan them again, or combine the pages as they are.", mismatch);
         bool noticeChanged = SidesNoticeText.Text != notice;
         SidesNoticeText.Text = notice;
         SidesNotice.Visibility = mismatch is null ? Visibility.Collapsed : Visibility.Visible;
@@ -802,7 +804,7 @@ public partial class MainWindow : Window
         IdCardBackRotateButton.Visibility = IdCardBackCropButton.Visibility = IdCardBackRetakeButton.Visibility =
             back is null ? Visibility.Collapsed : Visibility.Visible;
         IdCardSwapButton.Visibility = back is null ? Visibility.Collapsed : Visibility.Visible;
-        AutomationProperties.SetName(IdCardBackCard, back is null ? "Back side: none" : "Back side");
+        AutomationProperties.SetName(IdCardBackCard, back is null ? Loc.T("Back side: none") : Loc.T("Back side"));
 
         IdCardPageImage.Source = ViewModel.IdCardPreview;
         IdCardLayoutText.Text = ViewModel.IdCardLayoutCaption;
@@ -830,10 +832,12 @@ public partial class MainWindow : Window
             _updatingUi = wasUpdating;
         }
         var savedAs = OutputFormats.PageFormat(s.Format);
-        IdCardSaveButton.Content = savedAs == OutputFormat.Pdf ? "Save PDF" : $"Save {savedAs.Label()}";
+        IdCardSaveButton.Content = savedAs == OutputFormat.Pdf ? Loc.T("Save PDF") : Loc.T("Save {0}", savedAs.Label());
         AutomationProperties.SetHelpText(IdCardSaveButton,
-            $"Save {(back is null ? "the front" : "both sides")} on one {ViewModel.IdCardPaperSize.Label()} page");
-        IdCardDiscardButton.ToolTip = back is null ? "Delete the front; can't be undone" : "Delete both sides; can't be undone";
+            back is null
+                ? Loc.T("Save the front on one {0} page", ViewModel.IdCardPaperSize.Label())
+                : Loc.T("Save both sides on one {0} page", ViewModel.IdCardPaperSize.Label()));
+        IdCardDiscardButton.ToolTip = back is null ? Loc.T("Delete the front; can't be undone") : Loc.T("Delete both sides; can't be undone");
 
         bool busy = ViewModel.IsBusy;
         IdCardSaveButton.IsEnabled = !busy && front is not null;
@@ -893,7 +897,7 @@ public partial class MainWindow : Window
         if (ViewModel.IsBusy || ViewModel.IsRecropPending || item is null) return;
         if (ViewModel.IdCardSource(side) is not { } source)
         {
-            ShowError("The scan of this side is no longer available.");
+            ShowError(Loc.T("The scan of this side is no longer available."));
             return;
         }
         var editor = new PhotoCropEditorWindow(source, item.Photo.Region, deskew: true) { Owner = this };
@@ -1044,14 +1048,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Why the mode and the source cannot be changed while a side of an ID card is held.</summary>
-    private const string IdCardHeldHint =
-        "The ID card task needs the flatbed in Document mode. Save or discard the card, or leave the task, to change this.";
+    private static string IdCardHeldHint =>
+        Loc.T("The ID card task needs the flatbed in Document mode. Save or discard the card, or leave the task, to change this.");
 
     /// <summary>The question <see cref="ConfirmDropIdCard"/> asks: true to discard the card.</summary>
     private Func<bool> AskDiscardIdCard;
 
     private bool AskDiscardIdCardInDialog() =>
-        MessageBox.Show(this, "The ID card has not been saved. Its scanned sides will be discarded.\n\nDiscard the ID card?",
+        MessageBox.Show(this, Loc.T("The ID card has not been saved. Its scanned sides will be discarded.\n\nDiscard the ID card?"),
                         "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
         == MessageBoxResult.Yes;
 
@@ -1156,9 +1160,9 @@ public partial class MainWindow : Window
     private string? NotConnectedHint()
     {
         if (ViewModel.IsConnected) return null;
-        if (ViewModel.SelectedDeviceId is not { } id) return "No scanner selected.";
-        string name = ViewModel.Devices.FirstOrDefault(d => d.Id == id)?.Name ?? "the scanner";
-        return ViewModel.IsConnecting ? $"Connecting to {name}…" : $"Not connected to {name}. Choose it in the list again to retry.";
+        if (ViewModel.SelectedDeviceId is not { } id) return Loc.T("No scanner selected.");
+        string name = ViewModel.Devices.FirstOrDefault(d => d.Id == id)?.Name ?? Loc.T("the scanner");
+        return ViewModel.IsConnecting ? Loc.T("Connecting to {0}…", name) : Loc.T("Not connected to {0}. Choose it in the list again to retry.", name);
     }
 
     /// <summary>
@@ -1282,7 +1286,7 @@ public partial class MainWindow : Window
         SidesReason.Visibility = feeder ? Visibility.Collapsed : Visibility.Visible;
         string sidesHelp = !feeder ? DocumentSides.FeederOnlyReason
             : s.Duplex == DuplexMode.Manual && manualReason is not null ? manualReason
-            : s.Duplex == DuplexMode.Off && bothReason is not null ? $"{s.Duplex.Hint()} {bothReason}"
+            : s.Duplex == DuplexMode.Off && bothReason is not null ? Loc.T("{0} {1}", s.Duplex.Hint(), bothReason)
             : s.Duplex.Hint();
         SidesBox.ToolTip = sidesHelp;
         AutomationProperties.SetHelpText(SidesBox, feeder ? sidesHelp : Loc.T("{0}. {1}", DocumentSides.NeedsFeederReason, sidesHelp));
@@ -1314,10 +1318,10 @@ public partial class MainWindow : Window
                     : size == PaperSize.Auto && ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(size, s.Source)
                     : PaperSizes.Hint(size, s.Source);
                 // A size larger than the glass or the feeder stays listed, greyed out with why after its name.
-                string content = size == PaperSize.Auto ? size.Label() : $"{size.Label()}  ({size.Detail()})";
+                string content = size == PaperSize.Auto ? size.Label() : Loc.T("{0}  ({1})", size.Label(), size.Detail());
                 var item = new ComboBoxItem
                 {
-                    Content = fits ? content : $"{content} · {tip}",
+                    Content = fits ? content : Loc.T("{0} · {1}", content, tip),
                     Tag = size,
                     IsEnabled = fits,
                     ToolTip = fits ? tip : null,
@@ -1744,9 +1748,9 @@ public partial class MainWindow : Window
         ArchivalReason.Visibility = protect ? Visibility.Visible : Visibility.Collapsed;
         ProtectReason.Visibility = archival ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetHelpText(ArchivalBox,
-            protect ? $"{PdfA.NotWithPasswordReason}. {PdfA.CannotProtectNote}" : PdfA.OptionHelp);
+            protect ? Loc.T("{0}. {1}", PdfA.NotWithPasswordReason, PdfA.CannotProtectNote) : PdfA.OptionHelp);
         AutomationProperties.SetHelpText(ProtectBox,
-            archival ? $"{PdfProtection.NotWithArchivalReason}. {PdfA.CannotProtectNote}" : PdfProtection.OptionHelp);
+            archival ? Loc.T("{0}. {1}", PdfProtection.NotWithArchivalReason, PdfA.CannotProtectNote) : PdfProtection.OptionHelp);
     }
 
     /// <summary>
@@ -1879,7 +1883,7 @@ public partial class MainWindow : Window
         // A single page goes at once, as removing it from the strip does.
         if (pages > 1)
         {
-            var answer = MessageBox.Show(this, $"Remove all {pages} pages? They have not been saved.", "Lazy Scan",
+            var answer = MessageBox.Show(this, Loc.Plural(pages, "Remove {0} page? It has not been saved.", "Remove all {0} pages? They have not been saved."), "Lazy Scan",
                                          MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
             if (answer != MessageBoxResult.Yes) return;
         }
@@ -2086,7 +2090,7 @@ public partial class MainWindow : Window
 
     private void SavePreset_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new PromptWindow("Save preset", placeholder: "Preset name", okLabel: "Save") { Owner = this };
+        var dialog = new PromptWindow(Loc.T("Save preset"), placeholder: Loc.T("Preset name"), okLabel: Loc.T("Save")) { Owner = this };
         if (dialog.ShowDialog() == true && dialog.Value.Trim().Length > 0)
         {
             ViewModel.SaveCurrentAsPreset(dialog.Value);
@@ -2127,7 +2131,7 @@ public partial class MainWindow : Window
 
     private void BrowseDestination_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Choose the save folder" };
+        var dialog = new OpenFolderDialog { Title = Loc.T("Choose the save folder") };
         if (dialog.ShowDialog(this) == true)
         {
             ShowDestination(dialog.FolderName);
@@ -2195,8 +2199,10 @@ public partial class MainWindow : Window
         // A single kept photo goes at once, as a single page does with Clear.
         if (n > 1)
         {
-            string kind = ViewModel.IsReceiptReview ? "receipts" : "photos";
-            if (MessageBox.Show(this, $"The {n} {kind} have not been saved.\n\nDiscard them?", "Lazy Scan",
+            string question = ViewModel.IsReceiptReview
+                ? Loc.Plural(n, "The {0} receipt has not been saved.\n\nDiscard it?", "The {0} receipts have not been saved.\n\nDiscard them?")
+                : Loc.Plural(n, "The {0} photo has not been saved.\n\nDiscard it?", "The {0} photos have not been saved.\n\nDiscard them?");
+            if (MessageBox.Show(this, question, "Lazy Scan",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         }
         ViewModel.CancelPhotoReview();
@@ -2220,7 +2226,7 @@ public partial class MainWindow : Window
             || sender is not FrameworkElement { DataContext: PhotoItem item }) return;
         if (ViewModel.PhotoSource(item.Photo) is not { } source)
         {
-            ShowError("The original scan for this photo is no longer available.");
+            ShowError(Loc.T("The original scan for this photo is no longer available."));
             return;
         }
         // Receipts are always cut out upright.
@@ -2362,7 +2368,7 @@ public sealed class PromptWindow : Window
     /// <param name="message">A line above the box; none when null.</param>
     /// <param name="placeholder">What the empty box says (and its accessible name).</param>
     /// <param name="okLabel">The default button's label.</param>
-    public PromptWindow(string title, string? message = null, string? placeholder = null, string okLabel = "OK")
+    public PromptWindow(string title, string? message = null, string? placeholder = null, string? okLabel = null)
     {
         Title = title;
         Icon = AppIcon.Image;
@@ -2372,13 +2378,13 @@ public sealed class PromptWindow : Window
         ResizeMode = ResizeMode.NoResize;
         SetResourceReference(FontFamilyProperty, "TextFontFamily");
 
-        var ok = new Button { Content = okLabel, IsDefault = true, IsEnabled = false, MinWidth = 88 };
+        var ok = new Button { Content = okLabel ?? Loc.T("OK"), IsDefault = true, IsEnabled = false, MinWidth = 88 };
         ok.SetResourceReference(StyleProperty, "AccentButtonStyle");
         ok.Click += (_, _) => DialogResult = true;
         _textBox.TextChanged += (_, _) => ok.IsEnabled = _textBox.Text.Trim().Length > 0;
         var cancel = new Button
         {
-            Content = "Cancel", IsCancel = true,
+            Content = Loc.T("Cancel"), IsCancel = true,
             MinWidth = 88, Margin = new Thickness(8, 0, 0, 0),
         };
 

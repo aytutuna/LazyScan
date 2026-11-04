@@ -248,9 +248,10 @@ public enum TwainHelperErrorKind : byte
 /// </summary>
 /// <param name="Operation">What was being done, for <see cref="TwainException.Operation"/>.</param>
 /// <param name="Problem">The scanner condition of a <see cref="TwainHelperErrorKind.Scan"/> error, when known.</param>
-/// <param name="Detail">The text after the error's standard wording (see <see cref="From"/>).</param>
+/// <param name="Detail">The text after the error's standard wording (see <see cref="From"/>), in the helper's language.</param>
+/// <param name="ReportDetail">The same in English, for the support report; null when it is <paramref name="Detail"/>.</param>
 public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operation, int ReturnCode, int ConditionCode,
-                                      ScanErrorKind ScanKind, ScannerProblem? Problem, string? Detail)
+                                      ScanErrorKind ScanKind, ScannerProblem? Problem, string? Detail, string? ReportDetail = null)
 {
     /// <summary>
     /// The error for <paramref name="error"/>. A <see cref="ScanException"/> is reduced to its
@@ -266,21 +267,15 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
                            ScanErrorKind.ScanFailed, null, DetailOf(twain));
             case ScanException scan when scan.Problem is { } problem:
             {
-                string described = ScannerProblems.Describe(problem);
-                string? detail = null;
-                if (scan.Message.StartsWith(described + " (", StringComparison.Ordinal) && scan.Message.EndsWith(')'))
-                {
-                    detail = scan.Message[(described.Length + 2)..^1];
-                }
-                return new(TwainHelperErrorKind.Scan, operation, 0, 0, scan.Kind, problem, detail);
+                return new(TwainHelperErrorKind.Scan, operation, 0, 0, scan.Kind, problem,
+                           ProblemDetail(scan.Message, ScannerProblems.Describe(problem)),
+                           ProblemDetail(scan.ReportMessage, Loc.English(() => ScannerProblems.Describe(problem))));
             }
             case ScanException scan:
             {
-                string prefix = Rebuild(scan.Kind, "").Message;
-                string? detail = scan.Kind == ScanErrorKind.Cancelled ? null
-                    : scan.Message.StartsWith(prefix, StringComparison.Ordinal) ? scan.Message[prefix.Length..]
-                    : scan.Message;
-                return new(TwainHelperErrorKind.Scan, operation, 0, 0, scan.Kind, null, detail);
+                return new(TwainHelperErrorKind.Scan, operation, 0, 0, scan.Kind, null,
+                           ScanDetail(scan.Kind, scan.Message, Rebuild(scan.Kind, "").Message),
+                           ScanDetail(scan.Kind, scan.ReportMessage, Loc.English(() => Rebuild(scan.Kind, "").Message)));
             }
             default:
                 return new(TwainHelperErrorKind.Scan, operation, 0, 0, ScanErrorKind.ScanFailed, null, error.Message);
@@ -288,12 +283,23 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
     }
 
     /// <summary>The exception this error stands for, to be thrown in the app.</summary>
-    public Exception ToException() => Kind switch
+    public Exception ToException()
     {
-        TwainHelperErrorKind.Twain => new TwainException(Operation, ReturnCode, ConditionCode, Detail),
-        _ when Problem is { } problem => ScanException.ForProblem(problem, Detail),
-        _ => Rebuild(ScanKind, Detail ?? ""),
-    };
+        if (Kind == TwainHelperErrorKind.Twain) return new TwainException(Operation, ReturnCode, ConditionCode, Detail);
+        ScanException Build(string? detail) =>
+            Problem is { } problem ? ScanException.ForProblem(problem, detail) : Rebuild(ScanKind, detail ?? "");
+        return Build(Detail).WithReport(Loc.English(() => Build(ReportDetail ?? Detail)).ReportMessage);
+    }
+
+    private static string? ProblemDetail(string message, string described) =>
+        message.StartsWith(described + " (", StringComparison.Ordinal) && message.EndsWith(')')
+            ? message[(described.Length + 2)..^1]
+            : null;
+
+    private static string? ScanDetail(ScanErrorKind kind, string message, string prefix) =>
+        kind == ScanErrorKind.Cancelled ? null
+            : message.StartsWith(prefix, StringComparison.Ordinal) ? message[prefix.Length..]
+            : message;
 
     private static ScanException Rebuild(ScanErrorKind kind, string detail) => kind switch
     {
@@ -319,7 +325,7 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
 public static class TwainHelperProtocol
 {
     /// <summary>The protocol version; the app and the helper are built together and must agree.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     /// <summary>"LSTW": the first field of <see cref="TwainHelperHello"/> and its reply.</summary>
     public const uint Magic = 0x5754534C;
@@ -641,6 +647,7 @@ public static class TwainHelperProtocol
         w.Byte((byte)error.ScanKind);
         w.Int(error.Problem is { } problem ? (int)problem : -1);
         w.String(error.Detail);
+        w.String(error.ReportDetail);
     }
 
     private static TwainHelperError ReadError(ref Reader r)
@@ -656,7 +663,7 @@ public static class TwainHelperProtocol
         // A problem this version does not know is still a problem.
         ScannerProblem? problem = rawProblem == -1 ? null
             : Enum.IsDefined((ScannerProblem)rawProblem) ? (ScannerProblem)rawProblem : ScannerProblem.Unknown;
-        return new TwainHelperError(kind, operation, returnCode, conditionCode, scanKind, problem, r.OptionalString());
+        return new TwainHelperError(kind, operation, returnCode, conditionCode, scanKind, problem, r.OptionalString(), r.OptionalString());
     }
 
     private sealed class Writer

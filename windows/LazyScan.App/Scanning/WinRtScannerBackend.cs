@@ -168,7 +168,7 @@ public sealed class WinRtScannerBackend : IScannerBackend, IBackendDiagnostics, 
             StopQuietly(watcher);
             _status = WindowsScanStatus.Unavailable;
             _note = WindowsScanErrors.UnavailableToThisApp(e.HResult)
-                ? WindowsScanErrors.UnavailableNote(e.HResult, e.Message)
+                ? Loc.English(() => WindowsScanErrors.UnavailableNote(e.HResult, e.Message))
                 : $"the Windows device watcher would not start ({e.GetType().Name} 0x{unchecked((uint)e.HResult):X8}: {e.Message.Trim()})";
             System.Diagnostics.Trace.TraceWarning($"Windows Scan: {_note}");
         }
@@ -206,7 +206,7 @@ public sealed class WinRtScannerBackend : IScannerBackend, IBackendDiagnostics, 
             StopWatcher();
             _found.Clear();
             _status = WindowsScanStatus.Unavailable;
-            _note = WindowsScanErrors.UnavailableNote(error.HResult, error.Message);
+            _note = Loc.English(() => WindowsScanErrors.UnavailableNote(error.HResult, error.Message));
             System.Diagnostics.Trace.TraceWarning($"Windows Scan: {_note}");
         }
         PostChanged();
@@ -322,9 +322,9 @@ public sealed class WinRtScannerBackend : IScannerBackend, IBackendDiagnostics, 
     public async Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         string windowsId = WindowsScanConnection.DeviceId(deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         var scanner = await OpenScannerAsync(windowsId, info.Name, error => Refused(windowsId, error)).ConfigureAwait(true);
         lock (_gate) _access.Opened();
         return new WinRtScannerSession(info, scanner, _scratchRoot, facts => RecordFacts(info.Id, facts));
@@ -363,7 +363,7 @@ public sealed class WinRtScannerBackend : IScannerBackend, IBackendDiagnostics, 
             bool hidden = WindowsScanErrors.UnavailableToThisApp(e.HResult) && refused(e);
             throw WindowsScanErrors.ToScanException(e.HResult, e.Message, opening: hidden);
         }
-        return scanner ?? throw ScanException.DeviceUnavailable($"{name} is no longer connected.");
+        return scanner ?? throw ScanException.DeviceUnavailable(() => Loc.T("{0} is no longer connected.", name));
     }
 }
 
@@ -405,17 +405,17 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
     public Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
         var token = BeginScan();
-        ProgressHandler?.Invoke(new ScanProgress("Scanning overview…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         return Run(async cancel =>
         {
             ReadFacts(force: false);
-            if (_flatbed is not { } flatbed) throw ScanException.Unsupported("This scanner has no flatbed to preview.");
+            if (_flatbed is not { } flatbed) throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview."));
             var plan = WindowsScanRequest.Overview(flatbed);
             Apply(plan);
             if (flatbed.PreviewSupported && await PreviewAsync(cancel) is { } preview) return preview;
             // No preview of its own (or it failed): a quick low-resolution scan instead.
             var pages = await ScanFilesAsync(plan, feeder: false, cancel);
-            return pages.Count > 0 ? pages[0].Image : throw ScanException.ScanFailed("The scanner did not return any image data.");
+            return pages.Count > 0 ? pages[0].Image : throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
         }, token);
     }
 
@@ -424,14 +424,14 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
         _lastScanStop = null;
         _lastScanDuplex = -1;
         var token = BeginScan();
-        ProgressHandler?.Invoke(new ScanProgress("Scanning…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
         return Run<IReadOnlyList<ScannedPage>>(async cancel =>
         {
             ReadFacts(force: false);
             bool feeder = settings.Source == ScanSource.DocumentFeeder;
             if (!feeder && _flatbed is null && _feeder is not null)
             {
-                throw ScanException.Unsupported("This scanner has no flatbed; scan from its document feeder.");
+                throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed; scan from its document feeder."));
             }
             var plan = WindowsScanRequest.Plan(settings, feeder ? null : selection, feeder ? _feeder : _flatbed);
             int reportedDpi = Apply(plan);
@@ -445,7 +445,7 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
             {
                 throw feeder
                     ? ScanException.ForProblem(ScannerProblem.FeederEmpty)
-                    : ScanException.ScanFailed("The scanner did not return any image data.");
+                    : ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
             }
             // The resolution sets each page's size on paper: when the driver does not say what it
             // scanned at (a device that configures itself), the file's own is better than the one asked for.
@@ -701,7 +701,7 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
                 throw FolderFailed(e);
             }
             // Windows counts the files written: pages, two of them per sheet when both sides are scanned.
-            var progress = new Progress<uint>(count => ProgressHandler?.Invoke(new ScanProgress($"Transferred page {count}…")));
+            var progress = new Progress<uint>(count => ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", count))));
             ImageScannerScanResult result;
             try
             {
@@ -734,7 +734,7 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
                 catch (Exception e) when (e is IOException or NotSupportedException or FileFormatException
                                               or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
                 {
-                    throw ScanException.ScanFailed($"the scanned page could not be read ({e.Message.Trim()}).");
+                    throw ScanException.ScanFailed(() => Loc.T("the scanned page could not be read ({0}).", e.Message.Trim()));
                 }
             }
             return images;
@@ -754,7 +754,7 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
 
     /// <summary>The app's own scan folder could not be made or opened: a failed scan, which says nothing about Windows Scan.</summary>
     private static ScanException FolderFailed(Exception e) =>
-        ScanException.ScanFailed($"the app could not prepare its temporary folder for the scan ({e.Message.Trim()}).");
+        ScanException.ScanFailed(() => Loc.T("the app could not prepare its temporary folder for the scan ({0}).", e.Message.Trim()));
 
     /// <summary>The pages of the files a failed batch left behind, in scan order, without the one cut off.</summary>
     private static List<ScannedFrame> ReadableFiles(string folder)

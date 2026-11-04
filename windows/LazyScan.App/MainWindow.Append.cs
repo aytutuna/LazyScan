@@ -55,7 +55,7 @@ public partial class MainWindow
         var dialog = new OpenFileDialog
         {
             Title = PdfAppender.PickerTitle,
-            Filter = "PDF documents (*.pdf)|*.pdf",
+            Filter = Loc.T("PDF documents") + " (*.pdf)|*.pdf",
             CheckFileExists = true,
             Multiselect = false,
         };

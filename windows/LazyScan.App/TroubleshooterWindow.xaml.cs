@@ -187,7 +187,7 @@ public partial class TroubleshooterWindow : Window
                 Child = okRow,
                 ToolTip = check.FullDetail,
             };
-            AutomationProperties.SetName(row, $"{status}: {check.Title}");
+            AutomationProperties.SetName(row, Loc.T("{0}: {1}", status, check.Title));
             AutomationProperties.SetHelpText(row, check.FullDetail);
             AutomationProperties.SetAutomationId(row, check.Id);
             return row;
@@ -217,7 +217,7 @@ public partial class TroubleshooterWindow : Window
                 LazyScan.App.Icon.SetGlyph(button, ActionGlyph(action));
                 button.Style = (Style)FindResource("IconTextButtonStyle");
                 // The button's own name plus which check it is for (several cards offer the same one).
-                AutomationProperties.SetHelpText(button, $"{status}: {check.Title}");
+                AutomationProperties.SetHelpText(button, Loc.T("{0}: {1}", status, check.Title));
                 button.Click += Action_Click;
                 buttons.Children.Add(button);
             }
@@ -229,7 +229,7 @@ public partial class TroubleshooterWindow : Window
             moreText.SetResourceReference(StyleProperty, "SecondaryBodyText");
             var expander = new Expander
             {
-                Header = "More help",
+                Header = Loc.T("More help"),
                 Content = moreText,
                 Margin = new Thickness(0, 6, 0, 0),
                 Padding = new Thickness(0),
@@ -238,7 +238,7 @@ public partial class TroubleshooterWindow : Window
                 BorderThickness = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
-            AutomationProperties.SetName(expander, $"More help: {check.Title}");
+            AutomationProperties.SetName(expander, Loc.T("More help: {0}", check.Title));
             texts.Children.Add(expander);
         }
 
@@ -252,7 +252,7 @@ public partial class TroubleshooterWindow : Window
             Margin = new Thickness(0, 0, 0, 8),
             Child = cardRow,
         };
-        AutomationProperties.SetName(card, $"{status}: {check.Title}");
+        AutomationProperties.SetName(card, Loc.T("{0}: {1}", status, check.Title));
         AutomationProperties.SetHelpText(card, check.FullDetail);
         AutomationProperties.SetAutomationId(card, check.Id);
         return card;
@@ -286,7 +286,7 @@ public partial class TroubleshooterWindow : Window
                 break;
             case TroubleshootAction.OpenScannerSettings:
             case TroubleshootAction.OpenNetworkSettings:
-                if (!_viewModel.OpenSystemSettings(action)) ShowStatus("Settings did not open.");
+                if (!_viewModel.OpenSystemSettings(action)) ShowStatus(Loc.T("Settings did not open."));
                 break;
             case TroubleshootAction.CopyDiagnostics:
                 Copy();
@@ -308,7 +308,7 @@ public partial class TroubleshooterWindow : Window
         if (_refreshes > 0) return;
         _refreshes++;
         SummaryText.Visibility = Visibility.Visible;
-        Announce(SummaryText, "Looking for scanners…");
+        Announce(SummaryText, Loc.T("Looking for scanners…"));
         try
         {
             _viewModel.RefreshScanners();
@@ -325,8 +325,8 @@ public partial class TroubleshooterWindow : Window
 
     private void Copy()
     {
-        if (_viewModel.CopyDiagnostics(Snapshot)) ShowStatus("Copied to the clipboard.");
-        else ShowStatus("Could not copy.");
+        if (_viewModel.CopyDiagnostics(Snapshot)) ShowStatus(Loc.T("Copied to the clipboard."));
+        else ShowStatus(Loc.T("Could not copy."));
     }
 
     /// <summary>What the footer says after Copy or a Settings button (harnesses read it).</summary>

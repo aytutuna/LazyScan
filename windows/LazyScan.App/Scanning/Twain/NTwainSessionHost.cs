@@ -71,7 +71,7 @@ internal sealed class NTwainSessionHost
         }
         if (availability != TwainAvailability.Available)
         {
-            throw ScanException.SessionFailed("The TWAIN Data Source Manager would not open.");
+            throw ScanException.SessionFailed(() => Loc.T("The TWAIN Data Source Manager would not open."));
         }
         var session = _session!;
         // The previous source's driver stops listening even if its session never got to close
@@ -93,7 +93,7 @@ internal sealed class NTwainSessionHost
             }
         }
         var source = session.GetSources().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.Ordinal))
-            ?? throw ScanException.DeviceUnavailable($"The TWAIN driver \"{name}\" is no longer installed.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The TWAIN driver \"{0}\" is no longer installed.", name));
         var rc = source.Open();
         if (rc != ReturnCode.Success)
         {
@@ -110,7 +110,7 @@ internal sealed class NTwainSessionHost
             {
                 throw ScanException.ForProblem(problem, $"TWAIN {TwainErrors.ConditionName(condition)}");
             }
-            throw ScanException.SessionFailed($"the TWAIN driver could not open the scanner ({TwainErrors.ConditionName(condition)}).");
+            throw ScanException.SessionFailed(() => Loc.T("the TWAIN driver could not open the scanner ({0}).", TwainErrors.ConditionName(condition)));
         }
         _lastDriver = new NTwainDriver(session, source);
         return _lastDriver;

@@ -33,13 +33,12 @@ public sealed record TwainHelperTimeouts(TimeSpan Hello, TimeSpan ListSources, T
 public sealed class TwainHelperConnection : IDisposable
 {
     /// <summary>What the user is told when the helper process stopped by itself.</summary>
-    public const string StoppedMessage =
-        "The helper that runs the scanner's 32-bit TWAIN driver stopped unexpectedly. Try again: it restarts on its own.";
+    public static string StoppedMessage =>
+        Loc.T("The helper that runs the scanner's 32-bit TWAIN driver stopped unexpectedly. Try again: it restarts on its own.");
 
     /// <summary>What the user is told when the helper did not answer in time and was stopped.</summary>
-    public const string NotRespondingMessage =
-        "The scanner's 32-bit TWAIN driver is not responding, so the helper that runs it was stopped. Try again: it "
-        + "restarts on its own. If this keeps happening, turn the scanner off and on.";
+    public static string NotRespondingMessage =>
+        Loc.T("The scanner's 32-bit TWAIN driver is not responding, so the helper that runs it was stopped. Try again: it restarts on its own. If this keeps happening, turn the scanner off and on.");
 
     private readonly Stream _stream;
     private readonly object _gate = new();
@@ -47,7 +46,7 @@ public sealed class TwainHelperConnection : IDisposable
     private readonly Dictionary<int, Pending> _pending = [];
     private readonly BlockingCollection<TwainEvent> _events = [];
     private int _nextId;
-    private string? _lostReason;
+    private Func<string>? _lostReason;
     /// <summary>An Enable succeeded and the source has not finished or been disabled since.</summary>
     private bool _acquiring;
 
@@ -85,7 +84,7 @@ public sealed class TwainHelperConnection : IDisposable
     {
         get
         {
-            lock (_gate) return _lostReason;
+            lock (_gate) return _lostReason?.Invoke();
         }
     }
 
@@ -96,15 +95,15 @@ public sealed class TwainHelperConnection : IDisposable
         var reply = Request(new TwainHelperHello(TwainHelperProtocol.Version), timeout);
         if (reply is not TwainHelperHelloReply hello)
         {
-            Abort(StoppedMessage);
-            throw ScanException.SessionFailed("the 32-bit TWAIN helper did not answer as expected.");
+            Abort(() => StoppedMessage);
+            throw ScanException.SessionFailed(() => Loc.T("the 32-bit TWAIN helper did not answer as expected."));
         }
         if (hello.Version != TwainHelperProtocol.Version || hello.ProcessBits != expectedBits)
         {
-            Abort(StoppedMessage);
-            throw ScanException.SessionFailed(
-                $"the 32-bit TWAIN helper does not match this version of Lazy Scan (protocol {hello.Version}, "
-                + $"{hello.ProcessBits}-bit). Reinstall Lazy Scan.");
+            Abort(() => StoppedMessage);
+            throw ScanException.SessionFailed(() => Loc.T(
+                "the 32-bit TWAIN helper does not match this version of Lazy Scan (protocol {0}, {1}-bit). Reinstall Lazy Scan.",
+                hello.Version, hello.ProcessBits));
         }
     }
 
@@ -126,7 +125,7 @@ public sealed class TwainHelperConnection : IDisposable
             // Events of an earlier acquisition still queued belong to nobody once a new one is asked for.
             if (request is TwainHelperDisable) _acquiring = false;
         }
-        if (!Write(request with { RequestId = id })) throw ScanException.ScanFailed(LostReason ?? StoppedMessage);
+        if (!Write(request with { RequestId = id })) throw ScanException.ScanFailed(() => LostReason ?? StoppedMessage);
         bool answered;
         try
         {
@@ -138,8 +137,8 @@ public sealed class TwainHelperConnection : IDisposable
         }
         if (!answered)
         {
-            Abort(NotRespondingMessage);
-            throw ScanException.ScanFailed(NotRespondingMessage);
+            Abort(() => NotRespondingMessage);
+            throw ScanException.ScanFailed(() => NotRespondingMessage);
         }
         return pending.Reply.Task.Result;
     }
@@ -170,7 +169,7 @@ public sealed class TwainHelperConnection : IDisposable
     /// Gives up on the helper: closes the pipe, fails the waiting requests, ends an acquisition
     /// under way with a failed transfer, and raises <see cref="Lost"/>. Idempotent.
     /// </summary>
-    public void Abort(string reason)
+    public void Abort(Func<string> reason)
     {
         List<Pending> waiting;
         bool endAcquisition;
@@ -194,12 +193,12 @@ public sealed class TwainHelperConnection : IDisposable
         foreach (var pending in waiting) pending.Reply.TrySetException(ScanException.ScanFailed(reason));
         if (endAcquisition)
         {
-            _events.Add(new TwainTransferFailed(TwainReturnCodes.Failure, TwainConditionCodes.Bummer, reason));
+            _events.Add(new TwainTransferFailed(TwainReturnCodes.Failure, TwainConditionCodes.Bummer, Loc.English(reason)));
             _events.Add(new TwainFinished());
         }
         try
         {
-            Lost?.Invoke(reason);
+            Lost?.Invoke(reason());
         }
         catch (Exception e)
         {
@@ -207,7 +206,7 @@ public sealed class TwainHelperConnection : IDisposable
         }
     }
 
-    public void Dispose() => Abort(StoppedMessage);
+    public void Dispose() => Abort(() => StoppedMessage);
 
     private bool Write(TwainHelperMessage message)
     {
@@ -218,7 +217,7 @@ public sealed class TwainHelperConnection : IDisposable
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException)
         {
-            Abort(StoppedMessage);
+            Abort(() => StoppedMessage);
             return false;
         }
     }
@@ -228,16 +227,16 @@ public sealed class TwainHelperConnection : IDisposable
         try
         {
             while (TwainHelperProtocol.ReadFrame(_stream) is { } message) Receive(message);
-            Abort(StoppedMessage);
+            Abort(() => StoppedMessage);
         }
         catch (TwainProtocolException e)
         {
             System.Diagnostics.Trace.TraceWarning($"TWAIN helper: {e.Message}");
-            Abort(StoppedMessage);
+            Abort(() => StoppedMessage);
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException)
         {
-            Abort(StoppedMessage);
+            Abort(() => StoppedMessage);
         }
     }
 
@@ -401,7 +400,7 @@ public sealed class RemoteTwainTransport : ITwainTransport
     /// <summary>The connection the source is open on, opening it first in a helper started since.</summary>
     private TwainHelperConnection Connection()
     {
-        if (_closed) throw ScanException.SessionFailed("the scanner was closed.");
+        if (_closed) throw ScanException.SessionFailed(() => Loc.T("the scanner was closed."));
         var connection = _connect();
         if (ReferenceEquals(connection, _opened) && connection.IsAlive) return connection;
         _opened = null;
@@ -415,8 +414,8 @@ public sealed class RemoteTwainTransport : ITwainTransport
 
     private static ScanException Unexpected(TwainHelperConnection connection, TwainHelperMessage reply)
     {
-        connection.Abort(TwainHelperConnection.StoppedMessage);
-        return ScanException.ScanFailed($"the 32-bit TWAIN helper answered with {reply.Type}.");
+        connection.Abort(() => TwainHelperConnection.StoppedMessage);
+        return ScanException.ScanFailed(() => Loc.T("the 32-bit TWAIN helper answered with {0}.", reply.Type));
     }
 
     /// <summary>The reply of type <typeparamref name="T"/>, or the helper's error thrown as the exception it stands for.</summary>
@@ -472,7 +471,7 @@ public sealed class RemoteTwainTransport : ITwainTransport
         {
             if (connection.Request(new TwainHelperDisable(milliseconds), wait) is TwainHelperDisabled { Succeeded: false })
             {
-                connection.Abort(TwainHelperConnection.NotRespondingMessage);
+                connection.Abort(() => TwainHelperConnection.NotRespondingMessage);
             }
             // Disabled, stopped with its helper, or (a failure) never usable: nothing is left enabled.
             return true;

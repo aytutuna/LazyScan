@@ -51,6 +51,12 @@ public static class Loc
         Format(Lookup(english) ?? StripContext(english), args);
 
     /// <summary>
+    /// A sentence carried in English through an exception or a message between processes, in the UI
+    /// language when the catalog has it; any other text comes back as it is.
+    /// </summary>
+    public static string Reword(string english) => Lookup(english) ?? english;
+
+    /// <summary>
     /// <paramref name="one"/> when the language's plural rule says so for <paramref name="n"/>, else
     /// <paramref name="other"/>. {0} is n, written in the current number format, and
     /// <paramref name="args"/> follow from {1}.

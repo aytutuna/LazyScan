@@ -257,7 +257,7 @@ public class TwainHelperProtocolTests
     [Fact]
     public void AProblemFromANewerVersion_IsStillAProblem()
     {
-        var payload = Payload(TwainHelperMessageType.Failure, 1, B(1), I(0), I(0), I(0), B(2), I(500), I(-1));
+        var payload = Payload(TwainHelperMessageType.Failure, 1, B(1), I(0), I(0), I(0), B(2), I(500), I(-1), I(-1));
         var failure = Assert.IsType<TwainHelperFailure>(TwainHelperProtocol.Decode(payload));
         Assert.Equal(ScannerProblem.Unknown, failure.Error.Problem);
     }
@@ -356,6 +356,51 @@ public class TwainHelperProtocolTests
         {
             RequestId = 1,
         })).Error.ToException();
+
+    [Fact]
+    public void ScanErrors_CrossWithAnEnglishReportMessage_WhenWordedInAnotherLanguage()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["Scanner unavailable: {0}"] = "Tarayıcı kullanılamıyor: {0}",
+            ["The TWAIN Data Source Manager would not open."] = "TWAIN yöneticisi açılmadı.",
+        };
+        try
+        {
+            var back = Assert.IsType<ScanException>(Across(
+                ScanException.DeviceUnavailable(() => Loc.T("The TWAIN Data Source Manager would not open."))));
+            Assert.Equal("Tarayıcı kullanılamıyor: TWAIN yöneticisi açılmadı.", back.Message);
+            Assert.Equal("Scanner unavailable: The TWAIN Data Source Manager would not open.", back.ReportMessage);
+        }
+        finally
+        {
+            Loc.Table = null;
+        }
+    }
+
+    [Fact]
+    public void TwainFailures_ReportInEnglish_WhenWordedInAnotherLanguage()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["Scan failed: {0}"] = "Tarama başarısız: {0}",
+            ["The scanner driver reported an error: {0} ({1})"] = "Sürücü hata verdi: {0} ({1})",
+            ["The scanner driver ran out of memory. Try a lower resolution. ({0})"] = "Bellek yetmedi. ({0})",
+        };
+        try
+        {
+            var memory = TwainErrors.ToScanException(TwainReturnCodes.Failure, TwainConditionCodes.LowMemory);
+            Assert.StartsWith("Tarama başarısız: Bellek yetmedi.", memory.Message);
+            Assert.StartsWith("Scan failed: The scanner driver ran out of memory.", memory.ReportMessage);
+            var other = TwainErrors.ToScanException(TwainReturnCodes.Failure, TwainConditionCodes.OperationError, "Lamp failure");
+            Assert.StartsWith("Tarama başarısız: Sürücü hata verdi: Lamp failure", other.Message);
+            Assert.Equal("Scan failed: The scanner driver reported an error: Lamp failure (TWAIN TWCC_OPERATIONERROR)", other.ReportMessage);
+        }
+        finally
+        {
+            Loc.Table = null;
+        }
+    }
 
     [Fact]
     public void TwainErrors_CrossAsTheSameTwainException()

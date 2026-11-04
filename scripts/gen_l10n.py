@@ -28,6 +28,10 @@ CALLS = [
 ]
 
 
+# "a" + "b" would be read as "a" alone, and never found at run time.
+SPLIT = re.compile(r"\b(?:L10n\.t|Loc\.T)\(\s*" + LITERAL + r"\s*\+")
+
+
 def placeholders(text):
     return set(PLACEHOLDER.findall(text))
 
@@ -107,6 +111,7 @@ def unescape(literal):
 
 def keys_in_code():
     found = {}
+    split = set()
     for base in CODE:
         for path in (ROOT / base).rglob("*"):
             rel = path.relative_to(ROOT)
@@ -115,10 +120,11 @@ def keys_in_code():
             text = path.read_text(encoding="utf-8", errors="ignore")
             for pattern, suffixes in CALLS:
                 if path.suffix in suffixes:
+                    split.update((unescape(m.group(1)), rel.as_posix()) for m in SPLIT.finditer(text))
                     for m in pattern.finditer(text):
                         other = unescape(m.group(2)) if m.lastindex > 1 else None
                         found.setdefault(unescape(m.group(1)), (rel.as_posix(), other))
-    return found
+    return found, split
 
 
 def main():
@@ -129,7 +135,9 @@ def main():
             write(folder / f"{lang}.lproj" / "Kit.strings", strings_text(pairs))
         if lang != "en":
             write(ROOT / RESX.format(lang), resx_text(pairs))
-    used = keys_in_code()
+    used, split = keys_in_code()
+    for key, path in split:
+        print(f"key split with +: {key!r} ({path})")
     missing = {k: p for k, (p, _) in used.items() if k not in data}
     for key, path in missing.items():
         print(f"missing from the catalog: {key!r} ({path})")
@@ -140,7 +148,7 @@ def main():
     for key in data:
         if key not in used:
             print(f"warning: not used in code: {key!r}")
-    return 1 if missing else 0
+    return 1 if missing or split else 0
 
 
 if __name__ == "__main__":

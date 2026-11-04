@@ -203,4 +203,18 @@ public static class PaperSizes
         PaperSize.IdCard => Loc.T("{0} × {1} mm", 85.6, 54),
         _ => "",
     };
+
+    /// <summary>The dimensions as a screen reader says them: "8.5 by 11 inches", "210 by 297 mm".</summary>
+    public static string SpokenDetail(this PaperSize size) => size switch
+    {
+        PaperSize.Letter => Loc.T("{0} by {1} inches", 8.5, 11),
+        PaperSize.Legal => Loc.T("{0} by {1} inches", 8.5, 14),
+        PaperSize.Executive => Loc.T("{0} by {1} inches", 7.25, 10.5),
+        PaperSize.A4 => Loc.T("{0} by {1} mm", 210, 297),
+        PaperSize.A5 => Loc.T("{0} by {1} mm", 148, 210),
+        PaperSize.A6 => Loc.T("{0} by {1} mm", 105, 148),
+        PaperSize.B5Jis => Loc.T("{0} by {1} mm", 182, 257),
+        PaperSize.IdCard => Loc.T("{0} by {1} mm", 85.6, 54),
+        _ => "",
+    };
 }

@@ -40,8 +40,8 @@ public partial class MainWindow
         PackageAddButton.IsEnabled = takes;
         PackageOpenButton.IsEnabled = takes;
         bool underWay = ViewModel.IsStackUnderWay;
-        PackageAddButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : "Add its pages after the pages in the queue";
-        PackageOpenButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : "Clear the queue and open the document in its place";
+        PackageAddButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : Loc.T("Add its pages after the pages in the queue");
+        PackageOpenButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : Loc.T("Clear the queue and open the document in its place");
         PackageBar.Visibility = Visibility.Visible;
         if (isNew) AnnounceWhenShown(PackageBarText);
     }
@@ -55,9 +55,10 @@ public partial class MainWindow
         // Where the settings collect no pages the click only says why, and the queue stays.
         if (n > 0 && ViewModel.CanTakePhonePages && ViewModel.PendingPackage is { } package)
         {
-            string question = n == 1
-                ? $"The page in the queue has not been saved. “{package.FileName}” opens in its place.\n\nDiscard the page?"
-                : $"The {n} pages in the queue have not been saved. “{package.FileName}” opens in their place.\n\nDiscard the pages?";
+            string question = Loc.Plural(n,
+                "The page in the queue has not been saved. “{1}” opens in its place.\n\nDiscard the page?",
+                "The {0} pages in the queue have not been saved. “{1}” opens in their place.\n\nDiscard the pages?",
+                package.FileName);
             if (MessageBox.Show(this, question, "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         }

@@ -30,7 +30,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
     public async Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
         _cancelRequested = false;
-        if (!EsclCapabilities.HasPlaten) throw ScanException.Unsupported(Loc.T("This scanner has no flatbed to preview."));
+        if (!EsclCapabilities.HasPlaten) throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview."));
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         int dpi = EsclCapabilities.Platen!.Resolutions.FirstOrDefault(r => r >= 150, 150);
         var result = await RunJob(dpi, ColorMode.Color, ScanSource.Flatbed, selection: null).ConfigureAwait(true);

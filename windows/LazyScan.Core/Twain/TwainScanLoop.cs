@@ -144,7 +144,7 @@ public static class TwainScanLoop
                 try
                 {
                     pages.Add(Page(done.ToImage(), currentInfo, request));
-                    progress?.Invoke(new ScanProgress($"Transferred page {pages.Count}…"));
+                    progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pages.Count)));
                 }
                 catch (FormatException e)
                 {
@@ -202,7 +202,7 @@ public static class TwainScanLoop
                         }
                         catch (Exception e) when (e is NotSupportedException or FormatException)
                         {
-                            failure ??= ScanException.ScanFailed($"{e.Message} Scan again: the next scan uses another transfer method.");
+                            failure ??= ScanException.ScanFailed(() => Loc.T("{0} Scan again: the next scan uses another transfer method.", e.Message));
                             result.UseNativeTransfers = true;
                             Stop();
                         }
@@ -220,7 +220,7 @@ public static class TwainScanLoop
                     }
                     catch (FormatException e)
                     {
-                        failure ??= ScanException.ScanFailed($"{e.Message} Scan again: the next scan uses another transfer method.");
+                        failure ??= ScanException.ScanFailed(() => Loc.T("{0} Scan again: the next scan uses another transfer method.", e.Message));
                         result.UseNativeTransfers = true;
                         Stop();
                     }
@@ -236,7 +236,7 @@ public static class TwainScanLoop
                             ? new TwainImageInfo(image.Width, image.Height, request.PixelType, 0, bitmapDpi)
                             : currentInfo.XResolution > 0 ? currentInfo : currentInfo with { XResolution = bitmapDpi };
                         pages.Add(Page(image, info, request));
-                        progress?.Invoke(new ScanProgress($"Transferred page {pages.Count}…"));
+                        progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pages.Count)));
                     }
                     catch (FormatException e)
                     {
@@ -272,7 +272,7 @@ public static class TwainScanLoop
         if (failure is null && timedOut)
         {
             failure = ScanException.ScanFailed(
-                "The scanner stopped responding. Check that it is turned on and connected, then try again.");
+                () => Loc.T("The scanner stopped responding. Check that it is turned on and connected, then try again."));
         }
         if (failure is not null)
         {

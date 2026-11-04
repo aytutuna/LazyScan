@@ -39,7 +39,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
     private List<TwainHelperSource> _listed = [];
     private string? _statusDetail;
     /// <summary>Why the helper cannot run at all, as of the last listing (<see cref="TwainHelperProcess.PermanentFailure"/>).</summary>
-    private string? _cannotRun;
+    private Func<string>? _cannotRun;
     private SynchronizationContext? _context;
     private int _generation;
     private bool _browsing;
@@ -136,8 +136,8 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
                 ? snapshot
                 : snapshot with
                 {
-                    ThirtyTwoBitHelperProblem = TwainDiagnostics.HelperProblem(Status, _cannotRun, reachedAny: false),
-                    ThirtyTwoBitHelperReportProblem = Loc.English(() => TwainDiagnostics.HelperProblem(Status, _cannotRun, reachedAny: false)),
+                    ThirtyTwoBitHelperProblem = TwainDiagnostics.HelperProblem(Status, _cannotRun?.Invoke(), reachedAny: false),
+                    ThirtyTwoBitHelperReportProblem = Loc.English(() => TwainDiagnostics.HelperProblem(Status, _cannotRun?.Invoke(), reachedAny: false)),
                 };
         }
         return snapshot with
@@ -206,7 +206,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
         {
             TwainHelperSourceList found => found,
             TwainHelperFailure failure => throw failure.Error.ToException(),
-            _ => throw ScanException.SessionFailed($"the 32-bit TWAIN helper answered with {reply.Type}."),
+            _ => throw ScanException.SessionFailed(() => Loc.T("the 32-bit TWAIN helper answered with {0}.", reply.Type)),
         };
         if (list.Availability != TwainAvailability.Available || TwainHelperSources.Usable(list.Sources, []).Count == 0)
         {
@@ -216,7 +216,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
     }
 
     private void Publish(int generation, TwainHelperStatus status, string? detail, List<TwainHelperSource> sources,
-                         string? cannotRun)
+                         Func<string>? cannotRun)
     {
         Post(() =>
         {
@@ -278,9 +278,9 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
     public async Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         string name = TwainHelperSources.SourceName(deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         var transport = new RemoteTwainTransport(_helper.Connect, name, _timeouts);
         // A source that opens after the time limit has nobody to use it: close it at once.
         await Worker.RunAsync(() =>

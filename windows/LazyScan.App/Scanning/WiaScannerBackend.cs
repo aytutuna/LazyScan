@@ -353,7 +353,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     public Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         string wiaId = deviceId["wia:".Length..];
         return Task.FromResult<IScannerSession>(new WiaScannerSession(info, wiaId, DeviceLost));
     }
@@ -460,9 +460,9 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         _cancelRequested = false;
         if (_sources is { } sources && !sources.Contains(ScanSource.Flatbed))
         {
-            return Task.FromException<RgbaImage>(ScanException.Unsupported("This scanner has no flatbed to preview."));
+            return Task.FromException<RgbaImage>(ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview.")));
         }
-        ProgressHandler?.Invoke(new ScanProgress("Scanning overview…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         return RunSta(() =>
         {
             dynamic device = Connect();
@@ -493,7 +493,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         return RunSta<IReadOnlyList<ScannedPage>>(() =>
         {
             _cancelRequested = false;
-            ProgressHandler?.Invoke(new ScanProgress("Scanning…"));
+            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
             var pages = new List<ScannedPage>();
             // One connection for the whole batch: every sheet of a feeder scan comes from the
             // same prepared item.
@@ -532,7 +532,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             {
                 Release(device);
             }
-            if (pages.Count == 0) throw ScanException.ScanFailed("The scanner did not return any image data.");
+            if (pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
             return pages;
         });
     }
@@ -563,7 +563,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             }
             if (_cancelRequested) throw ScanException.Cancelled();
             pages.Add(new ScannedPage(image, _preparedDpi, settings.ColorMode));
-            ProgressHandler?.Invoke(new ScanProgress($"Transferred sheet {pages.Count}…"));
+            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", pages.Count)));
         }
     }
 
@@ -606,7 +606,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             && (object?)WiaScannerBackend.TryGetProperty(properties, WiaScannerBackend.DocumentHandlingSelect) is { } current)
         {
             selected = WiaDocumentHandling.FeederAlreadySelected(ToInt(current))
-                ?? throw ScanException.ScanFailed("The scanner did not accept its document feeder as the source.");
+                ?? throw ScanException.ScanFailed(() => Loc.T("The scanner did not accept its document feeder as the source."));
         }
         _preparedTwoSided = WiaDocumentHandling.ScansBothSides(selected);
         // Two-sided: every sheet in the feeder, both of its sides; one-sided feeding keeps the
@@ -681,7 +681,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// <summary>One transfer (one sheet from the feeder). WIA errors become <see cref="ScanException"/>s via <see cref="WiaErrors"/>.</summary>
     private RgbaImage Transfer(object item)
     {
-        ProgressHandler?.Invoke(new ScanProgress("Transferring…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferring…")));
         dynamic imageFile;
         try
         {
@@ -712,7 +712,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     {
         using var use = WiaApartment.Use();
         var managerType = Type.GetTypeFromProgID(WiaScannerBackend.DeviceManagerProgId)
-            ?? throw ScanException.DeviceUnavailable("WIA is not available on this system.");
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("WIA is not available on this system."));
         dynamic manager = Activator.CreateInstance(managerType)!;
         dynamic infos = manager.DeviceInfos;
         int count = infos.Count;
@@ -734,7 +734,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         // Unplugged: refresh the device list now rather than at the next poll, so the
         // sidebar drops it and the app can switch to another scanner.
         deviceLost();
-        throw ScanException.DeviceUnavailable($"{Info.Name} is no longer connected.");
+        throw ScanException.DeviceUnavailable(() => Loc.T("{0} is no longer connected.", Info.Name));
     }
 
     /// <summary>

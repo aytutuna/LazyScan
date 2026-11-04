@@ -383,7 +383,7 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
         catch (FormatException)
         {
             _events.Add(new TwainTransferFailed(TwainReturnCodes.Failure, TwainConditionCodes.Bummer,
-                                                "The scanner sent an image in a format this app cannot read."));
+                                                Loc.English(() => Loc.T("The scanner sent an image in a format this app cannot read."))));
         }
         catch (Exception error)
         {

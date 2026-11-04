@@ -424,6 +424,30 @@ public class TwainHelperSessionTests
     }
 
     [Fact]
+    public void ALostHelper_ReportsInEnglish_WhenTheMessageIsTranslated()
+    {
+        var helper = FakeHelper.Started();
+        var transport = Opened(helper, "Slow");
+        helper.Crash();
+        string stopped = TwainHelperConnection.StoppedMessage;
+        Loc.Table = new Dictionary<string, string>
+        {
+            [stopped] = "Yardımcı durdu.",
+            ["Scan failed: {0}"] = "Tarama başarısız: {0}",
+        };
+        try
+        {
+            var error = Assert.Throws<ScanException>(transport.ReadCapabilities);
+            Assert.Equal("Tarama başarısız: Yardımcı durdu.", error.Message);
+            Assert.Equal("Scan failed: " + stopped, error.ReportMessage);
+        }
+        finally
+        {
+            Loc.Table = null;
+        }
+    }
+
+    [Fact]
     public void AnUnansweredRequest_StopsTheHelperAsNotResponding()
     {
         var host = new FakeHost();

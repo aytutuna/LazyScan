@@ -52,9 +52,11 @@ public static class WiaErrors
     /// </summary>
     public static ScanException ToScanException(int hresult, string? driverMessage)
     {
-        string code = $"WIA error 0x{unchecked((uint)hresult):X8}";
-        if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, code);
-        return ScanException.ScanFailed(string.IsNullOrWhiteSpace(driverMessage) ? code : $"{code}: {driverMessage}");
+        string hex = $"0x{unchecked((uint)hresult):X8}";
+        if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, () => Loc.T("WIA error {0}", hex));
+        return ScanException.ScanFailed(() => string.IsNullOrWhiteSpace(driverMessage)
+            ? Loc.T("WIA error {0}", hex)
+            : Loc.T("WIA error {0}: {1}", hex, driverMessage));
     }
 
     /// <summary>
@@ -63,9 +65,11 @@ public static class WiaErrors
     /// </summary>
     public static ScanException ToSessionException(int hresult, string? driverMessage)
     {
-        string code = $"WIA error 0x{unchecked((uint)hresult):X8}";
-        if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, code);
-        return ScanException.SessionFailed(string.IsNullOrWhiteSpace(driverMessage) ? code : $"{code}: {driverMessage}");
+        string hex = $"0x{unchecked((uint)hresult):X8}";
+        if (ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, () => Loc.T("WIA error {0}", hex));
+        return ScanException.SessionFailed(() => string.IsNullOrWhiteSpace(driverMessage)
+            ? Loc.T("WIA error {0}", hex)
+            : Loc.T("WIA error {0}: {1}", hex, driverMessage));
     }
 }
 

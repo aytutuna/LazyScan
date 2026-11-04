@@ -515,10 +515,10 @@ public static class WindowsScanErrors
     {
         string why = unchecked((uint)hresult) switch
         {
-            NoPackageIdentity => "Windows allows it only to apps installed as a package",
-            AccessDenied => "Windows refused this app access to it",
-            ClassNotRegistered or ClassNotAvailable or MetadataNameNotFound => "this edition of Windows does not have it",
-            _ => "Windows would not start it",
+            NoPackageIdentity => Loc.T("Windows allows it only to apps installed as a package"),
+            AccessDenied => Loc.T("Windows refused this app access to it"),
+            ClassNotRegistered or ClassNotAvailable or MetadataNameNotFound => Loc.T("this edition of Windows does not have it"),
+            _ => Loc.T("Windows would not start it"),
         };
         string code = $"0x{unchecked((uint)hresult):X8}";
         string detail = FirstLine(message);
@@ -537,18 +537,19 @@ public static class WindowsScanErrors
     /// <param name="opening">The error came from opening the device, an entry point of the API.</param>
     public static ScanException ToScanException(int hresult, string? message, bool opening = false)
     {
-        string code = $"Windows Scan error 0x{unchecked((uint)hresult):X8}";
-        if (WiaErrors.ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, code);
+        string hex = $"0x{unchecked((uint)hresult):X8}";
+        string Code() => Loc.T("Windows Scan error {0}", hex);
+        if (WiaErrors.ProblemFor(hresult) is { } problem) return ScanException.ForProblem(problem, Code);
         string detail = FirstLine(message);
-        string withDetail = detail.Length > 0 ? $"{code}: {detail}" : code;
+        string WithDetail() => detail.Length > 0 ? Loc.T("Windows Scan error {0}: {1}", hex, detail) : Code();
         return unchecked((uint)hresult) switch
         {
             Aborted or Cancelled => ScanException.Cancelled(),
-            NotFound or DeviceNotConnected or DeviceNotAvailable or NotReady => ScanException.ForProblem(ScannerProblem.Offline, code),
-            RpcServerUnavailable or RpcCallFailed or RpcDisconnected => ScanException.ForProblem(ScannerProblem.CommunicationError, code),
-            NotImplemented or NotSupported => ScanException.Unsupported($"the scanner does not do this through Windows Scan ({withDetail})."),
-            _ when opening && UnavailableToThisApp(hresult) => ScanException.SessionFailed($"Windows Scan is not available: {UnavailableNote(hresult, message)}."),
-            _ => ScanException.ScanFailed(withDetail),
+            NotFound or DeviceNotConnected or DeviceNotAvailable or NotReady => ScanException.ForProblem(ScannerProblem.Offline, Code),
+            RpcServerUnavailable or RpcCallFailed or RpcDisconnected => ScanException.ForProblem(ScannerProblem.CommunicationError, Code),
+            NotImplemented or NotSupported => ScanException.Unsupported(() => Loc.T("the scanner does not do this through Windows Scan ({0}).", WithDetail())),
+            _ when opening && UnavailableToThisApp(hresult) => ScanException.SessionFailed(() => Loc.T("Windows Scan is not available: {0}.", UnavailableNote(hresult, message))),
+            _ => ScanException.ScanFailed(WithDetail),
         };
     }
 

@@ -38,7 +38,7 @@ public partial class MainWindow
                 {
                     CopyPrinterBox.Items.Add(new ComboBoxItem
                     {
-                        Content = printer.IsDefault ? $"{printer.Name} (default)" : printer.Name,
+                        Content = printer.IsDefault ? Loc.T("{0} (default)", printer.Name) : printer.Name,
                         Tag = printer.Name,
                     });
                 }
@@ -63,20 +63,20 @@ public partial class MainWindow
         string paper = ViewModel.CopyPaperText;
         int sizeAt = paper.IndexOf(" (", StringComparison.Ordinal);
         string paperName = sizeAt > 0 ? paper[..sizeAt] : paper;
-        CopyPaperText.Text = paper.Length > 0 ? $"Paper: {paperName}" : "";
+        CopyPaperText.Text = paper.Length > 0 ? Loc.T("Paper: {0}", paperName) : "";
         CopyPaperText.ToolTip = sizeAt > 0 ? paper[(sizeAt + 2)..].TrimEnd(')') : null;
         CopyPaperText.Visibility = CopyPaperText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(CopyPaperText, paper.Length > 0
-            ? $"Printer paper: {paper.Replace(" (", ", ", StringComparison.Ordinal).Replace(" × ", " by ", StringComparison.Ordinal).Replace(" in)", " inches", StringComparison.Ordinal).TrimEnd(')')}"
+            ? Loc.T("Printer paper: {0}", ViewModel.CopyPaperSpokenText)
             : "");
         string fitHint = options.CopyFitToPage
-            ? "Made smaller to fit the paper, never larger. It is not at real size."
-            : "At real size, like a photocopier: 1 inch on the glass is 1 inch on paper.";
+            ? Loc.T("Made smaller to fit the paper, never larger. It is not at real size.")
+            : Loc.T("At real size, like a photocopier: 1 inch on the glass is 1 inch on paper.");
         AutomationProperties.SetHelpText(CopyFitBox, fitHint);
         // Edges a printer can't reach are lost at real size: always shown while that is the case.
         CopyMarginText.Text = ViewModel.CopyMarginWarning ?? "";
         CopyMarginNotice.Visibility = ViewModel.CopyMarginWarning is null ? Visibility.Collapsed : Visibility.Visible;
-        AutomationProperties.SetHelpText(CopyPrinterBox, paper.Length > 0 ? $"Paper: {paper}" : "");
+        AutomationProperties.SetHelpText(CopyPrinterBox, paper.Length > 0 ? Loc.T("Paper: {0}", paper) : "");
     }
 
     private void CopyPrinterBox_DropDownOpened(object? sender, EventArgs e) => _ = ViewModel.RefreshPrintersAsync();
@@ -121,7 +121,7 @@ public partial class MainWindow
         IdCardPrintButton.IsEnabled = !busy && canPrint;
         string tip = !ViewModel.HasPrinter
             ? PrintText.NoPrinterMessage
-            : $"Print at real size on {printer ?? "the default printer"}";
+            : Loc.T("Print at real size on {0}", printer ?? Loc.T("the default printer"));
         IdCardPrintButton.ToolTip = tip;
         AutomationProperties.SetHelpText(IdCardPrintButton, tip);
     }

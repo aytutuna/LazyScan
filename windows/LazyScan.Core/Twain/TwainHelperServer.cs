@@ -160,14 +160,13 @@ public sealed class TwainHelperServer
                     return new TwainHelperDone();
                 });
             default:
-                return Reply(request, new TwainHelperFailure(new TwainHelperError(
-                    TwainHelperErrorKind.Scan, "Reading the request", 0, 0, ScanErrorKind.ScanFailed, null,
-                    $"the TWAIN helper does not take {request.Type} messages.")));
+                return Reply(request, Failure("Reading the request",
+                    () => Loc.T("the TWAIN helper does not take {0} messages.", request.Type)));
         }
     }
 
     private ITwainTransport OpenSource() =>
-        _source ?? throw ScanException.SessionFailed("no scanner is open in the 32-bit TWAIN helper.");
+        _source ?? throw ScanException.SessionFailed(() => Loc.T("no scanner is open in the 32-bit TWAIN helper."));
 
     private void CloseSource()
     {
@@ -198,6 +197,9 @@ public sealed class TwainHelperServer
         }
         return Reply(request, reply);
     }
+
+    private static TwainHelperFailure Failure(string operation, Func<string> detail) => new(new TwainHelperError(
+        TwainHelperErrorKind.Scan, operation, 0, 0, ScanErrorKind.ScanFailed, null, detail(), Loc.English(detail)));
 
     private bool Reply(TwainHelperMessage request, TwainHelperMessage reply) => Send(reply with { RequestId = request.RequestId });
 
@@ -238,7 +240,7 @@ public sealed class TwainHelperServer
             int start = i * TwainHelperProtocol.ChunkSize;
             int length = Math.Min(TwainHelperProtocol.ChunkSize, data.Length - start);
             if (!Send(new TwainHelperChunk(data.AsSpan(start, length).ToArray()))) return false;
-            if (progress && chunks > 1 && !Send(new TwainHelperProgress((double)(i + 1) / chunks, "Receiving the page from the scanner…")))
+            if (progress && chunks > 1 && !Send(new TwainHelperProgress((double)(i + 1) / chunks, Loc.T("Receiving the page from the scanner…"))))
             {
                 return false;
             }
@@ -259,9 +261,8 @@ public sealed class TwainHelperServer
             // Too large for a frame (a source list beyond reason): a reply says so, an event is dropped.
             System.Diagnostics.Trace.TraceWarning($"TWAIN helper: {e.Message}");
             if (message.RequestId == 0) return true;
-            frame = TwainHelperProtocol.EncodeFrame(new TwainHelperFailure(new TwainHelperError(
-                TwainHelperErrorKind.Scan, "Answering", 0, 0, ScanErrorKind.ScanFailed, null,
-                "the 32-bit TWAIN helper had more to say than fits in one message.")) { RequestId = message.RequestId });
+            frame = TwainHelperProtocol.EncodeFrame(Failure("Answering",
+                () => Loc.T("the 32-bit TWAIN helper had more to say than fits in one message.")) with { RequestId = message.RequestId });
         }
         try
         {

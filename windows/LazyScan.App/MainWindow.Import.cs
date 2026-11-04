@@ -22,9 +22,9 @@ public partial class MainWindow
         get
         {
             var patterns = PhotoImport.FileExtensions.Append(CompanionPackage.FileExtension).Select(e => "*." + e).ToList();
-            return "Photos and documents (" + string.Join(", ", patterns) + ")|" + string.Join(";", patterns)
-                + $"|Lazy Scan documents (*.{CompanionPackage.FileExtension})|*.{CompanionPackage.FileExtension}"
-                + "|All files (*.*)|*.*";
+            return Loc.T("Photos and documents") + " (" + string.Join(", ", patterns) + ")|" + string.Join(";", patterns)
+                + $"|{Loc.T("Lazy Scan documents")} (*.{CompanionPackage.FileExtension})|*.{CompanionPackage.FileExtension}"
+                + $"|{Loc.T("All files")} (*.*)|*.*";
         }
     }
 

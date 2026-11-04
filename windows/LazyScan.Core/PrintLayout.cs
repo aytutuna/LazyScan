@@ -53,6 +53,11 @@ public sealed record PrinterPaper(SizeD Paper, RectD Printable)
     public string Description => Size is { } size
         ? $"{size.Label()} ({size.Detail()})"
         : Loc.T("{0} × {1} in", Loc.Decimal(Paper.Width, 0, 2), Loc.Decimal(Paper.Height, 0, 2));
+
+    /// <summary><see cref="Description"/> as a screen reader says it: "Letter, 8.5 by 11 inches".</summary>
+    public string SpokenDescription => Size is { } size
+        ? Loc.T("{0}, {1}", size.Label(), size.SpokenDetail())
+        : Loc.T("{0} by {1} inches", Loc.Decimal(Paper.Width, 0, 2), Loc.Decimal(Paper.Height, 0, 2));
 }
 
 /// <summary>

@@ -44,7 +44,7 @@ internal sealed class TwainHelperProcess : IDisposable
     private TwainHelperConnection? _connection;
     private KillOnCloseJob? _job;
     /// <summary>Why the helper cannot run at all (missing, or no 32-bit .NET); kept until <see cref="Retry"/>.</summary>
-    private string? _permanentFailure;
+    private Func<string>? _permanentFailure;
     private bool _disposed;
 
     public TwainHelperProcess(TwainHelperOptions options) => _options = options;
@@ -59,7 +59,7 @@ internal sealed class TwainHelperProcess : IDisposable
     }
 
     /// <summary>Why the helper cannot run at all (missing, no 32-bit .NET, refused by Windows); null when it may.</summary>
-    public string? PermanentFailure
+    public Func<string>? PermanentFailure
     {
         get
         {
@@ -73,7 +73,7 @@ internal sealed class TwainHelperProcess : IDisposable
     {
         lock (_gate)
         {
-            if (_disposed) throw ScanException.SessionFailed("Lazy Scan is closing.");
+            if (_disposed) throw ScanException.SessionFailed(() => Loc.T("Lazy Scan is closing."));
             if (_connection is { IsAlive: true } live) return live;
             EndProcess();
             if (_permanentFailure is { } failure) throw ScanException.DeviceUnavailable(failure);
@@ -84,7 +84,7 @@ internal sealed class TwainHelperProcess : IDisposable
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
                 // The pipe could not be created, or the process not watched: said like every other failure.
-                throw ScanException.SessionFailed($"the 32-bit TWAIN helper did not start: {e.Message}");
+                throw ScanException.SessionFailed(() => Loc.T("the 32-bit TWAIN helper did not start: {0}", e.Message));
             }
         }
     }
@@ -147,7 +147,7 @@ internal sealed class TwainHelperProcess : IDisposable
     internal static PipeSecurity CreatePipeSecurity()
     {
         using var identity = WindowsIdentity.GetCurrent();
-        var user = identity.User ?? throw new InvalidOperationException("The current user has no security identifier.");
+        var user = identity.User ?? throw new InvalidOperationException(Loc.T("The current user has no security identifier."));
         var security = new PipeSecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         security.SetOwner(identity.Owner ?? user);
@@ -162,8 +162,8 @@ internal sealed class TwainHelperProcess : IDisposable
         string path = _options.HelperPath;
         if (!File.Exists(path))
         {
-            _permanentFailure = $"the 32-bit TWAIN helper ({TwainHelperOptions.FileName}) is missing from Lazy Scan's "
-                                + "folder. Reinstall Lazy Scan.";
+            _permanentFailure = () => Loc.T("the 32-bit TWAIN helper ({0}) is missing from Lazy Scan's folder. Reinstall Lazy Scan.",
+                                            TwainHelperOptions.FileName);
             throw ScanException.DeviceUnavailable(_permanentFailure);
         }
         string pipeName = $"LazyScan.TwainHelper.{Environment.ProcessId}.{Guid.NewGuid():N}";
@@ -194,12 +194,13 @@ internal sealed class TwainHelperProcess : IDisposable
             start.ArgumentList.Add("--parent");
             start.ArgumentList.Add(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
             if (_options.Simulate) start.ArgumentList.Add("--simulate");
-            process = Process.Start(start) ?? throw new Win32Exception("The helper process did not start.");
+            process = Process.Start(start) ?? throw new Win32Exception(Loc.T("The helper process did not start."));
         }
         catch (Win32Exception e)
         {
             pipe.Dispose();
-            _permanentFailure = $"Windows would not start the 32-bit TWAIN helper ({e.Message.TrimEnd('.')}).";
+            string why = e.Message.TrimEnd('.');
+            _permanentFailure = () => Loc.T("Windows would not start the 32-bit TWAIN helper ({0}).", why);
             throw ScanException.DeviceUnavailable(_permanentFailure);
         }
         process.OutputDataReceived += (_, _) => { };
@@ -227,14 +228,14 @@ internal sealed class TwainHelperProcess : IDisposable
             {
                 cancel.Cancel();
                 Kill(process);
-                string reason = first == 1 ? ExitReason(process, errors.Text) : "it did not connect in time.";
+                Func<string> reason = first == 1 ? ExitReason(process, errors.Text) : () => Loc.T("it did not connect in time.");
                 if (first == 1 && IsRuntimeMissing(process, errors.Text)) _permanentFailure = reason;
-                throw ScanException.SessionFailed($"the 32-bit TWAIN helper did not start: {reason}");
+                throw ScanException.SessionFailed(() => Loc.T("the 32-bit TWAIN helper did not start: {0}", reason()));
             }
             if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint client) || client != (uint)process.Id)
             {
                 Kill(process);
-                throw ScanException.SessionFailed("another program connected to the 32-bit TWAIN helper's pipe.");
+                throw ScanException.SessionFailed(() => Loc.T("another program connected to the 32-bit TWAIN helper's pipe."));
             }
         }
         catch
@@ -306,23 +307,27 @@ internal sealed class TwainHelperProcess : IDisposable
                && errors.Contains(".NET", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string ExitReason(Process process, string errors)
+    // Read from the process now: the text is worded later, after the process is disposed.
+    private static Func<string> ExitReason(Process process, string errors)
     {
         if (IsRuntimeMissing(process, errors))
         {
-            return "it needs the .NET 10 Desktop Runtime for 32-bit programs (x86), which is not installed. "
-                   + "Install it from https://dotnet.microsoft.com/download/dotnet/10.0, then restart Lazy Scan.";
+            return () => Loc.T("it needs the .NET 10 Desktop Runtime for 32-bit programs (x86), which is not installed. Install it from https://dotnet.microsoft.com/download/dotnet/10.0, then restart Lazy Scan.");
         }
-        string code;
+        string? exitCode = null;
         try
         {
-            code = $"exit code 0x{unchecked((uint)process.ExitCode):X8}";
+            exitCode = $"0x{unchecked((uint)process.ExitCode):X8}";
         }
         catch (InvalidOperationException)
         {
-            code = "no exit code";
+            // No exit code.
         }
-        return string.IsNullOrWhiteSpace(errors) ? $"it stopped ({code})." : $"it stopped ({code}): {errors.Trim()}";
+        return () =>
+        {
+            string code = exitCode is null ? Loc.T("no exit code") : Loc.T("exit code {0}", exitCode);
+            return string.IsNullOrWhiteSpace(errors) ? Loc.T("it stopped ({0}).", code) : Loc.T("it stopped ({0}): {1}", code, errors.Trim());
+        };
     }
 
     /// <summary>The last lines a helper wrote to its error output.</summary>

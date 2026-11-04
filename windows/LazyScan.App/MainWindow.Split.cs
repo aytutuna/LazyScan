@@ -59,15 +59,15 @@ public partial class MainWindow
         SplitModeBox.IsEnabled = collecting && !ViewModel.IsBusy;
         SplitReason.Visibility = !collecting && !copy && !receipts ? Visibility.Visible : Visibility.Collapsed;
         SplitCountRow.Visibility = collecting && mode == SplitMode.SheetCount ? Visibility.Visible : Visibility.Collapsed;
-        SplitCountUnit.Text = count == 1 ? "sheet" : "sheets";
+        SplitCountUnit.Text = Loc.Plural(count, "sheet", "sheets");
 
         // The full explanation: how it works, step by step (the ⓘ), and the choice's help text.
         string help = copy
-            ? "Copies print every page as scanned: nothing is split."
+            ? Loc.T("Copies print every page as scanned: nothing is split.")
             : receipts
-            ? "Each receipt is saved on its own."
+            ? Loc.T("Each receipt is saved on its own.")
             : !collecting
-            ? "Only for pages collected before saving: a scan saved at once is one file."
+            ? Loc.T("Only for pages collected before saving: a scan saved at once is one file.")
             : mode.Steps();
         SplitInfoButton.InfoText = help;
         SplitModeBox.ToolTip = collecting ? mode.Hint() : help;
@@ -90,7 +90,7 @@ public partial class MainWindow
         bool qrSheets = barcodes && !s.Document.BarcodeStartsDocument;
         QrSheetNameRow.Visibility = qrSheets ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetHelpText(QrSheetNameBox,
-            "The QR code holds this name and the document after the sheet is named by it ({label}). Leave it empty for a sheet that only splits.");
+            Loc.T("The QR code holds this name and the document after the sheet is named by it ({label}). Leave it empty for a sheet that only splits."));
 
         // The separator sheet: a PDF in the scans folder, to print on any printer; or printed at
         // once on the printer chosen for copies.
@@ -98,20 +98,21 @@ public partial class MainWindow
         var sheetPaper = SeparatorSheet.Paper(AppViewModel.RegionCode);
         SaveSeparatorButton.Visibility = separators ? Visibility.Visible : Visibility.Collapsed;
         SaveSeparatorButton.IsEnabled = !ViewModel.IsBusy;
-        SaveSeparatorButton.ToolTip = "Saves a PDF of the sheet; print it at 100%";
-        AutomationProperties.SetName(SaveSeparatorButton, qrSheets ? "Save QR separator sheet as PDF" : "Save separator sheet as PDF");
+        SaveSeparatorButton.ToolTip = Loc.T("Saves a PDF of the sheet; print it at 100%");
+        AutomationProperties.SetName(SaveSeparatorButton, qrSheets ? Loc.T("Save QR separator sheet as PDF") : Loc.T("Save separator sheet as PDF"));
         AutomationProperties.SetHelpText(SaveSeparatorButton, qrSheets
-            ? $"Saves a QR separator sheet ({sheetPaper.Label()}) carrying the name above as a PDF in the scans folder, to print on any printer."
-            : $"Saves a Patch T separator sheet ({sheetPaper.Label()}) as a PDF in the scans folder. Print it at actual size (100%) on any printer.");
+            ? Loc.T("Saves a QR separator sheet ({0}) carrying the name above as a PDF in the scans folder, to print on any printer.", sheetPaper.Label())
+            : Loc.T("Saves a Patch T separator sheet ({0}) as a PDF in the scans folder. Print it at actual size (100%) on any printer.", sheetPaper.Label()));
         PrintSeparatorButton.Visibility = separators ? Visibility.Visible : Visibility.Collapsed;
         PrintSeparatorButton.IsEnabled = ViewModel.HasPrinter && !ViewModel.IsBusy;
-        string printer = ViewModel.CopyPrinterName ?? "the default printer";
-        PrintSeparatorButton.ToolTip = ViewModel.HasPrinter ? $"Prints one now on {printer}, at actual size" : PrintText.NoPrinterReason;
-        AutomationProperties.SetName(PrintSeparatorButton, qrSheets ? "Print QR separator sheet" : "Print separator sheet");
-        string sheetName = qrSheets ? "a QR separator sheet carrying the name above" : "a Patch T separator sheet";
+        string printer = ViewModel.CopyPrinterName ?? Loc.T("the default printer");
+        PrintSeparatorButton.ToolTip = ViewModel.HasPrinter ? Loc.T("Prints one now on {0}, at actual size", printer) : PrintText.NoPrinterReason;
+        AutomationProperties.SetName(PrintSeparatorButton, qrSheets ? Loc.T("Print QR separator sheet") : Loc.T("Print separator sheet"));
         AutomationProperties.SetHelpText(PrintSeparatorButton, ViewModel.HasPrinter
-            ? $"Prints {sheetName} at actual size on {printer}, on the paper it has, with no print dialog. Print as many as you need."
-            : PrintText.NoPrinterReason + ". Save the separator sheet as a PDF to print it elsewhere.");
+            ? qrSheets
+                ? Loc.T("Prints a QR separator sheet carrying the name above at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.", printer)
+                : Loc.T("Prints a Patch T separator sheet at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.", printer)
+            : Loc.T("{0}. Save the separator sheet as a PDF to print it elsewhere.", PrintText.NoPrinterReason));
         // At blank sheets one-sided, Skip blank pages has no say.
         SyncBlankPageOptions();
     }
