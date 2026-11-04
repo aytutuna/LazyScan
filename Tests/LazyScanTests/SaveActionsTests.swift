@@ -34,7 +34,7 @@ final class SaveActionsTests: XCTestCase {
             XCTAssertFalse(action.hint.isEmpty, action.rawValue)
         }
         XCTAssertEqual(FileAction.allCases.map(\.label),
-                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Email\u{2026}", "Copy"])
+                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Email\u{2026}", "Print with Lazy Print", "Copy"])
     }
 
     func test_plan_nothingToDo() {
@@ -76,6 +76,22 @@ final class SaveActionsTests: XCTestCase {
         XCTAssertEqual(SaveActions.offered(fileCount: 1), [.open, .openWith, .reveal, .share, .email, .copy])
         XCTAssertEqual(SaveActions.offered(fileCount: 2), [.reveal, .share, .email, .copy])
         XCTAssertEqual(SaveActions.offered(fileCount: 40), SaveActions.offered(fileCount: 2))
+    }
+
+    func test_offered_addsPrintWithLazyPrintBeforeCopyOnlyWhenAsked() {
+        XCTAssertEqual(SaveActions.offered(fileCount: 1, lazyPrint: true),
+                       [.open, .openWith, .reveal, .share, .email, .lazyPrint, .copy])
+        XCTAssertEqual(SaveActions.offered(fileCount: 3, lazyPrint: true), [.reveal, .share, .email, .lazyPrint, .copy])
+        XCTAssertEqual(SaveActions.offered(fileCount: 0, lazyPrint: true), [])
+        XCTAssertFalse(SaveActions.offered(fileCount: 1).contains(.lazyPrint))
+    }
+
+    func test_canPrintWithLazyPrint_needsPdfsOrPictures() {
+        let urls = ["a.pdf", "b.JPG", "c.tiff"].map { URL(fileURLWithPath: "/Scans/" + $0) }
+        XCTAssertTrue(SaveActions.canPrintWithLazyPrint(urls))
+        XCTAssertFalse(SaveActions.canPrintWithLazyPrint([]))
+        XCTAssertFalse(SaveActions.canPrintWithLazyPrint(onePDF + [URL(fileURLWithPath: "/Scans/a.docx")]))
+        XCTAssertFalse(SaveActions.canPrintWithLazyPrint([URL(fileURLWithPath: "/Scans/a.txt")]))
     }
 
     func test_isImageFile_byExtension() {

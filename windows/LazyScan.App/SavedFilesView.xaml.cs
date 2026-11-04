@@ -368,7 +368,7 @@ public partial class SavedFilesView : UserControl
             add.IsEnabled = viewModel.CanAppendPages;
             extra.Add(add);
         }
-        return FileActionMenu.Build(SaveActions.Offered(1), 1, action => Run(action, item), extra);
+        return FileActionMenu.Build(_viewModel?.OfferedFor([item.File.Path]) ?? SaveActions.Offered(1), 1, action => Run(action, item), extra);
     }
 
     /// <summary>Carries out an action on the card's file; problems are reported in the InfoBar.</summary>

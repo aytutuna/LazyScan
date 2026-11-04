@@ -99,6 +99,17 @@ public final class SystemFileActions: FileActionService {
         }
     }
 
+    public func lazyPrintInstalled() -> Bool {
+        NSWorkspace.shared.urlForApplication(toOpen: Self.lazyPrintScheme) != nil
+    }
+
+    public func openInLazyPrint(_ urls: [URL]) throws {
+        guard lazyPrintInstalled(), let address = URL(string: LazyPrintUrl.build(urls.map(\.path))),
+              NSWorkspace.shared.open(address) else {
+            throw ScanError.unsupported(L10n.t("Lazy Print is not installed."))
+        }
+    }
+
     public func copyText(_ text: String) throws {
         let pasteboard = NSPasteboard.general
         _ = pasteboard.clearContents()
@@ -108,6 +119,9 @@ public final class SystemFileActions: FileActionService {
     }
 
     // MARK: Helpers
+
+    /// What Lazy Print registers: the scheme alone, to ask the system whether anything opens it.
+    private static var lazyPrintScheme: URL { URL(string: LazyPrintUrl.scheme + ":")! }
 
     /// The anchor window's content view and the point in it where menus and the share picker
     /// open (see `anchorPoint`); nil without a window.
@@ -191,6 +205,7 @@ extension FileAction {
         case .reveal: return "folder"
         case .share: return "square.and.arrow.up"
         case .email: return "envelope"
+        case .lazyPrint: return "printer"
         case .copy: return "doc.on.doc"
         }
     }
@@ -203,6 +218,7 @@ extension FileAction {
         case .reveal: return String(localized: "Show in Finder")
         case .share: return String(localized: "Send with Mail, Messages, AirDrop or another app")
         case .email: return String(localized: "Attach to a new email in Mail")
+        case .lazyPrint: return L10n.t("Open it in Lazy Print, then choose a printer and print")
         case .copy: return fileCount == 1 ? String(localized: "Copy the file to the clipboard")
             : String(localized: "Copy the files to the clipboard")
         }
