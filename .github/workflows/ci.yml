@@ -180,7 +180,8 @@ jobs:
       - name: Build
         run: swift build -Xswiftc -emit-localized-strings -Xswiftc -emit-localized-strings-path -Xswiftc "$RUNNER_TEMP/loc"
       # A difference goes to the step summary and the list is uploaded; it fails the job only on the
-      # ci/testflight ref, as in the ios job.
+      # ci/testflight ref, as in the ios job. Here that also skips the Mac tests and the ios jobs
+      # that need this one, so refresh l10n/keys-mac.json before pushing a release.
       - name: Extract the view keys
         run: |
           status=0
