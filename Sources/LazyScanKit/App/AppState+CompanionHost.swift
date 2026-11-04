@@ -8,17 +8,18 @@ import Foundation
 
 /// The desktop's companion texts.
 public enum CompanionHostText {
-    public static let elsewhereMessage =
-        "Another copy of Lazy Scan receives from phones. Pair and manage phones there."
+    public static var elsewhereMessage: String {
+        L10n.t("Another copy of Lazy Scan receives from phones. Pair and manage phones there.")
+    }
 
     /// "The phone link could not start: …"
     public static func notStartedMessage(_ reason: String) -> String {
-        "The phone link could not start: \(reason)"
+        L10n.t("The phone link could not start: {0}", reason)
     }
 
     /// "Adding pages from Aytu's iPhone…"
     public static func addingMessage(_ phoneName: String) -> String {
-        "Adding pages from \(phoneName)\u{2026}"
+        L10n.t("Adding pages from {0}…", phoneName)
     }
 
     /// "2 pages from Aytu's iPhone will be added to the queue when the current step is done.", "… when this
@@ -47,13 +48,13 @@ public enum CompanionHostText {
 
     /// "The document from Aytu's iPhone could not be added: one of its pictures could not be read."
     public static func unreadableMessage(_ phoneName: String) -> String {
-        "The document from \(phoneName) could not be added: one of its pictures could not be read."
+        L10n.t("The document from {0} could not be added: one of its pictures could not be read.", phoneName)
     }
 
     /// The document could not be read now; it stays in the inbox.
     public static func notAddedMessage(_ phoneName: String, reason: String) -> String {
-        "The document from \(phoneName) could not be added to the queue now (\(reason)). "
-            + "It is kept on this Mac and added the next time Lazy Scan starts."
+        L10n.t("The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.",
+               phoneName, reason)
     }
 }
 
@@ -156,7 +157,7 @@ extension AppState {
     /// A document a phone sent, or put in the cloud folder (C2): added to the queue now, or as soon as the
     /// queue can take it.
     func queuePhoneDocument(_ package: ReceivedPackage, phoneName: String) {
-        phoneDocuments.append((package, phoneName.isEmpty ? "a phone" : phoneName))
+        phoneDocuments.append((package, phoneName.isEmpty ? L10n.t("a phone") : phoneName))
         addWaitingPhoneDocuments()
     }
 
@@ -223,11 +224,11 @@ extension AppState {
                 self.companionService?.inbox.release(package)
                 self.errorMessage = error.kind == .unsupportedImage
                     ? CompanionHostText.unreadableMessage(phoneName) : error.localizedDescription
-                self.statusMessage = "Ready."
+                self.statusMessage = L10n.t("Ready.")
                 return
             case .failure(let error):
                 self.errorMessage = CompanionHostText.notAddedMessage(phoneName, reason: error.localizedDescription)
-                self.statusMessage = "Ready."
+                self.statusMessage = L10n.t("Ready.")
                 return
             }
             let pages = AppState.phonePages(decoded, target: package.target, queueHasPages: queueHasPages)

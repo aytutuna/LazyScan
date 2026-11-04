@@ -7,46 +7,54 @@ import Foundation
 
 /// The companion's texts on the phone.
 public enum CompanionText {
-    public static let localNetworkOffReason = "Local Network access is off for Lazy Scan. Turn it on in Settings."
-    public static let refusedReason =
-        "The computer is on this network but refused the connection. Check its firewall, or run the phone troubleshooter on the computer."
-    public static let refusedSyncFolderReason =
-        "The computer is on this network but refused the connection. Documents go to the cloud folder instead."
-    public static let notPairedMessage =
-        "Pair this device with a computer first: choose Pair a phone in Lazy Scan on the computer and scan its code."
+    public static var localNetworkOffReason: String { L10n.t("Local Network access is off for Lazy Scan. Turn it on in Settings.") }
+    public static var refusedReason: String {
+        L10n.t("The computer is on this network but refused the connection. Check its firewall, or run the phone troubleshooter on the computer.")
+    }
+    public static var refusedSyncFolderReason: String {
+        L10n.t("The computer is on this network but refused the connection. Documents go to the cloud folder instead.")
+    }
+    public static var notPairedMessage: String {
+        L10n.t("Pair this device with a computer first: choose Pair a phone in Lazy Scan on the computer and scan its code.")
+    }
     public static var outboxFullMessage: String {
         L10n.plural(PhoneOutbox.maxItems, one: "{0} document is waiting to be sent already. Send it, or remove it first.",
                     other: "{0} documents are waiting to be sent already. Send them, or remove some first.")
     }
-    public static let unreachableMessage = "The computer cannot be reached."
-    public static let wrongCertificateMessage =
-        "The computer that answered is not the one this device was paired with. If pairing was reset there, pair again."
-    public static let badResponseMessage = "The computer's answer could not be read."
-    public static let notSavedMessage = "The pairing could not be saved on this device. Try again."
-    public static let syncFolderHint = "Set a cloud folder in My computer to send when the computer cannot be reached."
-    public static let syncFolderUnavailableMessage =
-        "The cloud folder could not be opened. Choose it again in My computer."
-    public static let syncFolderLine =
-        "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached."
+    public static var unreachableMessage: String { L10n.t("The computer cannot be reached.") }
+    public static var wrongCertificateMessage: String {
+        L10n.t("The computer that answered is not the one this device was paired with. If pairing was reset there, pair again.")
+    }
+    public static var badResponseMessage: String { L10n.t("The computer's answer could not be read.") }
+    public static var notSavedMessage: String { L10n.t("The pairing could not be saved on this device. Try again.") }
+    public static var syncFolderHint: String {
+        L10n.t("Set a cloud folder in My computer to send when the computer cannot be reached.")
+    }
+    public static var syncFolderUnavailableMessage: String {
+        L10n.t("The cloud folder could not be opened. Choose it again in My computer.")
+    }
+    public static var syncFolderLine: String {
+        L10n.t("A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.")
+    }
 
     /// "Office PC is not on this network."
     public static func notOnNetworkReason(_ desktopName: String) -> String {
-        "\(desktopName) is not on this network."
+        L10n.t("{0} is not on this network.", desktopName)
     }
 
     /// "Office PC cannot be reached on this network."
     public static func cannotReachMessage(_ desktopName: String) -> String {
-        "\(desktopName) cannot be reached on this network."
+        L10n.t("{0} cannot be reached on this network.", desktopName)
     }
 
     /// "Paired with Office PC."
     public static func pairedMessage(_ desktopName: String) -> String {
-        "Paired with \(desktopName)."
+        L10n.t("Paired with {0}.", desktopName)
     }
 
     /// "This device is no longer paired with Office PC."
     public static func unpairedMessage(_ desktopName: String) -> String {
-        "This device is no longer paired with \(desktopName)."
+        L10n.t("This device is no longer paired with {0}.", desktopName)
     }
 
     /// "3 pages sent to Office PC."
@@ -56,12 +64,12 @@ public enum CompanionText {
 
     /// "Scan 12.lsdoc was not sent: This document is too large to send in one piece."
     public static func notSentMessage(_ fileName: String, reason: String) -> String {
-        "\(fileName) was not sent: \(reason)"
+        L10n.t("{0} was not sent: {1}", fileName, reason)
     }
 
     /// "Put Scan 12 in the cloud folder for Office PC."
     public static func putInSyncFolderMessage(_ documentName: String, desktopName: String) -> String {
-        "Put \(documentName) in the cloud folder for \(desktopName)."
+        L10n.t("Put {0} in the cloud folder for {1}.", documentName, desktopName)
     }
 
     /// "Put 3 documents in the cloud folder for Office PC."
@@ -72,12 +80,12 @@ public enum CompanionText {
 
     /// "Received Invoice.pdf from Office PC."
     public static func receivedMessage(_ fileName: String, desktopName: String) -> String {
-        "Received \(fileName) from \(desktopName)."
+        L10n.t("Received {0} from {1}.", fileName, desktopName)
     }
 
     /// "The computer refused the request (HTTP 501)."
     public static func refusedMessage(_ status: Int) -> String {
-        "The computer refused the request (HTTP \(status))."
+        L10n.t("The computer refused the request (HTTP {0}).", String(status))
     }
 }
 

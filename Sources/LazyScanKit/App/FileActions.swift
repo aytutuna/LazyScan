@@ -29,7 +29,7 @@ public protocol FileActionService: AnyObject {
 /// `ScanError.unsupported`, showing does nothing, and nothing can be sent.
 @MainActor
 final class UnavailableFileActions: FileActionService {
-    private static let reason = "Files cannot be opened or shared here."
+    private static var reason: String { L10n.t("Files cannot be opened or shared here.") }
 
     func open(_ url: URL) throws {
         throw ScanError.unsupported(Self.reason)

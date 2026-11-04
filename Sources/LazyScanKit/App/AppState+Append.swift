@@ -44,7 +44,7 @@ extension AppState {
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
                 self.errorTitle = PageFilter.nothingSavedTitle
-                self.statusMessage = DocumentSplitter.queueSummary(queued, options: s.document) + "."
+                self.statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(queued, options: s.document))
                 return
             }
             let name: String = url.lastPathComponent
@@ -96,7 +96,7 @@ extension AppState {
             let size: String = ByteCountFormatter.string(fromByteCount: Int64(result.bytes), countStyle: .file)
             var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: size)
             message += plan.leftOutNote()
-            if s.output.protect { message += ". " + PDFAppender.noPasswordNote }
+            if s.output.protect { message = L10n.t("{0}. {1}", message, PDFAppender.noPasswordNote) }
             self.statusMessage = message
             self.runAfterSave(s.output.afterSave, saved: [url])
         }

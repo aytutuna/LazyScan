@@ -20,7 +20,7 @@ extension AppState {
     /// ("412 KB, password-protected"); nil when there is neither. Twin of the Windows `PdfNote`.
     nonisolated static func pdfNote(size: String?, isProtected: Bool) -> String? {
         if let size {
-            return isProtected ? "\(size), \(protectedNote)" : size
+            return isProtected ? L10n.t("{0}, password-protected", size) : size
         }
         return isProtected ? protectedNote : nil
     }

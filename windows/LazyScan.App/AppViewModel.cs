@@ -3593,7 +3593,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             (null, false) => null,
             (null, true) => ProtectedNote,
             (_, false) => size,
-            _ => $"{size}, {ProtectedNote}",
+            _ => Loc.T("{0}, password-protected", size),
         };
 
     private static string ProtectedNote => Loc.T("password-protected");

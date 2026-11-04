@@ -72,7 +72,7 @@ public sealed partial class AppViewModel
             {
                 ErrorTitle = PageFilter.NothingSavedTitle;
                 ErrorMessage = PageFilter.NothingToSaveMessage;
-                StatusMessage = DocumentSplitter.QueueSummary(queued, s.Document) + ".";
+                StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(queued, s.Document));
                 return;
             }
             string name = Path.GetFileName(targetPath);
@@ -98,9 +98,9 @@ public sealed partial class AppViewModel
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
-            StatusMessage = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
-                            + plan.LeftOutNote()
-                            + (s.Output.Protect ? ". " + PdfAppender.NoPasswordNote : "");
+            var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
+                          + plan.LeftOutNote();
+            StatusMessage = s.Output.Protect ? Loc.T("{0}. {1}", message, PdfAppender.NoPasswordNote) : message;
             RunAfterSave(s.Output.AfterSave, [result.Path]);
         });
     }

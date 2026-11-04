@@ -159,7 +159,7 @@ public sealed partial class AppViewModel
         var names = companion.Devices.Devices.ToDictionary(d => d.Id, d => d.Name);
         foreach (var package in pending)
         {
-            QueuePhoneDocument(package, names.GetValueOrDefault(package.DeviceId, "a phone"));
+            QueuePhoneDocument(package, names.GetValueOrDefault(package.DeviceId, Loc.T("a phone")));
         }
     }
 
@@ -192,7 +192,7 @@ public sealed partial class AppViewModel
     /// <summary>A document a phone sent: added to the queue now, or as soon as the queue can take it.</summary>
     private void QueuePhoneDocument(ReceivedPackage package, string phoneName)
     {
-        _phoneDocuments.Enqueue((package, phoneName.Length > 0 ? phoneName : "a phone"));
+        _phoneDocuments.Enqueue((package, phoneName.Length > 0 ? phoneName : Loc.T("a phone")));
         AddWaitingPhoneDocuments();
     }
 
@@ -269,7 +269,7 @@ public sealed partial class AppViewModel
         await RunExclusive(async token =>
         {
             SavedBarPaths = null;
-            StatusMessage = $"Adding pages from {phoneName}…";
+            StatusMessage = Loc.T("Adding pages from {0}…", phoneName);
             NotifyAll();
             bool queueHasPages = ScannedPages.Count > 0;
             string spoolDirectory = _spool.Directory;
@@ -289,8 +289,8 @@ public sealed partial class AppViewModel
                                           or InvalidOperationException or IOException)
             {
                 unreadable = true;
-                problem = $"The document from {phoneName} could not be added: one of its pictures could not be read ({e.Message}).";
-                StatusMessage = "Ready.";
+                problem = Loc.T("The document from {0} could not be added: one of its pictures could not be read ({1}).", phoneName, e.Message);
+                StatusMessage = Loc.T("Ready.");
                 return;
             }
             List<PageItem> spooled;
@@ -305,9 +305,9 @@ public sealed partial class AppViewModel
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                problem = $"The document from {phoneName} could not be added to the queue now ({e.Message.TrimEnd('.')}). "
-                          + "It is kept on this PC and added the next time Lazy Scan starts.";
-                StatusMessage = "Ready.";
+                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.",
+                    phoneName, e.Message.TrimEnd('.'));
+                StatusMessage = Loc.T("Ready.");
                 return;
             }
             foreach (var item in spooled) ScannedPages.Add(item);

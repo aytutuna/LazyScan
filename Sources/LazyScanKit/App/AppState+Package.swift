@@ -9,16 +9,16 @@ import ImageIO
 
 /// The banner's texts for a `.lsdoc` opened by hand. Twin of C# `PackageText`.
 public enum PackageText {
-    public static let addToPages = "Add to pages"
-    public static let openAsNew = "Open as new"
-    public static let notAddedTitle = "Not added"
+    public static var addToPages: String { L10n.t("Add to pages") }
+    public static var openAsNew: String { L10n.t("Open as new") }
+    public static var notAddedTitle: String { L10n.t("Not added") }
 
     /// Why a document's pages are not added with these settings, and what to change to add them.
     public static func notOfferedMessage(for settings: ScanSettings) -> String {
-        if let reason = PhotoImport.ownSaveTaskReason(settings) {
-            return "\(reason), so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them."
+        if PhotoImport.ownSaveTaskReason(settings) != nil, let task = settings.task {
+            return L10n.t("The {0} task saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.", TaskCatalog.definition(task).title)
         }
-        return "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them."
+        return L10n.t("A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.")
     }
 
     /// "Opened Receipt.lsdoc: 3 pages"
@@ -28,7 +28,7 @@ public enum PackageText {
 
     /// "Receipt.lsdoc cannot be opened: one of its pictures cannot be read."
     public static func unreadablePictureMessage(_ fileName: String) -> String {
-        "\(fileName) cannot be opened: one of its pictures cannot be read."
+        L10n.t("{0} cannot be opened: one of its pictures cannot be read.", fileName)
     }
 }
 
@@ -209,7 +209,7 @@ extension AppState {
             // preview: refused rather than written small.
             guard page.fileURL == nil || full !== page.image else {
                 throw CompanionPackageError(.invalidDocument,
-                                            "\(CompanionPackage.subject(index + 1, original: false)) could not be written.")
+                                            L10n.t("Page {0}'s picture could not be written.", index + 1))
             }
             let encoded: Data?
             let format: CompanionImageFormat
@@ -222,7 +222,7 @@ extension AppState {
             }
             guard let data = encoded else {
                 throw CompanionPackageError(.invalidDocument,
-                                            "\(CompanionPackage.subject(index + 1, original: false)) could not be written.")
+                                            L10n.t("Page {0}'s picture could not be written.", index + 1))
             }
             let image = CompanionImage(data: data, format: format, pixelWidth: full.width, pixelHeight: full.height,
                                        dpi: page.dpi, colorMode: page.colorMode)

@@ -10,15 +10,15 @@ namespace LazyScan.App;
 /// <summary>The banner's texts for a <c>.lsdoc</c> opened by hand. Twin of Swift <c>PackageText</c>.</summary>
 public static class PackageText
 {
-    public const string AddToPages = "Add to pages";
-    public const string OpenAsNew = "Open as new";
-    public const string NotAddedTitle = "Not added";
+    public static string AddToPages => Loc.T("Add to pages");
+    public static string OpenAsNew => Loc.T("Open as new");
+    public static string NotAddedTitle => Loc.T("Not added");
 
     /// <summary>Why a document's pages are not added with these settings, and what to change to add them.</summary>
     public static string NotOfferedMessage(ScanSettings settings) =>
-        PhotoImport.OwnSaveTaskReason(settings) is { } reason
-            ? $"{reason}, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them."
-            : "A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.";
+        PhotoImport.OwnSaveTaskReason(settings) is not null && settings.Task is { } task
+            ? Loc.T("The {0} task saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.", TaskCatalog.Definition(task).Title)
+            : Loc.T("A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.");
 
     /// <summary>"Opened Receipt.lsdoc: 3 pages"</summary>
     public static string OpenedMessage(string fileName, int pageCount) =>
@@ -26,7 +26,7 @@ public static class PackageText
 
     /// <summary>"Receipt.lsdoc cannot be opened: one of its pictures cannot be read."</summary>
     public static string UnreadablePictureMessage(string fileName) =>
-        $"{fileName} cannot be opened: one of its pictures cannot be read.";
+        Loc.T("{0} cannot be opened: one of its pictures cannot be read.", fileName);
 }
 
 /// <summary>
@@ -210,7 +210,7 @@ public sealed partial class AppViewModel
                 if (spooled is null && page.FilePath is not null)
                 {
                     throw new CompanionPackageException(CompanionPackageErrorKind.InvalidDocument,
-                        $"{CompanionPackage.Subject(pages.IndexOf(page) + 1, original: false)} could not be written.");
+                        Loc.T("Page {0}'s picture could not be written.", pages.IndexOf(page) + 1));
                 }
                 return PdfBuilder.PreparePage(page, spooled).Image;
             }) with
