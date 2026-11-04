@@ -166,7 +166,7 @@ public static class CompanionPackage
 
     /// <summary>"The document is larger than 512 MB, too large for one package."</summary>
     public static string TooLargeMessage =>
-        $"The document is larger than {ZipReadLimits.Standard.MaxTotalBytes / (1024 * 1024)} MB, too large for one package.";
+        Loc.T("The document is larger than {0} MB, too large for one package.", ZipReadLimits.Standard.MaxTotalBytes / (1024 * 1024));
 
     /// <summary>The manifest's exact text: compact JSON, keys in a fixed order, a line break at the end.</summary>
     public static string ManifestJson(CompanionDocument document)
@@ -337,9 +337,9 @@ public static class CompanionPackage
             if (page.Original is { } original) ValidateImage(original, i + 1, true);
             if (page.RotationQuarterTurns is < 0 or > 3)
             {
-                throw Invalid($"Page {i + 1}'s rotation must be 0 to 3 quarter turns.");
+                throw Invalid(Loc.T("Page {0}'s rotation must be 0 to 3 quarter turns.", i + 1));
             }
-            if (page.SheetIndex is < 0) throw Invalid($"Page {i + 1}'s sheet cannot be negative.");
+            if (page.SheetIndex is < 0) throw Invalid(Loc.T("Page {0}'s sheet cannot be negative.", i + 1));
         }
     }
 
@@ -348,15 +348,15 @@ public static class CompanionPackage
         string subject = Subject(pageNumber, original);
         if (Sniff(image.Data) != image.Format)
         {
-            throw Invalid($"{subject} is not a {FormatValue(image.Format).ToUpperInvariant()} file.");
+            throw Invalid(Loc.T("{0} is not a {1} file.", subject, FormatValue(image.Format).ToUpperInvariant()));
         }
         if (image.Format == CompanionImageFormat.Tiff && image.ColorMode != ColorMode.BlackWhite)
         {
-            throw Invalid($"{subject} is a TIFF, which only black & white pages can be.");
+            throw Invalid(Loc.T("{0} is a TIFF, which only black & white pages can be.", subject));
         }
         if (image.PixelWidth <= 0 || image.PixelHeight <= 0 || image.Dpi <= 0)
         {
-            throw Invalid($"{subject} needs a size in pixels and a resolution.");
+            throw Invalid(Loc.T("{0} needs a size in pixels and a resolution.", subject));
         }
     }
 

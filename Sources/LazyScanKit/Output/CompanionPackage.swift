@@ -193,7 +193,7 @@ public enum CompanionPackage {
 
     /// "The document is larger than 512 MB, too large for one package."
     public static var tooLargeMessage: String {
-        "The document is larger than \(ZipReadLimits.standard.maxTotalBytes / (1024 * 1024)) MB, too large for one package."
+        L10n.t("The document is larger than {0} MB, too large for one package.", ZipReadLimits.standard.maxTotalBytes / (1024 * 1024))
     }
 
     /// The manifest's exact text: compact JSON, keys in a fixed order, a line break at the end.
@@ -394,10 +394,10 @@ public enum CompanionPackage {
             try validateImage(page.image, pageNumber: index + 1, original: false)
             if let original = page.original { try validateImage(original, pageNumber: index + 1, original: true) }
             if page.rotationQuarterTurns < 0 || page.rotationQuarterTurns > 3 {
-                throw CompanionPackageError(.invalidDocument, "Page \(index + 1)'s rotation must be 0 to 3 quarter turns.")
+                throw CompanionPackageError(.invalidDocument, L10n.t("Page {0}'s rotation must be 0 to 3 quarter turns.", index + 1))
             }
             if let sheet = page.sheetIndex, sheet < 0 {
-                throw CompanionPackageError(.invalidDocument, "Page \(index + 1)'s sheet cannot be negative.")
+                throw CompanionPackageError(.invalidDocument, L10n.t("Page {0}'s sheet cannot be negative.", index + 1))
             }
         }
     }
@@ -405,13 +405,13 @@ public enum CompanionPackage {
     private static func validateImage(_ image: CompanionImage, pageNumber: Int, original: Bool) throws {
         let subject = CompanionPackage.subject(pageNumber, original: original)
         if sniff(image.data) != image.format {
-            throw CompanionPackageError(.invalidDocument, "\(subject) is not a \(formatValue(image.format).uppercased()) file.")
+            throw CompanionPackageError(.invalidDocument, L10n.t("{0} is not a {1} file.", subject, formatValue(image.format).uppercased()))
         }
         if image.format == .tiff && image.colorMode != .blackWhite {
-            throw CompanionPackageError(.invalidDocument, "\(subject) is a TIFF, which only black & white pages can be.")
+            throw CompanionPackageError(.invalidDocument, L10n.t("{0} is a TIFF, which only black & white pages can be.", subject))
         }
         if image.pixelWidth <= 0 || image.pixelHeight <= 0 || image.dpi <= 0 {
-            throw CompanionPackageError(.invalidDocument, "\(subject) needs a size in pixels and a resolution.")
+            throw CompanionPackageError(.invalidDocument, L10n.t("{0} needs a size in pixels and a resolution.", subject))
         }
     }
 

@@ -171,11 +171,11 @@ public static class TwainErrors
         if (ProblemFor(returnCode, conditionCode) is { } problem) return ScanException.ForProblem(problem, code);
         if (conditionCode == TwainConditionCodes.LowMemory)
         {
-            return ScanException.ScanFailed($"The scanner driver ran out of memory. Try a lower resolution. ({code})");
+            return ScanException.ScanFailed(Loc.T("The scanner driver ran out of memory. Try a lower resolution. ({0})", code));
         }
         return ScanException.ScanFailed(string.IsNullOrWhiteSpace(detail)
-            ? $"The scanner driver reported an error. ({code})"
-            : $"The scanner driver reported an error: {detail.Trim()} ({code})");
+            ? Loc.T("The scanner driver reported an error. ({0})", code)
+            : Loc.T("The scanner driver reported an error: {0} ({1})", detail.Trim(), code));
     }
 
     /// <inheritdoc cref="ToScanException(int, int, string?)"/>

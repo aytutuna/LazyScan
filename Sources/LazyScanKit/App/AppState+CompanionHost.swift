@@ -236,7 +236,7 @@ extension AppState {
             do {
                 guard try await self.ingestPages(pages, intake: intake, flag: flag) != nil else { return }
             } catch ScanError.cancelled, is CancellationError {
-                let kept = CompanionProtocol.keptMessage(pages.count, phoneName: phoneName, computer: "Mac")
+                let kept = CompanionProtocol.keptMessage(pages.count, phoneName: phoneName, onMac: true)
                 self.statusMessage = kept
                 self.phoneBarMessage = kept
                 return

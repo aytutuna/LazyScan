@@ -59,8 +59,8 @@ public enum CompanionProtocol {
     public static var maxUploadBytes: Int { ZipReadLimits.standard.maxTotalBytes + 16 * 1024 * 1024 }
 
     /// The page strip's label of a page that came from a paired phone.
-    public static let pageLabel = "From phone"
-    public static let pageLabelHelp = "Sent from a paired phone"
+    public static var pageLabel: String { L10n.t("From phone") }
+    public static var pageLabelHelp: String { L10n.t("Sent from a paired phone") }
 
     /// Whether `id` can be a phone's, desktop's, package's or outbox item's id: 8 to 64 characters,
     /// letters, digits, '-' and '_' (safe as a file name everywhere).
@@ -155,12 +155,18 @@ public enum CompanionProtocol {
     }
 
     /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
-    /// time Lazy Scan starts." `computer` is "PC" or "Mac".
-    public static func keptMessage(_ pageCount: Int, phoneName: String, computer: String) -> String {
-        L10n.plural(pageCount,
-                    one: "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.",
-                    other: "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts.",
-                    phoneName, computer)
+    /// time Lazy Scan starts." `onMac` says "Mac" instead of "PC".
+    public static func keptMessage(_ pageCount: Int, phoneName: String, onMac: Bool) -> String {
+        if onMac {
+            return L10n.plural(pageCount,
+                               one: "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.",
+                               other: "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+                               phoneName)
+        }
+        return L10n.plural(pageCount,
+                           one: "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.",
+                           other: "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts.",
+                           phoneName)
     }
 
     static func integer(_ value: Int) -> String { String(value) }

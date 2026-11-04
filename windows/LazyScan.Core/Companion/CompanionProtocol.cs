@@ -71,8 +71,8 @@ public static class CompanionProtocol
     public static long MaxUploadBytes => ZipReadLimits.Standard.MaxTotalBytes + 16L * 1024 * 1024;
 
     /// <summary>The page strip's label of a page that came from a paired phone.</summary>
-    public const string PageLabel = "From phone";
-    public const string PageLabelHelp = "Sent from a paired phone";
+    public static string PageLabel => Loc.T("From phone");
+    public static string PageLabelHelp => Loc.T("Sent from a paired phone");
 
     /// <summary>
     /// Whether <paramref name="id"/> can be a phone's, desktop's, package's or outbox item's id:
@@ -162,13 +162,17 @@ public static class CompanionProtocol
 
     /// <summary>
     /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
-    /// time Lazy Scan starts." <paramref name="computer"/> is "PC" or "Mac".
+    /// time Lazy Scan starts." <paramref name="onMac"/> says "Mac" instead of "PC".
     /// </summary>
-    public static string KeptMessage(int pageCount, string phoneName, string computer) =>
-        Loc.Plural(pageCount,
-            "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.",
-            "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts.",
-            phoneName, computer);
+    public static string KeptMessage(int pageCount, string phoneName, bool onMac) => onMac
+        ? Loc.Plural(pageCount,
+            "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.",
+            "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+            phoneName)
+        : Loc.Plural(pageCount,
+            "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.",
+            "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts.",
+            phoneName);
 
     /// <summary>A JSON body as UTF-8 bytes.</summary>
     internal static byte[] Utf8(string json) => Encoding.UTF8.GetBytes(json);

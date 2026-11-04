@@ -208,8 +208,8 @@ public static class DeviceMerge
     {
         "wia" => "WIA",
         "twain" => "TWAIN",
-        "escl" => "Network (eSCL)",
-        "mock" => "Demo",
+        "escl" => Loc.T("Network (eSCL)"),
+        "mock" => Loc.T("Demo"),
         _ => device.Transport,
     };
 

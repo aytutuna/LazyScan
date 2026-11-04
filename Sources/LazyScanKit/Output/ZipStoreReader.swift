@@ -242,31 +242,31 @@ public final class ZipStoreReader {
         let name = "\"\(displayName(entryName ?? ""))\""
         switch kind {
         case .corrupt:
-            return "The archive is damaged or cut short."
+            return L10n.t("The archive is damaged or cut short.")
         case .unsupportedMethod:
-            return "\(name) is compressed. Only archives of uncompressed (stored) entries can be read."
+            return L10n.t("{0} is compressed. Only archives of uncompressed (stored) entries can be read.", name)
         case .encrypted:
-            return "\(name) is encrypted. Encrypted archives cannot be read."
+            return L10n.t("{0} is encrypted. Encrypted archives cannot be read.", name)
         case .zip64:
-            return "The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported."
+            return L10n.t("The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported.")
         case .dataDescriptor:
-            return "\(name) keeps its sizes after its data (a data descriptor), which is not supported."
+            return L10n.t("{0} keeps its sizes after its data (a data descriptor), which is not supported.", name)
         case .unsafeName:
-            return "The archive holds an entry with an unsafe name (\(name))."
+            return L10n.t("The archive holds an entry with an unsafe name ({0}).", name)
         case .duplicateName:
-            return "The archive holds \(name) more than once."
+            return L10n.t("The archive holds {0} more than once.", name)
         case .specialFile:
-            return "\(name) is a link or a special file, not a plain file."
+            return L10n.t("{0} is a link or a special file, not a plain file.", name)
         case .tooManyEntries:
-            return "The archive holds more than \(limits.maxEntries) entries."
+            return L10n.t("The archive holds more than {0} entries.", String(limits.maxEntries))
         case .tooLarge:
             return entryName == nil
-                ? "The archive's contents are larger than \(limits.maxTotalBytes / (1024 * 1024)) MB."
-                : "\(name) is larger than \(limits.maxEntryBytes / (1024 * 1024)) MB."
+                ? L10n.t("The archive's contents are larger than {0} MB.", limits.maxTotalBytes / (1024 * 1024))
+                : L10n.t("{0} is larger than {1} MB.", name, limits.maxEntryBytes / (1024 * 1024))
         case .sizeMismatch:
-            return "\(name) declares sizes that do not match its data."
+            return L10n.t("{0} declares sizes that do not match its data.", name)
         case .crcMismatch:
-            return "\(name) is damaged: its checksum does not match its data."
+            return L10n.t("{0} is damaged: its checksum does not match its data.", name)
         }
     }
 

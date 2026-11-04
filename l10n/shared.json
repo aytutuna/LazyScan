@@ -329,9 +329,6 @@
   "{0} page from {1} added to the queue.": {
     "en_other": "{0} pages from {1} added to the queue."
   },
-  "Cancelled. The page from {1} was not added; it is kept on this {2} and is added the next time Lazy Scan starts.": {
-    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this {2} and are added the next time Lazy Scan starts."
-  },
   "Keep the page?": {
     "en_other": "Keep the {0} pages?"
   },
@@ -1492,5 +1489,37 @@
   },
   "Added {0} page to {1} (now {2}, {3})": {
     "en_other": "Added {0} pages to {1} (now {2}, {3})"
-  }
+  },
+  "From phone": {},
+  "Sent from a paired phone": {},
+  "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {
+    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts."
+  },
+  "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {
+    "en_other": "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts."
+  },
+  "Network (eSCL)": {},
+  "Demo": {},
+  "The document is larger than {0} MB, too large for one package.": {},
+  "Page {0}'s rotation must be 0 to 3 quarter turns.": {},
+  "Page {0}'s sheet cannot be negative.": {},
+  "{0} is not a {1} file.": {},
+  "{0} is a TIFF, which only black & white pages can be.": {},
+  "{0} needs a size in pixels and a resolution.": {},
+  "The archive is damaged or cut short.": {},
+  "{0} is compressed. Only archives of uncompressed (stored) entries can be read.": {},
+  "{0} is encrypted. Encrypted archives cannot be read.": {},
+  "The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported.": {},
+  "{0} keeps its sizes after its data (a data descriptor), which is not supported.": {},
+  "The archive holds an entry with an unsafe name ({0}).": {},
+  "The archive holds {0} more than once.": {},
+  "{0} is a link or a special file, not a plain file.": {},
+  "The archive holds more than {0} entries.": {},
+  "The archive's contents are larger than {0} MB.": {},
+  "{0} is larger than {1} MB.": {},
+  "{0} declares sizes that do not match its data.": {},
+  "{0} is damaged: its checksum does not match its data.": {},
+  "The scanner driver ran out of memory. Try a lower resolution. ({0})": {},
+  "The scanner driver reported an error. ({0})": {},
+  "The scanner driver reported an error: {0} ({1})": {}
 }

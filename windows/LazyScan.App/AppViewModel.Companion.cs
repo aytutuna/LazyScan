@@ -328,7 +328,7 @@ public sealed partial class AppViewModel
         if (added > 0) PhoneDocumentArrived?.Invoke(CompanionProtocol.AddedMessage(added, phoneName));
         if (cancelled)
         {
-            string kept = CompanionProtocol.KeptMessage(package.Document.Pages.Count, phoneName, "PC");
+            string kept = CompanionProtocol.KeptMessage(package.Document.Pages.Count, phoneName, onMac: false);
             StatusMessage = kept;
             NotifyAll();
             PhoneDocumentArrived?.Invoke(kept);
