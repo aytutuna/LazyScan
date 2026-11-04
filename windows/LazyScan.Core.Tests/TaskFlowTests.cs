@@ -243,4 +243,22 @@ public class TaskFlowTests
         Assert.Equal("Scan it. Close the lid.", helped.FullPrompt);
         Assert.NotEqual(plain, helped);
     }
+
+    [Fact]
+    public void WordIsCasedInTheUiLanguage()
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var ui = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+            Assert.Equal("İlk", new TaskStep("x", "ilk sayfa", "p", "a").Word);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+            System.Globalization.CultureInfo.CurrentUICulture = ui;
+        }
+    }
 }

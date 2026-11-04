@@ -674,7 +674,7 @@ public partial class MainWindow : Window
             SetStepIndicator(flow);
             TaskBannerSteps.Visibility = Visibility.Visible;
             AutomationProperties.SetName(TaskBannerSteps,
-                Loc.T("{0}, step {1} of {2}: {3}", title, flow.StepIndex + 1, flow.StepCount, step.Title.ToLower(CultureInfo.CurrentCulture)));
+                Loc.T("{0}, step {1} of {2}: {3}", title, flow.StepIndex + 1, flow.StepCount, step.Title.ToLower(CultureInfo.CurrentUICulture)));
         }
         else
         {
@@ -730,7 +730,7 @@ public partial class MainWindow : Window
         StepActions.IsEnabled = !ViewModel.IsBusy;
         if (skippable)
         {
-            SkipStepButton.Content = step!.Id == IdCardSteps.BackStepId ? IdCardSteps.SkipBackLabel : Loc.T("Skip {0}", step.Title.ToLower(CultureInfo.CurrentCulture));
+            SkipStepButton.Content = step!.Id == IdCardSteps.BackStepId ? IdCardSteps.SkipBackLabel : Loc.T("Skip {0}", step.Title.ToLower(CultureInfo.CurrentUICulture));
             SkipStepButton.ToolTip = Loc.T("Nothing is printed on the back: save the front only");
         }
         // The empty stage's title and line say what the banner and the status line say: hidden while

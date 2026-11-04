@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Automation;
@@ -40,7 +39,7 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
     {
         ".jpg" or ".jpeg" => "JPG",
         ".tif" or ".tiff" => "TIFF",
-        var other => other.TrimStart('.').ToUpper(CultureInfo.CurrentCulture),
+        var other => other.TrimStart('.').ToUpperInvariant(),
     };
     /// <summary>Icon font glyph shown until (or instead of) the thumbnail.</summary>
     public string PlaceholderGlyph => File.IsPdf || File.IsTextDocument ? "" : "";

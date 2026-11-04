@@ -139,7 +139,7 @@ public class PdfBuilderTests
         int objectNumber = 0;
         foreach (var line in lines.Skip(2)) // skip "xref" and "0 N"
         {
-            if (!line.EndsWith("n ")) { if (objectNumber > 0) break; objectNumber++; continue; }
+            if (!line.EndsWith("n ", StringComparison.Ordinal)) { if (objectNumber > 0) break; objectNumber++; continue; }
             long offset = long.Parse(line[..10]);
             Assert.Equal($"{objectNumber} 0 obj", text.Substring((int)offset, $"{objectNumber} 0 obj".Length));
             objectNumber++;

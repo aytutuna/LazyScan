@@ -41,7 +41,7 @@ public sealed record TaskStep(string Id, string Title, string Prompt, string Pri
                 }
             }
             string word = t.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? t;
-            return word.Length == 0 ? word : char.ToUpper(word[0], CultureInfo.CurrentCulture) + word[1..];
+            return word.Length == 0 ? word : char.ToUpper(word[0], CultureInfo.CurrentUICulture) + word[1..];
         }
     }
 
