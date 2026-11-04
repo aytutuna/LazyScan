@@ -158,7 +158,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
         catch (HttpRequestException e)
         {
             if (validator?.TakeRejection() is { } rejection) throw rejection;
-            throw ScanException.ScanFailed($"Could not reach {DeviceName}: {e.Message}");
+            throw ScanException.ScanFailed(Loc.T("Could not reach {0}: {1}", DeviceName, e.Message));
         }
 
         Uri jobUri;
@@ -167,10 +167,10 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
             if (jobResponse.StatusCode != HttpStatusCode.Created)
             {
                 throw await JobFailure(source, jobResponse.StatusCode,
-                    $"{DeviceName} rejected the scan job (HTTP {(int)jobResponse.StatusCode}).", token).ConfigureAwait(false);
+                    Loc.T("{0} rejected the scan job (HTTP {1}).", DeviceName, (int)jobResponse.StatusCode), token).ConfigureAwait(false);
             }
             jobUri = EsclJob.ResolveLocation(scanJobs, jobResponse.Headers.Location?.OriginalString)
-                ?? throw ScanException.ScanFailed($"{DeviceName} accepted the scan job but did not say where to fetch it.");
+                ?? throw ScanException.ScanFailed(Loc.T("{0} accepted the scan job but did not say where to fetch it.", DeviceName));
         }
 
         var pages = new List<ScannedPage>();
@@ -200,7 +200,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                     if (!doc.IsSuccessStatusCode)
                     {
                         var failure = await JobFailure(source, doc.StatusCode,
-                            $"{DeviceName} returned HTTP {(int)doc.StatusCode}.", token).ConfigureAwait(false);
+                            Loc.T("{0} returned HTTP {1}.", DeviceName, (int)doc.StatusCode), token).ConfigureAwait(false);
                         if (pages.Count == 0) throw failure;
                         stop = ScanStop.From(failure);
                         break;
@@ -221,7 +221,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                     break;
                 }
                 if (data.Length == 0) break;
-                progress?.Invoke(new ScanProgress($"Transferring page {pages.Count + 1}…"));
+                progress?.Invoke(new ScanProgress(Loc.T("Transferring page {0}…", pages.Count + 1)));
                 RgbaImage image;
                 try
                 {
@@ -230,7 +230,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                 catch (Exception e)
                 {
                     var unreadable = ScanException.ScanFailed(
-                        $"{DeviceName} sent page {pages.Count + 1} in a form that could not be read ({e.Message}).");
+                        Loc.T("{0} sent page {1} in a form that could not be read ({2}).", DeviceName, pages.Count + 1, e.Message));
                     if (pages.Count == 0) throw unreadable;
                     stop = ScanStop.From(unreadable);
                     break;

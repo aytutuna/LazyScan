@@ -135,11 +135,11 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         error = ""
         let value: String = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty {
-            error = "Enter the scanner's IP address or host name."
+            error = L10n.t("Enter the scanner's IP address or host name.")
             return nil
         }
         for character in value where character.isWhitespace {
-            error = "An address cannot contain spaces."
+            error = L10n.t("An address cannot contain spaces.")
             return nil
         }
 
@@ -160,14 +160,14 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         }
         if value.hasPrefix("[") {
             guard let close = value.firstIndex(of: "]") else {
-                error = "An IPv6 address in brackets needs its closing \"]\"."
+                error = L10n.t("An IPv6 address in brackets needs its closing \"]\".")
                 return nil
             }
             host = String(value[value.index(after: value.startIndex)..<close])
             let rest: String = String(value[value.index(after: close)...])
             if !rest.isEmpty {
                 guard rest.hasPrefix(":") else {
-                    error = "That is not a valid address."
+                    error = L10n.t("That is not a valid address.")
                     return nil
                 }
                 port = String(rest.dropFirst())
@@ -184,17 +184,17 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         var portNumber: Int = 80
         if let portText = port {
             guard let number = EsclHostText.port(portText), number >= 1 else {
-                error = "The port must be a number from 1 to 65535."
+                error = L10n.t("The port must be a number from 1 to 65535.")
                 return nil
             }
             portNumber = number
         }
         guard let normalized = EsclHostText.normalizeHost(host) else {
-            error = "\"\(host)\" is not a valid IP address or host name."
+            error = L10n.t("\"{0}\" is not a valid IP address or host name.", host)
             return nil
         }
         if lacksZone(normalized) {
-            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."
+            error = L10n.t("Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.")
             return nil
         }
         return ScannerAddress(secure: false, host: normalized, port: portNumber, resourcePath: "eSCL")
@@ -209,7 +209,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
     private static func tryParseUrl(_ value: String, error: inout String) -> ScannerAddress? {
         guard let parts = EsclUrlText.split(value), !parts.host.isEmpty,
               parts.bracketed || EsclHostText.isPlausibleHost(parts.host) else {
-            error = "That is not a valid address."
+            error = L10n.t("That is not a valid address.")
             return nil
         }
         let secure: Bool
@@ -218,23 +218,23 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         } else if parts.scheme == "https" {
             secure = true
         } else {
-            error = "Use an address that starts with http:// or https://, or just the IP address or host name."
+            error = L10n.t("Use an address that starts with http:// or https://, or just the IP address or host name.")
             return nil
         }
         if let userInfo = parts.userInfo, !userInfo.isEmpty {
-            error = "Leave out the user name and password; scanners do not need them."
+            error = L10n.t("Leave out the user name and password; scanners do not need them.")
             return nil
         }
         guard let host = EsclHostText.normalizeHost(parts.host) else {
             if parts.bracketed {
-                error = "That is not a valid address."
+                error = L10n.t("That is not a valid address.")
             } else {
-                error = "\"\(parts.host.lowercased())\" is not a valid IP address or host name."
+                error = L10n.t("\"{0}\" is not a valid IP address or host name.", parts.host.lowercased())
             }
             return nil
         }
         if lacksZone(host) {
-            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12."
+            error = L10n.t("Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.")
             return nil
         }
         let decoded: String = EsclUrlText.removeDotSegments(parts.path).removingPercentEncoding

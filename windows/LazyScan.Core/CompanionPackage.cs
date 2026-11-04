@@ -461,23 +461,23 @@ public static class CompanionPackage
         catch (ZipReadException error)
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.InvalidArchive,
-                                                $"This document cannot be opened: {error.Message}", error);
+                                                Loc.T("This document cannot be opened: {0}", error.Message), error);
         }
     }
 
-    public static string NotPackageMessage => "This file is not a Lazy Scan document.";
-    public static string NoPagesMessage => "This document has no pages.";
+    public static string NotPackageMessage => Loc.T("This file is not a Lazy Scan document.");
+    public static string NoPagesMessage => Loc.T("This document has no pages.");
     public static string TooManyPagesMessage =>
         Loc.Plural(MaxPages, "This document has more than {1} page.", "This document has more than {1} pages.", MaxPages.ToString());
-    public static string DamagedManifestMessage => "This document cannot be opened: its list of pages is damaged.";
+    public static string DamagedManifestMessage => Loc.T("This document cannot be opened: its list of pages is damaged.");
 
     /// <summary>"This document was made by a newer version of Lazy Scan (package format 2). Update Lazy Scan to open it."</summary>
     public static string NewerVersionMessage(int version) =>
-        $"This document was made by a newer version of Lazy Scan (package format {version}). Update Lazy Scan to open it.";
+        Loc.T("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", version.ToString());
 
     /// <summary>"Page 3's picture", "Page 3's original picture".</summary>
     public static string Subject(int pageNumber, bool original) =>
-        $"Page {pageNumber}'s {(original ? "original picture" : "picture")}";
+        original ? Loc.T("Page {0}'s original picture", pageNumber.ToString()) : Loc.T("Page {0}'s picture", pageNumber.ToString());
 
     private static CompanionDocument Read(ZipStoreReader reader)
     {
@@ -589,16 +589,16 @@ public static class CompanionPackage
         string subject = Subject(pageNumber, original);
         if (dto is null || dto.File.Length == 0 || dto.File == ManifestName)
         {
-            throw new CompanionPackageException(CompanionPackageErrorKind.MissingImage, $"{subject} is missing from the document.");
+            throw new CompanionPackageException(CompanionPackageErrorKind.MissingImage, Loc.T("{0} is missing from the document.", subject));
         }
         if (!used.Add(dto.File))
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.InvalidManifest,
-                                                $"This document cannot be opened: {subject} is listed twice.");
+                                                Loc.T("This document cannot be opened: {0} is listed twice.", subject));
         }
         var entry = reader.Find(dto.File)
-            ?? throw new CompanionPackageException(CompanionPackageErrorKind.MissingImage, $"{subject} is missing from the document.");
-        string damaged = $"{subject} is damaged: its checksum does not match.";
+            ?? throw new CompanionPackageException(CompanionPackageErrorKind.MissingImage, Loc.T("{0} is missing from the document.", subject));
+        string damaged = Loc.T("{0} is damaged: its checksum does not match.", subject);
         if (dto.ByteCount is { } count && count != entry.Size)
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.ChecksumMismatch, damaged);
@@ -608,7 +608,7 @@ public static class CompanionPackage
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.ChecksumMismatch, damaged);
         }
-        string unsupported = $"{subject} is in a format this version of Lazy Scan cannot read.";
+        string unsupported = Loc.T("{0} is in a format this version of Lazy Scan cannot read.", subject);
         var format = Sniff(data) ?? throw new CompanionPackageException(CompanionPackageErrorKind.UnsupportedImage, unsupported);
         if (dto.Format is { } named)
         {

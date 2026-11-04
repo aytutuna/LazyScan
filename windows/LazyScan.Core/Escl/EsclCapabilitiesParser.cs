@@ -93,9 +93,9 @@ public static class EsclCapabilitiesParser
         }
         catch (XmlException e)
         {
-            throw new FormatException($"The scanner capabilities are not valid XML: {e.Message}", e);
+            throw new FormatException(Loc.T("The scanner capabilities are not valid XML: {0}", e.Message), e);
         }
-        var root = doc.Root ?? throw new FormatException("The scanner capabilities document is empty.");
+        var root = doc.Root ?? throw new FormatException(Loc.T("The scanner capabilities document is empty."));
 
         EsclInputCaps? platen = null;
         if (Child(root, "Platen") is { } platenElement)

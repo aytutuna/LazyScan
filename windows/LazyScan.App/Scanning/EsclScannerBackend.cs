@@ -226,12 +226,12 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         {
             string reason = e switch
             {
-                FormatException => "it answered, but not like an eSCL scanner",
-                OperationCanceledException => "it did not answer in time",
-                HttpRequestException { StatusCode: { } status } => $"it answered HTTP {(int)status}",
+                FormatException => Loc.T("it answered, but not like an eSCL scanner"),
+                OperationCanceledException => Loc.T("it did not answer in time"),
+                HttpRequestException { StatusCode: { } status } => Loc.T("it answered HTTP {0}", (int)status),
                 _ => e.Message,
             };
-            return new EsclAddressCheck(address, null, null, $"No scanner answered at {address} ({reason}).");
+            return new EsclAddressCheck(address, null, null, Loc.T("No scanner answered at {0} ({1}).", address, reason));
         }
     }
 
@@ -347,7 +347,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     public async Task<IScannerSession> OpenSessionAsync(string deviceId, bool interactive)
     {
         var record = _records.FirstOrDefault(r => r.Info.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
+            ?? throw ScanException.DeviceUnavailable(Loc.T("The selected scanner is not connected."));
         var failures = new List<string>();
         foreach (var address in record.Addresses)
         {
@@ -384,12 +384,12 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
                 {
                     client.Dispose();
-                    failures.Add($"{address}: {ConnectionFailure(e)}");
+                    failures.Add(Loc.T("{0}: {1}", address, ConnectionFailure(e)));
                     break;
                 }
             }
         }
-        throw ScanException.SessionFailed($"{record.Info.Name} did not answer ({string.Join("; ", failures)}).");
+        throw ScanException.SessionFailed(Loc.T("{0} did not answer ({1}).", record.Info.Name, string.Join("; ", failures)));
     }
 
     /// <summary>
@@ -399,10 +399,10 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// </summary>
     internal static string ConnectionFailure(Exception e) => e switch
     {
-        OperationCanceledException => "no answer in time",
+        OperationCanceledException => Loc.T("no answer in time"),
         HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError }
             or HttpRequestException { InnerException: AuthenticationException }
-            => "no secure connection (the scanner's encryption is not accepted by Windows)",
+            => Loc.T("no secure connection (the scanner's encryption is not accepted by Windows)"),
         _ => e.Message,
     };
 
@@ -439,6 +439,8 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         _ = ProbeManualHostsAsync(generation);
     }
 
+    /// <summary>The search and the hand-added addresses for devices.txt and Copy diagnostics. The reason an address was not listed
+    /// was worded when it was checked, in the UI language.</summary>
     public string? DiagnosticsReport
     {
         get

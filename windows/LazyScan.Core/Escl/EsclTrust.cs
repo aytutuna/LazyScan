@@ -240,11 +240,10 @@ public sealed class EsclCertificateException : Exception
     private static string MessageFor(EsclTrustVerdict verdict, string name) => verdict switch
     {
         EsclTrustVerdict.Changed =>
-            $"The security certificate of {name} has changed since you trusted it, so Lazy Scan did not connect. "
-            + "A firmware update or a reset of the scanner can change it, but so can another device pretending to be your scanner.",
+            Loc.T("The security certificate of {0} has changed since you trusted it, so Lazy Scan did not connect. A firmware update or a reset of the scanner can change it, but so can another device pretending to be your scanner.", name),
         EsclTrustVerdict.Invalid =>
-            $"{name} did not present a usable security certificate, so Lazy Scan did not connect.",
-        _ => $"{name} uses a security certificate that has not been trusted yet, so Lazy Scan did not connect.",
+            Loc.T("{0} did not present a usable security certificate, so Lazy Scan did not connect.", name),
+        _ => Loc.T("{0} uses a security certificate that has not been trusted yet, so Lazy Scan did not connect.", name),
     };
 }
 

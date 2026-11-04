@@ -227,7 +227,7 @@ public sealed class CompanionHost : IAsyncDisposable
         catch (Exception e) when (e is System.Security.Cryptography.CryptographicException or IOException
                                       or UnauthorizedAccessException or InvalidOperationException)
         {
-            return $"The security certificate could not be made or read: {e.Message}";
+            return Loc.T("The security certificate could not be made or read: {0}", e.Message);
         }
         var listening = addresses;
         var options = _options.Server with { AllowPeer = remote => TrustedNetworkPolicy.IsAllowedPeer(remote, listening) };
@@ -250,7 +250,7 @@ public sealed class CompanionHost : IAsyncDisposable
                 if (e.SocketErrorCode is not (SocketError.AddressAlreadyInUse or SocketError.AccessDenied)) break;
             }
         }
-        return $"Windows did not let Lazy Scan listen for phones ({failure?.Message}).";
+        return Loc.T("Windows did not let Lazy Scan listen for phones ({0}).", failure?.Message);
     }
 
     private async Task StopServerAsync()

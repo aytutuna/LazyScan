@@ -1940,7 +1940,7 @@ public static class SyncPackage {                       // FileExtension "lssync
                        [, ReadOnlySpan<byte> nonce]);    // a random nonce unless given (tests)
     static (CompanionTarget Target, byte[] Plaintext) Open(ReadOnlySpan<byte> data, string packageId, string phoneId, ReadOnlySpan<byte> key);
     static string FileName(string packageId);
-    const string NotASyncPackageMessage, NewerVersionMessage, WrongKeyMessage;
+    static string NotASyncPackageMessage { get; }, NewerVersionMessage { get; }, WrongKeyMessage { get; }
 }
 public sealed class SyncFolderWatcher : IDisposable {   // PollInterval 5 s, SettleTime 2 s
     SyncFolderWatcher(string folder, PairedDeviceStore devices, CompanionInbox inbox, Func<DateTimeOffset>? clock = null);
@@ -2139,7 +2139,7 @@ extension EsclScannerBackend {   // since I12, beside the I11 members
     public func checkAddress(_ address: ScannerAddress, firstUse: String? = nil) async throws -> EsclAddressCheck   // throws only CancellationError
     @discardableResult public func addAddress(_ address: ScannerAddress, capabilities: EsclCapabilities) -> String
     public func manualAddresses(_ deviceID: String) -> [ScannerAddress]; public func removeAddress(_ address: ScannerAddress)
-    public func isNotEncrypted(_ deviceID: String) -> Bool; public static let notEncryptedLabel: String   // "Not encrypted"
+    public func isNotEncrypted(_ deviceID: String) -> Bool; public static var notEncryptedLabel: String   // "Not encrypted"
     // ScannerBackendDiagnostics: addStatus(to:), rescan(), diagnosticsReport
 }
 // Core/ScannerBackend.swift: ScannerBackend gains openSession(deviceID:interactive:) (default: openSession(deviceID:)); AppState

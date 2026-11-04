@@ -63,7 +63,7 @@ enum EsclXml {
             if let problem = parser.parserError {
                 error = problem.localizedDescription
             } else {
-                error = "The document has no root element."
+                error = L10n.t("The document has no root element.")
             }
             return nil
         }

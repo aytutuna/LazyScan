@@ -228,7 +228,7 @@ public final class CompanionHost: @unchecked Sendable {
         do {
             served = try identity()
         } catch {
-            return "The security certificate could not be made or read: \(CompanionHost.message(error))"
+            return L10n.t("The security certificate could not be made or read: {0}", CompanionHost.message(error))
         }
         var serverOptions = options.server
         let allowed = addresses
@@ -259,9 +259,9 @@ public final class CompanionHost: @unchecked Sendable {
             }
         }
         if case .unusableIdentity? = failure as? CompanionServerError {
-            return "The security certificate cannot be used to receive from phones."
+            return L10n.t("The security certificate cannot be used to receive from phones.")
         }
-        return "macOS did not let Lazy Scan listen for phones (\(failure.map(CompanionHost.message) ?? "unknown error"))."
+        return L10n.t("macOS did not let Lazy Scan listen for phones ({0}).", failure.map(CompanionHost.message) ?? L10n.t("unknown error"))
     }
 
     /// `address` scoped to the interface of its adapter, so the server answers only what comes in there.

@@ -16,9 +16,9 @@ public enum CornerModelError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .missing: return "The page corner model is not in this build"
-        case .noCoreML: return "Core ML is not in this build of ONNX Runtime"
-        case .unreadable: return "The page corner model's answer could not be read"
+        case .missing: return L10n.t("The page corner model is not in this build")
+        case .noCoreML: return L10n.t("Core ML is not in this build of ONNX Runtime")
+        case .unreadable: return L10n.t("The page corner model's answer could not be read")
         }
     }
 }

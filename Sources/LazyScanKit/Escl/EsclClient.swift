@@ -75,7 +75,7 @@ public struct EsclHttpError: Error, Equatable, LocalizedError, Sendable {
     }
 
     public var errorDescription: String? {
-        "Response status code does not indicate success: \(statusCode)."
+        L10n.t("Response status code does not indicate success: {0}.", statusCode)
     }
 }
 
@@ -87,11 +87,11 @@ public enum EsclPageReader {
         guard let data: Data = try? Data(contentsOf: file, options: .alwaysMapped),
               let source: CGImageSource = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0 else {
-            throw EsclFormatError("unknown image format")
+            throw EsclFormatError(L10n.t("unknown image format"))
         }
         let options: [CFString: Any] = [kCGImageSourceShouldCache: false]
         guard let image: CGImage = CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary) else {
-            throw EsclFormatError("unknown image format")
+            throw EsclFormatError(L10n.t("unknown image format"))
         }
         return image
     }
@@ -322,16 +322,16 @@ public final class EsclClient: @unchecked Sendable {
             if Task.isCancelled || error.code == .timedOut {
                 throw error
             }
-            throw ScanError.scanFailed("Could not reach \(deviceName): \(error.localizedDescription)")
+            throw ScanError.scanFailed(L10n.t("Could not reach {0}: {1}", deviceName, error.localizedDescription))
         }
 
         if jobAnswer.status != 201 {
             let failure: EsclJobFailure = try await jobFailure(
-                source, status: jobAnswer.status, fallback: "\(deviceName) rejected the scan job (HTTP \(jobAnswer.status)).")
+                source, status: jobAnswer.status, fallback: L10n.t("{0} rejected the scan job (HTTP {1}).", deviceName, jobAnswer.status))
             throw failure.error
         }
         guard let jobURL: URL = EsclJob.resolveLocation(scanJobs, jobAnswer.location) else {
-            throw ScanError.scanFailed("\(deviceName) accepted the scan job but did not say where to fetch it.")
+            throw ScanError.scanFailed(L10n.t("{0} accepted the scan job but did not say where to fetch it.", deviceName))
         }
 
         let run: EsclJobRun = EsclJobRun(url: jobURL)
@@ -388,7 +388,7 @@ public final class EsclClient: @unchecked Sendable {
                 }
                 guard (200..<300).contains(answer.status), let file: URL = answer.file else {
                     let failure: EsclJobFailure = try await jobFailure(
-                        source, status: answer.status, fallback: "\(deviceName) returned HTTP \(answer.status).")
+                        source, status: answer.status, fallback: L10n.t("{0} returned HTTP {1}.", deviceName, answer.status))
                     if pages.isEmpty {
                         throw failure.error
                     }
@@ -399,14 +399,14 @@ public final class EsclClient: @unchecked Sendable {
                     EsclClient.remove(file)
                     break pageLoop
                 }
-                progress?(ScanProgress(message: "Transferring page \(pages.count + 1)…"))
+                progress?(ScanProgress(message: L10n.t("Transferring page {0}…", pages.count + 1)))
                 let image: CGImage
                 do {
                     image = try readPage(file)
                 } catch {
                     EsclClient.remove(file)
                     let unreadable: ScanError = ScanError.scanFailed(
-                        "\(deviceName) sent page \(pages.count + 1) in a form that could not be read (\(error.localizedDescription)).")
+                        L10n.t("{0} sent page {1} in a form that could not be read ({2}).", deviceName, pages.count + 1, error.localizedDescription))
                     if pages.isEmpty {
                         throw unreadable
                     }

@@ -30,11 +30,11 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
     public async Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
         _cancelRequested = false;
-        if (!EsclCapabilities.HasPlaten) throw ScanException.Unsupported("This scanner has no flatbed to preview.");
-        ProgressHandler?.Invoke(new ScanProgress("Scanning overview…"));
+        if (!EsclCapabilities.HasPlaten) throw ScanException.Unsupported(Loc.T("This scanner has no flatbed to preview."));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         int dpi = EsclCapabilities.Platen!.Resolutions.FirstOrDefault(r => r >= 150, 150);
         var result = await RunJob(dpi, ColorMode.Color, ScanSource.Flatbed, selection: null).ConfigureAwait(true);
-        if (result.Pages.Count == 0) throw ScanException.ScanFailed("The scanner returned no overview image.");
+        if (result.Pages.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner returned no overview image."));
         return result.Pages[0].Image;
     }
 
@@ -43,14 +43,14 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         _cancelRequested = false;
         LastScanStop = null;
         LastScanDuplex = null;
-        ProgressHandler?.Invoke(new ScanProgress("Scanning…"));
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
         // Black & white arrives as grayscale; the app's pipeline thresholds every page that
         // is not a color scan, so the pages keep the requested color mode. A two-sided job
         // delivers front, back, front, back…, as the app expects.
         var result = await RunJob(settings.Resolution, settings.ColorMode, settings.Source,
                                   settings.Source == ScanSource.Flatbed ? selection : null,
                                   settings.Duplex == DuplexMode.Both, settings.PaperSize).ConfigureAwait(true);
-        if (result.Pages.Count == 0) throw ScanException.ScanFailed("The scanner did not return any image data.");
+        if (result.Pages.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner did not return any image data."));
         LastScanStop = result.Stop;
         // A device that does not list two-sided feeding scans one side (EsclScanRequest.Create).
         if (settings.Source == ScanSource.DocumentFeeder && settings.Duplex == DuplexMode.Both)

@@ -52,11 +52,13 @@ public struct PairingUri: Equatable, Sendable, CustomStringConvertible {
     /// The token's length in bytes.
     public static let tokenByteCount = 16
 
-    public static let notPairingCodeMessage = "This is not a Lazy Scan pairing code."
-    public static let newerVersionMessage =
-        "This pairing code is from a newer version of Lazy Scan. Update the app on this phone, then scan it again."
-    public static let damagedMessage =
-        "This pairing code could not be read. Show the code on the computer again and scan it once more."
+    public static var notPairingCodeMessage: String { L10n.t("This is not a Lazy Scan pairing code.") }
+    public static var newerVersionMessage: String {
+        L10n.t("This pairing code is from a newer version of Lazy Scan. Update the app on this phone, then scan it again.")
+    }
+    public static var damagedMessage: String {
+        L10n.t("This pairing code could not be read. Show the code on the computer again and scan it once more.")
+    }
 
     public init(desktopId: String, name: String, fingerprint: String, addresses: [String], port: Int, token: String) {
         self.desktopId = desktopId

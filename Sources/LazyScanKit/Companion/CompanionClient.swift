@@ -373,7 +373,9 @@ public final class CompanionClient: @unchecked Sendable {
     static func check(_ data: Data, _ response: HTTPURLResponse) throws {
         let status = response.statusCode
         guard !(200..<300).contains(status) else { return }
-        let error = CompanionError.fromJSON(data) ?? CompanionError(code: "", message: CompanionText.refusedMessage(status))
+        let sent = CompanionError.fromJSON(data)
+        let error = sent.map { CompanionError.local(code: $0.code) ?? $0 }
+            ?? CompanionError(code: "", message: CompanionText.refusedMessage(status))
         switch status {
         case 401:
             throw CompanionClientError.unauthorized

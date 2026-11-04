@@ -325,7 +325,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             return result
         } catch {
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: "No scanner answered at \(address) (the check was stopped).")
+                                    error: L10n.t("No scanner answered at {0} (the check was stopped).", address))
         }
     }
 
@@ -338,7 +338,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     }
 
     private static func unusable(_ address: ScannerAddress) -> String {
-        address.needsResolving ? "its name could not be found" : "it is not a usable address"
+        address.needsResolving ? L10n.t("its name could not be found") : L10n.t("it is not a usable address")
     }
 
     private static func manualHost(_ address: ScannerAddress, _ result: EsclAddressCheck) -> ManualHost {
@@ -373,7 +373,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                                                                            firstUse: firstUse)
         guard let base: URL = await connectURL(address) else {
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: "No scanner answered at \(address) (\(EsclScannerBackend.unusable(address))).")
+                                    error: L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.unusable(address)))
         }
         let client: EsclClient = EsclClient(baseURL: base, deviceName: name, validator: validator, options: clientOptions)
         do {
@@ -388,7 +388,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             }
             let reason: String = EsclScannerBackend.checkFailure(error)
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: "No scanner answered at \(address) (\(reason)).")
+                                    error: L10n.t("No scanner answered at {0} ({1}).", address, reason))
         }
     }
 
@@ -530,7 +530,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     /// Throws `ScanError`, or the `EsclCertificateError`.
     public func openSession(deviceID: String, interactive: Bool) async throws -> any ScannerSession {
         guard let record: EsclDevice = records.first(where: { (device: EsclDevice) -> Bool in device.info.id == deviceID }) else {
-            throw ScanError.deviceUnavailable("The selected scanner is not connected.")
+            throw ScanError.deviceUnavailable(L10n.t("The selected scanner is not connected."))
         }
         var failures: [String] = []
         for address in record.addresses {
@@ -540,7 +540,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                 let validator: EsclCertificateValidator = EsclCertificateValidator(
                     store: trust, deviceUuid: record.uuid, deviceName: record.info.name, firstUse: firstUse)
                 guard let base: URL = await connectURL(address) else {
-                    failures.append("\(address): \(EsclScannerBackend.unusable(address))")
+                    failures.append(L10n.t("{0}: {1}", address, EsclScannerBackend.unusable(address)))
                     break
                 }
                 let client: EsclClient = EsclClient(baseURL: base, deviceName: record.info.name, validator: validator,
@@ -569,12 +569,12 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     guard let reason: String = EsclScannerBackend.connectionFailure(error) else {
                         throw error
                     }
-                    failures.append("\(address): \(reason)")
+                    failures.append(L10n.t("{0}: {1}", address, reason))
                     break
                 }
             }
         }
-        throw ScanError.sessionFailed("\(record.info.name) did not answer (\(failures.joined(separator: "; "))).")
+        throw ScanError.sessionFailed(L10n.t("{0} did not answer ({1}).", record.info.name, failures.joined(separator: "; ")))
     }
 
     /// The scanner listed as `deviceID` is connected over plain HTTP although it also has an HTTPS address
@@ -584,7 +584,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     }
 
     /// The label a connection made over plain HTTP after HTTPS could not be used carries.
-    public static let notEncryptedLabel = "Not encrypted"
+    public static var notEncryptedLabel: String { L10n.t("Not encrypted") }
 
     private func notePlainConnection(_ record: EsclDevice, over address: ScannerAddress) {
         var hasSecure: Bool = false
@@ -607,10 +607,10 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                 return nil
             }
             if transport.code == .timedOut {
-                return "no answer in time"
+                return L10n.t("no answer in time")
             }
             if isTLSFailure(transport) {
-                return "no secure connection (\(transport.localizedDescription))"
+                return L10n.t("no secure connection ({0})", transport.localizedDescription)
             }
             return transport.localizedDescription
         }
@@ -637,14 +637,14 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     /// Why an address checked by hand did not answer, as the Windows dialog says it.
     private static func checkFailure(_ error: Error) -> String {
         if error is EsclFormatError {
-            return "it answered, but not like an eSCL scanner"
+            return L10n.t("it answered, but not like an eSCL scanner")
         }
         if let status = error as? EsclHttpError {
-            return "it answered HTTP \(status.statusCode)"
+            return L10n.t("it answered HTTP {0}", status.statusCode)
         }
         if let transport = error as? URLError {
             if transport.code == .timedOut || transport.code == .cancelled {
-                return "it did not answer in time"
+                return L10n.t("it did not answer in time")
             }
             return transport.localizedDescription
         }
@@ -682,7 +682,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     }
 
     /// What the search found and what each address added by hand answered, for devices.txt and Copy
-    /// diagnostics; nil when there is nothing to say.
+    /// diagnostics; nil when there is nothing to say. The reason an address was not listed was worded
+    /// when it was checked, in the UI language.
     public var diagnosticsReport: String? {
         var text: String = ""
         if let discovery {

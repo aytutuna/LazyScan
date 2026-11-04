@@ -46,11 +46,11 @@ public sealed record PairingUri(string DesktopId, string Name, string Fingerprin
     /// <summary>The token's length in bytes.</summary>
     public const int TokenByteCount = 16;
 
-    public static string NotPairingCodeMessage => "This is not a Lazy Scan pairing code.";
+    public static string NotPairingCodeMessage => Loc.T("This is not a Lazy Scan pairing code.");
     public static string NewerVersionMessage =>
-        "This pairing code is from a newer version of Lazy Scan. Update the app on this phone, then scan it again.";
+        Loc.T("This pairing code is from a newer version of Lazy Scan. Update the app on this phone, then scan it again.");
     public static string DamagedMessage =>
-        "This pairing code could not be read. Show the code on the computer again and scan it once more.";
+        Loc.T("This pairing code could not be read. Show the code on the computer again and scan it once more.");
 
     /// <summary>The fingerprint's bytes; null when <see cref="Fingerprint"/> is not 32 bytes of base64url.</summary>
     public byte[]? FingerprintBytes =>

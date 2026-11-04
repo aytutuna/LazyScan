@@ -92,7 +92,7 @@ public sealed class WindowsPrintService : IPrintService
         }
         catch (Exception e) when (IsPrintSystemError(e))
         {
-            throw new PrintException($"Could not read the printers: {e.Message}", e);
+            throw new PrintException(Loc.T("Could not read the printers: {0}", e.Message), e);
         }
     });
 
@@ -120,7 +120,7 @@ public sealed class WindowsPrintService : IPrintService
         {
             server = new LocalPrintServer();
             var prepared = Prepare(server, job.PrinterName, job.RequestedPaper)
-                           ?? throw new PrintException($"The printer {job.PrinterName} is not installed any more.");
+                           ?? throw new PrintException(Loc.T("The printer {0} is not installed any more.", job.PrinterName));
             queue = prepared.Queue;
             var ticket = prepared.Ticket;
             var caps = prepared.Capabilities;
@@ -132,7 +132,7 @@ public sealed class WindowsPrintService : IPrintService
         }
         catch (Exception e) when (e is not OperationCanceledException and not PrintException && IsPrintSystemError(e))
         {
-            throw new PrintException($"Could not print on {job.PrinterName}: {e.Message}", e);
+            throw new PrintException(Loc.T("Could not print on {0}: {1}", job.PrinterName, e.Message), e);
         }
         finally
         {

@@ -60,11 +60,13 @@ public sealed class SyncFolderWatcher : IDisposable
 
     /// <summary>"A file in the cloud folder could not be read: 1a2b3c4d.lssync. …"</summary>
     public static string UnreadableMessage(string fileName, string reason) =>
-        $"A file in the cloud folder could not be read: {fileName}. {reason}";
+        Loc.T("A file in the cloud folder could not be read: {0}. {1}", fileName, reason);
 
     /// <summary>"The key for Aytu's iPhone could not be read, so files from it cannot be opened. Pair the phone again."</summary>
     public static string KeyUnreadableMessage(string phoneName) =>
-        $"The key for {phoneName} could not be read, so files from it cannot be opened. Pair the phone again.";
+        phoneName.Length == 0
+            ? Loc.T("The key for a phone could not be read, so files from it cannot be opened. Pair the phone again.")
+            : Loc.T("The key for {0} could not be read, so files from it cannot be opened. Pair the phone again.", phoneName);
 
     /// <summary>Starts polling and watching; a folder that is not there now is polled until it is.</summary>
     public void Start()
@@ -214,7 +216,7 @@ public sealed class SyncFolderWatcher : IDisposable
                     _unreadKeys.Add(candidate.Id);
                     if (_reportedKeys.Add(candidate.Id))
                     {
-                        Problem?.Invoke(this, KeyUnreadableMessage(candidate.Name.Length > 0 ? candidate.Name : "a phone"));
+                        Problem?.Invoke(this, KeyUnreadableMessage(candidate.Name));
                     }
                     continue;
                 }

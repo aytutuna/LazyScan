@@ -60,12 +60,14 @@ public final class SyncFolderWatcher: @unchecked Sendable {
 
     /// "A file in the cloud folder could not be read: 1a2b3c4d.lssync. …"
     public static func unreadableMessage(_ fileName: String, reason: String) -> String {
-        "A file in the cloud folder could not be read: \(fileName). \(reason)"
+        L10n.t("A file in the cloud folder could not be read: {0}. {1}", fileName, reason)
     }
 
     /// "The key for Aytu's iPhone could not be read, so files from it cannot be opened. Pair the phone again."
     public static func keyUnreadableMessage(_ phoneName: String) -> String {
-        "The key for \(phoneName) could not be read, so files from it cannot be opened. Pair the phone again."
+        phoneName.isEmpty
+            ? L10n.t("The key for a phone could not be read, so files from it cannot be opened. Pair the phone again.")
+            : L10n.t("The key for {0} could not be read, so files from it cannot be opened. Pair the phone again.", phoneName)
     }
 
     /// Starts polling and watching; a folder that is not there now is polled until it is.
@@ -206,7 +208,7 @@ public final class SyncFolderWatcher: @unchecked Sendable {
                     keyUnread = true
                     unreadKeys.insert(device.id)
                     if reportedKeys.insert(device.id).inserted {
-                        onProblem?(SyncFolderWatcher.keyUnreadableMessage(device.name.isEmpty ? "a phone" : device.name))
+                        onProblem?(SyncFolderWatcher.keyUnreadableMessage(device.name))
                     }
                     continue
                 }

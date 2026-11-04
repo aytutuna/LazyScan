@@ -45,9 +45,9 @@ public final class EsclScannerSession: ScannerSession {
     public func performOverviewScan(settings: ScanSettings) async throws -> CGImage {
         cancelRequested = false
         guard esclCapabilities.hasPlaten, let platen: EsclInputCaps = esclCapabilities.platen else {
-            throw ScanError.unsupported("This scanner has no flatbed to preview.")
+            throw ScanError.unsupported(L10n.t("This scanner has no flatbed to preview."))
         }
-        progressHandler?(ScanProgress(message: "Scanning overview…"))
+        progressHandler?(ScanProgress(message: L10n.t("Scanning overview…")))
         var dpi: Int = 150
         for resolution in platen.resolutions where resolution >= 150 {
             dpi = resolution
@@ -55,7 +55,7 @@ public final class EsclScannerSession: ScannerSession {
         }
         let result: EsclJobResult = try await runJob(dpi: dpi, colorMode: .color, source: .flatbed, selection: nil)
         guard let first: ScannedPage = result.pages.first else {
-            throw ScanError.scanFailed("The scanner returned no overview image.")
+            throw ScanError.scanFailed(L10n.t("The scanner returned no overview image."))
         }
         return first.image
     }
@@ -64,7 +64,7 @@ public final class EsclScannerSession: ScannerSession {
         cancelRequested = false
         lastScanStop = nil
         lastScanDuplex = nil
-        progressHandler?(ScanProgress(message: "Scanning…"))
+        progressHandler?(ScanProgress(message: L10n.t("Scanning…")))
         // Black & white arrives as grayscale; the app's pipeline thresholds every page that is not a
         // color scan, so the pages keep the requested color mode. A two-sided job delivers front, back,
         // front, back…, as the app expects.
@@ -73,7 +73,7 @@ public final class EsclScannerSession: ScannerSession {
                                                      source: settings.source, selection: flatbedSelection,
                                                      duplex: settings.duplex == .both, paperSize: settings.paperSize)
         if result.pages.isEmpty {
-            throw ScanError.scanFailed("The scanner did not return any image data.")
+            throw ScanError.scanFailed(L10n.t("The scanner did not return any image data."))
         }
         lastScanStop = result.stop
         // A device that does not list two-sided feeding scans one side (EsclScanRequest.create).

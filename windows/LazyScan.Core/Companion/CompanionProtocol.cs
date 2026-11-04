@@ -235,35 +235,21 @@ public sealed record CompanionError(string Code, string Message)
     public static CompanionError? FromJson(ReadOnlySpan<byte> json) =>
         CompanionProtocol.Decode<Dto>(json) is { } dto && dto.Error.Length > 0 ? new CompanionError(dto.Error, dto.Message) : null;
 
-    public static CompanionError Unauthorized { get; } =
-        new(CompanionErrorCode.Unauthorized, "This computer no longer recognizes this phone. Pair it again.");
-    public static CompanionError PairingClosed { get; } =
-        new(CompanionErrorCode.PairingClosed, "Pairing is not open on this computer. Choose Pair a phone there and scan the new code.");
-    public static CompanionError TokenInvalid { get; } =
-        new(CompanionErrorCode.TokenInvalid, "This pairing code is not valid. Scan the code shown on the computer again.");
-    public static CompanionError TokenExpired { get; } =
-        new(CompanionErrorCode.TokenExpired, "This pairing code has expired. Show a new code on the computer.");
-    public static CompanionError TokenUsed { get; } =
-        new(CompanionErrorCode.TokenUsed, "This pairing code was already used. Show a new code on the computer.");
-    public static CompanionError Declined { get; } =
-        new(CompanionErrorCode.Declined, "Pairing was declined on the computer.");
-    public static CompanionError TooManyDevices { get; } =
-        new(CompanionErrorCode.TooManyDevices,
-            $"This computer is paired with {PairedDeviceStore.MaxDevices} phones already. Remove one there first.");
-    public static CompanionError TooLarge { get; } =
-        new(CompanionErrorCode.TooLarge, "This document is too large to send in one piece.");
-    public static CompanionError RateLimited { get; } =
-        new(CompanionErrorCode.RateLimited, "Too many attempts. Wait a minute, then try again.");
-    public static CompanionError NotFound { get; } = new(CompanionErrorCode.NotFound, "Not found.");
-    public static CompanionError MethodNotAllowed { get; } =
-        new(CompanionErrorCode.MethodNotAllowed, "This address does not take that request.");
-    public static CompanionError BadRequest { get; } = new(CompanionErrorCode.BadRequest, "The request was not understood.");
-    public static CompanionError LengthRequired { get; } =
-        new(CompanionErrorCode.LengthRequired, "The request must say how long it is (Content-Length).");
-    public static CompanionError Busy { get; } =
-        new(CompanionErrorCode.Busy, "This document is still being received. Try again in a moment.");
-    public static CompanionError ServerError { get; } =
-        new(CompanionErrorCode.ServerError, "The computer could not store this document.");
+    public static CompanionError Unauthorized => new(CompanionErrorCode.Unauthorized, Loc.T("This computer no longer recognizes this phone. Pair it again."));
+    public static CompanionError PairingClosed => new(CompanionErrorCode.PairingClosed, Loc.T("Pairing is not open on this computer. Choose Pair a phone there and scan the new code."));
+    public static CompanionError TokenInvalid => new(CompanionErrorCode.TokenInvalid, Loc.T("This pairing code is not valid. Scan the code shown on the computer again."));
+    public static CompanionError TokenExpired => new(CompanionErrorCode.TokenExpired, Loc.T("This pairing code has expired. Show a new code on the computer."));
+    public static CompanionError TokenUsed => new(CompanionErrorCode.TokenUsed, Loc.T("This pairing code was already used. Show a new code on the computer."));
+    public static CompanionError Declined => new(CompanionErrorCode.Declined, Loc.T("Pairing was declined on the computer."));
+    public static CompanionError TooManyDevices => new(CompanionErrorCode.TooManyDevices, Loc.T("This computer is paired with {0} phones already. Remove one there first.", PairedDeviceStore.MaxDevices));
+    public static CompanionError TooLarge => new(CompanionErrorCode.TooLarge, Loc.T("This document is too large to send in one piece."));
+    public static CompanionError RateLimited => new(CompanionErrorCode.RateLimited, Loc.T("Too many attempts. Wait a minute, then try again."));
+    public static CompanionError NotFound => new(CompanionErrorCode.NotFound, Loc.T("Not found."));
+    public static CompanionError MethodNotAllowed => new(CompanionErrorCode.MethodNotAllowed, Loc.T("This address does not take that request."));
+    public static CompanionError BadRequest => new(CompanionErrorCode.BadRequest, Loc.T("The request was not understood."));
+    public static CompanionError LengthRequired => new(CompanionErrorCode.LengthRequired, Loc.T("The request must say how long it is (Content-Length)."));
+    public static CompanionError Busy => new(CompanionErrorCode.Busy, Loc.T("This document is still being received. Try again in a moment."));
+    public static CompanionError ServerError => new(CompanionErrorCode.ServerError, Loc.T("The computer could not store this document."));
 
     private sealed class Dto
     {

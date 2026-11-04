@@ -117,7 +117,7 @@ public enum EsclCapabilitiesParser {
     public static func parse(data: Data) throws -> EsclCapabilities {
         var problem: String = ""
         guard let root = EsclXml.parse(data, error: &problem) else {
-            throw EsclFormatError("The scanner capabilities are not valid XML: \(problem)")
+            throw EsclFormatError(L10n.t("The scanner capabilities are not valid XML: {0}", problem))
         }
 
         var platen: EsclInputCaps?

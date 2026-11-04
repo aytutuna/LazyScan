@@ -119,7 +119,7 @@ public sealed class MockScannerBackend : IScannerBackend
     public Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable("The demo scanner is not available.");
+            ?? throw ScanException.DeviceUnavailable(Loc.T("The demo scanner is not available."));
         return Task.FromResult<IScannerSession>(new MockScannerSession(info, this));
     }
 }
@@ -150,7 +150,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
     public Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
         _cancelRequested = false;
-        ProgressHandler?.Invoke(new ScanProgress(0.5, "Scanning overview…"));
+        ProgressHandler?.Invoke(new ScanProgress(0.5, Loc.T("Scanning overview…")));
         return Task.FromResult(settings.Task switch
         {
             ScanTask.IdCard => MockBedRenderer.RenderIdCardBed(100, backend.IdCardTurnedOver ? PageSide.Back : PageSide.Front),
@@ -168,10 +168,10 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
         int dpi = Math.Min(settings.Resolution, 600); // cap memory use
         if (settings.Source == ScanSource.DocumentFeeder) return await ScanFeeder(settings, dpi);
 
-        ProgressHandler?.Invoke(new ScanProgress(0.2, "Warming up…"));
+        ProgressHandler?.Invoke(new ScanProgress(0.2, Loc.T("Warming up…")));
         await SleepCheckingCancellation(0.25);
 
-        ProgressHandler?.Invoke(new ScanProgress(0.6, "Scanning…"));
+        ProgressHandler?.Invoke(new ScanProgress(0.6, Loc.T("Scanning…")));
         // The ID card task scans the sample card, then turns it over as the user would.
         bool idCard = settings.Task == ScanTask.IdCard;
         var cardSide = backend.IdCardTurnedOver ? PageSide.Back : PageSide.Front;
@@ -187,7 +187,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
         if (book) backend.BookSpread = spread + 1;
         await SleepCheckingCancellation(0.25);
 
-        ProgressHandler?.Invoke(new ScanProgress(0.9, "Transferring…"));
+        ProgressHandler?.Invoke(new ScanProgress(0.9, Loc.T("Transferring…")));
         await SleepCheckingCancellation(0.2);
 
         // Honor the selection: a normalized rect of the bed with top-left origin, which
@@ -232,7 +232,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
         var sheetInches = settings.PaperSize == PaperSize.Auto
             ? MockBedRenderer.SheetInches
             : new SizeD(region.Width, region.Height);
-        ProgressHandler?.Invoke(new ScanProgress(0.1, "Warming up…"));
+        ProgressHandler?.Invoke(new ScanProgress(0.1, Loc.T("Warming up…")));
         await SleepCheckingCancellation(0.25);
         if (sheets <= 0) throw ScanException.ForProblem(ScannerProblem.FeederEmpty);
         LastScanDuplex = settings.Duplex == DuplexMode.Both ? twoSided : null;
@@ -248,7 +248,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
                 break;
             }
             ProgressHandler?.Invoke(new ScanProgress(0.1 + 0.9 * index / sheets,
-                                                     $"Scanning sheet {index + 1} of {sheets}…"));
+                                                     Loc.T("Scanning sheet {0} of {1}…", index + 1, sheets)));
             // A turned-over stack feeds its last sheet first, showing the backs.
             int sheet = turnedOver && !twoSided ? sheets - 1 - index : index;
             PageSide[] sides = twoSided ? [PageSide.Front, PageSide.Back]

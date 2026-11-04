@@ -108,12 +108,12 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         string value = text?.Trim() ?? "";
         if (value.Length == 0)
         {
-            error = "Enter the scanner's IP address or host name.";
+            error = Loc.T("Enter the scanner's IP address or host name.");
             return false;
         }
         if (value.Any(char.IsWhiteSpace))
         {
-            error = "An address cannot contain spaces.";
+            error = Loc.T("An address cannot contain spaces.");
             return false;
         }
 
@@ -129,7 +129,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
             int close = value.IndexOf(']');
             if (close < 0)
             {
-                error = "An IPv6 address in brackets needs its closing \"]\".";
+                error = Loc.T("An IPv6 address in brackets needs its closing \"]\".");
                 return false;
             }
             host = value[1..close];
@@ -138,7 +138,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
             {
                 if (!rest.StartsWith(':'))
                 {
-                    error = "That is not a valid address.";
+                    error = Loc.T("That is not a valid address.");
                     return false;
                 }
                 port = rest[1..];
@@ -158,17 +158,17 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         int portNumber = 80;
         if (port is not null && !TryPort(port, out portNumber))
         {
-            error = "The port must be a number from 1 to 65535.";
+            error = Loc.T("The port must be a number from 1 to 65535.");
             return false;
         }
         if (NormalizeHost(host) is not { } normalized)
         {
-            error = $"\"{host}\" is not a valid IP address or host name.";
+            error = Loc.T("\"{0}\" is not a valid IP address or host name.", host);
             return false;
         }
         if (LacksZone(normalized))
         {
-            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.";
+            error = Loc.T("Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.");
             return false;
         }
         address = new ScannerAddress(secure: false, normalized, portNumber, "eSCL");
@@ -181,7 +181,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         error = "";
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Host.Length == 0)
         {
-            error = "That is not a valid address.";
+            error = Loc.T("That is not a valid address.");
             return false;
         }
         bool secure;
@@ -189,24 +189,24 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         else if (uri.Scheme == Uri.UriSchemeHttps) secure = true;
         else
         {
-            error = "Use an address that starts with http:// or https://, or just the IP address or host name.";
+            error = Loc.T("Use an address that starts with http:// or https://, or just the IP address or host name.");
             return false;
         }
         if (uri.UserInfo.Length > 0)
         {
-            error = "Leave out the user name and password; scanners do not need them.";
+            error = Loc.T("Leave out the user name and password; scanners do not need them.");
             return false;
         }
         if (NormalizeHost(uri.DnsSafeHost) is not { } host)
         {
             error = uri.HostNameType == UriHostNameType.IPv6
-                ? "That is not a valid address."
-                : $"\"{uri.Host}\" is not a valid IP address or host name.";
+                ? Loc.T("That is not a valid address.")
+                : Loc.T("\"{0}\" is not a valid IP address or host name.", uri.Host);
             return false;
         }
         if (LacksZone(host))
         {
-            error = "Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.";
+            error = Loc.T("Use the scanner's IPv4 address; a link-local IPv6 address needs its interface, like fe80::1%12.");
             return false;
         }
         string path = Uri.UnescapeDataString(uri.AbsolutePath).Trim('/');

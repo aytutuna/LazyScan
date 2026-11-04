@@ -111,7 +111,7 @@ public final class MockScannerBackend: ScannerBackend {
 
     public func openSession(deviceID: String) async throws -> any ScannerSession {
         guard let info = devices.first(where: { $0.id == deviceID }) else {
-            throw ScanError.deviceUnavailable("The demo scanner is not available.")
+            throw ScanError.deviceUnavailable(L10n.t("The demo scanner is not available."))
         }
         return MockScannerSession(info: info, backend: self)
     }
@@ -151,7 +151,7 @@ private final class MockScannerSession: ScannerSession {
 
     func performOverviewScan(settings: ScanSettings) async throws -> CGImage {
         cancelRequested = false
-        progressHandler?(ScanProgress(fraction: 0.5, message: "Scanning overview…"))
+        progressHandler?(ScanProgress(fraction: 0.5, message: L10n.t("Scanning overview…")))
         let rendered: CGImage?
         switch settings.task {
         case .idCard?:
@@ -164,7 +164,7 @@ private final class MockScannerSession: ScannerSession {
             rendered = MockBedRenderer.renderBed(dpi: 100, intent: settings.intent)
         }
         guard let image = rendered else {
-            throw ScanError.scanFailed("Could not render the demo overview.")
+            throw ScanError.scanFailed(L10n.t("Could not render the demo overview."))
         }
         return image
     }
@@ -178,10 +178,10 @@ private final class MockScannerSession: ScannerSession {
             return try await scanFeeder(settings: settings, dpi: dpi)
         }
 
-        progressHandler?(ScanProgress(fraction: 0.2, message: "Warming up…"))
+        progressHandler?(ScanProgress(fraction: 0.2, message: L10n.t("Warming up…")))
         try await sleepCheckingCancellation(seconds: 0.25)
 
-        progressHandler?(ScanProgress(fraction: 0.6, message: "Scanning…"))
+        progressHandler?(ScanProgress(fraction: 0.6, message: L10n.t("Scanning…")))
         // The ID card task scans the sample card, then turns it over as the user would.
         let idCard = settings.task == .idCard
         let cardSide: PageSide = backend.idCardTurnedOver ? .back : .front
@@ -196,13 +196,13 @@ private final class MockScannerSession: ScannerSession {
             ? MockBedRenderer.renderBookSpread(dpi: dpi, spreadIndex: spread)
             : MockBedRenderer.renderBed(dpi: dpi, intent: settings.intent)
         guard var image = rendered else {
-            throw ScanError.scanFailed("Could not render the demo scan.")
+            throw ScanError.scanFailed(L10n.t("Could not render the demo scan."))
         }
         if idCard { backend.idCardTurnedOver = cardSide == .front }
         if book { backend.bookSpread = spread + 1 }
         try await sleepCheckingCancellation(seconds: 0.25)
 
-        progressHandler?(ScanProgress(fraction: 0.9, message: "Transferring…"))
+        progressHandler?(ScanProgress(fraction: 0.9, message: L10n.t("Transferring…")))
         try await sleepCheckingCancellation(seconds: 0.2)
 
         // Honor the selection: a normalized rect of the bed with top-left
@@ -242,7 +242,7 @@ private final class MockScannerSession: ScannerSession {
         let blankBacks = backend.feederBlankBackSheets
         let region = PaperSizes.feederRegionInches(settings.paperSize, max: MockBedRenderer.feederMaxInches)
         let sheetInches = settings.paperSize == .auto ? MockBedRenderer.sheetInches : region.size
-        progressHandler?(ScanProgress(fraction: 0.1, message: "Warming up…"))
+        progressHandler?(ScanProgress(fraction: 0.1, message: L10n.t("Warming up…")))
         try await sleepCheckingCancellation(seconds: 0.25)
         guard sheets > 0 else { throw ScanError.scannerProblem(.feederEmpty) }
         lastScanDuplex = settings.duplex == .both ? twoSided : nil
@@ -256,7 +256,7 @@ private final class MockScannerSession: ScannerSession {
                 break
             }
             progressHandler?(ScanProgress(fraction: 0.1 + 0.9 * Double(index) / Double(sheets),
-                                          message: "Scanning sheet \(index + 1) of \(sheets)…"))
+                                          message: L10n.t("Scanning sheet {0} of {1}…", index + 1, sheets)))
             // A turned-over stack feeds its last sheet first, showing the backs.
             let sheet = turnedOver && !twoSided ? sheets - 1 - index : index
             let sides: [PageSide] = twoSided ? [.front, .back] : [turnedOver ? .back : .front]
@@ -285,7 +285,7 @@ private final class MockScannerSession: ScannerSession {
                                                            side: side, sheetInches: sheetInches)
                 }
                 guard let image = rendered else {
-                    throw ScanError.scanFailed("Could not render the demo scan.")
+                    throw ScanError.scanFailed(L10n.t("Could not render the demo scan."))
                 }
                 pages.append(ScannedPage(image: image, dpi: dpi, colorMode: settings.colorMode))
             }

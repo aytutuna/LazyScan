@@ -470,21 +470,21 @@ public enum CompanionPackage {
         }
     }
 
-    public static let notPackageMessage = "This file is not a Lazy Scan document."
-    public static let noPagesMessage = "This document has no pages."
+    public static var notPackageMessage: String { L10n.t("This file is not a Lazy Scan document.") }
+    public static var noPagesMessage: String { L10n.t("This document has no pages.") }
     public static var tooManyPagesMessage: String {
         L10n.plural(maxPages, one: "This document has more than {1} page.", other: "This document has more than {1} pages.", String(maxPages))
     }
-    public static let damagedManifestMessage = "This document cannot be opened: its list of pages is damaged."
+    public static var damagedManifestMessage: String { L10n.t("This document cannot be opened: its list of pages is damaged.") }
 
     /// "This document was made by a newer version of Lazy Scan (package format 2). Update Lazy Scan to open it."
     public static func newerVersionMessage(_ version: Int) -> String {
-        "This document was made by a newer version of Lazy Scan (package format \(version)). Update Lazy Scan to open it."
+        L10n.t("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", String(version))
     }
 
     /// "Page 3's picture", "Page 3's original picture".
     public static func subject(_ pageNumber: Int, original: Bool) -> String {
-        "Page \(pageNumber)'s \(original ? "original picture" : "picture")"
+        original ? L10n.t("Page {0}'s original picture", String(pageNumber)) : L10n.t("Page {0}'s picture", String(pageNumber))
     }
 
     /// Runs `body`, turning an archive the zip reader refuses into `.invalidArchive`.
@@ -492,7 +492,7 @@ public enum CompanionPackage {
         do {
             return try body()
         } catch let error as ZipReadError {
-            throw CompanionPackageError(.invalidArchive, "This document cannot be opened: \(error.message)")
+            throw CompanionPackageError(.invalidArchive, L10n.t("This document cannot be opened: {0}", error.message))
         }
     }
 
@@ -583,18 +583,18 @@ public enum CompanionPackage {
     private static func readImage(_ reader: ZipStoreReader, _ dto: ImageDTO?, pageNumber: Int, original: Bool,
                                   used: inout Set<[UInt8]>) throws -> CompanionImage {
         let subject = CompanionPackage.subject(pageNumber, original: original)
-        let missing = CompanionPackageError(.missingImage, "\(subject) is missing from the document.")
+        let missing = CompanionPackageError(.missingImage, L10n.t("{0} is missing from the document.", subject))
         guard let dto, !dto.file.isEmpty, !dto.file.utf8.elementsEqual(manifestName.utf8) else { throw missing }
         if !used.insert(Array(dto.file.utf8)).inserted {
-            throw CompanionPackageError(.invalidManifest, "This document cannot be opened: \(subject) is listed twice.")
+            throw CompanionPackageError(.invalidManifest, L10n.t("This document cannot be opened: {0} is listed twice.", subject))
         }
         guard let entry = reader.entry(named: dto.file) else { throw missing }
-        let damaged = CompanionPackageError(.checksumMismatch, "\(subject) is damaged: its checksum does not match.")
+        let damaged = CompanionPackageError(.checksumMismatch, L10n.t("{0} is damaged: its checksum does not match.", subject))
         if let count = dto.byteCount, count != Int64(entry.size) { throw damaged }
         let data = try reader.read(entry)
         if dto.sha256.lowercased() != sha256Hex(data) { throw damaged }
         let unsupported = CompanionPackageError(
-            .unsupportedImage, "\(subject) is in a format this version of Lazy Scan cannot read.")
+            .unsupportedImage, L10n.t("{0} is in a format this version of Lazy Scan cannot read.", subject))
         guard let format = sniff(data) else { throw unsupported }
         if let named = dto.format, CompanionImageFormat(rawValue: named) != format { throw unsupported }
         return CompanionImage(data: data, format: format, pixelWidth: max(Int(dto.pixelWidth), 0),

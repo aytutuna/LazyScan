@@ -221,35 +221,73 @@ public struct CompanionError: Equatable, Sendable {
         return CompanionError(code: dto.error, message: dto.message)
     }
 
-    public static let unauthorized = CompanionError(
-        code: CompanionErrorCode.unauthorized, message: "This computer no longer recognizes this phone. Pair it again.")
-    public static let pairingClosed = CompanionError(
-        code: CompanionErrorCode.pairingClosed,
-        message: "Pairing is not open on this computer. Choose Pair a phone there and scan the new code.")
-    public static let tokenInvalid = CompanionError(
-        code: CompanionErrorCode.tokenInvalid, message: "This pairing code is not valid. Scan the code shown on the computer again.")
-    public static let tokenExpired = CompanionError(
-        code: CompanionErrorCode.tokenExpired, message: "This pairing code has expired. Show a new code on the computer.")
-    public static let tokenUsed = CompanionError(
-        code: CompanionErrorCode.tokenUsed, message: "This pairing code was already used. Show a new code on the computer.")
-    public static let declined = CompanionError(code: CompanionErrorCode.declined, message: "Pairing was declined on the computer.")
-    public static let tooManyDevices = CompanionError(
-        code: CompanionErrorCode.tooManyDevices,
-        message: "This computer is paired with \(PairedDeviceStore.maxDevices) phones already. Remove one there first.")
-    public static let tooLarge = CompanionError(
-        code: CompanionErrorCode.tooLarge, message: "This document is too large to send in one piece.")
-    public static let rateLimited = CompanionError(
-        code: CompanionErrorCode.rateLimited, message: "Too many attempts. Wait a minute, then try again.")
-    public static let notFound = CompanionError(code: CompanionErrorCode.notFound, message: "Not found.")
-    public static let methodNotAllowed = CompanionError(
-        code: CompanionErrorCode.methodNotAllowed, message: "This address does not take that request.")
-    public static let badRequest = CompanionError(code: CompanionErrorCode.badRequest, message: "The request was not understood.")
-    public static let lengthRequired = CompanionError(
-        code: CompanionErrorCode.lengthRequired, message: "The request must say how long it is (Content-Length).")
-    public static let busy = CompanionError(
-        code: CompanionErrorCode.busy, message: "This document is still being received. Try again in a moment.")
-    public static let serverError = CompanionError(
-        code: CompanionErrorCode.serverError, message: "The computer could not store this document.")
+    public static var unauthorized: CompanionError {
+        CompanionError(code: CompanionErrorCode.unauthorized, message: L10n.t("This computer no longer recognizes this phone. Pair it again."))
+    }
+    public static var pairingClosed: CompanionError {
+        CompanionError(code: CompanionErrorCode.pairingClosed, message: L10n.t("Pairing is not open on this computer. Choose Pair a phone there and scan the new code."))
+    }
+    public static var tokenInvalid: CompanionError {
+        CompanionError(code: CompanionErrorCode.tokenInvalid, message: L10n.t("This pairing code is not valid. Scan the code shown on the computer again."))
+    }
+    public static var tokenExpired: CompanionError {
+        CompanionError(code: CompanionErrorCode.tokenExpired, message: L10n.t("This pairing code has expired. Show a new code on the computer."))
+    }
+    public static var tokenUsed: CompanionError {
+        CompanionError(code: CompanionErrorCode.tokenUsed, message: L10n.t("This pairing code was already used. Show a new code on the computer."))
+    }
+    public static var declined: CompanionError {
+        CompanionError(code: CompanionErrorCode.declined, message: L10n.t("Pairing was declined on the computer."))
+    }
+    public static var tooManyDevices: CompanionError {
+        CompanionError(code: CompanionErrorCode.tooManyDevices, message: L10n.t("This computer is paired with {0} phones already. Remove one there first.", PairedDeviceStore.maxDevices))
+    }
+    public static var tooLarge: CompanionError {
+        CompanionError(code: CompanionErrorCode.tooLarge, message: L10n.t("This document is too large to send in one piece."))
+    }
+    public static var rateLimited: CompanionError {
+        CompanionError(code: CompanionErrorCode.rateLimited, message: L10n.t("Too many attempts. Wait a minute, then try again."))
+    }
+    public static var notFound: CompanionError {
+        CompanionError(code: CompanionErrorCode.notFound, message: L10n.t("Not found."))
+    }
+    public static var methodNotAllowed: CompanionError {
+        CompanionError(code: CompanionErrorCode.methodNotAllowed, message: L10n.t("This address does not take that request."))
+    }
+    public static var badRequest: CompanionError {
+        CompanionError(code: CompanionErrorCode.badRequest, message: L10n.t("The request was not understood."))
+    }
+    public static var lengthRequired: CompanionError {
+        CompanionError(code: CompanionErrorCode.lengthRequired, message: L10n.t("The request must say how long it is (Content-Length)."))
+    }
+    public static var busy: CompanionError {
+        CompanionError(code: CompanionErrorCode.busy, message: L10n.t("This document is still being received. Try again in a moment."))
+    }
+    public static var serverError: CompanionError {
+        CompanionError(code: CompanionErrorCode.serverError, message: L10n.t("The computer could not store this document."))
+    }
+
+    /// The error for a code the computer sent, worded in this device's language; nil for a code with no fixed wording.
+    public static func local(code: String) -> CompanionError? {
+        switch code {
+        case CompanionErrorCode.unauthorized: return unauthorized
+        case CompanionErrorCode.pairingClosed: return pairingClosed
+        case CompanionErrorCode.tokenInvalid: return tokenInvalid
+        case CompanionErrorCode.tokenExpired: return tokenExpired
+        case CompanionErrorCode.tokenUsed: return tokenUsed
+        case CompanionErrorCode.declined: return declined
+        case CompanionErrorCode.tooManyDevices: return tooManyDevices
+        case CompanionErrorCode.tooLarge: return tooLarge
+        case CompanionErrorCode.rateLimited: return rateLimited
+        case CompanionErrorCode.notFound: return notFound
+        case CompanionErrorCode.methodNotAllowed: return methodNotAllowed
+        case CompanionErrorCode.badRequest: return badRequest
+        case CompanionErrorCode.lengthRequired: return lengthRequired
+        case CompanionErrorCode.busy: return busy
+        case CompanionErrorCode.serverError: return serverError
+        default: return nil
+        }
+    }
 }
 
 /// The body of `POST /v1/pair`: the pairing code's token and who the phone is.
