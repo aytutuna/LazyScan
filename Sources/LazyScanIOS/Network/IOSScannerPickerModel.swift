@@ -34,7 +34,7 @@ public struct IOSScannerRow: Identifiable, Equatable {
     /// The row's one line under the name: the connection, and the note when there is one.
     public var detail: String {
         guard let note else { return connection }
-        return connection + " \u{00B7} " + note
+        return String(localized: "\(connection) \u{00B7} \(note)")
     }
 
     /// The SF Symbol of the row.

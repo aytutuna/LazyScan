@@ -33,12 +33,12 @@ public struct IOSShortcut: Equatable {
 /// Command-N starts a new document (Separate documents), Command-comma opens Settings, Space takes a photo
 /// in camera mode.
 public enum IOSShortcuts {
-    public static let save = IOSShortcut(key: "s", command: true, title: "Save")
-    public static let newDocument = IOSShortcut(key: "n", command: true, title: "New document")
-    public static let settings = IOSShortcut(key: ",", command: true, title: "Settings")
-    public static let shutter = IOSShortcut(key: " ", command: false, title: "Take photo")
+    public static var save: IOSShortcut { IOSShortcut(key: "s", command: true, title: String(localized: "Save")) }
+    public static var newDocument: IOSShortcut { IOSShortcut(key: "n", command: true, title: String(localized: "New document")) }
+    public static var settings: IOSShortcut { IOSShortcut(key: ",", command: true, title: String(localized: "Settings")) }
+    public static var shutter: IOSShortcut { IOSShortcut(key: " ", command: false, title: String(localized: "Take photo")) }
 
-    public static let all: [IOSShortcut] = [save, newDocument, settings, shutter]
+    public static var all: [IOSShortcut] { [save, newDocument, settings, shutter] }
 }
 
 /// Moving a page of the strip by dragging it onto another: it takes that page's place, the pages between

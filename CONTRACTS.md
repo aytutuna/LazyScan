@@ -3948,8 +3948,9 @@ public enum IOSAdjustment: String, CaseIterable, Identifiable { case brightness,
 public enum IOSLayout { public static func usesSidebar(_ horizontal: UserInterfaceSizeClass?) -> Bool }   // .regular
 public struct IOSShortcut: Equatable { public let key: Character; public let command: Bool; public let title: String
     public var keyboardShortcut: KeyboardShortcut }
-public enum IOSShortcuts { public static let save /* ⌘S */, newDocument /* ⌘N */, settings /* ⌘, */, shutter /* Space */: IOSShortcut
-    public static let all: [IOSShortcut] }
+public enum IOSShortcuts { // titles go through String(localized:), so these are computed
+    public static var save /* ⌘S */, newDocument /* ⌘N */, settings /* ⌘, */, shutter /* Space */: IOSShortcut { get }
+    public static var all: [IOSShortcut] { get } }
 public enum IOSPageDrop {
     public static func offset(moving: UUID, onto target: UUID, in ids: [UUID]) -> Int?
     public static func pageID(_ text: String) -> UUID?

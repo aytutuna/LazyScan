@@ -352,11 +352,12 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         switch status {
         case .unreachable(let reason):
             if inFolder == waiting {
-                return reason + " " + String(localized: "The document is in the cloud folder; the computer takes it from there.")
+                return String(localized: "\(reason) The document is in the cloud folder; the computer takes it from there.")
             }
-            return reason + " " + String(localized: "The pages wait on this device and are sent once it answers.")
+            return String(localized: "\(reason) The pages wait on this device and are sent once it answers.")
         case .unpaired(let name):
-            return CompanionText.unpairedMessage(name) + " " + String(localized: "The pages were not sent.")
+            let message = CompanionText.unpairedMessage(name)
+            return String(localized: "\(message) The pages were not sent.")
         case .notPaired, .checking, .reachable:
             return nil
         }

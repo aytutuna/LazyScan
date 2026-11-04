@@ -527,8 +527,8 @@
   "No date was found on {0} of them; it is named by today's date.": {
     "en_other": "No date was found on {0} of them; they are named by today's date."
   },
-  "{0} page queued there": {
-    "en_other": "{0} pages queued there"
+  "Connected · {0} page queued there": {
+    "en_other": "Connected · {0} pages queued there"
   },
   "{0} document waiting to be sent": {
     "en_other": "{0} documents waiting to be sent"

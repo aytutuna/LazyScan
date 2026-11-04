@@ -47,7 +47,7 @@ public enum IOSCompanionText {
             return checking
         case .reachable(_, let queuedPages):
             if queuedPages == 0 { return connected }
-            return connected + " \u{00B7} " + L10n.plural(queuedPages, one: "{0} page queued there", other: "{0} pages queued there")
+            return L10n.plural(queuedPages, one: "Connected · {0} page queued there", other: "Connected · {0} pages queued there")
         case .unreachable(let reason):
             return reason
         case .unpaired(let desktopName):
