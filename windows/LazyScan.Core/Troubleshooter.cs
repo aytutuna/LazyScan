@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 
 namespace LazyScan.Core;
@@ -113,13 +112,21 @@ public enum TroubleshootAction
 /// <param name="Address">As the user would write it, e.g. "192.168.1.50" or "https://scanner.local".</param>
 /// <param name="Listed">A scanner answered and is listed.</param>
 /// <param name="Problem">Why nothing is listed, in plain language; null when listed or not checked yet.</param>
-public sealed record ManualHostStatus(string Address, bool Listed, string? Problem = null);
+/// <param name="ReportProblem"><paramref name="Problem"/> in English, for the support report; the same text when it is not translated.</param>
+public sealed record ManualHostStatus(string Address, bool Listed, string? Problem = null, string? ReportProblem = null)
+{
+    public string? ReportProblem { get; init; } = ReportProblem ?? Problem;
+}
 
 /// <summary>The last time connecting to a scanner, or scanning with it, failed.</summary>
 /// <param name="DeviceName">The scanner's name as listed.</param>
 /// <param name="Message">The error the user was shown.</param>
 /// <param name="Problem">The condition at the scanner behind it, when the connection could tell.</param>
-public sealed record ScannerFailure(string DeviceName, string Message, ScannerProblem? Problem = null);
+/// <param name="ReportMessage"><paramref name="Message"/> in English, for the support report; the same text when it is not translated.</param>
+public sealed record ScannerFailure(string DeviceName, string Message, ScannerProblem? Problem = null, string? ReportMessage = null)
+{
+    public string? ReportMessage { get; init; } = ReportMessage ?? Message;
+}
 
 /// <summary>
 /// Everything the troubleshooter looks at, read at one moment. The app fills in the system's
@@ -145,6 +152,8 @@ public sealed record DiscoverySnapshot
     /// as sentences about the helper ("It …") with what to do; null when not known. Never set on the Mac.
     /// </summary>
     public string? ThirtyTwoBitHelperProblem { get; init; }
+    /// <summary><see cref="ThirtyTwoBitHelperProblem"/> in English, for the support report; null when it is not translated.</summary>
+    public string? ThirtyTwoBitHelperReportProblem { get; init; }
     public DiscoveryStatus Discovery { get; init; }
     /// <summary>Why the search is unavailable, as the system put it; null otherwise.</summary>
     public string? DiscoveryDetail { get; init; }
@@ -155,6 +164,14 @@ public sealed record DiscoverySnapshot
 
     /// <summary>The scanners listed other than the demo scanner.</summary>
     public int ListedScannerCount => Devices.Count(device => !device.IsDemo);
+
+    /// <summary>The snapshot with the texts the backends worded in the UI language replaced by their English twins.</summary>
+    internal DiscoverySnapshot ForReport() => this with
+    {
+        ThirtyTwoBitHelperProblem = ThirtyTwoBitHelperReportProblem ?? ThirtyTwoBitHelperProblem,
+        ManualHosts = [.. ManualHosts.Select(host => host with { Problem = host.ReportProblem })],
+        LastFailure = LastFailure is { } failure ? failure with { Message = failure.ReportMessage ?? failure.Message } : null,
+    };
 }
 
 /// <summary>One line of the troubleshooter: what was checked, how it came out, what to do.</summary>
@@ -303,38 +320,24 @@ public static class Troubleshooter
     /// The checks as plain text, for the clipboard and the device diagnostics file:
     /// the heading, the headline and summary, then one "Status: title" line per check with
     /// its detail indented below, and its more help (when it has some) on the line after. Always
-    /// English: it is pasted into support requests. Text the backends stored in the snapshot (a failure's
-    /// message, the 32-bit helper's problem) was worded when it was captured, in the UI language.
+    /// English: it is pasted into support requests. The texts the backends stored in the snapshot come
+    /// in their English twins (<see cref="DiscoverySnapshot.ForReport"/>). Error text the system words
+    /// itself (an HttpRequestException's message) stays as the system gave it.
     /// </summary>
-    public static string Report(DiscoverySnapshot snapshot)
+    public static string Report(DiscoverySnapshot snapshot) => Loc.English(() =>
     {
-        var saved = Loc.Table;
-        var culture = CultureInfo.CurrentCulture;
-        var uiCulture = CultureInfo.CurrentUICulture;
-        Loc.Table = new Dictionary<string, string>();
-        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
-        try
+        var checks = Diagnose(snapshot.ForReport());
+        var text = new StringBuilder();
+        text.Append("Why isn't my scanner listed?\n");
+        text.Append(Headline(snapshot)).Append(". ").Append(Summary(checks)).Append('\n');
+        foreach (var check in checks)
         {
-            var checks = Diagnose(snapshot);
-            var text = new StringBuilder();
-            text.Append("Why isn't my scanner listed?\n");
-            text.Append(Headline(snapshot)).Append(". ").Append(Summary(checks)).Append('\n');
-            foreach (var check in checks)
-            {
-                text.Append(StatusLabel(check.Status)).Append(": ").Append(check.Title).Append('\n');
-                text.Append("  ").Append(check.Detail).Append('\n');
-                if (check.More.Length > 0) text.Append("  ").Append(check.More).Append('\n');
-            }
-            return text.ToString();
+            text.Append(StatusLabel(check.Status)).Append(": ").Append(check.Title).Append('\n');
+            text.Append("  ").Append(check.Detail).Append('\n');
+            if (check.More.Length > 0) text.Append("  ").Append(check.More).Append('\n');
         }
-        finally
-        {
-            Loc.Table = saved;
-            CultureInfo.CurrentCulture = culture;
-            CultureInfo.CurrentUICulture = uiCulture;
-        }
-    }
+        return text.ToString();
+    });
 
     /// <summary>
     /// The network status of a computer connected to these networks: none is offline; a public
@@ -358,7 +361,9 @@ public static class Troubleshooter
     {
         ScanException { Kind: ScanErrorKind.Cancelled or ScanErrorKind.ExportFailed or ScanErrorKind.Unsupported } => null,
         OperationCanceledException => null,
-        ScanException scan => new ScannerFailure(deviceName, scan.Message, scan.Problem),
+        ScanException scan => new ScannerFailure(deviceName, scan.Message, scan.Problem, scan.ReportMessage),
+        EsclCertificateException certificate => new ScannerFailure(deviceName, certificate.Message,
+                                                                   ReportMessage: certificate.ReportMessage),
         _ => new ScannerFailure(deviceName, error.Message),
     };
 

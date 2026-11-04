@@ -87,11 +87,11 @@ public enum EsclPageReader {
         guard let data: Data = try? Data(contentsOf: file, options: .alwaysMapped),
               let source: CGImageSource = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0 else {
-            throw EsclFormatError(L10n.t("unknown image format"))
+            throw EsclFormatError(reason: { L10n.t("unknown image format") })
         }
         let options: [CFString: Any] = [kCGImageSourceShouldCache: false]
         guard let image: CGImage = CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary) else {
-            throw EsclFormatError(L10n.t("unknown image format"))
+            throw EsclFormatError(reason: { L10n.t("unknown image format") })
         }
         return image
     }
@@ -322,16 +322,16 @@ public final class EsclClient: @unchecked Sendable {
             if Task.isCancelled || error.code == .timedOut {
                 throw error
             }
-            throw ScanError.scanFailed(L10n.t("Could not reach {0}: {1}", deviceName, error.localizedDescription))
+            throw ScanError.scanFailed(reason: { L10n.t("Could not reach {0}: {1}", deviceName, error.localizedDescription) })
         }
 
         if jobAnswer.status != 201 {
             let failure: EsclJobFailure = try await jobFailure(
-                source, status: jobAnswer.status, fallback: L10n.t("{0} rejected the scan job (HTTP {1}).", deviceName, jobAnswer.status))
+                source, status: jobAnswer.status, fallback: { L10n.t("{0} rejected the scan job (HTTP {1}).", deviceName, jobAnswer.status) })
             throw failure.error
         }
         guard let jobURL: URL = EsclJob.resolveLocation(scanJobs, jobAnswer.location) else {
-            throw ScanError.scanFailed(L10n.t("{0} accepted the scan job but did not say where to fetch it.", deviceName))
+            throw ScanError.scanFailed(reason: { L10n.t("{0} accepted the scan job but did not say where to fetch it.", deviceName) })
         }
 
         let run: EsclJobRun = EsclJobRun(url: jobURL)
@@ -388,7 +388,7 @@ public final class EsclClient: @unchecked Sendable {
                 }
                 guard (200..<300).contains(answer.status), let file: URL = answer.file else {
                     let failure: EsclJobFailure = try await jobFailure(
-                        source, status: answer.status, fallback: L10n.t("{0} returned HTTP {1}.", deviceName, answer.status))
+                        source, status: answer.status, fallback: { L10n.t("{0} returned HTTP {1}.", deviceName, answer.status) })
                     if pages.isEmpty {
                         throw failure.error
                     }
@@ -405,8 +405,13 @@ public final class EsclClient: @unchecked Sendable {
                     image = try readPage(file)
                 } catch {
                     EsclClient.remove(file)
-                    let unreadable: ScanError = ScanError.scanFailed(
-                        L10n.t("{0} sent page {1} in a form that could not be read ({2}).", deviceName, pages.count + 1, error.localizedDescription))
+                    let pageNumber: Int = pages.count + 1
+                    let unreadable: ScanError = .scanFailed(
+                        L10n.t("{0} sent page {1} in a form that could not be read ({2}).", deviceName, pageNumber, error.localizedDescription),
+                        english: L10n.english {
+                            L10n.t("{0} sent page {1} in a form that could not be read ({2}).", deviceName, pageNumber,
+                                   (error as? EsclFormatError)?.reportMessage ?? error.localizedDescription)
+                        })
                     if pages.isEmpty {
                         throw unreadable
                     }
@@ -461,7 +466,7 @@ public final class EsclClient: @unchecked Sendable {
 
     /// The error for a failed job request: the scanner's own problem when its status names one (or busy
     /// for a 503 that outlasted the retries), else `fallback`; and the stop it makes after the first page.
-    private func jobFailure(_ source: ScanSource, status: Int, fallback: String) async throws -> EsclJobFailure {
+    private func jobFailure(_ source: ScanSource, status: Int, fallback: () -> String) async throws -> EsclJobFailure {
         var problem: ScannerProblem? = try await getProblem(source)
         if problem == nil && EsclRetry.isRetryable(status) {
             problem = .busy
@@ -470,7 +475,7 @@ public final class EsclClient: @unchecked Sendable {
             let reason: String = ScannerProblems.describe(named) + " (HTTP \(status))"
             return EsclJobFailure(error: ScanError.scannerProblem(named), stop: ScanStop(reason: reason, problem: named))
         }
-        let error: ScanError = ScanError.scanFailed(fallback)
+        let error: ScanError = ScanError.scanFailed(reason: fallback)
         return EsclJobFailure(error: error, stop: ScanStop.from(error))
     }
 

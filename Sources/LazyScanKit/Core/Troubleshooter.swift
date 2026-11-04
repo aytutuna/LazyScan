@@ -104,11 +104,14 @@ public struct ManualHostStatus: Equatable, Sendable {
     public var listed: Bool
     /// Why nothing is listed, in plain language; nil when listed or not checked yet.
     public var problem: String?
+    /// `problem` in English, for the support report; the same text when it is not translated.
+    public var reportProblem: String?
 
-    public init(address: String, listed: Bool, problem: String? = nil) {
+    public init(address: String, listed: Bool, problem: String? = nil, reportProblem: String? = nil) {
         self.address = address
         self.listed = listed
         self.problem = problem
+        self.reportProblem = reportProblem ?? problem
     }
 }
 
@@ -120,11 +123,14 @@ public struct ScannerFailure: Equatable, Sendable {
     public var message: String
     /// The condition at the scanner behind it, when the connection could tell.
     public var problem: ScannerProblem?
+    /// `message` in English, for the support report; the same text when it is not translated.
+    public var reportMessage: String
 
-    public init(deviceName: String, message: String, problem: ScannerProblem? = nil) {
+    public init(deviceName: String, message: String, problem: ScannerProblem? = nil, reportMessage: String? = nil) {
         self.deviceName = deviceName
         self.message = message
         self.problem = problem
+        self.reportMessage = reportMessage ?? message
     }
 }
 
@@ -146,6 +152,8 @@ public struct DiscoverySnapshot: Equatable, Sendable {
     /// Why the 32-bit TWAIN helper (Windows) does not reach `thirtyTwoBitOnlyDrivers`, as
     /// sentences about the helper ("It …") with what to do; nil when not known. Never set on the Mac.
     public var thirtyTwoBitHelperProblem: String?
+    /// `thirtyTwoBitHelperProblem` in English, for the support report; the same text when it is not translated.
+    public var thirtyTwoBitHelperReportProblem: String?
     public var discovery: DiscoveryStatus
     /// Why the search is unavailable, as the system put it; nil otherwise.
     public var discoveryDetail: String?
@@ -158,7 +166,7 @@ public struct DiscoverySnapshot: Equatable, Sendable {
                 network: NetworkStatus = .unknown, wiaService: ServiceStatus = .unknown,
                 twain: TwainStatus = .unknown, twainDriverCount: Int = 0,
                 thirtyTwoBitOnlyDrivers: [String] = [], thirtyTwoBitHelperProblem: String? = nil,
-                discovery: DiscoveryStatus = .unknown,
+                thirtyTwoBitHelperReportProblem: String? = nil, discovery: DiscoveryStatus = .unknown,
                 discoveryDetail: String? = nil, discoveredCount: Int = 0,
                 manualHosts: [ManualHostStatus] = [], lastFailure: ScannerFailure? = nil) {
         self.platform = platform
@@ -169,6 +177,7 @@ public struct DiscoverySnapshot: Equatable, Sendable {
         self.twainDriverCount = twainDriverCount
         self.thirtyTwoBitOnlyDrivers = thirtyTwoBitOnlyDrivers
         self.thirtyTwoBitHelperProblem = thirtyTwoBitHelperProblem
+        self.thirtyTwoBitHelperReportProblem = thirtyTwoBitHelperReportProblem
         self.discovery = discovery
         self.discoveryDetail = discoveryDetail
         self.discoveredCount = discoveredCount
@@ -178,6 +187,19 @@ public struct DiscoverySnapshot: Equatable, Sendable {
 
     /// The scanners listed other than the demo scanner.
     public var listedScannerCount: Int { devices.filter { !$0.isDemo }.count }
+
+    /// The snapshot with the texts the backends worded in the UI language replaced by their English twins.
+    var forReport: DiscoverySnapshot {
+        var english = self
+        english.thirtyTwoBitHelperProblem = thirtyTwoBitHelperReportProblem ?? thirtyTwoBitHelperProblem
+        english.manualHosts = manualHosts.map { host in
+            var copy = host
+            copy.problem = host.reportProblem
+            return copy
+        }
+        if let failure = lastFailure { english.lastFailure?.message = failure.reportMessage }
+        return english
+    }
 }
 
 /// One line of the troubleshooter: what was checked, how it came out, what to do.
@@ -331,11 +353,12 @@ public enum Troubleshooter {
     /// The checks as plain text, for the pasteboard and the device diagnostics file: the heading,
     /// the headline and summary, then one "Status: title" line per check with its detail
     /// indented below, and its more help (when it has some) on the line after. Always English: it
-    /// is pasted into support requests. Text the backends stored in the snapshot (a failure's
-    /// message, the 32-bit helper's problem) was worded when it was captured, in the UI language.
+    /// is pasted into support requests. The texts the backends stored in the snapshot come in their
+    /// English twins (`DiscoverySnapshot.forReport`). Error text the system words itself (a URLError's
+    /// description) stays as the system gave it.
     public static func report(_ snapshot: DiscoverySnapshot) -> String {
-        L10n.withTable([:], language: "en") {
-            let checks = diagnose(snapshot)
+        L10n.english {
+            let checks = diagnose(snapshot.forReport)
             var text = "Why isn't my scanner listed?\n"
             text += headline(snapshot) + ". " + summary(checks) + "\n"
             for check in checks {
@@ -369,8 +392,12 @@ public enum Troubleshooter {
             case .deviceUnavailable, .sessionFailed, .scanFailed, .scannerProblem:
                 return ScannerFailure(deviceName: deviceName,
                                       message: scanError.errorDescription ?? error.localizedDescription,
-                                      problem: scanError.problem)
+                                      problem: scanError.problem, reportMessage: scanError.reportDescription)
             }
+        }
+        if let certificate = error as? EsclCertificateError {
+            return ScannerFailure(deviceName: deviceName, message: certificate.message,
+                                  reportMessage: L10n.english { certificate.message })
         }
         return ScannerFailure(deviceName: deviceName, message: error.localizedDescription)
     }

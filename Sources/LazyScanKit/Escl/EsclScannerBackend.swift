@@ -19,12 +19,16 @@ public struct EsclAddressCheck: Equatable, Sendable {
     public let certificate: EsclCertificateError?
     /// Nothing usable answered; the text says so, for the user.
     public let error: String?
+    /// `error` in English, for the support report.
+    public let reportError: String?
 
-    public init(address: ScannerAddress, capabilities: EsclCapabilities?, certificate: EsclCertificateError?, error: String?) {
+    public init(address: ScannerAddress, capabilities: EsclCapabilities?, certificate: EsclCertificateError?, error: String?,
+                reportError: String? = nil) {
         self.address = address
         self.capabilities = capabilities
         self.certificate = certificate
         self.error = error
+        self.reportError = reportError ?? error
     }
 
     /// The scanner did not answer at all (nothing to do with its certificate): for an address typed by
@@ -103,6 +107,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         var uuid: String?
         /// Why it is not listed, for the diagnostics.
         var problem: String?
+        /// `problem` in English, for the support report.
+        var reportProblem: String?
     }
 
     /// A check under way of an address added by hand.
@@ -324,8 +330,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             }
             return result
         } catch {
+            let stopped: () -> String = { L10n.t("No scanner answered at {0} (the check was stopped).", address) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: L10n.t("No scanner answered at {0} (the check was stopped).", address))
+                                    error: stopped(), reportError: L10n.english(stopped))
         }
     }
 
@@ -356,11 +363,15 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             uuid = pinned
         }
         var problem: String?
+        var reportProblem: String?
         if result.capabilities == nil {
             problem = result.certificate?.message ?? result.error
+            reportProblem = result.certificate.map { (certificate: EsclCertificateError) -> String in
+                L10n.english { certificate.message }
+            } ?? result.reportError
         }
         return ManualHost(address: address, listed: result.capabilities != nil || confirmable,
-                          name: result.capabilities?.makeAndModel, uuid: uuid, problem: problem)
+                          name: result.capabilities?.makeAndModel, uuid: uuid, problem: problem, reportProblem: reportProblem)
     }
 
     /// Asks `address` for its capabilities: what adding a scanner by address checks first. `firstUse`
@@ -372,8 +383,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let validator: EsclCertificateValidator = EsclCertificateValidator(store: trust, deviceUuid: nil, deviceName: name,
                                                                            firstUse: firstUse)
         guard let base: URL = await connectURL(address) else {
+            let unusable: () -> String = { L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.unusable(address)) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.unusable(address)))
+                                    error: unusable(), reportError: L10n.english(unusable))
         }
         let client: EsclClient = EsclClient(baseURL: base, deviceName: name, validator: validator, options: clientOptions)
         do {
@@ -386,9 +398,11 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             if Task.isCancelled || error is CancellationError {
                 throw CancellationError()
             }
-            let reason: String = EsclScannerBackend.checkFailure(error)
+            let unanswered: () -> String = {
+                L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.checkFailure(error))
+            }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
-                                    error: L10n.t("No scanner answered at {0} ({1}).", address, reason))
+                                    error: unanswered(), reportError: L10n.english(unanswered))
         }
     }
 
@@ -530,9 +544,10 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     /// Throws `ScanError`, or the `EsclCertificateError`.
     public func openSession(deviceID: String, interactive: Bool) async throws -> any ScannerSession {
         guard let record: EsclDevice = records.first(where: { (device: EsclDevice) -> Bool in device.info.id == deviceID }) else {
-            throw ScanError.deviceUnavailable(L10n.t("The selected scanner is not connected."))
+            throw ScanError.deviceUnavailable(reason: { L10n.t("The selected scanner is not connected.") })
         }
         var failures: [String] = []
+        var reportFailures: [String] = []
         for address in record.addresses {
             var firstUse: String?
             var trustedHere: Bool = false
@@ -540,7 +555,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                 let validator: EsclCertificateValidator = EsclCertificateValidator(
                     store: trust, deviceUuid: record.uuid, deviceName: record.info.name, firstUse: firstUse)
                 guard let base: URL = await connectURL(address) else {
-                    failures.append(L10n.t("{0}: {1}", address, EsclScannerBackend.unusable(address)))
+                    let unusable: () -> String = { L10n.t("{0}: {1}", address, EsclScannerBackend.unusable(address)) }
+                    failures.append(unusable())
+                    reportFailures.append(L10n.english(unusable))
                     break
                 }
                 let client: EsclClient = EsclClient(baseURL: base, deviceName: record.info.name, validator: validator,
@@ -569,12 +586,17 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     guard let reason: String = EsclScannerBackend.connectionFailure(error) else {
                         throw error
                     }
+                    let englishReason: String = (error as? EsclFormatError)?.reportMessage
+                        ?? L10n.english { EsclScannerBackend.connectionFailure(error) } ?? reason
                     failures.append(L10n.t("{0}: {1}", address, reason))
+                    reportFailures.append(L10n.english { L10n.t("{0}: {1}", address, englishReason) })
                     break
                 }
             }
         }
-        throw ScanError.sessionFailed(L10n.t("{0} did not answer ({1}).", record.info.name, failures.joined(separator: "; ")))
+        throw ScanError.sessionFailed(
+            L10n.t("{0} did not answer ({1}).", record.info.name, failures.joined(separator: "; ")),
+            english: L10n.english { L10n.t("{0} did not answer ({1}).", record.info.name, reportFailures.joined(separator: "; ")) })
     }
 
     /// The scanner listed as `deviceID` is connected over plain HTTP although it also has an HTTPS address
@@ -664,7 +686,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         updated.discoveredCount = discovered.count
         var hostsChecked: [ManualHostStatus] = snapshot.manualHosts
         for host in manual {
-            hostsChecked.append(ManualHostStatus(address: host.address.description, listed: host.listed, problem: host.problem))
+            hostsChecked.append(ManualHostStatus(address: host.address.description, listed: host.listed,
+                                                 problem: host.problem, reportProblem: host.reportProblem))
         }
         updated.manualHosts = hostsChecked
         return updated
@@ -682,8 +705,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     }
 
     /// What the search found and what each address added by hand answered, for devices.txt and Copy
-    /// diagnostics; nil when there is nothing to say. The reason an address was not listed was worded
-    /// when it was checked, in the UI language.
+    /// diagnostics; nil when there is nothing to say. Always English, except
+    /// error text the system words itself.
     public var diagnosticsReport: String? {
         var text: String = ""
         if let discovery {
@@ -705,7 +728,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                 if host.listed {
                     text += "  \(host.address): listed as \"\(host.name ?? host.address.host)\"\n"
                 } else {
-                    text += "  \(host.address): not listed (\(host.problem ?? ""))\n"
+                    text += "  \(host.address): not listed (\(host.reportProblem ?? ""))\n"
                 }
             }
         }

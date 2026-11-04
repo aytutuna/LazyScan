@@ -111,7 +111,7 @@ public final class MockScannerBackend: ScannerBackend {
 
     public func openSession(deviceID: String) async throws -> any ScannerSession {
         guard let info = devices.first(where: { $0.id == deviceID }) else {
-            throw ScanError.deviceUnavailable(L10n.t("The demo scanner is not available."))
+            throw ScanError.deviceUnavailable(reason: { L10n.t("The demo scanner is not available.") })
         }
         return MockScannerSession(info: info, backend: self)
     }
@@ -164,7 +164,7 @@ private final class MockScannerSession: ScannerSession {
             rendered = MockBedRenderer.renderBed(dpi: 100, intent: settings.intent)
         }
         guard let image = rendered else {
-            throw ScanError.scanFailed(L10n.t("Could not render the demo overview."))
+            throw ScanError.scanFailed(reason: { L10n.t("Could not render the demo overview.") })
         }
         return image
     }
@@ -196,7 +196,7 @@ private final class MockScannerSession: ScannerSession {
             ? MockBedRenderer.renderBookSpread(dpi: dpi, spreadIndex: spread)
             : MockBedRenderer.renderBed(dpi: dpi, intent: settings.intent)
         guard var image = rendered else {
-            throw ScanError.scanFailed(L10n.t("Could not render the demo scan."))
+            throw ScanError.scanFailed(reason: { L10n.t("Could not render the demo scan.") })
         }
         if idCard { backend.idCardTurnedOver = cardSide == .front }
         if book { backend.bookSpread = spread + 1 }
@@ -285,7 +285,7 @@ private final class MockScannerSession: ScannerSession {
                                                            side: side, sheetInches: sheetInches)
                 }
                 guard let image = rendered else {
-                    throw ScanError.scanFailed(L10n.t("Could not render the demo scan."))
+                    throw ScanError.scanFailed(reason: { L10n.t("Could not render the demo scan.") })
                 }
                 pages.append(ScannedPage(image: image, dpi: dpi, colorMode: settings.colorMode))
             }

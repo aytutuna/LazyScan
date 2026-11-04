@@ -55,7 +55,7 @@ public final class EsclScannerSession: ScannerSession {
         }
         let result: EsclJobResult = try await runJob(dpi: dpi, colorMode: .color, source: .flatbed, selection: nil)
         guard let first: ScannedPage = result.pages.first else {
-            throw ScanError.scanFailed(L10n.t("The scanner returned no overview image."))
+            throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no overview image.") })
         }
         return first.image
     }
@@ -73,7 +73,7 @@ public final class EsclScannerSession: ScannerSession {
                                                      source: settings.source, selection: flatbedSelection,
                                                      duplex: settings.duplex == .both, paperSize: settings.paperSize)
         if result.pages.isEmpty {
-            throw ScanError.scanFailed(L10n.t("The scanner did not return any image data."))
+            throw ScanError.scanFailed(reason: { L10n.t("The scanner did not return any image data.") })
         }
         lastScanStop = result.stop
         // A device that does not list two-sided feeding scans one side (EsclScanRequest.create).

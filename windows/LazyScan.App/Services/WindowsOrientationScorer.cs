@@ -20,7 +20,7 @@ public sealed class WindowsOrientationScorer : IOrientationScorer
     public OrientationScore Score(RgbaImage image, CancellationToken token)
     {
         var engine = _engine.Value
-            ?? throw ScanException.ScanFailed(Loc.T("OCR failed: {0}",
+            ?? throw ScanException.ScanFailed(() => Loc.T("OCR failed: {0}",
                 Loc.T("no OCR language pack is installed (Settings → Time & Language → Language).")));
         // The copy read is at most 1600 pixels long, well inside the engine's limit; a larger
         // image is made smaller all the same.

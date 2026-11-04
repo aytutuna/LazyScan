@@ -17,6 +17,7 @@ keeps the companion's sync keys on Windows and is not called elsewhere.</Descrip
 
   <ItemGroup>
     <InternalsVisibleTo Include="LazyScan.Core.Tests" />
+    <InternalsVisibleTo Include="LazyScan.App.Tests" />
   </ItemGroup>
 
 </Project>

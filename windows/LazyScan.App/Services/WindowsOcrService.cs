@@ -39,7 +39,7 @@ public sealed class WindowsOcrService : IOcrService
         var primary = OcrEngine.TryCreateFromUserProfileLanguages();
         if (primary is null && OcrEngine.AvailableRecognizerLanguages.Count == 0)
         {
-            throw ScanException.ScanFailed(Loc.T("OCR failed: {0}",
+            throw ScanException.ScanFailed(() => Loc.T("OCR failed: {0}",
                 Loc.T("no OCR language pack is installed (Settings → Time & Language → Language).")));
         }
 
@@ -121,7 +121,7 @@ public sealed class WindowsOcrService : IOcrService
         if (primaryLines is not null || anyFallbackSucceeded) return [];
         // Nothing could run at all: surface the primary engine's error (the caller then
         // writes the page without a text layer).
-        throw primaryError ?? ScanException.ScanFailed(Loc.T("OCR failed: {0}", Loc.T("no recognizer could process the page.")));
+        throw primaryError ?? ScanException.ScanFailed(() => Loc.T("OCR failed: {0}", Loc.T("no recognizer could process the page.")));
     }
 
     private static async Task<List<OcrLine>> Recognize(OcrEngine engine, SoftwareBitmap bitmap,
@@ -134,7 +134,7 @@ public sealed class WindowsOcrService : IOcrService
         }
         catch (Exception e)
         {
-            throw ScanException.ScanFailed(Loc.T("OCR failed: {0}", e.Message));
+            throw ScanException.ScanFailed(() => Loc.T("OCR failed: {0}", e.Message));
         }
 
         var lines = new List<OcrLine>();

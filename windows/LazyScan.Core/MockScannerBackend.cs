@@ -119,7 +119,7 @@ public sealed class MockScannerBackend : IScannerBackend
     public Task<IScannerSession> OpenSessionAsync(string deviceId)
     {
         var info = _devices.FirstOrDefault(d => d.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable(Loc.T("The demo scanner is not available."));
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The demo scanner is not available."));
         return Task.FromResult<IScannerSession>(new MockScannerSession(info, this));
     }
 }

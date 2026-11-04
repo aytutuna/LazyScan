@@ -585,6 +585,31 @@ final class TroubleshooterTests: XCTestCase {
         XCTAssertNil(Troubleshooter.failure(deviceName: "Acme", error: ScanError.unsupported("1200 dpi")))
     }
 
+    func test_report_keepsTheFailureAndHostReasonsInEnglish() {
+        let table = ["Scan failed: {0}": "Tarama başarısız: {0}", "The scanner returned no pages.": "Tarayıcı sayfa döndürmedi."]
+        let (failure, host) = L10n.withTable(table, language: "tr") { () -> (ScannerFailure?, ManualHostStatus) in
+            let error = ScanError.scanFailed(reason: { L10n.t("The scanner returned no pages.") })
+            let shown = ManualHostStatus(address: "192.168.1.9", listed: false, problem: L10n.t("Scan failed: {0}", "x"),
+                                         reportProblem: L10n.english { L10n.t("Scan failed: {0}", "x") })
+            return (Troubleshooter.failure(deviceName: "Office MFP", error: error), shown)
+        }
+        XCTAssertEqual(failure?.message, "Tarama başarısız: Tarayıcı sayfa döndürmedi.")
+        XCTAssertEqual(failure?.reportMessage, "Scan failed: The scanner returned no pages.")
+        XCTAssertEqual(host.problem, "Tarama başarısız: x")
+        let snapshot = DiscoverySnapshot(manualHosts: [host], lastFailure: failure)
+        let report = L10n.withTable(table, language: "tr") { Troubleshooter.report(snapshot) }
+        XCTAssertTrue(report.contains("Scan failed: The scanner returned no pages."))
+        XCTAssertTrue(report.contains("Scan failed: x"))
+        XCTAssertFalse(report.contains("Tarama"))
+    }
+
+    func test_formatError_keepsItsEnglishForTheReport() {
+        let table = ["unknown image format": "bilinmeyen görüntü biçimi"]
+        let error = L10n.withTable(table, language: "tr") { EsclFormatError(reason: { L10n.t("unknown image format") }) }
+        XCTAssertEqual(error.message, "bilinmeyen görüntü biçimi")
+        XCTAssertEqual(error.reportMessage, "unknown image format")
+    }
+
     func test_failure_ignoresCancellation() {
         XCTAssertNil(Troubleshooter.failure(deviceName: "Acme", error: CancellationError()))
     }

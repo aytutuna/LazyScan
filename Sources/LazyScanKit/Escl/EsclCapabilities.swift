@@ -9,9 +9,18 @@ import CoreGraphics
 /// of the C# code's `FormatException`. `message` is written for the user.
 public struct EsclFormatError: Error, Equatable, LocalizedError, Sendable {
     public let message: String
+    /// `message` in English whatever the UI language is, for the support report.
+    public let reportMessage: String
 
     public init(_ message: String) {
         self.message = message
+        self.reportMessage = message
+    }
+
+    /// For a message worded with `L10n.t`, so the report gets it in English too.
+    public init(reason: () -> String) {
+        self.message = reason()
+        self.reportMessage = L10n.english(reason)
     }
 
     public var errorDescription: String? { message }
@@ -117,7 +126,7 @@ public enum EsclCapabilitiesParser {
     public static func parse(data: Data) throws -> EsclCapabilities {
         var problem: String = ""
         guard let root = EsclXml.parse(data, error: &problem) else {
-            throw EsclFormatError(L10n.t("The scanner capabilities are not valid XML: {0}", problem))
+            throw EsclFormatError(reason: { L10n.t("The scanner capabilities are not valid XML: {0}", problem) })
         }
 
         var platen: EsclInputCaps?

@@ -158,7 +158,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
         catch (HttpRequestException e)
         {
             if (validator?.TakeRejection() is { } rejection) throw rejection;
-            throw ScanException.ScanFailed(Loc.T("Could not reach {0}: {1}", DeviceName, e.Message));
+            throw ScanException.ScanFailed(() => Loc.T("Could not reach {0}: {1}", DeviceName, e.Message));
         }
 
         Uri jobUri;
@@ -167,10 +167,10 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
             if (jobResponse.StatusCode != HttpStatusCode.Created)
             {
                 throw await JobFailure(source, jobResponse.StatusCode,
-                    Loc.T("{0} rejected the scan job (HTTP {1}).", DeviceName, (int)jobResponse.StatusCode), token).ConfigureAwait(false);
+                    () => Loc.T("{0} rejected the scan job (HTTP {1}).", DeviceName, (int)jobResponse.StatusCode), token).ConfigureAwait(false);
             }
             jobUri = EsclJob.ResolveLocation(scanJobs, jobResponse.Headers.Location?.OriginalString)
-                ?? throw ScanException.ScanFailed(Loc.T("{0} accepted the scan job but did not say where to fetch it.", DeviceName));
+                ?? throw ScanException.ScanFailed(() => Loc.T("{0} accepted the scan job but did not say where to fetch it.", DeviceName));
         }
 
         var pages = new List<ScannedPage>();
@@ -200,7 +200,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                     if (!doc.IsSuccessStatusCode)
                     {
                         var failure = await JobFailure(source, doc.StatusCode,
-                            Loc.T("{0} returned HTTP {1}.", DeviceName, (int)doc.StatusCode), token).ConfigureAwait(false);
+                            () => Loc.T("{0} returned HTTP {1}.", DeviceName, (int)doc.StatusCode), token).ConfigureAwait(false);
                         if (pages.Count == 0) throw failure;
                         stop = ScanStop.From(failure);
                         break;
@@ -230,7 +230,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
                 catch (Exception e)
                 {
                     var unreadable = ScanException.ScanFailed(
-                        Loc.T("{0} sent page {1} in a form that could not be read ({2}).", DeviceName, pages.Count + 1, e.Message));
+                        () => Loc.T("{0} sent page {1} in a form that could not be read ({2}).", DeviceName, pages.Count + 1, e.Message));
                     if (pages.Count == 0) throw unreadable;
                     stop = ScanStop.From(unreadable);
                     break;
@@ -315,7 +315,7 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
     /// The error for a failed job request: the scanner's own problem when its status names
     /// one (or "busy" for a 503 that outlasted the retries), else <paramref name="fallback"/>.
     /// </summary>
-    private async Task<ScanException> JobFailure(ScanSource source, HttpStatusCode status, string fallback,
+    private async Task<ScanException> JobFailure(ScanSource source, HttpStatusCode status, Func<string> fallback,
                                                  CancellationToken token)
     {
         var problem = await GetProblemAsync(source, token).ConfigureAwait(false);

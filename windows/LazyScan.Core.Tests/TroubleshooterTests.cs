@@ -624,6 +624,51 @@ public class TroubleshooterTests
     }
 
     [Fact]
+    public void Report_KeepsTheFailureAndHostReasonsInEnglish()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["Scan failed: {0}"] = "Tarama başarısız: {0}",
+            ["The scanner returned no pages."] = "Tarayıcı sayfa döndürmedi.",
+        };
+        try
+        {
+            var error = ScanException.ScanFailed(() => Loc.T("The scanner returned no pages."));
+            var failure = Troubleshooter.FailureFrom("Office MFP", error)!;
+            var host = new ManualHostStatus("192.168.1.9", false, Loc.T("Scan failed: {0}", "x"), Loc.English(() => Loc.T("Scan failed: {0}", "x")));
+            Assert.Equal("Tarama başarısız: Tarayıcı sayfa döndürmedi.", failure.Message);
+            Assert.Equal("Scan failed: The scanner returned no pages.", failure.ReportMessage);
+            Assert.Equal("Tarama başarısız: x", host.Problem);
+
+            var report = Troubleshooter.Report(new DiscoverySnapshot { ManualHosts = [host], LastFailure = failure });
+            Assert.Contains("Scan failed: The scanner returned no pages.", report);
+            Assert.Contains("Scan failed: x", report);
+            Assert.DoesNotContain("Tarama", report);
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
+    public void Report_KeepsAnUnreadableCapabilitiesDocumentInEnglish()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["The scanner capabilities are not valid XML: {0}"] = "Geçersiz XML: {0}",
+        };
+        try
+        {
+            var format = Assert.Throws<EsclFormatException>(() => EsclCapabilitiesParser.Parse("<a"));
+            Assert.StartsWith("Geçersiz XML: ", format.Message);
+            string english = Loc.English(() => format.Message);
+            Assert.StartsWith("The scanner capabilities are not valid XML: ", english);
+            var error = ScanException.SessionFailed(() => format.Message);
+            Assert.StartsWith("Could not open a session with the scanner: The scanner capabilities are not valid XML: ",
+                              Troubleshooter.FailureFrom("Office MFP", error)!.ReportMessage);
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
     public void CombineNetworks()
     {
         Assert.Equal(NetworkStatus.Offline, Troubleshooter.CombineNetworks([]));

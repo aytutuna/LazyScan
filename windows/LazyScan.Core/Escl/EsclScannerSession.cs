@@ -34,7 +34,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         int dpi = EsclCapabilities.Platen!.Resolutions.FirstOrDefault(r => r >= 150, 150);
         var result = await RunJob(dpi, ColorMode.Color, ScanSource.Flatbed, selection: null).ConfigureAwait(true);
-        if (result.Pages.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner returned no overview image."));
+        if (result.Pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no overview image."));
         return result.Pages[0].Image;
     }
 
@@ -50,7 +50,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         var result = await RunJob(settings.Resolution, settings.ColorMode, settings.Source,
                                   settings.Source == ScanSource.Flatbed ? selection : null,
                                   settings.Duplex == DuplexMode.Both, settings.PaperSize).ConfigureAwait(true);
-        if (result.Pages.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner did not return any image data."));
+        if (result.Pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
         LastScanStop = result.Stop;
         // A device that does not list two-sided feeding scans one side (EsclScanRequest.Create).
         if (settings.Source == ScanSource.DocumentFeeder && settings.Duplex == DuplexMode.Both)

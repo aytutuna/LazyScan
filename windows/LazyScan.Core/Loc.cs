@@ -22,6 +22,27 @@ public static class Loc
     }
 
     /// <summary>
+    /// Runs <paramref name="body"/> with every text and number in English, for what goes into a
+    /// support report.
+    /// </summary>
+    public static T English<T>(Func<T> body)
+    {
+        var saved = Override.Value;
+        var culture = CultureInfo.CurrentCulture;
+        var uiCulture = CultureInfo.CurrentUICulture;
+        Override.Value = new Dictionary<string, string>();
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+        try { return body(); }
+        finally
+        {
+            Override.Value = saved;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = uiCulture;
+        }
+    }
+
+    /// <summary>
     /// The text for <paramref name="english"/> in the UI language, with {0}, {1}... filled from
     /// <paramref name="args"/>. A trailing |context (as in "Scan|noun") tells translators which
     /// word is meant and is never shown in English.

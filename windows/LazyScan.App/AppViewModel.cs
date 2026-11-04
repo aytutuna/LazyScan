@@ -1532,7 +1532,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var scanned = await session.PerformScanAsync(s, selection);
             // Discard results that arrive after the user switched devices.
             if (_switchGeneration != generation) return;
-            if (scanned.Count == 0) throw ScanException.ScanFailed(Loc.T("The scanner returned no pages."));
+            if (scanned.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no pages."));
             ClearFailure();
             // A feeder batch cut short (a jam, a dropped connection) still returns its pages;
             // once they are handled the user is told the stack was not finished.

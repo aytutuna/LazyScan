@@ -160,7 +160,7 @@ extension AppState {
             let sheetIndex = page.sheetIndex
             let pages: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
                 guard let image = Self.loadSpread(source) else {
-                    throw ScanError.scanFailed(L10n.t("The spread could not be read."))
+                    throw ScanError.scanFailed(reason: { L10n.t("The spread could not be read.") })
                 }
                 var spread = ScannedPage(image: image, dpi: source.dpi, colorMode: s.colorMode, id: spreadID,
                                          createdAt: source.createdAt)

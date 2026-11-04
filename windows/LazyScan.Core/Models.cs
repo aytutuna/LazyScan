@@ -1719,11 +1719,14 @@ public sealed class ScanException : Exception
     public ScanErrorKind Kind { get; }
     /// <summary>The scanner condition behind this error, when the backend could tell.</summary>
     public ScannerProblem? Problem { get; }
+    /// <summary><see cref="Exception.Message"/> in English, for the support report.</summary>
+    public string ReportMessage { get; }
 
-    private ScanException(ScanErrorKind kind, string message, ScannerProblem? problem = null) : base(message)
+    private ScanException(ScanErrorKind kind, string message, string reportMessage, ScannerProblem? problem = null) : base(message)
     {
         Kind = kind;
         Problem = problem;
+        ReportMessage = reportMessage;
     }
 
     /// <summary>
@@ -1733,21 +1736,27 @@ public sealed class ScanException : Exception
     /// </summary>
     public static ScanException ForProblem(ScannerProblem problem, string? detail = null)
     {
-        string message = ScannerProblems.Describe(problem);
-        if (!string.IsNullOrWhiteSpace(detail)) message += $" ({detail})";
-        return new(ScannerProblems.Kind(problem), message, problem);
+        string suffix = string.IsNullOrWhiteSpace(detail) ? "" : $" ({detail})";
+        return new(ScannerProblems.Kind(problem), ScannerProblems.Describe(problem) + suffix,
+                   Loc.English(() => ScannerProblems.Describe(problem)) + suffix, problem);
     }
 
-    public static ScanException DeviceUnavailable(string detail) =>
-        new(ScanErrorKind.DeviceUnavailable, Loc.T("Scanner unavailable: {0}", detail));
-    public static ScanException SessionFailed(string detail) =>
-        new(ScanErrorKind.SessionFailed, Loc.T("Could not open a session with the scanner: {0}", detail));
-    public static ScanException ScanFailed(string detail) =>
-        new(ScanErrorKind.ScanFailed, Loc.T("Scan failed: {0}", detail));
+    // The detail comes as a function where it is worded with Loc.T, so the report gets it in English too.
+    public static ScanException DeviceUnavailable(string detail) => DeviceUnavailable(() => detail);
+    public static ScanException DeviceUnavailable(Func<string> detail) =>
+        Worded(ScanErrorKind.DeviceUnavailable, () => Loc.T("Scanner unavailable: {0}", detail()));
+    public static ScanException SessionFailed(string detail) => SessionFailed(() => detail);
+    public static ScanException SessionFailed(Func<string> detail) =>
+        Worded(ScanErrorKind.SessionFailed, () => Loc.T("Could not open a session with the scanner: {0}", detail()));
+    public static ScanException ScanFailed(string detail) => ScanFailed(() => detail);
+    public static ScanException ScanFailed(Func<string> detail) =>
+        Worded(ScanErrorKind.ScanFailed, () => Loc.T("Scan failed: {0}", detail()));
     public static ScanException Cancelled() =>
-        new(ScanErrorKind.Cancelled, Loc.T("The scan was cancelled."));
+        Worded(ScanErrorKind.Cancelled, () => Loc.T("The scan was cancelled."));
     public static ScanException ExportFailed(string detail) =>
-        new(ScanErrorKind.ExportFailed, Loc.T("Saving failed: {0}", detail));
+        Worded(ScanErrorKind.ExportFailed, () => Loc.T("Saving failed: {0}", detail));
     public static ScanException Unsupported(string detail) =>
-        new(ScanErrorKind.Unsupported, Loc.T("Unsupported: {0}", detail));
+        Worded(ScanErrorKind.Unsupported, () => Loc.T("Unsupported: {0}", detail));
+
+    private static ScanException Worded(ScanErrorKind kind, Func<string> text) => new(kind, text(), Loc.English(text));
 }

@@ -72,6 +72,8 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         public string? Uuid { get; set; }
         /// <summary>Why it is not listed, for the diagnostics.</summary>
         public string? Problem { get; set; }
+        /// <summary><see cref="Problem"/> in English, for the support report.</summary>
+        public string? ReportProblem { get; set; }
     }
 
     public EsclScannerBackend() : this(new EsclHostList(), new EsclTrustStore(), discover: true)
@@ -187,6 +189,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
             Name = result.Capabilities?.MakeAndModel,
             Uuid = result.Capabilities?.Uuid ?? (previous?.DeviceUuid is { Length: > 0 } uuid ? uuid : null),
             Problem = result.Capabilities is not null ? null : result.Certificate?.Message ?? result.Error,
+            ReportProblem = result.Capabilities is not null ? null : result.Certificate?.ReportMessage ?? result.ReportError,
         };
     }
 
@@ -224,14 +227,14 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
         {
-            string reason = e switch
+            string Unanswered() => Loc.T("No scanner answered at {0} ({1}).", address, e switch
             {
                 FormatException => Loc.T("it answered, but not like an eSCL scanner"),
                 OperationCanceledException => Loc.T("it did not answer in time"),
                 HttpRequestException { StatusCode: { } status } => Loc.T("it answered HTTP {0}", (int)status),
                 _ => e.Message,
-            };
-            return new EsclAddressCheck(address, null, null, Loc.T("No scanner answered at {0} ({1}).", address, reason));
+            });
+            return new EsclAddressCheck(address, null, null, Unanswered(), Loc.English(Unanswered));
         }
     }
 
@@ -347,8 +350,8 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     public async Task<IScannerSession> OpenSessionAsync(string deviceId, bool interactive)
     {
         var record = _records.FirstOrDefault(r => r.Info.Id == deviceId)
-            ?? throw ScanException.DeviceUnavailable(Loc.T("The selected scanner is not connected."));
-        var failures = new List<string>();
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
+        var failures = new List<Func<string>>();
         foreach (var address in record.Addresses)
         {
             string? firstUse = null;
@@ -384,12 +387,12 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
                 {
                     client.Dispose();
-                    failures.Add(Loc.T("{0}: {1}", address, ConnectionFailure(e)));
+                    failures.Add(() => Loc.T("{0}: {1}", address, ConnectionFailure(e)));
                     break;
                 }
             }
         }
-        throw ScanException.SessionFailed(Loc.T("{0} did not answer ({1}).", record.Info.Name, string.Join("; ", failures)));
+        throw ScanException.SessionFailed(() => Loc.T("{0} did not answer ({1}).", record.Info.Name, string.Join("; ", failures.Select(failure => failure()))));
     }
 
     /// <summary>
@@ -421,7 +424,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         DiscoveryDetail = _discovery?.Failure,
         DiscoveredCount = _discovered.Count,
         ManualHosts = [.. snapshot.ManualHosts,
-                       .. _manual.Values.Select(host => new ManualHostStatus(host.Address.ToString(), host.Listed, host.Problem))],
+                       .. _manual.Values.Select(host => new ManualHostStatus(host.Address.ToString(), host.Listed, host.Problem, host.ReportProblem))],
     };
 
     /// <summary>
@@ -439,8 +442,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         _ = ProbeManualHostsAsync(generation);
     }
 
-    /// <summary>The search and the hand-added addresses for devices.txt and Copy diagnostics. The reason an address was not listed
-    /// was worded when it was checked, in the UI language.</summary>
+    /// <summary>The search and the hand-added addresses for devices.txt and Copy diagnostics, in English.</summary>
     public string? DiagnosticsReport
     {
         get
@@ -464,7 +466,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 foreach (var host in _manual.Values)
                 {
                     text.Append($"  {host.Address}: "
-                                + (host.Listed ? $"listed as \"{host.Name ?? host.Address.Host}\"" : $"not listed ({host.Problem})")
+                                + (host.Listed ? $"listed as \"{host.Name ?? host.Address.Host}\"" : $"not listed ({host.ReportProblem})")
                                 + "\n");
                 }
             }
@@ -477,5 +479,9 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
 /// <param name="Capabilities">The scanner answered.</param>
 /// <param name="Certificate">The scanner's certificate needs the user's confirmation (or cannot be used).</param>
 /// <param name="Error">Nothing usable answered; the text says so, for the user.</param>
+/// <param name="ReportError"><paramref name="Error"/> in English, for the support report.</param>
 public sealed record EsclAddressCheck(ScannerAddress Address, EsclCapabilities? Capabilities,
-                                      EsclCertificateException? Certificate, string? Error);
+                                      EsclCertificateException? Certificate, string? Error, string? ReportError = null)
+{
+    public string? ReportError { get; init; } = ReportError ?? Error;
+}

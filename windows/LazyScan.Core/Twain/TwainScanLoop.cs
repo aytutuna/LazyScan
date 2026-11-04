@@ -191,7 +191,7 @@ public static class TwainScanLoop
                     {
                         if (ready.Info is not { } info)
                         {
-                            failure ??= ScanException.ScanFailed(Loc.T("The scanner did not describe the image it was sending."));
+                            failure ??= ScanException.ScanFailed(() => Loc.T("The scanner did not describe the image it was sending."));
                             result.UseNativeTransfers = true;
                             Stop();
                             break;
@@ -290,7 +290,7 @@ public static class TwainScanLoop
                 ? ScanException.Cancelled()
                 : request.Feeder
                     ? ScanException.ForProblem(ScannerProblem.FeederEmpty)
-                    : ScanException.ScanFailed(Loc.T("The scanner did not return any image data."));
+                    : ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
             return result;
         }
         result.Pages.AddRange(pages);

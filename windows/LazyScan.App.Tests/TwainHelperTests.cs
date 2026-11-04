@@ -348,6 +348,21 @@ public class TwainHelperTests
     }
 
     [Fact]
+    public async Task AMissingHelper_StaysEnglishInTheDiagnosticsReport()
+    {
+        Loc.Table = new Dictionary<string, string> { ["Scanner unavailable: {0}"] = "Tarayıcı kullanılamıyor: {0}" };
+        try
+        {
+            string missing = Path.Combine(AppContext.BaseDirectory, "no-such-folder", TwainHelperOptions.FileName);
+            using var backend = new Twain32ScannerBackend(null, new TwainHelperOptions(missing, Simulate: true), () => [@"Acmecme.ds"]);
+            await Listed(backend);
+            Assert.Contains("failed (Scanner unavailable:", backend.DiagnosticsReport);
+            Assert.DoesNotContain("Tarayıcı", backend.DiagnosticsReport);
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
     public async Task AMissingHelper_IsReportedClearly_AndNotTriedAgainOnItsOwn()
     {
         string missing = Path.Combine(AppContext.BaseDirectory, "no-such-folder", TwainHelperOptions.FileName);

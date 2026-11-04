@@ -19,6 +19,11 @@ public enum L10n {
         try $override.withValue(Override(table: table, language: language), operation: body)
     }
 
+    /// Runs `body` with every text in English, for what goes into a support report.
+    public static func english<T>(_ body: () throws -> T) rethrows -> T {
+        try withTable([:], language: "en", body)
+    }
+
     /// The text for `english` in the current language, with `{0}`, `{1}`... filled from `args`.
     /// A trailing `|context` (as in "Scan|noun") tells translators which word is meant and is
     /// never shown in English.

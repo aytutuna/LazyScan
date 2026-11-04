@@ -1359,9 +1359,11 @@ extension KeyedDecodingContainer {
 // MARK: - Errors
 
 public enum ScanError: LocalizedError {
-    case deviceUnavailable(String)
-    case sessionFailed(String)
-    case scanFailed(String)
+    /// The text after the colon is as shown to the user; `english` is the same reason in English
+    /// for the support report (nil when the text is not translated).
+    case deviceUnavailable(String, english: String? = nil)
+    case sessionFailed(String, english: String? = nil)
+    case scanFailed(String, english: String? = nil)
     case cancelled
     case exportFailed(String)
     case unsupported(String)
@@ -1369,11 +1371,29 @@ public enum ScanError: LocalizedError {
     /// twin of C# `ScanException.ForProblem`.
     case scannerProblem(ScannerProblem)
 
-    public var errorDescription: String? {
+    /// The reason worded by `reason`, and again in English for the support report.
+    public static func deviceUnavailable(reason: () -> String) -> ScanError {
+        .deviceUnavailable(reason(), english: L10n.english(reason))
+    }
+
+    public static func sessionFailed(reason: () -> String) -> ScanError {
+        .sessionFailed(reason(), english: L10n.english(reason))
+    }
+
+    public static func scanFailed(reason: () -> String) -> ScanError {
+        .scanFailed(reason(), english: L10n.english(reason))
+    }
+
+    public var errorDescription: String? { describe(inEnglish: false) }
+
+    /// The error in English whatever the UI language is, for the copied troubleshooter report.
+    public var reportDescription: String { L10n.english { describe(inEnglish: true) } }
+
+    private func describe(inEnglish: Bool) -> String {
         switch self {
-        case .deviceUnavailable(let s): return L10n.t("Scanner unavailable: {0}", s)
-        case .sessionFailed(let s): return L10n.t("Could not open a session with the scanner: {0}", s)
-        case .scanFailed(let s): return L10n.t("Scan failed: {0}", s)
+        case .deviceUnavailable(let s, let english): return L10n.t("Scanner unavailable: {0}", inEnglish ? english ?? s : s)
+        case .sessionFailed(let s, let english): return L10n.t("Could not open a session with the scanner: {0}", inEnglish ? english ?? s : s)
+        case .scanFailed(let s, let english): return L10n.t("Scan failed: {0}", inEnglish ? english ?? s : s)
         case .cancelled: return L10n.t("The scan was cancelled.")
         case .exportFailed(let s): return L10n.t("Saving failed: {0}", s)
         case .unsupported(let s): return L10n.t("Unsupported: {0}", s)

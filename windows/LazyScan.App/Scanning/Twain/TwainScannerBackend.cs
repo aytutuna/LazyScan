@@ -220,7 +220,7 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
             ?? throw ScanException.DeviceUnavailable("The selected scanner is not connected.");
         if (Availability == TwainAvailability.NoDataSourceManager)
         {
-            throw ScanException.DeviceUnavailable(TwainDiagnostics.NoDataSourceManagerMessage);
+            throw ScanException.DeviceUnavailable(() => TwainDiagnostics.NoDataSourceManagerMessage);
         }
         string name = deviceId["twain:".Length..];
         // A source that opens after the time limit has nobody to use it: close it at once.

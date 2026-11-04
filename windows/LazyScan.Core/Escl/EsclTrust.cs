@@ -220,6 +220,8 @@ public sealed class EsclCertificateException : Exception
     public EsclTrustedCertificate? Previous { get; }
     /// <summary>The certificate's subject, e.g. "CN=HPA1B2C3"; "" when there was none.</summary>
     public string Subject { get; }
+    /// <summary><see cref="Exception.Message"/> in English, for the support report.</summary>
+    public string ReportMessage { get; }
 
     public EsclCertificateException(EsclTrustVerdict verdict, string deviceName, string? deviceUuid, string authority,
                                     string fingerprint, string subject, EsclTrustedCertificate? previous = null)
@@ -232,6 +234,7 @@ public sealed class EsclCertificateException : Exception
         Fingerprint = fingerprint;
         Subject = subject;
         Previous = previous;
+        ReportMessage = Loc.English(() => MessageFor(verdict, deviceName));
     }
 
     /// <summary>The certificate can be trusted by the user (it exists and can be pinned).</summary>

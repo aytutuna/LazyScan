@@ -111,8 +111,8 @@ public class EsclTests
     [Fact]
     public void InvalidXmlIsAFormatException()
     {
-        Assert.Throws<FormatException>(() => EsclCapabilitiesParser.Parse("<html><body>Login</body>"));
-        Assert.Throws<FormatException>(() => EsclCapabilitiesParser.Parse(""));
+        Assert.ThrowsAny<FormatException>(() => EsclCapabilitiesParser.Parse("<html><body>Login</body>"));
+        Assert.ThrowsAny<FormatException>(() => EsclCapabilitiesParser.Parse(""));
     }
 
     // MARK: - Scan requests

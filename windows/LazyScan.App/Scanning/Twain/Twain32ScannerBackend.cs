@@ -134,7 +134,11 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
         {
             return snapshot.ThirtyTwoBitOnlyDrivers.Count == 0
                 ? snapshot
-                : snapshot with { ThirtyTwoBitHelperProblem = TwainDiagnostics.HelperProblem(Status, _cannotRun, reachedAny: false) };
+                : snapshot with
+                {
+                    ThirtyTwoBitHelperProblem = TwainDiagnostics.HelperProblem(Status, _cannotRun, reachedAny: false),
+                    ThirtyTwoBitHelperReportProblem = Loc.English(() => TwainDiagnostics.HelperProblem(Status, _cannotRun, reachedAny: false)),
+                };
         }
         return snapshot with
         {
@@ -172,7 +176,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
         catch (Exception e)
         {
             System.Diagnostics.Trace.TraceWarning($"TWAIN helper: listing the 32-bit drivers failed: {e.Message}");
-            Publish(generation, TwainHelperStatus.Failed, e.Message, [], _helper.PermanentFailure);
+            Publish(generation, TwainHelperStatus.Failed, e is ScanException scan ? scan.ReportMessage : e.Message, [], _helper.PermanentFailure);
             return;
         }
         Publish(generation, list);

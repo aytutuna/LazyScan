@@ -67,7 +67,7 @@ internal sealed class NTwainSessionHost
         var availability = EnsureSession();
         if (availability == TwainAvailability.NoDataSourceManager)
         {
-            throw ScanException.DeviceUnavailable(TwainDiagnostics.NoDataSourceManagerMessage);
+            throw ScanException.DeviceUnavailable(() => TwainDiagnostics.NoDataSourceManagerMessage);
         }
         if (availability != TwainAvailability.Available)
         {

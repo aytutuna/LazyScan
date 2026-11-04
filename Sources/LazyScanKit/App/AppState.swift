@@ -1122,7 +1122,7 @@ public final class AppState: ObservableObject {
             let scanned = try await session.performScan(settings: s, selection: selection)
             // Discard results that arrive after the user switched devices.
             guard self.switchGeneration == generation else { return }
-            guard !scanned.isEmpty else { throw ScanError.scanFailed(L10n.t("The scanner returned no pages.")) }
+            guard !scanned.isEmpty else { throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no pages.") }) }
             self.clearFailure()
             if flag.isCancelled { throw ScanError.cancelled }
             // A feeder batch cut short (a jam, a dropped connection) still returns its pages;
