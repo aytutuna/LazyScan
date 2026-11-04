@@ -57,8 +57,12 @@ jobs:
           fi
           unzip -q "$zip" -d "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION"
           echo "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py
       - name: Write the app's project
-        run: xcodegen generate --spec ios/project.yml
+        run: |
+          xcodegen generate --spec ios/project.yml
+          plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.ios.txt)" ios/LazyScaniOS/Info.plist
       - name: Write the API key
         run: |
           umask 077
