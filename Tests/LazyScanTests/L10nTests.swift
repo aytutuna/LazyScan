@@ -75,6 +75,27 @@ final class L10nTests: XCTestCase {
         }
     }
 
+    func testRightToLeftIsolatesPlaceholders() {
+        for language in ["ar", "he"] {
+            L10n.withTable(["Open {0}": "{0} x"], language: language) {
+                XCTAssertEqual(L10n.t("Open {0}", "Scan.pdf"), "\u{2068}Scan.pdf\u{2069} x", language)
+            }
+            L10n.withTable([:], language: language) {
+                XCTAssertEqual(L10n.plural(3, one: "{0} page, {1}", other: "{0} pages, {1}", "A4"),
+                               "\u{2068}\(L10n.plain(3))\u{2069} pages, \u{2068}A4\u{2069}", language)
+            }
+        }
+    }
+
+    func testLeftToRightIsNotIsolated() {
+        L10n.withTable(["Open {0}": "{0} dosyasını aç"], language: "tr") {
+            XCTAssertEqual(L10n.t("Open {0}", "Scan.pdf"), "Scan.pdf dosyasını aç")
+        }
+        L10n.withTable([:], language: "en") {
+            XCTAssertEqual(L10n.plural(3, one: "{0} page", other: "{0} pages"), "3 pages")
+        }
+    }
+
     func testPluralWithoutTableFallsBackToEnglish() {
         XCTAssertEqual(L10n.plural(2, one: "{0} scan", other: "{0} scans"), "2 scans")
     }

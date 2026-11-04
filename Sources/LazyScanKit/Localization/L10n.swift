@@ -102,20 +102,34 @@ public enum L10n {
         return String(describing: arg)
     }
 
+    /// `text` without the isolate marks `t` and `plural` put around values, for comparing a message
+    /// with a prefix built from an empty value.
+    public static func bare(_ text: String) -> String {
+        text.filter { $0 != "\u{2068}" && $0 != "\u{2069}" }
+    }
+
+    private static func isRightToLeft() -> Bool {
+        Locale.Language(identifier: language()).characterDirection == .rightToLeft
+    }
+
     // One pass, so a value that itself contains "{1}" is left alone. A placeholder with no
-    // argument stays as written. Numbers are written in the locale's format.
+    // argument stays as written. Numbers are written in the locale's format. In a right to left
+    // language each value is wrapped in first strong isolate and pop directional isolate marks, so
+    // a Latin name or a number does not reorder the words around it.
     private static func format(_ text: String, _ args: [Any]) -> String {
         guard !args.isEmpty, text.contains("{") else { return text }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.locale = locale()
+        let isolate = isRightToLeft()
         var result = ""
         var rest = Substring(text)
         while let open = rest.firstIndex(of: "{") {
             result += rest[..<open]
             let tail = rest[rest.index(after: open)...]
             if let close = tail.firstIndex(of: "}"), let i = Int(tail[..<close]), args.indices.contains(i) {
-                result += describe(args[i], formatter)
+                let value = describe(args[i], formatter)
+                result += isolate ? "\u{2068}" + value + "\u{2069}" : value
                 rest = tail[tail.index(after: close)...]
             } else {
                 result.append("{")

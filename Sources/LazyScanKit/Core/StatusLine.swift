@@ -272,7 +272,8 @@ public enum StatusLine {
         while i < chars.count {
             if fullWidth.contains(chars[i]) { return String(chars[0..<i]) }
             if i + 2 < chars.count && spaced.contains(chars[i]) && chars[i + 1] == " " {
-                let next: Character = chars[i + 2]
+                let j: Int = chars[i + 2] == "\u{2068}" && i + 3 < chars.count ? i + 3 : i + 2
+                let next: Character = chars[j]
                 if (next.isLetter && !next.isLowercase) || next.isNumber { return String(chars[0..<i]) }
             }
             i += 1

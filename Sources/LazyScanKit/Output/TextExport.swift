@@ -133,8 +133,8 @@ public enum TextExport {
     /// An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a
     /// full stop.
     private static func reason(_ message: String) -> String {
-        var reason = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        for prefix in [L10n.t("Scan failed: {0}", ""), L10n.t("OCR failed: {0}", "")] where reason.hasPrefix(prefix) {
+        var reason = L10n.bare(message).trimmingCharacters(in: .whitespacesAndNewlines)
+        for prefix in [L10n.bare(L10n.t("Scan failed: {0}", "")), L10n.bare(L10n.t("OCR failed: {0}", ""))] where reason.hasPrefix(prefix) {
             reason = String(reason.dropFirst(prefix.count))
         }
         if reason.isEmpty { reason = L10n.t("the text recognition did not work") }

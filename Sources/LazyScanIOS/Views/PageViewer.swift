@@ -856,8 +856,8 @@ struct PageTextSheet: View {
             return
         } catch {
             // The Kit's message starts with the title: the description is the reason alone.
-            let lead: String = L10n.t("The text could not be read: {0}", "")
-            let message: String = error.localizedDescription
+            let lead: String = L10n.bare(L10n.t("The text could not be read: {0}", ""))
+            let message: String = L10n.bare(error.localizedDescription)
             problem = message.hasPrefix(lead) ? String(message.dropFirst(lead.count)) : message
         }
     }

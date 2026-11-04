@@ -72,6 +72,10 @@ final class TextExportTests: XCTestCase {
             XCTAssertEqual(TextExport.recognitionFailed("Tarama başarısız: OCR başarısız: the request failed"),
                            "The text could not be read: the request failed.")
         }
+        L10n.withTable(["Scan failed: {0}": "Scan failed: {0}", "OCR failed: {0}": "OCR failed: {0}"], language: "ar") {
+            XCTAssertEqual(TextExport.recognitionFailed("Scan failed: \u{2068}OCR failed: \u{2068}x\u{2069}\u{2069}"),
+                           "The text could not be read: \u{2068}x.\u{2069}")
+        }
         XCTAssertEqual(TextExport.recognitionFailed("OCR failed: the request failed"),
                        "The text could not be read: the request failed.")
         XCTAssertEqual(TextExport.recognitionFailed("  "),
