@@ -408,7 +408,16 @@ jobs:
             -configuration Release \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -derivedDataPath "$RUNNER_TEMP/app-build" \
+            SWIFT_EMIT_LOC_STRINGS=YES \
             CODE_SIGNING_ALLOWED=NO
+      - name: Probe the string data
+        run: |
+          find "$RUNNER_TEMP/app-build" -name '*.stringsdata' | head -5
+          find "$RUNNER_TEMP/app-build" -name '*.stringsdata' | wc -l
+          python3 scripts/extract_loc.py "$RUNNER_TEMP/app-build" "$RUNNER_TEMP/probe.json"
+          head -22 "$RUNNER_TEMP/probe.json"
+          grep -n -F -e '"100%"' -e '%@' -e '%lld' -e '|' "$RUNNER_TEMP/probe.json" | head -8
+          grep -rl -F '"100%"' "$RUNNER_TEMP/app-build" --include=*.stringsdata | head -2 | xargs -I{} sh -c 'echo {}; grep -o ".\{80\}100%.\{120\}" {}'
       - name: Check the app's languages
         run: |
           set -euo pipefail
