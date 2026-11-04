@@ -40,7 +40,7 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
     {
         ".jpg" or ".jpeg" => "JPG",
         ".tif" or ".tiff" => "TIFF",
-        var other => other.TrimStart('.').ToUpperInvariant(),
+        var other => other.TrimStart('.').ToUpper(CultureInfo.CurrentCulture),
     };
     /// <summary>Icon font glyph shown until (or instead of) the thumbnail.</summary>
     public string PlaceholderGlyph => File.IsPdf || File.IsTextDocument ? "" : "";

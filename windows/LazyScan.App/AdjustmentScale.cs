@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LazyScan.App;
 
 /// <summary>
@@ -32,6 +34,8 @@ public static class AdjustmentScale
     public static string AmountText(double amount)
     {
         int rounded = (int)Math.Round(amount, MidpointRounding.AwayFromZero);
-        return rounded == 0 ? "0" : rounded.ToString("+0;-0");
+        var culture = CultureInfo.CurrentCulture;
+        string digits = rounded.ToString(culture);
+        return rounded > 0 ? culture.NumberFormat.PositiveSign + digits : digits;
     }
 }
