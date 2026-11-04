@@ -414,12 +414,26 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Probe the string data
         run: |
-          find "$RUNNER_TEMP/app-build" -name '*.stringsdata' | head -5
-          find "$RUNNER_TEMP/app-build" -name '*.stringsdata' | wc -l
-          python3 scripts/extract_loc.py "$RUNNER_TEMP/app-build" "$RUNNER_TEMP/probe.json"
-          head -22 "$RUNNER_TEMP/probe.json"
-          grep -n -F -e '"100%"' -e '%@' -e '%lld' -e '|' "$RUNNER_TEMP/probe.json" | head -8
-          grep -rl -F '"100%"' "$RUNNER_TEMP/app-build" --include=*.stringsdata | head -2 | xargs -I{} sh -c 'echo {}; grep -o ".\{80\}100%.\{120\}" {}'
+          python3 - "$RUNNER_TEMP/app-build" <<'PY'
+          import json, sys
+          from pathlib import Path
+          seen = {}
+          for p in Path(sys.argv[1]).rglob("*.stringsdata"):
+              d = json.loads(p.read_text())
+              for t, es in d.get("tables", {}).items():
+                  for e in es:
+                      seen.setdefault((d["source"], t, e["key"]), e)
+          srcs = sorted({k[0] for k in seen})
+          print(len(srcs), "sources; first:", srcs[:3], "tables:", sorted({k[1] for k in seen}))
+          print("tests:", [s for s in srcs if "Tests" in s][:3])
+          for (src, t, key), e in sorted(seen.items()):
+              if "SettingsScreen.swift" in src and e["location"]["startingLine"] == 714:
+                  print("714:", src, t, e)
+          for pat in ("%lld", "|", "100%"):
+              hits = [(k[0].split("/")[-1], e) for k, e in seen.items() if pat in k[2]][:3]
+              print(pat, hits)
+          print("empty key:", [(k[0].split("/")[-1], e) for k, e in seen.items() if k[2] == ""][:3])
+          PY
       - name: Check the app's languages
         run: |
           set -euo pipefail
