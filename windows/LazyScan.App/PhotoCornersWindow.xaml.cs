@@ -123,7 +123,7 @@ public partial class PhotoCornersWindow : Window
         }
         catch (Exception e)
         {
-            LoadingText.Text = $"The photo could not be shown: {e.Message}";
+            LoadingText.Text = Loc.T("The photo could not be shown: {0}", e.Message);
         }
         UpdateOverlay();
     }

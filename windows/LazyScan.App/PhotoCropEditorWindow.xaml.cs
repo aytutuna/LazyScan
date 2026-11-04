@@ -85,7 +85,7 @@ public partial class PhotoCropEditorWindow : Window
             }
             catch (Exception e)
             {
-                LoadingText.Text = $"The page could not be shown: {e.Message}";
+                LoadingText.Text = Loc.T("The page could not be shown: {0}", e.Message);
             }
             UpdateLayoutOverlay();
         };
@@ -136,7 +136,7 @@ public partial class PhotoCropEditorWindow : Window
             Canvas.SetTop(_handles[i], corners[i].Y - HandleSize / 2);
         }
         UpdateDimAndGrid(frame, corners);
-        SizeCaption.Text = $"{Region.Size.Width:0} × {Region.Size.Height:0} px";
+        SizeCaption.Text = Loc.T("{0} × {1} px", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}");
         AngleCaption.Text = $"{Region.AngleDegrees:0.0}°";
         ResetButton.IsEnabled = !Region.Equals(_original);
     }

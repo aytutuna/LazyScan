@@ -108,8 +108,8 @@ public partial class PhoneWindow : Window
         if (_companion is null)
         {
             HeadlineText.Text = _viewModel.CompanionElsewhere
-                ? "Another Lazy Scan window receives from phones. Pair and manage phones there."
-                : $"The phone link could not start: {_viewModel.CompanionError}";
+                ? Loc.T("Another Lazy Scan window receives from phones. Pair and manage phones there.")
+                : Loc.T("The phone link could not start: {0}", _viewModel.CompanionError);
             PairButton.IsEnabled = false;
             ResetButton.IsEnabled = false;
             NetworksPanel.Children.Clear();
@@ -154,7 +154,7 @@ public partial class PhoneWindow : Window
         {
             NetworksPanel.Children.Add(new TextBlock
             {
-                Text = "Not connected to a network.",
+                Text = Loc.T("Not connected to a network."),
                 Style = (Style)FindResource("SecondaryBodyText"),
                 TextWrapping = TextWrapping.Wrap,
             });
@@ -173,43 +173,43 @@ public partial class PhoneWindow : Window
     private Border NetworkCard(CompanionNetworkState state)
     {
         var network = state.Network;
-        string name = network.Name.Length > 0 ? network.Name : "Unnamed network";
+        string name = network.Name.Length > 0 ? network.Name : Loc.T("Unnamed network");
         bool isPrivate = network.Category == CompanionNetworkCategory.Private;
         string kind = network.Category switch
         {
-            CompanionNetworkCategory.Private => "Private network",
-            CompanionNetworkCategory.Domain => "Work network",
-            _ => "Public network",
+            CompanionNetworkCategory.Private => Loc.T("Private network"),
+            CompanionNetworkCategory.Domain => Loc.T("Work network"),
+            _ => Loc.T("Public network"),
         };
-        string receiving = state.Trust == NetworkTrust.NotTrusted ? "not receiving" : "receiving allowed";
+        string receiving = state.Trust == NetworkTrust.NotTrusted ? Loc.T("not receiving") : Loc.T("receiving allowed");
         var texts = new StackPanel();
         texts.Children.Add(new TextBlock { Text = name, Style = (Style)FindResource("BodyStrongText"), TextWrapping = TextWrapping.Wrap });
         texts.Children.Add(new TextBlock
         {
-            Text = $"{kind} · {receiving}",
+            Text = Loc.T("{0} · {1}", kind, receiving),
             Style = (Style)FindResource("CaptionText"),
             TextWrapping = TextWrapping.Wrap,
         });
         var allow = new CheckBox
         {
-            Content = "Allow receiving on this network",
+            Content = Loc.T("Allow receiving on this network"),
             IsChecked = state.Trust != NetworkTrust.NotTrusted,
             IsEnabled = !isPrivate,
             Margin = new Thickness(0, 8, 0, 0),
             Tag = network,
             ToolTip = isPrivate
-                ? "Windows treats this network as private, so paired phones can always send here."
-                : "For a network you trust that Windows treats as public, such as your school's Wi-Fi. Only phones you paired can send.",
+                ? Loc.T("Windows treats this network as private, so paired phones can always send here.")
+                : Loc.T("For a network you trust that Windows treats as public, such as your school's Wi-Fi. Only phones you paired can send."),
         };
         allow.Style = (Style)FindResource("ToggleSwitchStyle");
-        AutomationProperties.SetName(allow, $"Allow receiving on {name}");
+        AutomationProperties.SetName(allow, Loc.T("Allow receiving on {0}", name));
         allow.Click += Allow_Toggled;
         texts.Children.Add(allow);
         if (state.Trust == NetworkTrust.Approved && !isPrivate)
         {
             texts.Children.Add(new TextBlock
             {
-                Text = "The first time a phone connects here, Windows Firewall may ask about Lazy Scan: tick Public networks, then choose Allow.",
+                Text = Loc.T("The first time a phone connects here, Windows Firewall may ask about Lazy Scan: tick Public networks, then choose Allow."),
                 Style = (Style)FindResource("CaptionText"),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 4, 0, 0),
@@ -222,7 +222,7 @@ public partial class PhoneWindow : Window
             Margin = new Thickness(0, 0, 0, 8),
             Child = texts,
         };
-        AutomationProperties.SetName(card, $"{name}, {kind}, {receiving}");
+        AutomationProperties.SetName(card, Loc.T("{0}, {1}, {2}", name, kind, receiving));
         return card;
     }
 
@@ -237,7 +237,7 @@ public partial class PhoneWindow : Window
     {
         if (_companion is null) return;
         bool saved = await _companion.SetNetworkApprovedAsync(network, allowed);
-        if (!saved) ShowStatus("The setting could not be saved.");
+        if (!saved) ShowStatus(Loc.T("The setting could not be saved."));
         await RefreshFirewallAsync();
         // The cards are not made again when the trust did not change (a setting that could not be
         // saved), so the toggle is set back to what holds.
@@ -289,12 +289,11 @@ public partial class PhoneWindow : Window
         var status = _companion!.Status;
         return status.State switch
         {
-            CompanionListenState.Offline => "Connect this PC to a network first, then choose Pair a phone again.",
+            CompanionListenState.Offline => Loc.T("Connect this PC to a network first, then choose Pair a phone again."),
             CompanionListenState.NoTrustedNetwork =>
-                "This PC does not receive on the network it is on. Set the network to Private in Windows network settings, "
-                + "or turn on Allow receiving on this network above, then choose Pair a phone again.",
-            CompanionListenState.Failed => status.Error ?? "Receiving from phones could not start.",
-            _ => "No pairing code could be made.",
+                Loc.T("This PC does not receive on the network it is on. Set the network to Private in Windows network settings, or turn on Allow receiving on this network above, then choose Pair a phone again."),
+            CompanionListenState.Failed => status.Error ?? Loc.T("Receiving from phones could not start."),
+            _ => Loc.T("No pairing code could be made."),
         };
     }
 
@@ -313,11 +312,11 @@ public partial class PhoneWindow : Window
         try
         {
             Clipboard.SetText(PairingTextBox.Text);
-            ShowStatus("Copied to the clipboard.");
+            ShowStatus(Loc.T("Copied to the clipboard."));
         }
         catch (COMException error)
         {
-            ShowStatus($"Copy did not work: {FileActionErrors.Describe(error)}");
+            ShowStatus(Loc.T("Copy did not work: {0}", FileActionErrors.Describe(error)));
         }
     }
 
@@ -329,20 +328,20 @@ public partial class PhoneWindow : Window
         // The code stays up while its question waits: the session is used by then, but not settled.
         bool open = _code is not null && (_companion?.Pairing is not null || QuestionPending);
         PairingPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-        PairButton.Content = open ? "Show a new code" : "Pair a phone";
+        PairButton.Content = open ? Loc.T("Show a new code") : Loc.T("Pair a phone");
         if (!QuestionPending) ApprovalCard.Visibility = Visibility.Collapsed;
         if (!open)
         {
             _clock.Stop();
             if (_justPaired is { } name)
             {
-                PairNote.Text = $"Paired with {name}. Documents sent from it are added to the queue.";
+                PairNote.Text = Loc.T("Paired with {0}. Documents sent from it are added to the queue.", name);
                 PairNote.Visibility = Visibility.Visible;
             }
             else if (_code is not null)
             {
                 // Cleared wherever the user ends the pairing, so a code still set here has run out.
-                PairNote.Text = "The code expired. Choose Pair a phone to show a new one.";
+                PairNote.Text = Loc.T("The code expired. Choose Pair a phone to show a new one.");
                 PairNote.Visibility = Visibility.Visible;
             }
         }
@@ -354,11 +353,11 @@ public partial class PhoneWindow : Window
         if (_companion?.Pairing is { } session)
         {
             var left = session.Remaining(DateTimeOffset.UtcNow);
-            ExpiryText.Text = $"Scan this code with your phone. It works for {(int)left.TotalMinutes}:{left.Seconds:D2} more.";
+            ExpiryText.Text = Loc.T("Scan this code with your phone. It works for {0} more.", $"{(int)left.TotalMinutes}:{left.Seconds:D2}");
         }
         else if (QuestionPending)
         {
-            ExpiryText.Text = "A phone scanned this code. Allow it below, or not.";
+            ExpiryText.Text = Loc.T("A phone scanned this code. Allow it below, or not.");
         }
         else if (PairingPanel.Visibility == Visibility.Visible)
         {
@@ -379,7 +378,7 @@ public partial class PhoneWindow : Window
         _approval?.TrySetResult(false);
         var approval = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _approval = approval;
-        ApprovalText.Text = $"Allow \"{request.PhoneName}\" to send documents to this PC?";
+        ApprovalText.Text = Loc.T("Allow \"{0}\" to send documents to this PC?", request.PhoneName);
         ApprovalCard.Visibility = Visibility.Visible;
         Announce(ApprovalText);
         if (IsVisible)
@@ -458,7 +457,7 @@ public partial class PhoneWindow : Window
         {
             PhonesPanel.Children.Add(new TextBlock
             {
-                Text = "No phone is paired yet.",
+                Text = Loc.T("No phone is paired yet."),
                 Style = (Style)FindResource("SecondaryBodyText"),
                 TextWrapping = TextWrapping.Wrap,
             });
@@ -468,22 +467,22 @@ public partial class PhoneWindow : Window
         {
             var remove = new Button
             {
-                Content = "Remove",
+                Content = Loc.T("Remove"),
                 Tag = device.Id,
                 VerticalAlignment = VerticalAlignment.Center,
                 Style = (Style)FindResource("SubtleButtonStyle"),
-                ToolTip = "This phone can no longer send documents here, until it is paired again",
+                ToolTip = Loc.T("This phone can no longer send documents here, until it is paired again"),
             };
             LazyScan.App.Icon.SetGlyph(remove, "");
-            AutomationProperties.SetName(remove, $"Remove {device.Name}");
+            AutomationProperties.SetName(remove, Loc.T("Remove {0}", device.Name));
             remove.Click += Remove_Click;
             DockPanel.SetDock(remove, Dock.Right);
             var texts = new StackPanel();
-            texts.Children.Add(new TextBlock { Text = device.Name.Length > 0 ? device.Name : "Phone", Style = (Style)FindResource("BodyStrongText") });
+            texts.Children.Add(new TextBlock { Text = device.Name.Length > 0 ? device.Name : Loc.T("Phone"), Style = (Style)FindResource("BodyStrongText") });
             texts.Children.Add(new TextBlock { Text = PhoneCaption(device), Style = (Style)FindResource("CaptionText"), TextWrapping = TextWrapping.Wrap });
             if (_companion?.Devices.HasSyncKey(device.Id) == false)
             {
-                texts.Children.Add(new TextBlock { Text = "Pair again to use the cloud folder", Style = (Style)FindResource("CaptionText"), TextWrapping = TextWrapping.Wrap });
+                texts.Children.Add(new TextBlock { Text = Loc.T("Pair again to use the cloud folder"), Style = (Style)FindResource("CaptionText"), TextWrapping = TextWrapping.Wrap });
             }
             var row = new DockPanel();
             row.Children.Add(remove);
@@ -506,13 +505,13 @@ public partial class PhoneWindow : Window
     internal static string PhoneCaption(PairedDevice device)
     {
         var parts = new List<string>();
-        if (device.Paired is { } paired) parts.Add($"Paired {paired.LocalDateTime.ToString("d", CultureInfo.CurrentCulture)}");
+        if (device.Paired is { } paired) parts.Add(Loc.T("Paired {0}", paired.LocalDateTime.ToString("d", CultureInfo.CurrentCulture)));
         if (device.LastSeen is { } seen)
         {
             var local = seen.LocalDateTime;
             parts.Add(local.Date == DateTime.Today
-                ? $"last seen today at {local.ToString("t", CultureInfo.CurrentCulture)}"
-                : $"last seen {local.ToString("d", CultureInfo.CurrentCulture)}");
+                ? Loc.T("last seen today at {0}", local.ToString("t", CultureInfo.CurrentCulture))
+                : Loc.T("last seen {0}", local.ToString("d", CultureInfo.CurrentCulture)));
         }
         return string.Join(" · ", parts);
     }
@@ -530,11 +529,11 @@ public partial class PhoneWindow : Window
         try
         {
             await _companion.RemoveDeviceAsync(id);
-            ShowStatus("Removed. That phone can no longer send documents here.");
+            ShowStatus(Loc.T("Removed. That phone can no longer send documents here."));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            ShowStatus($"The phone could not be removed: {error.Message}");
+            ShowStatus(Loc.T("The phone could not be removed: {0}", error.Message));
         }
         Refresh();
         if (index < 0) return;
@@ -546,8 +545,8 @@ public partial class PhoneWindow : Window
     {
         if (_companion is null) return;
         var answer = MessageBox.Show(this,
-            "Every paired phone will be removed and this PC gets a new security key. Phones then pair again with a new code.",
-            "Reset pairing?", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+            Loc.T("Every paired phone will be removed and this PC gets a new security key. Phones then pair again with a new code."),
+            Loc.T("Reset pairing?"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (answer != MessageBoxResult.OK) return;
         await ResetPairingAsync();
     }
@@ -562,12 +561,12 @@ public partial class PhoneWindow : Window
             _code = null;
             // The Refresh the reset caused ran with the code still set and called it expired.
             PairNote.Visibility = Visibility.Collapsed;
-            ShowStatus("Pairing was reset.");
+            ShowStatus(Loc.T("Pairing was reset."));
         }
         catch (Exception error) when (error is CryptographicException or IOException or UnauthorizedAccessException
                                           or InvalidOperationException or PlatformNotSupportedException)
         {
-            ShowStatus($"Pairing could not be reset: {error.Message}");
+            ShowStatus(Loc.T("Pairing could not be reset: {0}", error.Message));
         }
         Refresh();
     }
@@ -580,10 +579,10 @@ public partial class PhoneWindow : Window
         SyncFolderBox.Text = folder ?? "";
         ChooseSyncFolderButton.IsEnabled = _companion is not null;
         ClearSyncFolderButton.IsEnabled = folder is not null;
-        SyncFolderStatus.Text = _companion is null ? "Not watching."
-            : folder is null ? "Not watching: no folder chosen."
-            : Directory.Exists(folder) ? $"Watching {folder}."
-            : $"Waiting for {folder}: the folder is not there now.";
+        SyncFolderStatus.Text = _companion is null ? Loc.T("Not watching.")
+            : folder is null ? Loc.T("Not watching: no folder chosen.")
+            : Directory.Exists(folder) ? Loc.T("Watching {0}.", folder)
+            : Loc.T("Waiting for {0}: the folder is not there now.", folder);
         string? problem = _companion is null ? null : _viewModel.SyncFolderProblem;
         SyncFolderProblemText.Text = problem ?? "";
         SyncFolderProblemText.Visibility = problem is null ? Visibility.Collapsed : Visibility.Visible;
@@ -591,7 +590,7 @@ public partial class PhoneWindow : Window
 
     private void ChooseSyncFolder_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Choose the cloud folder" };
+        var dialog = new OpenFolderDialog { Title = Loc.T("Choose the cloud folder") };
         if (_companion?.SyncFolder is { } folder) dialog.InitialDirectory = folder;
         if (dialog.ShowDialog(this) == true) SetSyncFolder(dialog.FolderName);
     }
@@ -605,7 +604,7 @@ public partial class PhoneWindow : Window
     /// <summary>Chooses the cloud folder (null: none; Choose… and Clear; harnesses).</summary>
     internal void SetSyncFolder(string? path)
     {
-        if (!_viewModel.SetPhoneSyncFolder(path)) ShowStatus("The setting could not be saved.");
+        if (!_viewModel.SetPhoneSyncFolder(path)) ShowStatus(Loc.T("The setting could not be saved."));
         Refresh();
     }
 
@@ -663,7 +662,7 @@ public partial class PhoneWindow : Window
                     Style = (Style)FindResource("IconTextButtonStyle"),
                 };
                 LazyScan.App.Icon.SetGlyph(button, action == TroubleshootAction.Refresh ? "" : "");
-                AutomationProperties.SetHelpText(button, $"{status}: {check.Title}");
+                AutomationProperties.SetHelpText(button, Loc.T("{0}: {1}", status, check.Title));
                 button.Click += CheckAction_Click;
                 buttons.Children.Add(button);
             }
@@ -679,7 +678,7 @@ public partial class PhoneWindow : Window
             Margin = new Thickness(0, 0, 0, 8),
             Child = row,
         };
-        AutomationProperties.SetName(card, $"{status}: {check.Title}");
+        AutomationProperties.SetName(card, Loc.T("{0}: {1}", status, check.Title));
         AutomationProperties.SetAutomationId(card, check.Id);
         return card;
     }
@@ -690,7 +689,7 @@ public partial class PhoneWindow : Window
         switch (action)
         {
             case TroubleshootAction.OpenNetworkSettings:
-                if (!_viewModel.OpenSystemSettings(action)) ShowStatus("Settings did not open.");
+                if (!_viewModel.OpenSystemSettings(action)) ShowStatus(Loc.T("Settings did not open."));
                 break;
             default:
                 if (_companion is not null) await _companion.RefreshAsync();

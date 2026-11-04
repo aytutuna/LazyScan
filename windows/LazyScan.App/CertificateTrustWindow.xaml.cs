@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using LazyScan.Core;
@@ -11,37 +12,36 @@ namespace LazyScan.App;
 /// </summary>
 public partial class CertificateTrustWindow : Window
 {
-    /// <summary>The trust button's text when connecting to a listed scanner.</summary>
-    public const string ConnectAction = "Trust and connect";
-    /// <summary>The trust button's text in the "Add scanner by address" dialog.</summary>
-    public const string AddAction = "Trust and add";
-
-    public CertificateTrustWindow(EsclCertificateException certificate, string trustAction)
+    /// <summary>
+    /// <paramref name="byAddress"/> is the "Add scanner by address" dialog, which asks before the
+    /// scanner's make and model are read, so its "name" is only the typed address.
+    /// </summary>
+    public CertificateTrustWindow(EsclCertificateException certificate, bool byAddress)
     {
         InitializeComponent();
         string name = certificate.DeviceName;
         bool changed = certificate.Verdict == EsclTrustVerdict.Changed;
-        // Add by address asks before the scanner's make and model are read, so its "name" is
-        // only the typed address.
-        bool byAddress = trustAction == AddAction;
-        string scanner = byAddress ? $"the scanner at {certificate.Authority}" : name;
-
-        Title = changed ? "Scanner certificate changed" : "Trust this scanner?";
+        Title = changed ? Loc.T("Scanner certificate changed") : Loc.T("Trust this scanner?");
         HeaderGlyph.Text = changed ? "" : "";
         HeaderGlyph.SetResourceReference(ForegroundProperty,
             changed ? "SystemFillColorCautionBrush" : "AccentTextFillColorPrimaryBrush");
-        HeaderText.Text = changed ? $"The certificate of {scanner} has changed" : $"Trust {scanner}?";
+        HeaderText.Text = (changed, byAddress) switch
+        {
+            (true, true) => Loc.T("The certificate of the scanner at {0} has changed", certificate.Authority),
+            (true, false) => Loc.T("The certificate of {0} has changed", name),
+            (false, true) => Loc.T("Trust the scanner at {0}?", certificate.Authority),
+            _ => Loc.T("Trust {0}?", name),
+        };
 
-        string trustedOn = certificate.Previous?.Trusted is { } date ? $" on {date.LocalDateTime:d}" : "";
+        string different = certificate.Previous?.Trusted is { } date
+            ? Loc.T("The scanner identified itself with a different certificate from the one you trusted on {0}.", date.LocalDateTime.ToString("d", CultureInfo.CurrentCulture))
+            : Loc.T("The scanner identified itself with a different certificate from the one you trusted.");
         ExplanationText.Text = changed
-            ? $"The scanner identified itself with a different certificate from the one you trusted{trustedOn}. "
-              + "A firmware update or a reset of the scanner can change it, but so can another device on the network "
-              + "that pretends to be your scanner."
-            : "This scanner offers an encrypted connection and identifies itself with a certificate it made itself. "
-              + "Windows cannot vouch for such certificates; that is normal for scanners.";
+            ? different + " " + Loc.T("A firmware update or a reset of the scanner can change it, but so can another device on the network that pretends to be your scanner.")
+            : Loc.T("This scanner offers an encrypted connection and identifies itself with a certificate it made itself. Windows cannot vouch for such certificates; that is normal for scanners.");
         AdviceText.Text = changed
-            ? "Trust the new certificate only if you know why it changed. Otherwise choose Cancel and check the scanner."
-            : "Trust it if this is your scanner. Lazy Scan remembers the certificate and warns you if it ever changes.";
+            ? Loc.T("Trust the new certificate only if you know why it changed. Otherwise choose Cancel and check the scanner.")
+            : Loc.T("Trust it if this is your scanner. Lazy Scan remembers the certificate and warns you if it ever changes.");
 
         ScannerText.Text = name;
         AddressText.Text = certificate.Authority;
@@ -59,9 +59,9 @@ public partial class CertificateTrustWindow : Window
             SubjectLabel.Visibility = Visibility.Collapsed;
             SubjectText.Visibility = Visibility.Collapsed;
         }
-        FingerprintLabel.Text = changed ? "New fingerprint" : "Fingerprint";
+        FingerprintLabel.Text = changed ? Loc.T("New fingerprint") : Loc.T("Fingerprint");
         FingerprintBox.Text = EsclCertificates.Format(certificate.Fingerprint, bytesPerLine: 16);
-        AutomationProperties.SetHelpText(FingerprintBox, "SHA-256 of the certificate's public key");
+        AutomationProperties.SetHelpText(FingerprintBox, Loc.T("SHA-256 of the certificate's public key"));
         if (changed && certificate.Previous is { } previous)
         {
             PreviousLabel.Visibility = Visibility.Visible;
@@ -69,7 +69,7 @@ public partial class CertificateTrustWindow : Window
             PreviousBox.Text = EsclCertificates.Format(previous.Fingerprint, bytesPerLine: 16);
         }
 
-        TrustButton.Content = changed ? "Trust the new certificate" : trustAction;
+        TrustButton.Content = changed ? Loc.T("Trust the new certificate") : byAddress ? Loc.T("Trust and add") : Loc.T("Trust and connect");
         var defaultChoice = changed ? CancelButton : TrustButton;
         defaultChoice.IsDefault = true;
         defaultChoice.SetResourceReference(StyleProperty, "AccentButtonStyle");

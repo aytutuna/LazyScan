@@ -28,7 +28,7 @@ public partial class AddScannerWindow : Window
         Placeholders.Attach(AddressBox, AddressPlaceholder);
         _backend = backend;
         ConfirmCertificate = certificate =>
-            new CertificateTrustWindow(certificate, CertificateTrustWindow.AddAction) { Owner = this }.ShowDialog() == true;
+            new CertificateTrustWindow(certificate, byAddress: true) { Owner = this }.ShowDialog() == true;
         Loaded += (_, _) => AddressBox.Focus();
         // Closing (Cancel, Esc, the close box) abandons a check in progress.
         Closed += (_, _) => _check?.Cancel();
@@ -51,7 +51,7 @@ public partial class AddScannerWindow : Window
         var https = address.HttpsFallback(AddressBox.Text.Trim());
         using var cancellation = new CancellationTokenSource();
         _check = cancellation;
-        ShowProgress($"Connecting to {address}…");
+        ShowProgress(Loc.T("Connecting to {0}…", address));
         try
         {
             var result = await _backend.CheckAddressAsync(address, cancellation.Token);
@@ -62,7 +62,7 @@ public partial class AddScannerWindow : Window
             if (result.Capabilities is null && result.Certificate is null && https is not null)
             {
                 address = https;
-                ShowProgress($"Connecting to {address}…");
+                ShowProgress(Loc.T("Connecting to {0}…", address));
                 result = await _backend.CheckAddressAsync(address, cancellation.Token);
                 if (cancellation.IsCancellationRequested) return;
             }
@@ -71,14 +71,14 @@ public partial class AddScannerWindow : Window
             bool firstUseAsked = false, trusted = false;
             while (!trusted && result.Certificate is { CanTrust: true } certificate)
             {
-                ShowProgress("Confirm the scanner's certificate to continue.");
+                ShowProgress(Loc.T("Confirm the scanner's certificate to continue."));
                 if (!ConfirmCertificate(certificate))
                 {
-                    ShowProblem("The scanner was not added, because its certificate was not trusted.");
+                    ShowProblem(Loc.T("The scanner was not added, because its certificate was not trusted."));
                     return;
                 }
                 if (cancellation.IsCancellationRequested) return;
-                ShowProgress($"Connecting to {address}…");
+                ShowProgress(Loc.T("Connecting to {0}…", address));
                 if (certificate.Verdict == EsclTrustVerdict.Unknown && !firstUseAsked)
                 {
                     firstUseAsked = true;
@@ -98,7 +98,7 @@ public partial class AddScannerWindow : Window
                 if (IsVisible) DialogResult = true;
                 return;
             }
-            ShowProblem(result.Certificate?.Message ?? result.Error ?? $"No scanner answered at {address}.");
+            ShowProblem(result.Certificate?.Message ?? result.Error ?? Loc.T("No scanner answered at {0}.", address));
         }
         catch (OperationCanceledException)
         {

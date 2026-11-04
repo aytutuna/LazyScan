@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using LazyScan.Core;
 
 namespace LazyScan.App;
 
@@ -141,7 +142,7 @@ public sealed class InfoButton : Button
 
     private void Rename()
     {
-        string name = string.IsNullOrEmpty(Label) ? "More information" : $"More about {Label}";
+        string name = string.IsNullOrEmpty(Label) ? Loc.T("More information") : Loc.T("More about {0}", Label);
         AutomationProperties.SetName(this, name);
         ToolTip = name;
     }

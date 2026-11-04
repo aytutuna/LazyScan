@@ -37,7 +37,7 @@
                                AutomationProperties.LiveSetting="Polite" />
                 </DockPanel>
                 <DockPanel Margin="0,4,0,0" HorizontalAlignment="Left">
-                    <ui:InfoButton x:Name="KeyboardInfoButton" DockPanel.Dock="Right" Label="keyboard use" Heading="{loc:T Keyboard}"
+                    <ui:InfoButton x:Name="KeyboardInfoButton" DockPanel.Dock="Right" Label="{loc:T keyboard use}" Heading="{loc:T Keyboard}"
                                    Margin="4,-4,0,-4" />
                     <TextBlock x:Name="HelpText" Style="{StaticResource CaptionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 </DockPanel>

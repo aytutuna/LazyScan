@@ -2006,7 +2006,7 @@ public partial class MainWindow : Window
     /// </summary>
     private Task<bool> ConfirmCertificate(EsclCertificateException certificate)
     {
-        var dialog = new CertificateTrustWindow(certificate, CertificateTrustWindow.ConnectAction);
+        var dialog = new CertificateTrustWindow(certificate, byAddress: false);
         if (IsVisible) dialog.Owner = this;
         return Task.FromResult(dialog.ShowDialog() == true);
     }

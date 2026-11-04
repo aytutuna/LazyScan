@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -51,11 +52,11 @@ public partial class SpreadSplitWindow : Window
         Axis = source.Axis;
         Fraction = Math.Clamp(source.Fraction, CutSlider.Minimum, CutSlider.Maximum);
         DisplayImage.Source = WpfImageCodec.ToBitmapSource(source.Preview);
-        Title = $"Split spread {source.SpreadNumber}";
+        Title = Loc.T("Split spread {0}", source.SpreadNumber);
         TitleText.Text = Title;
         // A spread kept whole is already one page; a split one can be joined here too.
         KeepWholeButton.Visibility = source.IsSplit ? Visibility.Visible : Visibility.Collapsed;
-        SplitButton.Content = source.IsSplit ? "Split here" : "Split";
+        SplitButton.Content = source.IsSplit ? Loc.T("Split here") : Loc.T("Split");
         _syncing = true;
         SideBySideButton.IsChecked = Axis == GutterAxis.Vertical;
         StackedButton.IsChecked = Axis == GutterAxis.Horizontal;
@@ -98,7 +99,8 @@ public partial class SpreadSplitWindow : Window
             double y = _frame.Y + Fraction * _frame.Height;
             (CutLine.X1, CutLine.Y1, CutLine.X2, CutLine.Y2) = (_frame.Left - 8, y, _frame.Right + 8, y);
         }
-        string place = $"{Math.Round(Fraction * 100)}% from the {(Axis == GutterAxis.Vertical ? "left" : "top")}";
+        string percent = Fraction.ToString("P0", CultureInfo.CurrentCulture);
+        string place = Axis == GutterAxis.Vertical ? Loc.T("{0} from the left", percent) : Loc.T("{0} from the top", percent);
         System.Windows.Automation.AutomationProperties.SetItemStatus(Host, place);
     }
 
