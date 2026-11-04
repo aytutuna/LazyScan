@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>LazyScan.Core</RootNamespace>
     <NeutralLanguage>en</NeutralLanguage>
-    <SatelliteResourceLanguages>en;tr</SatelliteResourceLanguages>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Description>Platform-neutral core of Lazy Scan: photo detection, image pipeline,
 naming, presets, PDF assembly, and the scanner-backend contract. No UI and no OS-specific
 APIs, usable from any .NET UI stack on any OS; the one package dependency, ProtectedData,
@@ -19,5 +19,45 @@ keeps the companion's sync keys on Windows and is not called elsewhere.</Descrip
     <InternalsVisibleTo Include="LazyScan.Core.Tests" />
     <InternalsVisibleTo Include="LazyScan.App.Tests" />
   </ItemGroup>
+
+  <!-- Strings.<code>.resx for every language comes from l10n/ through scripts/gen_l10n.py. l10n/out is shared
+       by all configurations, so its mode.txt is the stamp: it records the mode and the input files, and is
+       deleted when they differ or a run fails, which makes the generator rerun. The resx items are added in a
+       target because a static glob would run before the generator and miss the files on a clean build. -->
+  <ItemGroup>
+    <L10nSource Include="..\..\l10n\**\*.json" Exclude="..\..\l10n\out\**" />
+  </ItemGroup>
+
+  <Target Name="L10nMode">
+    <PropertyGroup>
+      <_L10nStamp>$(MSBuildProjectDirectory)\..\..\l10n\out\mode.txt</_L10nStamp>
+      <_L10nWant>ship=false</_L10nWant>
+      <_L10nWant Condition="'$(L10nShip)' == 'true'">ship=true</_L10nWant>
+    </PropertyGroup>
+    <Delete Files="$(_L10nStamp)" Condition="Exists('$(_L10nStamp)') And '$([System.IO.File]::ReadAllText($(_L10nStamp)).Trim())' != '$(_L10nWant)'" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)l10n-mode.txt" Lines="$(_L10nWant);@(L10nSource)" Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <Target Name="GenerateL10n" DependsOnTargets="L10nMode" BeforeTargets="AssignTargetPaths"
+          Inputs="@(L10nSource);..\..\scripts\gen_l10n.py;$(IntermediateOutputPath)l10n-mode.txt"
+          Outputs="..\..\l10n\out\mode.txt">
+    <PropertyGroup>
+      <_L10nArgs Condition="'$(L10nShip)' == 'true'">--ship</_L10nArgs>
+    </PropertyGroup>
+    <Exec Command="python ..\..\scripts\gen_l10n.py $(_L10nArgs)" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="_L10nExit" />
+    </Exec>
+    <Delete Files="$(_L10nStamp)" Condition="'$(_L10nExit)' != '0'" />
+    <Error Condition="'$(_L10nExit)' != '0'" Text="scripts/gen_l10n.py failed (exit $(_L10nExit)): see the lines above; python must be on the PATH." />
+  </Target>
+
+  <Target Name="AddL10nResources" AfterTargets="GenerateL10n" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <_L10nResx Include="..\..\l10n\out\windows\Strings.*.resx" Exclude="..\..\l10n\out\windows\Strings.en.resx" />
+      <EmbeddedResource Include="@(_L10nResx)" WithCulture="true" Culture="$([System.IO.Path]::GetExtension('%(_L10nResx.Filename)').TrimStart('.'))"
+                        Link="%(_L10nResx.Filename).resx" LogicalName="" />
+    </ItemGroup>
+  </Target>
 
 </Project>

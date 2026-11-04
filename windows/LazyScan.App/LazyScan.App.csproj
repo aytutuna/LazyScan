@@ -9,7 +9,7 @@
     <RootNamespace>LazyScan.App</RootNamespace>
     <AssemblyName>LazyScan</AssemblyName>
     <NeutralLanguage>en</NeutralLanguage>
-    <SatelliteResourceLanguages>en;tr</SatelliteResourceLanguages>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Product>Lazy Scan</Product>
     <AssemblyTitle>Lazy Scan</AssemblyTitle>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

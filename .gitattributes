@@ -4,6 +4,5 @@
 # Written by scripts/gen_l10n.py with LF; CI diffs the plural rule files against a fresh run.
 ios/LazyScaniOS/*.lproj/Kit.strings text eol=lf
 l10n/mac/*.lproj/Kit.strings text eol=lf
-windows/LazyScan.Core/Strings.tr.resx text eol=lf
 Sources/LazyScanKit/Localization/PluralRules.generated.swift text eol=lf
 windows/LazyScan.Core/PluralRules.g.cs text eol=lf

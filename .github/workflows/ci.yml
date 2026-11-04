@@ -86,6 +86,19 @@ jobs:
         run: |
           $service = Get-Service stisvc
           "stisvc: $($service.Status), start type $($service.StartType)"
+      # A shipping build carries a satellite folder for each live language and nothing else.
+      - name: Check the shipped languages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:RUNNER_TEMP 'ship'
+          dotnet publish windows/LazyScan.App/LazyScan.App.csproj -c Release -p:L10nShip=true -p:ErrorOnDuplicatePublishOutputFiles=false -o $out
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
+          $built = @(Get-ChildItem $out -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'LazyScan.Core.resources.dll') } | ForEach-Object Name | Sort-Object)
+          $listed = @(Get-Content l10n/out/languages.win.txt | Where-Object { $_ -ne 'en' } | Sort-Object)
+          "built:  $($built -join ' ')"
+          "listed: $($listed -join ' ')"
+          if (($built -join ',') -ne ($listed -join ',')) { throw 'Satellite folders differ from languages.win.txt' }
       # veraPDF, the PDF/A validator (MPL-2.0 / GPL-3.0), checks those files. It is downloaded here
       # only, pinned to one release and its SHA-256, and never shipped. Its official Docker image is
       # Linux-only, and there is no official action, so the CLI is installed from its release
