@@ -334,20 +334,22 @@ public sealed class HistoryItem(ScanHistoryEntry entry, BitmapSource thumbnail)
     public ScanHistoryEntry Entry { get; } = entry;
     public BitmapSource Thumbnail { get; } = thumbnail;
 
-    public string Summary => $"{Entry.Intent.Label()} · {Entry.Dpi} dpi";
-    public string PixelSizeText => $"{(int)Entry.PixelSize.Width} × {(int)Entry.PixelSize.Height} px";
+    public string Summary => Loc.T("{0} · {1} dpi", Entry.Intent.Label(), Entry.Dpi.ToString());
+    public string PixelSizeText => Loc.T("{0} × {1} px", ((int)Entry.PixelSize.Width).ToString(), ((int)Entry.PixelSize.Height).ToString());
     public string TimeText => Entry.Date.ToString("T");
     public string DetailText =>
-        $"{Summary} · {PixelSizeText} · {Entry.Date:d} {Entry.Date:T}";
+        Loc.T("{0} · {1} · {2} {3}", Summary, PixelSizeText, Entry.Date.ToString("d"), Entry.Date.ToString("T"));
 
     /// <summary>The card's name for screen readers: "Document scan, 300 dpi, 2550 by 3510 pixels, 4:23 PM".</summary>
     public string AccessibleName =>
-        $"{(Entry.Intent == ScanIntent.Photo ? "Photo scan" : "Document scan")}, {Entry.Dpi} dpi, "
-        + $"{(int)Entry.PixelSize.Width} by {(int)Entry.PixelSize.Height} pixels, {Entry.Date:t}";
+        Loc.T("{0}, {1} dpi, {2} by {3} pixels, {4}",
+              Entry.Intent == ScanIntent.Photo ? Loc.T("Photo scan") : Loc.T("Document scan"),
+              Entry.Dpi.ToString(), ((int)Entry.PixelSize.Width).ToString(), ((int)Entry.PixelSize.Height).ToString(),
+              Entry.Date.ToString("t"));
 
     /// <summary>The card's tooltip: what the card does not show ("300 dpi · 2550 × 3510 px · Just now").</summary>
     public string ToolTipText(DateTime now) =>
-        $"{Entry.Dpi} dpi · {PixelSizeText} · {ScanTimeConverter.Relative(Entry.Date, now)}";
+        Loc.T("{0} dpi · {1} · {2}", Entry.Dpi.ToString(), PixelSizeText, ScanTimeConverter.Relative(Entry.Date, now));
 }
 
 /// <summary>

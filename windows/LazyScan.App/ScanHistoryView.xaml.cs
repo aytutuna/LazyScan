@@ -66,7 +66,7 @@ public partial class ScanHistoryView : UserControl
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         CardsPanel.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         CountText.Text = Loc.Plural(count, "{0} scan", "{0} scans");
-        AutomationProperties.SetHelpText(CountText, "Newest first. Select a scan to enlarge it.");
+        AutomationProperties.SetHelpText(CountText, Loc.T("Newest first. Select a scan to enlarge it."));
 
         // A new scan arrived: re-measure so it reads "Just now" rather than against a stale clock.
         var newest = empty ? null : _viewModel!.History[0];
@@ -108,7 +108,7 @@ public partial class ScanHistoryView : UserControl
             item.Thumbnail,
             entry.Intent.Label(),
             entry.Intent == ScanIntent.Photo ? "\uEB9F" : "\uE8A5",
-            $"{entry.Dpi} dpi · {item.PixelSizeText} · {entry.Date:d} {entry.Date:t}")
+            Loc.T("{0} dpi · {1} · {2} {3}", entry.Dpi.ToString(), item.PixelSizeText, entry.Date.ToString("d"), entry.Date.ToString("t")))
         {
             Owner = Window.GetWindow(this),
         };
@@ -126,7 +126,7 @@ public sealed class ScanTimeConverter : IMultiValueConverter
     public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Length < 2 || values[0] is not DateTime date || values[1] is not DateTime now) return "";
-        return Short(date, now, culture);
+        return Short(date, now, CultureInfo.CurrentCulture);
     }
 
     /// <summary>"4:23 PM" today, "10/19/2026 4:23 PM" on an earlier day.</summary>
@@ -140,12 +140,14 @@ public sealed class ScanTimeConverter : IMultiValueConverter
     public static string Relative(DateTime date, DateTime now)
     {
         var age = now - date;
-        if (age < TimeSpan.FromMinutes(1)) return "Just now";
-        if (age < TimeSpan.FromHours(1)) return $"{(int)age.TotalMinutes} min ago";
-        if (date.Date == now.Date) return "Today";
-        if (date.Date == now.Date.AddDays(-1)) return "Yesterday";
+        if (age < TimeSpan.FromMinutes(1)) return Loc.T("Just now");
+        if (age < TimeSpan.FromHours(1)) return MinutesAgo(age);
+        if (date.Date == now.Date) return Loc.T("Today");
+        if (date.Date == now.Date.AddDays(-1)) return Loc.T("Yesterday");
         return date.ToString("d", CultureInfo.CurrentCulture);
     }
+
+    private static string MinutesAgo(TimeSpan age) => Loc.Plural((int)age.TotalMinutes, "{0} min ago", "{0} min ago");
 
     public static string Format(DateTime date, DateTime now, CultureInfo culture)
     {
@@ -153,12 +155,12 @@ public sealed class ScanTimeConverter : IMultiValueConverter
         var age = now - date;
         if (date.Date == now.Date || age < TimeSpan.FromHours(1))
         {
-            if (age < TimeSpan.FromMinutes(1)) return $"Just now · {time}";
-            if (age < TimeSpan.FromHours(1)) return $"{(int)age.TotalMinutes} min ago · {time}";
+            if (age < TimeSpan.FromMinutes(1)) return Loc.T("{0} · {1}", Loc.T("Just now"), time);
+            if (age < TimeSpan.FromHours(1)) return Loc.T("{0} · {1}", MinutesAgo(age), time);
             return time;
         }
-        if (date.Date == now.Date.AddDays(-1)) return $"Yesterday · {time}";
-        return $"{date.ToString("d", culture)} · {time}";
+        if (date.Date == now.Date.AddDays(-1)) return Loc.T("{0} · {1}", Loc.T("Yesterday"), time);
+        return Loc.T("{0} · {1}", date.ToString("d", culture), time);
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
@@ -179,7 +181,7 @@ public sealed class ImagePreviewWindow : Window
 
     public ImagePreviewWindow(ImageSource image, string title, string? glyph, string details)
     {
-        Title = "Scan";
+        Title = Loc.T("Scan|noun");
         Icon = AppIcon.Image;
         Width = 760;
         Height = 640;
@@ -220,7 +222,7 @@ public sealed class ImagePreviewWindow : Window
         // Footer: zoom on the left, Close on the right.
         var close = new Button
         {
-            Content = "Close",
+            Content = Loc.T("Close"),
             IsCancel = true,
             IsDefault = true,
             MinWidth = 96,
@@ -274,11 +276,11 @@ public sealed class ImagePreviewWindow : Window
         var scroll = zoomed ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
         _scroller.HorizontalScrollBarVisibility = scroll;
         _scroller.VerticalScrollBarVisibility = scroll;
-        _picture.ToolTip = zoomed ? "Double-click to fit to the window" : "Double-click to zoom in";
-        _zoomButton.Content = zoomed ? "Fit to window" : "Zoom in";
+        _picture.ToolTip = zoomed ? Loc.T("Double-click to fit to the window") : Loc.T("Double-click to zoom in");
+        _zoomButton.Content = zoomed ? Loc.T("Fit to window") : Loc.T("Zoom in");
         global::LazyScan.App.Icon.SetGlyph(_zoomButton, zoomed ? "\uE9A6" : "\uE8A3");
         _zoomButton.ToolTip = zoomed
-            ? "Scale the image to fit the window"
-            : "Show the preview at full size and scroll around it";
+            ? Loc.T("Scale the image to fit the window")
+            : Loc.T("Show the preview at full size and scroll around it");
     }
 }

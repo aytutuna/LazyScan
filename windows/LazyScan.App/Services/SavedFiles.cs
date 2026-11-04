@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -150,15 +151,13 @@ public static class SavedFiles
 
     public static string SizeText(long bytes)
     {
-        string[] units = ["bytes", "KB", "MB", "GB"];
-        double value = bytes;
-        int unit = 0;
-        while (value >= 1000 && unit < units.Length - 1)
-        {
-            value /= 1000;
-            unit++;
-        }
-        return unit == 0 ? $"{bytes} bytes" : $"{value:0.#} {units[unit]}";
+        if (bytes < 1000) return Loc.Plural((int)bytes, "{0} bytes", "{0} bytes");
+        double kb = bytes / 1000.0;
+        if (kb < 1000) return Loc.T("{0} KB", Format(kb));
+        double mb = kb / 1000;
+        return mb < 1000 ? Loc.T("{0} MB", Format(mb)) : Loc.T("{0} GB", Format(mb / 1000));
+
+        static string Format(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
     }
 
     // MARK: - Thumbnails
@@ -259,8 +258,8 @@ public static class SavedFiles
     public static async Task<string?> RotateClockwiseAsync(string path)
     {
         var file = new SavedFile(path, default, 0);
-        if (file.IsPdf) return "PDFs can't be rotated here — rotate the pages in the queue before saving.";
-        if (file.ImageFormat is not { } format) return "This file type can't be rotated.";
+        if (file.IsPdf) return Loc.T("PDFs can't be rotated here — rotate the pages in the queue before saving.");
+        if (file.ImageFormat is not { } format) return Loc.T("This file type can't be rotated.");
 
         var gate = FileLocks.GetOrAdd(Path.GetFullPath(path), _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync();
@@ -287,7 +286,7 @@ public static class SavedFiles
                                                BitmapCacheOption.OnLoad);
             if (decoder.Frames.Count != 1)
             {
-                return "It has multiple pages — rotate it in another app instead.";
+                return Loc.T("It has multiple pages — rotate it in another app instead.");
             }
             var frame = decoder.Frames[0];
             int orientation = ReadOrientation(frame);
@@ -302,11 +301,11 @@ public static class SavedFiles
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return "The file could not be read.";
+            return Loc.T("The file could not be read.");
         }
         catch
         {
-            return "The image could not be decoded.";
+            return Loc.T("The image could not be decoded.");
         }
 
         if (format == OutputFormat.Jpeg && EstimateJpegQuality(path) is { } estimated)
@@ -332,11 +331,11 @@ public static class SavedFiles
         }
         catch (TempFileKeptException e)
         {
-            return $"The original was removed but the rotated copy could not take its name. It was kept as \"{Path.GetFileName(e.TempPath)}\" in the same folder.";
+            return Loc.T("The original was removed but the rotated copy could not take its name. It was kept as \"{0}\" in the same folder.", Path.GetFileName(e.TempPath));
         }
         catch
         {
-            return "The rotated copy could not be written.";
+            return Loc.T("The rotated copy could not be written.");
         }
     }
 

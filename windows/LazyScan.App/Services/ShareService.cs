@@ -1,3 +1,4 @@
+using LazyScan.Core;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
@@ -44,7 +45,7 @@ public sealed class ShareService
     public void Share(IReadOnlyList<string> paths, string title)
     {
         IntPtr window = _ownerWindow();
-        if (window == IntPtr.Zero) throw new InvalidOperationException("The app window is not open.");
+        if (window == IntPtr.Zero) throw new InvalidOperationException(Loc.T("The app window is not open."));
         if (_manager is null || _managerWindow != window)
         {
             if (_manager is not null) _manager.DataRequested -= OnDataRequested;
@@ -61,7 +62,7 @@ public sealed class ShareService
         var request = args.Request;
         if (_pending is not { } pending)
         {
-            request.FailWithDisplayText("There is nothing to share.");
+            request.FailWithDisplayText(Loc.T("There is nothing to share."));
             return;
         }
         var deferral = request.GetDeferral();
@@ -76,7 +77,7 @@ public sealed class ShareService
         }
         catch (Exception e)
         {
-            request.FailWithDisplayText($"The file could not be shared: {e.Message}");
+            request.FailWithDisplayText(Loc.T("The file could not be shared: {0}", e.Message));
         }
         finally
         {
@@ -88,7 +89,7 @@ public sealed class ShareService
     internal static void Fill(DataPackage data, IReadOnlyList<IStorageItem> files, string title)
     {
         data.Properties.Title = title;
-        data.Properties.Description = files.Count == 1 ? "Saved by Lazy Scan" : $"{files.Count} files saved by Lazy Scan";
+        data.Properties.Description = Loc.Plural(files.Count, "Saved by Lazy Scan", "{0} files saved by Lazy Scan");
         data.Properties.ApplicationName = "Lazy Scan";
         data.RequestedOperation = DataPackageOperation.Copy;
         data.SetStorageItems(files, readOnly: true);

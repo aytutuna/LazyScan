@@ -46,8 +46,8 @@ public sealed class TaskCardItem(TaskDefinition definition, TaskAvailability ava
 
     public string HelpText =>
         IsAvailable
-            ? $"{Subtitle} {Summary}.{(IsCurrent ? " Current task." : "")}"
-            : $"{Subtitle} Not available: {Reason}";
+            ? IsCurrent ? Loc.T("{0} {1}. Current task.", Subtitle, Summary) : Loc.T("{0} {1}.", Subtitle, Summary)
+            : Loc.T("{0} Not available: {1}", Subtitle, Reason);
 
     /// <summary>The tooltip's second line: what the task sets (the reason it can't be started is on the tile).</summary>
     public string TipDetail => Summary;
@@ -71,9 +71,9 @@ public sealed class PresetCardItem(Preset preset)
     public string TaskTitle => TaskCatalog.Definition(Task).Title;
     public string Glyph => TaskIcons.Glyph(Task);
     public string Summary => TaskCatalog.Summary(Preset.Settings);
-    public string HelpText => $"Preset for {TaskTitle}. {Summary}.";
+    public string HelpText => Loc.T("Preset for {0}. {1}.", TaskTitle, Summary);
     /// <summary>"Invoices preset".</summary>
-    public string AccessibleName => $"{Name} preset";
+    public string AccessibleName => Loc.T("{0} preset", Name);
 
     internal string Signature => string.Join('\u001f', Preset.Id, Name, Task, Summary);
 }

@@ -30,11 +30,11 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
         }
     }
     public string Name => File.Name;
-    public string Caption => $"{DateText} · {SizeText}";
+    public string Caption => Loc.T("{0} · {1}", DateText, SizeText);
     public string DateText => File.Modified.ToString("g");
     public string SizeText => SavedFiles.SizeText(File.Size);
     /// <summary>The card's tooltip: the whole name (it may be cut on the card) and the size.</summary>
-    public string ToolTipText => $"{Name} · {SizeText}";
+    public string ToolTipText => Loc.T("{0} · {1}", Name, SizeText);
     /// <summary>Short file type label shown on the card (PDF, JPG, PNG, TIFF).</summary>
     public string TypeText => Path.GetExtension(File.Path).ToLowerInvariant() switch
     {
@@ -152,10 +152,10 @@ public partial class SavedFilesView : UserControl
         Rows.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         bool unreadable = files is null;
         EmptyGlyph.Text = unreadable ? "\uE7BA" : "\uE8B7";
-        EmptyTitle.Text = unreadable ? "The destination folder could not be read." : "Nothing saved yet";
+        EmptyTitle.Text = unreadable ? Loc.T("The destination folder could not be read.") : Loc.T("Nothing saved yet");
         EmptyBody.Text = unreadable
-            ? "Check that the folder exists and that you have permission to open it."
-            : "Scans you save to this folder appear here, newest first.";
+            ? Loc.T("Check that the folder exists and that you have permission to open it.")
+            : Loc.T("Scans you save to this folder appear here, newest first.");
         EmptyFolder.Text = folder;
         // The header already names the folder; the full path is repeated only when it failed.
         EmptyFolder.Visibility = unreadable ? Visibility.Visible : Visibility.Collapsed;
@@ -301,7 +301,7 @@ public partial class SavedFilesView : UserControl
         }
         catch (Exception ex)
         {
-            _showError?.Invoke($"Could not open {folder}: {ex.Message}");
+            _showError?.Invoke(Loc.T("Could not open {0}: {1}", folder, ex.Message));
         }
     }
 
@@ -355,7 +355,7 @@ public partial class SavedFilesView : UserControl
         List<MenuItem> extra = [];
         if (item.File.ImageFormat is not null)
         {
-            var rotate = FileActionMenu.Item("Rotate 90° clockwise", "\uE7AD", "Rotate the saved file 90° clockwise",
+            var rotate = FileActionMenu.Item(Loc.T("Rotate 90° clockwise"), "\uE7AD", Loc.T("Rotate the saved file 90° clockwise"),
                                              () => RotateItem(item));
             rotate.IsEnabled = item.CanRotate;
             extra.Add(rotate);
@@ -390,7 +390,7 @@ public partial class SavedFilesView : UserControl
         item.IsRotating = false;
         if (failure is not null)
         {
-            _showError?.Invoke($"Could not rotate {item.Name}: {failure}");
+            _showError?.Invoke(Loc.T("Could not rotate {0}: {1}", item.Name, failure));
             return;
         }
         // Refresh just this card (new date, size and thumbnail) instead of the whole folder.

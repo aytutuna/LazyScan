@@ -25,12 +25,12 @@ public static class FileActionMenu
     /// <summary>What the action does, for tooltips and screen readers.</summary>
     public static string Hint(FileAction action, int fileCount) => action switch
     {
-        FileAction.Open => "Open with the default app",
-        FileAction.OpenWith => "Choose the app to open it with",
-        FileAction.Reveal => "Show in File Explorer",
-        FileAction.Share => "Send with Mail, Outlook, nearby sharing or another app",
-        FileAction.Email => "Attach to an email: choose Mail or Outlook in the share window",
-        FileAction.Copy => fileCount == 1 ? "Copy the file to the clipboard" : "Copy the files to the clipboard",
+        FileAction.Open => Loc.T("Open with the default app"),
+        FileAction.OpenWith => Loc.T("Choose the app to open it with"),
+        FileAction.Reveal => Loc.T("Show in File Explorer"),
+        FileAction.Share => Loc.T("Send with Mail, Outlook, nearby sharing or another app"),
+        FileAction.Email => Loc.T("Attach to an email: choose Mail or Outlook in the share window"),
+        FileAction.Copy => fileCount == 1 ? Loc.T("Copy the file to the clipboard") : Loc.T("Copy the files to the clipboard"),
         _ => "",
     };
 
