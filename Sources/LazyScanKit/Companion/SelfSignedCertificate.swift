@@ -42,7 +42,7 @@ public enum SelfSignedCertificate {
         guard let publicKey = SecKeyCopyPublicKey(key),
               let point = SecKeyCopyExternalRepresentation(publicKey, nil) as Data?,
               let spki = SpkiFingerprint.p256SubjectPublicKeyInfo(point)
-        else { throw SelfSignedCertificateError("The key is not a P-256 key.") }
+        else { throw SelfSignedCertificateError(L10n.t("The key is not a P-256 key.")) }
         var generator = SystemRandomNumberGenerator()
         var serial: [UInt8] = []
         for _ in 0..<16 {
@@ -82,8 +82,8 @@ public enum SelfSignedCertificate {
         var error: Unmanaged<CFError>?
         guard let signature = SecKeyCreateSignature(key, .ecdsaSignatureMessageX962SHA256, Data(tbs) as CFData, &error) as Data?
         else {
-            let reason = error?.takeRetainedValue().localizedDescription ?? "unknown error"
-            throw SelfSignedCertificateError("The certificate could not be signed: \(reason)")
+            let reason = error?.takeRetainedValue().localizedDescription ?? L10n.t("unknown error")
+            throw SelfSignedCertificateError(L10n.t("The certificate could not be signed: {0}", reason))
         }
         return Data(DerWriter.sequence([tbs, algorithm, DerWriter.bitString([UInt8](signature))]))
     }

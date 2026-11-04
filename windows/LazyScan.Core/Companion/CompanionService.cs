@@ -132,7 +132,7 @@ public sealed class CompanionService : IAsyncDisposable
 
     /// <summary>The certificate's fingerprint (the pin phones keep).</summary>
     public byte[] Fingerprint => SpkiFingerprint.Of(Certificate().RawData)
-                                 ?? throw new InvalidOperationException("The certificate cannot be read.");
+                                 ?? throw new InvalidOperationException(Loc.T("The certificate cannot be read."));
 
     /// <summary>
     /// Starts following the networks: listens if a phone is paired and a trusted network is

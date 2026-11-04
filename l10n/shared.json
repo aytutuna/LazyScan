@@ -1927,5 +1927,8 @@
   "the TWAIN helper does not take {0} messages.": {},
   "no scanner is open in the 32-bit TWAIN helper.": {},
   "Receiving the page from the scanner…": {},
-  "the 32-bit TWAIN helper had more to say than fits in one message.": {}
+  "the 32-bit TWAIN helper had more to say than fits in one message.": {},
+  "The key is not a P-256 key.": {},
+  "The certificate could not be signed: {0}": {},
+  "The certificate cannot be read.": {}
 }

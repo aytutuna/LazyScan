@@ -143,7 +143,7 @@ public final class CompanionService: @unchecked Sendable {
     public func fingerprint() throws -> Data {
         let identity = try currentIdentity()
         guard let der = SelfSignedCertificate.der(of: identity), let pin = SpkiFingerprint.of(der) else {
-            throw SelfSignedCertificateError("The certificate cannot be read.")
+            throw SelfSignedCertificateError(L10n.t("The certificate cannot be read."))
         }
         return pin
     }
