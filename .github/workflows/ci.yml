@@ -412,7 +412,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       # The view keys the compiler found (SWIFT_EMIT_LOC_STRINGS above), against l10n/keys-ios.json.
       # A difference goes to the step summary and the list is uploaded; it fails the job only on the
-      # release path, where a new key must be in the list (and translated) before it ships.
+      # ci/testflight ref, which flags a release carrying an unlisted key; it does not stop the upload
+      # in testflight.yml.
       - name: Extract the view keys
         run: |
           status=0

@@ -5,9 +5,9 @@ writes one .stringsdata file per source) into a sorted key list.
   extract_loc.py DIR OUT [COMMITTED]
 
 Reads every *.stringsdata under DIR, keeps table Localizable, drops sources under a Tests
-directory and fails on any other table. Writes OUT as {"keys": [{"key", "comment"}]}. With
-COMMITTED, prints the keys added and removed against that list as Markdown and exits 3 when
-they differ.
+directory or a UITests target and fails on any other table. Writes OUT as
+{"keys": [{"key", "comment"}]}. With COMMITTED, prints the keys added and removed against that
+list as Markdown and exits 3 when they differ.
 """
 import json
 import sys
@@ -19,7 +19,7 @@ def collect(root):
     for path in sorted(Path(root).rglob("*.stringsdata")):
         data = json.loads(path.read_text(encoding="utf-8"))
         source = data.get("source", "").replace("\\", "/")
-        if "/Tests/" in source:
+        if "/Tests/" in source or "UITests/" in source:
             continue
         for table, entries in data.get("tables", {}).items():
             if table != "Localizable":
@@ -34,10 +34,12 @@ def collect(root):
 
 def write(keys, out):
     lines = [json.dumps({"key": k, "comment": keys[k]}, ensure_ascii=False) for k in sorted(keys)]
-    Path(out).write_text('{"keys": [\n ' + ",\n ".join(lines) + "\n]}\n", encoding="utf-8")
+    text = '{"keys": [\n ' + ",\n ".join(lines) + "\n]}\n"
+    Path(out).write_bytes(text.encode("utf-8"))
 
 
 def main(args):
+    sys.stdout.reconfigure(encoding="utf-8")
     if len(args) not in (2, 3):
         sys.exit(__doc__)
     keys = collect(args[0])
