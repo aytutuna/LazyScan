@@ -175,9 +175,29 @@ jobs:
         run: bash scripts/fetch_docaligner.sh
       - name: Write the strings
         run: python3 scripts/gen_l10n.py
-      # The app as developers build it (debug).
+      # The app as developers build it (debug). The compiler also writes the localized string keys
+      # it finds to $RUNNER_TEMP/loc. LazyScanIOS compiles to nothing here, so its keys are not in it.
       - name: Build
-        run: swift build
+        run: swift build -Xswiftc -emit-localized-strings -Xswiftc -emit-localized-strings-path -Xswiftc "$RUNNER_TEMP/loc"
+      # A difference goes to the step summary and the list is uploaded; it fails the job only on the
+      # ci/testflight ref, as in the ios job.
+      - name: Extract the view keys
+        run: |
+          status=0
+          python3 scripts/extract_loc.py "$RUNNER_TEMP/loc" "$RUNNER_TEMP/keys-mac.json" l10n/keys-mac.json > "$RUNNER_TEMP/keys-diff.md" || status=$?
+          cat "$RUNNER_TEMP/keys-diff.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/keys-diff.md"
+          if [ "$status" -eq 3 ] && [ "$GITHUB_REF" != refs/heads/ci/testflight ]; then
+            status=0
+          fi
+          exit "$status"
+      - name: Upload the view keys
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: keys-mac
+          path: ${{ runner.temp }}/keys-mac.json
+          if-no-files-found: warn
       # The tests run optimized: the image, PDF and OCR code they drive takes many times longer in
       # a debug build (over 40 minutes). -enable-testing keeps @testable imports working in it, and
       # --parallel runs the test classes in several processes at once.
