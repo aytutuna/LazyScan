@@ -5,6 +5,39 @@ namespace LazyScan.Core.Tests;
 
 public sealed class LocTests
 {
+    [Theory]
+    [InlineData("tr-TR", "tr")]
+    [InlineData("es", "es")]
+    [InlineData("es-ES", "es")]
+    [InlineData("es-EA", "es")]
+    [InlineData("es-IC", "es")]
+    [InlineData("es-GQ", "es")]
+    [InlineData("de-DE-1996", "en")]
+    [InlineData("es-BO", "es-419")]
+    [InlineData("es-UY", "es-419")]
+    [InlineData("es-MX", "es-419")]
+    [InlineData("pt", "pt-BR")]
+    [InlineData("pt-BR", "pt-BR")]
+    [InlineData("pt-AO", "pt-PT")]
+    [InlineData("pt-PT", "pt-PT")]
+    [InlineData("zh-HK", "zh-Hant")]
+    [InlineData("zh-TW", "zh-Hant")]
+    [InlineData("zh-CN", "zh-Hans")]
+    [InlineData("nn", "nb")]
+    [InlineData("nn-NO", "nb")]
+    [InlineData("no", "nb")]
+    [InlineData("iw", "he")]
+    [InlineData("pa-Arab-PK", "en")]
+    [InlineData("pa-Guru-IN", "pa")]
+    [InlineData("pa-Guru", "pa")]
+    [InlineData("en-GB", "en")]
+    [InlineData("fr-FR", "en")]
+    public void ResolveWalksToTheShippedLanguage(string tag, string expected)
+    {
+        var shipped = new HashSet<string> { "tr", "es", "es-419", "pt-BR", "pt-PT", "zh-Hant", "zh-Hans", "nb", "he", "pa" };
+        Assert.Equal(expected, Loc.Resolve(tag, shipped));
+    }
+
     [Fact]
     public void NoTableReturnsEnglish() => Assert.Equal("Save as PDF", Loc.T("Save as PDF"));
 

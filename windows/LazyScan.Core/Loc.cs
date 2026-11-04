@@ -85,6 +85,45 @@ public static class Loc
         return "en";
     }
 
+    /// <summary>
+    /// The shipped language code for <paramref name="tag"/>: the first culture in its parent chain
+    /// that is in <paramref name="shipped"/>, after the regional aliases (Latin American Spanish,
+    /// Brazilian and European Portuguese, Norwegian, Hebrew); "en" when none is.
+    /// </summary>
+    public static string Resolve(string tag, IReadOnlySet<string> shipped)
+    {
+        CultureInfo culture;
+        try { culture = CultureInfo.GetCultureInfo(tag); }
+        catch (CultureNotFoundException) { return "en"; }
+        for (; culture != CultureInfo.InvariantCulture; culture = culture.Parent)
+        {
+            if (shipped.Contains(culture.Name)) return culture.Name;
+            if (Alias(culture.Name) is { } alias && shipped.Contains(alias)) return alias;
+            // pa-Arab is not pa: a differing script in the name stops the walk before the bare language.
+            if (HasScript(culture.Name) && !HasScript(culture.Parent.Name) && culture.Name != "pa-Guru") break;
+        }
+        return "en";
+    }
+
+    private static bool HasScript(string name)
+    {
+        var parts = name.Split('-');
+        return parts.Length > 1 && parts[1].Length == 4 && char.IsLetter(parts[1][0]);
+    }
+
+    private static string? Alias(string name)
+    {
+        var parts = name.Split('-');
+        return parts[0] switch
+        {
+            "es" when parts.Length > 1 && parts[^1].Length != 4 && parts[^1] is not ("ES" or "EA" or "IC" or "GQ") => "es-419",
+            "pt" => parts.Length == 1 ? "pt-BR" : "pt-PT",
+            "no" or "nn" => "nb",
+            "iw" => "he",
+            _ => null,
+        };
+    }
+
     private static string? Lookup(string key)
     {
         if (Override.Value is { } table) return table.GetValueOrDefault(key);
