@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # --ship builds only the live, complete languages.
-[ $# -eq 0 ] || [ "$1" = "--ship" ] || { echo "usage: $0 [--ship]" >&2; exit 1; }
+[ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = "--ship" ]; } || { echo "usage: $0 [--ship]" >&2; exit 1; }
 
 echo "==> Generating strings…"
 python3 scripts/gen_l10n.py ${1:+"$1"}
