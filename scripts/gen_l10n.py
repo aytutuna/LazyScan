@@ -6,11 +6,13 @@ CI runs it and fails if the checked-in output differs. Every lang file is valida
 the English catalog first.
 
   --check         validate and scan the code, write nothing
+  --sync          append the keys the code uses and the catalog lacks; with --prune, drop unused ones
   --samples       print language, number and category for every integer sample in plural.json
   --prune         remove keys from the lang files that the catalog no longer has
   --fmt           rewrite the lang files in catalog order, one entry per line
   --todo CODE     print what is still missing in one language
 """
+import html
 import json
 import re
 import sys
@@ -46,6 +48,12 @@ CALLS = [
     (re.compile(r"\bLoc\.Plural\([^,]+,\s*" + LITERAL + r"\s*,\s*" + LITERAL), (".cs",)),
 ]
 
+
+# Loc.T(cond ? "a" : "b", ...): both literals are keys.
+TERNARY = re.compile(r"\bLoc\.T\(\s*[^\"\s][^\"?;]*\?\s*" + LITERAL + r"\s*:\s*" + LITERAL)
+# Folders under Sources and windows, and the platforms they ship on.
+PLATFORMS = {"LazyScan": {"mac"}, "LazyScanIOS": {"ios"}, "LazyScanMac": {"mac"}, "LazyScanKit": {"ios", "mac"},
+             "LazyScanModel": {"ios", "mac"}, "windows": {"win"}}
 
 # "a" + "b" would be read as "a" alone, and never found at run time.
 SPLIT = re.compile(r"\b(?:L10n\.t|Loc\.T)\(\s*" + LITERAL + r"\s*\+")
@@ -355,22 +363,78 @@ def unescape(literal):
     return re.sub(r"\\(.)", lambda m: {"n": "\n", "t": "\t"}.get(m.group(1), m.group(1)), literal)
 
 
+def xaml_texts(text):
+    """The text of every {loc:T ...} in a XAML file. The end is found by brace depth: a text
+    may hold {0}, and the markup may sit inside the StringFormat of a binding."""
+    for start in re.finditer(r"\{loc:T\s", text):
+        depth, i = 1, start.end()
+        while i < len(text) and depth:
+            if text[i] == "\\":
+                i += 1
+            elif text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+            i += 1
+        raw = html.unescape(text[start.end():i - 1]).strip()
+        if raw.startswith("{}"):
+            raw = raw[2:]
+        if len(raw) > 1 and raw[0] == raw[-1] == "'":
+            raw = raw[1:-1]
+        yield re.sub(r"\\(.)", r"\1", raw)
+
+
 def keys_in_code():
+    """({key: (first file, plural others seen, platforms)}, keys split with +). The set holds None for plain sites."""
     found = {}
     split = set()
+
+    def add(key, rel, other, platforms):
+        path, others, have = found.get(key, (rel, set(), set()))
+        found[key] = (path, others | {other}, have | platforms)
+
     for base in CODE:
         for path in (ROOT / base).rglob("*"):
             rel = path.relative_to(ROOT)
-            if path.suffix not in (".swift", ".cs") or SKIP_DIRS & set(rel.parts):
+            if path.suffix not in (".swift", ".cs", ".xaml") or SKIP_DIRS & set(rel.parts):
                 continue
+            platforms = PLATFORMS[rel.parts[1] if base == "Sources" else base]
             text = path.read_text(encoding="utf-8", errors="ignore")
+            if path.suffix == ".xaml":
+                for key in xaml_texts(text):
+                    add(key, rel.as_posix(), None, platforms)
+                continue
+            if path.suffix == ".cs":
+                for m in TERNARY.finditer(text):
+                    for literal in m.groups():
+                        add(unescape(literal), rel.as_posix(), None, platforms)
             for pattern, suffixes in CALLS:
                 if path.suffix in suffixes:
                     split.update((unescape(m.group(1)), rel.as_posix()) for m in SPLIT.finditer(text))
                     for m in pattern.finditer(text):
                         other = unescape(m.group(2)) if m.lastindex > 1 else None
-                        found.setdefault(unescape(m.group(1)), (rel.as_posix(), other))
+                        add(unescape(m.group(1)), rel.as_posix(), other, platforms)
     return found, split
+
+
+def sync(prune):
+    data = read_json(CATALOG)
+    used, _ = keys_in_code()
+    for key, (path, others, _) in used.items():
+        if key not in data:
+            other = next((o for o in others if o), None)
+            data[key] = {} if other is None else {"other": other}
+            print(f"added {key!r} ({path})")
+    if prune:
+        for key in [k for k in data if k not in used]:
+            del data[key]
+            print(f"removed {key!r}")
+    def entry(value):
+        fields = ",\n".join(f"    {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}" for k, v in value.items())
+        return f"{{\n{fields}\n  }}" if value else "{}"
+
+    body = ",\n".join(f"  {json.dumps(k, ensure_ascii=False)}: {entry(v)}" for k, v in data.items())
+    write(CATALOG, "{\n" + body + "\n}\n")
 
 
 RULE_TOKEN = re.compile(r"\s*(?:(\d+)|([a-z]+)|(!=|\.\.|[%=,]))")
@@ -586,6 +650,11 @@ def main():
             sys.exit("usage: gen_l10n.py --todo CODE")
         todo(args[args.index("--todo") + 1])
         return 0
+    if "--sync" in args:
+        sync("--prune" in args)
+        if "--prune" in args:
+            format_languages(True)
+        return 0
     if "--fmt" in args or "--prune" in args:
         format_languages("--prune" in args)
         return 0
@@ -604,11 +673,11 @@ def main():
     unused = [k for k in data if k not in used]
     for key, path in split:
         print(f"key split with +: {key!r} ({path})")
-    missing = {k: p for k, (p, _) in used.items() if k not in data}
+    missing = {k: p for k, (p, _, _) in used.items() if k not in data}
     for key, path in missing.items():
-        print(f"missing from the catalog: {key!r} ({path})")
-    for key, (path, other) in used.items():
-        if key in data and data[key].get("other") != other:
+        print(f"missing from the catalog: {key!r} on {','.join(sorted(used[key][2]))} ({path})")
+    for key, (path, others, _) in used.items():
+        if key in data and others != {data[key].get("other")}:
             print(f"plural text differs from the catalog: {key!r} ({path})")
             missing[key] = path
     for key in unused:
