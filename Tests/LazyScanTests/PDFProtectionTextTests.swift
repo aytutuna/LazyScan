@@ -5,7 +5,7 @@ final class PDFProtectionTextTests: XCTestCase {
     /// The generated Turkish Kit table, as the iPhone bundle ships it.
     private static func turkishTable() throws -> [String: String] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let file = root.appendingPathComponent("ios/LazyScaniOS/tr.lproj/Kit.strings")
+        let file = root.appendingPathComponent("l10n/out/ios/tr.lproj/Kit.strings")
         return try XCTUnwrap(NSDictionary(contentsOf: file) as? [String: String])
     }
 

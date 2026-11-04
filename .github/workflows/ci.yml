@@ -171,6 +171,8 @@ jobs:
       # (LazyScanModelTests, on the photos in Tests/Fixtures/Pages).
       - name: Fetch the corner model
         run: bash scripts/fetch_docaligner.sh
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py
       # The app as developers build it (debug).
       - name: Build
         run: swift build
@@ -318,6 +320,8 @@ jobs:
       # The page corner model, as in the other jobs, before anything builds the package.
       - name: Fetch the corner model
         run: bash scripts/fetch_docaligner.sh
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py
       - name: Toolchain
         run: |
           xcodebuild -version
@@ -388,8 +392,6 @@ jobs:
           fi
           unzip -q "$zip" -d "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION"
           echo "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION/xcodegen/bin" >> "$GITHUB_PATH"
-      - name: Write the strings
-        run: python3 scripts/gen_l10n.py
       - name: Write the app's project
         run: |
           xcodegen --version
@@ -493,6 +495,8 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_16.4.app
       - name: Fetch the corner model
         run: bash scripts/fetch_docaligner.sh
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py
       - name: Toolchain
         run: |
           xcodebuild -version

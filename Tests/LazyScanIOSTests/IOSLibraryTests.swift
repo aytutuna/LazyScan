@@ -310,7 +310,7 @@ final class IOSLibraryTests: XCTestCase {
         XCTAssertEqual(IOSHistory.countText(1), "1 scan")
         XCTAssertEqual(IOSHistory.countText(13), "13 scans")
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let kit = root.appendingPathComponent("ios/LazyScaniOS/tr.lproj/Kit.strings")
+        let kit = root.appendingPathComponent("l10n/out/ios/tr.lproj/Kit.strings")
         let table = try XCTUnwrap(NSDictionary(contentsOf: kit) as? [String: String])
         L10n.withTable(table, language: "tr") {
             XCTAssertEqual(IOSHistory.countText(1), "1 tarama")
