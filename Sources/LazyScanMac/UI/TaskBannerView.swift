@@ -7,7 +7,7 @@ import SwiftUI
 /// do now in one short line with the fuller guidance behind an info button (`TaskStep.help`), a way
 /// back to the start screen (`onChangeTask`) and a button that
 /// leaves the task, keeping its settings (without a task: that scans one side again). Fronts
-/// scanned without moving on to the backs (the feeder stopped early) offer Done with Fronts.
+/// scanned without moving on to the backs (the feeder stopped early) offer Done with fronts.
 /// While the backs are due it offers keeping the fronts only and, before any back is scanned,
 /// scanning more fronts; when the counts did not pair up, scanning the backs again or combining
 /// the pages as they are. Twin of the Windows task banner (MainWindow.xaml).
@@ -174,7 +174,7 @@ struct TaskBannerView: View {
             }
             HStack(spacing: 8) {
                 if state.canFinishFronts {
-                    Button("Done with Fronts") { state.finishFronts() }
+                    Button("Done with fronts") { state.finishFronts() }
                         .help("Every front side is scanned: turn the stack over and scan the back sides")
                 }
                 if state.awaitingBacks && state.sidesMismatch != nil {

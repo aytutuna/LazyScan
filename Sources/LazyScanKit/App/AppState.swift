@@ -979,7 +979,7 @@ public final class AppState: ObservableObject {
             return
         }
         let deviceName = devices.first(where: { $0.id == id })?.name
-        let name = deviceName ?? L10n.t("scanner")
+        let name = deviceName ?? L10n.t("scanner|lowercase label")
         statusMessage = L10n.t("Connecting to {0}…", name)
         do {
             let s = try await backend.openSession(deviceID: id, interactive: interactive)
@@ -2036,11 +2036,9 @@ public final class AppState: ObservableObject {
         }
     }
 
-    /// What to do while the fronts are scanned a part at a time. The phone's button is in sentence case,
-    /// the Mac's in Title Case.
+    /// What to do while the fronts are scanned a part at a time.
     private var moreFrontsPrompt: String {
-        let done: String = platform == .ios ? L10n.t("Done with fronts") : L10n.t("Done with Fronts")
-        return L10n.t("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.", done)
+        L10n.t("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.", L10n.t("Done with fronts"))
     }
 
     /// After a scan of a stack turned over by hand: the fronts move the steps on to the backs,

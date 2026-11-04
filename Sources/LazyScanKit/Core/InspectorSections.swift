@@ -55,7 +55,7 @@ public enum InspectorSections {
     /// "Flatbed · 300 dpi · Color", "Feeder · both sides · 300 dpi · Gray".
     public static func scannerSummary(_ s: ScanSettings) -> String {
         var parts: [String] = [s.source == .documentFeeder ? L10n.t("Feeder|scanner source") : L10n.t("Flatbed")]
-        if s.source == .documentFeeder && s.duplex != .off { parts.append(L10n.t("both sides")) }
+        if s.source == .documentFeeder && s.duplex != .off { parts.append(L10n.t("both sides|lowercase label")) }
         parts.append(L10n.t("{0} dpi", L10n.plain(s.resolution)))
         let color: String
         switch s.colorMode {

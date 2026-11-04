@@ -1356,7 +1356,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return;
         }
         string? deviceName = DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id)?.Name;
-        string name = deviceName ?? Loc.T("scanner");
+        string name = deviceName ?? Loc.T("scanner|lowercase label");
         StatusMessage = Loc.T("Connecting to {0}…", name);
         NotifyAll();
         try

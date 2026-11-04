@@ -517,7 +517,6 @@
     "other": "Copied {0} files to the clipboard."
   },
   "Done with fronts": {},
-  "Done with Fronts": {},
   "Saved {0}-page PDF: {1}": {
     "other": "Saved {0}-page PDF: {1}"
   },
@@ -901,7 +900,7 @@
   "Archive & password": {},
   "More options": {},
   "Feeder|scanner source": {},
-  "both sides": {},
+  "both sides|lowercase label": {},
   "Gray|color mode": {},
   "B&W": {},
   "Text|format": {},
@@ -1242,7 +1241,7 @@
   "Connecting to {0}…": {},
   "No scanner selected.": {},
   "Scanner is no longer available.": {},
-  "scanner": {},
+  "scanner|lowercase label": {},
   "Could not connect to {0}.": {},
   "{0} To review the new certificate, choose the scanner in the list.": {},
   "the scanner": {},
