@@ -22,7 +22,9 @@ final class ScreenshotTests: XCTestCase {
         outDir = URL(fileURLWithPath: dir, isDirectory: true)
         try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
         folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ScreenshotTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("LazyScanShots", isDirectory: true)
+        // A fixed name, as the inspector shows the save folder.
+        try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         if let lang = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_LANG"], !lang.isEmpty {
             UserDefaults.standard.register(defaults: ["AppleLanguages": [lang]])
