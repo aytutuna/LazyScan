@@ -5,73 +5,75 @@ import Foundation
 /// The settings screen's words that are the iPhone's own; the sections' titles and summaries are the
 /// shared `InspectorSections`.
 public enum IOSSettingsText {
-    public static let title = "Settings"
-    public static let doneLabel = "Done"
-    public static let presetsLabel = "Presets"
-    public static let historyLabel = "Scans"
-    public static let savedLabel = "Saved files"
+    public static var title: String { String(localized: "Settings") }
+    public static var doneLabel: String { String(localized: "Done") }
+    public static var presetsLabel: String { String(localized: "Presets") }
+    public static var historyLabel: String { String(localized: "Scans") }
+    public static var savedLabel: String { String(localized: "Saved files") }
     /// The iPhone's saved files and scans together (`LibraryScreen`).
-    public static let libraryLabel = "Library"
+    public static var libraryLabel: String { String(localized: "Library") }
     /// The computer the phone is paired with (`CompanionScreen`, I20).
-    public static let companionLabel = "My computer"
-    public static let fileNameLabel = "File name"
-    public static let saveToLabel = "Save to"
+    public static var companionLabel: String { String(localized: "My computer") }
+    public static var fileNameLabel: String { String(localized: "File name") }
+    public static var saveToLabel: String { String(localized: "Save to") }
     /// Picks a save folder in Files (iCloud Drive, a USB drive); Use app folder goes back to the app's own.
-    public static let chooseFolderLabel = "Choose\u{2026}"
-    public static let appFolderLabel = "Use app folder"
-    public static let troubleshootLabel = "Troubleshoot"
-    public static let aboutLabel = "About"
+    public static var chooseFolderLabel: String { String(localized: "Choose\u{2026}") }
+    public static var appFolderLabel: String { String(localized: "Use app folder") }
+    public static var troubleshootLabel: String { String(localized: "Troubleshoot") }
+    public static var aboutLabel: String { String(localized: "About") }
     /// The ruler test page, to check that AirPrint copies come out at real size (I16).
-    public static let rulerLabel = "Print test ruler"
-    public static let rulerHint = "Prints a ruler to check copies come out at real size"
-    public static let resetLabel = "Reset"
-    public static let notCollectingReason = "Needs Collect pages"
+    public static var rulerLabel: String { String(localized: "Print test ruler") }
+    public static var rulerHint: String { String(localized: "Prints a ruler to check copies come out at real size") }
+    public static var resetLabel: String { String(localized: "Reset") }
+    public static var notCollectingReason: String { String(localized: "Needs Collect pages") }
     /// Why Collect pages is locked while the camera's Both sides is on: its fronts and backs are paired in
     /// the queue.
-    public static let bothSidesCollectsReason = "Both sides pairs the pages in the stack"
-    public static let docdateReason = "Needs {docdate} in File name"
-    public static let onlyPDFReason = "Only for PDFs"
-    public static let importingReason = "Can be changed once the import has finished"
-    public static let busyReason = "Can be changed once the scan or save has finished"
+    public static var bothSidesCollectsReason: String { String(localized: "Both sides pairs the pages in the stack") }
+    public static var docdateReason: String { String(localized: "Needs {docdate} in File name") }
+    public static var onlyPDFReason: String { String(localized: "Only for PDFs") }
+    public static var importingReason: String { String(localized: "Can be changed once the import has finished") }
+    public static var busyReason: String { String(localized: "Can be changed once the scan or save has finished") }
     /// Why Source is locked while a side of an ID card is held (from the camera or the scanner alike).
-    public static let idCardHeldReason =
-        "Source is locked while a side of the ID card is held. Save or discard the card, or leave the task, to change it."
+    public static var idCardHeldReason: String {
+        String(localized: "Source is locked while a side of the ID card is held. Save or discard the card, or leave the task, to change it.")
+    }
     /// In place of the Scanner section's rows while no scanner is selected: printer mode until the scanner
     /// picked is found (camera mode has no Scanner section).
-    public static let noScannerReason = "No scanner is in use. Pick one in the Scanner row to change these."
+    public static var noScannerReason: String { String(localized: "No scanner is in use. Pick one in the Scanner row to change these.") }
     /// The About screen: what the app is built with (Apple's frameworks, and the page corner model with
     /// what runs it, whose licenses go with the app) and where scans stay.
-    public static let aboutBuiltWith = "Built with Apple\u{2019}s frameworks. Pages are found with DocAligner by DocsaidLab "
-        + "(Apache License 2.0) on ONNX Runtime by Microsoft (MIT License)."
-    public static let aboutPrivacy = "Your scans stay on this device unless you share them."
+    public static var aboutBuiltWith: String {
+        String(localized: "Built with Apple\u{2019}s frameworks. Pages are found with DocAligner by DocsaidLab (Apache License 2.0) on ONNX Runtime by Microsoft (MIT License).")
+    }
+    public static var aboutPrivacy: String { String(localized: "Your scans stay on this device unless you share them.") }
     /// About's row to the licence texts that go with the app (`LicencesScreen`).
-    public static let licencesLabel = "Licences"
-    public static let licenceMissing = "Licence text missing"
+    public static var licencesLabel: String { String(localized: "Licences") }
+    public static var licenceMissing: String { String(localized: "Licence text missing") }
     /// The camera's group, on this device only: the size its photos are taken at.
-    public static let cameraTitle = "Camera"
-    public static let cameraResolutionLabel = "Resolution"
+    public static var cameraTitle: String { String(localized: "Camera") }
+    public static var cameraResolutionLabel: String { String(localized: "Resolution") }
 
     /// Why Collect pages is locked while a PDF picked in the task list takes the pages: turned off, each scan
     /// would be saved as a new file while Save still names this one.
     public static func addingToReason(_ fileName: String) -> String {
-        "Adding to \(fileName)"
+        String(localized: "Adding to \(fileName)")
     }
 
     /// Why Source is locked under ID card, Book and Text, whose tasks need the flatbed.
     public static func needsFlatbedReason(_ kind: String) -> String {
-        "\(kind) is scanned on the flatbed. Pick Document to use the feeder."
+        String(localized: "\(kind) is scanned on the flatbed. Pick Document to use the feeder.")
     }
 
     /// A photo size in the Resolution picker, "24 MP (default)" for the one taken until another is picked.
     public static func resolutionChoice(_ size: IOSPhotoSize, isDefault: Bool) -> String {
-        isDefault ? "\(IOSCameraText.sizeLabel(size)) (default)" : IOSCameraText.sizeLabel(size)
+        isDefault ? String(localized: "\(IOSCameraText.sizeLabel(size)) (default)") : IOSCameraText.sizeLabel(size)
     }
 
     /// "Version 0.1.0 (1)" from the app's Info.plist; "Version 0.1.0" without a build number.
     public static func version(_ info: [String: Any]?) -> String {
         let short: String = info?["CFBundleShortVersionString"] as? String ?? "?"
-        guard let build = info?["CFBundleVersion"] as? String, !build.isEmpty else { return "Version \(short)" }
-        return "Version \(short) (\(build))"
+        guard let build = info?["CFBundleVersion"] as? String, !build.isEmpty else { return String(localized: "Version \(short)") }
+        return String(localized: "Version \(short) (\(build))")
     }
 }
 
@@ -238,10 +240,10 @@ public enum IOSAdjustment: String, CaseIterable, Identifiable {
 
     public var label: String {
         switch self {
-        case .brightness: return "Brightness"
-        case .contrast: return "Contrast"
-        case .saturation: return "Saturation"
-        case .sharpness: return "Sharpness"
+        case .brightness: return String(localized: "Brightness")
+        case .contrast: return String(localized: "Contrast")
+        case .saturation: return String(localized: "Saturation")
+        case .sharpness: return String(localized: "Sharpness")
         }
     }
 
@@ -267,9 +269,7 @@ public enum IOSAdjustment: String, CaseIterable, Identifiable {
 
     /// "0", "+12", "-5".
     public static func amountText(_ amount: Double) -> String {
-        let rounded: Int = Int(amount.rounded())
-        if rounded == 0 { return "0" }
-        return rounded > 0 ? "+\(rounded)" : "\(rounded)"
+        Int(amount.rounded()).formatted(.number.sign(strategy: .always(includingZero: false)))
     }
 
     /// The four sliders back to neutral; the switches stay as they are.
@@ -304,11 +304,11 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     /// The rows' order under After saving.
     public static let rows: [IOSAfterSave] = [.email, .print, .send]
 
-    public static let title = "After saving"
-    public static let footer = "Runs each time a document is saved. Change it any time."
-    public static let thenTitle = "Then"
+    public static var title: String { String(localized: "After saving") }
+    public static var footer: String { String(localized: "Runs each time a document is saved. Change it any time.") }
+    public static var thenTitle: String { String(localized: "Then") }
     /// Under Then while Email is checked.
-    public static let emailInsteadReason = "Email is sent instead"
+    public static var emailInsteadReason: String { String(localized: "Email is sent instead") }
 
     /// The Kit's action after a save in the phone's words: Show in folder opens the Files app here.
     public static func thenLabel(_ action: AfterSaveAction) -> String {
@@ -317,8 +317,8 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
 
     public static func thenHint(_ action: AfterSaveAction) -> String {
         switch action {
-        case .open: return "Open the file (several: show them in Files)"
-        case .reveal: return "Show the files in the Files app"
+        case .open: return String(localized: "Open the file (several: show them in Files)")
+        case .reveal: return String(localized: "Show the files in the Files app")
         default: return action.hint
         }
     }
@@ -326,8 +326,8 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     public var label: String {
         switch self {
         case .send: return IOSCompanionText.sendButton
-        case .print: return "Print"
-        case .email: return "Email"
+        case .print: return String(localized: "Print")
+        case .email: return String(localized: "Email")
         }
     }
 
@@ -352,11 +352,11 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         switch status {
         case .unreachable(let reason):
             if inFolder == waiting {
-                return reason + " The document is in the cloud folder; the computer takes it from there."
+                return reason + " " + String(localized: "The document is in the cloud folder; the computer takes it from there.")
             }
-            return reason + " The pages wait on this device and are sent once it answers."
+            return reason + " " + String(localized: "The pages wait on this device and are sent once it answers.")
         case .unpaired(let name):
-            return CompanionText.unpairedMessage(name) + " The pages were not sent."
+            return CompanionText.unpairedMessage(name) + " " + String(localized: "The pages were not sent.")
         case .notPaired, .checking, .reachable:
             return nil
         }

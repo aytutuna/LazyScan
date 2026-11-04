@@ -36,7 +36,7 @@ public struct IOSSavedFile: Identifiable, Equatable {
     public var detail: String {
         let date: String = modified.formatted(date: .abbreviated, time: .shortened)
         let size: String = ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
-        return "\(date) \u{00B7} \(size)"
+        return String(localized: "\(date) \u{00B7} \(size)")
     }
 }
 
@@ -52,13 +52,13 @@ public struct IOSSavedFolder: Equatable {
 /// are marked. Each file offers what iOS has of the saved files' actions (`SaveActions.offered`): Share and
 /// Show in Files first. Nothing is deleted here, as on the desktop: the Files app does that.
 public enum IOSSavedFiles {
-    public static let title = "Saved files"
-    public static let emptyTitle = "Nothing saved yet"
-    public static let emptyLine = "Saved files appear here, newest first."
-    public static let failedLine = "The save folder could not be read."
-    public static let newBadge = "New"
-    public static let revealLabel = "Show in Files"
-    public static let moreLabel = "More"
+    public static var title: String { String(localized: "Saved files") }
+    public static var emptyTitle: String { String(localized: "Nothing saved yet") }
+    public static var emptyLine: String { String(localized: "Saved files appear here, newest first.") }
+    public static var failedLine: String { String(localized: "The save folder could not be read.") }
+    public static var newBadge: String { String(localized: "New") }
+    public static var revealLabel: String { String(localized: "Show in Files") }
+    public static var moreLabel: String { String(localized: "More") }
 
     /// The extensions of the files the app saves.
     public static let knownExtensions: Set<String> = ["pdf", "jpg", "jpeg", "png", "tiff", "tif", "txt", "docx"]

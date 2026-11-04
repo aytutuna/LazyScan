@@ -8,10 +8,10 @@ import Foundation
 /// keeps the last name in use. The same template names every task's files, as on the desktop.
 @MainActor
 public final class IOSNamingModel: ObservableObject {
-    public static let title = "File name"
-    public static let insertTitle = "Insert"
-    public static let exampleLabel = "Next file"
-    public static let resetLabel = "Reset"
+    public static var title: String { String(localized: "File name") }
+    public static var insertTitle: String { String(localized: "Insert") }
+    public static var exampleLabel: String { String(localized: "Next file") }
+    public static var resetLabel: String { String(localized: "Reset") }
 
     @Published public private(set) var text: String
     private let state: AppState
@@ -25,7 +25,7 @@ public final class IOSNamingModel: ObservableObject {
     public var parts: [NamingToken] {
         NamingTokens.all.map { (part: NamingToken) -> NamingToken in
             guard part.token == "{label}" else { return part }
-            return NamingToken(label: part.label, token: part.token, help: "The document\u{2019}s name from its QR sheet")
+            return NamingToken(label: part.label, token: part.token, help: String(localized: "The document\u{2019}s name from its QR sheet"))
         }
     }
 

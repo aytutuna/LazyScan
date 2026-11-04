@@ -17,9 +17,9 @@ public struct IOSHistoryRow: Identifiable {
 /// The Scans screen without a screen: `AppState.scanHistory` (this session's scans, newest first, small
 /// pictures only), read-only as on the Mac and Windows.
 public enum IOSHistory {
-    public static let title = "Scans"
-    public static let emptyTitle = "No scans yet"
-    public static let emptyLine = "Scans from this session appear here, newest first."
+    public static var title: String { String(localized: "Scans") }
+    public static var emptyTitle: String { String(localized: "No scans yet") }
+    public static var emptyLine: String { String(localized: "Scans from this session appear here, newest first.") }
 
     /// "1 scan", "13 scans".
     public static func countText(_ count: Int) -> String {
@@ -34,9 +34,14 @@ public enum IOSHistory {
             let width: Int = Int(entry.pixelSize.width)
             let height: Int = Int(entry.pixelSize.height)
             let photo: Bool = entry.intent == .photo
-            let spoken: String = "\(photo ? "Photo" : "Document") scan, \(entry.dpi) dpi, \(width) by \(height) pixels, \(time)"
+            let dpi: String = entry.dpi.formatted(.number.grouping(.never))
+            let w: String = width.formatted(.number.grouping(.never))
+            let h: String = height.formatted(.number.grouping(.never))
+            let spoken: String = photo
+                ? String(localized: "Photo scan, \(dpi) dpi, \(w) by \(h) pixels, \(time)")
+                : String(localized: "Document scan, \(dpi) dpi, \(w) by \(h) pixels, \(time)")
             rows.append(IOSHistoryRow(id: entry.id, thumbnail: entry.thumbnail,
-                                      title: "\(entry.intent.label) \u{00B7} \(entry.dpi) dpi", time: time,
+                                      title: String(localized: "\(entry.intent.label) \u{00B7} \(dpi) dpi"), time: time,
                                       symbol: photo ? "photo" : "doc.text", accessibilityLabel: spoken))
         }
         return rows

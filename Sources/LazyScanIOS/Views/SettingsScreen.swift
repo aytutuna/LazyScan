@@ -256,7 +256,8 @@ private struct TaskSettingsRows: View {
     }
 
     private func combineHint(_ pdf: Bool) -> String {
-        pdf ? "Off: a PDF for each receipt" : "Only for PDFs: each receipt is saved as an image of its own."
+        pdf ? String(localized: "Off: a PDF for each receipt")
+            : String(localized: "Only for PDFs: each receipt is saved as an image of its own.")
     }
 
     private var nameByDate: Binding<Bool> {
@@ -445,7 +446,7 @@ private struct OutputSettingsRows: View {
         if s.intent == ScanIntent.document && flow != TaskFlowKind.receiptSplit && flow != TaskFlowKind.idCard {
             Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
                 .disabled(reason != nil)
-                .accessibilityHint(Text(reason ?? "Off: each page is saved right away"))
+                .accessibilityHint(Text(reason ?? String(localized: "Off: each page is saved right away")))
             if let reason {
                 ReasonLine(text: reason)
             }
@@ -601,9 +602,9 @@ private struct PageSettingsRows: View {
         Toggle("Skip blank pages", isOn: $state.settings.document.removeBlankPages)
             .disabled(!collecting || separators)
             .accessibilityHint(Text(separators ? DocumentSplitter.blankPagesAreSeparatorsHint
-                                    : "Blank pages are left out. Tap Keep on a page to save it."))
+                                    : String(localized: "Blank pages are left out. Tap Keep on a page to save it.")))
         if separators {
-            ReasonLine(text: "Blank sheets split documents")
+            ReasonLine(text: String(localized: "Blank sheets split documents"))
         }
         if collecting && s.document.removeBlankPages {
             Picker("What counts as blank", selection: $state.settings.document.blankSensitivity) {
@@ -687,7 +688,8 @@ private struct SplitSettingsRows: View {
         }
         if collecting && mode == SplitMode.sheetCount {
             Stepper(value: sheetCount, in: 1...DocumentSplitter.maxSheetCount) {
-                Text("New document every \(DocumentSplitter.clampSheetCount(s.document.splitSheetCount)) sheets")
+                Text(L10n.plural(DocumentSplitter.clampSheetCount(s.document.splitSheetCount),
+                                 one: "New document every {0} sheet", other: "New document every {0} sheets"))
             }
         }
         if collecting && mode == SplitMode.barcode {

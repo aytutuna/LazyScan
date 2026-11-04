@@ -532,6 +532,9 @@
   "{0} document in the cloud folder": {
     "en_other": "{0} documents in the cloud folder"
   },
+  "New document every {0} sheet": {
+    "en_other": "New document every {0} sheets"
+  },
   "Delete {0} page?": {
     "en_other": "Delete {0} pages?"
   },

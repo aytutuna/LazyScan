@@ -4,20 +4,20 @@ import Foundation
 
 /// The presets screen's words.
 public enum IOSPresetText {
-    public static let title = "Presets"
-    public static let groupTitle = "My presets"
-    public static let saveLabel = "Save preset"
-    public static let saveTitle = "Save preset"
-    public static let saveLine = "Saves the current settings to use again."
-    public static let namePlaceholder = "Preset name"
-    public static let renameLabel = "Rename"
-    public static let renameTitle = "Rename preset"
-    public static let deleteLabel = "Delete"
-    public static let emptyTitle = "No presets"
-    public static let emptyLine = "Save your settings to use them again."
-    public static let discardTitle = "Discard the ID card?"
-    public static let discardLine = "The ID card has not been saved. Its sides will be discarded."
-    public static let discardLabel = "Discard"
+    public static var title: String { String(localized: "Presets") }
+    public static var groupTitle: String { String(localized: "My presets") }
+    public static var saveLabel: String { String(localized: "Save preset") }
+    public static var saveTitle: String { String(localized: "Save preset") }
+    public static var saveLine: String { String(localized: "Saves the current settings to use again.") }
+    public static var namePlaceholder: String { String(localized: "Preset name") }
+    public static var renameLabel: String { String(localized: "Rename") }
+    public static var renameTitle: String { String(localized: "Rename preset") }
+    public static var deleteLabel: String { String(localized: "Delete") }
+    public static var emptyTitle: String { String(localized: "No presets") }
+    public static var emptyLine: String { String(localized: "Save your settings to use them again.") }
+    public static var discardTitle: String { String(localized: "Discard the ID card?") }
+    public static var discardLine: String { String(localized: "The ID card has not been saved. Its sides will be discarded.") }
+    public static var discardLabel: String { String(localized: "Discard") }
 }
 
 /// A preset as the list shows it: its name, the kind it brings back with the kind's icon, as the kind tiles
@@ -39,9 +39,9 @@ public struct IOSPresetRow: Identifiable, Equatable {
     }
 
     /// "Invoices preset", as VoiceOver reads the row.
-    public var accessibilityLabel: String { "\(name) preset" }
+    public var accessibilityLabel: String { String(localized: "\(name) preset") }
     /// "Preset for Document. 300 dpi · Color · PDF."
-    public var accessibilityHint: String { "Preset for \(taskTitle). \(summary)." }
+    public var accessibilityHint: String { String(localized: "Preset for \(taskTitle). \(summary).") }
 }
 
 /// What applying a preset came to.
