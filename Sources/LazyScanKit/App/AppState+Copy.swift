@@ -156,7 +156,7 @@ extension AppState {
         }
         let copies = PrintCopies.clamp(options.copyCount)
         statusMessage = L10n.t("Printing on {0}…", setup.printerName)
-        let job = PrintJob(printerName: setup.printerName, jobName: "Copy", paper: setup.paper, copies: copies)
+        let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("Copy|print job name"), paper: setup.paper, copies: copies)
         var printError: Error?
         do {
             let printed: Bool
@@ -383,7 +383,7 @@ extension AppState {
                                                         height: Double(paperInches.height)),
                                            scale: 1, quarterTurns: 0, clippedInches: clipped)
             self.statusMessage = L10n.t("Printing the ID card on {0}…", setup.printerName)
-            let job = PrintJob(printerName: setup.printerName, jobName: "ID card", paper: setup.paper, copies: 1)
+            let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("ID card"), paper: setup.paper, copies: 1)
             guard try await self.printService.print(drawn.0, job: job) else {
                 self.statusMessage = L10n.t("Printing cancelled.")
                 return
@@ -416,7 +416,7 @@ extension AppState {
             guard let document else { throw PrintError.failed(L10n.t("The ruler test page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             self.statusMessage = L10n.t("Printing the ruler test page on {0}…", setup.printerName)
-            let job = PrintJob(printerName: setup.printerName, jobName: "Ruler test page", paper: paper, copies: 1)
+            let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("Ruler test page"), paper: paper, copies: 1)
             guard try await self.printService.print(document, job: job) else {
                 self.statusMessage = L10n.t("Printing cancelled.")
                 return

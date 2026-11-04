@@ -485,7 +485,7 @@ public static class QrSeparatorSheet
             : Loc.T("Sent the QR separator sheet to {0}. Put one in front of each document; print more copies as you need them.", printer);
 
     /// <summary>The print job's name.</summary>
-    public const string JobName = "Separator sheet (QR code)";
+    public static string JobName => Loc.T("Separator sheet (QR code)");
 
     private static int Round(int hundredths, double dpi) => (int)Math.Round(hundredths * dpi / 100, MidpointRounding.AwayFromZero);
 }

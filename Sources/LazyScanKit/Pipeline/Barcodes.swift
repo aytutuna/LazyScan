@@ -331,7 +331,7 @@ public enum QrSeparatorSheet {
     public static let codeTopHundredths = 180
 
     /// The print job's name.
-    public static let jobName = "Separator sheet (QR code)"
+    public static var jobName: String { L10n.t("Separator sheet (QR code)") }
 
     /// The text of the sheet's code: `prefix` (`BarcodeSeparators.prefix`; `DocumentOptions.splitBarcodePrefix`),
     /// a space and the name as a code's text gives it (`BarcodeSeparators.label`): "LS-SEP Lease 2026";

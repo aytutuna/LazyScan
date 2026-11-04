@@ -409,7 +409,7 @@ extension AppState {
             guard let document else { throw PrintError.failed(L10n.t("The separator sheet could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             self.statusMessage = L10n.t("Printing the separator sheet on {0}…", setup.printerName)
-            let job = PrintJob(printerName: setup.printerName, jobName: qr ? QrSeparatorSheet.jobName : "Separator sheet (Patch T)",
+            let job = PrintJob(printerName: setup.printerName, jobName: qr ? QrSeparatorSheet.jobName : L10n.t("Separator sheet (Patch T)"),
                                paper: paper, copies: 1)
             guard try await self.printService.print(document, job: job) else {
                 self.statusMessage = L10n.t("Printing cancelled.")

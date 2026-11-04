@@ -3152,7 +3152,8 @@ public struct QrModules: Equatable, Sendable {            // size × size, row b
 }
 public protocol QrEncoder { func encode(_ text: String) -> QrModules? }   // UTF-8, level M; C# IQrEncoder
 public enum QrSeparatorSheet {
-    public static let dpi = 300; codeSideHundredths = 250; codeTopHundredths = 180; jobName = "Separator sheet (QR code)"
+    public static let dpi = 300; codeSideHundredths = 250; codeTopHundredths = 180
+    public static var jobName: String { get }   // L10n.t("Separator sheet (QR code)"); C# JobName property
     public static func text(_ name: String?, prefix: String = BarcodeSeparators.defaultPrefix) -> String
         // "LS-SEP Lease" (prefix, a space, label(name)); the prefix alone with no name; empty prefix: label(name) ?? unnamedText
     public static func caption(_ text: String) -> String  // the 5 × 7 type: accents dropped, a–z → A–Z, others "?"

@@ -491,7 +491,7 @@ public sealed partial class AppViewModel
             var paper = setup.Paper.Paper;
             var page = await Task.Run(() => RenderSeparatorSheet(qr, name, s.Document.SplitBarcodePrefix, paper.Width, paper.Height), token);
             var placement = PrintLayout.Place(page.Width, page.Height, dpi, setup.Paper, PrintMode.ActualSize, PrintAlign.PaperOrigin);
-            var job = new PrintJob(setup.PrinterName, qr ? QrSeparatorSheet.JobName : "Separator sheet (Patch T)", setup.Paper,
+            var job = new PrintJob(setup.PrinterName, qr ? QrSeparatorSheet.JobName : Loc.T("Separator sheet (Patch T)"), setup.Paper,
                                    RequestedPaper: null, [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1), Gray: true);
             StatusMessage = Loc.T("Printing the separator sheet on {0}…", setup.PrinterName);
             NotifyAll();

@@ -230,7 +230,7 @@ public sealed partial class AppViewModel
             .ToList();
         int copies = PrintCopies.Clamp(options.CopyCount);
         var plan = PrintCopies.Plan(copies, setup.MaxCopyCount, printPages.Count, setup.CanCollate);
-        var job = new PrintJob(setup.PrinterName, "Copy", setup.Paper, RequestedPaper(s), printPages,
+        var job = new PrintJob(setup.PrinterName, Loc.T("Copy|print job name"), setup.Paper, RequestedPaper(s), printPages,
                                plan, Gray: s.ColorMode != ColorMode.Color);
         // No answer still prints the copy; the PDF is then not written.
         bool noPassword = false;
@@ -338,7 +338,7 @@ public sealed partial class AppViewModel
             double clipped = PrintLayout.ClippedInches(layout.Front, setup.Paper.Printable);
             if (layout.Back is { } backRect) clipped = Math.Max(clipped, PrintLayout.ClippedInches(backRect, setup.Paper.Printable));
             var placement = new PrintPlacement(new RectD(0, 0, paperInches.Width, paperInches.Height), 1, 0, clipped);
-            var job = new PrintJob(setup.PrinterName, "ID card", setup.Paper, paper,
+            var job = new PrintJob(setup.PrinterName, Loc.T("ID card"), setup.Paper, paper,
                                    [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1),
                                    Gray: s.ColorMode != ColorMode.Color);
             StatusMessage = Loc.T("Printing the ID card on {0}…", setup.PrinterName);
@@ -368,7 +368,7 @@ public sealed partial class AppViewModel
             const int dpi = 300;
             var page = await Task.Run(() => PrintCalibration.MakeRulerPage(setup.Paper.Paper, dpi), token);
             var placement = PrintLayout.Place(page.Width, page.Height, dpi, setup.Paper, PrintMode.ActualSize, PrintAlign.PaperOrigin);
-            var job = new PrintJob(setup.PrinterName, "Ruler test page", setup.Paper, RequestedPaper(s),
+            var job = new PrintJob(setup.PrinterName, Loc.T("Ruler test page"), setup.Paper, RequestedPaper(s),
                                    [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1), Gray: true);
             StatusMessage = Loc.T("Printing the ruler test page on {0}…", setup.PrinterName);
             NotifyAll();

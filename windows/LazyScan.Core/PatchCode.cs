@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LazyScan.Core;
 
 // Twin of Sources/LazyScanKit/Pipeline/PatchCodeDetector.swift.
@@ -329,7 +331,7 @@ public static class PatchCodeDetector
         int title = Math.Max(1, Round(5, dpi));
         int body = Math.Max(1, Round(2, dpi));
         DrawText(pixels, w, h, "SEPARATOR SHEET", middle - Round(80, dpi), title);
-        DrawText(pixels, w, h, code.Label().ToUpperInvariant(), middle - Round(20, dpi), title);
+        DrawText(pixels, w, h, code.Label().ToUpper(CultureInfo.CurrentCulture), middle - Round(20, dpi), title);
         DrawText(pixels, w, h, "PUT THIS SHEET IN FRONT OF EACH DOCUMENT.", middle + Round(50, dpi), body);
         DrawText(pixels, w, h, "PRINT AT ACTUAL SIZE (100%). DO NOT SHRINK.", middle + Round(80, dpi), body);
         return new GrayImage(w, h, pixels, dpi);
