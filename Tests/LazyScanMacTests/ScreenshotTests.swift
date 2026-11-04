@@ -118,6 +118,13 @@ final class ScreenshotTests: XCTestCase {
     }
 
     @MainActor
+    func test_sidebar() async throws {
+        let state = try await makeState(pages: 0)
+        try await shoot("sidebar", size: CGSize(width: 260, height: 400),
+                        SidebarView().environmentObject(state))
+    }
+
+    @MainActor
     func test_inspector() async throws {
         let state = try await makeState(pages: 0)
         try await shoot("inspector", size: CGSize(width: 340, height: 720),

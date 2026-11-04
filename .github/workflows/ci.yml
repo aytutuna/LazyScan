@@ -194,7 +194,7 @@ jobs:
             LAZYSCAN_SHOTS_DIR="$RUNNER_TEMP/shots-$run" swift test -c release -Xswiftc -enable-testing --filter ScreenshotTests
           done
           ls -l "$RUNNER_TEMP/shots-a"
-          test "$(ls "$RUNNER_TEMP/shots-a" | wc -l | tr -d ' ')" -eq 6
+          test "$(ls "$RUNNER_TEMP/shots-a" | wc -l | tr -d ' ')" -eq 7
           for f in "$RUNNER_TEMP"/shots-a/*.png; do
             test "$(stat -f %z "$f")" -gt 12000
             cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
