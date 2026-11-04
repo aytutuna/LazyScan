@@ -894,3 +894,5 @@ struct LicencesScreen: View {
     }
 }
 #endif
+
+private let scratchLiteral = LocalizedStringResource("Scratch literal c16")
