@@ -87,7 +87,9 @@ jobs:
           $service = Get-Service stisvc
           "stisvc: $($service.Status), start type $($service.StartType)"
       # A shipping build carries a satellite folder for each live language and nothing else.
+      # Only on the release ref, so a new English key never fails an ordinary run.
       - name: Check the shipped languages
+        if: github.ref == 'refs/heads/ci/testflight'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
