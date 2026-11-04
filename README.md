@@ -263,6 +263,7 @@ open "dist/Lazy Scan.app"
 Run the test suite (photo detection, PDF/OCR, naming, adjustments):
 
 ```bash
+python3 scripts/gen_l10n.py       # writes l10n/out, which the tests and the iPhone project read
 swift test
 ```
 
@@ -333,7 +334,9 @@ an Xcode project that
 release and checks its SHA-256. To build it and run its UI smoke test on the Simulator:
 
 ```bash
+python3 scripts/gen_l10n.py
 xcodegen generate --spec ios/project.yml
+plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.ios.txt)" ios/LazyScaniOS/Info.plist
 xcodebuild test -project ios/LazyScaniOS.xcodeproj -scheme LazyScaniOS \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' CODE_SIGNING_ALLOWED=NO
 ```

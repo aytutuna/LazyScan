@@ -411,13 +411,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Check the app's languages
         run: |
+          set -euo pipefail
           app="$RUNNER_TEMP/app-build/Build/Products/Release-iphonesimulator/LazyScan.app"
           for lang in $(cat l10n/out/languages.ios.txt); do
             for file in Kit InfoPlist; do
               [ -f "$app/$lang.lproj/$file.strings" ] || { echo "$lang.lproj/$file.strings is missing from the app"; exit 1; }
             done
           done
-          plutil -p "$app/Info.plist" | grep -A 20 CFBundleLocalizations
+          plutil -extract CFBundleLocalizations xml1 -o - "$app/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - l10n/out/languages.ios.txt
       - name: Run the app's smoke test
         timeout-minutes: 30
         run: |

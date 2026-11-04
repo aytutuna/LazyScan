@@ -1,7 +1,8 @@
 # The iPhone app's Xcode project, for XcodeGen (CI pins its release and SHA-256; see the
 # ios job in .github/workflows/ci.yml). `xcodegen generate --spec ios/project.yml` writes
 # ios/LazyScaniOS.xcodeproj, which is not checked in. The app target holds no logic: it starts
-# LazyScanIOSApp from the package at the repository root (Sources/LazyScanIOS).
+# LazyScanIOSApp from the package at the repository root (Sources/LazyScanIOS). Run
+# scripts/gen_l10n.py first: the strings are read from l10n/out/ios.
 name: LazyScaniOS
 
 options:
