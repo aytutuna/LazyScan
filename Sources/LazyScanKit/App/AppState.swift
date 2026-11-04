@@ -2512,7 +2512,8 @@ public final class AppState: ObservableObject {
             }
         }
         if !shouldContinue() { throw ScanError.cancelled }
-        progress(format == .word ? L10n.t("Writing the Word document…") : L10n.t("Writing the text file…"))
+        progress(format == .word ? L10n.t("Writing the Word document…") : L10n.t("Writing the text file…"),
+                 StatusDetail())
         let data: Data
         if format == .word {
             // A package past the limit is refused here: `ZipStore.make` would stop the app past 4 GB.
