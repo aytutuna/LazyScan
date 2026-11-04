@@ -161,15 +161,6 @@ jobs:
       # The app as developers build it (debug).
       - name: Build
         run: swift build
-      # make_app.sh copies these into the app bundle; no job packages the app, so check them here.
-      - name: Check the Mac localisation files
-        run: |
-          set -euo pipefail
-          for lang in en tr; do
-            for file in Kit Localizable InfoPlist; do
-              plutil -lint "l10n/mac/$lang.lproj/$file.strings"
-            done
-          done
       # The tests run optimized: the image, PDF and OCR code they drive takes many times longer in
       # a debug build (over 40 minutes). -enable-testing keeps @testable imports working in it, and
       # --parallel runs the test classes in several processes at once.
@@ -242,6 +233,28 @@ jobs:
             exit 1
           fi
           echo "veraPDF $version: all $passed samples from the Swift writer are PDF/A-2b."
+
+  # Packages the app the way a release does. Nothing needs this job, so it does not hold up the
+  # iOS jobs behind a second release compile.
+  mac-package:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Package the app
+        run: bash scripts/make_app.sh
+      - name: Check the bundle
+        run: |
+          set -euo pipefail
+          app="dist/Lazy Scan.app"
+          plutil -lint "$app/Contents/Info.plist"
+          while read -r lang; do
+            [ -d "$app/Contents/Resources/$lang.lproj" ] || { echo "$lang.lproj is not in the app"; exit 1; }
+            echo "$lang"
+          done < l10n/out/languages.mac.txt > "$RUNNER_TEMP/bundled.txt"
+          plutil -extract CFBundleLocalizations xml1 -o - "$app/Contents/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - "$RUNNER_TEMP/bundled.txt"
+          find "$app" -name '*.strings' -print0 | xargs -0 -n1 plutil -lint
 
   ios:
     # The shared Swift suite (LazyScanKit's tests) and the iPhone's own tests on the iOS
