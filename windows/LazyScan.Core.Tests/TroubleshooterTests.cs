@@ -657,7 +657,7 @@ public class TroubleshooterTests
         };
         try
         {
-            var format = Assert.Throws<EsclFormatException>(() => EsclCapabilitiesParser.Parse("<a"));
+            var format = Assert.Throws<LocFormatException>(() => EsclCapabilitiesParser.Parse("<a"));
             Assert.StartsWith("Geçersiz XML: ", format.Message);
             string english = Loc.English(() => format.Message);
             Assert.StartsWith("The scanner capabilities are not valid XML: ", english);

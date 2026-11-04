@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Globalization;
 
 namespace LazyScan.Core;
 
@@ -40,14 +41,16 @@ public sealed class TwainImageAssembler
     private readonly byte[]? _pixels;
     private readonly List<TwainStrip>? _pending;
 
-    /// <exception cref="NotSupportedException">The format is not one <see cref="TwainRaster.CanAssemble(TwainImageInfo)"/> accepts.</exception>
+    /// <exception cref="FormatException">The format is not one <see cref="TwainRaster.CanAssemble(TwainImageInfo)"/> accepts.</exception>
     public TwainImageAssembler(TwainImageInfo info, int pixelFlavor = TwainPixelFlavors.Chocolate, bool msbFirst = true)
     {
         if (!TwainRaster.CanAssemble(info))
         {
-            throw new NotSupportedException(
-                $"The scanner sent an image format this app cannot read (pixel type {info.PixelType}, "
-                + $"{info.BitsPerPixel} bits per pixel, compression {info.Compression}{(info.Planar ? ", planar" : "")}).");
+            string pixelType = info.PixelType.ToString(CultureInfo.InvariantCulture);
+            string compression = info.Compression.ToString(CultureInfo.InvariantCulture);
+            throw new LocFormatException(() => info.Planar
+                ? Loc.T("The scanner sent an image format this app cannot read (pixel type {0}, {1} bits per pixel, compression {2}, planar).", pixelType, info.BitsPerPixel, compression)
+                : Loc.T("The scanner sent an image format this app cannot read (pixel type {0}, {1} bits per pixel, compression {2}).", pixelType, info.BitsPerPixel, compression));
         }
         _info = info;
         _vanilla = pixelFlavor == TwainPixelFlavors.Vanilla;
@@ -78,7 +81,7 @@ public sealed class TwainImageAssembler
     {
         if (strip.Compression != TwainCompression.None)
         {
-            throw new FormatException("The scanner sent a compressed strip this app cannot read.");
+            throw new LocFormatException(() => Loc.T("The scanner sent a compressed strip this app cannot read."));
         }
         if (strip.Rows <= 0 || strip.Columns <= 0 || strip.Data.Length == 0) return;
         HasData = true;
@@ -192,7 +195,7 @@ public static class TwainRaster
     {
         if (width <= 0 || height <= 0 || (long)width * height > MaxPixels)
         {
-            throw new FormatException($"The scanner sent an image of an impossible size ({width} × {height}).");
+            throw new LocFormatException(() => Loc.T("The scanner sent an image of an impossible size ({0} × {1}).", width, height));
         }
     }
 
@@ -224,16 +227,16 @@ public static class TwainRaster
 
     private static BitmapLayout ReadLayout(ReadOnlySpan<byte> h)
     {
-        if (h.Length < 40) throw new FormatException("The bitmap is too short.");
+        if (h.Length < 40) throw new LocFormatException(() => Loc.T("The bitmap is too short."));
         int headerSize = BinaryPrimitives.ReadInt32LittleEndian(h);
-        if (headerSize < 40 || headerSize > MaxBitmapHeader) throw new FormatException($"Unsupported bitmap header ({headerSize} bytes).");
+        if (headerSize < 40 || headerSize > MaxBitmapHeader) throw new LocFormatException(() => Loc.T("Unsupported bitmap header ({0} bytes).", headerSize));
         int width = BinaryPrimitives.ReadInt32LittleEndian(h[4..]);
         int rawHeight = BinaryPrimitives.ReadInt32LittleEndian(h[8..]);
         int bitCount = BinaryPrimitives.ReadUInt16LittleEndian(h[14..]);
         int compression = BinaryPrimitives.ReadInt32LittleEndian(h[16..]);
         int pixelsPerMeter = BinaryPrimitives.ReadInt32LittleEndian(h[24..]);
         int colorsUsed = BinaryPrimitives.ReadInt32LittleEndian(h[32..]);
-        if (rawHeight == int.MinValue) throw new FormatException("The bitmap has an impossible height.");
+        if (rawHeight == int.MinValue) throw new LocFormatException(() => Loc.T("The bitmap has an impossible height."));
         int height = Math.Abs(rawHeight);
         CheckSize(width, height);
 
@@ -241,13 +244,14 @@ public static class TwainRaster
         bool bitFields = compression == BiBitfields;
         if (bitFields)
         {
-            if (bitCount != 32) throw new FormatException($"Unsupported bitmap: {bitCount}-bit with bit fields.");
+            if (bitCount != 32) throw new LocFormatException(() => Loc.T("Unsupported bitmap: {0}-bit with bit fields.", bitCount));
         }
         else if (compression != BiRgb)
         {
-            throw new FormatException($"Unsupported bitmap compression {compression}.");
+            string compressionCode = compression.ToString(CultureInfo.InvariantCulture);
+            throw new LocFormatException(() => Loc.T("Unsupported bitmap compression {0}.", compressionCode));
         }
-        if (bitCount is not (1 or 4 or 8 or 24 or 32)) throw new FormatException($"Unsupported bitmap: {bitCount} bits per pixel.");
+        if (bitCount is not (1 or 4 or 8 or 24 or 32)) throw new LocFormatException(() => Loc.T("Unsupported bitmap: {0} bits per pixel.", bitCount));
         int paletteCount = bitCount <= 8 ? (colorsUsed > 0 ? Math.Min(colorsUsed, 1 << bitCount) : 1 << bitCount) : 0;
         // A 24 or 32-bit bitmap may still carry a color table (biClrUsed entries, a palette for
         // displays that need one): its pixels come after it.
@@ -295,30 +299,30 @@ public static class TwainRaster
             header = 14;
             pixelOffset = BinaryPrimitives.ReadUInt32LittleEndian(data[10..]);
         }
-        if (data.Length < header + 40) throw new FormatException("The bitmap is too short.");
+        if (data.Length < header + 40) throw new LocFormatException(() => Loc.T("The bitmap is too short."));
         var h = data[header..];
         var layout = ReadLayout(h);
-        if (layout.HeaderSize > h.Length) throw new FormatException($"Unsupported bitmap header ({layout.HeaderSize} bytes).");
+        if (layout.HeaderSize > h.Length) throw new LocFormatException(() => Loc.T("Unsupported bitmap header ({0} bytes).", layout.HeaderSize));
         int width = layout.Width, height = layout.Height, bitCount = layout.BitCount, paletteCount = layout.PaletteCount;
         bool topDown = layout.TopDown;
         if (layout.BitFields)
         {
             const int maskStart = 40;
-            if (h.Length < maskStart + 12) throw new FormatException("The bitmap is too short.");
+            if (h.Length < maskStart + 12) throw new LocFormatException(() => Loc.T("The bitmap is too short."));
             uint red = BinaryPrimitives.ReadUInt32LittleEndian(h[maskStart..]);
             uint green = BinaryPrimitives.ReadUInt32LittleEndian(h[(maskStart + 4)..]);
             uint blue = BinaryPrimitives.ReadUInt32LittleEndian(h[(maskStart + 8)..]);
             if (red != 0x00FF0000 || green != 0x0000FF00 || blue != 0x000000FF)
             {
-                throw new FormatException("Unsupported bitmap: unusual bit-field masks.");
+                throw new LocFormatException(() => Loc.T("Unsupported bitmap: unusual bit-field masks."));
             }
         }
 
         int paletteStart = layout.PaletteStart;
-        if (paletteCount > 0 && h.Length < paletteStart + paletteCount * 4) throw new FormatException("The bitmap's color table is cut short.");
+        if (paletteCount > 0 && h.Length < paletteStart + paletteCount * 4) throw new LocFormatException(() => Loc.T("The bitmap's color table is cut short."));
         long start = pixelOffset is { } offset && offset - header >= layout.PixelStart ? offset - header : layout.PixelStart;
         long stride = layout.Stride;
-        if (start + stride * height > h.Length) throw new FormatException("The bitmap's pixels are cut short.");
+        if (start + stride * height > h.Length) throw new LocFormatException(() => Loc.T("The bitmap's pixels are cut short."));
 
         var palette = new byte[Math.Max(paletteCount, 1) * 3];
         for (int i = 0; i < paletteCount; i++)

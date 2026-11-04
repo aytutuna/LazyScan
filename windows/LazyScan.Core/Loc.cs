@@ -143,3 +143,12 @@ public static class Loc
     private static string Number(object value) =>
         ((IFormattable)value).ToString("#,##0.###", CultureInfo.CurrentCulture);
 }
+
+/// <summary>
+/// A format error whose message is worded each time it is asked for, so the support report gets
+/// it in English when it asks inside <see cref="Loc.English"/>.
+/// </summary>
+public sealed class LocFormatException(Func<string> text, Exception? inner = null) : FormatException(null, inner)
+{
+    public override string Message => text();
+}

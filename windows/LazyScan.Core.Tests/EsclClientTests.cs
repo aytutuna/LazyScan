@@ -145,7 +145,7 @@ public class EsclClientTests
 
         using var notXml = Client(new FakeDevice().On("GET /eSCL/ScannerCapabilities",
             () => Text(HttpStatusCode.OK, "<html>printer home page")));
-        await Assert.ThrowsAsync<EsclFormatException>(() => notXml.GetCapabilitiesAsync());
+        await Assert.ThrowsAsync<LocFormatException>(() => notXml.GetCapabilitiesAsync());
     }
 
     // MARK: - Jobs

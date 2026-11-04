@@ -120,14 +120,14 @@ public class TwainRasterTests
     {
         var info = new TwainImageInfo(4, 4, pixelType, bitsPerPixel, Compression: compression, Planar: planar);
         Assert.False(TwainRaster.CanAssemble(info));
-        Assert.Throws<NotSupportedException>(() => new TwainImageAssembler(info));
+        Assert.ThrowsAny<FormatException>(() => new TwainImageAssembler(info));
     }
 
     [Fact]
     public void CompressedStrip_IsRefused()
     {
         var assembler = new TwainImageAssembler(new TwainImageInfo(2, 1, TwainPixelTypes.Gray, 8));
-        Assert.Throws<FormatException>(() => assembler.Add(new TwainStrip(2, 1, 0, 0, 2, [1, 2], Compression: 5)));
+        Assert.ThrowsAny<FormatException>(() => assembler.Add(new TwainStrip(2, 1, 0, 0, 2, [1, 2], Compression: 5)));
     }
 
     [Fact]
@@ -265,16 +265,16 @@ public class TwainRasterTests
     public void Bitmap_CutShortOrUnsupported_IsRefused()
     {
         byte[] full = Bitmap(4, 4, 24, [new byte[12], new byte[12], new byte[12], new byte[12]]);
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(full.AsSpan(0, full.Length - 1), out _));
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(new byte[10], out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(full.AsSpan(0, full.Length - 1), out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(new byte[10], out _));
         byte[] rle = Bitmap(1, 1, 8, [[0]], palette: [[0, 0, 0]], compression: 1);
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(rle, out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(rle, out _));
         byte[] oddMasks = Bitmap(1, 1, 32, [[0, 0, 0, 0]], compression: 3, masks: [0xFF, 0xFF00, 0xFF0000]);
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(oddMasks, out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(oddMasks, out _));
         byte[] huge = Bitmap(1, 1, 24, [new byte[3]]);
         BinaryPrimitives.WriteInt32LittleEndian(huge.AsSpan(4), 1_000_000);
         BinaryPrimitives.WriteInt32LittleEndian(huge.AsSpan(8), 1_000_000);
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(huge, out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(huge, out _));
     }
 
     private static readonly uint[] StandardMasks = [0x00FF0000, 0x0000FF00, 0x000000FF];
@@ -347,12 +347,12 @@ public class TwainRasterTests
         Assert.Equal(rgb.Length, TwainRaster.BitmapLength(rgb));
         Assert.Equal(fields.Length, TwainRaster.BitmapLength(fields));
 
-        Assert.Throws<FormatException>(() => TwainRaster.BitmapLength(new byte[39]));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.BitmapLength(new byte[39]));
         byte[] rle = Bitmap(1, 1, 8, [[0]], palette: [[0, 0, 0]], compression: 1);
-        Assert.Throws<FormatException>(() => TwainRaster.BitmapLength(rle));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.BitmapLength(rle));
         byte[] badHeader = (byte[])rgb.Clone();
         BinaryPrimitives.WriteInt32LittleEndian(badHeader, 12);
-        Assert.Throws<FormatException>(() => TwainRaster.BitmapLength(badHeader));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.BitmapLength(badHeader));
     }
 
     [Fact]
@@ -373,7 +373,7 @@ public class TwainRasterTests
             Assert.Equal((10, 11, 12, 255), Pixel(image, 1, 1));
         }
         // The pixels need the whole table in front of them: one byte short is refused, not shifted.
-        Assert.Throws<FormatException>(() => TwainRaster.DecodeBitmap(rgb.AsSpan(0, rgb.Length - 1), out _));
+        Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(rgb.AsSpan(0, rgb.Length - 1), out _));
 
         byte[] fields = Bitmap(1, 1, 32, [[3, 2, 1, 0]], palette: table[..3], compression: 3, masks: StandardMasks);
         Assert.Equal(40 + 12 + 3 * 4 + 4, TwainRaster.BitmapLength(fields.AsSpan(0, 40)));
@@ -381,5 +381,22 @@ public class TwainRasterTests
         byte[] plain = Bitmap(1, 1, 32, [[3, 2, 1, 0]], palette: table[..5]);
         Assert.Equal(40 + 5 * 4 + 4, TwainRaster.BitmapLength(plain.AsSpan(0, 40)));
         Assert.Equal((1, 2, 3, 255), Pixel(TwainRaster.DecodeBitmap(plain, out _), 0, 0));
+    }
+
+    [Fact]
+    public void RasterErrors_AreWordedWhenAskedFor()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["Unsupported bitmap compression {0}."] = "Desteklenmeyen sıkıştırma {0}.",
+        };
+        try
+        {
+            byte[] rle = Bitmap(1, 1, 8, [[0]], palette: [[0, 0, 0]], compression: 1);
+            var error = Assert.ThrowsAny<FormatException>(() => TwainRaster.DecodeBitmap(rle, out _));
+            Assert.Equal("Desteklenmeyen sıkıştırma 1.", error.Message);
+            Assert.Equal("Unsupported bitmap compression 1.", Loc.English(() => error.Message));
+        }
+        finally { Loc.Table = null; }
     }
 }

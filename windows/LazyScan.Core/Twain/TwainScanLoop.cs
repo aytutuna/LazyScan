@@ -148,7 +148,7 @@ public static class TwainScanLoop
                 }
                 catch (FormatException e)
                 {
-                    failure ??= ScanException.ScanFailed(e.Message);
+                    failure ??= ScanException.ScanFailed(() => e.Message);
                 }
             }
             current = null;
@@ -200,7 +200,7 @@ public static class TwainScanLoop
                         {
                             current = new TwainImageAssembler(info, applied.PixelFlavor, applied.MsbFirst);
                         }
-                        catch (Exception e) when (e is NotSupportedException or FormatException)
+                        catch (FormatException e)
                         {
                             failure ??= ScanException.ScanFailed(() => Loc.T("{0} Scan again: the next scan uses another transfer method.", e.Message));
                             result.UseNativeTransfers = true;
@@ -240,7 +240,7 @@ public static class TwainScanLoop
                     }
                     catch (FormatException e)
                     {
-                        failure ??= ScanException.ScanFailed(e.Message);
+                        failure ??= ScanException.ScanFailed(() => e.Message);
                         Stop();
                     }
                     currentInfo = null;

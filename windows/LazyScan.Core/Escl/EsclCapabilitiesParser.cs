@@ -77,15 +77,6 @@ public sealed class EsclCapabilities
     }
 }
 
-/// <summary>
-/// A capabilities document that cannot be read. The message is worded each time it is asked for, so
-/// the support report gets it in English when it asks inside <see cref="Loc.English"/>.
-/// </summary>
-public sealed class EsclFormatException(Func<string> text, Exception? inner = null) : FormatException(null, inner)
-{
-    public override string Message => text();
-}
-
 public static class EsclCapabilitiesParser
 {
     /// <summary>
@@ -102,9 +93,9 @@ public static class EsclCapabilitiesParser
         }
         catch (XmlException e)
         {
-            throw new EsclFormatException(() => Loc.T("The scanner capabilities are not valid XML: {0}", e.Message), e);
+            throw new LocFormatException(() => Loc.T("The scanner capabilities are not valid XML: {0}", e.Message), e);
         }
-        var root = doc.Root ?? throw new EsclFormatException(() => Loc.T("The scanner capabilities document is empty."));
+        var root = doc.Root ?? throw new LocFormatException(() => Loc.T("The scanner capabilities document is empty."));
 
         EsclInputCaps? platen = null;
         if (Child(root, "Platen") is { } platenElement)
