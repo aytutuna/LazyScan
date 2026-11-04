@@ -23,6 +23,22 @@ public class TextExportTests
         OcrFixtures.Page(L("שלום עולם", 600, 100, 300), L("Fish & Chips <b>", 50, 160, 400)),
     ];
 
+    private static void InRightToLeft(Action check)
+    {
+        var saved = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("ar");
+            Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Scan failed: {0}", ["OCR failed: {0}"] = "OCR failed: {0}" };
+            check();
+        }
+        finally
+        {
+            Loc.Table = null;
+            System.Globalization.CultureInfo.CurrentUICulture = saved;
+        }
+    }
+
     [Fact]
     public void Encode_ExactBytes_Utf8WithoutBom_LineFeeds()
     {
@@ -67,6 +83,8 @@ public class TextExportTests
         Assert.Equal("The text could not be read: no OCR language pack is installed (Settings → Time & Language → Language).",
                      TextExport.RecognitionFailed(
                          "Scan failed: OCR failed: no OCR language pack is installed (Settings → Time & Language → Language)."));
+        InRightToLeft(() => Assert.Equal("The text could not be read: \u2068x.\u2069",
+            TextExport.RecognitionFailed("Scan failed: \u2068OCR failed: \u2068x\u2069\u2069")));
         Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Tarama başarısız: {0}", ["OCR failed: {0}"] = "OCR başarısız: {0}" };
         try
         {

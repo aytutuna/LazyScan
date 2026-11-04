@@ -52,6 +52,22 @@ public class StatusLineTests
     }
 
     [Fact]
+    public void Short_CutsAtASentenceThatOpensWithAnIsolate()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("ar");
+            Assert.Equal("Document \u20682\u2069 starts at page \u20685\u2069",
+                StatusLine.Short("Document \u20682\u2069 starts at page \u20685\u2069. \u20685\u2069 pages follow."));;
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = saved;
+        }
+    }
+
+    [Fact]
     public void Short_ReadsCountsWithThousandsSeparators()
     {
         var culture = System.Globalization.CultureInfo.CurrentCulture;

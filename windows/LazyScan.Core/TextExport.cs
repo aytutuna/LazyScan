@@ -143,8 +143,8 @@ public static class TextExport
     /// <summary>An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a full stop.</summary>
     private static string Reason(string message)
     {
-        string reason = message.Trim();
-        foreach (string prefix in new[] { Loc.T("Scan failed: {0}", ""), Loc.T("OCR failed: {0}", "") })
+        string reason = Loc.Bare(message).Trim();
+        foreach (string prefix in new[] { Loc.Bare(Loc.T("Scan failed: {0}", "")), Loc.Bare(Loc.T("OCR failed: {0}", "")) })
         {
             if (reason.StartsWith(prefix, StringComparison.Ordinal)) reason = reason[prefix.Length..];
         }

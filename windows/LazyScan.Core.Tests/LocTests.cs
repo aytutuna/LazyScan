@@ -128,6 +128,34 @@ public sealed class LocTests
     public void PluralExtraArguments() =>
         Assert.Equal("2 pages in Inbox", Loc.Plural(2, "{0} page in {1}", "{0} pages in {1}", "Inbox"));
 
+    [Theory]
+    [InlineData("ar")]
+    [InlineData("he")]
+    public void RightToLeftIsolatesPlaceholders(string language)
+    {
+        var saved = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            Loc.Table = new Dictionary<string, string> { ["Open {0}"] = "{0} x" };
+            Assert.Equal("\u2068Scan.pdf\u2069 x", Loc.T("Open {0}", "Scan.pdf"));
+            Loc.Table = new Dictionary<string, string>();
+            // Swift may write the count in Arabic-Indic digits here; Loc follows CurrentCulture, en-US in tests.
+            Assert.Equal("\u20683\u2069 pages, \u2068A4\u2069",
+                Loc.Plural(3, "{0} page, {1}", "{0} pages, {1}", "A4"));
+        }
+        finally
+        {
+            Loc.Table = null;
+            CultureInfo.CurrentUICulture = saved;
+        }
+    }
+
+    [Fact]
+    public void LeftToRightIsNotIsolated() =>
+        InTurkish(new() { ["Open {0}"] = "{0} dosyasını aç" }, () =>
+            Assert.Equal("Scan.pdf dosyasını aç", Loc.T("Open {0}", "Scan.pdf")));
+
     [Fact]
     public void PluralCategories()
     {

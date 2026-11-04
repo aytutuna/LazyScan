@@ -50,6 +50,10 @@ public static class Loc
     public static string T(string english, params object?[] args) =>
         Format(Lookup(english) ?? StripContext(english), args);
 
+    /// <summary><paramref name="text"/> without the isolate marks <see cref="T"/> puts around values, for
+    /// comparing a message with a prefix built from an empty value.</summary>
+    public static string Bare(string text) => text.Replace("\u2068", "").Replace("\u2069", "");
+
     /// <summary>
     /// A sentence carried in English through an exception or a message between processes, in the UI
     /// language when the catalog has it; any other text comes back as it is.
@@ -94,10 +98,14 @@ public static class Loc
     }
 
     // One pass, so a value that itself contains "{1}" is left alone. A placeholder with no
-    // argument stays as written. Numbers are written in the current culture's format.
+    // argument stays as written. Numbers are written in the current culture's format. In a right
+    // to left language each value is wrapped in first strong isolate and pop directional isolate
+    // marks, as the Swift twin does. A WPF TextBlock ignores them (the words keep their order
+    // without them), so they only keep the same text on both platforms.
     private static string Format(string text, object?[] args)
     {
         if (args.Length == 0 || !text.Contains('{')) return text;
+        var isolate = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
         var result = new StringBuilder();
         var i = 0;
         while (i < text.Length)
@@ -110,7 +118,8 @@ public static class Loc
                 && int.TryParse(text.AsSpan(open + 1, close - open - 1), NumberStyles.None, CultureInfo.InvariantCulture, out var index)
                 && index < args.Length)
             {
-                result.Append(Describe(args[index]));
+                var value = Describe(args[index]);
+                result.Append(isolate ? "\u2068" + value + "\u2069" : value);
                 i = close + 1;
             }
             else

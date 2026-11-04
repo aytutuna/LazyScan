@@ -276,10 +276,10 @@ public static class StatusLine
             {
                 return text[..i];
             }
-            if (i + 2 < text.Length && text[i] is '.' or '!' or '?' or '\u061F' or '\u0964' && text[i + 1] == ' '
-                && (char.IsLetter(text[i + 2]) && !char.IsLower(text[i + 2]) || char.IsDigit(text[i + 2])))
+            if (i + 2 < text.Length && text[i] is '.' or '!' or '?' or '\u061F' or '\u0964' && text[i + 1] == ' ')
             {
-                return text[..i];
+                int j = text[i + 2] == '\u2068' && i + 3 < text.Length ? i + 3 : i + 2;
+                if (char.IsLetter(text[j]) && !char.IsLower(text[j]) || char.IsDigit(text[j])) return text[..i];
             }
         }
         return text.EndsWith('.') && !text.EndsWith("…", StringComparison.Ordinal) ? text[..^1] : text;
