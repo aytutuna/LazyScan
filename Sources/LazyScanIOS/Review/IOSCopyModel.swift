@@ -5,39 +5,39 @@ import Foundation
 
 /// The iPhone's short texts of the copy screen (I16), the Mac inspector's Photocopy words where it has them.
 public enum IOSCopyText {
-    public static let title = "Copy"
-    public static let pageName = "Page to copy"
-    public static let fitLabel = "Fit to page"
-    public static let fitHint = "Off: real size. On: shrinks to fit the paper."
-    public static let pdfLabel = "Also save a PDF"
-    public static let pdfHint = "Keeps a PDF of each copy in your save folder"
-    public static let printLabel = "Print"
-    public static let printHint = "Choose an AirPrint printer, then print"
-    public static let againLabel = "Copy again"
-    public static let discardLabel = "Discard"
-    public static let discardHint = "Delete the page; can't be undone"
-    public static let closeLabel = "Close"
+    public static var title: String { String(localized: "Copy") }
+    public static var pageName: String { String(localized: "Page to copy") }
+    public static var fitLabel: String { String(localized: "Fit to page") }
+    public static var fitHint: String { String(localized: "Off: real size. On: shrinks to fit the paper.") }
+    public static var pdfLabel: String { String(localized: "Also save a PDF") }
+    public static var pdfHint: String { String(localized: "Keeps a PDF of each copy in your save folder") }
+    public static var printLabel: String { String(localized: "Print") }
+    public static var printHint: String { String(localized: "Choose an AirPrint printer, then print") }
+    public static var againLabel: String { String(localized: "Copy again") }
+    public static var discardLabel: String { String(localized: "Discard") }
+    public static var discardHint: String { String(localized: "Delete the page; can't be undone") }
+    public static var closeLabel: String { String(localized: "Close") }
     // The queue's pages (Save's Print…, After saving's Print) are printed, not copied.
-    public static let printTitle = "Print"
-    public static let printPageName = "Page to print"
-    public static let printAgainLabel = "Print again"
-    public static let noPrinterYet = "You choose the printer when printing"
+    public static var printTitle: String { String(localized: "Print") }
+    public static var printPageName: String { String(localized: "Page to print") }
+    public static var printAgainLabel: String { String(localized: "Print again") }
+    public static var noPrinterYet: String { String(localized: "You choose the printer when printing") }
     /// Settings' Photocopy section: its choices are on the copy screen.
-    public static let settingsNote = "Copies, Fit to page and the PDF are chosen on the copy screen."
+    public static var settingsNote: String { String(localized: "Copies, Fit to page and the PDF are chosen on the copy screen.") }
 
     /// "Copies: 2".
     public static func copiesTitle(_ count: Int) -> String {
-        "Copies: \(count)"
+        String(localized: "Copies: \(count)")
     }
 
     /// "Prints on Office Printer".
     public static func printsOn(_ printerName: String) -> String {
-        "Prints on \(printerName)"
+        String(localized: "Prints on \(printerName)")
     }
 
     /// "Print again on Office Printer", for VoiceOver.
     public static func againHint(_ printerName: String) -> String {
-        "Print again on \(printerName)"
+        String(localized: "Print again on \(printerName)")
     }
 
     /// "3 pages".

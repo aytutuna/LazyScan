@@ -7,42 +7,42 @@ import UIKit
 /// line of eight, buttons of two).
 public enum IOSNetworkText {
     /// The explanation card shown before the first search, so the system's Local Network prompt is understood.
-    public static let explanationTitle = "Find scanners on your Wi-Fi"
-    public static let explanationLine = "Lazy Scan talks only to devices on your network."
-    public static let explanationButton = "Continue"
+    public static var explanationTitle: String { String(localized: "Find scanners on your Wi-Fi") }
+    public static var explanationLine: String { String(localized: "Lazy Scan talks only to devices on your network.") }
+    public static var explanationButton: String { String(localized: "Continue") }
     /// Local Network access is off: the one-line reason, with the Settings button.
-    public static let deniedLine = "Local Network access is off."
-    public static let settingsButton = "Open Settings"
+    public static var deniedLine: String { String(localized: "Local Network access is off.") }
+    public static var settingsButton: String { String(localized: "Open Settings") }
     /// The scanner picker.
-    public static let pickerTitle = "Scanners"
-    public static let noScanner = "No scanner found"
+    public static var pickerTitle: String { String(localized: "Scanners") }
+    public static var noScanner: String { String(localized: "No scanner found") }
     /// The Scanner row in printer mode before its scanner is picked or found.
-    public static let noScannerPicked = "No scanner"
-    public static let troubleshoot = "Troubleshoot"
-    public static let addButton = "Add by address"
-    public static let removeAddress = "Remove address"
-    public static let searching = "Looking for scanners…"
+    public static var noScannerPicked: String { String(localized: "No scanner") }
+    public static var troubleshoot: String { String(localized: "Troubleshoot") }
+    public static var addButton: String { String(localized: "Add by address") }
+    public static var removeAddress: String { String(localized: "Remove address") }
+    public static var searching: String { String(localized: "Looking for scanners…") }
     /// Opens the scanner picked again after connecting to it failed.
-    public static let retry = "Try again"
+    public static var retry: String { String(localized: "Try again") }
     /// Adding a scanner by address (the Windows dialog's wording).
-    public static let addTitle = "Add a network scanner"
-    public static let addLine = "Enter the scanner's IP address or name."
-    public static let addPlaceholder = "e.g. 192.168.1.50 or scanner.local"
-    public static let addHelp = "Most network scanners appear on their own. The address is on the scanner's screen or its "
-        + "network settings page. Forms: 192.168.1.50, scanner.local, 192.168.1.50:8080, https://192.168.1.50."
-    public static let add = "Add"
-    public static let networkOff = "Network scanners are off in demo mode."
+    public static var addTitle: String { String(localized: "Add a network scanner") }
+    public static var addLine: String { String(localized: "Enter the scanner's IP address or name.") }
+    public static var addPlaceholder: String { String(localized: "e.g. 192.168.1.50 or scanner.local") }
+    public static var addHelp: String { String(localized: "Most network scanners appear on their own. The address is on the scanner's screen or its network settings page. Forms: 192.168.1.50, scanner.local, 192.168.1.50:8080, https://192.168.1.50.") }
+    public static var add: String { String(localized: "Add") }
+    public static var networkOff: String { String(localized: "Network scanners are off in demo mode.") }
     /// A changed certificate (the Windows dialog's wording, shortened).
-    public static let certificateTitle = "Scanner certificate changed"
-    public static let certificateLine = "Trust it only if you know why it changed."
-    public static let trustedBefore = "Trusted before"
-    public static let newFingerprint = "New fingerprint"
-    public static let trustNew = "Trust the new certificate"
-    public static let notTrusted = "The scanner was not added, because its certificate was not trusted."
+    public static var certificateTitle: String { String(localized: "Scanner certificate changed") }
+    public static var certificateLine: String { String(localized: "Trust it only if you know why it changed.") }
+    public static var trustedBefore: String { String(localized: "Trusted before") }
+    public static var newFingerprint: String { String(localized: "New fingerprint") }
+    public static var trustNew: String { String(localized: "Trust the new certificate") }
+    public static var notTrusted: String { String(localized: "The scanner was not added, because its certificate was not trusted.") }
 
     /// "Connecting to 192.168.1.50…"
     public static func connecting(_ address: ScannerAddress) -> String {
-        "Connecting to \(address)\u{2026}"
+        let host: String = "\(address)"
+        return String(localized: "Connecting to \(host)\u{2026}")
     }
 }
 

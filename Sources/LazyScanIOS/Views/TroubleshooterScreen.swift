@@ -26,7 +26,7 @@ struct TroubleshooterScreen: View {
     @State private var asksAboutCard: Bool = false
 
     /// The screen's title, as the Windows window's.
-    static let title = "Why isn't my scanner listed?"
+    static var title: String { String(localized: "Why isn't my scanner listed?") }
 
     var body: some View {
         let checks: [TroubleshootCheck] = Troubleshooter.diagnose(snapshot)
@@ -100,7 +100,7 @@ struct TroubleshooterScreen: View {
             reload()
             footer = nil
         case .copyDiagnostics:
-            footer = state.copyDiagnostics(snapshot) ?? "Copied."
+            footer = state.copyDiagnostics(snapshot) ?? String(localized: "Copied.")
         case .addByAddress:
             if makeAddModel != nil {
                 showsAdd = true

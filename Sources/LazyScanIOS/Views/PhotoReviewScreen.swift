@@ -169,7 +169,7 @@ struct PhotoReviewScreen: View {
         preparing = true
         let review: IOSPhotoReviewModel = model
         let count: Int = state.detectedPhotos.count
-        let name: String = model.isReceipts ? "Receipt" : PhotoImport.label
+        let name: String = model.isReceipts ? String(localized: "Receipt") : PhotoImport.label
         Task { @MainActor in
             let crop: IOSCropRequest? = await review.cropRequest(for: photo, name: name, number: number, count: count)
             preparing = false
@@ -230,7 +230,7 @@ private struct ReviewCard: View {
                         .font(.footnote)
                 }
                 .accessibilityLabel(Text(IOSReviewText.keepLabel))
-                .accessibilityValue(Text(photo.included ? "On" : "Off"))
+                .accessibilityValue(photo.included ? Text("On") : Text("Off"))
                 .accessibilityAddTraits(AccessibilityTraits.isToggle)
                 .accessibilityIdentifier("review.keep.\(number)")
                 Spacer(minLength: 0)

@@ -10,68 +10,76 @@ public enum IOSReviewText {
     /// Leaves the review, keeping nothing (photos and receipts).
     public static var cancelLabel: String { String(localized: "Cancel") }
     /// Whether a photo or receipt is saved.
-    public static let keepLabel = "Keep"
+    public static var keepLabel: String { String(localized: "Keep") }
     public static var fixCropLabel: String { String(localized: "Fix crop") }
-    public static let rotateLabel = "Rotate"
+    public static var rotateLabel: String { String(localized: "Rotate") }
     /// What the list of photos is for, for VoiceOver.
-    public static let listHelp = "Turn Keep off to leave a photo out, or fix its crop."
-    public static let receiptsListHelp = "Turn Keep off to leave a receipt out, or fix its crop."
+    public static var listHelp: String { String(localized: "Turn Keep off to leave a photo out, or fix its crop.") }
+    public static var receiptsListHelp: String { String(localized: "Turn Keep off to leave a receipt out, or fix its crop.") }
     /// The receipts' choices (the Mac's and Windows' Receipts section).
-    public static let nameByDateLabel = "Name by receipt date"
-    public static let combineLabel = "One PDF for all"
-    public static let saveAsLabel = "Save as"
+    public static var nameByDateLabel: String { String(localized: "Name by receipt date") }
+    public static var combineLabel: String { String(localized: "One PDF for all") }
+    public static var saveAsLabel: String { String(localized: "Save as") }
 
     /// The ID card's review.
-    public static let idCardTitle = "Check the ID card"
+    public static var idCardTitle: String { String(localized: "Check the ID card") }
     /// The privacy line's full sentence on the iPhone, for VoiceOver.
-    public static let privacyHelp = "The photos stay on this device and are cleared once you save or discard them."
-    public static let frontTitle = "Front"
-    public static let backTitle = "Back"
-    public static let scanAgainLabel = "Scan again"
-    public static let swapLabel = "Swap sides"
+    public static var privacyHelp: String { String(localized: "The photos stay on this device and are cleared once you save or discard them.") }
+    public static var frontTitle: String { String(localized: "Front") }
+    public static var backTitle: String { String(localized: "Back") }
+    public static var scanAgainLabel: String { String(localized: "Scan again") }
+    public static var swapLabel: String { String(localized: "Swap sides") }
     /// A card saved without its back.
-    public static let noBackLine = "No back side"
-    public static let scanBackLabel = "Scan the back"
+    public static var noBackLine: String { String(localized: "No back side") }
+    public static var scanBackLabel: String { String(localized: "Scan the back") }
     /// What Scan again and Scan the back say where the phone's camera took the sides.
-    public static let takeAgainLabel = "Take again"
-    public static let takeBackLabel = "Take the back"
-    public static let pagePreviewName = "Page preview"
-    public static let paperLabel = "Paper"
-    public static let sidesAsImagesLabel = "Also save sides as images"
-    public static let discardLabel = "Discard"
-    public static let discardHint = "Deletes the sides taken; can't be undone"
+    public static var takeAgainLabel: String { String(localized: "Take again") }
+    public static var takeBackLabel: String { String(localized: "Take the back") }
+    public static var pagePreviewName: String { String(localized: "Page preview") }
+    public static var paperLabel: String { String(localized: "Paper") }
+    public static var sidesAsImagesLabel: String { String(localized: "Also save sides as images") }
+    public static var discardLabel: String { String(localized: "Discard") }
+    public static var discardHint: String { String(localized: "Deletes the sides taken; can't be undone") }
     /// Discard's hint while the back was skipped and only the front is held.
-    public static let discardFrontHint = "Delete the front; can't be undone"
+    public static var discardFrontHint: String { String(localized: "Delete the front; can't be undone") }
     /// The ID card review's Print button (AirPrint, I16).
-    public static let printLabel = "Print"
-    public static let printIdCardHint = "Print both sides at real size on an AirPrint printer"
+    public static var printLabel: String { String(localized: "Print") }
+    public static var printIdCardHint: String { String(localized: "Print both sides at real size on an AirPrint printer") }
 
     /// The ID card's guide frame on the camera: what to fit in it, by side.
-    public static let cardFrontPrompt = "Fit the front in the frame"
-    public static let cardBackPrompt = "Fit the back in the frame"
+    public static var cardFrontPrompt: String { String(localized: "Fit the front in the frame") }
+    public static var cardBackPrompt: String { String(localized: "Fit the back in the frame") }
     /// What VoiceOver calls the guide frame.
-    public static let guideName = "Card frame"
+    public static var guideName: String { String(localized: "Card frame") }
 
     /// The ID card's save button: "Save PDF", "Save JPEG".
     public static func idCardSaveTitle(_ format: OutputFormat) -> String {
-        "Save \(format.pageFormat.label)"
+        let name: String = format.pageFormat.label
+        return String(localized: "Save \(name)")
     }
 
     /// "Rotate the front", "Fix crop of the back", "Scan the front again": a side's button as VoiceOver reads it.
     public static func sideAction(_ action: String, side: PageSide) -> String {
-        let name: String = side == .front ? "front" : "back"
-        if action == scanAgainLabel { return "Scan the \(name) again" }
-        if action == takeAgainLabel { return "Take the \(name) again" }
-        if action == fixCropLabel { return "Fix crop of the \(name)" }
-        return "\(action) the \(name)"
+        let front: Bool = side == .front
+        if action == scanAgainLabel {
+            return front ? String(localized: "Scan the front again") : String(localized: "Scan the back again")
+        }
+        if action == takeAgainLabel {
+            return front ? String(localized: "Take the front again") : String(localized: "Take the back again")
+        }
+        if action == fixCropLabel {
+            return front ? String(localized: "Fix crop of the front") : String(localized: "Fix crop of the back")
+        }
+        return front ? String(localized: "Rotate the front") : String(localized: "Rotate the back")
     }
 
     /// A photo's or receipt's size on paper: "6.0 × 4.0 in".
     public static func sizeCaption(width: Int, height: Int, dpi: Int) -> String {
         let d: Double = Double(max(dpi, 1))
-        let w: Double = Double(width) / d
-        let h: Double = Double(height) / d
-        return String(format: "%.1f \u{00D7} %.1f in", w, h)
+        let inches: FloatingPointFormatStyle<Double> = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))
+        let w: String = (Double(width) / d).formatted(inches)
+        let h: String = (Double(height) / d).formatted(inches)
+        return String(localized: "\(w) \u{00D7} \(h) in")
     }
 }
 

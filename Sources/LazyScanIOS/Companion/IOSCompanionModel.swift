@@ -6,37 +6,37 @@ import UIKit
 /// The short texts of My computer and of Send to computer (the less-text rules: a title of five words at
 /// most, a line of eight, buttons of two or three). Longer sentences are the Kit's (`CompanionText`).
 public enum IOSCompanionText {
-    public static let title = "My computer"
-    public static let pairTitle = "Pair with a computer"
-    public static let pairLine = "On the computer, choose Pair a phone."
-    public static let textLabel = "Enter pairing text"
+    public static var title: String { String(localized: "My computer") }
+    public static var pairTitle: String { String(localized: "Pair with a computer") }
+    public static var pairLine: String { String(localized: "On the computer, choose Pair a phone.") }
+    public static var textLabel: String { String(localized: "Enter pairing text") }
     public static let textPlaceholder = "lazyscan://pair?\u{2026}"
-    public static let compareLine = "Compare with the code on the computer"
+    public static var compareLine: String { String(localized: "Compare with the code on the computer") }
     /// The model word ("iPhone", "iPad") instead of "phone", here and in `waitingLine`.
-    @MainActor public static var phoneNameLabel: String { "Name of this \(UIDevice.current.model)" }
-    public static let pairButton = "Pair"
-    @MainActor public static var waitingLine: String { "Accept this \(UIDevice.current.model) on the computer." }
-    public static let refreshButton = "Refresh"
-    public static let sendAgainButton = "Send again"
-    public static let removeButton = "Remove"
-    public static let unpairButton = "Unpair"
-    public static let notPaired = "Not paired"
-    public static let checking = "Checking\u{2026}"
-    public static let connected = "Connected"
-    public static let nothingWaiting = "Nothing waiting to be sent"
-    public static let cloudFolderLabel = "Cloud folder"
-    public static let noCloudFolder = "None"
-    public static let cloudFolderOutOfReach = "Cannot be opened"
-    public static let chooseFolderButton = "Choose\u{2026}"
-    public static let clearButton = "Clear"
+    @MainActor public static var phoneNameLabel: String { String(localized: "Name of this \(UIDevice.current.model)") }
+    public static var pairButton: String { String(localized: "Pair") }
+    @MainActor public static var waitingLine: String { String(localized: "Accept this \(UIDevice.current.model) on the computer.") }
+    public static var refreshButton: String { String(localized: "Refresh") }
+    public static var sendAgainButton: String { String(localized: "Send again") }
+    public static var removeButton: String { String(localized: "Remove") }
+    public static var unpairButton: String { String(localized: "Unpair") }
+    public static var notPaired: String { String(localized: "Not paired") }
+    public static var checking: String { String(localized: "Checking\u{2026}") }
+    public static var connected: String { String(localized: "Connected") }
+    public static var nothingWaiting: String { String(localized: "Nothing waiting to be sent") }
+    public static var cloudFolderLabel: String { String(localized: "Cloud folder") }
+    public static var noCloudFolder: String { String(localized: "None") }
+    public static var cloudFolderOutOfReach: String { String(localized: "Cannot be opened") }
+    public static var chooseFolderButton: String { String(localized: "Choose\u{2026}") }
+    public static var clearButton: String { String(localized: "Clear") }
     /// The scan screen's button and its question.
-    public static let sendButton = "Send to computer"
-    public static let sendQuestion = "Send the pages to the computer"
-    public static let newDocument = "New document"
-    public static let intoOpenDocument = "Into the open document"
+    public static var sendButton: String { String(localized: "Send to computer") }
+    public static var sendQuestion: String { String(localized: "Send the pages to the computer") }
+    public static var newDocument: String { String(localized: "New document") }
+    public static var intoOpenDocument: String { String(localized: "Into the open document") }
     /// Under After saving's Send to computer while it is dimmed.
-    public static let sendNeedsPagesReason = "Send to computer needs the pages collected before saving"
-    public static let sendNeedsPairingReason = "Pair a computer in Settings > My computer first"
+    public static var sendNeedsPagesReason: String { String(localized: "Send to computer needs the pages collected before saving") }
+    public static var sendNeedsPairingReason: String { String(localized: "Pair a computer in Settings > My computer first") }
 
     /// The link's state in one line: "Connected · 3 pages queued there", or why not.
     public static func status(_ status: CompanionStatus) -> String {

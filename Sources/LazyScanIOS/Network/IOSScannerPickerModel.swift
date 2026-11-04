@@ -304,7 +304,8 @@ public final class IOSAddScannerModel: ObservableObject {
                 message = nil
                 return true
             }
-            message = result.certificate?.message ?? result.error ?? "No scanner answered at \(address)."
+            let place: String = "\(address)"
+            message = result.certificate?.message ?? result.error ?? String(localized: "No scanner answered at \(place).")
             return false
         } catch {
             // Cancelled: the sheet is gone.
