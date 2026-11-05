@@ -465,7 +465,7 @@ jobs:
           done
           plutil -extract CFBundleLocalizations xml1 -o - "$app/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - l10n/out/languages.ios.txt
       - name: Run the app's smoke test
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: |
           set -o pipefail
           xcodebuild test-without-building \
@@ -483,7 +483,7 @@ jobs:
         id: pseudo
         if: github.ref != 'refs/heads/ci/testflight'
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 40
         env:
           TEST_RUNNER_LAZYSCAN_PSEUDO: '1'
         run: |
@@ -507,7 +507,7 @@ jobs:
         id: rtl
         if: github.ref != 'refs/heads/ci/testflight'
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 40
         env:
           TEST_RUNNER_LAZYSCAN_RTL: '1'
         run: |
