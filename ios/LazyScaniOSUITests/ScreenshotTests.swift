@@ -42,7 +42,7 @@ final class ScreenshotTests: XCTestCase {
         app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
         app.launch()
 
-        let use: XCUIElement = app.buttons["corners.use"]
+        let use: XCUIElement = app.descendants(matching: .any)["corners.use"].firstMatch
         // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu.
         let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
         if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
