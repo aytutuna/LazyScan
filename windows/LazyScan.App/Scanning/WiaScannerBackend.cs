@@ -302,7 +302,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
                 comObjects.Add(info);
                 if ((int)info.Type != ScannerDeviceType) continue;
                 string id = (string)info.DeviceID;
-                string name = TryGetProperty(info.Properties, "Name") as string ?? "Scanner";
+                string name = TryGetProperty(info.Properties, "Name") as string ?? Loc.T("Scanner");
                 found.Add(new ScannerInfo($"wia:{id}", name, "WIA", Backend: "wia",
                                           Model: ModelOf(TryGetProperty(info.Properties, "Manufacturer") as string,
                                                          TryGetProperty(info.Properties, "Description") as string)));
