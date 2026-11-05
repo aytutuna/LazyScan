@@ -51,7 +51,7 @@ MARKER = re.compile(r"\|(?:" + "|".join(CATEGORIES) + ")$")
 LETTER = re.compile(r"[^\W\d_]")
 # Names that read the same in every script.
 TOKENS = re.compile("|".join(["Lazy Scan", "TWAIN", "JPEG", "TIFF", "PDF/A", "PDF", "OCR", "PNG", "DPI", "QR", "USB",
-                              r"(?:dpi|px|MP)"]))
+                              r"\b(?:dpi|px|MP)\b"]))
 LITERAL = r'"((?:[^"\\]|\\.)*)"'
 # L10n.t("..."), Loc.T("..."), L10n.plural(n, one: "...") and Loc.Plural(n, "...").
 CALLS = [
