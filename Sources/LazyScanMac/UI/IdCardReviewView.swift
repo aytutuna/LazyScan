@@ -125,6 +125,13 @@ struct IdCardReviewView: View {
                       ? (state.copyPrinterName.map { String(localized: "Print at real size on \($0)") }
                          ?? String(localized: "Print at real size on the default printer"))
                       : PrintText.noPrinterMessage)
+                if state.lazyPrintInstalled {
+                    Button("Print with Lazy Print") {
+                        state.printIdCardWithLazyPrint()
+                    }
+                    .disabled(state.idCardFront == nil || state.isBusy)
+                    .help("Open it in Lazy Print, then choose a printer and print")
+                }
                 Button("Discard") {
                     asksDiscard = true
                 }

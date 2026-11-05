@@ -54,6 +54,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
             <key>LSItemContentTypes</key>    <array><string>com.lazyscan.package</string></array>
         </dict>
     </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>       <string>local.lazyscan.app</string>
+            <key>CFBundleURLSchemes</key>    <array><string>lazyscan</string></array>
+        </dict>
+    </array>
     <key>UTExportedTypeDeclarations</key>
     <array>
         <dict>
