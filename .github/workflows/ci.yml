@@ -239,6 +239,22 @@ jobs:
           name: mac-screenshots-rtl
           path: ${{ runner.temp }}/shots-rtl
           if-no-files-found: warn
+      # The views in the pseudo language (qps-ploc, never shipped), from the generated lproj: every visible
+      # string without the [!! !!] marker skipped the lookup. A failure here does not fail the job.
+      - name: Render screenshots (pseudo language)
+        id: pseudo
+        if: github.ref != 'refs/heads/ci/testflight'
+        continue-on-error: true
+        run: |
+          python3 scripts/gen_l10n.py --pseudo
+          LAZYSCAN_SHOTS_PSEUDO="$PWD/l10n/out/mac/qps-ploc.lproj" LAZYSCAN_SHOTS_DIR="$RUNNER_TEMP/shots-pseudo" swift test -c release -Xswiftc -enable-testing --filter ScreenshotTests
+      - name: Upload pseudo-language screenshots
+        if: always() && steps.pseudo.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-screenshots-pseudo
+          path: ${{ runner.temp }}/shots-pseudo
+          if-no-files-found: warn
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v7
