@@ -109,6 +109,7 @@ final class ScreenshotTests: XCTestCase {
                 Thread.sleep(forTimeInterval: 1)
                 shot("02-kinds-\(kind)")
             }
+            swipeToMiddle(app, photo)
             document.tap()
             waitUntilSelected(document)
         } else {
@@ -142,6 +143,7 @@ final class ScreenshotTests: XCTestCase {
                 demo.tap()
                 Thread.sleep(forTimeInterval: 1)
                 shot("05-scanner-sheet")
+                flatbedScreens(app)
             } else {
                 shot("skipped-05-scanner-sheet")
             }
@@ -194,6 +196,110 @@ final class ScreenshotTests: XCTestCase {
                 shot("skipped-08-export-options")
             }
             closeOptions(app)
+        }
+        spreadScreens(app)
+    }
+
+    /// The kind dragged to the row's middle, as a swipe would: it should be the one picked.
+    @MainActor
+    private func swipeToMiddle(_ app: XCUIApplication, _ kind: XCUIElement) {
+        let row: XCUIElement = element(app, "kinds.row")
+        let from: XCUICoordinate = kind.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let to: XCUICoordinate = row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        from.press(forDuration: 0.1, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: kind)
+        if XCTWaiter.wait(for: [picked], timeout: 10) == .completed {
+            shot("02-kinds-swipe")
+        } else {
+            shot("skipped-02-kinds-swipe")
+        }
+    }
+
+    /// The flatbed preview in the open Scanner sheet: its thumbnail, then the Choose area screen with an
+    /// area dragged out on the glass. The area is cleared again so the pages scanned next are whole.
+    @MainActor
+    private func flatbedScreens(_ app: XCUIApplication) {
+        let preview: XCUIElement = app.scrolledTo("preview.button")
+        guard preview.exists else {
+            shot("skipped-05a-flatbed")
+            return
+        }
+        preview.tap()
+        var open: XCUIElement = element(app, "crop.open")
+        if !open.waitForExistence(timeout: 60) {
+            // The sheet closes while the preview is made: back into it.
+            closeOptions(app)
+            guard tapIfThere(app, "options.row.scanner", for: "05a-flatbed") else { return }
+            open = app.scrolledTo("crop.open")
+        }
+        guard open.waitForExistence(timeout: 60) else {
+            shot("skipped-05a-flatbed")
+            return
+        }
+        Thread.sleep(forTimeInterval: 1)
+        shot("05a-flatbed")
+        open.tap()
+        let editor: XCUIElement = element(app, "crop.editor")
+        if editor.waitForExistence(timeout: 10) {
+            let from: XCUICoordinate = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.25))
+            let to: XCUICoordinate = editor.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.65))
+            from.press(forDuration: 0.1, thenDragTo: to)
+            Thread.sleep(forTimeInterval: 1)
+            shot("05b-crop-area")
+        } else {
+            shot("skipped-05b-crop-area")
+        }
+        let done: XCUIElement = element(app, "crop.done")
+        if done.waitForExistence(timeout: 5) {
+            done.tap()
+            waitUntilGone(done)
+        }
+        let clear: XCUIElement = element(app, "crop.clear")
+        if clear.waitForExistence(timeout: 5) {
+            clear.tap()
+        }
+    }
+
+    /// A book page scanned on the demo scanner and its split sheet, opened from the page grid's menu.
+    @MainActor
+    private func spreadScreens(_ app: XCUIApplication) {
+        let book: XCUIElement = element(app, "task.book")
+        let scan: XCUIElement = element(app, "scan.button")
+        let pages: XCUIElement = element(app, "capture.pages")
+        guard book.waitForExistence(timeout: 5) else {
+            shot("skipped-14-spread")
+            return
+        }
+        book.tap()
+        let before: Int = pages.pageCount ?? 0
+        guard waitUntilEnabled(scan, timeout: 30) else { return }
+        scan.tap()
+        guard pages.waitForPageCount(before + 2, timeout: 60) || pages.waitForPageCount(before + 1, timeout: 1) else {
+            shot("skipped-14-spread")
+            return
+        }
+        pages.tap()
+        let page: XCUIElement = element(app, "page.\(before + 1)")
+        guard page.waitForExistence(timeout: 5) else {
+            shot("skipped-14-spread")
+            return
+        }
+        page.press(forDuration: 1)
+        let split: XCUIElement = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
+        guard split.waitForExistence(timeout: 5) else {
+            shot("skipped-14-spread")
+            return
+        }
+        split.tap()
+        let cut: XCUIElement = element(app, "spread.cut")
+        if cut.waitForExistence(timeout: 10) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("14-spread")
+            if tapIfThere(app, "spread.split", for: "14-spread") {
+                waitUntilGone(cut)
+            }
+        } else {
+            shot("skipped-14-spread")
         }
     }
 

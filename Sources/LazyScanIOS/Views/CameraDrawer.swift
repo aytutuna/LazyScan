@@ -78,8 +78,6 @@ struct KindsRow: View {
         .scrollTargetBehavior(CentreSnap(middles: middles))
         .scrollPosition($position)
         .scrollDisabled(busy)
-        // The centres, the snap and scrollTo are physical x: the row keeps its kinds left to right.
-        .environment(\.layoutDirection, .leftToRight)
         // Worked out here rather than read from the position's id, which SwiftUI may report by the leading
         // visible kind; a kind's own move to the middle passes others on the way, so only a swipe counts.
         .onScrollGeometryChange(for: CGFloat.self) { (geometry: ScrollGeometry) -> CGFloat in
@@ -95,6 +93,8 @@ struct KindsRow: View {
                 settle()
             }
         }
+        // The centres, the snap and scrollTo are physical x: the row keeps its kinds left to right.
+        .environment(\.layoutDirection, .leftToRight)
     }
 
     /// The kinds' middles in the row's content, in its order; empty until the row and every kind are laid out.
@@ -204,9 +204,11 @@ struct EdgeFade: ViewModifier {
             .mask {
                 HStack(spacing: 0) {
                     LinearGradient(colors: [Color.clear, Color.black], startPoint: .leading, endPoint: .trailing)
+                        .flipsForRightToLeftLayoutDirection(true)
                         .frame(width: leading)
                     Color.black
                     LinearGradient(colors: [Color.black, Color.clear], startPoint: .leading, endPoint: .trailing)
+                        .flipsForRightToLeftLayoutDirection(true)
                         .frame(width: trailing)
                 }
             }

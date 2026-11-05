@@ -343,6 +343,7 @@ struct FlatbedPreview: View {
                 }
                 .accessibilityIdentifier("crop.editor")
         }
+        .environment(\.layoutDirection, .leftToRight)
     }
 
     private func apply(_ command: IOSCropCommand) {

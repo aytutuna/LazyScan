@@ -603,10 +603,10 @@ private struct PagesStack: View {
                         .frame(width: card.width, height: card.height)
                         .rotationEffect(Angle.degrees(6))
                         .offset(x: 3, y: -2)
+                        .environment(\.layoutDirection, .leftToRight)
                 }
                 front(image, page: page, count: count)
             }
-            .environment(\.layoutDirection, .leftToRight)
         } else {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .strokeBorder(Color(uiColor: .tertiaryLabel), style: StrokeStyle(lineWidth: 1, dash: [3]))
