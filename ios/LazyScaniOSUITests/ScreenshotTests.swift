@@ -42,11 +42,13 @@ final class ScreenshotTests: XCTestCase {
         app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
         app.launch()
 
-        let use: XCUIElement = app.descendants(matching: .any)["corners.use"].firstMatch
-        // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu.
+        var use: XCUIElement = app.buttons["corners.use"]
+        // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu, where the
+        // item has no identifier: found by its pseudo text instead.
         let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
         if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
             more.tap()
+            use = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'çõrñérš'")).firstMatch
         }
         guard use.waitForExistence(timeout: 120), waitUntilEnabled(use, timeout: 30) else {
             shot("skipped-06b-page-viewer")
