@@ -277,7 +277,10 @@ final class ScreenshotTests: XCTestCase {
             XCTAssertGreaterThan(count, 1000)
             centres.append(sum / max(count, 1))
         }
-        XCTAssertEqual(centres[0], centres[1], accuracy: 1)
+        // The panels beside the stage swap sides, which moves it a few points; a mirrored photo would land on the
+        // other half of the window.
+        XCTAssertEqual(centres[0], centres[1], accuracy: 20)
+        XCTAssertLessThan(centres[1], 380)
     }
 }
 #endif
