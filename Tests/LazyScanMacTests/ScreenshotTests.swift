@@ -7,12 +7,25 @@ import XCTest
 
 // Renders the Mac's main views to PNGs for a visual check, in CI and on a developer's Mac. Does nothing
 // unless LAZYSCAN_SHOTS_DIR names the folder for the images. LAZYSCAN_SHOTS_RTL=1 lays them out right to left.
-// The text is always English: under swift test Bundle.main is the xctest tool, which has no string tables,
-// so a translated render needs the packaged app on a real Mac.
+// The text is English unless LAZYSCAN_SHOTS_PSEUDO names a qps-ploc.lproj folder (gen_l10n.py --pseudo): under
+// swift test Bundle.main is the xctest tool, which has no string tables, so that run answers the Kit lookups
+// from the folder's Kit.strings and puts the folder behind Bundle.main for the views' literals.
+
+private final class PseudoBundle: Bundle, @unchecked Sendable {
+    nonisolated(unsafe) static var strings: Bundle?
+
+    override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
+        guard let strings = Self.strings else { return super.localizedString(forKey: key, value: value, table: tableName) }
+        return strings.localizedString(forKey: key, value: value, table: tableName)
+    }
+}
 
 final class ScreenshotTests: XCTestCase {
     private var folder: URL!
     private var outDir: URL!
+
+    private var pseudo: L10n.Override?
+    private var originalBundleClass: AnyClass?
 
     private static let sections = ["task", "scanner", "output", "adjustments", "pages", "split", "archive", "more"]
 
@@ -27,9 +40,27 @@ final class ScreenshotTests: XCTestCase {
         // A fixed name, as the inspector shows the save folder.
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        if let path = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_PSEUDO"], !path.isEmpty {
+            let table = try XCTUnwrap(NSDictionary(contentsOfFile: path + "/Kit.strings") as? [String: String])
+            pseudo = L10n.Override(table: table, language: "qps-ploc")
+            PseudoBundle.strings = try XCTUnwrap(Bundle(path: path))
+            originalBundleClass = object_getClass(Bundle.main)
+            object_setClass(Bundle.main, PseudoBundle.self)
+        }
+    }
+
+    /// Runs `body` with the Kit lookups answered from the pseudo table, or as they are without one.
+    @MainActor
+    private func inLanguage<T>(_ body: () async throws -> T) async rethrows -> T {
+        guard let pseudo else { return try await body() }
+        return try await L10n.$override.withValue(pseudo, operation: body)
     }
 
     override func tearDown() async throws {
+        if let originalBundleClass {
+            object_setClass(Bundle.main, originalBundleClass)
+            PseudoBundle.strings = nil
+        }
         guard let folder else { return }
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
         try await Task.sleep(nanoseconds: 600_000_000)
@@ -54,7 +85,9 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor
     private func makeState(pages: Int) async throws -> AppState {
-        let first = AppState(backends: [], presetStore: PresetStore(directory: folder),
+        // The pseudo run lists the demo scanner, so the sidebar has a scanner row to read.
+        let backends: [any ScannerBackend] = pseudo == nil ? [] : [MockScannerBackend()]
+        let first = AppState(backends: backends, presetStore: PresetStore(directory: folder),
                              files: AppStateFiles.all(in: folder))
         var settings = ScanSettings()
         settings.intent = .document
@@ -66,8 +99,9 @@ final class ScreenshotTests: XCTestCase {
         first.settings = settings
         // With settings on disk the next state is not a first run, so the window opens on the scanner view.
         try await Task.sleep(nanoseconds: 800_000_000)
-        let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
+        let state = AppState(backends: backends, presetStore: PresetStore(directory: folder),
                              files: AppStateFiles.all(in: folder))
+        if pseudo != nil { await inLanguage { state.start() } }
         if pages > 0 {
             XCTAssertTrue(state.ingest((0..<pages).map { _ in page(width: 510, height: 660) }, source: .scanner))
             let deadline = Date().addingTimeInterval(20)
@@ -79,11 +113,9 @@ final class ScreenshotTests: XCTestCase {
         return state
     }
 
-    /// Hosts `view` in a titled window parked far off screen (a borderless one never loaded the sidebar rows), lets it settle, and writes it as `name`.png.
+    /// Hosts `view` in a titled window parked far off screen (a borderless one never loaded the sidebar rows) and lets it settle.
     @MainActor
-    private func shoot<V: View>(_ name: String, size: CGSize, _ view: V) async throws {
-        let env = ProcessInfo.processInfo.environment
-        let rtl = env["LAZYSCAN_SHOTS_RTL"] == "1"
+    private func render<V: View>(size: CGSize, rtl: Bool, _ view: V) async throws -> NSBitmapImageRep {
         let root = view
             .environment(\.layoutDirection, rtl ? .rightToLeft : .leftToRight)
             .frame(width: size.width, height: size.height)
@@ -104,10 +136,18 @@ final class ScreenshotTests: XCTestCase {
         hosting.layoutSubtreeIfNeeded()
         let rep = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: rep)
-        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
-        try png.write(to: outDir.appendingPathComponent("\(name).png"))
         window.orderOut(nil)
         window.contentView = nil
+        return rep
+    }
+
+    /// Renders `view` and writes it as `name`.png.
+    @MainActor
+    private func shoot<V: View>(_ name: String, size: CGSize, _ view: V) async throws {
+        let rtl = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_RTL"] == "1"
+        let rep = try await inLanguage { try await render(size: size, rtl: rtl, view) }
+        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+        try png.write(to: outDir.appendingPathComponent("\(name).png"))
     }
 
     @MainActor
@@ -192,6 +232,52 @@ final class ScreenshotTests: XCTestCase {
         }
         try await shoot("history", size: CGSize(width: 900, height: 600),
                         ScanHistoryView().environmentObject(state))
+    }
+
+    /// The corner editor pins its stage left to right, which the drag geometry relies on: laid out right
+    /// to left, the photo must sit where it does left to right.
+    @MainActor
+    func test_cornerEditor_photoStaysPutRightToLeft() async throws {
+        let state = try await makeState(pages: 0)
+        let width = 600
+        let height = 450
+        var pixels = [UInt8](repeating: 20, count: width * height * 4)
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                if x > 40 && x < 330 && y > 50 && y < 400 {
+                    pixels[i] = 255
+                    pixels[i + 1] = 255
+                    pixels[i + 2] = 255
+                }
+                pixels[i + 3] = 255
+            }
+        }
+        let corners = Quad(topLeft: CGPoint(x: 42, y: 52), topRight: CGPoint(x: 328, y: 52),
+                           bottomRight: CGPoint(x: 328, y: 398), bottomLeft: CGPoint(x: 42, y: 398))
+        let plan = PhotoImportPlan(action: .review, corners: corners, reason: .unsure,
+                                   detection: PhotoDocumentDetection.nothing)
+        let request = PhotoCornersRequest(photo: RgbaImage(width: width, height: height, pixels: pixels),
+                                          plan: plan, fileName: "IMG_0001.HEIC", number: 1, count: 2)
+        var centres: [CGFloat] = []
+        for rtl in [false, true] {
+            let rep = try await render(size: CGSize(width: 760, height: 620), rtl: rtl,
+                                       PhotoCornersEditorView(request: request).environmentObject(state))
+            var sum: CGFloat = 0
+            var count: CGFloat = 0
+            for y in 0..<rep.pixelsHigh {
+                for x in 0..<rep.pixelsWide {
+                    guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    if c.redComponent > 0.99 && c.greenComponent > 0.99 && c.blueComponent > 0.99 {
+                        sum += CGFloat(x)
+                        count += 1
+                    }
+                }
+            }
+            XCTAssertGreaterThan(count, 1000)
+            centres.append(sum / max(count, 1))
+        }
+        XCTAssertEqual(centres[0], centres[1], accuracy: 1)
     }
 }
 #endif
