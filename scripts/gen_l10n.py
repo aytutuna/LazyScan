@@ -147,7 +147,12 @@ def lang_doc(code):
 def check_doc(code):
     doc = lang_doc(code)
     errors = []
-    if not isinstance(doc, dict) or not isinstance(doc.get("strings", {}), dict) or not isinstance(doc.get("views", {}), dict)             or not isinstance(doc.get("win", {}), dict):
+    if not isinstance(doc, dict):
+        return [f"{code}: must be an object"]
+    unknown = set(doc) - {"strings", "views", "win", "infoplist"}
+    if unknown:
+        return [f"{code}: unknown sections {sorted(unknown)}; a lang file holds strings, views, win and infoplist"]
+    if not all(isinstance(doc.get(name, {}), dict) for name in ("strings", "views", "win")):
         return [f"{code}: strings, views and win must be objects"]
     plist = doc.get("infoplist", {})
     if not isinstance(plist, dict) or set(plist) - {"ios", "mac"} or not all(isinstance(v, dict) for v in plist.values()):
@@ -384,6 +389,7 @@ def load():
     keys = view_keys()
     errors += [f"keys-notes.json: {key!r} is not in a key list" for key in view_notes() if key not in keys]
     tables, infos, views, warnings = {}, {}, {}, []
+    used, _ = keys_in_code()
     for lang in LANGUAGES:
         doc_errors = check_doc(lang)
         if doc_errors:
@@ -400,6 +406,15 @@ def load():
         found, warned, _ = check_language(data, lang, doc.get("win", {}))
         errors += [e.replace(f": {lang}", f": {lang} win", 1) for e in found]
         warnings += warned
+        for key in doc.get("win", {}):
+            if key not in data:
+                continue
+            if "other" in data[key]:
+                errors.append(f"{key!r}: {lang} win cannot hold a plural entry")
+            elif key not in tables[lang]:
+                errors.append(f"{key!r}: {lang} win has no strings entry to override")
+            elif "win" not in used.get(key, (None, None, ()))[2]:
+                errors.append(f"{key!r}: {lang} win is not used on Windows")
         found, view_same = check_views(lang, views[lang], keys)
         errors += found
         if same + view_same:
@@ -624,11 +639,8 @@ def pseudo(text):
 
 
 def strings_text(pairs):
-    def quote(s):
-        return '"' + s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
-
     lines = [f"/* {HEADER} */"]
-    lines += [f"{quote(k)} = {quote(v)};" for k, v in pairs]
+    lines += [f"{literal(k)} = {literal(v)};" for k, v in pairs]
     return "\n".join(lines) + "\n"
 
 
