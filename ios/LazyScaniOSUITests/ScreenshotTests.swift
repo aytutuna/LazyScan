@@ -101,6 +101,9 @@ final class ScreenshotTests: XCTestCase {
             waitUntilSelected(photo)
             Thread.sleep(forTimeInterval: 1)
             shot("02-kinds-photo")
+            swipeToMiddle(app, document)
+            photo.tap()
+            waitUntilSelected(photo)
             for kind in ["idCard", "book"] {
                 let chip: XCUIElement = element(app, "kinds.\(kind)")
                 guard chip.exists else { continue }
@@ -109,7 +112,6 @@ final class ScreenshotTests: XCTestCase {
                 Thread.sleep(forTimeInterval: 1)
                 shot("02-kinds-\(kind)")
             }
-            swipeToMiddle(app, photo)
             document.tap()
             waitUntilSelected(document)
         } else {
@@ -275,19 +277,19 @@ final class ScreenshotTests: XCTestCase {
         guard waitUntilEnabled(scan, timeout: 30) else { return }
         scan.tap()
         guard pages.waitForPageCount(before + 2, timeout: 60) || pages.waitForPageCount(before + 1, timeout: 1) else {
-            shot("skipped-14-spread")
+            shot("skipped-14-spread-scan")
             return
         }
         pages.tap()
         let page: XCUIElement = element(app, "page.\(before + 1)")
         guard page.waitForExistence(timeout: 5) else {
-            shot("skipped-14-spread")
+            shot("skipped-14-spread-grid")
             return
         }
         page.press(forDuration: 1)
         let split: XCUIElement = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
         guard split.waitForExistence(timeout: 5) else {
-            shot("skipped-14-spread")
+            shot("skipped-14-spread-menu")
             return
         }
         split.tap()
