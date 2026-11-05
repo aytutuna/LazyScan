@@ -281,13 +281,16 @@ final class ScreenshotTests: XCTestCase {
     /// The file name's editor, from the row in Settings' More section, which is opened when it is closed.
     @MainActor
     private func namingScreen(_ app: XCUIApplication) {
-        var row: XCUIElement = scrolledDown(app, to: "settings.fileName")
+        // The row is no element of its own in the tree: found by the template it shows.
+        let template: XCUIElement = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'settings.fileName' OR label CONTAINS '{task}'")).firstMatch
+        var row: XCUIElement = scrolledDown(app, to: template)
         if !row.isHittable {
-            let section: XCUIElement = scrolledDown(app, to: "settings.section.more")
+            let section: XCUIElement = scrolledDown(app, to: element(app, "settings.section.more"))
             if section.isHittable {
                 section.tap()
                 Thread.sleep(forTimeInterval: 1)
-                row = scrolledDown(app, to: "settings.fileName")
+                row = scrolledDown(app, to: template)
             }
         }
         guard row.isHittable else {
@@ -306,8 +309,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Settings is long, and its sections below the first are made only as they scroll into view.
     @MainActor
-    private func scrolledDown(_ app: XCUIApplication, to id: String) -> XCUIElement {
-        let target: XCUIElement = element(app, id)
+    private func scrolledDown(_ app: XCUIApplication, to target: XCUIElement) -> XCUIElement {
         var swipes: Int = 0
         while !(target.exists && target.isHittable) && swipes < 12 {
             app.swipeUp()
