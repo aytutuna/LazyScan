@@ -33,6 +33,7 @@ keeps the companion's sync keys on Windows and is not called elsewhere.</Descrip
       <_L10nStamp>$(MSBuildProjectDirectory)\..\..\l10n\out\mode.txt</_L10nStamp>
       <_L10nWant>ship=false</_L10nWant>
       <_L10nWant Condition="'$(L10nShip)' == 'true'">ship=true</_L10nWant>
+      <_L10nWant Condition="'$(L10nPseudo)' == 'true'">$(_L10nWant) pseudo=true</_L10nWant>
     </PropertyGroup>
     <Delete Files="$(_L10nStamp)" Condition="Exists('$(_L10nStamp)') And '$([System.IO.File]::ReadAllText($(_L10nStamp)).Trim())' != '$(_L10nWant)'" />
     <WriteLinesToFile File="$(IntermediateOutputPath)l10n-mode.txt" Lines="$(_L10nWant);@(L10nSource)" Overwrite="true"
@@ -44,6 +45,7 @@ keeps the companion's sync keys on Windows and is not called elsewhere.</Descrip
           Outputs="..\..\l10n\out\mode.txt">
     <PropertyGroup>
       <_L10nArgs Condition="'$(L10nShip)' == 'true'">--ship</_L10nArgs>
+      <_L10nArgs Condition="'$(L10nPseudo)' == 'true'">$(_L10nArgs) --pseudo</_L10nArgs>
     </PropertyGroup>
     <Exec Command="python ..\..\scripts\gen_l10n.py $(_L10nArgs)" IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="_L10nExit" />
