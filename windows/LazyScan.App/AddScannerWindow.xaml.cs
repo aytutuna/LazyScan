@@ -24,6 +24,7 @@ public partial class AddScannerWindow : Window
 
     public AddScannerWindow(EsclScannerBackend backend)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         Placeholders.Attach(AddressBox, AddressPlaceholder);
         _backend = backend;

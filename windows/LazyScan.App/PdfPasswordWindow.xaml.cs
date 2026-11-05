@@ -18,6 +18,7 @@ public partial class PdfPasswordWindow : Window
 
     public PdfPasswordWindow()
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         Loaded += (_, _) => PasswordInput.Focus();
         Closed += (_, _) =>

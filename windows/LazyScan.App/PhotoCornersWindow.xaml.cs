@@ -61,6 +61,7 @@ public partial class PhotoCornersWindow : Window
 
     public PhotoCornersWindow(PhotoCornersRequest request)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         _photo = request.Photo;
         _start = request.Plan.Corners;

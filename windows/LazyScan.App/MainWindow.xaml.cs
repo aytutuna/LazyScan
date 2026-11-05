@@ -23,6 +23,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         if (CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft) LazyScan.App.Icon.SetGlyph(SkipStepButton, "");
         ViewModel = new AppViewModel();
@@ -215,7 +216,7 @@ public partial class MainWindow : Window
             {
                 force = MessageBox.Show(this,
                     Loc.T("Still stopping the current operation. Quit now anyway? A file being written may be left incomplete."),
-                    "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                    "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions);
             }
             finally
             {
@@ -237,7 +238,7 @@ public partial class MainWindow : Window
                     : Loc.T("A scan or save is still running. {0}\n\nStop it and quit?", unsaved)
                 : Loc.T("{0}\n\nQuit anyway?", unsaved);
             var answer = MessageBox.Show(this, message, "Lazy Scan", MessageBoxButton.YesNo,
-                                         MessageBoxImage.Warning, MessageBoxResult.No);
+                                         MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions);
             if (answer != MessageBoxResult.Yes)
             {
                 e.Cancel = true;
@@ -1057,7 +1058,7 @@ public partial class MainWindow : Window
 
     private bool AskDiscardIdCardInDialog() =>
         MessageBox.Show(this, Loc.T("The ID card has not been saved. Its scanned sides will be discarded.\n\nDiscard the ID card?"),
-                        "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
+                        "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions)
         == MessageBoxResult.Yes;
 
     /// <summary>A preset was picked, on a Start card or in the side pane: apply it and go to the scan screen.</summary>
@@ -1885,7 +1886,7 @@ public partial class MainWindow : Window
         if (pages > 1)
         {
             var answer = MessageBox.Show(this, Loc.Plural(pages, "Remove {0} page? It has not been saved.", "Remove all {0} pages? They have not been saved."), "Lazy Scan",
-                                         MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                                         MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions);
             if (answer != MessageBoxResult.Yes) return;
         }
         ViewModel.ClearPages();
@@ -2204,7 +2205,7 @@ public partial class MainWindow : Window
                 ? Loc.Plural(n, "The {0} receipt has not been saved.\n\nDiscard it?", "The {0} receipts have not been saved.\n\nDiscard them?")
                 : Loc.Plural(n, "The {0} photo has not been saved.\n\nDiscard it?", "The {0} photos have not been saved.\n\nDiscard them?");
             if (MessageBox.Show(this, question, "Lazy Scan",
-                                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions) != MessageBoxResult.Yes) return;
         }
         ViewModel.CancelPhotoReview();
     }
@@ -2371,6 +2372,7 @@ public sealed class PromptWindow : Window
     /// <param name="okLabel">The default button's label.</param>
     public PromptWindow(string title, string? message = null, string? placeholder = null, string? okLabel = null)
     {
+        FlowDirection = App.Flow;
         Title = title;
         Icon = AppIcon.Image;
         Width = 360;

@@ -182,6 +182,7 @@ public sealed class ImagePreviewWindow : Window
 
     public ImagePreviewWindow(ImageSource image, string title, string? glyph, string details)
     {
+        FlowDirection = App.Flow;
         Title = Loc.T("Scan|noun");
         Icon = AppIcon.Image;
         Width = 760;

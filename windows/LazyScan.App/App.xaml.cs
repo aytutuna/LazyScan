@@ -11,6 +11,11 @@ namespace LazyScan.App;
 
 public partial class App : Application
 {
+    /// <summary>Set on every window before it is shown, so the title bar mirrors with the content.</summary>
+    public static FlowDirection Flow { get; private set; } = FlowDirection.LeftToRight;
+
+    public static MessageBoxOptions BoxOptions { get; private set; } = MessageBoxOptions.None;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // A bare lazyscan: address carries nothing to open, so a window already open is brought forward instead of a
@@ -36,10 +41,12 @@ public partial class App : Application
         // Bindings format with en-US unless the language property says otherwise.
         FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
-        // A metadata default would also flip images and off-screen print pages, so mirror the windows themselves.
+        // A metadata default on Window throws, and on FrameworkElement it would also flip images and print pages.
         if (ui.TextInfo.IsRightToLeft)
-            EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
-                new RoutedEventHandler((s, _) => ((Window)s!).FlowDirection = FlowDirection.RightToLeft));
+        {
+            Flow = FlowDirection.RightToLeft;
+            BoxOptions = MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign;
+        }
         base.OnStartup(e);
     }
 

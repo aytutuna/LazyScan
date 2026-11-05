@@ -47,6 +47,7 @@ public partial class PhotoCropEditorWindow : Window
     /// </param>
     public PhotoCropEditorWindow(RgbaImage source, DetectedPhotoRegion region, bool deskew)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         _source = source;
         var start = CropGeometry.Copy(region);

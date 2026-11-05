@@ -60,7 +60,7 @@ public partial class MainWindow
                 "The {0} pages in the queue have not been saved. “{1}” opens in their place.\n\nDiscard the pages?",
                 package.FileName);
             if (MessageBox.Show(this, question, "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                                MessageBoxResult.No, App.BoxOptions) != MessageBoxResult.Yes) return;
         }
         _ = ViewModel.OpenPendingPackageAsNew();
     }

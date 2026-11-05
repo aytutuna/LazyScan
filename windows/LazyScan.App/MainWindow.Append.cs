@@ -24,7 +24,7 @@ public partial class MainWindow
         AutomationProperties.SetHelpText(AddToPdfButton, PdfAppender.ButtonHint);
         ViewModel.ConfirmAppend = message =>
             MessageBox.Show(this, message, "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                            MessageBoxResult.No) == MessageBoxResult.Yes;
+                            MessageBoxResult.No, App.BoxOptions) == MessageBoxResult.Yes;
     }
 
     private void AddToPdf_Click(object sender, RoutedEventArgs e)

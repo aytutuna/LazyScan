@@ -38,6 +38,7 @@ public partial class TroubleshooterWindow : Window
 
     public TroubleshooterWindow(AppViewModel viewModel)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         _viewModel = viewModel;
         AddScanner = ShowAddScannerDialog;

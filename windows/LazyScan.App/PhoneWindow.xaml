@@ -17,6 +17,7 @@
         <!-- Read-only and selectable, so the pairing text can be copied. -->
         <Style x:Key="DetailBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="FlowDirection" Value="LeftToRight" />
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="TextWrapping" Value="Wrap" />

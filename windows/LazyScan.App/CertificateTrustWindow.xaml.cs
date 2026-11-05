@@ -18,6 +18,7 @@ public partial class CertificateTrustWindow : Window
     /// </summary>
     public CertificateTrustWindow(EsclCertificateException certificate, bool byAddress)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         string name = certificate.DeviceName;
         bool changed = certificate.Verdict == EsclTrustVerdict.Changed;

@@ -46,6 +46,7 @@ public partial class SpreadSplitWindow : Window
 
     public SpreadSplitWindow(SpreadEditorSource source)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         _width = source.Preview.Width;
         _height = source.Preview.Height;

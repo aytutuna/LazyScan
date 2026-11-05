@@ -48,6 +48,7 @@ public partial class PhoneWindow : Window
 
     public PhoneWindow(AppViewModel viewModel, IQrEncoder? qrEncoder = null)
     {
+        FlowDirection = App.Flow;
         InitializeComponent();
         _viewModel = viewModel;
         _qrEncoder = qrEncoder ?? new ZXingQrEncoder();
@@ -546,7 +547,7 @@ public partial class PhoneWindow : Window
         if (_companion is null) return;
         var answer = MessageBox.Show(this,
             Loc.T("Every paired phone will be removed and this PC gets a new security key. Phones then pair again with a new code."),
-            Loc.T("Reset pairing?"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+            Loc.T("Reset pairing?"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel, App.BoxOptions);
         if (answer != MessageBoxResult.OK) return;
         await ResetPairingAsync();
     }
