@@ -493,20 +493,21 @@ def format_languages(prune):
         write(LANG_DIR / f"{lang}.json", lang_text(doc, list(data), {p: list(e) for p, e in plist.items()}, list(keys)))
 
 
-# How a key is shown: from its context suffix, else the line that holds it, else its file and shape.
+# How a key is shown: from its context suffix, else the element or line that holds it, else its file and shape.
 CONTEXT_CLASS = {"button": "button", "page button": "button", "photocopy button": "button", "step": "chip",
                  "tab": "tab", "section": "heading", "print job name": "file name", "after another fact": "status",
                  "scanner source": "chip", "color mode": "chip", "format": "chip", "enhance": "chip", "page option": "chip",
-                 "page gap": "chip", "password field": "label", "lowercase label": "label", "noun": "label"}
-CALL_CLASS = [(re.compile(r"accessibility(?:Label|Hint|Value)|AutomationProperties|Speak"), "spoken"),
+                 "page gap": "tooltip", "password field": "label", "lowercase label": "label", "noun": "label"}
+CALL_CLASS = [(re.compile(r"accessibility(?:Label|Hint|Value|Action)|AutomationProperties|Speak"), "spoken"),
               (re.compile(r"\.help\(|ToolTip"), "tooltip"),
               (re.compile(r"\bTab\(|\.tabItem|TabItem"), "tab"),
               (re.compile(r"\bButton\b|MenuItem|ToggleButton|UIAlertAction|\.confirmationDialog"), "button"),
               (re.compile(r"navigationTitle|\bSection\(|GroupBox|Expander"), "heading"),
               (re.compile(r"\b(?:Toggle|Picker|TextField|SecureField|LabeledContent|Label)\b|CheckBox|ComboBox|TextBox"), "label")]
+STATIC_LABEL = re.compile(r"static var \w+: String \{ String\(localized:")
 STATUS_FILES = re.compile(r"AppState|StatusLine|ViewModel|PhotoImport|\.xaml\.cs$")
 # Width budgets in characters: a compact surface has a fixed one, the rest grow with the English text.
-BUDGET = {"button": 20, "chip": 14, "tab": 12, "tile": 24, "heading": 28, "label": 28, "file name": 24}
+BUDGET = {"button": 16, "chip": 14, "tab": 12, "tile": 24, "heading": 28, "label": 28, "file name": 24}
 
 
 def read_source(path):
@@ -519,59 +520,82 @@ def literal(text):
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
 
 
-def source_line(text, key, xaml):
-    """The line of text that holds key as a string literal (a XAML attribute for xaml, with the line above, where
-    the element tag sits), or empty."""
-    if xaml:
-        needle = html.escape(key.split("{")[0], quote=False)[:30]
-        at = max(text.find("loc:T " + needle), text.find(needle)) if needle else -1
-    elif SPECIFIER.search(key):
-        parts = [re.escape(literal(p)[1:-1]) for p in SPECIFIER.split(key)[::3]]
-        match = re.search('"' + r"\\\(.*?\)".join(parts) + '"', text)
-        at = match.start() if match else -1
+def source_lines(text, key):
+    """The lines of a Swift or C# file that hold key as a string literal."""
+    if SPECIFIER.search(key):
+        parts = [literal(p)[1:-1] for p in SPECIFIER.split(key)[::3]]
+        if max(parts, key=len) not in text:
+            return
+        pattern = re.compile('"' + r"\\\(.*?\)".join(map(re.escape, parts)) + '"')
+        starts = [m.start() for m in pattern.finditer(text)]
     else:
-        at = text.find(literal(key))
-    if at < 0:
-        return ""
-    start = text.rfind("\n", 0, at) + 1
-    if xaml:
-        start = text.rfind("\n", 0, max(start - 1, 0)) + 1
-    end = text.find("\n", at)
-    return text[start:] if end < 0 else text[start:end]
+        needle, starts, at = literal(key), [], 0
+        while (at := text.find(needle, at)) >= 0:
+            starts.append(at)
+            at += 1
+    for at in starts:
+        end = text.find("\n", at)
+        yield text[text.rfind("\n", 0, at) + 1:None if end < 0 else end]
+
+
+def xaml_tag(text, at):
+    """The element and attribute that hold the {loc:T ...} at offset at, e.g. 'Button Content'."""
+    start = text.rfind("<", 0, at)
+    element = re.match(r"<([\w.:]+)", text[start:])
+    attribute = re.search(r'([\w.:]+)="[^"]*$', text[start:at])
+    return f"{element.group(1) if element else ''} {attribute.group(1) if attribute else ''}"
+
+
+def code_sites(keys):
+    """key -> [(file, line or XAML element and attribute)] for every file that holds it."""
+    out = {key: [] for key in keys}
+    for base in CODE:
+        for path in sorted((ROOT / base).rglob("*")):
+            rel = path.relative_to(ROOT)
+            if path.suffix not in (".swift", ".cs", ".xaml") or SKIP_DIRS & set(rel.parts):
+                continue
+            text = read_source(path)
+            if path.suffix == ".xaml":
+                for at, key in xaml_texts(text):
+                    if key in out:
+                        out[key].append((rel.as_posix(), xaml_tag(text, at)))
+                continue
+            for key in keys:
+                line = next(source_lines(text, key), None)
+                if line is not None:
+                    out[key].append((rel.as_posix(), line))
+    return out
 
 
 def surface(key, line, rel):
-    """(screen, class, budget) of one key. The screen is the name of its file."""
+    """(screen, class, budget or None for no limit) of one key at one site. The screen is the name of its file."""
     text = english_view(key)
     context = CONTEXT_SUFFIX.search(key)
     kind = CONTEXT_CLASS.get(key[context.start() + 2:]) if context else None
+    words = len(text.split())
+    if kind is None and words <= 3 and STATIC_LABEL.search(line):
+        kind = "button"
     kind = kind or next((c for pattern, c in CALL_CLASS if pattern.search(line)), None)
     stem = Path(rel).name.split(".")[0]
     if kind is None:
-        words = len(text.split())
         if text.endswith((".", "?", "!", ":")) or words >= 7:
             kind = "status" if STATUS_FILES.search(rel) else "sentence"
         elif "Catalog" in stem and words <= 4:
             kind = "tile"
         else:
             kind = "label"
+    if kind == "spoken":
+        return stem, kind, None
     if kind in BUDGET:
         return stem, kind, max(BUDGET[kind], -(-len(text) * 6 // 5))
     return stem, kind, max(14, -(-len(text) * 7 // 5))
 
 
-def view_sources():
-    """key -> the first Swift file under Sources that holds the literal, and its line."""
-    texts = {p.relative_to(ROOT).as_posix(): read_source(p)
-             for p in sorted((ROOT / "Sources").rglob("*.swift")) if not SKIP_DIRS & set(p.parts)}
-    out = {}
-    for key in view_keys():
-        for rel, text in texts.items():
-            line = source_line(text, key, False)
-            if line:
-                out[key] = (rel, line)
-                break
-    return out
+def tightest(key, sites):
+    """(file, screen, class, budget) of the site of key with the smallest width budget; a spoken one has none."""
+    shown = [(rel, *surface(key, line, rel)) for rel, line in sites] or [("(not found in the code)", "", "label", 28)]
+    rel, stem, kind, budget = min(shown, key=lambda s: float("inf") if s[3] is None else s[3])
+    return rel, stem, kind, budget
 
 
 def todo(lang):
@@ -581,22 +605,21 @@ def todo(lang):
     doc = lang_doc(lang)
     strings, views = doc.get("strings", {}), doc.get("views", {})
     required = required_categories(lang)
-    used, _ = keys_in_code()
-    sources, notes = view_sources(), view_notes()
+    notes = view_notes()
+    sites = code_sites(list(dict.fromkeys(list(view_keys()) + list(data))))
 
-    def where(key, rel, line):
-        stem, kind, budget = surface(key, line, rel)
-        print(f"  file: {rel}\n  screen: {stem}, class: {kind}, budget: {budget} characters")
-        if key in notes:
-            print(f"  note: {notes[key]}")
+    def where(key):
+        rel, stem, kind, budget = tightest(key, sites[key])
+        limit = f"{budget} characters" if budget else "no width limit"
+        print(f"  file: {rel}\n  screen: {stem}, class: {kind}, budget: {limit}")
+        note = notes.get(key) or data.get(key, {}).get("note")
+        if note:
+            print(f"  note: {note}")
 
     for key, platforms in view_keys().items():
         if view_text(key, strings, views) is None:
             print(f"view on {','.join(sorted(platforms))}: {key}")
-            rel, line = sources.get(key, ("(not found in Sources)", ""))
-            where(key, rel, line)
-            if key in data and "note" in data[key]:
-                print(f"  note: {data[key]['note']}")
+            where(key)
     for platform, entries in {"ios": {}, "mac": {}, **doc.get("infoplist", {})}.items():
         for key in plist[platform]:
             if key not in entries:
@@ -619,11 +642,7 @@ def todo(lang):
         if "other" in entry:
             print(f"  plural, English other: {entry['other']}")
         print(f"  missing: {', '.join(need)}")
-        rel = used[key][0] if key in used else "(not used in code)"
-        text = read_source(ROOT / rel) if key in used else ""
-        where(key, rel, source_line(text, key, rel.endswith(".xaml")))
-        if "note" in entry:
-            print(f"  note: {entry['note']}")
+        where(key)
 
 
 def pseudo(text):
@@ -669,7 +688,7 @@ def unescape(literal):
 
 
 def xaml_texts(text):
-    """The text of every {loc:T ...} in a XAML file. The end is found by brace depth: a text
+    """(offset, text) of every {loc:T ...} in a XAML file. The end is found by brace depth: a text
     may hold {0}, and the markup may sit inside the StringFormat of a binding."""
     for start in re.finditer(r"\{loc:T\s", text):
         depth, i = 1, start.end()
@@ -686,7 +705,7 @@ def xaml_texts(text):
             raw = raw[2:]
         if len(raw) > 1 and raw[0] == raw[-1] == "'":
             raw = raw[1:-1]
-        yield re.sub(r"\\(.)", r"\1", raw)
+        yield start.start(), re.sub(r"\\(.)", r"\1", raw)
 
 
 def keys_in_code():
@@ -706,7 +725,7 @@ def keys_in_code():
             platforms = PLATFORMS[rel.parts[1] if base == "Sources" else base]
             text = path.read_text(encoding="utf-8", errors="ignore")
             if path.suffix == ".xaml":
-                for key in xaml_texts(text):
+                for _, key in xaml_texts(text):
                     add(key, rel.as_posix(), None, platforms)
                 continue
             if path.suffix == ".cs":
