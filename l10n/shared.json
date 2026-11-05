@@ -2176,6 +2176,7 @@
   "Windows Scan (backup)": {},
   "{0} (32-bit driver)": {},
   "The scanner sent an image too large to read.": {},
+  "Demo Scanner": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
