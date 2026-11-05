@@ -115,7 +115,13 @@ final class ScreenshotTests: XCTestCase {
         // Photos load off the main thread: give them time, laying out again as they land.
         for _ in 0..<10 {
             hosting.layoutSubtreeIfNeeded()
-            try await Task.sleep(nanoseconds: 100_000_000)
+            if pseudo != nil {
+                // SwiftUI updates the views from run loop callbacks, which see the Kit override only while
+                // this task is the one running them; a suspended sleep would leave those lookups in English.
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            } else {
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
         }
         hosting.layoutSubtreeIfNeeded()
         let rep = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
