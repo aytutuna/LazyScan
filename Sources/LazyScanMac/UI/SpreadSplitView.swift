@@ -103,6 +103,7 @@ struct SpreadSplitView: View {
                 Text("Cut")
             }
             .accessibilityLabel("Where the spread is cut")
+            .environment(\.layoutDirection, .leftToRight)
             HStack {
                 if source.isSplit {
                     Button("Keep as One Page") {
