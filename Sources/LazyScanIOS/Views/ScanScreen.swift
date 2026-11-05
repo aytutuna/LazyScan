@@ -1484,13 +1484,28 @@ struct ScanScreen: View {
 
     /// Scan beside Save, with Save's menu, while the pages are saved here (`IOSShell.offersSave`).
     private var actionRow: some View {
-        HStack(spacing: 12) {
-            scanButton
-            if IOSShell.offersSave(state.settings, pageCount: state.scannedPages.count) {
-                saveButton
-                saveMenu(canSave: savePlan.pageCount > 0)
-                    .disabled(saveBlocked)
+        // Longer titles (other languages, a long page count) would be cut short side by side: Scan then
+        // gets a row of its own.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                scanButton
+                saveControls
             }
+            VStack(spacing: 12) {
+                scanButton
+                HStack(spacing: 12) {
+                    saveControls
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var saveControls: some View {
+        if IOSShell.offersSave(state.settings, pageCount: state.scannedPages.count) {
+            saveButton
+            saveMenu(canSave: savePlan.pageCount > 0)
+                .disabled(saveBlocked)
         }
     }
 
