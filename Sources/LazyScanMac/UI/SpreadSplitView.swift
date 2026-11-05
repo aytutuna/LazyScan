@@ -73,12 +73,12 @@ struct SpreadSplitView: View {
                         .shadow(radius: 4)
                     cutLine(size: size)
                 }
-                .environment(\.layoutDirection, .leftToRight)
                 .frame(width: size.width, height: size.height)
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { value in
                     moveCut(to: value.location, in: size)
                 })
+                .environment(\.layoutDirection, .leftToRight)
                 .focusable()
                 .focusEffectDisabled()
                 .focused($stageFocused)
