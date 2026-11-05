@@ -48,6 +48,7 @@ struct SpreadSplitSheet: View {
                 .accessibilityElement()
                 .accessibilityLabel(Text("Spread \(source.spreadNumber)"))
                 Slider(value: $fraction, in: 0.1...0.9)
+                    .environment(\.layoutDirection, .leftToRight)
                     .accessibilityLabel(Text("Where the spread is cut"))
                     .accessibilityValue(Text("\(Int((fraction * 100).rounded())) percent"))
                     .accessibilityIdentifier("spread.cut")
