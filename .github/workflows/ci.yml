@@ -239,8 +239,9 @@ jobs:
           name: mac-screenshots-rtl
           path: ${{ runner.temp }}/shots-rtl
           if-no-files-found: warn
-      # The views in the pseudo language (qps-ploc, never shipped), from the generated lproj: every visible
-      # string without the [!! !!] marker skipped the lookup. A failure here does not fail the job.
+      # The views in the pseudo language (qps-ploc, never shipped), from the generated lproj. Only Kit text
+      # (L10n.t) is marked here: SwiftUI literals stay English under swift test, so an unmarked literal proves
+      # nothing. A failure here does not fail the job.
       - name: Render screenshots (pseudo language)
         id: pseudo
         if: github.ref != 'refs/heads/ci/testflight'
