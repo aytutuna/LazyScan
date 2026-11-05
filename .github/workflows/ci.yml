@@ -501,12 +501,32 @@ jobs:
             -only-testing:LazyScaniOSUITests/ScreenshotTests \
             -resultBundlePath "$RUNNER_TEMP/ios-pseudo-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
+      # The same walk with the English bundle laid out right to left (forced by launch arguments, since no
+      # Arabic lproj exists yet): images must stay left to right. Not on the release ref either.
+      - name: Run the screenshots right to left
+        id: rtl
+        if: github.ref != 'refs/heads/ci/testflight'
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          TEST_RUNNER_LAZYSCAN_RTL: '1'
+        run: |
+          set -eo pipefail
+          xcodebuild test-without-building \
+            -project ios/LazyScaniOS.xcodeproj \
+            -scheme LazyScaniOS \
+            -configuration Release \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -derivedDataPath "$RUNNER_TEMP/app-build" \
+            -only-testing:LazyScaniOSUITests/ScreenshotTests \
+            -resultBundlePath "$RUNNER_TEMP/ios-rtl-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
       # The screens ScreenshotTests keeps, renamed from the export's own file names to their attachment
       # names (01-camera.png, ...) through the manifest the export writes.
       - name: Export the screenshots
         if: always()
         run: |
-          for run in "ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo"; do
+          for run in "ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo" "ios-rtl-tests ios-screenshots-rtl"; do
             set -- $run
             out="$RUNNER_TEMP/$2"
             if [ ! -d "$RUNNER_TEMP/$1.xcresult" ]; then
@@ -553,8 +573,15 @@ jobs:
           name: ios-screenshots-pseudo
           path: ${{ runner.temp }}/ios-screenshots-pseudo
           if-no-files-found: ignore
+      - name: Upload the right-to-left screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-screenshots-rtl
+          path: ${{ runner.temp }}/ios-screenshots-rtl
+          if-no-files-found: ignore
       - name: Upload the test results
-        if: failure() || steps.pseudo.outcome == 'failure'
+        if: failure() || steps.pseudo.outcome == 'failure' || steps.rtl.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: ios-tests-xcresult
@@ -562,6 +589,7 @@ jobs:
             ${{ runner.temp }}/ios-tests.xcresult
             ${{ runner.temp }}/ios-app-tests.xcresult
             ${{ runner.temp }}/ios-pseudo-tests.xcresult
+            ${{ runner.temp }}/ios-rtl-tests.xcresult
           if-no-files-found: ignore
 
   ios18:
