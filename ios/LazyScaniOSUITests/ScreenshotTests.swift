@@ -140,6 +140,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     func test_sheetBatch() throws {
         let app: XCUIApplication = try launchImporting("batch", "pdf", task: "batch")
+        app.waitForScanScreen()
         let pages: XCUIElement = app.pagesButton
         guard pages.waitForExistence(timeout: 60), pages.waitForPageCount(3, timeout: 240) else {
             shot("skipped-17-batch-pages")
@@ -174,6 +175,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     func test_sheetTwoSided() throws {
         let app: XCUIApplication = try launchImporting("two-sided", "pdf", task: "twoSided")
+        app.waitForScanScreen()
         let pages: XCUIElement = app.pagesButton
         guard pages.waitForExistence(timeout: 60), pages.waitForPageCount(2, timeout: 240) else {
             shot("skipped-18-two-sided-pages")
@@ -409,6 +411,8 @@ final class ScreenshotTests: XCTestCase {
                 if pick(element(app, "kinds.\(kind)")) {
                     Thread.sleep(forTimeInterval: 1)
                     shot("02-kinds-\(kind)")
+                } else {
+                    shot("skipped-02-kinds-\(kind)")
                 }
             }
             for kind in ["idCard", "document"] {

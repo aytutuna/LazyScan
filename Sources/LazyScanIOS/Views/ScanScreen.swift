@@ -1484,8 +1484,8 @@ struct ScanScreen: View {
 
     /// Scan beside Save, with Save's menu, while the pages are saved here (`IOSShell.offersSave`).
     private var actionRow: some View {
-        // Longer titles (other languages, a long page count) would be cut short side by side: Scan then
-        // gets a row of its own.
+        // Longer titles (other languages) would be cut short side by side: Scan then gets a row of its own.
+        // The test sums the titles, so one short title next to one long one can still stay on a row.
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
                 scanButton
