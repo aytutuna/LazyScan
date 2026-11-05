@@ -33,7 +33,7 @@
                                  ToolTip="{loc:T Spine runs across (book on its side)}" Checked="Axis_Changed" />
                 </UniformGrid>
             </Border>
-            <Slider x:Name="CutSlider" Minimum="0.05" Maximum="0.95" SmallChange="0.002" LargeChange="0.02"
+            <Slider x:Name="CutSlider" FlowDirection="LeftToRight" Minimum="0.05" Maximum="0.95" SmallChange="0.002" LargeChange="0.02"
                     AutomationProperties.Name="{loc:T Where the spread is cut}" ValueChanged="CutSlider_ValueChanged" />
             <DockPanel Margin="0,12,0,0" LastChildFill="False">
                 <Button x:Name="KeepWholeButton" DockPanel.Dock="Left" Content="{loc:T Keep as one page}" Style="{StaticResource SubtleButtonStyle}"
@@ -49,7 +49,7 @@
 
         <!-- Neutral stage: the spread as scanned, the cut drawn across it. -->
         <Border Style="{StaticResource StageStyle}" Margin="12,0,12,0">
-            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True"
+            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True" FlowDirection="LeftToRight"
                     Focusable="True" KeyDown="Host_KeyDown"
                     FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
                     AutomationProperties.Name="{loc:T Spread}"

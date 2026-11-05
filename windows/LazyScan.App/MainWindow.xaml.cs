@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft) LazyScan.App.Icon.SetGlyph(SkipStepButton, "");
         ViewModel = new AppViewModel();
         ViewModel.PropertyChanged += (_, _) => Dispatcher.BeginInvoke(RefreshFromViewModel);
         if (ViewModel.NetworkScanners is { } network) network.ConfirmCertificate = ConfirmCertificate;
@@ -2171,12 +2172,12 @@ public partial class MainWindow : Window
 
     private void PageLeft_Click(object sender, RoutedEventArgs e)
     {
-        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, -1);
+        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? +1 : -1);
     }
 
     private void PageRight_Click(object sender, RoutedEventArgs e)
     {
-        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, +1);
+        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? -1 : +1);
     }
 
     private void PageRemove_Click(object sender, RoutedEventArgs e)
@@ -2299,7 +2300,7 @@ public partial class MainWindow : Window
         // feeder page or an earlier crop.
         if (ViewModel.OverviewImage is null || ViewModel.Settings.Source != ScanSource.Flatbed) return;
         if (DisplayedImageRect() is not { } imageRect) return;
-        var p = e.GetPosition(CanvasHost);
+        var p = e.GetPosition(SelectionOverlay);
         if (!imageRect.Contains(p)) return;
         _marqueeStart = p;
         CanvasHost.CaptureMouse();
@@ -2308,7 +2309,7 @@ public partial class MainWindow : Window
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
     {
         if (_marqueeStart is not { } start || DisplayedImageRect() is not { } imageRect) return;
-        var p = ClampTo(e.GetPosition(CanvasHost), imageRect);
+        var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);
         var rect = new Rect(start, p);
         SelectionMarquee.Visibility = Visibility.Visible;
         Canvas.SetLeft(SelectionMarquee, rect.X);
@@ -2324,7 +2325,7 @@ public partial class MainWindow : Window
         CanvasHost.ReleaseMouseCapture();
         if (DisplayedImageRect() is not { } imageRect) return;
 
-        var p = ClampTo(e.GetPosition(CanvasHost), imageRect);
+        var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);
         var rect = new Rect(start, p);
         // A tiny drag clears the selection back to the full bed.
         if (rect.Width < 8 || rect.Height < 8)

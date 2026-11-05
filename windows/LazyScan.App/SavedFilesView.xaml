@@ -52,7 +52,7 @@
                             <Border x:Name="Page" Margin="10" BorderThickness="1"
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-                                <Image Source="{Binding Thumbnail}" Stretch="Uniform"
+                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" FlowDirection="LeftToRight"
                                        RenderOptions.BitmapScalingMode="HighQuality" />
                             </Border>
                             <Border Style="{StaticResource TypeBadgeStyle}">

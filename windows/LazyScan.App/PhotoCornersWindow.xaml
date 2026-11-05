@@ -72,7 +72,7 @@
 
         <!-- Neutral stage: the photo with a soft shadow, the area outside the page dimmed. -->
         <Border Style="{StaticResource StageStyle}" Margin="12,0,12,0">
-            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True"
+            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True" FlowDirection="LeftToRight"
                     Focusable="True" KeyDown="Host_KeyDown"
                     FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
                     MouseLeftButtonDown="Host_MouseDown" MouseMove="Host_MouseMove"

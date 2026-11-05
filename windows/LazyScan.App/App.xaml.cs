@@ -26,6 +26,10 @@ public partial class App : Application
         // Bindings format with en-US unless the language property says otherwise.
         FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
+        // A metadata default would also flip images and off-screen print pages, so mirror the windows themselves.
+        if (ui.TextInfo.IsRightToLeft)
+            EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
+                new RoutedEventHandler((s, _) => ((Window)s!).FlowDirection = FlowDirection.RightToLeft));
         base.OnStartup(e);
     }
 }

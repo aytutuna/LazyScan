@@ -69,7 +69,7 @@
                             <DockPanel>
                                 <Border DockPanel.Dock="Left" Background="White" Padding="0" Margin="0,0,16,0"
                                         CornerRadius="4" VerticalAlignment="Top">
-                                    <Image x:Name="QrImage" Stretch="None" RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                    <Image x:Name="QrImage" Stretch="None" FlowDirection="LeftToRight" RenderOptions.BitmapScalingMode="NearestNeighbor"
                                            AutomationProperties.Name="{loc:T Pairing code to scan with your phone}" />
                                 </Border>
                                 <StackPanel>

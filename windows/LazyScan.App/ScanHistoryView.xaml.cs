@@ -245,6 +245,7 @@ public sealed class ImagePreviewWindow : Window
         {
             Source = image,
             Margin = new Thickness(16),
+            FlowDirection = FlowDirection.LeftToRight,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
