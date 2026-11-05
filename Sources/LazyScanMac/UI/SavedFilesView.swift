@@ -29,6 +29,7 @@ struct SavedFilesView: View {
                             SavedFileCard(file: file,
                                           rotating: rotatingPaths.contains(file.url.path),
                                           canAppend: state.canAppendPages,
+                                          actions: state.offeredFileActions(for: [file.url]),
                                           onAction: { state.runFileAction($0, urls: [file.url]) },
                                           onRotate: { rotate(file) },
                                           onAppend: { state.appendToPDF(at: file.url) })
@@ -192,6 +193,8 @@ fileprivate struct SavedFileCard: View {
     let rotating: Bool
     /// There are queued pages to add to a PDF (`AppState.canAppendPages`).
     let canAppend: Bool
+    /// What the file's menus offer (`AppState.offeredFileActions`).
+    let actions: [FileAction]
     let onAction: (FileAction) -> Void
     let onRotate: () -> Void
     let onAppend: () -> Void
@@ -290,7 +293,7 @@ fileprivate struct SavedFileCard: View {
     /// the More menu and the context menu.
     @ViewBuilder
     private var actionMenu: some View {
-        ForEach(SaveActions.offered(fileCount: 1)) { action in
+        ForEach(actions) { action in
             Button {
                 onAction(action)
             } label: {

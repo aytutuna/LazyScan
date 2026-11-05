@@ -7,34 +7,43 @@ using Microsoft.Win32;
 namespace LazyScan.App.Services;
 
 /// <summary>
-/// Opens <c>.lsdoc</c> files with this app from File Explorer: the extension and its program id are
-/// written for the current user only (HKCU\Software\Classes, never HKLM), each start, pointing at the
-/// exe that runs. The app has no installer, so nothing removes them; a value already right is not
-/// written again.
+/// Opens <c>.lsdoc</c> files and <c>lazyscan:</c> addresses with this app: the extension, its program id
+/// and the scheme are written for the current user only (HKCU\Software\Classes, never HKLM), each start,
+/// pointing at the exe that runs. The app has no installer, so nothing removes them; a value already
+/// right is not written again. A bare <c>lazyscan:</c> only opens the app (Lazy Print does that); a pairing
+/// code (<c>lazyscan://pair</c>) is pasted or scanned and is not read from the command line.
 /// </summary>
 public static class FileAssociation
 {
     public const string ProgId = "LazyScan.Package";
+    public const string Scheme = "lazyscan";
     public static string FriendlyName => Loc.T("Lazy Scan document");
 
-    /// <summary>The keys under Software\Classes and the default value each gets, for the app at <paramref name="exePath"/>.</summary>
-    public static IReadOnlyList<(string Key, string Value)> Entries(string exePath) =>
+    /// <summary>The keys under Software\Classes and the value each gets (name "" is the default value), for the app at <paramref name="exePath"/>.</summary>
+    public static IReadOnlyList<(string Key, string Name, string Value)> Entries(string exePath) =>
     [
-        ("." + CompanionPackage.FileExtension, ProgId),
-        (ProgId, FriendlyName),
-        (ProgId + @"\DefaultIcon", $"\"{exePath}\",0"),
-        (ProgId + @"\shell\open\command", $"\"{exePath}\" \"%1\""),
+        ("." + CompanionPackage.FileExtension, "", ProgId),
+        (ProgId, "", FriendlyName),
+        (ProgId + @"\DefaultIcon", "", $"\"{exePath}\",0"),
+        (ProgId + @"\shell\open\command", "", $"\"{exePath}\" \"%1\""),
+        (Scheme, "", "URL:Lazy Scan"),
+        (Scheme, "URL Protocol", ""),
+        (Scheme + @"\DefaultIcon", "", $"\"{exePath}\",0"),
+        (Scheme + @"\shell\open\command", "", $"\"{exePath}\" \"%1\""),
     ];
+
+    /// <summary><paramref name="arg"/> is a <c>lazyscan:</c> address.</summary>
+    public static bool IsAddress(string arg) => arg.TrimStart().StartsWith(Scheme + ":", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Writes <see cref="Entries"/> under <paramref name="classes"/>; true when anything changed.</summary>
     public static bool Register(RegistryKey classes, string exePath)
     {
         bool changed = false;
-        foreach (var (name, value) in Entries(exePath))
+        foreach (var (name, valueName, value) in Entries(exePath))
         {
             using var key = classes.CreateSubKey(name);
-            if (key.GetValue("") as string == value) continue;
-            key.SetValue("", value);
+            if (key.GetValue(valueName) as string == value) continue;
+            key.SetValue(valueName, value);
             changed = true;
         }
         return changed;

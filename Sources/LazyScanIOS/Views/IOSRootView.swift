@@ -123,6 +123,7 @@ public struct IOSRootView: View {
             startOnce()
         }
         .onOpenURL { (url: URL) in
+            guard url.isFileURL else { return }
             openFiles([url])
         }
         .modifier(FileActionPresenters(fileActions: fileActions, state: state))

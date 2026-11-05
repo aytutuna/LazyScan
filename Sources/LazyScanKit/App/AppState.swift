@@ -2209,7 +2209,16 @@ public final class AppState: ObservableObject {
     // MARK: Saved files: open, share, copy
 
     /// The actions offered for the last save's files (the status bar).
-    public var savedFileActions: [FileAction] { SaveActions.offered(fileCount: lastSavedURLs.count) }
+    public var savedFileActions: [FileAction] { offeredFileActions(for: lastSavedURLs) }
+
+    /// Lazy Print is installed (something opens `lazyprint:`).
+    public var lazyPrintInstalled: Bool { fileActions.lazyPrintInstalled() }
+
+    /// What `SaveActions.offered` gives for these files, with Print with Lazy Print when it is installed and can read them.
+    public func offeredFileActions(for urls: [URL]) -> [FileAction] {
+        SaveActions.offered(fileCount: urls.count,
+                            lazyPrint: SaveActions.canPrintWithLazyPrint(urls) && fileActions.lazyPrintInstalled())
+    }
 
     /// Opens, shows, shares, emails or copies saved files (the Saved tab and the status bar after
     /// a save). Nothing leaves the Mac here: sharing and email open the share menu or a new Mail
@@ -2240,6 +2249,8 @@ public final class AppState: ObservableObject {
                 try send(SaveActions.shareRoute(fileActions.sendProbe(for: urls)), urls: urls)
             case .email:
                 try send(SaveActions.emailRoute(fileActions.sendProbe(for: urls)), urls: urls)
+            case .lazyPrint:
+                try fileActions.openInLazyPrint(urls)
             case .copy:
                 let content = SaveActions.clipboardContent(for: urls)
                 try fileActions.copy(content)

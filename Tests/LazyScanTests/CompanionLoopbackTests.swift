@@ -444,6 +444,25 @@ final class CompanionLoopbackTests: XCTestCase {
         XCTAssertEqual(received.value.count, 1)
     }
 
+    // Only the refusal: a Mac has no 127.0.0.2 to come from, so the C# test also shows another address getting in.
+    func testOneAddress_LeavesRoomForTheOthers() async throws {
+        _ = try openPairing()
+        // TLS, as a plain connection is also ready when the server then drops it.
+        let held: [RawConnection] = (0..<4).map { _ in RawConnection(port: port, tls: true) }
+        defer { held.forEach { $0.cancel() } }
+        for connection in held {
+            let opened = await connection.open()
+            XCTAssertTrue(opened)
+        }
+        let refused = RawConnection(port: port, tls: false)
+        defer { refused.cancel() }
+        _ = await refused.open()
+        let started: Date = Date()
+        let answer = await refused.receive(timeout: 8)
+        XCTAssertTrue(answer.isEmpty)
+        XCTAssertLessThan(Date().timeIntervalSince(started), 5)
+    }
+
     func testPlainHttp_GetsNoAnswer() async throws {
         _ = try openPairing()
         let connection = RawConnection(port: port, tls: false)

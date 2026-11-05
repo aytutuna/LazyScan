@@ -1,10 +1,12 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using LazyScan.Core;
+using Microsoft.Win32;
 
 namespace LazyScan.App.Services;
 
@@ -32,6 +34,10 @@ public interface IFileActions
     void Copy(ClipboardContent content);
     /// <summary>Puts <paramref name="text"/> on the clipboard (Copy Text on a scanned page).</summary>
     void CopyText(string text);
+    /// <summary>Lazy Print has registered its <c>lazyprint:</c> scheme for this user.</summary>
+    bool LazyPrintInstalled() => false;
+    /// <summary>Opens the files in Lazy Print (see <see cref="LazyPrintUrl"/>).</summary>
+    void OpenInLazyPrint(IReadOnlyList<string> paths) => throw new NotSupportedException();
 }
 
 /// <summary>
@@ -85,6 +91,15 @@ public sealed class WindowsFileActions : IFileActions
         // WPF retries while another app holds the clipboard open, then throws.
         Clipboard.SetDataObject(data, copy: true);
     }
+
+    public bool LazyPrintInstalled()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + LazyPrintUrl.Scheme);
+        return key is not null;
+    }
+
+    public void OpenInLazyPrint(IReadOnlyList<string> paths) =>
+        Process.Start(new ProcessStartInfo(LazyPrintUrl.Build(paths)) { UseShellExecute = true });
 
     public void CopyText(string text)
     {
