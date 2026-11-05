@@ -67,6 +67,7 @@ struct PhotoCropEditorView: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(cropDrag(frame: frame))
+                .environment(\.layoutDirection, .leftToRight)
             }
 
             Divider()
