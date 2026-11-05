@@ -2173,6 +2173,7 @@
   "Copy the results to send to support": {},
   "Copies these checks and the list of connections as text": {},
   "Checks": {},
+  "Demo Scanner": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
