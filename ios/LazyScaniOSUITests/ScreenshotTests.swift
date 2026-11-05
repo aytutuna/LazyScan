@@ -5,9 +5,12 @@ import XCTest
 // Simulator's viewfinder says there is no camera), its kinds with Receipts picked and its drawer on
 // Export, then printer mode, its Scanner sheet, two scanned pages in the page grid (and selecting, one
 // ticked), Save's menu and the Export sheet, Settings with My computer and Presets, and the library from
-// camera mode; and, on a run of its own, a photo of a page in the page viewer with its filters. A screen
-// whose button is not there is left out rather than failed, so the walk stays green while the screens
-// change; a "skipped-" screenshot shows what was on screen instead.
+// camera mode, with Troubleshooter and the file name's editor from Settings and a book page's split sheet;
+// and, on runs of their own, a photo of a page in the page viewer with its filters, the ID card's review
+// with its menus and the copy screen, a batch's and a two-sided sheet's pages, and the password sheet. The
+// corner editor's Retake and the ID card guide only come with a camera, which the Simulator does not have.
+// A screen whose button is not there is left out rather than failed, so the walk stays green while the
+// screens change; a "skipped-" screenshot shows what was on screen instead.
 
 final class ScreenshotTests: XCTestCase {
     /// CI's pseudo-language run sets LAZYSCAN_PSEUDO: the app then starts in qps-ploc, where every
@@ -40,27 +43,8 @@ final class ScreenshotTests: XCTestCase {
     /// with its filters shown: the page as the camera saw it (Original) and the other filters beside it.
     @MainActor
     func test_pageViewer() throws {
-        let fixture: URL = try XCTUnwrap(Bundle(for: ScreenshotTests.self).url(forResource: "document-photo", withExtension: "png"),
-                                         "The fixture photo in the test bundle")
-        let app = XCUIApplication()
-        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "document"] + Self.language
-        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
-        app.launch()
-
-        var use: XCUIElement = app.buttons["corners.use"]
-        // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu, where the
-        // item has no identifier: found by its pseudo text instead.
-        let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
-        if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
-            more.tap()
-            use = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Üšé çõrñérš'")).firstMatch
-        }
-        guard use.waitForExistence(timeout: 120), waitUntilEnabled(use, timeout: 30) else {
-            shot("skipped-06b-page-viewer")
-            return
-        }
-        shot("06a-corners")
-        use.tap()
+        let app: XCUIApplication = try launchImporting("document-photo", "png", task: "document")
+        guard useCorners(app, for: "06a-corners") else { return }
         app.openPages(1)
         guard tapIfThere(app, "page.1", for: "06b-page-viewer"),
               tapIfThere(app, "viewer.filters", for: "06b-page-viewer") else { return }
@@ -91,6 +75,307 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    /// An ID card from two imported photos: its review, the Paper and Save as menus open, the lower part with
+    /// the page both sides go on, and Discard's question. Nothing is saved.
+    @MainActor
+    func test_reviewIdCard() throws {
+        let app: XCUIApplication = try launchImporting("document-photo", "png", count: 2, task: "idCard")
+        guard useCorners(app, for: "15-idcard-corners"), useCorners(app, for: "15-idcard-corners", shooting: false) else { return }
+        let save: XCUIElement = element(app, "idcard.save")
+        guard save.waitForExistence(timeout: 180) else {
+            shot("skipped-15-idcard-review")
+            return
+        }
+        // The sides' pictures and the page are drawn off the main thread.
+        Thread.sleep(forTimeInterval: 3)
+        shot("15-idcard-review")
+        for (id, screen) in [("idcard.paper", "15a-idcard-paper-menu"), ("idcard.format", "15b-idcard-format-menu")] {
+            if tapIfThere(app, id, for: screen) {
+                Thread.sleep(forTimeInterval: 1)
+                shot(screen)
+                // A tap off the menu closes it.
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.04)).tap()
+                Thread.sleep(forTimeInterval: 1)
+            }
+        }
+        let page: XCUIElement = element(app, "idcard.page")
+        if page.exists {
+            page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.1,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)))
+            Thread.sleep(forTimeInterval: 1)
+        }
+        shot("15c-idcard-review-lower")
+        if tapIfThere(app, "idcard.discard", for: "15d-idcard-discard") {
+            let confirm: XCUIElement = element(app, "idcard.confirmDiscard")
+            if confirm.waitForExistence(timeout: 5) {
+                Thread.sleep(forTimeInterval: 1)
+                shot("15d-idcard-discard")
+                confirm.tap()
+                waitUntilGone(confirm)
+            } else {
+                shot("skipped-15d-idcard-discard")
+            }
+        }
+        backToDocument(app)
+    }
+
+    /// A photo brought in as a copy: the copy screen with what it prints, then Discard.
+    @MainActor
+    func test_reviewCopy() throws {
+        let app: XCUIApplication = try launchImporting("document-photo", "png", task: "copy")
+        guard useCorners(app, for: "16-copy-corners") else { return }
+        let printCopy: XCUIElement = element(app, "copy.print")
+        guard printCopy.waitForExistence(timeout: 180) else {
+            shot("skipped-16-copy")
+            return
+        }
+        Thread.sleep(forTimeInterval: 3)
+        shot("16-copy")
+        let discard: XCUIElement = element(app, "copy.discard")
+        if discard.waitForExistence(timeout: 5), discard.isHittable {
+            discard.tap()
+            waitUntilGone(printCopy)
+        }
+        backToDocument(app)
+    }
+
+    /// A PDF of three pages brought in as a batch: its page grid with the separator sheet marked, then the
+    /// Export sheet with the separator sheets to print.
+    @MainActor
+    func test_sheetBatch() throws {
+        let app: XCUIApplication = try launchImporting("batch", "pdf", task: "batch")
+        let pages: XCUIElement = app.pagesButton
+        guard pages.waitForExistence(timeout: 60), pages.waitForPageCount(3, timeout: 240) else {
+            shot("skipped-17-batch-pages")
+            return
+        }
+        pages.tap()
+        if element(app, "page.3").waitForExistence(timeout: 30) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("17-batch-pages")
+        } else {
+            shot("skipped-17-batch-pages")
+        }
+        if tapIfThere(app, "pages.done", for: "17-batch-pages-closed") {
+            waitUntilGone(element(app, "pages.done"))
+        }
+        if tapIfThere(app, "mode.printer", for: "17a-batch-export"),
+           element(app, "task.chips").waitForExistence(timeout: 10),
+           tapIfThere(app, "options.row.export", for: "17a-batch-export") {
+            if app.scrolledTo("separator.save").exists {
+                Thread.sleep(forTimeInterval: 1)
+                shot("17a-batch-export")
+            } else {
+                shot("skipped-17a-batch-export")
+            }
+            closeOptions(app)
+        }
+        backToDocument(app)
+    }
+
+    /// A PDF of two pages brought in as a two-sided sheet: its page grid, camera mode's drawer on Camera with
+    /// Both sides, and the password sheet Save asks for with Password on in Export (turned off again).
+    @MainActor
+    func test_sheetTwoSided() throws {
+        let app: XCUIApplication = try launchImporting("two-sided", "pdf", task: "twoSided")
+        let pages: XCUIElement = app.pagesButton
+        guard pages.waitForExistence(timeout: 60), pages.waitForPageCount(2, timeout: 240) else {
+            shot("skipped-18-two-sided-pages")
+            return
+        }
+        pages.tap()
+        if element(app, "page.2").waitForExistence(timeout: 30) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("18-two-sided-pages")
+        } else {
+            shot("skipped-18-two-sided-pages")
+        }
+        if tapIfThere(app, "pages.done", for: "18-two-sided-pages-closed") {
+            waitUntilGone(element(app, "pages.done"))
+        }
+        if element(app, "mode.camera").exists, tapIfThere(app, "mode.camera", for: "18a-two-sided-drawer") {
+            _ = element(app, "kinds.row").waitForExistence(timeout: 10)
+        }
+        if tapIfThere(app, "drawer.toggle", for: "18a-two-sided-drawer") {
+            if tapIfThere(app, "drawer.camera", for: "18a-two-sided-drawer") {
+                Thread.sleep(forTimeInterval: 1)
+                shot("18a-two-sided-drawer")
+            }
+            if tapIfThere(app, "drawer.export", for: "19-password") {
+                togglePassword(app)
+                // Save sits under the drawer, which is closed first.
+                if tapIfThere(app, "drawer.toggle", for: "19-password") {
+                    waitUntilGone(element(app, "drawer"))
+                }
+                passwordSheet(app)
+                if tapIfThere(app, "drawer.toggle", for: "19-password-off") {
+                    if tapIfThere(app, "drawer.export", for: "19-password-off") {
+                        togglePassword(app)
+                    }
+                    if tapIfThere(app, "drawer.toggle", for: "drawer-closed") {
+                        waitUntilGone(element(app, "drawer"))
+                    }
+                }
+            }
+        }
+        backToDocument(app)
+    }
+
+    /// Password among the drawer's Export chips, dragged into view when the row is long.
+    @MainActor
+    private func togglePassword(_ app: XCUIApplication) {
+        let chip: XCUIElement = element(app, "chip.protect")
+        guard chip.waitForExistence(timeout: 5) else {
+            shot("skipped-19-password")
+            return
+        }
+        var swipes: Int = 0
+        while !chip.isHittable && swipes < 4 {
+            let y: CGFloat = chip.frame.midY / app.frame.height
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: y)).press(forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: y)))
+            swipes += 1
+        }
+        if chip.isHittable {
+            chip.tap()
+            Thread.sleep(forTimeInterval: 1)
+        }
+    }
+
+    /// Save on a protected PDF asks for the password: the sheet, then Cancel.
+    @MainActor
+    private func passwordSheet(_ app: XCUIApplication) {
+        let save: XCUIElement = element(app, "save.button")
+        guard save.waitForExistence(timeout: 10), waitUntilEnabled(save, timeout: 60) else {
+            shot("skipped-19-password")
+            return
+        }
+        save.tap()
+        let field: XCUIElement = element(app, "password.field")
+        if field.waitForExistence(timeout: 20) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("19-password")
+            let cancel: XCUIElement = element(app, "password.cancel")
+            if cancel.waitForExistence(timeout: 5) {
+                cancel.tap()
+                waitUntilGone(field)
+            }
+        } else {
+            shot("skipped-19-password")
+        }
+    }
+
+    /// The troubleshooter from Settings, then Done.
+    @MainActor
+    private func troubleshooterScreen(_ app: XCUIApplication) {
+        guard tapIfThere(app, "settings.troubleshoot", for: "11a-troubleshooter") else { return }
+        if element(app, "troubleshooter.headline").waitForExistence(timeout: 10) {
+            Thread.sleep(forTimeInterval: 2)
+            shot("11a-troubleshooter")
+        } else {
+            shot("skipped-11a-troubleshooter")
+        }
+        let done: XCUIElement = element(app, "troubleshooter.done")
+        if done.waitForExistence(timeout: 5) {
+            done.tap()
+            waitUntilGone(done)
+        }
+    }
+
+    /// The file name's editor, from the row in Settings' More section, which is opened when it is closed.
+    @MainActor
+    private func namingScreen(_ app: XCUIApplication) {
+        if !app.scrolledTo("settings.fileName").isHittable {
+            let section: XCUIElement = app.scrolledTo("settings.section.more")
+            if section.isHittable {
+                section.tap()
+                Thread.sleep(forTimeInterval: 1)
+            }
+        }
+        guard tapIfThere(app, "settings.fileName", for: "11b-naming") else { return }
+        if element(app, "naming.field").waitForExistence(timeout: 10) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("11b-naming")
+        } else {
+            shot("skipped-11b-naming")
+        }
+        back(app)
+    }
+
+    /// The app launched on the demo scanner with the fixture to import into `task`, `count` times.
+    @MainActor
+    private func launchImporting(_ name: String, _ ext: String, count: Int = 1, task: String) throws -> XCUIApplication {
+        let fixture: URL = try XCTUnwrap(Bundle(for: ScreenshotTests.self).url(forResource: name, withExtension: ext),
+                                         "The fixture in the test bundle")
+        let bytes: String = try Data(contentsOf: fixture).base64EncodedString()
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", task] + Self.language
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = Array(repeating: bytes, count: count).joined(separator: ",")
+        app.launch()
+        return app
+    }
+
+    /// The corner editor's Use corners for a photo imported at launch, with a shot of the editor first when
+    /// `shooting`; false, with a "skipped-" shot, when it never comes.
+    @MainActor
+    private func useCorners(_ app: XCUIApplication, for screen: String, shooting: Bool = true) -> Bool {
+        var use: XCUIElement = app.buttons["corners.use"]
+        // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu, where the
+        // item has no identifier: found by its pseudo text instead.
+        let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
+        if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
+            more.tap()
+            use = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Üšé çõrñérš'")).firstMatch
+        }
+        guard use.waitForExistence(timeout: 120), waitUntilEnabled(use, timeout: 30) else {
+            shot("skipped-\(screen)")
+            return false
+        }
+        if shooting {
+            shot(screen)
+        }
+        use.tap()
+        waitUntilGone(use)
+        return true
+    }
+
+    /// The task back on Document, which the next run starts from: the printer screen's chip or camera
+    /// mode's kind, whichever is up.
+    @MainActor
+    private func backToDocument(_ app: XCUIApplication) {
+        let printer: Bool = element(app, "task.document").exists
+        let chip: XCUIElement = element(app, printer ? "task.document" : "kinds.document")
+        if chip.waitForExistence(timeout: 10) {
+            bringIntoView(chip, in: element(app, printer ? "task.chips" : "kinds.row"))
+            if chip.isHittable {
+                chip.tap()
+            }
+        }
+    }
+
+    /// Swipes a row of chips until `chip` can be tapped; the row keeps the picked one in its middle.
+    @MainActor
+    private func bringIntoView(_ chip: XCUIElement, in row: XCUIElement) {
+        var swipes: Int = 0
+        while !chip.isHittable && swipes < 3 {
+            if chip.frame.midX < row.frame.midX {
+                row.swipeRight()
+            } else {
+                row.swipeLeft()
+            }
+            swipes += 1
+        }
+    }
+
+    /// Picks a kind of camera mode's row, when it can be tapped.
+    @MainActor
+    private func pick(_ chip: XCUIElement) -> Bool {
+        guard chip.exists, chip.isHittable else { return false }
+        chip.tap()
+        waitUntilSelected(chip)
+        return true
+    }
+
     /// Camera mode's kinds with Photo picked, and its drawer open on Export.
     @MainActor
     private func cameraScreens(_ app: XCUIApplication) {
@@ -102,18 +387,17 @@ final class ScreenshotTests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
             shot("02-kinds-photo")
             swipeToMiddle(app, document)
-            photo.tap()
-            waitUntilSelected(photo)
+            // The row keeps the kind picked in its middle, so a longer title can push the next but one off
+            // the screen: each kind is picked from its neighbour.
             for kind in ["idCard", "book"] {
-                let chip: XCUIElement = element(app, "kinds.\(kind)")
-                guard chip.exists else { continue }
-                chip.tap()
-                waitUntilSelected(chip)
-                Thread.sleep(forTimeInterval: 1)
-                shot("02-kinds-\(kind)")
+                if pick(element(app, "kinds.\(kind)")) {
+                    Thread.sleep(forTimeInterval: 1)
+                    shot("02-kinds-\(kind)")
+                }
             }
-            document.tap()
-            waitUntilSelected(document)
+            for kind in ["idCard", "document"] {
+                _ = pick(element(app, "kinds.\(kind)"))
+            }
         } else {
             shot("skipped-02-kinds-photo")
         }
@@ -272,22 +556,37 @@ final class ScreenshotTests: XCTestCase {
             shot("skipped-14-spread")
             return
         }
+        bringIntoView(book, in: element(app, "task.chips"))
+        guard book.isHittable else {
+            shot("skipped-14-spread")
+            return
+        }
         book.tap()
         let before: Int = pages.pageCount ?? 0
-        guard waitUntilEnabled(scan, timeout: 30) else { return }
-        scan.tap()
-        guard pages.waitForPageCount(before + 2, timeout: 60) || pages.waitForPageCount(before + 1, timeout: 1) else {
+        guard waitUntilEnabled(scan, timeout: 30) else {
             shot("skipped-14-spread-scan")
             return
         }
+        scan.tap()
+        let grown = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            (pages.pageCount ?? 0) > before
+        }, object: nil)
+        guard XCTWaiter.wait(for: [grown], timeout: 60) == .completed else {
+            print("spread scan: \(before) pages before, the button says \(pages.label)")
+            shot("skipped-14-spread-scan")
+            return
+        }
+        // A spread is one page until it is split: the page just added is the last.
+        let count: Int = pages.pageCount ?? before + 1
         pages.tap()
-        let page: XCUIElement = element(app, "page.\(before + 1)")
+        let page: XCUIElement = element(app, "page.\(count)")
         guard page.waitForExistence(timeout: 5) else {
             shot("skipped-14-spread-grid")
             return
         }
         page.press(forDuration: 1)
-        let split: XCUIElement = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
+        let split: XCUIElement = app.buttons.matching(NSPredicate(
+            format: "identifier == 'page.split' OR label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
         guard split.waitForExistence(timeout: 5) else {
             shot("skipped-14-spread-menu")
             return
@@ -338,6 +637,8 @@ final class ScreenshotTests: XCTestCase {
                 }
                 back(app)
             }
+            troubleshooterScreen(app)
+            namingScreen(app)
         } else {
             shot("skipped-09-settings")
         }
@@ -388,10 +689,10 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Taps the element if it comes, else keeps a "skipped-" screenshot of what is there instead. The
-    /// printer screen's list rows (`options.row.*`, Settings) are scrolled into view first.
+    /// printer screen's list rows (`options.row.*`, Settings) and Settings' own rows are scrolled into view first.
     @MainActor
     private func tapIfThere(_ app: XCUIApplication, _ id: String, for screen: String) -> Bool {
-        let inList: Bool = id.hasPrefix("options.row.") || id == "scan.settings"
+        let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("settings.") || id == "scan.settings"
         let target: XCUIElement = inList ? app.scrolledTo(id) : element(app, id)
         guard target.waitForExistence(timeout: 5) else {
             shot("skipped-\(screen)")
