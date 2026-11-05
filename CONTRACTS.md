@@ -3810,7 +3810,7 @@ public enum IOSCameraText { /* title "Camera", doneLabel "Done", shutterLabel "T
                               .photos: "Auto cuts out each print it sees. Pick One to keep only the largest."),
                               pageFound(_ kind: CaptureKind) ("Page found · hold still"; Receipt, Photo, Card found),
                               notWithBothSides "Not with Both sides", notWithSeparate "Not with Separate documents",
-                              offValue "Off", holdStill "Hold still", tooDark "Too dark", lastPageLabel "Last page",
+                              offValue "Off", holdStill "Hold still", tooDark "Too dark",
                               waitReason(_ quality: CaptureQuality) -> String? (nil for .good);
                               resolutionLabel "Camera resolution", memoryTitle, sizeLabel(_:) "24 MP", useLabel(_:) "Use 24 MP",
                               memoryWarning(_ size:among:physicalMemory:) -> String? ("This iPhone has 6 GB of memory. 48 MP

@@ -674,7 +674,7 @@ private struct SplitSettingsRows: View {
         if !collecting {
             ReasonLine(text: IOSSettingsText.notCollectingReason)
         }
-        Picker("Split", selection: splitMode) {
+        Picker("Split|setting", selection: splitMode) {
             ForEach(SplitMode.displayOrder, id: \.self) { (choice: SplitMode) in
                 Text(choice.label).tag(choice)
             }

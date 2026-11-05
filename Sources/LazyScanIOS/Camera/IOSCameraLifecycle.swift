@@ -214,8 +214,6 @@ public enum IOSCameraText {
     /// Why a page held still is not taken yet (`CaptureQuality`).
     public static var holdStill: String { String(localized: "Hold still") }
     public static var tooDark: String { String(localized: "Too dark") }
-    /// The last page taken, beside the count.
-    public static var lastPageLabel: String { String(localized: "Last page") }
     /// The camera's light, a torch, by the name people know it by (the drawer's group and its switch).
     public static var flashLabel: String { String(localized: "Flash") }
     public static var settingsLabel: String { String(localized: "Settings") }

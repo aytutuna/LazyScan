@@ -372,6 +372,7 @@
  {"key": "Split Here", "comment": ""},
  {"key": "Split Spread %lld", "comment": ""},
  {"key": "Split facing pages", "comment": ""},
+ {"key": "Split|setting", "comment": ""},
  {"key": "Split…", "comment": ""},
  {"key": "Spread", "comment": ""},
  {"key": "Stacked", "comment": ""},

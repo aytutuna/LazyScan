@@ -505,8 +505,7 @@ final class IOSCameraTests: XCTestCase {
             XCTAssertLessThanOrEqual(words(line), 4, line)
         }
         let buttons: [String] = [IOSCameraText.doneLabel, IOSCameraText.shutterLabel, IOSCameraText.flashLabel,
-                                 IOSCameraText.settingsLabel, IOSImportText.cameraLabel, IOSCameraText.autoLabel,
-                                 IOSCameraText.lastPageLabel]
+                                 IOSCameraText.settingsLabel, IOSImportText.cameraLabel, IOSCameraText.autoLabel]
         for button in buttons {
             XCTAssertLessThanOrEqual(words(button), 2, button)
         }

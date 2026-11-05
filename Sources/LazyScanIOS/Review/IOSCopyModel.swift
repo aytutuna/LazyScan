@@ -5,7 +5,7 @@ import Foundation
 
 /// The iPhone's short texts of the copy screen (I16), the Mac inspector's Photocopy words where it has them.
 public enum IOSCopyText {
-    public static var title: String { String(localized: "Copy") }
+    public static var title: String { L10n.t("Copy|photocopy title") }
     public static var pageName: String { String(localized: "Page to copy") }
     public static var fitLabel: String { String(localized: "Fit to page") }
     public static var fitHint: String { String(localized: "Off: real size. On: shrinks to fit the paper.") }

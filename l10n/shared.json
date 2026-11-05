@@ -133,6 +133,9 @@
   "Copy|photocopy button": {
     "note": "The verb on the button that makes a paper copy through a printer, not copy to the clipboard."
   },
+  "Copy|photocopy title": {
+    "note": "Title of the photocopy screen: make a paper copy through a printer. Not copy to the clipboard."
+  },
   "Copy|print job name": {
     "note": "Name of the job in the printer queue: a noun (a photocopy), not a verb. The printer may show it in its own dialog."
   },
@@ -172,7 +175,7 @@
     "note": "{0} is a task title such as 'Restore old photos' (TaskCatalog)."
   },
   "{0} needs a printer.": {
-    "note": "{0} is a task title such as 'Copy' (TaskCatalog)."
+    "note": "{0} is a task title such as 'Photocopy' (TaskCatalog)."
   },
   "Load the photos in the feeder and scan.": {},
   "Each photo is cropped and straightened. Check each one before saving.": {},
@@ -720,7 +723,7 @@
   "Email…": {},
   "Print with Lazy Print": {},
   "Copy": {
-    "note": "Title of the photocopy mode: make a paper copy through a printer. Not copy to the clipboard."
+    "note": "Copy to the clipboard: the file menu, the pairing text and the recognised text of a page. A verb. Not the photocopy mode."
   },
   "Turn the sheet over and take its back.": {},
   "No back side skips an empty back. Then take the next sheet's front.": {},
@@ -1769,7 +1772,7 @@
   "{0} × {1} px": {},
   "Split spread {0}": {},
   "Split": {
-    "note": "Setting label: how facing pages of a book or sheets are split into pages or documents."
+    "note": "Button that cuts a book spread in two at the line in the spread editor. A verb. The setting label is Split|setting."
   },
   "{0} from the left": {},
   "{0} from the top": {},
@@ -2145,7 +2148,7 @@
   },
   "Leave out the back sides: the fronts stay as they are": {},
   "Skip": {
-    "note": "Strip button: leave this page out when saving; the page stays in the queue. Opposite of Keep."
+    "note": "Button: leave this page out when saving (the page stays in the queue), or on Windows skip a step of the ID card task. Opposite of Keep for pages."
   },
   "Ready to scan": {},
   "0 pages": {},

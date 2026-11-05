@@ -834,7 +834,7 @@ struct InspectorView: View {
             reasonLine(String(localized: "Needs Collect pages"))
         }
         HStack(spacing: 4) {
-            Picker("Split", selection: Binding(get: { state.settings.document.splitMode },
+            Picker("Split|setting", selection: Binding(get: { state.settings.document.splitMode },
                                                set: { state.setSplitMode($0) })) {
                 ForEach(SplitMode.displayOrder) { choice in
                     Text(choice.label).tag(choice)
