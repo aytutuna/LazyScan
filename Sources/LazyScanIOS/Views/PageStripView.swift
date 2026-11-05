@@ -216,6 +216,7 @@ struct PageStripView: View {
                     Label(splitLabel, systemImage: "rectangle.split.2x1")
                 }
                 .disabled(state.isBusy)
+                .accessibilityIdentifier("page.split")
             }
             if let joinLabel, canEdit {
                 Button {
