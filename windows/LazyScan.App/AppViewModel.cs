@@ -123,6 +123,11 @@ public sealed class PageItem : INotifyPropertyChanged
     /// </summary>
     public string? BadgeText => IsNotSplit ? null : SideLabel;
 
+    /// <summary>Labels of the physical left and right move buttons; the bar stays left to right, so under right to left the left one moves the page later.</summary>
+    public string MoveLeftLabel => Loc.T(CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft ? "Move page later" : "Move page earlier");
+
+    public string MoveRightLabel => Loc.T(CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft ? "Move page earlier" : "Move page later");
+
     /// <summary>The thumbnail's tooltip: where a photo's or phone's page came from; null for other pages.</summary>
     public string? SourceToolTip => Page.Side is null && _book is null ? PhotoImport.SourceHelp(Page) : null;
 
