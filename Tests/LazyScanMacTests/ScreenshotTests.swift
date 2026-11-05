@@ -12,11 +12,12 @@ import XCTest
 // from the folder's Kit.strings and puts the folder behind Bundle.main for the views' literals.
 
 private final class PseudoBundle: Bundle, @unchecked Sendable {
-    nonisolated(unsafe) static var strings: Bundle?
+    nonisolated(unsafe) static var folder: String?
 
     override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
-        guard let strings = Self.strings else { return super.localizedString(forKey: key, value: value, table: tableName) }
-        return strings.localizedString(forKey: key, value: value, table: tableName)
+        guard let folder = Self.folder else { return super.localizedString(forKey: key, value: value, table: tableName) }
+        let file = folder + "/" + (tableName ?? "Localizable") + ".strings"
+        return (NSDictionary(contentsOfFile: file) as? [String: String])?[key] ?? value ?? key
     }
 }
 
@@ -43,9 +44,10 @@ final class ScreenshotTests: XCTestCase {
         if let path = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_PSEUDO"], !path.isEmpty {
             let table = try XCTUnwrap(NSDictionary(contentsOfFile: path + "/Kit.strings") as? [String: String])
             pseudo = L10n.Override(table: table, language: "qps-ploc")
-            PseudoBundle.strings = try XCTUnwrap(Bundle(path: path))
+            PseudoBundle.folder = path
             originalBundleClass = object_getClass(Bundle.main)
             object_setClass(Bundle.main, PseudoBundle.self)
+            XCTAssertTrue(Bundle.main.localizedString(forKey: "Clear", value: nil, table: nil).hasPrefix("[!!"))
         }
     }
 
@@ -59,7 +61,7 @@ final class ScreenshotTests: XCTestCase {
     override func tearDown() async throws {
         if let originalBundleClass {
             object_setClass(Bundle.main, originalBundleClass)
-            PseudoBundle.strings = nil
+            PseudoBundle.folder = nil
         }
         guard let folder else { return }
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
