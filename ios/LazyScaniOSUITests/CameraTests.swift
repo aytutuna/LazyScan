@@ -92,7 +92,7 @@ final class CameraTests: XCTestCase {
         app.switchToPrinter()
         XCTAssertTrue(app.buttons["scan.button"].waitForExistence(timeout: 30), "Scan in printer mode")
         XCTAssertFalse(app.buttons["camera.shutter"].exists, "No shutter in printer mode")
-        XCTAssertTrue(app.descendants(matching: .any)["capture.pages"].firstMatch.exists, "The pages")
+        XCTAssertTrue(app.descendants(matching: .any)["capture.pages"].firstMatch.waitForExistence(timeout: 10), "The pages")
         app.switchToCamera()
         XCTAssertTrue(app.buttons["camera.shutter"].waitForExistence(timeout: 30), "The shutter again")
         XCTAssertFalse(app.buttons["scan.button"].exists, "No Scan in camera mode")

@@ -37,6 +37,10 @@ extension XCUIApplication {
         button.tap()
         let row: XCUIElement = descendants(matching: .any)["kinds.row"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 30), "Camera mode's kinds", file: file, line: line)
+        // The printer screen's chips are still there for a moment while the screens change places, and
+        // the next question about the mode would be answered by them.
+        waitUntilGone(descendants(matching: .any)["task.chips"].firstMatch, "The printer screen's kinds gone",
+                      file: file, line: line)
     }
 
     /// Printer mode, from camera mode by its printer button; nothing when it is up already. The scanner is
@@ -54,6 +58,8 @@ extension XCUIApplication {
         button.tap()
         let chips: XCUIElement = descendants(matching: .any)["task.chips"].firstMatch
         XCTAssertTrue(chips.waitForExistence(timeout: 30), "The printer screen's kinds", file: file, line: line)
+        waitUntilGone(descendants(matching: .any)["kinds.row"].firstMatch, "Camera mode's kinds gone",
+                      file: file, line: line)
     }
 
     /// Picks what is scanned the way a person does, in either mode: the kind's chip in the printer screen's
