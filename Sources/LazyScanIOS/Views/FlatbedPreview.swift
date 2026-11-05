@@ -390,6 +390,7 @@ private struct FlatbedStage: View {
             }
         }
         .frame(width: size.width, height: size.height)
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 

@@ -47,6 +47,7 @@ struct CornerEditorView: View {
                 GeometryReader { (geometry: GeometryProxy) in
                     stage(size: geometry.size)
                 }
+                .environment(\.layoutDirection, .leftToRight)
                 footer
             }
             .background(Color(uiColor: .systemGroupedBackground))

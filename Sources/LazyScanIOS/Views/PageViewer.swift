@@ -352,6 +352,7 @@ struct PageViewer: View {
         let label: String = PageViewerText.title(number: index + 1, count: state.scannedPages.count)
         let spoken: String = note.map { (text: String) -> String in String(localized: "Page \(label), \(text)") } ?? String(localized: "Page \(label)")
         return ZoomablePage(image: shownImage(page))
+            .environment(\.layoutDirection, .leftToRight)
             .overlay {
                 if state.recuttingPages.contains(page.id) {
                     ProgressView()

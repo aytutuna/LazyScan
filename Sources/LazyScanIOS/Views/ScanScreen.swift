@@ -853,7 +853,7 @@ struct ScanScreen: View {
                 Text(optionValue(group))
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(uiColor: .tertiaryLabel))
                     .accessibilityHidden(true)

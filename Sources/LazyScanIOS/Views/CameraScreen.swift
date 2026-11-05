@@ -241,6 +241,7 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
             if model.showsPreview, let controller = model.driver as? IOSCameraController {
                 CameraPreview(controller: controller, outline: model.live?.outline,
                               steady: model.live?.isSteady ?? false)
+                    .environment(\.layoutDirection, .leftToRight)
                     .accessibilityHidden(true)
             }
             if model.message == nil, let prompt = cardPrompt {
@@ -605,6 +606,7 @@ private struct PagesStack: View {
                 }
                 front(image, page: page, count: count)
             }
+            .environment(\.layoutDirection, .leftToRight)
         } else {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .strokeBorder(Color(uiColor: .tertiaryLabel), style: StrokeStyle(lineWidth: 1, dash: [3]))

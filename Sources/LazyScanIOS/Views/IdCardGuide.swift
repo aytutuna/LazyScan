@@ -67,6 +67,7 @@ struct IdCardGuide: View {
                     .offset(x: frame.minX, y: max(0, frame.minY - 44))
             }
         }
+        .environment(\.layoutDirection, .leftToRight)
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(IOSReviewText.guideName))

@@ -44,6 +44,7 @@ struct SpreadSplitSheet: View {
                         .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                     }
                 }
+                .environment(\.layoutDirection, .leftToRight)
                 .accessibilityElement()
                 .accessibilityLabel(Text("Spread \(source.spreadNumber)"))
                 Slider(value: $fraction, in: 0.1...0.9)
