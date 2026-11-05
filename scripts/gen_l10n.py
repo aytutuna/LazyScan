@@ -20,7 +20,8 @@ files. Every lang file is validated against the English catalog first.
   --samples       print language, number and category for every integer sample in plural.json
   --prune         remove keys from the lang files that the catalog no longer has
   --fmt           rewrite the lang files in catalog order, one entry per line
-  --todo CODE     print what is still missing in one language
+  --todo CODE     print what is still missing in one language, each key with its file, screen, class,
+                  width budget and note
 """
 import html
 import json
@@ -35,6 +36,7 @@ CATALOG = ROOT / "l10n" / "shared.json"
 LANG_DIR = ROOT / "l10n" / "lang"
 LANGUAGE_LIST = ROOT / "l10n" / "languages.json"
 KEY_LISTS = {"ios": ROOT / "l10n" / "keys-ios.json", "mac": ROOT / "l10n" / "keys-mac.json"}
+KEY_NOTES = ROOT / "l10n" / "keys-notes.json"
 PLURAL_RULES = ROOT / "l10n" / "plural.json"
 CATEGORIES = ["zero", "one", "two", "few", "many", "other"]
 OUT = ROOT / "l10n" / "out"
@@ -196,6 +198,10 @@ def view_keys():
         for entry in read_json(path)["keys"]:
             out.setdefault(entry["key"], set()).add(platform)
     return out
+
+
+def view_notes():
+    return read_json(KEY_NOTES)
 
 
 def specifiers(text):
@@ -376,6 +382,7 @@ def load():
     data, plist = catalog()
     errors = check_catalog(data) + check_plist_catalog(plist)
     keys = view_keys()
+    errors += [f"keys-notes.json: {key!r} is not in a key list" for key in view_notes() if key not in keys]
     tables, infos, views, warnings = {}, {}, {}, []
     for lang in LANGUAGES:
         doc_errors = check_doc(lang)
@@ -471,6 +478,87 @@ def format_languages(prune):
         write(LANG_DIR / f"{lang}.json", lang_text(doc, list(data), {p: list(e) for p, e in plist.items()}, list(keys)))
 
 
+# How a key is shown: from its context suffix, else the line that holds it, else its file and shape.
+CONTEXT_CLASS = {"button": "button", "page button": "button", "photocopy button": "button", "step": "chip",
+                 "tab": "tab", "section": "heading", "print job name": "file name", "after another fact": "status",
+                 "scanner source": "chip", "color mode": "chip", "format": "chip", "enhance": "chip", "page option": "chip",
+                 "page gap": "chip", "password field": "label", "lowercase label": "label", "noun": "label"}
+CALL_CLASS = [(re.compile(r"accessibility(?:Label|Hint|Value)|AutomationProperties|Speak"), "spoken"),
+              (re.compile(r"\.help\(|ToolTip"), "tooltip"),
+              (re.compile(r"\bTab\(|\.tabItem|TabItem"), "tab"),
+              (re.compile(r"\bButton\b|MenuItem|ToggleButton|UIAlertAction|\.confirmationDialog"), "button"),
+              (re.compile(r"navigationTitle|\bSection\(|GroupBox|Expander"), "heading"),
+              (re.compile(r"\b(?:Toggle|Picker|TextField|SecureField|LabeledContent|Label)\b|CheckBox|ComboBox|TextBox"), "label")]
+STATUS_FILES = re.compile(r"AppState|StatusLine|ViewModel|PhotoImport|\.xaml\.cs$")
+# Width budgets in characters: a compact surface has a fixed one, the rest grow with the English text.
+BUDGET = {"button": 20, "chip": 14, "tab": 12, "tile": 24, "heading": 28, "label": 28, "file name": 24}
+
+
+def read_source(path):
+    """A source file with Swift's braced unicode escapes written out, as the keys hold them."""
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    return re.sub(r"\\u\{([0-9A-Fa-f]+)\}", lambda m: chr(int(m.group(1), 16)), text)
+
+
+def literal(text):
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
+
+
+def source_line(text, key, xaml):
+    """The line of text that holds key as a string literal (a XAML attribute for xaml, with the line above, where
+    the element tag sits), or empty."""
+    if xaml:
+        needle = html.escape(key.split("{")[0], quote=False)[:30]
+        at = max(text.find("loc:T " + needle), text.find(needle)) if needle else -1
+    elif SPECIFIER.search(key):
+        parts = [re.escape(literal(p)[1:-1]) for p in SPECIFIER.split(key)[::3]]
+        match = re.search('"' + r"\\\(.*?\)".join(parts) + '"', text)
+        at = match.start() if match else -1
+    else:
+        at = text.find(literal(key))
+    if at < 0:
+        return ""
+    start = text.rfind("\n", 0, at) + 1
+    if xaml:
+        start = text.rfind("\n", 0, max(start - 1, 0)) + 1
+    end = text.find("\n", at)
+    return text[start:] if end < 0 else text[start:end]
+
+
+def surface(key, line, rel):
+    """(screen, class, budget) of one key. The screen is the name of its file."""
+    text = english_view(key)
+    context = CONTEXT_SUFFIX.search(key)
+    kind = CONTEXT_CLASS.get(key[context.start() + 2:]) if context else None
+    kind = kind or next((c for pattern, c in CALL_CLASS if pattern.search(line)), None)
+    stem = Path(rel).name.split(".")[0]
+    if kind is None:
+        words = len(text.split())
+        if text.endswith((".", "?", "!", ":")) or words >= 7:
+            kind = "status" if STATUS_FILES.search(rel) else "sentence"
+        elif "Catalog" in stem and words <= 4:
+            kind = "tile"
+        else:
+            kind = "label"
+    if kind in BUDGET:
+        return stem, kind, max(BUDGET[kind], -(-len(text) * 6 // 5))
+    return stem, kind, max(14, -(-len(text) * 7 // 5))
+
+
+def view_sources():
+    """key -> the first Swift file under Sources that holds the literal, and its line."""
+    texts = {p.relative_to(ROOT).as_posix(): read_source(p)
+             for p in sorted((ROOT / "Sources").rglob("*.swift")) if not SKIP_DIRS & set(p.parts)}
+    out = {}
+    for key in view_keys():
+        for rel, text in texts.items():
+            line = source_line(text, key, False)
+            if line:
+                out[key] = (rel, line)
+                break
+    return out
+
+
 def todo(lang):
     if lang not in INFO:
         sys.exit(f"{lang}: not in languages.json")
@@ -478,13 +566,31 @@ def todo(lang):
     doc = lang_doc(lang)
     strings, views = doc.get("strings", {}), doc.get("views", {})
     required = required_categories(lang)
+    used, _ = keys_in_code()
+    sources, notes = view_sources(), view_notes()
+
+    def where(key, rel, line):
+        stem, kind, budget = surface(key, line, rel)
+        print(f"  file: {rel}\n  screen: {stem}, class: {kind}, budget: {budget} characters")
+        if key in notes:
+            print(f"  note: {notes[key]}")
+
     for key, platforms in view_keys().items():
         if view_text(key, strings, views) is None:
             print(f"view on {','.join(sorted(platforms))}: {key}")
+            rel, line = sources.get(key, ("(not found in Sources)", ""))
+            where(key, rel, line)
+            if key in data and "note" in data[key]:
+                print(f"  note: {data[key]['note']}")
     for platform, entries in {"ios": {}, "mac": {}, **doc.get("infoplist", {})}.items():
         for key in plist[platform]:
             if key not in entries:
-                print(f"infoplist {platform}: {key}\n  English: {plist[platform][key]}")
+                english = plist[platform][key]
+                source = IOS_PLIST if platform == "ios" else MAC_PLIST
+                print(f"infoplist {platform}: {key}")
+                print(f"  English: {english}")
+                print(f"  file: {source.relative_to(ROOT).as_posix()}")
+                print(f"  screen: system dialog, class: sentence, budget: {max(14, -(-len(english) * 7 // 5))} characters")
     for key, entry in data.items():
         have = strings.get(key)
         if "other" in entry:
@@ -498,6 +604,9 @@ def todo(lang):
         if "other" in entry:
             print(f"  plural, English other: {entry['other']}")
         print(f"  missing: {', '.join(need)}")
+        rel = used[key][0] if key in used else "(not used in code)"
+        text = read_source(ROOT / rel) if key in used else ""
+        where(key, rel, source_line(text, key, rel.endswith(".xaml")))
         if "note" in entry:
             print(f"  note: {entry['note']}")
 

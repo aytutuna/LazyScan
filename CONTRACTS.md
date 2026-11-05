@@ -75,7 +75,7 @@ Every App Store language has a row in `l10n/languages.json` (`code`, `store`, `p
 
 Recipe for a translation commit:
 1. Create `l10n/lang/<code>.json` as `{"strings": {}}`, with the code as written in `languages.json`.
-2. `python scripts/gen_l10n.py --todo <code>` prints the work list: the catalog keys still missing, the plural categories the language needs, and the Info.plist texts.
+2. `python scripts/gen_l10n.py --todo <code>` prints the work list: the catalog keys still missing, the plural categories the language needs, and the Info.plist texts, each with its source file, screen, class (status, button, chip, tab, tile, sentence, spoken and so on), width budget and note. Notes sit in the `note` field of `shared.json` and, for view literals, in `l10n/keys-notes.json` (key to note).
 3. Fill `strings` (Kit and Core text, and all Windows text; iPhone and Mac view literals are outside the report and the gate until c18 adds a `views` section, and c18 must update this step to list it; a plural entry is an object keyed by CLDR category) and `infoplist` (`ios` and `mac`).
 4. Run `python scripts/gen_l10n.py --check --report`. The language is complete when the report shows every count translated on each platform in `ship` and none missing.
 5. Set `live` to `true` in `languages.json`. `ship` stays the platform string.
