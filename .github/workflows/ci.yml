@@ -476,21 +476,47 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/app-build" \
             -resultBundlePath "$RUNNER_TEMP/ios-app-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
+      # The same walk with the app in the pseudo language (qps-ploc, from gen_l10n.py --pseudo, never
+      # shipped): the lproj is put into the app built above. Every visible string without the [!! !!]
+      # marker skipped the lookup. Not on the release ref, and a failure here does not fail the job.
+      - name: Run the screenshots in the pseudo language
+        if: github.ref != 'refs/heads/ci/testflight'
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          TEST_RUNNER_LAZYSCAN_PSEUDO: '1'
+        run: |
+          set -eo pipefail
+          python3 scripts/gen_l10n.py --pseudo
+          app="$RUNNER_TEMP/app-build/Build/Products/Release-iphonesimulator/LazyScan.app"
+          cp -R l10n/out/ios/qps-ploc.lproj "$app/"
+          plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.ios.txt)" "$app/Info.plist"
+          xcodebuild test-without-building \
+            -project ios/LazyScaniOS.xcodeproj \
+            -scheme LazyScaniOS \
+            -configuration Release \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -derivedDataPath "$RUNNER_TEMP/app-build" \
+            -only-testing:LazyScaniOSUITests/ScreenshotTests \
+            -resultBundlePath "$RUNNER_TEMP/ios-pseudo-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
       # The screens ScreenshotTests keeps, renamed from the export's own file names to their attachment
       # names (01-camera.png, ...) through the manifest the export writes.
       - name: Export the screenshots
         if: always()
         run: |
-          out="$RUNNER_TEMP/ios-screenshots"
-          if [ ! -d "$RUNNER_TEMP/ios-app-tests.xcresult" ]; then
-            echo "No app test results to export"
-            exit 0
-          fi
-          xcrun xcresulttool export attachments \
-            --path "$RUNNER_TEMP/ios-app-tests.xcresult" \
-            --output-path "$out"
-          if [ -f "$out/manifest.json" ]; then
-            python3 - "$out" <<'EOF'
+          for run in "ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo"; do
+            set -- $run
+            out="$RUNNER_TEMP/$2"
+            if [ ! -d "$RUNNER_TEMP/$1.xcresult" ]; then
+              echo "No $1 results to export"
+              continue
+            fi
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/$1.xcresult" \
+              --output-path "$out"
+            if [ -f "$out/manifest.json" ]; then
+              python3 - "$out" <<'EOF'
           import json, os, re, sys
           out = sys.argv[1]
           with open(os.path.join(out, "manifest.json")) as f:
@@ -509,8 +535,9 @@ jobs:
                   if not os.path.exists(dst):
                       os.rename(src, dst)
           EOF
-          fi
-          ls "$out"
+            fi
+            ls "$out"
+          done
       - name: Upload the screenshots
         if: always()
         uses: actions/upload-artifact@v7
@@ -518,6 +545,13 @@ jobs:
           name: ios-screenshots
           path: ${{ runner.temp }}/ios-screenshots
           if-no-files-found: warn
+      - name: Upload the pseudo-language screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-screenshots-pseudo
+          path: ${{ runner.temp }}/ios-screenshots-pseudo
+          if-no-files-found: ignore
       - name: Upload the test results
         if: failure()
         uses: actions/upload-artifact@v7
@@ -526,6 +560,7 @@ jobs:
           path: |
             ${{ runner.temp }}/ios-tests.xcresult
             ${{ runner.temp }}/ios-app-tests.xcresult
+            ${{ runner.temp }}/ios-pseudo-tests.xcresult
           if-no-files-found: ignore
 
   ios18:

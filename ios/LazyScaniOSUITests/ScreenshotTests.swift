@@ -10,10 +10,15 @@ import XCTest
 // change; a "skipped-" screenshot shows what was on screen instead.
 
 final class ScreenshotTests: XCTestCase {
+    /// CI's pseudo-language run sets LAZYSCAN_PSEUDO: the app then starts in qps-ploc, where every
+    /// string that went through the lookup is wrapped in [!! !!].
+    private static let language: [String] = ProcessInfo.processInfo.environment["LAZYSCAN_PSEUDO"] == nil
+        ? [] : ["-AppleLanguages", "(qps-ploc)"]
+
     @MainActor
     func test_mainScreens() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-demoScanner"]
+        app.launchArguments = ["-demoScanner"] + Self.language
         app.launch()
 
         // The mode is kept from run to run: the walk starts in camera mode.
@@ -33,7 +38,7 @@ final class ScreenshotTests: XCTestCase {
         let fixture: URL = try XCTUnwrap(Bundle(for: ScreenshotTests.self).url(forResource: "document-photo", withExtension: "png"),
                                          "The fixture photo in the test bundle")
         let app = XCUIApplication()
-        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "document"]
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "document"] + Self.language
         app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
         app.launch()
 
