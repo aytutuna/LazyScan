@@ -437,10 +437,10 @@
                                       SizeChanged="CanvasHost_SizeChanged"
                                       Background="Transparent">
                                     <!-- The margin must stay uniform: DisplayedImageRect reads Margin.Left for every side. -->
-                                    <Image x:Name="CanvasImage" Stretch="Uniform" Margin="24"
+                                    <Image x:Name="CanvasImage" Stretch="Uniform" Margin="24" FlowDirection="LeftToRight"
                                            Effect="{DynamicResource PageShadow}"
                                            RenderOptions.BitmapScalingMode="HighQuality" />
-                                    <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False">
+                                    <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" FlowDirection="LeftToRight">
                                         <Rectangle x:Name="SelectionMarquee"
                                                    Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
                                                    StrokeDashArray="4 3" Fill="{DynamicResource MarqueeFillBrush}"
@@ -555,7 +555,7 @@
                                                     </Grid.ContextMenu>
                                                     <Border x:Name="Card" Style="{StaticResource CardStyle}" Padding="6"
                                                             ToolTip="{Binding SourceToolTip}">
-                                                        <Image x:Name="Thumb" Source="{Binding Thumbnail}" MaxHeight="112" MaxWidth="104"
+                                                        <Image x:Name="Thumb" Source="{Binding Thumbnail}" MaxHeight="112" MaxWidth="104" FlowDirection="LeftToRight"
                                                                Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                                     </Border>
@@ -639,7 +639,7 @@
                                                     </DockPanel>
                                                     <Border x:Name="Actions" Style="{StaticResource HoverActionBarStyle}"
                                                             HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6">
-                                                        <StackPanel Orientation="Horizontal">
+                                                        <StackPanel Orientation="Horizontal" FlowDirection="LeftToRight">
                                                             <Button Style="{StaticResource PageActionButtonStyle}" Content="&#xE76B;"
                                                                     ToolTip="{loc:T Move page left}"
                                                                     AutomationProperties.Name="{loc:T Move page left}"
@@ -974,7 +974,7 @@
                                                         ToolTip="{loc:T Choose the save folder}"
                                                         AutomationProperties.Name="{loc:T Choose the save folder}"
                                                         Click="BrowseDestination_Click" />
-                                                <TextBox x:Name="DestinationBox" Margin="0,0,4,0"
+                                                <TextBox x:Name="DestinationBox" Margin="0,0,4,0" FlowDirection="LeftToRight"
                                                          ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
                                                          ScrollViewer.ScrollChanged="DestinationBox_ScrollChanged"
                                                          LostKeyboardFocus="DestinationBox_LostKeyboardFocus"
@@ -1306,6 +1306,14 @@
                                                             <TextBlock Style="{StaticResource GlyphText}" Text="&#xE8E5;" />
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <!-- The pages as a PDF in Lazy Print; the queue stays as it is. -->
+                                                    <MenuItem x:Name="PrintQueueButton" Header="{loc:T Print with Lazy Print}"
+                                                              ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
+                                                              Click="PrintQueue_Click">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE749;" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
                                                 </ContextMenu>
                                             </Button.ContextMenu>
                                         </Button>
@@ -1397,7 +1405,7 @@
                                                     <StackPanel>
                                                         <Border x:Name="Well" Style="{StaticResource ImageWellStyle}" Height="160">
                                                             <Viewbox StretchDirection="DownOnly" Margin="5">
-                                                                <Image Source="{Binding Thumbnail}" MaxHeight="150" MaxWidth="190"
+                                                                <Image Source="{Binding Thumbnail}" MaxHeight="150" MaxWidth="190" FlowDirection="LeftToRight"
                                                                        RenderOptions.BitmapScalingMode="HighQuality">
                                                                     <Image.LayoutTransform>
                                                                         <RotateTransform Angle="{Binding RotationDegrees}" />
@@ -1450,11 +1458,15 @@
                 <DockPanel>
                     <Border DockPanel.Dock="Bottom" Padding="24,16">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right">
                                 <Button x:Name="IdCardPrintButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE749;" Content="{loc:T Print}" MinWidth="110" Margin="0,0,8,0"
                                         ToolTipService.ShowOnDisabled="True"
                                         Click="IdCardPrint_Click" />
+                                <Button x:Name="IdCardLazyPrintButton" Style="{StaticResource IconTextButtonStyle}"
+                                        local:Icon.Glyph="&#xE749;" Content="{loc:T Print with Lazy Print}" Margin="0,0,8,0"
+                                        ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
+                                        Click="IdCardLazyPrint_Click" />
                                 <Button x:Name="IdCardDiscardButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74D;" Content="{loc:T Discard}" MinWidth="110"
                                         Click="IdCardDiscard_Click" />
@@ -1465,7 +1477,7 @@
                                 <Button x:Name="IdCardSaveButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74E;" Content="{loc:T Save}" MinWidth="110" Margin="8,0,0,0"
                                         Click="IdCardSave_Click" />
-                            </StackPanel>
+                            </WrapPanel>
                             <WrapPanel VerticalAlignment="Center" Margin="0,0,0,4">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,16,6">
                                     <TextBlock x:Name="IdCardPaperLabel" Text="{loc:T Paper}" Style="{StaticResource BodyText}"
@@ -1526,7 +1538,7 @@
                                                     <TextBlock Text="{loc:T Front}" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                                                 </DockPanel>
                                                 <Border Style="{StaticResource ImageWellStyle}" Height="170" Margin="0,8,0,0">
-                                                    <Image x:Name="IdCardFrontImage" Margin="8" Stretch="Uniform"
+                                                    <Image x:Name="IdCardFrontImage" Margin="8" Stretch="Uniform" FlowDirection="LeftToRight"
                                                            RenderOptions.BitmapScalingMode="HighQuality">
                                                         <Image.LayoutTransform>
                                                             <RotateTransform x:Name="IdCardFrontTurn" />
@@ -1559,7 +1571,7 @@
                                                     <TextBlock Text="{loc:T Back}" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                                                 </DockPanel>
                                                 <Border x:Name="IdCardBackWell" Style="{StaticResource ImageWellStyle}" Height="170" Margin="0,8,0,0">
-                                                    <Image x:Name="IdCardBackImage" Margin="8" Stretch="Uniform"
+                                                    <Image x:Name="IdCardBackImage" Margin="8" Stretch="Uniform" FlowDirection="LeftToRight"
                                                            RenderOptions.BitmapScalingMode="HighQuality">
                                                         <Image.LayoutTransform>
                                                             <RotateTransform x:Name="IdCardBackTurn" />
@@ -1593,7 +1605,7 @@
                                     <StackPanel Width="300" Margin="0,0,0,12">
                                         <Border HorizontalAlignment="Left" Background="White" Effect="{DynamicResource PageShadow}"
                                                 BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="1">
-                                            <Image x:Name="IdCardPageImage" Height="380" Stretch="Uniform"
+                                            <Image x:Name="IdCardPageImage" Height="380" Stretch="Uniform" FlowDirection="LeftToRight"
                                                    RenderOptions.BitmapScalingMode="HighQuality"
                                                    AutomationProperties.Name="{loc:T Page preview}"
                                                    AutomationProperties.HelpText="{loc:T The page both sides are saved on}" />

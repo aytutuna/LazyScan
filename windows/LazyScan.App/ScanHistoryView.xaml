@@ -54,7 +54,7 @@
                                     <StackPanel>
                                         <Grid Height="156">
                                             <Border Style="{StaticResource ImageWellStyle}">
-                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="8"
+                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" FlowDirection="LeftToRight" Margin="8"
                                                        RenderOptions.BitmapScalingMode="HighQuality" />
                                             </Border>
                                             <Border x:Name="ZoomBadge" Style="{StaticResource HoverActionBarStyle}"

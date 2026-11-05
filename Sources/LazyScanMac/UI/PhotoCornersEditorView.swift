@@ -65,6 +65,7 @@ struct PhotoCornersEditorView: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(cornerDrag(frame: frame))
+                .environment(\.layoutDirection, .leftToRight)
             }
             .focusable()
             .focusEffectDisabled()

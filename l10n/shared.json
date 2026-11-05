@@ -632,6 +632,7 @@
   "Email or send to an app": {},
   "Open with…": {},
   "Email…": {},
+  "Print with Lazy Print": {},
   "Copy": {},
   "Turn the sheet over and take its back.": {},
   "No back side skips an empty back. Then take the next sheet's front.": {},
@@ -1621,6 +1622,9 @@
   "Show in File Explorer": {},
   "Send with Mail, Outlook, nearby sharing or another app": {},
   "Attach to an email: choose Mail or Outlook in the share window": {},
+  "Open it in Lazy Print, then choose a printer and print": {},
+  "Lazy Print is not installed.": {},
+  "Lazy Print can't open this file.": {},
   "Copy the file to the clipboard": {},
   "Copy the files to the clipboard": {},
   "The destination folder could not be read.": {},
@@ -2173,6 +2177,10 @@
   "Copy the results to send to support": {},
   "Copies these checks and the list of connections as text": {},
   "Checks": {},
+  "Windows Scan (backup)": {},
+  "{0} (32-bit driver)": {},
+  "The scanner sent an image too large to read.": {},
+  "Demo Scanner": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

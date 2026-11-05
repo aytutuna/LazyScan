@@ -406,7 +406,7 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
         // Never read past the memory block the driver allocated; a short one is reported as cut short.
         long allocated = AllocatedSize(bitmap);
         if (allocated > 0) length = Math.Min(length, allocated);
-        if (length > Array.MaxLength) throw new FormatException("The scanner sent an image too large to read.");
+        if (length > Array.MaxLength) throw new FormatException(Loc.T("The scanner sent an image too large to read."));
         var copy = new byte[length];
         Marshal.Copy(bitmap, copy, 0, copy.Length);
         return copy;

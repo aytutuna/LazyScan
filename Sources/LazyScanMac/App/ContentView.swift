@@ -130,7 +130,7 @@ struct ContentView: View {
         }
         // A `.lsdoc` opened from the Finder is offered on the banner, in this window rather than a new one.
         .onOpenURL { url in
-            guard url.pathExtension.lowercased() == CompanionPackage.fileExtension else { return }
+            guard url.isFileURL, url.pathExtension.lowercased() == CompanionPackage.fileExtension else { return }
             Task { await state.openPackage(at: url) }
         }
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])

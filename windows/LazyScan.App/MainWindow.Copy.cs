@@ -113,6 +113,10 @@ public partial class MainWindow
 
     private void IdCardPrint_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintIdCard();
 
+    private void IdCardLazyPrint_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintIdCardWithLazyPrint();
+
+    private void PrintQueue_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintQueueWithLazyPrint();
+
     /// <summary>The review's Print button: on the printer chosen for copies, else the default one.</summary>
     private void SyncIdCardPrint(bool busy)
     {
@@ -124,5 +128,7 @@ public partial class MainWindow
             : Loc.T("Print at real size on {0}", printer ?? Loc.T("the default printer"));
         IdCardPrintButton.ToolTip = tip;
         AutomationProperties.SetHelpText(IdCardPrintButton, tip);
+        IdCardLazyPrintButton.Visibility = ViewModel.LazyPrintInstalled ? Visibility.Visible : Visibility.Collapsed;
+        IdCardLazyPrintButton.IsEnabled = !busy && ViewModel.IdCardFront is not null;
     }
 }

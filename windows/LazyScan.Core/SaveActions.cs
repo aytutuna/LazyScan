@@ -26,6 +26,7 @@ public enum FileAction
     Reveal,
     Share,
     Email,
+    LazyPrint,
     Copy,
 }
 
@@ -106,14 +107,34 @@ public static class SaveActions
 
     /// <summary>
     /// The actions offered for <paramref name="fileCount"/> saved files, in menu order. Open
-    /// and Open with work on one file; showing, sharing, emailing and copying take several.
+    /// and Open with work on one file; showing, sharing, emailing and copying take several. Print with Lazy Print is
+    /// offered only when <paramref name="lazyPrint"/> says it can be.
     /// </summary>
-    public static IReadOnlyList<FileAction> Offered(int fileCount) => fileCount switch
+    public static IReadOnlyList<FileAction> Offered(int fileCount, bool lazyPrint = false)
     {
-        <= 0 => [],
-        1 => [FileAction.Open, FileAction.OpenWith, FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.Copy],
-        _ => [FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.Copy],
-    };
+        FileAction[] tail = lazyPrint ? [FileAction.LazyPrint, FileAction.Copy] : [FileAction.Copy];
+        return fileCount switch
+        {
+            <= 0 => [],
+            1 => [FileAction.Open, FileAction.OpenWith, FileAction.Reveal, FileAction.Share, FileAction.Email, .. tail],
+            _ => [FileAction.Reveal, FileAction.Share, FileAction.Email, .. tail],
+        };
+    }
+
+    /// <summary>The longest address offered; a command line stops at 32,767 characters, which leaves room for the exe's path.</summary>
+    public const int MaxLazyPrintAddressLength = 30000;
+
+    /// <summary>
+    /// Lazy Print can take these files: every one is a PDF or a JPEG, PNG or TIFF picture on a drive
+    /// (Lazy Print drops a share's path), and one address holds them all.
+    /// </summary>
+    public static bool CanPrintWithLazyPrint(IReadOnlyList<string> paths) =>
+        paths.Count > 0 && paths.All(path => IsDrivePath(path) && (IsImageFile(path)
+            || Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase)))
+        && LazyPrintUrl.Build(paths).Length <= MaxLazyPrintAddressLength;
+
+    private static bool IsDrivePath(string path) =>
+        path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] is '\\' or '/';
 
     /// <summary>A JPEG, PNG or TIFF file (by its extension, in any case).</summary>
     public static bool IsImageFile(string path) =>

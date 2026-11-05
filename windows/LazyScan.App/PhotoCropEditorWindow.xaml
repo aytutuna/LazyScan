@@ -77,7 +77,7 @@
 
         <!-- Neutral stage: the page with a soft shadow, the area outside the crop dimmed. -->
         <Border Style="{StaticResource StageStyle}" Margin="12,0,12,0">
-            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True"
+            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True" FlowDirection="LeftToRight"
                     Focusable="True" KeyDown="Host_KeyDown"
                     FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
                     AutomationProperties.Name="{loc:T Crop frame}"

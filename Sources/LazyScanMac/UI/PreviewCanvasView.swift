@@ -9,6 +9,8 @@ import SwiftUI
 /// informational outlines for detected photos.
 struct PreviewCanvasView: View {
     @EnvironmentObject var state: AppState
+    /// The language's direction, read outside the left-to-right wrap around the image.
+    @Environment(\.layoutDirection) private var direction
 
     /// Downsampled copy of `state.canvasImage` actually handed to SwiftUI.
     @State private var displayImage: CGImage?
@@ -32,6 +34,7 @@ struct PreviewCanvasView: View {
                         detectedPhotosOverlay(image: image, frame: frame)
                     }
                 }
+                .environment(\.layoutDirection, .leftToRight)
             } else {
                 emptyState
             }
@@ -178,6 +181,7 @@ struct PreviewCanvasView: View {
                 let height = Double(selection.height * caps.flatbedSizeInches.height)
                     .formatted(.number.precision(.fractionLength(1)))
                 Text("\(width) × \(height) in")
+                    .environment(\.layoutDirection, direction)
                     .font(.caption.monospacedDigit())
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -203,6 +207,7 @@ struct PreviewCanvasView: View {
         .help("Remove the scan area selection (or double-click the preview)")
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .padding(10)
+        .environment(\.layoutDirection, direction)
     }
 
     private func selectionDrag(frame: CGRect) -> some Gesture {

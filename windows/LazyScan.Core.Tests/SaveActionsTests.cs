@@ -26,7 +26,7 @@ public class SaveActionsTests
         Assert.Equal(["Do nothing", "Open", "Show in folder", "Share…"],
                      Enum.GetValues<AfterSaveAction>().Select(a => a.Label()));
         Assert.All(Enum.GetValues<AfterSaveAction>(), a => Assert.False(string.IsNullOrEmpty(a.Hint())));
-        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Copy"],
+        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Print with Lazy Print", "Copy"],
                      Enum.GetValues<FileAction>().Select(a => a.Label()));
     }
 
@@ -84,6 +84,46 @@ public class SaveActionsTests
                      SaveActions.Offered(1));
         Assert.Equal([FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.Copy], SaveActions.Offered(2));
         Assert.Equal(SaveActions.Offered(2), SaveActions.Offered(40));
+    }
+
+    [Fact]
+    public void Offered_AddsPrintWithLazyPrintBeforeCopyOnlyWhenAsked()
+    {
+        Assert.Equal([FileAction.Open, FileAction.OpenWith, FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.LazyPrint, FileAction.Copy],
+                     SaveActions.Offered(1, lazyPrint: true));
+        Assert.Equal([FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.LazyPrint, FileAction.Copy],
+                     SaveActions.Offered(3, lazyPrint: true));
+        Assert.Empty(SaveActions.Offered(0, lazyPrint: true));
+        Assert.DoesNotContain(FileAction.LazyPrint, SaveActions.Offered(1));
+    }
+
+    [Fact]
+    public void CanPrintWithLazyPrint_NeedsPdfsOrPictures()
+    {
+        Assert.True(SaveActions.CanPrintWithLazyPrint([@"C:\Scans\a.pdf", @"C:\Scans\b.JPG", @"C:\Scans\c.tiff"]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([@"C:\Scans\a.pdf", @"C:\Scans\a.docx"]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([@"C:\Scans\a.txt"]));
+    }
+
+    [Fact]
+    public void CanPrintWithLazyPrint_NeedsADrivePath()
+    {
+        Assert.True(SaveActions.CanPrintWithLazyPrint([@"Z:\mapped\a.tif"]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([@"\\nas\scans\a.pdf"]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([@"\\?\C:\a.pdf"]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([@"C:\a.pdf", @"\\nas\scans\b.pdf"]));
+    }
+
+    [Fact]
+    public void CanPrintWithLazyPrint_StopsAtTheAddressLimit()
+    {
+        // Letters are not encoded, so the address grows by one character for each one in the name.
+        int fixedPart = LazyPrintUrl.Build([@"C:\.pdf"]).Length;
+        string atLimit = @"C:\" + new string('a', SaveActions.MaxLazyPrintAddressLength - fixedPart) + ".pdf";
+        Assert.Equal(SaveActions.MaxLazyPrintAddressLength, LazyPrintUrl.Build([atLimit]).Length);
+        Assert.True(SaveActions.CanPrintWithLazyPrint([atLimit]));
+        Assert.False(SaveActions.CanPrintWithLazyPrint([atLimit.Replace(".pdf", "a.pdf")]));
     }
 
     [Fact]

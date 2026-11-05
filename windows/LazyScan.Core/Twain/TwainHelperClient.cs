@@ -531,9 +531,6 @@ public static class TwainHelperSources
     /// </summary>
     public const string Transport = "TWAIN (32-bit driver)";
 
-    /// <summary>Added to the source's name, so a scanner reached only this way says so in its row.</summary>
-    public const string NameSuffix = " (32-bit driver)";
-
     public const string IdPrefix = "twain32:";
 
     /// <summary>
@@ -553,11 +550,11 @@ public static class TwainHelperSources
             .ToList();
     }
 
-    /// <summary>The device-list entry of a source: named with <see cref="NameSuffix"/>, its model the maker and product name.</summary>
+    /// <summary>The device-list entry of a source: named with a "(32-bit driver)" suffix, its model the maker and product name.</summary>
     public static ScannerInfo Info(TwainHelperSource source)
     {
         string model = $"{source.Manufacturer?.Trim()} {source.Name.Trim()}".Trim();
-        return new ScannerInfo(IdPrefix + source.Name, source.Name.Trim() + NameSuffix, Transport, Backend: Backend,
+        return new ScannerInfo(IdPrefix + source.Name, Loc.T("{0} (32-bit driver)", source.Name.Trim()), Transport, Backend: Backend,
                                Model: model.Length > 0 ? model : null);
     }
 

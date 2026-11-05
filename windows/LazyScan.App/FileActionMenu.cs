@@ -18,6 +18,7 @@ public static class FileActionMenu
         FileAction.Reveal => "",
         FileAction.Share => "",
         FileAction.Email => "",
+        FileAction.LazyPrint => "",
         FileAction.Copy => "",
         _ => "",
     };
@@ -30,6 +31,7 @@ public static class FileActionMenu
         FileAction.Reveal => Loc.T("Show in File Explorer"),
         FileAction.Share => Loc.T("Send with Mail, Outlook, nearby sharing or another app"),
         FileAction.Email => Loc.T("Attach to an email: choose Mail or Outlook in the share window"),
+        FileAction.LazyPrint => Loc.T("Open it in Lazy Print, then choose a printer and print"),
         FileAction.Copy => fileCount == 1 ? Loc.T("Copy the file to the clipboard") : Loc.T("Copy the files to the clipboard"),
         _ => "",
     };

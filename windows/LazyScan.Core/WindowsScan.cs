@@ -29,7 +29,7 @@ public static class WindowsScanConnection
 
     /// <summary>The device-list entry of a Windows Scan device: its name as Windows gives it ("Scanner" when it gives none).</summary>
     public static ScannerInfo Info(string deviceId, string? name) =>
-        new(IdPrefix + deviceId, string.IsNullOrWhiteSpace(name) ? "Scanner" : name.Trim(), Transport, Backend: Backend);
+        new(IdPrefix + deviceId, string.IsNullOrWhiteSpace(name) ? Loc.T("Scanner") : name.Trim(), Transport, Backend: Backend);
 
     /// <summary>The Windows device id inside a device-list id; null when the id is not a Windows Scan one.</summary>
     public static string? DeviceId(string id) =>
@@ -266,7 +266,7 @@ public static class WindowsScanRequest
         bool feeder = settings.Source == ScanSource.DocumentFeeder;
         if (facts is null)
         {
-            if (feeder) throw ScanException.Unsupported("This scanner has no document feeder.");
+            if (feeder) throw ScanException.Unsupported(() => Loc.T("This scanner has no document feeder."));
             return new WindowsScanPlan(WindowsScanSource.AutoConfigured, settings.Resolution, null, null, null);
         }
         int dpi = Resolution(settings.Resolution, facts);

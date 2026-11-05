@@ -175,8 +175,8 @@ public final class ICScannerBackend: NSObject, ScannerBackend, ScannerBackendDia
     }
 
     private static func makeInfo(for device: ICScannerDevice) -> ScannerInfo {
-        let name = device.name ?? "Scanner"
-        let id = device.uuidString ?? name
+        let name = device.name ?? L10n.t("Scanner")
+        let id = device.uuidString ?? device.name ?? "Scanner"
         let raw = device.type.rawValue
         let transport: String
         if raw & ICDeviceLocationTypeMask.local.rawValue != 0 {

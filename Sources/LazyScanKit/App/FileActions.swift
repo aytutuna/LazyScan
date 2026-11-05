@@ -23,6 +23,18 @@ public protocol FileActionService: AnyObject {
     func copy(_ content: ClipboardContent) throws
     /// Puts `text` on the pasteboard (Copy Text on a scanned page).
     func copyText(_ text: String) throws
+    /// Lazy Print is installed (something opens `lazyprint:`).
+    func lazyPrintInstalled() -> Bool
+    /// Opens the files in Lazy Print (see `LazyPrintUrl`).
+    func openInLazyPrint(_ urls: [URL]) throws
+}
+
+extension FileActionService {
+    public func lazyPrintInstalled() -> Bool { false }
+
+    public func openInLazyPrint(_ urls: [URL]) throws {
+        throw ScanError.unsupported(L10n.t("Lazy Print is not installed."))
+    }
 }
 
 /// The file actions of an `AppState` whose app shell passed none: every action is refused with

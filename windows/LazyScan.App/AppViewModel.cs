@@ -3219,7 +3219,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     /// <summary>The actions the bar offers for the last save's files.</summary>
-    public IReadOnlyList<FileAction> SavedBarActions => SaveActions.Offered(SavedBarPaths?.Count ?? 0);
+    public IReadOnlyList<FileAction> SavedBarActions => OfferedFor(SavedBarPaths ?? []);
+
+    /// <summary>The actions offered for these files: Print with Lazy Print only when it is installed and can read them.</summary>
+    public IReadOnlyList<FileAction> OfferedFor(IReadOnlyList<string> paths) =>
+        SaveActions.Offered(paths.Count, SaveActions.CanPrintWithLazyPrint(paths) && _fileActions.LazyPrintInstalled());
 
     /// <summary>
     /// Opens, shows, shares, emails or copies saved files (the Saved tab and the bar after a
@@ -3260,6 +3264,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     break;
                 case FileAction.Email:
                     Send(SaveActions.EmailRoute(_fileActions.SendProbe), paths);
+                    break;
+                case FileAction.LazyPrint:
+                    _fileActions.OpenInLazyPrint(paths);
                     break;
                 case FileAction.Copy:
                     var content = SaveActions.ClipboardContentFor(paths);

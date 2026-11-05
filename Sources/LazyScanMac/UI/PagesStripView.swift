@@ -104,6 +104,11 @@ struct PagesStripView: View {
                         Button(PDFAppender.buttonLabel) {
                             state.chooseAndAppendToPDF()
                         }
+                        if state.canPrintQueueWithLazyPrint {
+                            Button("Print with Lazy Print") {
+                                state.printQueueWithLazyPrint()
+                            }
+                        }
                     } label: {
                         saveLabel(saveTitle)
                     } primaryAction: {
@@ -543,10 +548,10 @@ fileprivate struct PageThumbnailCell: View {
                 Button {
                     onMove(-1)
                 } label: {
-                    Image(systemName: "chevron.left.circle.fill")
+                    Image(systemName: "chevron.backward.circle.fill")
                 }
                 .disabled(!canMoveLeft)
-                .help("Move page left")
+                .help("Move page earlier")
 
                 Spacer(minLength: 2)
 
@@ -560,10 +565,10 @@ fileprivate struct PageThumbnailCell: View {
                 Button {
                     onMove(1)
                 } label: {
-                    Image(systemName: "chevron.right.circle.fill")
+                    Image(systemName: "chevron.forward.circle.fill")
                 }
                 .disabled(!canMoveRight)
-                .help("Move page right")
+                .help("Move page later")
             }
             .padding(.horizontal, 2)
         }
