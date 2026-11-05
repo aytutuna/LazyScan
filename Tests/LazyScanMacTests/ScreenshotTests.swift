@@ -8,25 +8,15 @@ import XCTest
 // Renders the Mac's main views to PNGs for a visual check, in CI and on a developer's Mac. Does nothing
 // unless LAZYSCAN_SHOTS_DIR names the folder for the images. LAZYSCAN_SHOTS_RTL=1 lays them out right to left.
 // The text is English unless LAZYSCAN_SHOTS_PSEUDO names a qps-ploc.lproj folder (gen_l10n.py --pseudo): under
-// swift test Bundle.main is the xctest tool, which has no string tables, so that run answers the Kit lookups
-// from the folder's Kit.strings and puts the folder behind Bundle.main for the views' literals.
-
-private final class PseudoBundle: Bundle, @unchecked Sendable {
-    nonisolated(unsafe) static var folder: String?
-
-    override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
-        guard let folder = Self.folder else { return super.localizedString(forKey: key, value: value, table: tableName) }
-        let file = folder + "/" + (tableName ?? "Localizable") + ".strings"
-        return (NSDictionary(contentsOfFile: file) as? [String: String])?[key] ?? value ?? key
-    }
-}
+// swift test Bundle.main is the xctest tool, which has no string tables, so that run answers only the Kit
+// lookups (L10n.t) from the folder's Kit.strings. SwiftUI literals stay English there, marked or not, and
+// prove nothing either way. The inspector and settings are shot wider in that run so long text is not clipped.
 
 final class ScreenshotTests: XCTestCase {
     private var folder: URL!
     private var outDir: URL!
 
     private var pseudo: L10n.Override?
-    private var originalBundleClass: AnyClass?
 
     private static let sections = ["task", "scanner", "output", "adjustments", "pages", "split", "archive", "more"]
 
@@ -44,10 +34,6 @@ final class ScreenshotTests: XCTestCase {
         if let path = ProcessInfo.processInfo.environment["LAZYSCAN_SHOTS_PSEUDO"], !path.isEmpty {
             let table = try XCTUnwrap(NSDictionary(contentsOfFile: path + "/Kit.strings") as? [String: String])
             pseudo = L10n.Override(table: table, language: "qps-ploc")
-            PseudoBundle.folder = path
-            originalBundleClass = object_getClass(Bundle.main)
-            object_setClass(Bundle.main, PseudoBundle.self)
-            XCTAssertTrue(Bundle.main.localizedString(forKey: "Clear", value: nil, table: nil).hasPrefix("[!!"))
         }
     }
 
@@ -59,10 +45,6 @@ final class ScreenshotTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        if let originalBundleClass {
-            object_setClass(Bundle.main, originalBundleClass)
-            PseudoBundle.folder = nil
-        }
         guard let folder else { return }
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
         try await Task.sleep(nanoseconds: 600_000_000)
@@ -169,7 +151,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     func test_inspector() async throws {
         let state = try await makeState(pages: 0)
-        try await shoot("inspector", size: CGSize(width: 340, height: 720),
+        try await shoot("inspector", size: CGSize(width: pseudo == nil ? 340 : 800, height: 720),
                         InspectorView().environmentObject(state))
     }
 
@@ -184,7 +166,7 @@ final class ScreenshotTests: XCTestCase {
             }
         }
         let state = try await makeState(pages: 0)
-        try await shoot("settings", size: CGSize(width: 340, height: 1600),
+        try await shoot("settings", size: CGSize(width: pseudo == nil ? 340 : 800, height: 1600),
                         InspectorView().environmentObject(state))
     }
 
@@ -237,9 +219,10 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// The corner editor pins its stage left to right, which the drag geometry relies on: laid out right
-    /// to left, the photo must sit where it does left to right.
+    /// to left, the stage (photo, outline and handles) must render exactly as it does left to right.
+    /// Only the render is compared; the gesture's own location mapping is not driven here.
     @MainActor
-    func test_cornerEditor_photoStaysPutRightToLeft() async throws {
+    func test_cornerEditor_stageStaysPutRightToLeft() async throws {
         let state = try await makeState(pages: 0)
         let width = 600
         let height = 450
@@ -255,34 +238,38 @@ final class ScreenshotTests: XCTestCase {
                 pixels[i + 3] = 255
             }
         }
-        let corners = Quad(topLeft: CGPoint(x: 42, y: 52), topRight: CGPoint(x: 328, y: 52),
-                           bottomRight: CGPoint(x: 328, y: 398), bottomLeft: CGPoint(x: 42, y: 398))
+        // Not symmetric, so a mirrored handle or outline lands somewhere else.
+        let corners = Quad(topLeft: CGPoint(x: 42, y: 52), topRight: CGPoint(x: 328, y: 70),
+                           bottomRight: CGPoint(x: 310, y: 398), bottomLeft: CGPoint(x: 60, y: 380))
         let plan = PhotoImportPlan(action: .review, corners: corners, reason: .unsure,
                                    detection: PhotoDocumentDetection.nothing)
         let request = PhotoCornersRequest(photo: RgbaImage(width: width, height: height, pixels: pixels),
                                           plan: plan, fileName: "IMG_0001.HEIC", number: 1, count: 2)
-        var centres: [CGFloat] = []
+        var reps: [NSBitmapImageRep] = []
         for rtl in [false, true] {
-            let rep = try await render(size: CGSize(width: 760, height: 620), rtl: rtl,
-                                       PhotoCornersEditorView(request: request).environmentObject(state))
-            var sum: CGFloat = 0
-            var count: CGFloat = 0
-            for y in 0..<rep.pixelsHigh {
-                for x in 0..<rep.pixelsWide {
-                    guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
-                    if c.redComponent > 0.99 && c.greenComponent > 0.99 && c.blueComponent > 0.99 {
-                        sum += CGFloat(x)
-                        count += 1
-                    }
-                }
-            }
-            XCTAssertGreaterThan(count, 1000)
-            centres.append(sum / max(count, 1))
+            reps.append(try await render(size: CGSize(width: 760, height: 620), rtl: rtl,
+                                         PhotoCornersEditorView(request: request).environmentObject(state)))
         }
-        // The panels beside the stage swap sides, which moves it a few points; a mirrored photo would land on the
-        // other half of the window.
-        XCTAssertEqual(centres[0], centres[1], accuracy: 20)
-        XCTAssertLessThan(centres[1], 380)
+        let (ltr, rtl) = (reps[0], reps[1])
+        XCTAssertEqual(ltr.pixelsWide, rtl.pixelsWide)
+        XCTAssertEqual(ltr.pixelsHigh, rtl.pixelsHigh)
+        let data = try XCTUnwrap(ltr.bitmapData)
+        let other = try XCTUnwrap(rtl.bitmapData)
+        let rowBytes = ltr.bytesPerRow
+        // The stage lies between the header and footer, which differ between the two; the photo's dark
+        // border marks its rows in the left to right render.
+        let dark = (0..<ltr.pixelsHigh).filter { y in
+            (0..<ltr.pixelsWide).contains { x in
+                ltr.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB).map { $0.redComponent < 0.15 } ?? false
+            }
+        }
+        let first = try XCTUnwrap(dark.first)
+        let last = try XCTUnwrap(dark.last)
+        XCTAssertGreaterThan(last - first, ltr.pixelsHigh / 2)
+        for y in first...last {
+            XCTAssertEqual(memcmp(data + y * rowBytes, other + y * rowBytes, ltr.pixelsWide * ltr.samplesPerPixel), 0,
+                           "row \(y) of the stage differs")
+        }
     }
 }
 #endif
