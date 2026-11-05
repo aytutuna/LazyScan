@@ -367,18 +367,18 @@ fileprivate struct PageThumbnailCell: View {
             Button("Remove page", action: onRemove)
             Button("Rotate 90\u{00B0} clockwise", action: onRotate)
             if canMoveLeft {
-                Button("Move left") { onMove(-1) }
+                Button("Move page earlier") { onMove(-1) }
             }
             if canMoveRight {
-                Button("Move right") { onMove(1) }
+                Button("Move page later") { onMove(1) }
             }
         }
         .contextMenu {
             Button("Copy Text", action: onCopyText)
             Button("Rotate 90\u{00B0} Clockwise", action: onRotate)
-            Button("Move Left") { onMove(-1) }
+            Button("Move Earlier") { onMove(-1) }
                 .disabled(!canMoveLeft)
-            Button("Move Right") { onMove(1) }
+            Button("Move Later") { onMove(1) }
                 .disabled(!canMoveRight)
             if let label = split.toggleLabel {
                 Button(label, action: onToggle)
