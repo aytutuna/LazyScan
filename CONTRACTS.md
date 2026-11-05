@@ -71,7 +71,7 @@ Already written (READ THESE FIRST, code against them exactly):
 
 ### Adding a language, and shipping languages
 
-Every App Store language has a row in `l10n/languages.json` (`code`, `store`, `plural`, `rtl`, `latin`, `base`, `ship`, `live`). `base` is set on fr-CA and es-419: their lang file holds only what differs from the base language and is laid over it. `ship` lists the platforms the language is built for (`ios,mac,win`); `live` says it may go into a release. A language that is not live is built in debug and CI runs but never in a release.
+Every App Store language has a row in `l10n/languages.json` (`code`, `store`, `plural`, `rtl`, `latin`, `ship`, `live`). Every language, fr-CA and es-419 included, is a full file with its own work list. `ship` lists the platforms the language is built for (`ios,mac,win`); `live` says it may go into a release. A language that is not live is built in debug and CI runs but never in a release.
 
 Recipe for a translation commit:
 1. Create `l10n/lang/<code>.json` as `{"strings": {}}`, with the code as written in `languages.json`.

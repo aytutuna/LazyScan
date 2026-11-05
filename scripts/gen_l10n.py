@@ -145,39 +145,10 @@ def check_doc(code):
     errors = []
     if not isinstance(doc, dict) or not isinstance(doc.get("strings", {}), dict) or not isinstance(doc.get("views", {}), dict):
         return [f"{code}: strings and views must be objects"]
-    base = doc.get("_base")
-    if base is not None and (base not in INFO or base == code):
-        errors.append(f"{code}: _base {base!r} is not another language in languages.json")
     plist = doc.get("infoplist", {})
     if not isinstance(plist, dict) or set(plist) - {"ios", "mac"} or not all(isinstance(v, dict) for v in plist.values()):
         errors.append(f"{code}: infoplist holds an ios and a mac object only")
     return errors
-
-
-def merged_strings(code):
-    """The strings of a language; a delta file (_base) is laid over the table of its base."""
-    doc = lang_doc(code)
-    base = doc.get("_base") or INFO[code].get("base")
-    strings = merged_strings(base) if base else {}
-    strings.update(doc.get("strings", {}))
-    return strings
-
-
-def merged_views(code):
-    doc = lang_doc(code)
-    base = doc.get("_base") or INFO[code].get("base")
-    views = merged_views(base) if base else {}
-    views.update(doc.get("views", {}))
-    return views
-
-
-def merged_infoplist(code):
-    doc = lang_doc(code)
-    base = doc.get("_base") or INFO[code].get("base")
-    out = merged_infoplist(base) if base else {"ios": {}, "mac": {}}
-    for platform, entries in doc.get("infoplist", {}).items():
-        out[platform].update(entries)
-    return out
 
 
 def integer_samples(lang, category):
@@ -353,7 +324,7 @@ def edges(text):
 
 
 def check_language(data, lang, strings):
-    """(errors, warnings, count of values equal to English) for one merged table."""
+    """(errors, warnings, count of values equal to English) for one table."""
     errors, warnings, same = [], [], 0
     info = INFO[lang]
     required = required_categories(lang)
@@ -409,9 +380,10 @@ def load():
         if doc_errors:
             errors += doc_errors
             continue
-        tables[lang] = merged_strings(lang)
-        infos[lang] = merged_infoplist(lang)
-        views[lang] = merged_views(lang)
+        doc = lang_doc(lang)
+        tables[lang] = doc.get("strings", {})
+        infos[lang] = {"ios": {}, "mac": {}, **doc.get("infoplist", {})}
+        views[lang] = doc.get("views", {})
         errors += check_infoplist(lang, plist, infos[lang])
         found, warned, same = check_language(data, lang, tables[lang])
         errors += found
@@ -460,7 +432,7 @@ def object_text(value, order, indent):
 def lang_text(doc, order, plist_order, view_order):
     """A lang file with the strings in catalog order and the views in key list order, one entry per line."""
     out = []
-    for name in sorted(doc, key=lambda n: n != "_base"):
+    for name in doc:
         value = doc[name]
         if name == "infoplist":
             text = "{\n" + ",\n".join(f"    {json.dumps(p)}: {object_text(v, plist_order[p], 6)}" for p, v in value.items()) + "\n  }"
@@ -495,13 +467,13 @@ def todo(lang):
     if lang not in INFO:
         sys.exit(f"{lang}: not in languages.json")
     data, plist = catalog()
-    strings = merged_strings(lang)
-    views = merged_views(lang)
+    doc = lang_doc(lang)
+    strings, views = doc.get("strings", {}), doc.get("views", {})
     required = required_categories(lang)
     for key, platforms in view_keys().items():
         if view_text(key, strings, views) is None:
             print(f"view on {','.join(sorted(platforms))}: {key}")
-    for platform, entries in merged_infoplist(lang).items():
+    for platform, entries in {"ios": {}, "mac": {}, **doc.get("infoplist", {})}.items():
         for key in plist[platform]:
             if key not in entries:
                 print(f"infoplist {platform}: {key}\n  English: {plist[platform][key]}")
