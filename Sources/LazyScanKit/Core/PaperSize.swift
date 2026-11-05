@@ -26,9 +26,9 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
     public var label: String {
         switch self {
         case .auto: return L10n.t("Automatic")
-        case .letter: return "Letter"
-        case .legal: return "Legal"
-        case .executive: return "Executive"
+        case .letter: return L10n.t("Letter")
+        case .legal: return L10n.t("Legal")
+        case .executive: return L10n.t("Executive")
         case .a4: return "A4"
         case .a5: return "A5"
         case .a6: return "A6"

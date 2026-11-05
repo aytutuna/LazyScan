@@ -20,7 +20,7 @@ public enum IdCardPaper: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .auto: return L10n.t("Automatic")
         case .a4: return "A4"
-        case .letter: return "Letter"
+        case .letter: return L10n.t("Letter")
         }
     }
 }
