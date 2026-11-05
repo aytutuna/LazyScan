@@ -649,6 +649,29 @@ public class TroubleshooterTests
     }
 
     [Fact]
+    public void Report_KeepsTheSearchFailureInEnglish()
+    {
+        Loc.Table = new Dictionary<string, string>
+        {
+            ["the Windows device watcher stopped ({0})"] = "Windows aygıt izleyicisi durdu ({0})",
+            ["{0} could not search the network for scanners ({1})."] = "{0} ağda tarayıcı arayamadı ({1}).",
+        };
+        try
+        {
+            var snapshot = HealthyWindows() with
+            {
+                Discovery = DiscoveryStatus.Unavailable,
+                DiscoveryDetail = Loc.T("the Windows device watcher stopped ({0})", "Aborted"),
+                DiscoveryReportDetail = Loc.English(() => Loc.T("the Windows device watcher stopped ({0})", "Aborted")),
+            };
+            Assert.Contains("Windows aygıt izleyicisi durdu (Aborted)", Check(Troubleshooter.Diagnose(snapshot), "discovery").More);
+            Assert.Contains("the Windows device watcher stopped (Aborted)", Troubleshooter.Report(snapshot));
+            Assert.DoesNotContain("aygıt", Troubleshooter.Report(snapshot));
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
     public void Report_KeepsAnUnreadableCapabilitiesDocumentInEnglish()
     {
         Loc.Table = new Dictionary<string, string>

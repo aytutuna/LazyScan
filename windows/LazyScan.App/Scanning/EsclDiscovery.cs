@@ -40,7 +40,7 @@ internal sealed class EsclDiscovery : IDisposable
     private readonly List<Browse> _browses = [];
     private SynchronizationContext? _context;
     private bool _changePosted;
-    private string? _failure;
+    private Func<string>? _failure;
 
     /// <summary>A service as found: what Windows reported (null for one added by a harness) and the service read from it.</summary>
     private sealed record Found(DeviceInformation? Info, bool Secure, EsclService Service);
@@ -66,7 +66,7 @@ internal sealed class EsclDiscovery : IDisposable
         {
             lock (_gate)
             {
-                if (_failure is not null) return $"unavailable ({_failure})";
+                if (_failure is not null) return $"unavailable ({Loc.English(_failure)})";
                 if (_browses.Count == 0) return "off";
                 string pass = _browses.All(b => b.Completed) ? "first pass complete" : "first pass running";
                 return $"browsing, {pass}, {_found.Count} service(s)";
@@ -95,7 +95,19 @@ internal sealed class EsclDiscovery : IDisposable
         {
             lock (_gate)
             {
-                return _failure;
+                return _failure?.Invoke();
+            }
+        }
+    }
+
+    /// <summary><see cref="Failure"/> in English, for the support report.</summary>
+    public string? FailureInEnglish
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _failure is null ? null : Loc.English(_failure);
             }
         }
     }
@@ -177,7 +189,8 @@ internal sealed class EsclDiscovery : IDisposable
         catch (Exception e)
         {
             // Without the watcher, scanners can still be added by address.
-            _failure = e.Message;
+            string message = e.Message;
+            _failure = () => message;
             foreach (var browse in started) _browses.Remove(browse);
             StopWatchers(started);
         }
@@ -290,7 +303,8 @@ internal sealed class EsclDiscovery : IDisposable
         {
             if (!_browses.Contains(browse)) return; // stopped by Stop() or Restart()
             browse.Aborted = true;
-            _failure = $"the Windows device watcher stopped ({browse.Watcher.Status})";
+            var status = browse.Watcher.Status;
+            _failure = () => Loc.T("the Windows device watcher stopped ({0})", status);
         }
         PostChanged();
     }

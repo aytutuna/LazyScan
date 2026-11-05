@@ -193,6 +193,8 @@ internal sealed class TwainHelperProcess : IDisposable
             start.ArgumentList.Add(pipeName);
             start.ArgumentList.Add("--parent");
             start.ArgumentList.Add(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+            start.ArgumentList.Add("--language");
+            start.ArgumentList.Add(CultureInfo.CurrentUICulture.Name);
             if (_options.Simulate) start.ArgumentList.Add("--simulate");
             process = Process.Start(start) ?? throw new Win32Exception(Loc.T("The helper process did not start."));
         }

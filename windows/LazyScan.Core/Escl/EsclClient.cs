@@ -121,10 +121,10 @@ public sealed class EsclClient(Uri baseUri, HttpMessageHandler handler, Func<byt
         {
             throw ScanException.Cancelled();
         }
-        catch (OperationCanceledException e)
+        catch (OperationCanceledException)
         {
             // HttpClient reports its own timeout as a cancellation.
-            throw ScanException.ForProblem(ScannerProblem.CommunicationError, e.Message);
+            throw ScanException.ForProblem(ScannerProblem.CommunicationError);
         }
     }
 

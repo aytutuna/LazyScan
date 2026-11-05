@@ -157,6 +157,8 @@ public sealed record DiscoverySnapshot
     public DiscoveryStatus Discovery { get; init; }
     /// <summary>Why the search is unavailable, as the system put it; null otherwise.</summary>
     public string? DiscoveryDetail { get; init; }
+    /// <summary><see cref="DiscoveryDetail"/> in English, for the support report; null when it is not translated.</summary>
+    public string? DiscoveryReportDetail { get; init; }
     /// <summary>Network scanners the automatic search found (Windows); unused on the Mac.</summary>
     public int DiscoveredCount { get; init; }
     public IReadOnlyList<ManualHostStatus> ManualHosts { get; init; } = [];
@@ -169,6 +171,7 @@ public sealed record DiscoverySnapshot
     internal DiscoverySnapshot ForReport() => this with
     {
         ThirtyTwoBitHelperProblem = ThirtyTwoBitHelperReportProblem ?? ThirtyTwoBitHelperProblem,
+        DiscoveryDetail = DiscoveryReportDetail ?? DiscoveryDetail,
         ManualHosts = [.. ManualHosts.Select(host => host with { Problem = host.ReportProblem })],
         LastFailure = LastFailure is { } failure ? failure with { Message = failure.ReportMessage ?? failure.Message } : null,
     };

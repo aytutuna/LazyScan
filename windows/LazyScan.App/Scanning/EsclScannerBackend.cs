@@ -422,6 +422,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     {
         Discovery = _discovery?.State ?? DiscoveryStatus.Unknown,
         DiscoveryDetail = _discovery?.Failure,
+        DiscoveryReportDetail = _discovery?.FailureInEnglish,
         DiscoveredCount = _discovered.Count,
         ManualHosts = [.. snapshot.ManualHosts,
                        .. _manual.Values.Select(host => new ManualHostStatus(host.Address.ToString(), host.Listed, host.Problem, host.ReportProblem))],

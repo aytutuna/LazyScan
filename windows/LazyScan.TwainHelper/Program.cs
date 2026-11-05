@@ -7,7 +7,7 @@ namespace LazyScan.TwainHelper;
 
 /// <summary>
 /// Lazy Scan's 32-bit TWAIN helper. Started by the app only:
-/// <c>LazyScan.TwainHelper.exe --pipe NAME --parent PID [--simulate]</c>. It connects to
+/// <c>LazyScan.TwainHelper.exe --pipe NAME --parent PID [--language NAME] [--simulate]</c>. It connects to
 /// the app's pipe (which only the current user may open), serves TWAIN requests on its main
 /// thread (single-threaded apartment, as drivers expect) and exits when the app asks, when the
 /// pipe closes, or when the app's process ends. With <c>--simulate</c> it offers stand-in
@@ -33,6 +33,11 @@ internal static class Program
                     break;
                 case "--parent" when i + 1 < args.Length:
                     int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out parent);
+                    break;
+                case "--language" when i + 1 < args.Length:
+                    var culture = CultureInfo.GetCultureInfo(args[++i]);
+                    CultureInfo.DefaultThreadCurrentUICulture = culture;
+                    CultureInfo.CurrentUICulture = culture;
                     break;
                 case "--simulate":
                     simulate = true;

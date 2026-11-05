@@ -2190,6 +2190,7 @@
   "Patch 4": {},
   "Patch 6": {},
   "Patch T": {},
+  "the Windows device watcher stopped ({0})": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
