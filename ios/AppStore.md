@@ -27,9 +27,9 @@ scanner,scan,pdf,document,receipt,id card,airscan,escl,tiff,jpeg,book,paper,page
 Primary category: Productivity
 Age rating: 4+ (answer No to everything)
 App Privacy: Data Not Collected
-Copyright: 2026 [YOUR NAME]
-Support URL: https://scan.mylazy.app/#support
-Privacy policy URL: https://scan.mylazy.app/privacy.html
+Copyright: 2026 Aytu Tuna
+Support URL: https://scan.alazy.app/#support
+Privacy policy URL: https://scan.alazy.app/privacy.html
 Price: free (no in-app purchases)
 
 Export compliance: Info.plist sets ITSAppUsesNonExemptEncryption to false, so App Store Connect
