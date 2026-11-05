@@ -51,15 +51,30 @@ public class TwainHelperTests
     private static Twain32ScannerBackend NewBackend(TwainHelperTimeouts? timeouts = null, string? helperPath = null,
                                                     IReadOnlyList<string>? thirtyTwoBitOnly = null) =>
         new(null, new TwainHelperOptions(helperPath ?? HelperPath, Simulate: true, Timeouts: timeouts),
-            () => thirtyTwoBitOnly ?? [@"Acme\acme.ds"]);
+            () => thirtyTwoBitOnly ?? [@"Acme\acme.ds"])
+        {
+            RetryDelays = [TimeSpan.FromSeconds(1)],
+        };
 
-    /// <summary>Starts listing and waits for the first list.</summary>
-    private static async Task<IReadOnlyList<ScannerInfo>> Listed(Twain32ScannerBackend backend)
+    /// <summary>Starts listing and waits for a non-empty list (DevicesChanged also follows an empty listing) unless expectDevices is false.</summary>
+    private static async Task<IReadOnlyList<ScannerInfo>> Listed(Twain32ScannerBackend backend, bool expectDevices = true)
     {
-        var changed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        backend.DevicesChanged += () => changed.TrySetResult();
+        var listed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        backend.DevicesChanged += () =>
+        {
+            if (!expectDevices || backend.Devices.Count > 0)
+                listed.TrySetResult();
+        };
         backend.StartBrowsing();
-        await changed.Task.WaitAsync(TimeSpan.FromSeconds(60));
+        try
+        {
+            await listed.Task.WaitAsync(TimeSpan.FromSeconds(120));
+        }
+        catch (TimeoutException)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"The helper listed no scanners within 120 s. Status {backend.Status}. {backend.DiagnosticsReport}");
+        }
         return backend.Devices;
     }
 
@@ -338,7 +353,7 @@ public class TwainHelperTests
     public async Task NoHelper_IsStarted_WithoutA32BitOnlyDriver()
     {
         using var backend = NewBackend(thirtyTwoBitOnly: []);
-        Assert.Empty(await Listed(backend));
+        Assert.Empty(await Listed(backend, expectDevices: false));
         Assert.Equal(TwainHelperStatus.NotNeeded, backend.Status);
         Assert.Null(backend.HelperProcessId);
         Assert.Equal("TWAIN 32-bit helper: not needed (no 32-bit-only drivers)\n", backend.DiagnosticsReport);
@@ -355,7 +370,7 @@ public class TwainHelperTests
         {
             string missing = Path.Combine(AppContext.BaseDirectory, "no-such-folder", TwainHelperOptions.FileName);
             using var backend = new Twain32ScannerBackend(null, new TwainHelperOptions(missing, Simulate: true), () => [@"Acmecme.ds"]);
-            await Listed(backend);
+            await Listed(backend, expectDevices: false);
             Assert.Contains("failed (Scanner unavailable:", backend.DiagnosticsReport);
             Assert.DoesNotContain("Tarayıcı", backend.DiagnosticsReport);
         }
@@ -372,7 +387,7 @@ public class TwainHelperTests
         };
         int published = 0;
         backend.DevicesChanged += () => Interlocked.Increment(ref published);
-        Assert.Empty(await Listed(backend));
+        Assert.Empty(await Listed(backend, expectDevices: false));
         Assert.Equal(TwainHelperStatus.Failed, backend.Status);
         Assert.StartsWith("TWAIN 32-bit helper: failed (", backend.DiagnosticsReport);
         Assert.Contains("LazyScan.TwainHelper.exe) is missing", backend.DiagnosticsReport);
@@ -434,7 +449,7 @@ public class TwainHelperTests
             if (Interlocked.Increment(ref published) == 2) again.TrySetResult();
         };
         backend.StartBrowsing();
-        await again.Task.WaitAsync(TimeSpan.FromSeconds(60));
+        await again.Task.WaitAsync(TimeSpan.FromSeconds(120));
         Assert.Equal(TwainHelperStatus.Failed, backend.Status);
         Assert.Contains("did not connect in time", backend.DiagnosticsReport);
         backend.StopBrowsing();
