@@ -32,6 +32,7 @@ struct PreviewCanvasView: View {
                         detectedPhotosOverlay(image: image, frame: frame)
                     }
                 }
+                .environment(\.layoutDirection, .leftToRight)
             } else {
                 emptyState
             }
