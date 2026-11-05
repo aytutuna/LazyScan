@@ -26,7 +26,7 @@
     "Lazy Print is not installed.": "Lazy Print yüklü değil.",
     "Lazy Print can't open this file.": "Lazy Print bu dosyayı açamıyor.",
     "Save": "Kaydet",
-    "Cancel": "İptal",
+    "Cancel": "Vazgeç",
     "Password": "Parola",
     "Confirm|password field": "Parolayı yeniden girin",
     "Allow printing": "Yazdırmaya izin ver",
@@ -48,7 +48,9 @@
     }
   },
   "views": {
-    "Cancel": "Vazgeç",
     "Confirm|password field": "Doğrula"
+  },
+  "win": {
+    "Cancel": "İptal"
   }
 }

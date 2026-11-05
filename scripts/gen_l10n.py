@@ -2,6 +2,8 @@
 """Generates the per-platform strings under l10n/out (Kit.strings, InfoPlist.strings and
 Localizable.strings for ios and mac, Strings.<code>.resx for windows, the language lists and a mode
 file) and the plural rule code from l10n/shared.json, l10n/lang/<lang>.json and l10n/plural.json.
+A lang file may also hold a flat win section, key to text, for the few system labels where Windows
+says it differently from Apple (Cancel); it overrides strings in Strings.<code>.resx only.
 Localizable.strings holds the view texts: the keys the compiler found (l10n/keys-ios.json and
 keys-mac.json) with the values from the views section of each lang file.
 
@@ -143,8 +145,8 @@ def lang_doc(code):
 def check_doc(code):
     doc = lang_doc(code)
     errors = []
-    if not isinstance(doc, dict) or not isinstance(doc.get("strings", {}), dict) or not isinstance(doc.get("views", {}), dict):
-        return [f"{code}: strings and views must be objects"]
+    if not isinstance(doc, dict) or not isinstance(doc.get("strings", {}), dict) or not isinstance(doc.get("views", {}), dict)             or not isinstance(doc.get("win", {}), dict):
+        return [f"{code}: strings, views and win must be objects"]
     plist = doc.get("infoplist", {})
     if not isinstance(plist, dict) or set(plist) - {"ios", "mac"} or not all(isinstance(v, dict) for v in plist.values()):
         errors.append(f"{code}: infoplist holds an ios and a mac object only")
@@ -388,6 +390,9 @@ def load():
         found, warned, same = check_language(data, lang, tables[lang])
         errors += found
         warnings += warned
+        found, warned, _ = check_language(data, lang, doc.get("win", {}))
+        errors += [e.replace(f": {lang}", f": {lang} win", 1) for e in found]
+        warnings += warned
         found, view_same = check_views(lang, views[lang], keys)
         errors += found
         if same + view_same:
@@ -437,7 +442,7 @@ def lang_text(doc, order, plist_order, view_order):
         if name == "infoplist":
             text = "{\n" + ",\n".join(f"    {json.dumps(p)}: {object_text(v, plist_order[p], 6)}" for p, v in value.items()) + "\n  }"
         elif isinstance(value, dict):
-            text = object_text(value, {"strings": order, "views": view_order}.get(name, []), 4)
+            text = object_text(value, {"strings": order, "win": order, "views": view_order}.get(name, []), 4)
         else:
             text = json.dumps(value, ensure_ascii=False)
         out.append(f"  {json.dumps(name)}: {text}")
@@ -453,6 +458,9 @@ def format_languages(prune):
             for key in [k for k in doc["strings"] if k not in data]:
                 del doc["strings"][key]
                 print(f"{lang}: removed {key!r}")
+            for key in [k for k in doc.get("win", {}) if k not in data]:
+                del doc["win"][key]
+                print(f"{lang}: removed win {key!r}")
             for key in [k for k in doc.get("views", {}) if k not in keys]:
                 del doc["views"][key]
                 print(f"{lang}: removed view {key!r}")
@@ -912,6 +920,9 @@ def emit(data, plist, tables, infos, views, ship, with_pseudo):
             if code == PSEUDO:
                 pairs = [(k, pseudo(v)) for k, v in pairs]
             if platform == "win":
+                if code in LANGUAGES:
+                    win = lang_doc(code).get("win", {})
+                    pairs = [(k, win.get(k, v)) for k, v in pairs]
                 write(OUT / "windows" / f"Strings.{code}.resx", resx_text(pairs))
                 continue
             folder = OUT / platform / f"{code}.lproj"
