@@ -256,12 +256,12 @@ final class ScreenshotTests: XCTestCase {
         let data = try XCTUnwrap(ltr.bitmapData)
         let other = try XCTUnwrap(rtl.bitmapData)
         let rowBytes = ltr.bytesPerRow
-        // The stage lies between the header and footer, which differ between the two; the photo's dark
-        // border marks its rows in the left to right render.
+        // The stage lies between the header and footer, which differ between the two. The photo's dark
+        // border fills most of the width on its rows, which text does not.
         let dark = (0..<ltr.pixelsHigh).filter { y in
-            (0..<ltr.pixelsWide).contains { x in
+            (0..<ltr.pixelsWide).filter { x in
                 ltr.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB).map { $0.redComponent < 0.15 } ?? false
-            }
+            }.count > ltr.pixelsWide / 2
         }
         let first = try XCTUnwrap(dark.first)
         let last = try XCTUnwrap(dark.last)
