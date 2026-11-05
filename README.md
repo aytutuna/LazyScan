@@ -505,3 +505,7 @@ The Mac and iPhone apps include these, each under its own license:
   <https://github.com/DocsaidLab/DocAligner>
 
 The Windows app's are listed in [windows/README.md](windows/README.md#third-party-notices).
+
+## Licence
+
+PolyForm Noncommercial 1.0.0: free for personal, study and research use, and commercial use needs written permission. The source is available, but this is not an open source licence. See `LICENSE`.
