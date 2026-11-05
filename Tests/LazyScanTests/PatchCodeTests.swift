@@ -127,6 +127,16 @@ final class PatchCodeTests: XCTestCase {
                        "Saved the separator sheet: Separator sheet (Patch T, A4).pdf. Print it at actual size (100%), as many as you need, and put one in front of each document after the first.")
     }
 
+    func test_fileNames_stayEnglishInAnotherLanguage() {
+        L10n.withTable(["Letter": "Carta", "Patch T": "Parche T"], language: "es") {
+            XCTAssertEqual(SeparatorSheet.fileBaseName(.letter), "Separator sheet (Patch T, Letter)")
+            XCTAssertEqual(QrSeparatorSheet.fileBaseName("Lease", paper: .letter), "Separator sheet (QR code, Lease, Letter)")
+            XCTAssertEqual(PaperSize.letter.label, "Carta")
+            XCTAssertEqual(PatchCode.patchT.displayLabel, "Parche T")
+            XCTAssertEqual(PatchCode.patchT.label, "Patch T")
+        }
+    }
+
     func test_theSeparatorSheet_hasTheStandardBarWidths() {
         let sheet = PatchCodeDetector.renderSheet(.patchT, widthInches: 8.5, heightInches: 11, dpi: 300)
         // Down the middle column from the top: white to 1 in, then narrow 24, gap 24, wide 60,

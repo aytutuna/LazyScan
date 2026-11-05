@@ -401,7 +401,7 @@ public static class DocumentSplitter
         var planned = plan.Pages[index];
         if (planned.Role != PageRole.Separator) return null;
         string what = planned.Code is { } reading ? Loc.T("Separator sheet ({0})", BarcodeSeparators.Describe(reading))
-                    : page.Patch is { } code ? Loc.T("Separator sheet ({0})", code.Label())
+                    : page.Patch is { } code ? Loc.T("Separator sheet ({0})", code.DisplayLabel())
                     : Loc.T("Blank separator sheet");
         var next = NextSavedPage(plan, index);
         if (next is { StartsDocument: false })

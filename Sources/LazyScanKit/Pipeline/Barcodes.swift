@@ -430,9 +430,9 @@ public enum QrSeparatorSheet {
     /// name: the PDF's name, without its extension.
     public static func fileBaseName(_ name: String?, paper: PaperSize) -> String {
         if let label = BarcodeSeparators.label(name) {
-            return "Separator sheet (QR code, \(label), \(paper.label))"
+            return "Separator sheet (QR code, \(label), \(paper.fileLabel))"
         }
-        return "Separator sheet (QR code, \(paper.label))"
+        return "Separator sheet (QR code, \(paper.fileLabel))"
     }
 
     /// The status after the PDF was saved.

@@ -37,6 +37,16 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The file name token: English whatever the language, so names match across devices.
+    public var fileLabel: String {
+        switch self {
+        case .letter: return "Letter"
+        case .legal: return "Legal"
+        case .executive: return "Executive"
+        default: return label
+        }
+    }
+
     /// The dimensions as people know them: "8.5 × 11 in", "210 × 297 mm"; for Automatic, what it scans.
     public var detail: String {
         switch self {

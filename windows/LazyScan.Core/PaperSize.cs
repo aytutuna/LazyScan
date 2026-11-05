@@ -189,6 +189,15 @@ public static class PaperSizes
         _ => size.ToString(),
     };
 
+    /// <summary>The file name token: English whatever the language, so names match across devices.</summary>
+    public static string FileLabel(this PaperSize size) => size switch
+    {
+        PaperSize.Letter => "Letter",
+        PaperSize.Legal => "Legal",
+        PaperSize.Executive => "Executive",
+        _ => size.Label(),
+    };
+
     /// <summary>The dimensions as people know them: "8.5 × 11 in", "210 × 297 mm"; for Automatic, what it scans.</summary>
     public static string Detail(this PaperSize size) => size switch
     {

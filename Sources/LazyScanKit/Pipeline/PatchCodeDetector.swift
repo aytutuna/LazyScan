@@ -22,6 +22,18 @@ public enum PatchCode: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// `label` as the notes and the screen reader say it; the sheet art and the file name keep `label`.
+    public var displayLabel: String {
+        switch self {
+        case .patch1: return L10n.t("Patch 1")
+        case .patch2: return L10n.t("Patch 2")
+        case .patch3: return L10n.t("Patch 3")
+        case .patch4: return L10n.t("Patch 4")
+        case .patch6: return L10n.t("Patch 6")
+        case .patchT: return L10n.t("Patch T")
+        }
+    }
+
     /// The bars in reading order (top to bottom, or left to right), true for a wide bar: 1 = wide
     /// wide narrow narrow, 2 = wide narrow narrow wide, 3 = wide narrow wide narrow, 4 = narrow wide
     /// wide narrow, 6 = narrow narrow wide wide, T = narrow wide narrow wide.
@@ -406,7 +418,7 @@ public enum SeparatorSheet {
     public static func paper(regionCode: String?) -> PaperSize { PaperSizes.defaultForRegion(regionCode) }
 
     /// "Separator sheet (Patch T, Letter)": the PDF's name, without its extension.
-    public static func fileBaseName(_ paper: PaperSize) -> String { "Separator sheet (\(code.label), \(paper.label))" }
+    public static func fileBaseName(_ paper: PaperSize) -> String { "Separator sheet (\(code.label), \(paper.fileLabel))" }
 
     /// The status after the PDF was saved.
     public static func savedMessage(_ fileName: String) -> String {

@@ -2184,6 +2184,12 @@
   "Letter": {},
   "Legal": {},
   "Executive": {},
+  "Patch 1": {},
+  "Patch 2": {},
+  "Patch 3": {},
+  "Patch 4": {},
+  "Patch 6": {},
+  "Patch T": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

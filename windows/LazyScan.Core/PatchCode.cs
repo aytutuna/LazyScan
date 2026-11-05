@@ -36,6 +36,18 @@ public static class PatchCodes
         _ => code.ToString(),
     };
 
+    /// <summary>Label as the notes and the screen reader say it; the sheet art and the file name keep Label.</summary>
+    public static string DisplayLabel(this PatchCode code) => code switch
+    {
+        PatchCode.Patch1 => Loc.T("Patch 1"),
+        PatchCode.Patch2 => Loc.T("Patch 2"),
+        PatchCode.Patch3 => Loc.T("Patch 3"),
+        PatchCode.Patch4 => Loc.T("Patch 4"),
+        PatchCode.Patch6 => Loc.T("Patch 6"),
+        PatchCode.PatchT => Loc.T("Patch T"),
+        _ => code.ToString(),
+    };
+
     /// <summary>
     /// The bars in reading order (top to bottom, or left to right), true for a wide bar: 1 = wide
     /// wide narrow narrow, 2 = wide narrow narrow wide, 3 = wide narrow wide narrow, 4 = narrow wide
@@ -450,7 +462,7 @@ public static class SeparatorSheet
     public static PaperSize Paper(string? regionCode) => PaperSizes.DefaultForRegion(regionCode);
 
     /// <summary>"Separator sheet (Patch T, Letter)": the PDF's name, without its extension.</summary>
-    public static string FileBaseName(PaperSize paper) => $"Separator sheet ({Code.Label()}, {paper.Label()})";
+    public static string FileBaseName(PaperSize paper) => $"Separator sheet ({Code.Label()}, {paper.FileLabel()})";
 
     /// <summary>The status after the PDF was saved.</summary>
     public static string SavedMessage(string fileName) =>

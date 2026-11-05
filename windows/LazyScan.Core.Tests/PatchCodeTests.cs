@@ -139,6 +139,21 @@ public class PatchCodeTests
     }
 
     [Fact]
+    public void FileNames_StayEnglishInAnotherLanguage()
+    {
+        Loc.Table = new Dictionary<string, string> { ["Letter"] = "Carta", ["Patch T"] = "Parche T" };
+        try
+        {
+            Assert.Equal("Separator sheet (Patch T, Letter)", SeparatorSheet.FileBaseName(PaperSize.Letter));
+            Assert.Equal("Separator sheet (QR code, Lease, Letter)", QrSeparatorSheet.FileBaseName("Lease", PaperSize.Letter));
+            Assert.Equal("Carta", PaperSize.Letter.Label());
+            Assert.Equal("Parche T", PatchCode.PatchT.DisplayLabel());
+            Assert.Equal("Patch T", PatchCode.PatchT.Label());
+        }
+        finally { Loc.Table = null; }
+    }
+
+    [Fact]
     public void TheSeparatorSheet_HasTheStandardBarWidths()
     {
         var sheet = PatchCodeDetector.RenderSheet(PatchCode.PatchT, 8.5, 11, 300);

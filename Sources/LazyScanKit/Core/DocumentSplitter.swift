@@ -393,7 +393,7 @@ public enum DocumentSplitter {
         if let reading = planned.code {
             what = L10n.t("Separator sheet ({0})", BarcodeSeparators.describe(reading))
         } else if let code = page.patch {
-            what = L10n.t("Separator sheet ({0})", code.label)
+            what = L10n.t("Separator sheet ({0})", code.displayLabel)
         } else {
             what = L10n.t("Blank separator sheet")
         }

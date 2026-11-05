@@ -469,8 +469,8 @@ public static class QrSeparatorSheet
     /// <summary>"Separator sheet (QR code, Lease 2026, Letter)", or "Separator sheet (QR code, Letter)" with no name: the PDF's name, without its extension.</summary>
     public static string FileBaseName(string? name, PaperSize paper) =>
         BarcodeSeparators.Label(name) is { } label
-            ? $"Separator sheet (QR code, {label}, {paper.Label()})"
-            : $"Separator sheet (QR code, {paper.Label()})";
+            ? $"Separator sheet (QR code, {label}, {paper.FileLabel()})"
+            : $"Separator sheet (QR code, {paper.FileLabel()})";
 
     /// <summary>The status after the PDF was saved.</summary>
     public static string SavedMessage(string fileName, string? name) =>
