@@ -641,8 +641,8 @@
                                                             HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6">
                                                         <StackPanel Orientation="Horizontal" FlowDirection="LeftToRight">
                                                             <Button Style="{StaticResource PageActionButtonStyle}" Content="&#xE76B;"
-                                                                    ToolTip="{loc:T Move page left}"
-                                                                    AutomationProperties.Name="{loc:T Move page left}"
+                                                                    ToolTip="{loc:T Move page earlier}"
+                                                                    AutomationProperties.Name="{loc:T Move page earlier}"
                                                                     Click="PageLeft_Click" Tag="{Binding Page.Id}" />
                                                             <Button Style="{StaticResource PageActionButtonStyle}" Content="&#xE7AD;"
                                                                     ToolTip="{loc:T Rotate page 90° clockwise}"
@@ -653,8 +653,8 @@
                                                                     AutomationProperties.Name="{loc:T Remove page}"
                                                                     Click="PageRemove_Click" Tag="{Binding Page.Id}" />
                                                             <Button Style="{StaticResource PageActionButtonStyle}" Content="&#xE76C;"
-                                                                    ToolTip="{loc:T Move page right}"
-                                                                    AutomationProperties.Name="{loc:T Move page right}"
+                                                                    ToolTip="{loc:T Move page later}"
+                                                                    AutomationProperties.Name="{loc:T Move page later}"
                                                                     Click="PageRight_Click" Tag="{Binding Page.Id}" />
                                                         </StackPanel>
                                                     </Border>

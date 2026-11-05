@@ -52,6 +52,11 @@ jobs:
         run: |
           python scripts/gen_l10n.py --check --report | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
           if ($LASTEXITCODE -ne 0) { throw 'gen_l10n.py --check failed' }
+      - name: Test the pseudo-locale
+        shell: pwsh
+        run: |
+          python scripts/test_pseudo.py
+          if ($LASTEXITCODE -ne 0) { throw 'test_pseudo.py failed' }
       - name: Check the generated plural rules
         shell: pwsh
         run: |

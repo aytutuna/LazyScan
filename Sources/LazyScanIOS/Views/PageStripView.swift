@@ -72,7 +72,7 @@ struct PageStripCell: Identifiable {
 /// (`onOpen`); its menu turns it, keeps or skips it (`PageStripCell.toggle`), deletes it once asked
 /// (`onDelete`), and for a book's page splits its spread again (`onEditSpread`) or joins its two pages, each
 /// off while the app is busy, Delete also while a share or a send reads the pages (`AppState.readsQueue`). A
-/// page dragged onto another takes its place (`IOSPageDrop`); VoiceOver has Move left and Move right for the
+/// page dragged onto another takes its place (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the
 /// same. While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it has no menu
 /// and is not dragged.
 struct PageStripView: View {
@@ -246,10 +246,10 @@ struct PageStripView: View {
         }
         .accessibilityLabel(Text(cell.accessibilityLabel))
         .accessibilityHint(Text(PageViewerText.openHint))
-        .accessibilityAction(named: Text("Move left")) {
+        .accessibilityAction(named: Text("Move page earlier")) {
             state.movePage(id: pageID, by: -1)
         }
-        .accessibilityAction(named: Text("Move right")) {
+        .accessibilityAction(named: Text("Move page later")) {
             state.movePage(id: pageID, by: 1)
         }
         .accessibilityIdentifier("page.\(cell.number)")
