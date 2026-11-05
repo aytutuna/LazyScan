@@ -30,7 +30,8 @@
     "Allow copying text and images": "Metin ve görüntülerin kopyalanmasına izin ver",
     "Print with Lazy Print": "Lazy Print ile yazdır",
     "Open it in Lazy Print, then choose a printer and print": "Lazy Print uygulamasında açın, yazıcıyı seçip yazdırın",
-    "Lazy Print is not installed.": "Lazy Print yüklü değil."
+    "Lazy Print is not installed.": "Lazy Print yüklü değil.",
+    "Lazy Print can't open this file.": "Lazy Print bu dosyayı açamıyor."
   },
   "infoplist": {
     "ios": {

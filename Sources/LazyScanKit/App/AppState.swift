@@ -2211,6 +2211,9 @@ public final class AppState: ObservableObject {
     /// The actions offered for the last save's files (the status bar).
     public var savedFileActions: [FileAction] { offeredFileActions(for: lastSavedURLs) }
 
+    /// Lazy Print is installed (something opens `lazyprint:`).
+    public var lazyPrintInstalled: Bool { fileActions.lazyPrintInstalled() }
+
     /// What `SaveActions.offered` gives for these files, with Print with Lazy Print when it is installed and can read them.
     public func offeredFileActions(for urls: [URL]) -> [FileAction] {
         SaveActions.offered(fileCount: urls.count,

@@ -46,6 +46,8 @@ private final class SeamLifecycle: PlatformLifecycle {
 @MainActor
 private final class SeamFileActions: FileActionService {
     private(set) var revealed: [[URL]] = []
+    var lazyPrintReady = false
+    private(set) var lazyPrintOpened: [[URL]] = []
 
     func open(_ url: URL) throws {}
     func openWith(_ url: URL) throws {}
@@ -62,6 +64,14 @@ private final class SeamFileActions: FileActionService {
     func composeEmail(_ urls: [URL]) throws {}
     func copy(_ content: ClipboardContent) throws {}
     func copyText(_ text: String) throws {}
+
+    func lazyPrintInstalled() -> Bool {
+        lazyPrintReady
+    }
+
+    func openInLazyPrint(_ urls: [URL]) throws {
+        lazyPrintOpened.append(urls)
+    }
 }
 
 /// No printer; counts how often the printers are read.
@@ -326,6 +336,30 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertTrue(state.statusMessage.hasPrefix("Added 2 pages — 2 in queue."), state.statusMessage)
         XCTAssertEqual(StatusLine.short(state.statusMessage, state.statusDetail), "2 pages added")
         XCTAssertNotNil(state.lastScanImage)
+    }
+
+    @MainActor
+    func test_printQueueWithLazyPrint_opensAPDFOutsideTheSpool_leavesTheQueueAndTheStatus() async throws {
+        let files = SeamFileActions()
+        let state = makeState(files: files)
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertFalse(state.canPrintQueueWithLazyPrint)
+        files.lazyPrintReady = true
+        XCTAssertTrue(state.canPrintQueueWithLazyPrint)
+
+        let status: String = state.statusMessage
+        state.printQueueWithLazyPrint()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let url: URL = try XCTUnwrap(files.lazyPrintOpened.first?.first)
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertEqual(url.pathExtension, "pdf")
+        XCTAssertEqual(PDFDocument(url: url)?.pageCount, 1)
+        XCTAssertFalse(url.path.hasPrefix(state.spoolDirectory.path))
+        XCTAssertEqual(state.scannedPages.count, 1)
+        XCTAssertEqual(state.statusMessage, status)
     }
 
     @MainActor

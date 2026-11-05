@@ -104,6 +104,11 @@ struct PagesStripView: View {
                         Button(PDFAppender.buttonLabel) {
                             state.chooseAndAppendToPDF()
                         }
+                        if state.canPrintQueueWithLazyPrint {
+                            Button("Print with Lazy Print") {
+                                state.printQueueWithLazyPrint()
+                            }
+                        }
                     } label: {
                         saveLabel(saveTitle)
                     } primaryAction: {

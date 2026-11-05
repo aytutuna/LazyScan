@@ -1306,6 +1306,14 @@
                                                             <TextBlock Style="{StaticResource GlyphText}" Text="&#xE8E5;" />
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <!-- The pages as a PDF in Lazy Print; the queue stays as it is. -->
+                                                    <MenuItem x:Name="PrintQueueButton" Header="{loc:T Print with Lazy Print}"
+                                                              ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
+                                                              Click="PrintQueue_Click">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE749;" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
                                                 </ContextMenu>
                                             </Button.ContextMenu>
                                         </Button>
@@ -1450,11 +1458,15 @@
                 <DockPanel>
                     <Border DockPanel.Dock="Bottom" Padding="24,16">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right">
                                 <Button x:Name="IdCardPrintButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE749;" Content="{loc:T Print}" MinWidth="110" Margin="0,0,8,0"
                                         ToolTipService.ShowOnDisabled="True"
                                         Click="IdCardPrint_Click" />
+                                <Button x:Name="IdCardLazyPrintButton" Style="{StaticResource IconTextButtonStyle}"
+                                        local:Icon.Glyph="&#xE749;" Content="{loc:T Print with Lazy Print}" Margin="0,0,8,0"
+                                        ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
+                                        Click="IdCardLazyPrint_Click" />
                                 <Button x:Name="IdCardDiscardButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74D;" Content="{loc:T Discard}" MinWidth="110"
                                         Click="IdCardDiscard_Click" />
@@ -1465,7 +1477,7 @@
                                 <Button x:Name="IdCardSaveButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74E;" Content="{loc:T Save}" MinWidth="110" Margin="8,0,0,0"
                                         Click="IdCardSave_Click" />
-                            </StackPanel>
+                            </WrapPanel>
                             <WrapPanel VerticalAlignment="Center" Margin="0,0,0,4">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,16,6">
                                     <TextBlock x:Name="IdCardPaperLabel" Text="{loc:T Paper}" Style="{StaticResource BodyText}"

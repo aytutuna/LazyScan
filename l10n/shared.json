@@ -1624,6 +1624,7 @@
   "Attach to an email: choose Mail or Outlook in the share window": {},
   "Open it in Lazy Print, then choose a printer and print": {},
   "Lazy Print is not installed.": {},
+  "Lazy Print can't open this file.": {},
   "Copy the file to the clipboard": {},
   "Copy the files to the clipboard": {},
   "The destination folder could not be read.": {},
