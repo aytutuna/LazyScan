@@ -43,6 +43,11 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
 
         let use: XCUIElement = app.buttons["corners.use"]
+        // A long Skip title (the pseudo language's) pushes Use into the toolbar's overflow menu.
+        let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
+        if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
+            more.tap()
+        }
         guard use.waitForExistence(timeout: 120), waitUntilEnabled(use, timeout: 30) else {
             shot("skipped-06b-page-viewer")
             return
