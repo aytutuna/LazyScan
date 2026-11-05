@@ -48,7 +48,7 @@ final class ScreenshotTests: XCTestCase {
         let more: XCUIElement = app.navigationBars.buttons["More"].firstMatch
         if app.buttons["corners.skip"].waitForExistence(timeout: 120), !use.exists, more.exists {
             more.tap()
-            use = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'çõrñérš'")).firstMatch
+            use = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Üšé çõrñérš'")).firstMatch
         }
         guard use.waitForExistence(timeout: 120), waitUntilEnabled(use, timeout: 30) else {
             shot("skipped-06b-page-viewer")

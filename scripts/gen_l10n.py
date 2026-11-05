@@ -523,7 +523,7 @@ def todo(lang):
 
 
 def pseudo(text):
-    """text with its letters accented, about 40 percent longer and wrapped in [!! !!]."""
+    """text with its letters accented, about 40 percent longer and wrapped in [!! !!], the opening kept clear of a sentence end for StatusLine."""
     parts, last = [], 0
     for m in KEEP.finditer(text):
         parts.append(text[last:m.start()].translate(ACCENTS))
@@ -531,7 +531,7 @@ def pseudo(text):
         last = m.end()
     parts.append(text[last:].translate(ACCENTS))
     pad = "~" * -(-len(LETTER.findall(text)) * 2 // 5)
-    return "[!! " + "".join(parts) + pad + " !!]"
+    return "[!! " + "".join(parts) + pad + " !!]"
 
 
 def strings_text(pairs):

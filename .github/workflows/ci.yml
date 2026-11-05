@@ -480,6 +480,7 @@ jobs:
       # shipped): the lproj is put into the app built above. Every visible string without the [!! !!]
       # marker skipped the lookup. Not on the release ref, and a failure here does not fail the job.
       - name: Run the screenshots in the pseudo language
+        id: pseudo
         if: github.ref != 'refs/heads/ci/testflight'
         continue-on-error: true
         timeout-minutes: 30
@@ -514,7 +515,7 @@ jobs:
             fi
             xcrun xcresulttool export attachments \
               --path "$RUNNER_TEMP/$1.xcresult" \
-              --output-path "$out"
+              --output-path "$out" || { echo "Could not export $1 attachments"; continue; }
             if [ -f "$out/manifest.json" ]; then
               python3 - "$out" <<'EOF'
           import json, os, re, sys
@@ -553,7 +554,7 @@ jobs:
           path: ${{ runner.temp }}/ios-screenshots-pseudo
           if-no-files-found: ignore
       - name: Upload the test results
-        if: failure()
+        if: failure() || steps.pseudo.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: ios-tests-xcresult

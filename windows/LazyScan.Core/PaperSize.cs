@@ -178,9 +178,9 @@ public static class PaperSizes
     public static string Label(this PaperSize size) => size switch
     {
         PaperSize.Auto => Loc.T("Automatic"),
-        PaperSize.Letter => "Letter",
-        PaperSize.Legal => "Legal",
-        PaperSize.Executive => "Executive",
+        PaperSize.Letter => Loc.T("Letter"),
+        PaperSize.Legal => Loc.T("Legal"),
+        PaperSize.Executive => Loc.T("Executive"),
         PaperSize.A4 => "A4",
         PaperSize.A5 => "A5",
         PaperSize.A6 => "A6",

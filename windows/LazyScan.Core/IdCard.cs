@@ -36,7 +36,7 @@ public static class IdCardPapers
     public static string Label(this IdCardPaper paper) => paper switch
     {
         IdCardPaper.A4 => "A4",
-        IdCardPaper.Letter => "Letter",
+        IdCardPaper.Letter => Loc.T("Letter"),
         _ => Loc.T("Automatic"),
     };
 
