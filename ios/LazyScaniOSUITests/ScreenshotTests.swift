@@ -93,17 +93,13 @@ final class ScreenshotTests: XCTestCase {
             if tapIfThere(app, id, for: screen) {
                 Thread.sleep(forTimeInterval: 1)
                 shot(screen)
-                // A tap off the menu closes it.
-                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.04)).tap()
+                // A tap off the menu closes it: on the title, which is no button.
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.09)).tap()
                 Thread.sleep(forTimeInterval: 1)
             }
         }
-        let page: XCUIElement = element(app, "idcard.page")
-        if page.exists {
-            page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.1,
-                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)))
-            Thread.sleep(forTimeInterval: 1)
-        }
+        app.swipeUp()
+        Thread.sleep(forTimeInterval: 1)
         shot("15c-idcard-review-lower")
         if tapIfThere(app, "idcard.discard", for: "15d-idcard-discard") {
             let confirm: XCUIElement = element(app, "idcard.confirmDiscard")
@@ -285,14 +281,20 @@ final class ScreenshotTests: XCTestCase {
     /// The file name's editor, from the row in Settings' More section, which is opened when it is closed.
     @MainActor
     private func namingScreen(_ app: XCUIApplication) {
-        if !app.scrolledTo("settings.fileName").isHittable {
-            let section: XCUIElement = app.scrolledTo("settings.section.more")
+        var row: XCUIElement = scrolledDown(app, to: "settings.fileName")
+        if !row.isHittable {
+            let section: XCUIElement = scrolledDown(app, to: "settings.section.more")
             if section.isHittable {
                 section.tap()
                 Thread.sleep(forTimeInterval: 1)
+                row = scrolledDown(app, to: "settings.fileName")
             }
         }
-        guard tapIfThere(app, "settings.fileName", for: "11b-naming") else { return }
+        guard row.isHittable else {
+            shot("skipped-11b-naming")
+            return
+        }
+        row.tap()
         if element(app, "naming.field").waitForExistence(timeout: 10) {
             Thread.sleep(forTimeInterval: 1)
             shot("11b-naming")
@@ -300,6 +302,18 @@ final class ScreenshotTests: XCTestCase {
             shot("skipped-11b-naming")
         }
         back(app)
+    }
+
+    /// Settings is long, and its sections below the first are made only as they scroll into view.
+    @MainActor
+    private func scrolledDown(_ app: XCUIApplication, to id: String) -> XCUIElement {
+        let target: XCUIElement = element(app, id)
+        var swipes: Int = 0
+        while !(target.exists && target.isHittable) && swipes < 12 {
+            app.swipeUp()
+            swipes += 1
+        }
+        return target
     }
 
     /// The app launched on the demo scanner with the fixture to import into `task`, `count` times.
