@@ -1697,9 +1697,6 @@
   "{0} file saved": {
     "other": "{0} files saved"
   },
-  "{0} sheet": {
-    "other": "{0} sheets"
-  },
   "Confirm the scanner's certificate to continue.": {},
   "The scanner was not added, because its certificate was not trusted.": {},
   "No scanner answered at {0}.": {},
@@ -1983,9 +1980,6 @@
   "Prints a QR separator sheet carrying the name above at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {},
   "Prints a Patch T separator sheet at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {},
   "{0}. Save the separator sheet as a PDF to print it elsewhere.": {},
-  "sheet": {
-    "other": "sheets"
-  },
   "Still stopping the current operation. Quit now anyway? A file being written may be left incomplete.": {},
   "A scan or save is still running.\n\nStop it and quit?": {},
   "A scan or save is still running. {0}\n\nStop it and quit?": {},
@@ -2252,12 +2246,8 @@
   "Split|section": {
     "note": "Heading of the inspector section about splitting the queue into separate documents."
   },
-  "New document every|before sheet count": {
-    "note": "First half of one sentence with a number box between: 'New document every [3] sheets'. The sentence has to read around the box."
-  },
-  "Sheets per document": {},
-  "sheets|after sheet count": {
-    "note": "Second half of 'New document every [3] sheets', after the number box: the unit, sheets of paper."
+  "Sheets per document": {
+    "note": "Label of a number box: how many sheets go into each document when the queue is split every few sheets. A noun phrase; the number follows or sits beside it."
   },
   "Codes are on": {},
   "Codes are on separator sheets": {},

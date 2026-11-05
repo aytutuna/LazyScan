@@ -1173,7 +1173,7 @@ OCR reads, with a date each (12.03.2026 and 2026-02-27): the files come out as "
 
 **Split into documents** (the inspector's section of that name; its ⓘ says how each way works)
 saves the collected pages as several files: **At separator sheets**, **At blank sheets** or **Every
-N sheets** ("New document every [N] sheets", 1 to 99 in the list, up to 999 in a settings file). The **Separate documents** task (feeder only; greyed out on a scanner without one)
+N sheets** (the "Sheets per document" box, N, 1 to 99 in the list, up to 999 in a settings file). The **Separate documents** task (feeder only; greyed out on a scanner without one)
 sets it up: 300 dpi, PDF, split at separator sheets, blank pages skipped, named
 `Document {label} {date} {counter}`. The other tasks do not split; the sheets per document are
 kept. Like the blank-page check, splitting needs the pages collected in the queue, so the choice is

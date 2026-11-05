@@ -1144,13 +1144,11 @@
                                             <TextBlock x:Name="SplitHint" Style="{StaticResource CaptionText}"
                                                        TextWrapping="Wrap" Margin="0,4,0,0" />
                                             <WrapPanel x:Name="SplitCountRow" Margin="0,8,0,0">
-                                                <TextBlock Text="{loc:T New document every|before sheet count}" Style="{StaticResource BodyText}"
+                                                <TextBlock Text="{loc:T Sheets per document}" Style="{StaticResource BodyText}"
                                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                                 <ComboBox x:Name="SplitCountBox" Width="72"
                                                           AutomationProperties.Name="{loc:T Sheets per document}"
                                                           SelectionChanged="SplitCount_Changed" />
-                                                <TextBlock x:Name="SplitCountUnit" Text="{loc:T sheets|after sheet count}" Style="{StaticResource BodyText}"
-                                                           VerticalAlignment="Center" Margin="8,0,0,0" />
                                             </WrapPanel>
                                             <!-- At barcode or QR sheets: a page with a code kept as its document's first
                                                  page, or a separator sheet left out. -->

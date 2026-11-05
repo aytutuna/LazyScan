@@ -198,7 +198,7 @@
  {"key": "Needs {docdate} in File name", "comment": ""},
  {"key": "Network", "comment": ""},
  {"key": "Networks", "comment": ""},
- {"key": "New document every", "comment": ""},
+ {"key": "Sheets per document", "comment": ""},
  {"key": "No app could open %@.", "comment": ""},
  {"key": "No back side. Scan it if something is printed on the back.", "comment": ""},
  {"key": "No mail app is set up.", "comment": ""},

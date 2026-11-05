@@ -59,7 +59,6 @@ public partial class MainWindow
         SplitModeBox.IsEnabled = collecting && !ViewModel.IsBusy;
         SplitReason.Visibility = !collecting && !copy && !receipts ? Visibility.Visible : Visibility.Collapsed;
         SplitCountRow.Visibility = collecting && mode == SplitMode.SheetCount ? Visibility.Visible : Visibility.Collapsed;
-        SplitCountUnit.Text = Loc.Plural(count, "sheet", "sheets");
 
         // The full explanation: how it works, step by step (the ⓘ), and the choice's help text.
         string help = copy

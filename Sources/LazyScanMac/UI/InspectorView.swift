@@ -872,8 +872,7 @@ struct InspectorView: View {
                                    set: { state.setSplitSheetCount($0) }),
                     in: 1...DocumentSplitter.maxSheetCount) {
                 let sheets: Int = DocumentSplitter.clampSheetCount(state.settings.document.splitSheetCount)
-                LabeledContent("New document every",
-                               value: L10n.plural(sheets, one: "{0} sheet", other: "{0} sheets"))
+                LabeledContent("Sheets per document", value: sheets.formatted())
             }
         }
         if collecting && mode == .barcode {
