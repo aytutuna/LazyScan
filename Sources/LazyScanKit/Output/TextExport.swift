@@ -95,7 +95,7 @@ public enum TextExport {
     /// was cancelled, and the pages not written went to the queue: "Not saved — the 3 pages are kept in
     /// the queue: press Save PDF to try again." or "Cancelled — the page is kept in the queue."; with
     /// `written` of the `pageCount` pictures saved, "Pages saved: 2 of 5. The other 3 are kept in the
-    /// queue: press Save 3 JPEGs to try again." or "Cancelled. Pages saved: 2 of 5. The other 3 are kept
+    /// queue: press Save JPEG (3 pages) to try again." or "Cancelled. Pages saved: 2 of 5. The other 3 are kept
     /// in the queue.". `saveTitle` is the button that saves them.
     public static func pagesKeptInQueue(pageCount: Int, written: Int, cancelled: Bool, saveTitle: String) -> String {
         if written == 0 {

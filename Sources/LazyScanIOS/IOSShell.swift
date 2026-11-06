@@ -506,13 +506,13 @@ public enum IOSShell {
     }
 
     /// The question's button that saves the pages as Save would before the kind changes: "Save PDF first",
-    /// "Save JPEG (3 pages) first", "Add to Contract.pdf first".
+    /// "Save JPEG first", "Add to Contract.pdf first".
     public static func saveFirstLabel(_ settings: ScanSettings, pageCount: Int, target: URL?) -> String {
         if let target {
             return String(localized: "\(PDFAppender.saveTitle(target.lastPathComponent)) first")
         }
         if savesImages(settings) {
-            return String(localized: "\(AppState.imagesSaveTitle(settings.format, pageCount: pageCount)) first")
+            return String(localized: "\(AppState.imagesSaveTitle(settings.format, pageCount: 1)) first")
         }
         return String(localized: "\(settings.format.saveTitle) first")
     }

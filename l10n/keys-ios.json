@@ -22,7 +22,7 @@
  {"key": "%@: %@", "comment": ""},
  {"key": "%lld", "comment": ""},
  {"key": "%lld MP", "comment": ""},
-  {"key": "%lld dpi", "comment": ""},
+ {"key": "%lld dpi", "comment": ""},
  {"key": "%lld of %lld", "comment": ""},
  {"key": "%lld percent", "comment": ""},
  {"key": "%lld percent from the left, %lld percent from the top", "comment": ""},

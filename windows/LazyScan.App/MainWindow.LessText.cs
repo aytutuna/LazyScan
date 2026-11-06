@@ -95,7 +95,6 @@ public partial class MainWindow
             ? null
             : Loc.T("Pages are collected until they are added to {0}. The × under Save saves new files again.", Path.GetFileName(target));
         MultiPageBox.ToolTip = why ?? Loc.T("Off: each scan is saved right away");
-        var shownFormat = InspectorSections.SavesPageFormat(ViewModel.Settings) ? OutputFormats.PageFormat(format) : format;
         AutomationProperties.SetHelpText(MultiPageBox,
             why ?? Loc.T("On: pages are collected until you save them. Off: each scan is saved right away."));
     }
