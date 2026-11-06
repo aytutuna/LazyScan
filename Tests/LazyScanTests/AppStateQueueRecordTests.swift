@@ -202,7 +202,7 @@ final class AppStateQueueRecordTests: XCTestCase {
         let after = makeState()
         try await waitUntil(timeout: 30) { !after.isBusy }
         XCTAssertEqual(after.scannedPages.map(\.id), spooled)
-        XCTAssertEqual(after.statusMessage, "2 of 3 pages are back from last time.")
+        XCTAssertEqual(after.statusMessage, "Pages back from last time: 2 of 3.")
     }
 
     @MainActor
