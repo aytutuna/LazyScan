@@ -107,8 +107,8 @@ public static class TextExport
     /// save was cancelled, and the pages not written went to the queue: "Not saved — the 3 pages are
     /// kept in the queue: press Save PDF to try again." or "Cancelled — the page is kept in the
     /// queue."; with <paramref name="written"/> of the <paramref name="pageCount"/> pictures saved,
-    /// "2 of 5 pages saved — the other 3 are kept in the queue: press Save PDF to try again." or
-    /// "Cancelled — 2 of 5 pages saved; the other 3 are kept in the queue.".
+    /// "Pages saved: 2 of 5. The other 3 are kept in the queue: press Save PDF to try again." or
+    /// "Cancelled. Pages saved: 2 of 5. The other 3 are kept in the queue.".
     /// <paramref name="saveTitle"/> is the button that saves them.
     /// </summary>
     public static string PagesKeptInQueue(int pageCount, int written, bool cancelled, string saveTitle)
@@ -125,13 +125,13 @@ public static class TextExport
         if (cancelled)
         {
             return Loc.Plural(rest,
-                "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.",
-                "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue.",
+                "Cancelled. Pages saved: {1} of {2}. The other one is kept in the queue.",
+                "Cancelled. Pages saved: {1} of {2}. The other {0} are kept in the queue.",
                 written, pageCount);
         }
         return Loc.Plural(rest,
-            "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.",
-            "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again.",
+            "Pages saved: {1} of {2}. The other one is kept in the queue: press {3} to try again.",
+            "Pages saved: {1} of {2}. The other {0} are kept in the queue: press {3} to try again.",
             written, pageCount, saveTitle);
     }
 

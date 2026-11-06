@@ -94,8 +94,8 @@ public enum TextExport {
     /// What the user reads when a PDF or pictures to be saved at once could not be written, or the save
     /// was cancelled, and the pages not written went to the queue: "Not saved — the 3 pages are kept in
     /// the queue: press Save PDF to try again." or "Cancelled — the page is kept in the queue."; with
-    /// `written` of the `pageCount` pictures saved, "2 of 5 pages saved — the other 3 are kept in the
-    /// queue: press Save 3 JPEGs to try again." or "Cancelled — 2 of 5 pages saved; the other 3 are kept
+    /// `written` of the `pageCount` pictures saved, "Pages saved: 2 of 5. The other 3 are kept in the
+    /// queue: press Save 3 JPEGs to try again." or "Cancelled. Pages saved: 2 of 5. The other 3 are kept
     /// in the queue.". `saveTitle` is the button that saves them.
     public static func pagesKeptInQueue(pageCount: Int, written: Int, cancelled: Bool, saveTitle: String) -> String {
         if written == 0 {
@@ -108,13 +108,13 @@ public enum TextExport {
         let rest = pageCount - written
         if cancelled {
             return L10n.plural(rest,
-                               one: "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.",
-                               other: "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue.",
+                               one: "Cancelled. Pages saved: {1} of {2}. The other one is kept in the queue.",
+                               other: "Cancelled. Pages saved: {1} of {2}. The other {0} are kept in the queue.",
                                written, pageCount)
         }
         return L10n.plural(rest,
-                           one: "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.",
-                           other: "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again.",
+                           one: "Pages saved: {1} of {2}. The other one is kept in the queue: press {3} to try again.",
+                           other: "Pages saved: {1} of {2}. The other {0} are kept in the queue: press {3} to try again.",
                            written, pageCount, saveTitle)
     }
 

@@ -306,10 +306,10 @@ public enum PrintText {
     /// Twin of C# `PrintText.RealSizeUnavailable`.
     public static var realSizeUnavailable: String { L10n.t("Some pages have no known size, so the copy is fitted to the page.") }
 
-    /// "Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."
+    /// "Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer. Copies: 3."
     public static func sent(pageCount: Int, copies: Int, printerName: String) -> String {
         if copies > 1 {
-            return L10n.plural(pageCount, one: "Sent {0} page to {1}, {2} copies.", other: "Sent {0} pages to {1}, {2} copies.",
+            return L10n.plural(pageCount, one: "Sent {0} page to {1}. Copies: {2}.", other: "Sent {0} pages to {1}. Copies: {2}.",
                                printerName, copies)
         }
         return L10n.plural(pageCount, one: "Sent {0} page to {1}.", other: "Sent {0} pages to {1}.", printerName)

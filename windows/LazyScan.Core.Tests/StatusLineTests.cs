@@ -15,7 +15,7 @@ public class StatusLineTests
         var cases = new (string Message, StatusDetail Detail, string Expected)[]
         {
             ("Added 1 page — 3 in queue. Scan more or Save PDF.", Added(1, 3), "Page 3 added"),
-            ("Added 6 pages from 3 sheets, both sides — 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.",
+            ("Added 6 pages, both sides of each sheet — 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.",
              Added(6, 6, blank: 1), "6 pages added · 1 blank"),
             ("Added 2 pages — 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.",
              Added(2, 4, split: 1), "2 pages added · 1 spread split"),

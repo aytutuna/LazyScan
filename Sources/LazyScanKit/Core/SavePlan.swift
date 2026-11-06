@@ -56,23 +56,25 @@ public struct SavePlan {
         guard isSplit else { return format.saveTitle(pageCount: pageCount) }
         switch format.queueFormat {
         case .word:
-            return L10n.plural(pageCount, one: "Save {1} Word documents ({0} page)",
-                               other: "Save {1} Word documents ({0} pages)", documents.count)
+            return withPages(L10n.plural(documents.count, one: "Save {0} Word document", other: "Save {0} Word documents"))
         case .text:
-            return L10n.plural(pageCount, one: "Save {1} text files ({0} page)",
-                               other: "Save {1} text files ({0} pages)", documents.count)
+            return withPages(L10n.plural(documents.count, one: "Save {0} text file", other: "Save {0} text files"))
         default:
-            return L10n.plural(pageCount, one: "Save {1} PDFs ({0} page)",
-                               other: "Save {1} PDFs ({0} pages)", documents.count)
+            return withPages(L10n.plural(documents.count, one: "Save {0} PDF", other: "Save {0} PDFs"))
         }
+    }
+
+    /// "Save 3 PDFs (7 pages)": the title with the page count in brackets, each counted on its own.
+    private func withPages(_ title: String) -> String {
+        L10n.t("{0} ({1})", title, L10n.plural(pageCount, one: "{0} page", other: "{0} pages"))
     }
 
     /// `saveTitle` for a PDF that gets a password, as VoiceOver reads it: "Save password-protected PDF
     /// (7 pages)", "Save 3 password-protected PDFs (7 pages)".
     public var protectedSaveTitle: String {
         if isSplit {
-            return L10n.plural(pageCount, one: "Save {1} password-protected PDFs ({0} page)",
-                               other: "Save {1} password-protected PDFs ({0} pages)", documents.count)
+            return withPages(L10n.plural(documents.count, one: "Save {0} password-protected PDF",
+                                         other: "Save {0} password-protected PDFs"))
         }
         guard pageCount > 0 else { return L10n.t("Save password-protected PDF") }
         return L10n.plural(pageCount, one: "Save password-protected PDF ({0} page)",

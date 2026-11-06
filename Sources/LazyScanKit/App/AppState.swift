@@ -1333,16 +1333,9 @@ public final class AppState: ObservableObject {
                 if let manualSide {
                     self.afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
                 } else if twoSided {
-                    let sheets = Set(processed.compactMap(\.sheetIndex)).count
-                    if sheets == 1 {
-                        self.statusMessage = L10n.plural(n, one: "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
-                                                         other: "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
-                                                         sheets, self.scannedPages.count, self.settings.format.saveTitle)
-                    } else {
-                        self.statusMessage = L10n.plural(n, one: "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
-                                                         other: "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
-                                                         sheets, self.scannedPages.count, self.settings.format.saveTitle)
-                    }
+                    self.statusMessage = L10n.plural(n, one: "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                                     other: "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                                     self.scannedPages.count, self.settings.format.saveTitle)
                 } else if intake.askedBothSides {
                     self.statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
                                                      other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
@@ -2113,11 +2106,9 @@ public final class AppState: ObservableObject {
         }
         resetFlow()
         let sheets = max(counts.fronts, counts.backs)
-        let pages = counts.fronts + counts.backs
-        statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.",
-                                    other: "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}.",
-                                    L10n.plural(pages, one: "{0} page", other: "{0} pages"), scannedPages.count,
-                                    settings.format.saveTitle)
+        statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order — {1} in queue. Scan another stack or {2}.",
+                                    other: "Put {0} sheets in order — {1} in queue. Scan another stack or {2}.",
+                                    scannedPages.count, settings.format.saveTitle)
     }
 
     /// The backs did not pair up with the fronts, but the pages are combined as they are (the

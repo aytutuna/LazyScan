@@ -123,13 +123,13 @@ public class TextExportTests
         Assert.Equal("Not saved — the 3 pages are kept in the queue: press Save PDF to try again.",
                      TextExport.PagesKeptInQueue(3, 0, cancelled: false, "Save PDF"));
         // Pictures, some written before the save stopped.
-        Assert.Equal("Cancelled — 2 of 5 pages saved; the other 3 are kept in the queue.",
+        Assert.Equal("Cancelled. Pages saved: 2 of 5. The other 3 are kept in the queue.",
                      TextExport.PagesKeptInQueue(5, 2, cancelled: true, "Save 3 JPEGs"));
-        Assert.Equal("2 of 5 pages saved — the other 3 are kept in the queue: press Save 3 JPEGs to try again.",
+        Assert.Equal("Pages saved: 2 of 5. The other 3 are kept in the queue: press Save 3 JPEGs to try again.",
                      TextExport.PagesKeptInQueue(5, 2, cancelled: false, "Save 3 JPEGs"));
-        Assert.Equal("Cancelled — 1 of 2 pages saved; the other one is kept in the queue.",
+        Assert.Equal("Cancelled. Pages saved: 1 of 2. The other one is kept in the queue.",
                      TextExport.PagesKeptInQueue(2, 1, cancelled: true, "Save JPEG"));
-        Assert.Equal("1 of 2 pages saved — the other one is kept in the queue: press Save JPEG to try again.",
+        Assert.Equal("Pages saved: 1 of 2. The other one is kept in the queue: press Save JPEG to try again.",
                      TextExport.PagesKeptInQueue(2, 1, cancelled: false, "Save JPEG"));
     }
 

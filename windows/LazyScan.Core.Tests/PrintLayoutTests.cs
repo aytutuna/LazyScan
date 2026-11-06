@@ -200,7 +200,7 @@ public class PrintLayoutTests
     public void Text()
     {
         Assert.Equal("Sent 1 page to Office Printer.", PrintText.Sent(1, 1, "Office Printer"));
-        Assert.Equal("Sent 2 pages to Office Printer, 3 copies.", PrintText.Sent(2, 3, "Office Printer"));
+        Assert.Equal("Sent 2 pages to Office Printer. Copies: 3.", PrintText.Sent(2, 3, "Office Printer"));
         Assert.Equal("Actual size", PrintText.ModeLabel(false));
         Assert.Equal("Fit to page", PrintText.ModeLabel(true));
         Assert.Equal("Needs a printer", PrintText.NoPrinterReason);

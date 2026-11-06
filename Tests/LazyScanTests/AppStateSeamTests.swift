@@ -608,7 +608,7 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(state.scannedPages.count, 4)
         XCTAssertEqual(state.scannedPages.map(\.source), [.scanner, .scanner, .scanner, .scanner])
         XCTAssertEqual(state.scanHistory.count, 4)
-        XCTAssertTrue(state.statusMessage.hasPrefix("Added 4 pages from 2 sheets, both sides — 4 in queue."),
+        XCTAssertTrue(state.statusMessage.hasPrefix("Added 4 pages, both sides of each sheet — 4 in queue."),
                       state.statusMessage)
         XCTAssertEqual(state.errorMessage, ScanStop.from(ScanError.scannerProblem(.paperJam)).message(pagesKept: 4))
     }

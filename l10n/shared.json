@@ -223,12 +223,6 @@
   "Not saved — the page is kept in the queue: press {1} to try again.": {
     "other": "Not saved — the {0} pages are kept in the queue: press {1} to try again."
   },
-  "Cancelled — {1} of {2} pages saved; the other one is kept in the queue.": {
-    "other": "Cancelled — {1} of {2} pages saved; the other {0} are kept in the queue."
-  },
-  "{1} of {2} pages saved — the other one is kept in the queue: press {3} to try again.": {
-    "other": "{1} of {2} pages saved — the other {0} are kept in the queue: press {3} to try again."
-  },
   "Cancelled — the page is kept in the queue.": {
     "other": "Cancelled — the {0} pages are kept in the queue."
   },
@@ -277,18 +271,6 @@
   "{0} blank skipped": {},
   "{0} but {1}": {
     "note": "{0} is a count of fronts ('2 fronts') and {1} a count of backs; the sentence says they do not match."
-  },
-  "Save {1} Word documents ({0} page)": {
-    "other": "Save {1} Word documents ({0} pages)"
-  },
-  "Save {1} text files ({0} page)": {
-    "other": "Save {1} text files ({0} pages)"
-  },
-  "Save {1} PDFs ({0} page)": {
-    "other": "Save {1} PDFs ({0} pages)"
-  },
-  "Save {1} password-protected PDFs ({0} page)": {
-    "other": "Save {1} password-protected PDFs ({0} pages)"
   },
   "Save password-protected PDF ({0} page)": {
     "other": "Save password-protected PDF ({0} pages)"
@@ -417,9 +399,6 @@
   "Bringing back {0} page…": {
     "other": "Bringing back {0} pages…"
   },
-  "{0} of {1} pages is back from last time.": {
-    "other": "{0} of {1} pages are back from last time."
-  },
   "{0} page is back from last time.": {
     "other": "{0} pages are back from last time."
   },
@@ -433,12 +412,6 @@
   },
   "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.": {},
   "Copied {0} and its picture to the clipboard.": {},
-  "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.": {
-    "other": "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}."
-  },
-  "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.": {
-    "other": "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}."
-  },
   "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
     "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
   },
@@ -460,9 +433,6 @@
   "{0} front side scanned. Turn the stack over and scan the back sides.": {
     "other": "{0} front sides scanned. Turn the stack over and scan the back sides."
   },
-  "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.": {
-    "other": "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}."
-  },
   "Kept {0} front side — {1} in queue. Scan another stack or {2}.": {
     "other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}."
   },
@@ -480,9 +450,6 @@
   },
   "Scanning stopped after {0} page; it was kept.": {
     "other": "Scanning stopped after {0} pages; they were kept."
-  },
-  "Sent {0} page to {1}, {2} copies.": {
-    "other": "Sent {0} pages to {1}, {2} copies."
   },
   "Sent {0} page to {1}.": {
     "other": "Sent {0} pages to {1}."
@@ -1624,7 +1591,9 @@
   "Saved {0} and its text, {1}": {},
   "Saved {0} ({1}).": {},
   "Saved {0}.": {},
-  "{0} ({1})": {},
+  "{0} ({1})": {
+    "note": "{0} is a name or phrase and {1} a short detail about it, shown in brackets."
+  },
   "Saved the ID card on one {0} page: {1} ({2})": {},
   "Saved the ID card on one {0} page: {1} ({2}), and each side as an image": {},
   "Saved the ID card on one {0} page: {1}": {},
@@ -2418,6 +2387,25 @@
   "Patch 6": {},
   "Patch T": {},
   "the Windows device watcher stopped ({0})": {},
+  "Pages back from last time: {0} of {1}.": {},
+  "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.": {
+    "other": "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}."
+  },
+  "Put {0} sheet in order — {1} in queue. Scan another stack or {2}.": {
+    "other": "Put {0} sheets in order — {1} in queue. Scan another stack or {2}."
+  },
+  "Save {0} password-protected PDF": {
+    "other": "Save {0} password-protected PDFs"
+  },
+  "Sent {0} page to {1}. Copies: {2}.": {
+    "other": "Sent {0} pages to {1}. Copies: {2}."
+  },
+  "Cancelled. Pages saved: {1} of {2}. The other one is kept in the queue.": {
+    "other": "Cancelled. Pages saved: {1} of {2}. The other {0} are kept in the queue."
+  },
+  "Pages saved: {1} of {2}. The other one is kept in the queue: press {3} to try again.": {
+    "other": "Pages saved: {1} of {2}. The other {0} are kept in the queue: press {3} to try again."
+  },
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

@@ -197,7 +197,7 @@ final class PrintLayoutTests: XCTestCase {
     func test_text() {
         XCTAssertEqual(PrintText.sent(pageCount: 1, copies: 1, printerName: "Office Printer"), "Sent 1 page to Office Printer.")
         XCTAssertEqual(PrintText.sent(pageCount: 2, copies: 3, printerName: "Office Printer"),
-                       "Sent 2 pages to Office Printer, 3 copies.")
+                       "Sent 2 pages to Office Printer. Copies: 3.")
         XCTAssertEqual(PrintText.modeLabel(fitToPage: false), "Actual size")
         XCTAssertEqual(PrintText.modeLabel(fitToPage: true), "Fit to page")
         XCTAssertEqual(PrintText.noPrinterReason, "Needs a printer")

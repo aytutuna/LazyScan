@@ -1619,14 +1619,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         }
                         else if (twoSided)
                         {
-                            int sheets = processed.Select(p => p.SheetIndex).Distinct().Count();
-                            StatusMessage = sheets == 1
-                                ? Loc.Plural(n, "Added {0} page from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
-                                    "Added {0} pages from {1} sheet, both sides — {2} in queue. Scan more or {3}.",
-                                    sheets, ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format))
-                                : Loc.Plural(n, "Added {0} page from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
-                                    "Added {0} pages from {1} sheets, both sides — {2} in queue. Scan more or {3}.",
-                                    sheets, ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+                            StatusMessage = Loc.Plural(n, "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
                         }
                         else if (sides == DuplexMode.Both)
                         {
@@ -2573,10 +2568,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         foreach (var item in ordered) ScannedPages.Add(item);
         ResetFlow();
         int sheets = Math.Max(counts.Fronts, counts.Backs);
-        int pages = counts.Fronts + counts.Backs;
-        StatusMessage = Loc.Plural(sheets, "Put {0} sheet in order ({1}) — {2} in queue. Scan another stack or {3}.",
-            "Put {0} sheets in order ({1}) — {2} in queue. Scan another stack or {3}.",
-            Loc.Plural(pages, "{0} page", "{0} pages"), ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+        StatusMessage = Loc.Plural(sheets, "Put {0} sheet in order — {1} in queue. Scan another stack or {2}.",
+            "Put {0} sheets in order — {1} in queue. Scan another stack or {2}.",
+            ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
     }
 
     /// <summary>The backs did not pair up with the fronts, but the pages are combined as they are (the extra pages at the end).</summary>

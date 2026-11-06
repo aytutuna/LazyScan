@@ -21,7 +21,7 @@ final class StatusLineTests: XCTestCase {
         }
         let cases: [(String, StatusDetail, String)] = [
             ("Added 1 page \u{2014} 3 in queue. Scan more or Save PDF.", StatusDetail(head: added(1, 3, 0, 0)), "Page 3 added"),
-            ("Added 6 pages from 3 sheets, both sides \u{2014} 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.",
+            ("Added 6 pages, both sides of each sheet \u{2014} 6 in queue. Scan more or Save PDF. 1 looks blank and will be skipped.",
              StatusDetail(head: added(6, 6, 1, 0)), "6 pages added \u{00B7} 1 blank"),
             ("Added 2 pages \u{2014} 4 in queue. Scan more or Save PDF. 1 spread split into pages. Spine shadow softened on 2 pages.",
              StatusDetail(head: added(2, 4, 0, 1)), "2 pages added \u{00B7} 1 spread split"),

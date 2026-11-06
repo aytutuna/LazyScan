@@ -284,11 +284,11 @@ public static class PrintText
     /// </summary>
     public static string RealSizeUnavailable => Loc.T("Some pages have no known size, so the copy is fitted to the page.");
 
-    /// <summary>"Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer, 3 copies."</summary>
+    /// <summary>"Sent 1 page to Office Printer.", "Sent 2 pages to Office Printer. Copies: 3."</summary>
     public static string Sent(int pageCount, int copies, string printerName)
     {
         return copies > 1
-            ? Loc.Plural(pageCount, "Sent {0} page to {1}, {2} copies.", "Sent {0} pages to {1}, {2} copies.", printerName, copies)
+            ? Loc.Plural(pageCount, "Sent {0} page to {1}. Copies: {2}.", "Sent {0} pages to {1}. Copies: {2}.", printerName, copies)
             : Loc.Plural(pageCount, "Sent {0} page to {1}.", "Sent {0} pages to {1}.", printerName);
     }
 

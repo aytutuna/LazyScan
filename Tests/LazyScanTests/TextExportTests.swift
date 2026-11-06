@@ -114,13 +114,13 @@ final class TextExportTests: XCTestCase {
                        "Not saved \u{2014} the 3 pages are kept in the queue: press Save PDF to try again.")
         // Pictures, some written before the save stopped.
         XCTAssertEqual(TextExport.pagesKeptInQueue(pageCount: 5, written: 2, cancelled: true, saveTitle: "Save 3 JPEGs"),
-                       "Cancelled \u{2014} 2 of 5 pages saved; the other 3 are kept in the queue.")
+                       "Cancelled. Pages saved: 2 of 5. The other 3 are kept in the queue.")
         XCTAssertEqual(TextExport.pagesKeptInQueue(pageCount: 5, written: 2, cancelled: false, saveTitle: "Save 3 JPEGs"),
-                       "2 of 5 pages saved \u{2014} the other 3 are kept in the queue: press Save 3 JPEGs to try again.")
+                       "Pages saved: 2 of 5. The other 3 are kept in the queue: press Save 3 JPEGs to try again.")
         XCTAssertEqual(TextExport.pagesKeptInQueue(pageCount: 2, written: 1, cancelled: true, saveTitle: "Save JPEG"),
-                       "Cancelled \u{2014} 1 of 2 pages saved; the other one is kept in the queue.")
+                       "Cancelled. Pages saved: 1 of 2. The other one is kept in the queue.")
         XCTAssertEqual(TextExport.pagesKeptInQueue(pageCount: 2, written: 1, cancelled: false, saveTitle: "Save JPEG"),
-                       "1 of 2 pages saved \u{2014} the other one is kept in the queue: press Save JPEG to try again.")
+                       "Pages saved: 1 of 2. The other one is kept in the queue: press Save JPEG to try again.")
     }
 }
 

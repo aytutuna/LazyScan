@@ -45,13 +45,15 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         if (!IsSplit) return OutputFormats.SaveTitle(format, PageCount);
         return OutputFormats.QueueFormat(format) switch
         {
-            OutputFormat.Word => Loc.Plural(PageCount, "Save {1} Word documents ({0} page)",
-                                            "Save {1} Word documents ({0} pages)", Documents.Count),
-            OutputFormat.Text => Loc.Plural(PageCount, "Save {1} text files ({0} page)",
-                                            "Save {1} text files ({0} pages)", Documents.Count),
-            _ => Loc.Plural(PageCount, "Save {1} PDFs ({0} page)", "Save {1} PDFs ({0} pages)", Documents.Count),
+            OutputFormat.Word => WithPages(Loc.Plural(Documents.Count, "Save {0} Word document", "Save {0} Word documents")),
+            OutputFormat.Text => WithPages(Loc.Plural(Documents.Count, "Save {0} text file", "Save {0} text files")),
+            _ => WithPages(Loc.Plural(Documents.Count, "Save {0} PDF", "Save {0} PDFs")),
         };
     }
+
+    /// <summary>"Save 3 PDFs (7 pages)": the title with the page count in brackets, each counted on its own.</summary>
+    private string WithPages(string title) =>
+        Loc.T("{0} ({1})", title, Loc.Plural(PageCount, "{0} page", "{0} pages"));
 
     /// <summary>
     /// <see cref="SaveTitle"/> for a PDF that gets a password: "Save password-protected PDF (7 pages)",
@@ -62,8 +64,8 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         get
         {
             if (IsSplit)
-                return Loc.Plural(PageCount, "Save {1} password-protected PDFs ({0} page)",
-                                  "Save {1} password-protected PDFs ({0} pages)", Documents.Count);
+                return WithPages(Loc.Plural(Documents.Count, "Save {0} password-protected PDF",
+                                            "Save {0} password-protected PDFs"));
             if (PageCount <= 0) return Loc.T("Save password-protected PDF");
             return Loc.Plural(PageCount, "Save password-protected PDF ({0} page)", "Save password-protected PDF ({0} pages)");
         }
