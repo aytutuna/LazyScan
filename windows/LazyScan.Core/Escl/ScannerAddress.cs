@@ -129,7 +129,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
             int close = value.IndexOf(']');
             if (close < 0)
             {
-                error = Loc.T("An IPv6 address in brackets needs its closing \"]\".");
+                error = Loc.T("An IPv6 address in brackets needs its closing “]”.");
                 return false;
             }
             host = value[1..close];
@@ -163,7 +163,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         }
         if (NormalizeHost(host) is not { } normalized)
         {
-            error = Loc.T("\"{0}\" is not a valid IP address or host name.", host);
+            error = Loc.T("“{0}” is not a valid IP address or host name.", host);
             return false;
         }
         if (LacksZone(normalized))
@@ -201,7 +201,7 @@ public sealed class ScannerAddress : IEquatable<ScannerAddress>
         {
             error = uri.HostNameType == UriHostNameType.IPv6
                 ? Loc.T("That is not a valid address.")
-                : Loc.T("\"{0}\" is not a valid IP address or host name.", uri.Host);
+                : Loc.T("“{0}” is not a valid IP address or host name.", uri.Host);
             return false;
         }
         if (LacksZone(host))

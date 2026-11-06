@@ -711,7 +711,7 @@ final class DocxWriterPictureTests: XCTestCase {
         XCTAssertLessThan(DocxWriter.maxPackageBytes, Int(UInt32.max))
         XCTAssertEqual(DocxWriter.tooLargeMessage,
                        "The Word document would be larger than 2 GB, too large to write. Save fewer pages in each document, "
-                       + "choose a smaller page image size, or turn off \"Include page images\".")
+                       + "choose a smaller page image size, or turn off “Include page images”.")
     }
 }
 

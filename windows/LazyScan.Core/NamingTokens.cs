@@ -26,7 +26,7 @@ public static class NamingTokens
         new(Loc.T("Number"), "{counter}", Loc.T("Running number")),
         new(Loc.T("Mode"), "{intent}", Loc.T("“Document” or “Photos”")),
         new(Loc.T("Task"), "{task}", Loc.T("The task, e.g. “Receipt”")),
-        new(Loc.T("Document name"), "{label}", Loc.T("The document’s name, given in the page strip")),
+        new(Loc.T("Document name"), "{label}", Loc.T("The document's name, given in the page strip")),
         new(Loc.T("Receipt date"), "{docdate}", Loc.T("The date printed on a receipt")),
     ];
 

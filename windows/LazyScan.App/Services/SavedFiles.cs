@@ -331,7 +331,7 @@ public static class SavedFiles
         }
         catch (TempFileKeptException e)
         {
-            return Loc.T("The original was removed but the rotated copy could not take its name. It was kept as \"{0}\" in the same folder.", Path.GetFileName(e.TempPath));
+            return Loc.T("The original was removed but the rotated copy could not take its name. It was kept as “{0}” in the same folder.", Path.GetFileName(e.TempPath));
         }
         catch
         {

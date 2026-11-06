@@ -93,7 +93,7 @@ internal sealed class NTwainSessionHost
             }
         }
         var source = session.GetSources().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.Ordinal))
-            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The TWAIN driver \"{0}\" is no longer installed.", name));
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("The TWAIN driver “{0}” is no longer installed.", name));
         var rc = source.Open();
         if (rc != ReturnCode.Success)
         {

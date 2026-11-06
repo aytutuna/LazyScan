@@ -82,7 +82,7 @@ public static class DocxWriter
 
     /// <summary>Why a Word document over <see cref="MaxPackageBytes"/> is not written, and what to do instead.</summary>
     public static string TooLargeMessage =>
-        Loc.T("The Word document would be larger than {1}, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off \"{0}\".", PageImagesLabel, Loc.T("{0} GB", 2));
+        Loc.T("The Word document would be larger than {1}, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off “{0}”.", PageImagesLabel, Loc.T("{0} GB", 2));
 
     /// <summary>
     /// The size in bytes of the .docx file <see cref="Make"/> writes for <paramref name="pages"/>

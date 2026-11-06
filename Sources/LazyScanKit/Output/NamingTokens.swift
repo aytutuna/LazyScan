@@ -36,7 +36,7 @@ public enum NamingTokens {
             NamingToken(label: L10n.t("Number"), token: "{counter}", help: L10n.t("Running number")),
             NamingToken(label: L10n.t("Mode"), token: "{intent}", help: L10n.t("“Document” or “Photos”")),
             NamingToken(label: L10n.t("Task"), token: "{task}", help: L10n.t("The task, e.g. “Receipt”")),
-            NamingToken(label: L10n.t("Document name"), token: "{label}", help: L10n.t("The document’s name, given in the page strip")),
+            NamingToken(label: L10n.t("Document name"), token: "{label}", help: L10n.t("The document's name, given in the page strip")),
             NamingToken(label: L10n.t("Receipt date"), token: "{docdate}", help: L10n.t("The date printed on a receipt")),
         ]
     }

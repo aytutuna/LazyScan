@@ -25,7 +25,7 @@ public final class IOSNamingModel: ObservableObject {
     public var parts: [NamingToken] {
         NamingTokens.all.map { (part: NamingToken) -> NamingToken in
             guard part.token == "{label}" else { return part }
-            return NamingToken(label: part.label, token: part.token, help: String(localized: "The document\u{2019}s name from its QR sheet"))
+            return NamingToken(label: part.label, token: part.token, help: String(localized: "The document's name from its QR sheet"))
         }
     }
 

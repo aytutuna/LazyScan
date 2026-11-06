@@ -368,7 +368,7 @@ final class IOSScannerPickerTests: XCTestCase {
         let model: IOSAddScannerModel = IOSAddScannerModel(checker: FakeAddressChecker(), localNetwork: nil)
         let cases: [String: String] = [
             "": "Enter the scanner's IP address or host name.",
-            "300.1.1.1": "\"300.1.1.1\" is not a valid IP address or host name.",
+            "300.1.1.1": "“300.1.1.1” is not a valid IP address or host name.",
             "my scanner": "An address cannot contain spaces.",
             "scanner:0": "The port must be a number from 1 to 65535.",
             "ftp://10.0.0.7": "Use an address that starts with http:// or https://, or just the IP address or host name.",

@@ -160,7 +160,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
         }
         if value.hasPrefix("[") {
             guard let close = value.firstIndex(of: "]") else {
-                error = L10n.t("An IPv6 address in brackets needs its closing \"]\".")
+                error = L10n.t("An IPv6 address in brackets needs its closing “]”.")
                 return nil
             }
             host = String(value[value.index(after: value.startIndex)..<close])
@@ -190,7 +190,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
             portNumber = number
         }
         guard let normalized = EsclHostText.normalizeHost(host) else {
-            error = L10n.t("\"{0}\" is not a valid IP address or host name.", host)
+            error = L10n.t("“{0}” is not a valid IP address or host name.", host)
             return nil
         }
         if lacksZone(normalized) {
@@ -229,7 +229,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible, Sendable {
             if parts.bracketed {
                 error = L10n.t("That is not a valid address.")
             } else {
-                error = L10n.t("\"{0}\" is not a valid IP address or host name.", parts.host.lowercased())
+                error = L10n.t("“{0}” is not a valid IP address or host name.", parts.host.lowercased())
             }
             return nil
         }

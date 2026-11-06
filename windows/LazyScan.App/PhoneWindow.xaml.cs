@@ -379,7 +379,7 @@ public partial class PhoneWindow : Window
         _approval?.TrySetResult(false);
         var approval = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _approval = approval;
-        ApprovalText.Text = Loc.T("Allow \"{0}\" to send documents to this PC?", request.PhoneName);
+        ApprovalText.Text = Loc.T("Allow “{0}” to send documents to this PC?", request.PhoneName);
         ApprovalCard.Visibility = Visibility.Visible;
         Announce(ApprovalText);
         if (IsVisible)

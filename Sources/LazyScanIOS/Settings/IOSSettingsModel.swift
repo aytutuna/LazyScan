@@ -43,7 +43,7 @@ public enum IOSSettingsText {
     /// The About screen: what the app is built with (Apple's frameworks, and the page corner model with
     /// what runs it, whose licenses go with the app) and where scans stay.
     public static var aboutBuiltWith: String {
-        String(localized: "Built with Apple\u{2019}s frameworks. Pages are found with DocAligner by DocsaidLab (Apache License 2.0) on ONNX Runtime by Microsoft (MIT License).")
+        String(localized: "Built with Apple's frameworks. Pages are found with DocAligner by DocsaidLab (Apache License 2.0) on ONNX Runtime by Microsoft (MIT License).")
     }
     public static var aboutPrivacy: String { String(localized: "Your scans stay on this device unless you share them.") }
     /// About's row to the licence texts that go with the app (`LicencesScreen`).

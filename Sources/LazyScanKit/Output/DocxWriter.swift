@@ -87,7 +87,7 @@ public enum DocxWriter {
 
     /// Why a Word document over `maxPackageBytes` is not written, and what to do instead.
     public static var tooLargeMessage: String {
-        L10n.t("The Word document would be larger than {1}, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off \"{0}\".", pageImagesLabel, L10n.t("{0} GB", 2))
+        L10n.t("The Word document would be larger than {1}, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off “{0}”.", pageImagesLabel, L10n.t("{0} GB", 2))
     }
 
     /// The size in bytes of the .docx file `make` writes for `pages` and `pictures`, worked out
