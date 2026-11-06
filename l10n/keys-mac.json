@@ -220,7 +220,7 @@
  {"key": "Off: a PDF for each receipt", "comment": ""},
  {"key": "Off: each scan is saved right away", "comment": ""},
  {"key": "Off: real size. On: shrinks to fit the paper.", "comment": ""},
- {"key": "On: pages are collected until you %@. Off: each scan is saved right away.", "comment": ""},
+ {"key": "On: pages are collected until you save them. Off: each scan is saved right away.", "comment": ""},
  {"key": "One PDF for all", "comment": ""},
  {"key": "Only for PDFs", "comment": ""},
  {"key": "Only for PDFs: each receipt is saved as an image of its own.", "comment": ""},

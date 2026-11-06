@@ -50,17 +50,17 @@ public static class CompanionTroubleshooter
                          .Select(pair => pair.check)];
     }
 
-    /// <summary>"Receiving from phones on Home Wi-Fi.", or why not.</summary>
+    /// <summary>"Networks receiving from phones: Home Wi-Fi.", or why not.</summary>
     public static string Headline(CompanionSnapshot snapshot)
     {
         var trusted = snapshot.Networks.Where(n => n.Trust != NetworkTrust.NotTrusted).Select(n => n.Network.Name).ToList();
         var untrusted = snapshot.Networks.Where(n => n.Trust == NetworkTrust.NotTrusted).Select(n => n.Network.Name).ToList();
         return snapshot.Listen switch
         {
-            CompanionListenState.Listening => Loc.T("Receiving from phones on {0}.", JoinNames(trusted)),
+            CompanionListenState.Listening => Loc.T("Networks receiving from phones: {0}.", JoinNames(trusted)),
             CompanionListenState.Off => Loc.T("No phone is paired yet."),
             CompanionListenState.Offline => Loc.T("Not connected to a network."),
-            CompanionListenState.NoTrustedNetwork => Loc.T("Not receiving from phones on {0}.", JoinNames(untrusted)),
+            CompanionListenState.NoTrustedNetwork => Loc.T("Networks not receiving from phones: {0}.", JoinNames(untrusted)),
             CompanionListenState.Failed => Loc.T("Could not start receiving from phones."),
             CompanionListenState.Elsewhere => Loc.T("Another Lazy Scan window receives from phones."),
             _ => "",
@@ -121,10 +121,10 @@ public static class CompanionTroubleshooter
                 id, CheckStatus.Ok, Loc.T("{0} is a private network", name),
                 Loc.T("Paired phones on this network can send documents to this PC."), []),
             NetworkTrust.Approved => new TroubleshootCheck(
-                id, CheckStatus.Ok, Loc.T("Receiving on {0}, which you allowed", name),
+                id, CheckStatus.Ok, Loc.T("Receiving allowed: {0}", name),
                 Loc.T("Paired phones on this network can send documents to this PC."), []),
             _ => new TroubleshootCheck(
-                id, CheckStatus.Warning, Loc.T("Not receiving on {0}", name),
+                id, CheckStatus.Warning, Loc.T("Not receiving: {0}", name),
                 network.Category == CompanionNetworkCategory.Domain
                     ? Loc.T("Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name)
                     : Loc.T("Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name),

@@ -28,8 +28,8 @@ public partial class CertificateTrustWindow : Window
             changed ? "SystemFillColorCautionBrush" : "AccentTextFillColorPrimaryBrush");
         HeaderText.Text = (changed, byAddress) switch
         {
-            (true, true) => Loc.T("The certificate of the scanner at {0} has changed", certificate.Authority),
-            (true, false) => Loc.T("The certificate of {0} has changed", name),
+            (true, true) => Loc.T("The scanner's certificate has changed: {0}", certificate.Authority),
+            (true, false) => Loc.T("The scanner's certificate has changed: {0}", name),
             (false, true) => Loc.T("Trust the scanner at {0}?", certificate.Authority),
             _ => Loc.T("Trust {0}?", name),
         };

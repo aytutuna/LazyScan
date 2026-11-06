@@ -405,7 +405,7 @@ public enum CompanionPackage {
     private static func validateImage(_ image: CompanionImage, pageNumber: Int, original: Bool) throws {
         let subject = CompanionPackage.subject(pageNumber, original: original)
         if sniff(image.data) != image.format {
-            throw CompanionPackageError(.invalidDocument, L10n.t("{0} is not a {1} file.", subject, formatValue(image.format).uppercased()))
+            throw CompanionPackageError(.invalidDocument, L10n.t("{0} is not in its declared image format ({1}).", subject, formatValue(image.format).uppercased()))
         }
         if image.format == .tiff && image.colorMode != .blackWhite {
             throw CompanionPackageError(.invalidDocument, L10n.t("{0} is a TIFF, which only black & white pages can be.", subject))

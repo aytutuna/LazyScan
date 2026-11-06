@@ -177,13 +177,13 @@ public enum PhotoImport {
     /// Photocopy and Receipts tasks). Nil when no such task is in use.
     public static func ownSaveTaskReason(_ settings: ScanSettings) -> String? {
         guard settings.intent == .document, let task = settings.task, !isOffered(settings) else { return nil }
-        return L10n.t("The {0} task saves its scans on its own", TaskCatalog.definition(task).title)
+        return L10n.t("Task “{0}” saves its scans on its own", TaskCatalog.definition(task).title)
     }
 
     /// Why photos are not imported with these settings, and what to change to import them.
     public static func notOfferedMessage(for settings: ScanSettings) -> String {
         if ownSaveTaskReason(settings) != nil, let task = settings.task {
-            return L10n.t("The {0} task saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.definition(task).title)
+            return L10n.t("Task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.definition(task).title)
         }
         return L10n.t("Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.")
     }

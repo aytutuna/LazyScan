@@ -198,8 +198,8 @@ final class AppStateCompanionHostTests: XCTestCase {
                            + "with Collect pages before saving on, to add it to the queue.")
         // A task that saves its scans on its own is named instead.
         XCTAssertEqual(CompanionHostText.waitingMessage(pageCount: 3, from: "Aytu's iPhone", collectsPages: false,
-                                                        taskReason: "The ID card task saves its scans on its own"),
-                       "3 pages from Aytu's iPhone are waiting: The ID card task saves its scans on its own. "
+                                                        taskReason: "Task “ID card” saves its scans on its own"),
+                       "3 pages from Aytu's iPhone are waiting: Task “ID card” saves its scans on its own. "
                            + "Leave the task or pick Document to PDF to add them to the queue.")
     }
 }

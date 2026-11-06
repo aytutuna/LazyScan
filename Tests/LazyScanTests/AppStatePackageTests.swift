@@ -173,7 +173,7 @@ final class AppStatePackageTests: XCTestCase {
 
     func test_notOfferedMessage_namesTheTaskThatSavesOnItsOwn() {
         XCTAssertEqual(PackageText.notOfferedMessage(for: TaskCatalog.apply(.receipt, to: ScanSettings())),
-                       "The Receipts task saves its scans on its own, so a document's pages cannot be added here. "
+                       "Task “Receipts” saves its scans on its own, so a document's pages cannot be added here. "
                            + "Leave the task or pick Document to PDF to add them.")
         var photos = ScanSettings()
         photos.intent = .photo

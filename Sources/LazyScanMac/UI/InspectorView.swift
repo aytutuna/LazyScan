@@ -506,7 +506,7 @@ struct InspectorView: View {
                 Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
                     .disabled(addingHint != nil)
                     .help(addingHint ?? String(localized: "Off: each scan is saved right away"))
-                    .accessibilityHint(Text(addingHint ?? String(localized: "On: pages are collected until you \(shownFormat.saveTitle). Off: each scan is saved right away.")))
+                    .accessibilityHint(Text(addingHint ?? String(localized: "On: pages are collected until you save them. Off: each scan is saved right away.")))
             }
             destinationRow
         }

@@ -189,10 +189,10 @@ public class CompanionPackageTests
         Assert.Equal("This document has more than 2,000 pages.",
                      AssertWriteRefused(CompanionPackageErrorKind.TooManyPages,
                                         new CompanionDocument("x", Enumerable.Repeat(new CompanionPage(jpeg), 2001).ToList())).Message);
-        Assert.Equal("The picture of page 1 is not a PNG file.",
+        Assert.Equal("The picture of page 1 is not in its declared image format (PNG).",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg with { Format = CompanionImageFormat.Png })])).Message);
-        Assert.Equal("The original picture of page 2 is not a JPEG file.",
+        Assert.Equal("The original picture of page 2 is not in its declared image format (JPEG).",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg), new CompanionPage(jpeg) { Original = jpeg with { Data = [1, 2, 3] } }])).Message);
         Assert.Equal("The picture of page 1 needs a size in pixels and a resolution.",

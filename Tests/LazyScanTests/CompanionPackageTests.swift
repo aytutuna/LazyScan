@@ -163,10 +163,10 @@ final class CompanionPackageTests: XCTestCase {
                        "This document has more than 2,000 pages.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: with { $0.format = .png })]))?.message,
-                       "The picture of page 1 is not a PNG file.")
+                       "The picture of page 1 is not in its declared image format (PNG).")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: jpeg), CompanionPage(image: jpeg, original: with { $0.data = Data([1, 2, 3]) })]))?.message,
-                       "The original picture of page 2 is not a JPEG file.")
+                       "The original picture of page 2 is not in its declared image format (JPEG).")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: with { $0.dpi = 0 })]))?.message,
                        "The picture of page 1 needs a size in pixels and a resolution.")

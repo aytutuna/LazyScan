@@ -348,7 +348,7 @@ public static class CompanionPackage
         string subject = Subject(pageNumber, original);
         if (Sniff(image.Data) != image.Format)
         {
-            throw Invalid(Loc.T("{0} is not a {1} file.", subject, FormatValue(image.Format).ToUpperInvariant()));
+            throw Invalid(Loc.T("{0} is not in its declared image format ({1}).", subject, FormatValue(image.Format).ToUpperInvariant()));
         }
         if (image.Format == CompanionImageFormat.Tiff && image.ColorMode != ColorMode.BlackWhite)
         {

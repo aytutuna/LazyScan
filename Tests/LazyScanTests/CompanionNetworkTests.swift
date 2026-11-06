@@ -185,12 +185,12 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertEqual(checks.map(\.id), ["phoneNetwork:\(TestNetworks.college().id)", "phoneFirewall", "phoneIsolation"])
         let network = checks[0]
         XCTAssertEqual(network.status, .warning)
-        XCTAssertEqual(network.title, "Not receiving on eduroam")
+        XCTAssertEqual(network.title, "Not receiving: eduroam")
         XCTAssertTrue(network.detail.contains("as a public network"))
         XCTAssertTrue(network.detail.contains("Allow receiving on this network"))
         XCTAssertEqual(network.actions, [.openNetworkSettings])
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "1 warning found.")
-        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Not receiving from phones on eduroam.")
+        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Networks not receiving from phones: eduroam.")
         XCTAssertEqual(checks[2].status, .tip)
         XCTAssertTrue(checks[2].detail.contains("hotspot"))
     }
@@ -202,11 +202,11 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertEqual(checks.map(\.id),
                        ["phoneListening", "phoneNetwork:\(TestNetworks.college().id)", "phoneFirewall", "phoneIsolation"])
         XCTAssertEqual(checks[0].detail, "Listening on port 52731. 2 phones are paired.")
-        XCTAssertEqual(checks[1].title, "Receiving on eduroam, which you allowed")
+        XCTAssertEqual(checks[1].title, "Receiving allowed: eduroam")
         XCTAssertEqual(checks[1].detail, "Paired phones on this network can send documents to this PC.")
         XCTAssertTrue(checks[2].detail.contains("Public networks ticked"))
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "Nothing here stops a paired phone from connecting.")
-        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Receiving from phones on eduroam.")
+        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Networks receiving from phones: eduroam.")
     }
 
     func testChecks_FirewallBlockIsAProblem() {

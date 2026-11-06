@@ -16,7 +16,7 @@ public enum PackageText {
     /// Why a document's pages are not added with these settings, and what to change to add them.
     public static func notOfferedMessage(for settings: ScanSettings) -> String {
         if PhotoImport.ownSaveTaskReason(settings) != nil, let task = settings.task {
-            return L10n.t("The {0} task saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.", TaskCatalog.definition(task).title)
+            return L10n.t("Task “{0}” saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.", TaskCatalog.definition(task).title)
         }
         return L10n.t("A document's pages are added to the page queue: choose Document mode, or a document task, with Collect pages before saving on, to add them.")
     }

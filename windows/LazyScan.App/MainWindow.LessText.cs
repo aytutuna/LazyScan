@@ -97,7 +97,7 @@ public partial class MainWindow
         MultiPageBox.ToolTip = why ?? Loc.T("Off: each scan is saved right away");
         var shownFormat = InspectorSections.SavesPageFormat(ViewModel.Settings) ? OutputFormats.PageFormat(format) : format;
         AutomationProperties.SetHelpText(MultiPageBox,
-            why ?? Loc.T("On: pages are collected until you {0}. Off: each scan is saved right away.", OutputFormats.SaveTitle(shownFormat)));
+            why ?? Loc.T("On: pages are collected until you save them. Off: each scan is saved right away."));
     }
 
     /// <summary>The Save button's ▾: the other ways to save the queue.</summary>
