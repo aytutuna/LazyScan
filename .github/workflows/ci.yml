@@ -360,7 +360,7 @@ jobs:
     timeout-minutes: 180
     env:
       # The languages ci/l10n walks the screens in, read there before they go live.
-      SHOT_LANGUAGES: de ar ja ru
+      SHOT_LANGUAGES: de ar ja ru tr
     steps:
       - uses: actions/checkout@v7
       - name: Select Xcode 26.6
