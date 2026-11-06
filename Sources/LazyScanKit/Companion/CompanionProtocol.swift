@@ -246,7 +246,7 @@ public struct CompanionError: Equatable, Sendable {
         CompanionError(code: CompanionErrorCode.declined, message: L10n.t("Pairing was declined on the computer."))
     }
     public static var tooManyDevices: CompanionError {
-        CompanionError(code: CompanionErrorCode.tooManyDevices, message: L10n.t("This computer is paired with {0} phones already. Remove one there first.", PairedDeviceStore.maxDevices))
+        CompanionError(code: CompanionErrorCode.tooManyDevices, message: L10n.plural(PairedDeviceStore.maxDevices, one: "This computer is paired with {0} phone already. Remove it there first.", other: "This computer is paired with {0} phones already. Remove one there first."))
     }
     public static var tooLarge: CompanionError {
         CompanionError(code: CompanionErrorCode.tooLarge, message: L10n.t("This document is too large to send in one piece."))

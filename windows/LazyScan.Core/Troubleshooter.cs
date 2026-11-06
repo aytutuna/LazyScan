@@ -380,12 +380,6 @@ public static class Troubleshooter
         _ => 3,
     };
 
-    private static string Computer(TroubleshootPlatform platform) => platform switch
-    {
-        TroubleshootPlatform.Windows => "PC",
-        _ => "Mac",
-    };
-
     /// <summary>The system that searches the network, in the discovery check's more help.</summary>
     private static string SearchingSystem(TroubleshootPlatform platform) =>
         platform == TroubleshootPlatform.Ios ? "iOS" : "Windows";
@@ -415,7 +409,9 @@ public static class Troubleshooter
                 JoinSentences(failure.Message,
                               platform == TroubleshootPlatform.Ios
                                   ? Loc.T("It must be on the same network as this device.")
-                                  : Loc.T("It must be connected by its cable or to the same network as this {0}.", Computer(platform)))),
+                                  : platform == TroubleshootPlatform.Windows
+                                  ? Loc.T("It must be connected by its cable or to the same network as this PC.")
+                                  : Loc.T("It must be connected by its cable or to the same network as this Mac."))),
         };
     }
 
@@ -429,7 +425,9 @@ public static class Troubleshooter
                 "network", CheckStatus.Problem, Loc.T("Not connected to a network"),
                 Loc.T("Connect to the network the scanner is on, then select Refresh."),
                 [TroubleshootAction.OpenNetworkSettings, TroubleshootAction.Refresh],
-                Loc.T("This {0} is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.", Computer(snapshot.Platform))),
+                snapshot.Platform == TroubleshootPlatform.Windows
+                    ? Loc.T("This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.")
+                    : Loc.T("This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.")),
             NetworkStatus.PublicNetwork => new TroubleshootCheck(
                 "network", CheckStatus.Warning, Loc.T("Network set to Public"),
                 Loc.T("Windows won't find network scanners on a Public network."),

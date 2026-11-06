@@ -5,11 +5,11 @@ import Foundation
 /// save the queue as one PDF, Word document or text file; `OutputFormat.queueFormat`). Swift only, like
 /// the other members the app shells use.
 extension AppState {
-    /// "Save JPEG", or "Save 3 JPEGs" for several pages: the button that saves the collected pages as
+    /// "Save JPEG", or "Save JPEG (3 pages)" for several pages: the button that saves the collected pages as
     /// pictures in `format` (its image format, `OutputFormat.imageFormatOrJPEG`).
     public nonisolated static func imagesSaveTitle(_ format: OutputFormat, pageCount: Int) -> String {
         let name: String = format.imageFormatOrJPEG.label
-        if pageCount > 1 { return L10n.plural(pageCount, one: "Save {0} {1}", other: "Save {0} {1}s", name) }
+        if pageCount > 1 { return L10n.plural(pageCount, one: "Save {1} ({0} page)", other: "Save {1} ({0} pages)", name) }
         return L10n.t("Save {0}", name)
     }
 

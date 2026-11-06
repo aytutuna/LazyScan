@@ -245,7 +245,7 @@ public sealed record CompanionError(string Code, string Message)
     public static CompanionError TokenExpired => new(CompanionErrorCode.TokenExpired, Loc.T("This pairing code has expired. Show a new code on the computer."));
     public static CompanionError TokenUsed => new(CompanionErrorCode.TokenUsed, Loc.T("This pairing code was already used. Show a new code on the computer."));
     public static CompanionError Declined => new(CompanionErrorCode.Declined, Loc.T("Pairing was declined on the computer."));
-    public static CompanionError TooManyDevices => new(CompanionErrorCode.TooManyDevices, Loc.T("This computer is paired with {0} phones already. Remove one there first.", PairedDeviceStore.MaxDevices));
+    public static CompanionError TooManyDevices => new(CompanionErrorCode.TooManyDevices, Loc.Plural(PairedDeviceStore.MaxDevices, "This computer is paired with {0} phone already. Remove it there first.", "This computer is paired with {0} phones already. Remove one there first."));
     public static CompanionError TooLarge => new(CompanionErrorCode.TooLarge, Loc.T("This document is too large to send in one piece."));
     public static CompanionError RateLimited => new(CompanionErrorCode.RateLimited, Loc.T("Too many attempts. Wait a minute, then try again."));
     public static CompanionError NotFound => new(CompanionErrorCode.NotFound, Loc.T("Not found."));

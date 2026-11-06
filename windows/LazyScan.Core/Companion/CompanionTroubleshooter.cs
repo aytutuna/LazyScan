@@ -42,7 +42,7 @@ public static class CompanionTroubleshooter
         if (SyncFolderCheck(snapshot) is { } syncFolder) checks.Add(syncFolder);
         checks.Add(new TroubleshootCheck(
             "phoneIsolation", CheckStatus.Tip, Loc.T("Phone cannot connect on the same Wi-Fi?"),
-            Loc.T("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this {0} to your phone's hotspot instead, or send the document from the phone's share sheet.", "PC"),
+            Loc.T("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this PC to your phone's hotspot instead, or send the document from the phone's share sheet."),
             []));
         return [.. checks.Select((check, index) => (check, index))
                          .OrderBy(pair => Rank(pair.check.Status))
@@ -84,11 +84,11 @@ public static class CompanionTroubleshooter
         CompanionListenState.Failed => new TroubleshootCheck(
             "phoneListening", CheckStatus.Problem, Loc.T("Lazy Scan could not start receiving"),
             JoinSentences(snapshot.ListenError,
-                          Loc.T("Close other copies of Lazy Scan, then select Refresh. Restarting the {0} also helps.", "PC")),
+                          Loc.T("Close other copies of Lazy Scan, then select Refresh. Restarting the PC also helps.")),
             [TroubleshootAction.Refresh]),
         CompanionListenState.Offline => new TroubleshootCheck(
             "phoneListening", CheckStatus.Problem, Loc.T("Not connected to a network"),
-            Loc.T("This {0} is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.", "PC"),
+            Loc.T("This PC is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot."),
             [TroubleshootAction.OpenNetworkSettings, TroubleshootAction.Refresh]),
         CompanionListenState.Elsewhere => new TroubleshootCheck(
             "phoneListening", CheckStatus.Warning, Loc.T("Another Lazy Scan window receives from phones"),
@@ -96,7 +96,7 @@ public static class CompanionTroubleshooter
             [TroubleshootAction.Refresh]),
         CompanionListenState.Off when !snapshot.PairingOpen => new TroubleshootCheck(
             "phoneListening", CheckStatus.Tip, Loc.T("No phone is paired"),
-            Loc.T("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this {0} does not listen for phones.", "PC"),
+            Loc.T("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this PC does not listen for phones."),
             []),
         CompanionListenState.Listening => new TroubleshootCheck(
             "phoneListening", CheckStatus.Ok, Loc.T("Ready for phones"),
@@ -119,10 +119,10 @@ public static class CompanionTroubleshooter
         {
             NetworkTrust.Private => new TroubleshootCheck(
                 id, CheckStatus.Ok, Loc.T("{0} is a private network", name),
-                Loc.T("Paired phones on this network can send documents to this {0}.", "PC"), []),
+                Loc.T("Paired phones on this network can send documents to this PC."), []),
             NetworkTrust.Approved => new TroubleshootCheck(
                 id, CheckStatus.Ok, Loc.T("Receiving on {0}, which you allowed", name),
-                Loc.T("Paired phones on this network can send documents to this {0}.", "PC"), []),
+                Loc.T("Paired phones on this network can send documents to this PC."), []),
             _ => new TroubleshootCheck(
                 id, CheckStatus.Warning, Loc.T("Not receiving on {0}", name),
                 network.Category == CompanionNetworkCategory.Domain
@@ -170,11 +170,10 @@ public static class CompanionTroubleshooter
             return null;
         }
         return new TroubleshootCheck(
-            "phoneSyncFolder", CheckStatus.Tip, Loc.T("Phone has not reached this {0} lately?", "PC"),
+            "phoneSyncFolder", CheckStatus.Tip, Loc.T("Phone has not reached this PC lately?"),
             Loc.Plural((int)quiet.TotalDays,
-                       "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
-                       "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
-                       "PC"),
+                       "No paired phone has connected for {0} day. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here.",
+                       "No paired phone has connected for {0} days. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here."),
             []);
     }
 

@@ -552,10 +552,6 @@
   "Save {0}": {
     "note": "{0} is an image format name such as JPEG or PNG; keep it."
   },
-  "Save {0} {1}": {
-    "other": "Save {0} {1}s",
-    "note": "{0} is the page count, {1} an image format name such as JPEG. English adds an s to {1} for the plural, which cannot be translated; make the form read naturally without it."
-  },
   "{0} and {1} found.": {
     "note": "{0} and {1} are counts of problems and warnings, each already a plural phrase such as '2 problems'."
   },
@@ -748,7 +744,6 @@
   },
   "The text cannot be copied here.": {},
   "Phone cannot connect on the same Wi-Fi?": {},
-  "Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this {0} to your phone's hotspot instead, or send the document from the phone's share sheet.": {},
   "Receiving from phones on {0}.": {},
   "No phone is paired yet.": {},
   "Not connected to a network.": {},
@@ -757,18 +752,14 @@
   "Another Lazy Scan window receives from phones.": {},
   "Nothing here stops a paired phone from connecting.": {},
   "Lazy Scan could not start receiving": {},
-  "Close other copies of Lazy Scan, then select Refresh. Restarting the {0} also helps.": {},
   "Not connected to a network": {},
-  "This {0} is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.": {},
   "Another Lazy Scan window receives from phones": {},
   "Documents from phones go to the Lazy Scan window that was opened first. Close it to receive here.": {},
   "No phone is paired": {},
-  "Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this {0} does not listen for phones.": {},
   "Listening on port {0} while the pairing code is shown.": {},
   "Ready for phones": {},
   "this network": {},
   "{0} is a private network": {},
-  "Paired phones on this network can send documents to this {0}.": {},
   "Receiving on {0}, which you allowed": {},
   "Not receiving on {0}": {},
   "Lazy Scan listens for phones only on networks you allow. If {0} is a network you trust, such as your home Wi-Fi, turn on Allow receiving on this network.": {},
@@ -782,12 +773,8 @@
   "When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow. Cancel blocks phones until the rule it makes is removed.": {},
   "Windows Firewall allows Lazy Scan": {},
   "Phones on the networks you receive on can reach this PC.": {},
-  "Phone has not reached this {0} lately?": {},
   "{0} and {1}": {
     "note": "Joins two names in a list; {0} is the names so far, {1} the last."
-  },
-  "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.": {
-    "other": "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here."
   },
   "No scanner answers at {0}": {},
   "Check that it is on and its address hasn't changed.": {},
@@ -826,9 +813,7 @@
   "Could not connect to {0}": {},
   "Check that it is on, awake and connected.": {},
   "It must be on the same network as this device.": {},
-  "It must be connected by its cable or to the same network as this {0}.": {},
   "Connect to the network the scanner is on, then select Refresh.": {},
-  "This {0} is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": {},
   "If this is your home or office network, set it to Private in network settings. You can also add the scanner by its address.": {},
   "If this is your home or office network, set it to Private in network settings.": {},
   "Network set to Public": {},
@@ -1501,7 +1486,6 @@
   "This pairing code has expired. Show a new code on the computer.": {},
   "This pairing code was already used. Show a new code on the computer.": {},
   "Pairing was declined on the computer.": {},
-  "This computer is paired with {0} phones already. Remove one there first.": {},
   "This document is too large to send in one piece.": {},
   "Too many attempts. Wait a minute, then try again.": {},
   "Not found.": {},
@@ -2405,6 +2389,39 @@
   },
   "Pages saved: {1} of {2}. The other one is kept in the queue: press {3} to try again.": {
     "other": "Pages saved: {1} of {2}. The other {0} are kept in the queue: press {3} to try again."
+  },
+  "Save {1} ({0} page)": {
+    "other": "Save {1} ({0} pages)",
+    "note": "Button that saves the queue as pictures: {1} is the image format name such as JPEG, {0} the page count."
+  },
+  "This computer is paired with {0} phone already. Remove it there first.": {
+    "other": "This computer is paired with {0} phones already. Remove one there first."
+  },
+  "Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this PC to your phone's hotspot instead, or send the document from the phone's share sheet.": {},
+  "Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this Mac to your phone's hotspot instead, or send the document from the phone's share sheet.": {},
+  "Close other copies of Lazy Scan, then select Refresh. Restarting the PC also helps.": {},
+  "Close other copies of Lazy Scan, then select Refresh. Restarting the Mac also helps.": {},
+  "This PC is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.": {},
+  "This Mac is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.": {},
+  "Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this PC does not listen for phones.": {},
+  "Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this Mac does not listen for phones.": {},
+  "Paired phones on this network can send documents to this PC.": {},
+  "Paired phones on this network can send documents to this Mac.": {},
+  "Phone has not reached this PC lately?": {},
+  "Phone has not reached this Mac lately?": {},
+  "No paired phone has connected for {0} day. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here.": {
+    "other": "No paired phone has connected for {0} days. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here."
+  },
+  "No paired phone has connected for {0} day. If the phone and this Mac are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this Mac, and they are added here.": {
+    "other": "No paired phone has connected for {0} days. If the phone and this Mac are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this Mac, and they are added here."
+  },
+  "It must be connected by its cable or to the same network as this PC.": {},
+  "It must be connected by its cable or to the same network as this Mac.": {},
+  "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": {},
+  "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": {},
+  "{0} Selected": {
+    "other": "{0} Selected",
+    "note": "Title of the page grid while pages are picked; {0} is how many are picked."
   },
   "infoplist": {
     "ios": {

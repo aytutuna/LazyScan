@@ -55,7 +55,7 @@ enum PageViewerText {
 
     /// The page grid's title while pages are picked: "Select Pages", "2 Selected".
     static func selectedTitle(_ count: Int) -> String {
-        count == 0 ? String(localized: "Select Pages") : String(localized: "\(count) Selected")
+        count == 0 ? String(localized: "Select Pages") : L10n.plural(count, one: "{0} Selected", other: "{0} Selected")
     }
 
     /// "Delete 3 pages?" for the pages picked in the grid.

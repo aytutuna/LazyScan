@@ -89,17 +89,17 @@ public enum CompanionTroubleshooter {
 
     /// The checks: problems first, then warnings, then what is fine, then tips (each group in this order).
     public static func diagnose(_ snapshot: CompanionSnapshot) -> [TroubleshootCheck] {
-        let computer = snapshot.platform == .windows ? "PC" : "Mac"
+        let pc = snapshot.platform == .windows
         var checks: [TroubleshootCheck] = []
-        if let listen = listenCheck(snapshot, computer: computer) { checks.append(listen) }
+        if let listen = listenCheck(snapshot, pc: pc) { checks.append(listen) }
         for state in snapshot.networks {
-            checks.append(networkCheck(state, platform: snapshot.platform, computer: computer))
+            checks.append(networkCheck(state, platform: snapshot.platform, pc: pc))
         }
         if let firewall = firewallCheck(snapshot) { checks.append(firewall) }
-        if let syncFolder = syncFolderCheck(snapshot, computer: computer) { checks.append(syncFolder) }
+        if let syncFolder = syncFolderCheck(snapshot, pc: pc) { checks.append(syncFolder) }
         checks.append(TroubleshootCheck(
             id: "phoneIsolation", status: .tip, title: L10n.t("Phone cannot connect on the same Wi-Fi?"),
-            detail: L10n.t("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this {0} to your phone's hotspot instead, or send the document from the phone's share sheet.", computer),
+            detail: pc ? L10n.t("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this PC to your phone's hotspot instead, or send the document from the phone's share sheet.") : L10n.t("Some networks, often at schools, hotels and on guest Wi-Fi, keep devices from reaching each other even on the same Wi-Fi. The phone's connection check then says so. Connect this Mac to your phone's hotspot instead, or send the document from the phone's share sheet."),
             actions: []))
         var ranked: [(check: TroubleshootCheck, index: Int)] = []
         for (index, check) in checks.enumerated() {
@@ -145,18 +145,18 @@ public enum CompanionTroubleshooter {
         return L10n.t("{0} found.", problems > 0 ? problemText : warningText)
     }
 
-    private static func listenCheck(_ snapshot: CompanionSnapshot, computer: String) -> TroubleshootCheck? {
+    private static func listenCheck(_ snapshot: CompanionSnapshot, pc: Bool) -> TroubleshootCheck? {
         switch snapshot.listen {
         case .failed:
             return TroubleshootCheck(
                 id: "phoneListening", status: .problem, title: L10n.t("Lazy Scan could not start receiving"),
                 detail: joinSentences(snapshot.listenError,
-                                      L10n.t("Close other copies of Lazy Scan, then select Refresh. Restarting the {0} also helps.", computer)),
+                                      pc ? L10n.t("Close other copies of Lazy Scan, then select Refresh. Restarting the PC also helps.") : L10n.t("Close other copies of Lazy Scan, then select Refresh. Restarting the Mac also helps.")),
                 actions: [.refresh])
         case .offline:
             return TroubleshootCheck(
                 id: "phoneListening", status: .problem, title: L10n.t("Not connected to a network"),
-                detail: L10n.t("This {0} is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.", computer),
+                detail: pc ? L10n.t("This PC is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot.") : L10n.t("This Mac is not on a network, so phones cannot reach it. Connect to the same Wi-Fi as your phone, or to your phone's hotspot."),
                 actions: [.openNetworkSettings, .refresh])
         case .elsewhere:
             return TroubleshootCheck(
@@ -166,7 +166,7 @@ public enum CompanionTroubleshooter {
         case .off where !snapshot.pairingOpen:
             return TroubleshootCheck(
                 id: "phoneListening", status: .tip, title: L10n.t("No phone is paired"),
-                detail: L10n.t("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this {0} does not listen for phones.", computer),
+                detail: pc ? L10n.t("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this PC does not listen for phones.") : L10n.t("Choose Pair a phone and scan the code with Lazy Scan on your phone. Until a phone is paired, this Mac does not listen for phones."),
                 actions: [])
         case .listening:
             let detail: String
@@ -182,7 +182,7 @@ public enum CompanionTroubleshooter {
     }
 
     private static func networkCheck(_ state: CompanionNetworkState, platform: TroubleshootPlatform,
-                                      computer: String) -> TroubleshootCheck {
+                                      pc: Bool) -> TroubleshootCheck {
         let network = state.network
         let id = "phoneNetwork:\(network.id)"
         let name = network.name.isEmpty ? L10n.t("this network") : network.name
@@ -190,11 +190,11 @@ public enum CompanionTroubleshooter {
         case .privateNetwork:
             return TroubleshootCheck(
                 id: id, status: .ok, title: L10n.t("{0} is a private network", name),
-                detail: L10n.t("Paired phones on this network can send documents to this {0}.", computer), actions: [])
+                detail: pc ? L10n.t("Paired phones on this network can send documents to this PC.") : L10n.t("Paired phones on this network can send documents to this Mac."), actions: [])
         case .approved:
             return TroubleshootCheck(
                 id: id, status: .ok, title: L10n.t("Receiving on {0}, which you allowed", name),
-                detail: L10n.t("Paired phones on this network can send documents to this {0}.", computer), actions: [])
+                detail: pc ? L10n.t("Paired phones on this network can send documents to this PC.") : L10n.t("Paired phones on this network can send documents to this Mac."), actions: [])
         case .notTrusted:
             guard platform == .windows else {
                 return TroubleshootCheck(
@@ -242,15 +242,18 @@ public enum CompanionTroubleshooter {
         }
     }
 
-    private static func syncFolderCheck(_ snapshot: CompanionSnapshot, computer: String) -> TroubleshootCheck? {
+    private static func syncFolderCheck(_ snapshot: CompanionSnapshot, pc: Bool) -> TroubleshootCheck? {
         guard snapshot.pairedCount > 0, !snapshot.syncFolderChosen, let quiet = snapshot.phonesQuietFor,
               quiet >= quietTime else { return nil }
         return TroubleshootCheck(
-            id: "phoneSyncFolder", status: .tip, title: L10n.t("Phone has not reached this {0} lately?", computer),
-            detail: L10n.plural(Int(quiet / (24 * 60 * 60)),
-                                one: "No paired phone has connected for {0} day. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
-                                other: "No paired phone has connected for {0} days. If the phone and this {1} are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this {1}, and they are added here.",
-                                computer),
+            id: "phoneSyncFolder", status: .tip, title: pc ? L10n.t("Phone has not reached this PC lately?") : L10n.t("Phone has not reached this Mac lately?"),
+            detail: pc
+                ? L10n.plural(Int(quiet / (24 * 60 * 60)),
+                              one: "No paired phone has connected for {0} day. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here.",
+                              other: "No paired phone has connected for {0} days. If the phone and this PC are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this PC, and they are added here.")
+                : L10n.plural(Int(quiet / (24 * 60 * 60)),
+                              one: "No paired phone has connected for {0} day. If the phone and this Mac are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this Mac, and they are added here.",
+                              other: "No paired phone has connected for {0} days. If the phone and this Mac are often on a network that keeps devices apart, choose a cloud folder above, one synced by OneDrive or iCloud Drive. The phone then puts documents there when it cannot reach this Mac, and they are added here."),
             actions: [])
     }
 

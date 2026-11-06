@@ -260,7 +260,7 @@ public enum IOSCameraText {
         guard IOSCameraLens.warns(size, physicalMemory: physicalMemory) else { return nil }
         let memory: String = ByteCountFormatter.string(fromByteCount: Int64(IOSCameraLens.gigabytes(physicalMemory)) * 1_000_000_000, countStyle: .decimal)
         let page: String = ByteCountFormatter.string(fromByteCount: Int64((Double(IOSCameraLens.processingBytes(size)) / 100_000_000).rounded()) * 100_000_000, countStyle: .decimal)
-        var text: String = String(localized: "This iPhone has \(memory) of memory. \(sizeLabel(size)) pages need about \(page) each while they are processed, so the app may close.")
+        var text: String = String(localized: "This iPhone has \(memory) of memory. At \(sizeLabel(size)), each page needs about \(page) while it is processed, so the app may close.")
         if let safer = IOSCameraLens.saferSize(among: choices, physicalMemory: physicalMemory) {
             text += " " + String(localized: "\(sizeLabel(safer)) is safer.")
         }

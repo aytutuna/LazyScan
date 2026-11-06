@@ -451,9 +451,9 @@ final class AppStateSeamTests: XCTestCase {
     func test_imagesSaveTitle_andMessage() {
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 1), "Save JPEG")
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 0), "Save JPEG")
-        XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 3), "Save 3 JPEGs")
-        XCTAssertEqual(AppState.imagesSaveTitle(.pdf, pageCount: 2), "Save 2 JPEGs")
-        XCTAssertEqual(AppState.imagesSaveTitle(.png, pageCount: 2), "Save 2 PNGs")
+        XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 3), "Save JPEG (3 pages)")
+        XCTAssertEqual(AppState.imagesSaveTitle(.pdf, pageCount: 2), "Save JPEG (2 pages)")
+        XCTAssertEqual(AppState.imagesSaveTitle(.png, pageCount: 2), "Save PNG (2 pages)")
         let one = URL(fileURLWithPath: "/tmp/Scan 1.jpg")
         let two = URL(fileURLWithPath: "/tmp/Scan 2.jpg")
         XCTAssertEqual(AppState.imagesSavedMessage([one], format: .jpeg), "Saved JPEG: Scan 1.jpg")
@@ -762,7 +762,7 @@ final class AppStateSeamTests: XCTestCase {
     @MainActor
     func test_picturesSavedAsTheyAreScanned_whenTheFilesCannotBeWritten_waitInTheQueue() async throws {
         // The Save that saves them: the phone saves the queue as pictures, the Mac as one PDF.
-        let titles: [(TroubleshootPlatform, String)] = [(.mac, "Save PDF"), (.ios, "Save 2 JPEGs")]
+        let titles: [(TroubleshootPlatform, String)] = [(.mac, "Save PDF"), (.ios, "Save JPEG (2 pages)")]
         for (platform, saveTitle) in titles {
             let state = makeState()
             state.platform = platform

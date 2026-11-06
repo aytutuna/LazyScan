@@ -413,13 +413,6 @@ public enum Troubleshooter {
         }
     }
 
-    private static func computer(_ platform: TroubleshootPlatform) -> String {
-        switch platform {
-        case .windows: return "PC"
-        case .ios, .mac: return "Mac"
-        }
-    }
-
     /// The system that searches the network, in the discovery check's more help.
     private static func searchingSystem(_ platform: TroubleshootPlatform) -> String {
         platform == .ios ? "iOS" : "Windows"
@@ -449,7 +442,9 @@ public enum Troubleshooter {
             detail: L10n.t("Check that it is on, awake and connected."),
             more: joinSentences(failure.message, platform == .ios
                                     ? L10n.t("It must be on the same network as this device.")
-                                    : L10n.t("It must be connected by its cable or to the same network as this {0}.", computer(platform))),
+                                    : platform == .windows
+                                    ? L10n.t("It must be connected by its cable or to the same network as this PC.")
+                                    : L10n.t("It must be connected by its cable or to the same network as this Mac.")),
             actions: [.refresh])
     }
 
@@ -461,7 +456,9 @@ public enum Troubleshooter {
             return TroubleshootCheck(
                 id: "network", status: .problem, title: L10n.t("Not connected to a network"),
                 detail: L10n.t("Connect to the network the scanner is on, then select Refresh."),
-                more: L10n.t("This {0} is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.", computer(snapshot.platform)),
+                more: windows
+                    ? L10n.t("This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.")
+                    : L10n.t("This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected."),
                 actions: [.openNetworkSettings, .refresh])
         case .publicNetwork:
             let more = windows

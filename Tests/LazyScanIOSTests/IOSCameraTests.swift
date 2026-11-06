@@ -388,16 +388,16 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertNil(IOSCameraLens.saferSize(among: offered, physicalMemory: 1_000_000_000))
         // The words.
         XCTAssertEqual(IOSCameraText.memoryWarning(fortyEight, among: offered, physicalMemory: six),
-                       "This iPhone has 6 GB of memory. 48 MP pages need about 800 MB each while they are processed, "
+                       "This iPhone has 6 GB of memory. At 48 MP, each page needs about 800 MB while it is processed, "
                        + "so the app may close. 24 MP is safer.")
         XCTAssertEqual(IOSCameraText.memoryWarning(fortyEight, among: [twelve, fortyEight], physicalMemory: four),
-                       "This iPhone has 4 GB of memory. 48 MP pages need about 800 MB each while they are processed, "
+                       "This iPhone has 4 GB of memory. At 48 MP, each page needs about 800 MB while it is processed, "
                        + "so the app may close. 12 MP is safer.")
         XCTAssertNil(IOSCameraText.memoryWarning(fortyEight, among: offered, physicalMemory: eight))
         XCTAssertNil(IOSCameraText.memoryWarning(twentyFour, among: offered, physicalMemory: six))
         // Nothing safer to offer: no last sentence.
         XCTAssertEqual(IOSCameraText.memoryWarning(twelve, among: [twelve], physicalMemory: 1_000_000_000),
-                       "This iPhone has 1 GB of memory. 12 MP pages need about 200 MB each while they are processed, "
+                       "This iPhone has 1 GB of memory. At 12 MP, each page needs about 200 MB while it is processed, "
                        + "so the app may close.")
     }
 

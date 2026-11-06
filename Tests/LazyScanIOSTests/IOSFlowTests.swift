@@ -463,7 +463,7 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(IOSShell.floatingSaveTitle(word, plan: plan, target: nil), "Save Word \u{00B7} 3")
         var jpeg: ScanSettings = document
         jpeg.format = .jpeg
-        XCTAssertEqual(IOSShell.floatingSaveTitle(jpeg, plan: plan, target: nil), "Save 3 JPEGs")
+        XCTAssertEqual(IOSShell.floatingSaveTitle(jpeg, plan: plan, target: nil), "Save JPEG (3 pages)")
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
         XCTAssertEqual(IOSShell.floatingSaveTitle(document, plan: plan, target: target), "Add to Contract.pdf")
     }
@@ -516,7 +516,7 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(IOSShell.saveFirstLabel(document, pageCount: 3, target: nil), "Save PDF first")
         var jpeg: ScanSettings = document
         jpeg.format = .jpeg
-        XCTAssertEqual(IOSShell.saveFirstLabel(jpeg, pageCount: 3, target: nil), "Save 3 JPEGs first")
+        XCTAssertEqual(IOSShell.saveFirstLabel(jpeg, pageCount: 3, target: nil), "Save JPEG (3 pages) first")
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
         XCTAssertEqual(IOSShell.saveFirstLabel(document, pageCount: 3, target: target), "Add to Contract.pdf first")
     }

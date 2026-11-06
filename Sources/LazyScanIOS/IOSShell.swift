@@ -448,7 +448,7 @@ public enum IOSShell {
         }
     }
 
-    /// The Save button's title: "Save 3 JPEGs" for pictures (`AppState.imagesSaveTitle`), else the
+    /// The Save button's title: "Save JPEG (3 pages)" for pictures (`AppState.imagesSaveTitle`), else the
     /// queue's own ("Save PDF (3 pages)", "Save Word").
     public static func saveTitle(_ settings: ScanSettings, plan: SavePlan) -> String {
         if savesImages(settings) {
@@ -459,7 +459,7 @@ public enum IOSShell {
 
     /// The Save button floating on camera mode's viewfinder: the format's own words and the pages to save
     /// ("Save PDF · 3"); a split queue's own title ("Save 2 PDFs (5 pages)"), "Add to Contract.pdf" while
-    /// the pages go into a PDF picked, and "Save 3 JPEGs" for pictures, as the printer screen's Save says.
+    /// the pages go into a PDF picked, and "Save JPEG (3 pages)" for pictures, as the printer screen's Save says.
     public static func floatingSaveTitle(_ settings: ScanSettings, plan: SavePlan, target: URL?) -> String {
         if let target {
             return PDFAppender.saveTitle(target.lastPathComponent)
@@ -506,7 +506,7 @@ public enum IOSShell {
     }
 
     /// The question's button that saves the pages as Save would before the kind changes: "Save PDF first",
-    /// "Save 3 JPEGs first", "Add to Contract.pdf first".
+    /// "Save JPEG (3 pages) first", "Add to Contract.pdf first".
     public static func saveFirstLabel(_ settings: ScanSettings, pageCount: Int, target: URL?) -> String {
         if let target {
             return String(localized: "\(PDFAppender.saveTitle(target.lastPathComponent)) first")
