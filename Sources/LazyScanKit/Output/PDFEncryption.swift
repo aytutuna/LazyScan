@@ -266,7 +266,7 @@ public final class PDFProtection: @unchecked Sendable {
     /// The dialog's short line next to the strength bar ("" when nothing is typed).
     public static func strengthLabel(_ strength: PasswordStrength) -> String {
         switch strength {
-        case .weak: return L10n.t("Weak · use 12+ characters")
+        case .weak: return L10n.t("Weak · use {0}+ characters", 12)
         case .fair: return L10n.t("Fair · longer is safer")
         case .strong: return L10n.t("Strong")
         case .none: return ""
@@ -288,7 +288,7 @@ public final class PDFProtection: @unchecked Sendable {
     public static func strengthHint(_ strength: PasswordStrength) -> String {
         switch strength {
         case .weak:
-            return L10n.t("Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.")
+            return L10n.t("Weak: easy to guess. Longer is stronger: use {0} or more characters, or a few unrelated words.", 12)
         case .fair:
             return L10n.t("Fair. A few more characters, or another word, would make it much harder to guess.")
         case .strong:

@@ -337,9 +337,9 @@ public static class CompanionPackage
             if (page.Original is { } original) ValidateImage(original, i + 1, true);
             if (page.RotationQuarterTurns is < 0 or > 3)
             {
-                throw Invalid(Loc.T("Page {0}'s rotation must be 0 to 3 quarter turns.", i + 1));
+                throw Invalid(Loc.T("The rotation of page {0} must be {1} to {2} quarter turns.", i + 1, 0, 3));
             }
-            if (page.SheetIndex is < 0) throw Invalid(Loc.T("Page {0}'s sheet cannot be negative.", i + 1));
+            if (page.SheetIndex is < 0) throw Invalid(Loc.T("The sheet number of page {0} cannot be negative.", i + 1));
         }
     }
 
@@ -475,9 +475,9 @@ public static class CompanionPackage
     public static string NewerVersionMessage(int version) =>
         Loc.T("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", Loc.Plain(version));
 
-    /// <summary>"Page 3's picture", "Page 3's original picture".</summary>
+    /// <summary>"The picture of page 3", "The original picture of page 3".</summary>
     public static string Subject(int pageNumber, bool original) =>
-        original ? Loc.T("Page {0}'s original picture", pageNumber) : Loc.T("Page {0}'s picture", pageNumber);
+        original ? Loc.T("The original picture of page {0}", pageNumber) : Loc.T("The picture of page {0}", pageNumber);
 
     private static CompanionDocument Read(ZipStoreReader reader)
     {

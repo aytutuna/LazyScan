@@ -248,7 +248,7 @@ public final class ZipStoreReader {
         case .encrypted:
             return L10n.t("{0} is encrypted. Encrypted archives cannot be read.", name)
         case .zip64:
-            return L10n.t("The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported.")
+            return L10n.t("The archive uses ZIP64 (for archives past {0} or {1} entries), which is not supported.", L10n.t("{0} GB", 4), 65_535)
         case .dataDescriptor:
             return L10n.t("{0} keeps its sizes after its data (a data descriptor), which is not supported.", name)
         case .unsafeName:

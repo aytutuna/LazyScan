@@ -152,7 +152,7 @@ public enum PhotoImport {
     /// Why a file that is no picture (or a damaged one) was not imported (`unreadableMessage`).
     public static var unreadableDetail: String { L10n.t("it is not a picture this app can read, or the file is damaged.") }
     /// Why a photo of more than `maxPhotoPixels` was not imported.
-    public static var tooLargeDetail: String { L10n.t("the photo is too large (more than 150 megapixels).") }
+    public static var tooLargeDetail: String { L10n.t("the photo is too large (more than {0} megapixels).", 150) }
     /// Why a file that went away before it was read was not imported.
     public static var missingDetail: String { L10n.t("the file is no longer there.") }
 

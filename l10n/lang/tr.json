@@ -14,10 +14,8 @@
     "Type a password.": "Parola girin.",
     "A password can't contain tabs, line breaks or other control characters.": "Parola sekme, satır sonu ya da başka bir denetim karakteri içeremez.",
     "Passwords don't match": "Parolalar eşleşmiyor",
-    "Weak · use 12+ characters": "Zayıf · en az 12 karakter",
     "Fair · longer is safer": "Orta · uzadıkça güçlenir",
     "Strong": "Güçlü",
-    "Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words.": "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az 12 karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın.",
     "Fair. A few more characters, or another word, would make it much harder to guess.": "Orta. Birkaç karakter ya da bir sözcük daha eklerseniz tahmin edilmesi çok zorlaşır.",
     "Strong.": "Güçlü.",
     "{0} scan": {"one": "{0} tarama", "other": "{0} tarama"},
@@ -31,7 +29,9 @@
     "Confirm|password field": "Parolayı yeniden girin",
     "Allow printing": "Yazdırmaya izin ver",
     "Allow copying": "Kopyalamaya izin ver",
-    "Allow copying text and images": "Metin ve görüntülerin kopyalanmasına izin ver"
+    "Allow copying text and images": "Metin ve görüntülerin kopyalanmasına izin ver",
+    "Weak · use {0}+ characters": "Zayıf · en az {0} karakter",
+    "Weak: easy to guess. Longer is stronger: use {0} or more characters, or a few unrelated words.": "Zayıf: kolayca tahmin edilebilir. Parola uzadıkça güçlenir; en az {0} karakter ya da birbiriyle ilgisiz birkaç sözcük kullanın."
   },
   "infoplist": {
     "ios": {

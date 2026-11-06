@@ -244,10 +244,10 @@ public static class ModelLabels
     /// <summary>How the size stores the pages, for screen readers (the segment's help text).</summary>
     public static string Detail(this PdfSizePreset preset) => preset switch
     {
-        PdfSizePreset.Standard => Loc.T("Up to 300 dpi (black & white 600), gray pages saved in gray."),
+        PdfSizePreset.Standard => Loc.T("Up to {0} dpi (black & white {1}), gray pages saved in gray.", 300, 600),
         PdfSizePreset.Best => Loc.T("Full resolution, high quality."),
-        PdfSizePreset.Compact => Loc.T("Up to 200 dpi (black & white 300), more compression."),
-        PdfSizePreset.Smallest => Loc.T("Up to 150 dpi (black & white 300), most compression."),
+        PdfSizePreset.Compact => Loc.T("Up to {0} dpi (black & white {1}), more compression.", 200, 300),
+        PdfSizePreset.Smallest => Loc.T("Up to {0} dpi (black & white {1}), most compression.", 150, 300),
         _ => "",
     };
 

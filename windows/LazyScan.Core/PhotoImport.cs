@@ -147,7 +147,7 @@ public static class PhotoImport
     /// <summary>Why a file that is no picture (or a damaged one) was not imported (<see cref="UnreadableMessage"/>).</summary>
     public static string UnreadableDetail => Loc.T("it is not a picture this app can read, or the file is damaged.");
     /// <summary>Why a photo of more than <see cref="MaxPhotoPixels"/> was not imported.</summary>
-    public static string TooLargeDetail => Loc.T("the photo is too large (more than 150 megapixels).");
+    public static string TooLargeDetail => Loc.T("the photo is too large (more than {0} megapixels).", 150);
     /// <summary>Why a file that went away before it was read was not imported.</summary>
     public static string MissingDetail => Loc.T("the file is no longer there.");
 

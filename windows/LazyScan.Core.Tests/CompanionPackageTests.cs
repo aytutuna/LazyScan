@@ -170,7 +170,7 @@ public class CompanionPackageTests
 
         var gray = new CompanionDocument("T", [new CompanionPage(new CompanionImage(tiff, CompanionImageFormat.Tiff, 8, 8, 300, ColorMode.Grayscale))]);
         var error = AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument, gray);
-        Assert.Equal("Page 1's picture is a TIFF, which only black & white pages can be.", error.Message);
+        Assert.Equal("The picture of page 1 is a TIFF, which only black & white pages can be.", error.Message);
     }
 
     [Fact]
@@ -189,20 +189,20 @@ public class CompanionPackageTests
         Assert.Equal("This document has more than 2,000 pages.",
                      AssertWriteRefused(CompanionPackageErrorKind.TooManyPages,
                                         new CompanionDocument("x", Enumerable.Repeat(new CompanionPage(jpeg), 2001).ToList())).Message);
-        Assert.Equal("Page 1's picture is not a PNG file.",
+        Assert.Equal("The picture of page 1 is not a PNG file.",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg with { Format = CompanionImageFormat.Png })])).Message);
-        Assert.Equal("Page 2's original picture is not a JPEG file.",
+        Assert.Equal("The original picture of page 2 is not a JPEG file.",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg), new CompanionPage(jpeg) { Original = jpeg with { Data = [1, 2, 3] } }])).Message);
-        Assert.Equal("Page 1's picture needs a size in pixels and a resolution.",
+        Assert.Equal("The picture of page 1 needs a size in pixels and a resolution.",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg with { Dpi = 0 })])).Message);
         AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument, new CompanionDocument("x", [new CompanionPage(jpeg with { PixelWidth = 0 })]));
-        Assert.Equal("Page 1's rotation must be 0 to 3 quarter turns.",
+        Assert.Equal("The rotation of page 1 must be 0 to 3 quarter turns.",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg) { RotationQuarterTurns = 4 }])).Message);
-        Assert.Equal("Page 1's sheet cannot be negative.",
+        Assert.Equal("The sheet number of page 1 cannot be negative.",
                      AssertWriteRefused(CompanionPackageErrorKind.InvalidDocument,
                                         new CompanionDocument("x", [new CompanionPage(jpeg) { SheetIndex = -1 }])).Message);
         Assert.Equal("The document is larger than 512 MB, too large for one package.", CompanionPackage.TooLargeMessage);
@@ -321,25 +321,25 @@ public class CompanionPackageTests
     {
         string m = CompanionFixtures.MinimalManifest;
         string sha = CompanionPackage.Sha256Hex(DocxFixtures.Jpeg);
-        string damaged = "Page 1's picture is damaged: its checksum does not match.";
+        string damaged = "The picture of page 1 is damaged: its checksum does not match.";
         AssertReadRefused(CompanionPackageErrorKind.ChecksumMismatch, Package(m.Replace(sha, "0" + sha[1..])), damaged);
         AssertReadRefused(CompanionPackageErrorKind.ChecksumMismatch, Package(m.Replace($"\"sha256\":\"{sha}\",", "")), damaged);
         AssertReadRefused(CompanionPackageErrorKind.ChecksumMismatch, Package(m.Replace("\"byteCount\":421", "\"byteCount\":420")), damaged);
         // Upper-case hex is the same checksum.
         Assert.Equal("Scan", ReadManifest(m.Replace(sha, sha.ToUpperInvariant())).Title);
 
-        string missing = "Page 1's picture is missing from the document.";
+        string missing = "The picture of page 1 is missing from the document.";
         AssertReadRefused(CompanionPackageErrorKind.MissingImage, Package(m.Replace("pages/0001.jpg", "pages/0009.jpg")), missing);
         AssertReadRefused(CompanionPackageErrorKind.MissingImage, Package(Regex(m, "\"image\":\\{[^}]*\\}", "\"image\":null")), missing);
         AssertReadRefused(CompanionPackageErrorKind.MissingImage, Package(m.Replace("\"rotationQuarterTurns\":0", "\"rotationQuarterTurns\":0,\"original\":{\"file\":\"x.png\"}")),
-                          "Page 1's original picture is missing from the document.");
+                          "The original picture of page 1 is missing from the document.");
         AssertReadRefused(CompanionPackageErrorKind.MissingImage, Package(m.Replace("pages/0001.jpg", "manifest.json")));
 
         string page = Regex(m, "^.*\"pages\":\\[(.*)\\]\\}\\n$", "$1");
         AssertReadRefused(CompanionPackageErrorKind.InvalidManifest, Package(m.Replace(page, page + "," + page)),
-                          "This document cannot be opened: Page 2's picture is listed twice.");
+                          "This document cannot be opened: The picture of page 2 is listed twice.");
 
-        string unsupported = "Page 1's picture is in a format this version of Lazy Scan cannot read.";
+        string unsupported = "The picture of page 1 is in a format this version of Lazy Scan cannot read.";
         AssertReadRefused(CompanionPackageErrorKind.UnsupportedImage, Package(m.Replace("\"format\":\"jpeg\"", "\"format\":\"png\"")), unsupported);
         AssertReadRefused(CompanionPackageErrorKind.UnsupportedImage, Package(m.Replace("\"format\":\"jpeg\"", "\"format\":\"heic\"")), unsupported);
         byte[] text = "not a picture"u8.ToArray();

@@ -209,7 +209,7 @@ extension AppState {
             // preview: refused rather than written small.
             guard page.fileURL == nil || full !== page.image else {
                 throw CompanionPackageError(.invalidDocument,
-                                            L10n.t("Page {0}'s picture could not be written.", index + 1))
+                                            L10n.t("The picture of page {0} could not be written.", index + 1))
             }
             let encoded: Data?
             let format: CompanionImageFormat
@@ -222,7 +222,7 @@ extension AppState {
             }
             guard let data = encoded else {
                 throw CompanionPackageError(.invalidDocument,
-                                            L10n.t("Page {0}'s picture could not be written.", index + 1))
+                                            L10n.t("The picture of page {0} could not be written.", index + 1))
             }
             let image = CompanionImage(data: data, format: format, pixelWidth: full.width, pixelHeight: full.height,
                                        dpi: page.dpi, colorMode: page.colorMode)

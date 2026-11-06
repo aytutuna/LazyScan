@@ -182,10 +182,10 @@ public enum PDFSizePreset: String, Codable, CaseIterable, Identifiable, Sendable
     public var detail: String {
         switch self {
         // Black & white pages are CCITT G4 up to their own, higher limit on both platforms.
-        case .standard: return L10n.t("Up to 300 dpi (black & white 600), gray pages saved in gray.")
+        case .standard: return L10n.t("Up to {0} dpi (black & white {1}), gray pages saved in gray.", 300, 600)
         case .best: return L10n.t("Full resolution, high quality.")
-        case .compact: return L10n.t("Up to 200 dpi (black & white 300), more compression.")
-        case .smallest: return L10n.t("Up to 150 dpi (black & white 300), most compression.")
+        case .compact: return L10n.t("Up to {0} dpi (black & white {1}), more compression.", 200, 300)
+        case .smallest: return L10n.t("Up to {0} dpi (black & white {1}), most compression.", 150, 300)
         }
     }
 

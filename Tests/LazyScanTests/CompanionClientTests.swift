@@ -125,7 +125,7 @@ final class CompanionClientTests: XCTestCase {
         let fake = CompanionFakeDesktop()
         fake.on("POST " + CompanionProtocol.pairPath, .error(403, CompanionError.tokenExpired))
         fake.on("PUT " + CompanionProtocol.inboxPrefix + "*",
-                .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: "Page 2's picture is damaged.")))
+                .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: "The picture of page 2 is damaged.")))
         let client = makeClient(fake, secret: nil)
         do {
             _ = try await client.pair(token: CompanionVectors.tokenText, phoneId: CompanionLink.phoneId,
@@ -143,7 +143,7 @@ final class CompanionClientTests: XCTestCase {
         } catch {
             guard case .invalidPackage(let refusal)? = error as? CompanionClientError else { return XCTFail("\(error)") }
             XCTAssertEqual(refusal.code, CompanionErrorCode.invalidPackage)
-            XCTAssertEqual(error.localizedDescription, "Page 2's picture is damaged.")
+            XCTAssertEqual(error.localizedDescription, "The picture of page 2 is damaged.")
         }
     }
 

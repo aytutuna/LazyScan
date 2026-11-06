@@ -394,10 +394,10 @@ public enum CompanionPackage {
             try validateImage(page.image, pageNumber: index + 1, original: false)
             if let original = page.original { try validateImage(original, pageNumber: index + 1, original: true) }
             if page.rotationQuarterTurns < 0 || page.rotationQuarterTurns > 3 {
-                throw CompanionPackageError(.invalidDocument, L10n.t("Page {0}'s rotation must be 0 to 3 quarter turns.", index + 1))
+                throw CompanionPackageError(.invalidDocument, L10n.t("The rotation of page {0} must be {1} to {2} quarter turns.", index + 1, 0, 3))
             }
             if let sheet = page.sheetIndex, sheet < 0 {
-                throw CompanionPackageError(.invalidDocument, L10n.t("Page {0}'s sheet cannot be negative.", index + 1))
+                throw CompanionPackageError(.invalidDocument, L10n.t("The sheet number of page {0} cannot be negative.", index + 1))
             }
         }
     }
@@ -482,9 +482,9 @@ public enum CompanionPackage {
         L10n.t("This document was made by a newer version of Lazy Scan (package format {0}). Update Lazy Scan to open it.", L10n.plain(version))
     }
 
-    /// "Page 3's picture", "Page 3's original picture".
+    /// "The picture of page 3", "The original picture of page 3".
     public static func subject(_ pageNumber: Int, original: Bool) -> String {
-        original ? L10n.t("Page {0}'s original picture", pageNumber) : L10n.t("Page {0}'s picture", pageNumber)
+        original ? L10n.t("The original picture of page {0}", pageNumber) : L10n.t("The picture of page {0}", pageNumber)
     }
 
     /// Runs `body`, turning an archive the zip reader refuses into `.invalidArchive`.

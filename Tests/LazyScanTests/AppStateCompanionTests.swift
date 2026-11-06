@@ -671,7 +671,7 @@ final class AppStateCompanionTests: XCTestCase {
         try FileManager.default.createDirectory(at: cloud, withIntermediateDirectories: true)
         setSyncFolder(state, cloud)
         fake.on("PUT " + CompanionProtocol.inboxPrefix + "*",
-                .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: "Page 2's picture is damaged.")))
+                .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: "The picture of page 2 is damaged.")))
         await state.sendQueueToDesktop(target: .new)
         XCTAssertEqual(state.companionOutbox?.items.first?.refused, true)
 

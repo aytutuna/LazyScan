@@ -257,7 +257,7 @@ public sealed class ZipStoreReader : IDisposable
             ZipReadErrorKind.Corrupt => Loc.T("The archive is damaged or cut short."),
             ZipReadErrorKind.UnsupportedMethod => Loc.T("{0} is compressed. Only archives of uncompressed (stored) entries can be read.", name),
             ZipReadErrorKind.Encrypted => Loc.T("{0} is encrypted. Encrypted archives cannot be read.", name),
-            ZipReadErrorKind.Zip64 => Loc.T("The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported."),
+            ZipReadErrorKind.Zip64 => Loc.T("The archive uses ZIP64 (for archives past {0} or {1} entries), which is not supported.", Loc.T("{0} GB", 4), 65_535),
             ZipReadErrorKind.DataDescriptor => Loc.T("{0} keeps its sizes after its data (a data descriptor), which is not supported.", name),
             ZipReadErrorKind.UnsafeName => Loc.T("The archive holds an entry with an unsafe name ({0}).", name),
             ZipReadErrorKind.DuplicateName => Loc.T("The archive holds {0} more than once.", name),

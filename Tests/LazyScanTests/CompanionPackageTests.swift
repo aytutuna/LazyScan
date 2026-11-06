@@ -141,7 +141,7 @@ final class CompanionPackageTests: XCTestCase {
         let gray = CompanionDocument(title: "T", pages: [CompanionPage(image: CompanionImage(
             data: tiff, format: .tiff, pixelWidth: 8, pixelHeight: 8, dpi: 300, colorMode: .grayscale))])
         let error = assertWriteRefused(.invalidDocument, gray)
-        XCTAssertEqual(error?.message, "Page 1's picture is a TIFF, which only black & white pages can be.")
+        XCTAssertEqual(error?.message, "The picture of page 1 is a TIFF, which only black & white pages can be.")
     }
 
     func test_created_isWrittenInUtcToTheSecond() {
@@ -163,20 +163,20 @@ final class CompanionPackageTests: XCTestCase {
                        "This document has more than 2,000 pages.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: with { $0.format = .png })]))?.message,
-                       "Page 1's picture is not a PNG file.")
+                       "The picture of page 1 is not a PNG file.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: jpeg), CompanionPage(image: jpeg, original: with { $0.data = Data([1, 2, 3]) })]))?.message,
-                       "Page 2's original picture is not a JPEG file.")
+                       "The original picture of page 2 is not a JPEG file.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: with { $0.dpi = 0 })]))?.message,
-                       "Page 1's picture needs a size in pixels and a resolution.")
+                       "The picture of page 1 needs a size in pixels and a resolution.")
         assertWriteRefused(.invalidDocument, CompanionDocument(title: "x", pages: [CompanionPage(image: with { $0.pixelWidth = 0 })]))
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: jpeg, rotationQuarterTurns: 4)]))?.message,
-                       "Page 1's rotation must be 0 to 3 quarter turns.")
+                       "The rotation of page 1 must be 0 to 3 quarter turns.")
         XCTAssertEqual(assertWriteRefused(.invalidDocument, CompanionDocument(
             title: "x", pages: [CompanionPage(image: jpeg, sheetIndex: -1)]))?.message,
-                       "Page 1's sheet cannot be negative.")
+                       "The sheet number of page 1 cannot be negative.")
         XCTAssertEqual(CompanionPackage.tooLargeMessage, "The document is larger than 512 MB, too large for one package.")
     }
 
@@ -296,26 +296,26 @@ final class CompanionPackageTests: XCTestCase {
     func test_read_refusesDamagedOrMissingPictures() throws {
         let m = CompanionFixtures.minimalManifest
         let sha = CompanionPackage.sha256Hex(DocxFixtures.jpeg)
-        let damaged = "Page 1's picture is damaged: its checksum does not match."
+        let damaged = "The picture of page 1 is damaged: its checksum does not match."
         assertReadRefused(.checksumMismatch, package(m.replacingOccurrences(of: sha, with: "0" + sha.dropFirst())), damaged)
         assertReadRefused(.checksumMismatch, package(m.replacingOccurrences(of: "\"sha256\":\"\(sha)\",", with: "")), damaged)
         assertReadRefused(.checksumMismatch, package(m.replacingOccurrences(of: "\"byteCount\":421", with: "\"byteCount\":420")), damaged)
         // Upper-case hex is the same checksum.
         XCTAssertEqual(try readManifest(m.replacingOccurrences(of: sha, with: sha.uppercased())).title, "Scan")
 
-        let missing = "Page 1's picture is missing from the document."
+        let missing = "The picture of page 1 is missing from the document."
         assertReadRefused(.missingImage, package(m.replacingOccurrences(of: "pages/0001.jpg", with: "pages/0009.jpg")), missing)
         assertReadRefused(.missingImage, package(regex(m, "\"image\":\\{[^}]*\\}", "\"image\":null")), missing)
         assertReadRefused(.missingImage, package(m.replacingOccurrences(of: "\"rotationQuarterTurns\":0",
                                                                         with: "\"rotationQuarterTurns\":0,\"original\":{\"file\":\"x.png\"}")),
-                          "Page 1's original picture is missing from the document.")
+                          "The original picture of page 1 is missing from the document.")
         assertReadRefused(.missingImage, package(m.replacingOccurrences(of: "pages/0001.jpg", with: "manifest.json")))
 
         let page = regex(m, "^.*\"pages\":\\[(.*)\\]\\}\\n$", "$1")
         assertReadRefused(.invalidManifest, package(m.replacingOccurrences(of: page, with: page + "," + page)),
-                          "This document cannot be opened: Page 2's picture is listed twice.")
+                          "This document cannot be opened: The picture of page 2 is listed twice.")
 
-        let unsupported = "Page 1's picture is in a format this version of Lazy Scan cannot read."
+        let unsupported = "The picture of page 1 is in a format this version of Lazy Scan cannot read."
         assertReadRefused(.unsupportedImage, package(m.replacingOccurrences(of: "\"format\":\"jpeg\"", with: "\"format\":\"png\"")), unsupported)
         assertReadRefused(.unsupportedImage, package(m.replacingOccurrences(of: "\"format\":\"jpeg\"", with: "\"format\":\"heic\"")), unsupported)
         let text = Data("not a picture".utf8)

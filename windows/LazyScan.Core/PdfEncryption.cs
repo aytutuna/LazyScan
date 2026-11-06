@@ -239,7 +239,7 @@ public sealed class PdfProtection : IDisposable
     /// <summary>The dialog's short line next to the strength bar ("" when nothing is typed).</summary>
     public static string StrengthLabel(PasswordStrength strength) => strength switch
     {
-        PasswordStrength.Weak => Loc.T("Weak · use 12+ characters"),
+        PasswordStrength.Weak => Loc.T("Weak · use {0}+ characters", 12),
         PasswordStrength.Fair => Loc.T("Fair · longer is safer"),
         PasswordStrength.Strong => Loc.T("Strong"),
         _ => "",
@@ -257,7 +257,7 @@ public sealed class PdfProtection : IDisposable
     /// <summary>The full advice about a password's strength, on hover and for screen readers ("" when nothing is typed).</summary>
     public static string StrengthHint(PasswordStrength strength) => strength switch
     {
-        PasswordStrength.Weak => Loc.T("Weak: easy to guess. Longer is stronger: use 12 or more characters, or a few unrelated words."),
+        PasswordStrength.Weak => Loc.T("Weak: easy to guess. Longer is stronger: use {0} or more characters, or a few unrelated words.", 12),
         PasswordStrength.Fair => Loc.T("Fair. A few more characters, or another word, would make it much harder to guess."),
         PasswordStrength.Strong => Loc.T("Strong."),
         _ => "",

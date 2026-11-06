@@ -221,7 +221,7 @@ public sealed partial class AppViewModel
                 if (spooled is null && page.FilePath is not null)
                 {
                     throw new CompanionPackageException(CompanionPackageErrorKind.InvalidDocument,
-                        Loc.T("Page {0}'s picture could not be written.", pages.IndexOf(page) + 1));
+                        Loc.T("The picture of page {0} could not be written.", pages.IndexOf(page) + 1));
                 }
                 return PdfBuilder.PreparePage(page, spooled).Image;
             }) with
