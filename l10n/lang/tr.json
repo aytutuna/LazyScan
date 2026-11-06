@@ -2416,15 +2416,15 @@
   },
   "infoplist": {
     "ios": {
-      "NSCameraUsageDescription": "Lazy Scan, belgeleri ve fotoğrafları taramak ve bilgisayarınızın eşleştirme kodunu okumak için kamerayı kullanır. Taradıklarınız siz paylaşmadıkça bu aygıtta kalır.",
-      "NSLocalNetworkUsageDescription": "Lazy Scan, tarama yapabilmeniz için yerel ağınızdaki tarayıcıları ve tarama yapabilen yazıcıları, taramalarınızı gönderebilmeniz için de eşleştirdiğiniz bilgisayarı arar.",
-      "NSPhotoLibraryAddUsageDescription": "Lazy Scan, bir taramayı fotoğraf arşivinize yalnızca Paylaş menüsünde Görüntüyü Kaydet'e dokunduğunuzda ekler.",
+      "NSCameraUsageDescription": "Lazy Scan, belge ve fotoğraf taramak ve bilgisayarınızdaki eşleştirme kodunu okumak için kameranızı kullanır. Taradıklarınız siz paylaşmadıkça bu aygıtta kalır.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan, tarama yapabilmeniz için yerel ağınızdaki tarayıcıları (tarama özellikli yazıcılar gibi), taramalarınızı gönderebilmeniz için de eşleştirdiğiniz bilgisayarı arar.",
+      "NSPhotoLibraryAddUsageDescription": "Lazy Scan, bir taramayı fotoğraf arşivinize yalnızca Paylaş menüsünde “Görüntüyü Kaydet” seçeneğine dokunduğunuzda ekler.",
       "Lazy Scan document": "Lazy Scan belgesi",
       "PDF document": "PDF belgesi",
       "Image": "Görüntü"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "Lazy Scan, eşleştirilmiş telefonunuzdan gönderilen belgeleri yerel ağınız üzerinden alır.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan, eşleştirilmiş telefonunuzdan yerel ağınız üzerinden belge alır.",
       "Lazy Scan document": "Lazy Scan belgesi"
     }
   }
