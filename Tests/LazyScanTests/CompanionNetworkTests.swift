@@ -190,7 +190,7 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertTrue(network.detail.contains("Allow receiving on this network"))
         XCTAssertEqual(network.actions, [.openNetworkSettings])
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "1 warning found.")
-        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Networks not receiving from phones: eduroam.")
+        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Not receiving from phones (eduroam).")
         XCTAssertEqual(checks[2].status, .tip)
         XCTAssertTrue(checks[2].detail.contains("hotspot"))
     }
@@ -206,7 +206,7 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertEqual(checks[1].detail, "Paired phones on this network can send documents to this PC.")
         XCTAssertTrue(checks[2].detail.contains("Public networks ticked"))
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "Nothing here stops a paired phone from connecting.")
-        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Networks receiving from phones: eduroam.")
+        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Receiving from phones (eduroam).")
     }
 
     func testChecks_FirewallBlockIsAProblem() {

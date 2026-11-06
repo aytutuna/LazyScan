@@ -50,17 +50,17 @@ public static class CompanionTroubleshooter
                          .Select(pair => pair.check)];
     }
 
-    /// <summary>"Networks receiving from phones: Home Wi-Fi.", or why not.</summary>
+    /// <summary>"Receiving from phones (Home Wi-Fi).", or why not.</summary>
     public static string Headline(CompanionSnapshot snapshot)
     {
         var trusted = snapshot.Networks.Where(n => n.Trust != NetworkTrust.NotTrusted).Select(n => n.Network.Name).ToList();
         var untrusted = snapshot.Networks.Where(n => n.Trust == NetworkTrust.NotTrusted).Select(n => n.Network.Name).ToList();
         return snapshot.Listen switch
         {
-            CompanionListenState.Listening => Loc.T("Networks receiving from phones: {0}.", JoinNames(trusted)),
+            CompanionListenState.Listening => Loc.T("Receiving from phones ({0}).", JoinNames(trusted)),
             CompanionListenState.Off => Loc.T("No phone is paired yet."),
             CompanionListenState.Offline => Loc.T("Not connected to a network."),
-            CompanionListenState.NoTrustedNetwork => Loc.T("Networks not receiving from phones: {0}.", JoinNames(untrusted)),
+            CompanionListenState.NoTrustedNetwork => Loc.T("Not receiving from phones ({0}).", JoinNames(untrusted)),
             CompanionListenState.Failed => Loc.T("Could not start receiving from phones."),
             CompanionListenState.Elsewhere => Loc.T("Another Lazy Scan window receives from phones."),
             _ => "",

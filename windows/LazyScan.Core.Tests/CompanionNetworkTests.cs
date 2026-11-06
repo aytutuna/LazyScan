@@ -272,7 +272,7 @@ public sealed class CompanionNetworkTests : IDisposable
         Assert.Contains("Allow receiving on this network", network.Detail);
         Assert.Equal([TroubleshootAction.OpenNetworkSettings], network.Actions);
         Assert.Equal("1 warning found.", CompanionTroubleshooter.Summary(checks));
-        Assert.Equal("Networks not receiving from phones: eduroam.", CompanionTroubleshooter.Headline(snapshot));
+        Assert.Equal("Not receiving from phones (eduroam).", CompanionTroubleshooter.Headline(snapshot));
         Assert.Equal(CheckStatus.Tip, checks[2].Status);
         Assert.Contains("hotspot", checks[2].Detail);
     }
@@ -295,7 +295,7 @@ public sealed class CompanionNetworkTests : IDisposable
         Assert.Equal("Paired phones on this network can send documents to this PC.", checks[1].Detail);
         Assert.Contains("Public networks ticked", checks[2].Detail);
         Assert.Equal("Nothing here stops a paired phone from connecting.", CompanionTroubleshooter.Summary(checks));
-        Assert.Equal("Networks receiving from phones: eduroam.", CompanionTroubleshooter.Headline(snapshot));
+        Assert.Equal("Receiving from phones (eduroam).", CompanionTroubleshooter.Headline(snapshot));
     }
 
     [Fact]

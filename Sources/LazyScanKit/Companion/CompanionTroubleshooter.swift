@@ -113,7 +113,7 @@ public enum CompanionTroubleshooter {
         return ordered
     }
 
-    /// "Networks receiving from phones: Home Wi-Fi.", or why not.
+    /// "Receiving from phones (Home Wi-Fi).", or why not.
     public static func headline(_ snapshot: CompanionSnapshot) -> String {
         var trusted: [String] = []
         var untrusted: [String] = []
@@ -125,10 +125,10 @@ public enum CompanionTroubleshooter {
             }
         }
         switch snapshot.listen {
-        case .listening: return L10n.t("Networks receiving from phones: {0}.", joinNames(trusted))
+        case .listening: return L10n.t("Receiving from phones ({0}).", joinNames(trusted))
         case .off: return L10n.t("No phone is paired yet.")
         case .offline: return L10n.t("Not connected to a network.")
-        case .noTrustedNetwork: return L10n.t("Networks not receiving from phones: {0}.", joinNames(untrusted))
+        case .noTrustedNetwork: return L10n.t("Not receiving from phones ({0}).", joinNames(untrusted))
         case .failed: return L10n.t("Could not start receiving from phones.")
         case .elsewhere: return L10n.t("Another Lazy Scan window receives from phones.")
         }
