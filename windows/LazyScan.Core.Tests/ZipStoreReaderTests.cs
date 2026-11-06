@@ -281,7 +281,7 @@ public class ZipStoreReaderTests
         Assert.Null(all.EntryName);
         using var reader = ZipStoreReader.Open(ZipStore.Make([new("a.bin", new byte[10]), new("b.bin", new byte[5])]), limits);
         Assert.Equal(2, reader.Entries.Count);
-        Assert.Equal("\"big.bin\" is larger than 256 MB.", ZipStoreReader.Message(ZipReadErrorKind.TooLarge, "big.bin"));
+        Assert.Equal("“big.bin” is larger than 256 MB.", ZipStoreReader.Message(ZipReadErrorKind.TooLarge, "big.bin"));
         Assert.Equal("The archive's contents are larger than 512 MB.", ZipStoreReader.Message(ZipReadErrorKind.TooLarge));
     }
 
@@ -335,7 +335,7 @@ public class ZipStoreReaderTests
         using var reader = ZipStoreReader.Open(zip);
         var error = Assert.Throws<ZipReadException>(() => reader.Read(reader.Entries[0]));
         Assert.Equal(ZipReadErrorKind.CrcMismatch, error.Kind);
-        Assert.Equal("\"a.txt\" is damaged: its checksum does not match its data.", error.Message);
+        Assert.Equal("“a.txt” is damaged: its checksum does not match its data.", error.Message);
         Assert.Throws<ZipReadException>(() => reader.CopyTo(reader.Entries[0], Stream.Null));
     }
 
@@ -379,18 +379,18 @@ public class ZipStoreReaderTests
     public void Messages()
     {
         Assert.Equal("The archive is damaged or cut short.", ZipStoreReader.Message(ZipReadErrorKind.Corrupt));
-        Assert.Equal("\"a.bin\" is compressed. Only archives of uncompressed (stored) entries can be read.",
+        Assert.Equal("“a.bin” is compressed. Only archives of uncompressed (stored) entries can be read.",
                      ZipStoreReader.Message(ZipReadErrorKind.UnsupportedMethod, "a.bin"));
-        Assert.Equal("\"a.bin\" is encrypted. Encrypted archives cannot be read.", ZipStoreReader.Message(ZipReadErrorKind.Encrypted, "a.bin"));
+        Assert.Equal("“a.bin” is encrypted. Encrypted archives cannot be read.", ZipStoreReader.Message(ZipReadErrorKind.Encrypted, "a.bin"));
         Assert.Equal("The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported.",
                      ZipStoreReader.Message(ZipReadErrorKind.Zip64));
-        Assert.Equal("\"a.bin\" keeps its sizes after its data (a data descriptor), which is not supported.",
+        Assert.Equal("“a.bin” keeps its sizes after its data (a data descriptor), which is not supported.",
                      ZipStoreReader.Message(ZipReadErrorKind.DataDescriptor, "a.bin"));
-        Assert.Equal("The archive holds an entry with an unsafe name (\"../a\").", ZipStoreReader.Message(ZipReadErrorKind.UnsafeName, "../a"));
-        Assert.Equal("The archive holds \"a.bin\" more than once.", ZipStoreReader.Message(ZipReadErrorKind.DuplicateName, "a.bin"));
-        Assert.Equal("\"a\" is a link or a special file, not a plain file.", ZipStoreReader.Message(ZipReadErrorKind.SpecialFile, "a"));
+        Assert.Equal("The archive holds an entry with an unsafe name (“../a”).", ZipStoreReader.Message(ZipReadErrorKind.UnsafeName, "../a"));
+        Assert.Equal("The archive holds “a.bin” more than once.", ZipStoreReader.Message(ZipReadErrorKind.DuplicateName, "a.bin"));
+        Assert.Equal("“a” is a link or a special file, not a plain file.", ZipStoreReader.Message(ZipReadErrorKind.SpecialFile, "a"));
         Assert.Equal("The archive holds more than 4,096 entries.", ZipStoreReader.Message(ZipReadErrorKind.TooManyEntries));
-        Assert.Equal("\"a.bin\" declares sizes that do not match its data.", ZipStoreReader.Message(ZipReadErrorKind.SizeMismatch, "a.bin"));
+        Assert.Equal("“a.bin” declares sizes that do not match its data.", ZipStoreReader.Message(ZipReadErrorKind.SizeMismatch, "a.bin"));
     }
 
     [Fact]
@@ -409,13 +409,13 @@ public class ZipStoreReaderTests
 
         string hostile = "x\n\nThis file needs an update. Go to evil.example and sign in.\n" + new string('a', 60_000);
         string shown = "x\uFFFD\uFFFDThis file needs an update. Go to evil.example and sign in.\uFFFD" + new string('a', 18) + "\u2026";
-        Assert.Equal($"The archive holds an entry with an unsafe name (\"{shown}\").", ZipStoreReader.Message(ZipReadErrorKind.UnsafeName, hostile));
+        Assert.Equal($"The archive holds an entry with an unsafe name (“{shown}”).", ZipStoreReader.Message(ZipReadErrorKind.UnsafeName, hostile));
         var error = AssertRefused(ZipReadErrorKind.UnsafeName, RawZip.Build([new RawEntry(hostile, "hi"u8.ToArray())]));
-        Assert.Equal($"The archive holds an entry with an unsafe name (\"{shown}\").", error.Message);
+        Assert.Equal($"The archive holds an entry with an unsafe name (“{shown}”).", error.Message);
         Assert.Equal(hostile, error.EntryName);
         // A name that is safe as a path but reorders its text, refused for its method.
         error = AssertRefused(ZipReadErrorKind.UnsupportedMethod, RawZip.Build([new RawEntry("invoice\u202Efdp.exe", "hi"u8.ToArray()) { Method = 8 }]));
-        Assert.Equal("\"invoice\uFFFDfdp.exe\" is compressed. Only archives of uncompressed (stored) entries can be read.", error.Message);
+        Assert.Equal("“invoice\uFFFDfdp.exe” is compressed. Only archives of uncompressed (stored) entries can be read.", error.Message);
     }
 
     private static ZipReadException AssertRefused(ZipReadErrorKind kind, byte[] zip, ZipReadLimits? limits = null)

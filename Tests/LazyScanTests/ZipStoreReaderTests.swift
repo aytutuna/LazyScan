@@ -239,7 +239,7 @@ final class ZipStoreReaderTests: XCTestCase {
         let reader = try ZipStoreReader(data: ZipStore.make([ZipStoreEntry(name: "a.bin", data: Data(count: 10)),
                                                              ZipStoreEntry(name: "b.bin", data: Data(count: 5))]), limits: limits)
         XCTAssertEqual(reader.entries.count, 2)
-        XCTAssertEqual(ZipStoreReader.message(.tooLarge, entryName: "big.bin"), "\"big.bin\" is larger than 256 MB.")
+        XCTAssertEqual(ZipStoreReader.message(.tooLarge, entryName: "big.bin"), "“big.bin” is larger than 256 MB.")
         XCTAssertEqual(ZipStoreReader.message(.tooLarge), "The archive's contents are larger than 512 MB.")
     }
 
@@ -294,7 +294,7 @@ final class ZipStoreReaderTests: XCTestCase {
         let reader = try ZipStoreReader(data: zip)
         XCTAssertThrowsError(try reader.read(reader.entries[0])) { error in
             XCTAssertEqual((error as? ZipReadError)?.kind, .crcMismatch)
-            XCTAssertEqual((error as? ZipReadError)?.message, "\"a.txt\" is damaged: its checksum does not match its data.")
+            XCTAssertEqual((error as? ZipReadError)?.message, "“a.txt” is damaged: its checksum does not match its data.")
         }
         XCTAssertThrowsError(try reader.copy(reader.entries[0]) { _ in })
     }
@@ -334,17 +334,17 @@ final class ZipStoreReaderTests: XCTestCase {
     func test_messages() {
         XCTAssertEqual(ZipStoreReader.message(.corrupt), "The archive is damaged or cut short.")
         XCTAssertEqual(ZipStoreReader.message(.unsupportedMethod, entryName: "a.bin"),
-                       "\"a.bin\" is compressed. Only archives of uncompressed (stored) entries can be read.")
-        XCTAssertEqual(ZipStoreReader.message(.encrypted, entryName: "a.bin"), "\"a.bin\" is encrypted. Encrypted archives cannot be read.")
+                       "“a.bin” is compressed. Only archives of uncompressed (stored) entries can be read.")
+        XCTAssertEqual(ZipStoreReader.message(.encrypted, entryName: "a.bin"), "“a.bin” is encrypted. Encrypted archives cannot be read.")
         XCTAssertEqual(ZipStoreReader.message(.zip64),
                        "The archive uses ZIP64 (for archives past 4 GB or 65,535 entries), which is not supported.")
         XCTAssertEqual(ZipStoreReader.message(.dataDescriptor, entryName: "a.bin"),
-                       "\"a.bin\" keeps its sizes after its data (a data descriptor), which is not supported.")
-        XCTAssertEqual(ZipStoreReader.message(.unsafeName, entryName: "../a"), "The archive holds an entry with an unsafe name (\"../a\").")
-        XCTAssertEqual(ZipStoreReader.message(.duplicateName, entryName: "a.bin"), "The archive holds \"a.bin\" more than once.")
-        XCTAssertEqual(ZipStoreReader.message(.specialFile, entryName: "a"), "\"a\" is a link or a special file, not a plain file.")
+                       "“a.bin” keeps its sizes after its data (a data descriptor), which is not supported.")
+        XCTAssertEqual(ZipStoreReader.message(.unsafeName, entryName: "../a"), "The archive holds an entry with an unsafe name (“../a”).")
+        XCTAssertEqual(ZipStoreReader.message(.duplicateName, entryName: "a.bin"), "The archive holds “a.bin” more than once.")
+        XCTAssertEqual(ZipStoreReader.message(.specialFile, entryName: "a"), "“a” is a link or a special file, not a plain file.")
         XCTAssertEqual(ZipStoreReader.message(.tooManyEntries), "The archive holds more than 4,096 entries.")
-        XCTAssertEqual(ZipStoreReader.message(.sizeMismatch, entryName: "a.bin"), "\"a.bin\" declares sizes that do not match its data.")
+        XCTAssertEqual(ZipStoreReader.message(.sizeMismatch, entryName: "a.bin"), "“a.bin” declares sizes that do not match its data.")
     }
 
     func test_messages_showHostileNamesSafely() {
@@ -364,14 +364,14 @@ final class ZipStoreReaderTests: XCTestCase {
         let hostile = "x\n\nThis file needs an update. Go to evil.example and sign in.\n" + String(repeating: "a", count: 60_000)
         let shown = "x\u{FFFD}\u{FFFD}This file needs an update. Go to evil.example and sign in.\u{FFFD}"
             + String(repeating: "a", count: 18) + "\u{2026}"
-        XCTAssertEqual(ZipStoreReader.message(.unsafeName, entryName: hostile), "The archive holds an entry with an unsafe name (\"\(shown)\").")
+        XCTAssertEqual(ZipStoreReader.message(.unsafeName, entryName: hostile), "The archive holds an entry with an unsafe name (“\(shown)”).")
         var error = assertRefused(.unsafeName, RawZip.build([RawEntry(hostile, bytes("hi"))]))
-        XCTAssertEqual(error?.message, "The archive holds an entry with an unsafe name (\"\(shown)\").")
+        XCTAssertEqual(error?.message, "The archive holds an entry with an unsafe name (“\(shown)”).")
         XCTAssertEqual(error?.entryName, hostile)
         // A name that is safe as a path but reorders its text, refused for its method.
         error = assertRefused(.unsupportedMethod, RawZip.build([RawEntry("invoice\u{202E}fdp.exe", bytes("hi")).with { $0.method = 8 }]))
         XCTAssertEqual(error?.message,
-                       "\"invoice\u{FFFD}fdp.exe\" is compressed. Only archives of uncompressed (stored) entries can be read.")
+                       "“invoice\u{FFFD}fdp.exe” is compressed. Only archives of uncompressed (stored) entries can be read.")
     }
 
     @discardableResult

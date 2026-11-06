@@ -526,7 +526,7 @@ public static class Troubleshooter
     /// <summary>Drivers the 32-bit helper does not reach, with why when the app knows (<paramref name="helperProblem"/>).</summary>
     private static TroubleshootCheck ThirtyTwoBitCheck(IReadOnlyList<string> drivers, string? helperProblem)
     {
-        var names = drivers.Select(path => $"\"{path[(path.LastIndexOfAny(['/', '\\']) + 1)..]}\"").ToList();
+        var names = drivers.Select(path => path[(path.LastIndexOfAny(['/', '\\']) + 1)..]).ToList();
         bool known = !string.IsNullOrWhiteSpace(helperProblem);
         string reach = known
             ? Loc.T("Lazy Scan reaches such drivers through its 32-bit TWAIN helper.")
@@ -535,7 +535,7 @@ public static class Troubleshooter
         return new TroubleshootCheck(
             "twain32", CheckStatus.Problem,
             Loc.Plural(names.Count, "A TWAIN driver is 32-bit only", "{0} TWAIN drivers are 32-bit only"),
-            Loc.Plural(names.Count, "{1} is installed only for 32-bit apps.", "{1} are installed only for 32-bit apps.", string.Join(", ", names)),
+            Loc.Plural(names.Count, "“{1}” is installed only for 32-bit apps.", "“{1}” are installed only for 32-bit apps.", string.Join(", ", names)),
             [],
             JoinSentences(known ? JoinSentences(reach, helperProblem!.Trim()) : reach,
                           Loc.T("A 64-bit (x64) driver from the maker, where there is one, works without the helper. Many scanners also work through Windows Image Acquisition (WIA) once the maker's full driver package is installed.")));

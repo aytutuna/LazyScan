@@ -217,13 +217,13 @@ public enum CompanionTroubleshooter {
         case .blocked:
             var quoted: [String] = []
             for rule in snapshot.blockingRules {
-                quoted.append("\"\(rule)\"")
+                quoted.append(rule)
             }
             return TroubleshootCheck(
                 id: "phoneFirewall", status: .problem, title: L10n.t("Windows Firewall blocks Lazy Scan"),
                 detail: quoted.isEmpty
                     ? L10n.t("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete the rules for Lazy Scan that block it. Windows then asks again.")
-                    : L10n.t("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete {0} that block it. Windows then asks again.", quoted.joined(separator: ", ")),
+                    : L10n.t("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete “{0}” that block it. Windows then asks again.", quoted.joined(separator: ", ")),
                 actions: [.refresh])
         case .willAsk where wanted:
             let approvedPublic = snapshot.networks.contains { $0.trust == .approved && $0.network.category != .privateNetwork }

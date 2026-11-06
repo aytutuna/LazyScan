@@ -313,7 +313,7 @@ public sealed class CompanionNetworkTests : IDisposable
         var checks = CompanionTroubleshooter.Diagnose(snapshot);
         Assert.Equal("phoneFirewall", checks[0].Id);
         Assert.Equal(CheckStatus.Problem, checks[0].Status);
-        Assert.Contains("\"lazyscan.exe\"", checks[0].Detail);
+        Assert.Contains("“lazyscan.exe”", checks[0].Detail);
         Assert.Contains("wf.msc", checks[0].Detail);
         Assert.Equal("Home Wi-Fi is a private network", checks.Single(c => c.Id.StartsWith("phoneNetwork:")).Title);
         Assert.Equal("1 problem found.", CompanionTroubleshooter.Summary(checks));

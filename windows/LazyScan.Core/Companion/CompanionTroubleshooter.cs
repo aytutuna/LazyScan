@@ -142,8 +142,8 @@ public static class CompanionTroubleshooter
                     "phoneFirewall", CheckStatus.Problem, Loc.T("Windows Firewall blocks Lazy Scan"),
                     snapshot.BlockingRules.Count == 0
                         ? Loc.T("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete the rules for Lazy Scan that block it. Windows then asks again.")
-                        : Loc.T("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete {0} that block it. Windows then asks again.",
-                                 string.Join(", ", snapshot.BlockingRules.Select(r => $"\"{r}\""))),
+                        : Loc.T("A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete “{0}” that block it. Windows then asks again.",
+                                 string.Join(", ", snapshot.BlockingRules)),
                     [TroubleshootAction.Refresh]);
             case CompanionFirewallVerdict.WillAsk when wanted:
                 bool approvedPublic = snapshot.Networks.Any(n => n.Trust == NetworkTrust.Approved

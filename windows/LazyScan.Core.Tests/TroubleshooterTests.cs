@@ -409,14 +409,14 @@ public class TroubleshooterTests
     {
         var one = Check(Troubleshooter.Diagnose(TroubledWindows()), "twain32");
         Assert.Equal("A TWAIN driver is 32-bit only", one.Title);
-        Assert.Equal("\"acme.ds\" is installed only for 32-bit apps.", one.Detail);
+        Assert.Equal("“acme.ds” is installed only for 32-bit apps.", one.Detail);
         Assert.Equal("Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet. "
                      + "A 64-bit (x64) driver from the maker, where there is one, works without the helper. Many scanners "
                      + "also work through Windows Image Acquisition (WIA) once the maker's full driver package is installed.",
                      one.More);
         var two = Check(Troubleshooter.Diagnose(HealthyWindows() with { ThirtyTwoBitOnlyDrivers = ["Acme/acme.ds", "beta.ds"] }), "twain32");
         Assert.Equal((CheckStatus.Problem, "2 TWAIN drivers are 32-bit only"), (two.Status, two.Title));
-        Assert.Equal("\"acme.ds\", \"beta.ds\" are installed only for 32-bit apps.", two.Detail);
+        Assert.Equal("“acme.ds, beta.ds” are installed only for 32-bit apps.", two.Detail);
         Assert.StartsWith("Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet. ",
                           two.More);
     }
@@ -431,7 +431,7 @@ public class TroubleshooterTests
         };
         var check = Check(Troubleshooter.Diagnose(snapshot), "twain32");
         Assert.Equal((CheckStatus.Problem, "A TWAIN driver is 32-bit only"), (check.Status, check.Title));
-        Assert.Equal("\"acme.ds\" is installed only for 32-bit apps.", check.Detail);
+        Assert.Equal("“acme.ds” is installed only for 32-bit apps.", check.Detail);
         Assert.Equal("Lazy Scan reaches such drivers through its 32-bit TWAIN helper. It cannot run: it needs the "
                      + ".NET 10 Desktop Runtime for 32-bit programs (x86), which is not installed. Install it, then restart "
                      + "Lazy Scan. A 64-bit (x64) driver from the maker, where there is one, works without the helper. "

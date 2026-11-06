@@ -580,7 +580,7 @@ public enum Troubleshooter {
             } else {
                 name = path
             }
-            return "\"\(name)\""
+            return name
         }
         let problem = (helperProblem ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let known = !problem.isEmpty
@@ -591,8 +591,8 @@ public enum Troubleshooter {
             reach = L10n.plural(names.count, one: "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet.",
                                 other: "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet.")
         }
-        let installed: String = L10n.plural(names.count, one: "{1} is installed only for 32-bit apps.",
-                                            other: "{1} are installed only for 32-bit apps.", names.joined(separator: ", "))
+        let installed: String = L10n.plural(names.count, one: "“{1}” is installed only for 32-bit apps.",
+                                            other: "“{1}” are installed only for 32-bit apps.", names.joined(separator: ", "))
         return TroubleshootCheck(
             id: "twain32", status: .problem,
             title: L10n.plural(names.count, one: "A TWAIN driver is 32-bit only", other: "{0} TWAIN drivers are 32-bit only"),

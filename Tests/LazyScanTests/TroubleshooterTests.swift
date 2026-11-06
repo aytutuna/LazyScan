@@ -372,7 +372,7 @@ final class TroubleshooterTests: XCTestCase {
     func test_thirtyTwoBitDrivers_areNamedByFile() {
         let one = check(Troubleshooter.diagnose(troubledWindows()), "twain32")
         XCTAssertEqual(one.title, "A TWAIN driver is 32-bit only")
-        XCTAssertEqual(one.detail, "\"acme.ds\" is installed only for 32-bit apps.")
+        XCTAssertEqual(one.detail, "“acme.ds” is installed only for 32-bit apps.")
         let oneMore = [
             "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet. ",
             "A 64-bit (x64) driver from the maker, where there is one, works without the helper. Many scanners ",
@@ -382,7 +382,7 @@ final class TroubleshooterTests: XCTestCase {
         let two = check(Troubleshooter.diagnose(changed(healthyWindows()) { $0.thirtyTwoBitOnlyDrivers = ["Acme/acme.ds", "beta.ds"] }), "twain32")
         XCTAssertEqual(two.status, .problem)
         XCTAssertEqual(two.title, "2 TWAIN drivers are 32-bit only")
-        XCTAssertEqual(two.detail, "\"acme.ds\", \"beta.ds\" are installed only for 32-bit apps.")
+        XCTAssertEqual(two.detail, "“acme.ds, beta.ds” are installed only for 32-bit apps.")
         XCTAssertTrue(two.more.hasPrefix("Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet. "))
     }
 
@@ -394,7 +394,7 @@ final class TroubleshooterTests: XCTestCase {
         let found = check(Troubleshooter.diagnose(snapshot), "twain32")
         XCTAssertEqual(found.status, .problem)
         XCTAssertEqual(found.title, "A TWAIN driver is 32-bit only")
-        XCTAssertEqual(found.detail, "\"acme.ds\" is installed only for 32-bit apps.")
+        XCTAssertEqual(found.detail, "“acme.ds” is installed only for 32-bit apps.")
         let expected = [
             "Lazy Scan reaches such drivers through its 32-bit TWAIN helper. It cannot run: it needs the ",
             ".NET 10 Desktop Runtime for 32-bit programs (x86), which is not installed. Install it, then restart ",

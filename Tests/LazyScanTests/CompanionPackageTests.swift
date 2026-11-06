@@ -330,14 +330,14 @@ final class CompanionPackageTests: XCTestCase {
         let dataOffset = try XCTUnwrap(ZipStoreReader(data: damagedPackage).entry(named: "pages/0001.jpg")).dataOffset
         damagedPackage[dataOffset + 100] ^= 0xFF
         assertReadRefused(.invalidArchive, damagedPackage,
-                          "This document cannot be opened: \"pages/0001.jpg\" is damaged: its checksum does not match its data.")
+                          "This document cannot be opened: “pages/0001.jpg” is damaged: its checksum does not match its data.")
         assertReadRefused(.invalidArchive,
                           RawZip.build([RawEntry("manifest.json", Array(CompanionFixtures.minimalManifest.utf8)).with { $0.method = 8 }]),
-                          "This document cannot be opened: \"manifest.json\" is compressed. Only archives of uncompressed (stored) entries can be read.")
+                          "This document cannot be opened: “manifest.json” is compressed. Only archives of uncompressed (stored) entries can be read.")
         assertReadRefused(.invalidArchive, RawZip.build([RawEntry("../manifest.json", [1])]))
         // An entry name never reaches the message as it is.
         assertReadRefused(.invalidArchive, RawZip.build([RawEntry("x\nGo to evil.example\n", [1])]),
-                          "This document cannot be opened: The archive holds an entry with an unsafe name (\"x\u{FFFD}Go to evil.example\u{FFFD}\").")
+                          "This document cannot be opened: The archive holds an entry with an unsafe name (“x\u{FFFD}Go to evil.example\u{FFFD}”).")
         let whole = try CompanionPackage.make(CompanionFixtures.minimal)
         assertReadRefused(.invalidArchive, whole.prefix(whole.count - 5))
         var limits = ZipReadLimits.standard

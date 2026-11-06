@@ -29,7 +29,7 @@ internal sealed class SimulatedTwainHost : ITwainHelperHost
 
     public ITwainTransport Open(string name)
     {
-        if (!Names.Contains(name)) throw ScanException.DeviceUnavailable($"The TWAIN driver \"{name}\" is no longer installed.");
+        if (!Names.Contains(name)) throw ScanException.DeviceUnavailable($"The TWAIN driver “{name}” is no longer installed.");
         if (name == Busy) throw ScanException.ForProblem(ScannerProblem.Busy, "TWAIN TWCC_MAXCONNECTIONS");
         return new SimulatedSource(name);
     }

@@ -774,7 +774,6 @@
   "Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.": {},
   "Windows Firewall blocks Lazy Scan": {},
   "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete the rules for Lazy Scan that block it. Windows then asks again.": {},
-  "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete {0} that block it. Windows then asks again.": {},
   "Windows Firewall will ask once": {},
   "When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow, with Public networks ticked for the networks you allowed that Windows treats as public. Cancel blocks phones until the rule it makes is removed.": {},
   "When Lazy Scan starts receiving, Windows Firewall asks whether to allow it. Choose Allow. Cancel blocks phones until the rule it makes is removed.": {},
@@ -906,9 +905,6 @@
   },
   "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed it yet.": {
     "other": "Lazy Scan reaches such drivers through its 32-bit TWAIN helper, which has not listed them yet."
-  },
-  "{1} is installed only for 32-bit apps.": {
-    "other": "{1} are installed only for 32-bit apps."
   },
   "A TWAIN driver is 32-bit only": {
     "other": "{0} TWAIN drivers are 32-bit only"
@@ -1695,19 +1691,10 @@
   "{0} is a TIFF, which only black & white pages can be.": {},
   "{0} needs a size in pixels and a resolution.": {},
   "The archive is damaged or cut short.": {},
-  "{0} is compressed. Only archives of uncompressed (stored) entries can be read.": {},
-  "{0} is encrypted. Encrypted archives cannot be read.": {},
-  "{0} keeps its sizes after its data (a data descriptor), which is not supported.": {},
-  "The archive holds an entry with an unsafe name ({0}).": {},
-  "The archive holds {0} more than once.": {},
-  "{0} is a link or a special file, not a plain file.": {},
   "The archive holds more than {0} entries.": {
     "note": "{0} is always 4096, the most entries a document may hold. Use it as a number so the noun agrees with it."
   },
   "The archive's contents are larger than {0} MB.": {},
-  "{0} is larger than {1} MB.": {},
-  "{0} declares sizes that do not match its data.": {},
-  "{0} is damaged: its checksum does not match its data.": {},
   "The scanner driver ran out of memory. Try a lower resolution. ({0})": {},
   "The scanner driver reported an error. ({0})": {},
   "The scanner driver reported an error: {0} ({1})": {},
@@ -2567,6 +2554,19 @@
   "Could not create the {0} file at {1}.": {},
   "The task “{0}” saves its scans on its own": {},
   "The task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.": {},
+  "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete “{0}” that block it. Windows then asks again.": {},
+  "“{1}” is installed only for 32-bit apps.": {
+    "other": "“{1}” are installed only for 32-bit apps."
+  },
+  "“{0}” is compressed. Only archives of uncompressed (stored) entries can be read.": {},
+  "“{0}” is encrypted. Encrypted archives cannot be read.": {},
+  "“{0}” keeps its sizes after its data (a data descriptor), which is not supported.": {},
+  "The archive holds an entry with an unsafe name (“{0}”).": {},
+  "The archive holds “{0}” more than once.": {},
+  "“{0}” is a link or a special file, not a plain file.": {},
+  "“{0}” is larger than {1} MB.": {},
+  "“{0}” declares sizes that do not match its data.": {},
+  "“{0}” is damaged: its checksum does not match its data.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

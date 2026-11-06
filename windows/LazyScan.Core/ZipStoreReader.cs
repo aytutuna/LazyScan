@@ -251,23 +251,23 @@ public sealed class ZipStoreReader : IDisposable
     public static string Message(ZipReadErrorKind kind, string? entryName = null, ZipReadLimits? limits = null)
     {
         limits ??= ZipReadLimits.Standard;
-        string name = $"\"{DisplayName(entryName ?? "")}\"";
+        string name = DisplayName(entryName ?? "");
         return kind switch
         {
             ZipReadErrorKind.Corrupt => Loc.T("The archive is damaged or cut short."),
-            ZipReadErrorKind.UnsupportedMethod => Loc.T("{0} is compressed. Only archives of uncompressed (stored) entries can be read.", name),
-            ZipReadErrorKind.Encrypted => Loc.T("{0} is encrypted. Encrypted archives cannot be read.", name),
+            ZipReadErrorKind.UnsupportedMethod => Loc.T("“{0}” is compressed. Only archives of uncompressed (stored) entries can be read.", name),
+            ZipReadErrorKind.Encrypted => Loc.T("“{0}” is encrypted. Encrypted archives cannot be read.", name),
             ZipReadErrorKind.Zip64 => Loc.T("The archive uses ZIP64 (for archives past {0} or {1} entries), which is not supported.", Loc.T("{0} GB", 4), 65_535),
-            ZipReadErrorKind.DataDescriptor => Loc.T("{0} keeps its sizes after its data (a data descriptor), which is not supported.", name),
-            ZipReadErrorKind.UnsafeName => Loc.T("The archive holds an entry with an unsafe name ({0}).", name),
-            ZipReadErrorKind.DuplicateName => Loc.T("The archive holds {0} more than once.", name),
-            ZipReadErrorKind.SpecialFile => Loc.T("{0} is a link or a special file, not a plain file.", name),
+            ZipReadErrorKind.DataDescriptor => Loc.T("“{0}” keeps its sizes after its data (a data descriptor), which is not supported.", name),
+            ZipReadErrorKind.UnsafeName => Loc.T("The archive holds an entry with an unsafe name (“{0}”).", name),
+            ZipReadErrorKind.DuplicateName => Loc.T("The archive holds “{0}” more than once.", name),
+            ZipReadErrorKind.SpecialFile => Loc.T("“{0}” is a link or a special file, not a plain file.", name),
             ZipReadErrorKind.TooManyEntries => Loc.T("The archive holds more than {0} entries.", limits.MaxEntries),
             ZipReadErrorKind.TooLarge => entryName is null
                 ? Loc.T("The archive's contents are larger than {0} MB.", Megabytes(limits.MaxTotalBytes))
-                : Loc.T("{0} is larger than {1} MB.", name, Megabytes(limits.MaxEntryBytes)),
-            ZipReadErrorKind.SizeMismatch => Loc.T("{0} declares sizes that do not match its data.", name),
-            ZipReadErrorKind.CrcMismatch => Loc.T("{0} is damaged: its checksum does not match its data.", name),
+                : Loc.T("“{0}” is larger than {1} MB.", name, Megabytes(limits.MaxEntryBytes)),
+            ZipReadErrorKind.SizeMismatch => Loc.T("“{0}” declares sizes that do not match its data.", name),
+            ZipReadErrorKind.CrcMismatch => Loc.T("“{0}” is damaged: its checksum does not match its data.", name),
             _ => "The archive cannot be read.",
         };
     }

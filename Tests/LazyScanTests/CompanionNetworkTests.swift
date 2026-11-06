@@ -215,7 +215,7 @@ final class CompanionNetworkTests: XCTestCase {
         let checks = CompanionTroubleshooter.diagnose(snapshot)
         XCTAssertEqual(checks[0].id, "phoneFirewall")
         XCTAssertEqual(checks[0].status, .problem)
-        XCTAssertTrue(checks[0].detail.contains("\"lazyscan.exe\""))
+        XCTAssertTrue(checks[0].detail.contains("“lazyscan.exe”"))
         XCTAssertTrue(checks[0].detail.contains("wf.msc"))
         XCTAssertEqual(checks.first { $0.id.hasPrefix("phoneNetwork:") }?.title, "Home Wi-Fi is a private network")
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "1 problem found.")

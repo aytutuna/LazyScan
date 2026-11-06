@@ -134,7 +134,7 @@ public class TwainHelperSessionTests
             if (name == "Busy") throw ScanException.ForProblem(ScannerProblem.Busy, "TWAIN TWCC_MAXCONNECTIONS");
             return Sources.TryGetValue(name, out var behavior)
                 ? new FakeSource(this, behavior)
-                : throw ScanException.DeviceUnavailable($"The TWAIN driver \"{name}\" is no longer installed.");
+                : throw ScanException.DeviceUnavailable($"The TWAIN driver “{name}” is no longer installed.");
         }
 
         public void Close(ITwainTransport source) => Calls.Enqueue("close");

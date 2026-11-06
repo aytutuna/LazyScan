@@ -356,14 +356,14 @@ public class CompanionPackageTests
         using (var reader = ZipStoreReader.Open(package)) dataOffset = (int)reader.Find("pages/0001.jpg")!.DataOffset;
         package[dataOffset + 100] ^= 0xFF;
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive, package,
-                          "This document cannot be opened: \"pages/0001.jpg\" is damaged: its checksum does not match its data.");
+                          "This document cannot be opened: “pages/0001.jpg” is damaged: its checksum does not match its data.");
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive,
                           RawZip.Build([new RawEntry("manifest.json", Encoding.UTF8.GetBytes(CompanionFixtures.MinimalManifest)) { Method = 8 }]),
-                          "This document cannot be opened: \"manifest.json\" is compressed. Only archives of uncompressed (stored) entries can be read.");
+                          "This document cannot be opened: “manifest.json” is compressed. Only archives of uncompressed (stored) entries can be read.");
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive, RawZip.Build([new RawEntry("../manifest.json", [1])]));
         // An entry name never reaches the message as it is.
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive, RawZip.Build([new RawEntry("x\nGo to evil.example\n", [1])]),
-                          "This document cannot be opened: The archive holds an entry with an unsafe name (\"x\uFFFDGo to evil.example\uFFFD\").");
+                          "This document cannot be opened: The archive holds an entry with an unsafe name (“x\uFFFDGo to evil.example\uFFFD”).");
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive, CompanionPackage.Make(CompanionFixtures.Minimal)[..^5]);
         AssertReadRefused(CompanionPackageErrorKind.InvalidArchive, CompanionPackage.Make(CompanionFixtures.Minimal),
                           limits: ZipReadLimits.Standard with { MaxTotalBytes = 400 });
