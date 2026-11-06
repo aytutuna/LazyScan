@@ -2401,5 +2401,19 @@
     "Also save sides as images": "Seiten auch als Bilder speichern",
     "Allow": "Zulassen",
     "Don't allow": "Nicht zulassen"
+  },
+  "infoplist": {
+    "ios": {
+      "NSCameraUsageDescription": "Lazy Scan verwendet die Kamera, um Dokumente, Fotos und den Kopplungscode auf deinem Computer zu scannen. Deine Scans bleiben auf diesem Gerät, solange du sie nicht teilst.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan sucht in deinem lokalen Netzwerk nach Scannern und Druckern mit Scanfunktion, damit du mit ihnen scannen kannst. Außerdem findet die App dort deinen gekoppelten Computer, um deine Scans an ihn zu senden.",
+      "NSPhotoLibraryAddUsageDescription": "Lazy Scan fügt einen Scan nur dann deiner Fotomediathek hinzu, wenn du im Teilen-Menü „Bild sichern“ wählst.",
+      "Lazy Scan document": "Lazy Scan-Dokument",
+      "PDF document": "PDF-Dokument",
+      "Image": "Bild"
+    },
+    "mac": {
+      "NSLocalNetworkUsageDescription": "Lazy Scan empfängt über dein lokales Netzwerk Dokumente von deinem gekoppelten Telefon.",
+      "Lazy Scan document": "Lazy Scan-Dokument"
+    }
   }
 }
