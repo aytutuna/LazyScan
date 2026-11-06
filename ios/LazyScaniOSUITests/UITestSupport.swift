@@ -332,9 +332,13 @@ extension XCUIApplication {
 }
 
 extension XCUIElement {
-    /// The number a pages' button counts: its label says it in digits, in any language.
+    /// The number a pages' button counts: its label says it in digits, except that Arabic spells out
+    /// none, one and two.
     var pageCount: Int? {
-        Int(label.filter(\.isNumber))
+        if let count = Int(label.filter(\.isNumber)) {
+            return count
+        }
+        return ["لا توجد صفحات": 0, "صفحة واحدة": 1, "صفحتان": 2][label]
     }
 
     @MainActor
