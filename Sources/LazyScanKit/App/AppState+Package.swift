@@ -184,7 +184,7 @@ extension AppState {
         let pages = scannedPages
         guard !pages.isEmpty else { throw CompanionPackageError(.noPages, CompanionPackage.noPagesMessage) }
         let s = settings
-        let counter = UserDefaults.standard.integer(forKey: Self.counterKey) + 1
+        let counter = counterDefaults.integer(forKey: Self.counterKey) + 1
         let name = NamingTemplate(s.namingTemplate)
             .baseFilename(NamingContext(counter: counter, date: Date(), intent: s.intent, task: TaskCatalog.infer(s),
                                         label: pages[0].documentLabel))

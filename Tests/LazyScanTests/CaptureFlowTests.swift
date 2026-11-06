@@ -92,8 +92,10 @@ final class CaptureFlowTests: XCTestCase {
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
         try await Task.sleep(nanoseconds: 600_000_000)
         try? FileManager.default.removeItem(at: folder)
+        UserDefaults.standard.removePersistentDomain(forName: suite)
     }
 
+    private var suite: String { folder.lastPathComponent }
     private var saved: URL { folder.appendingPathComponent("Saved", isDirectory: true) }
     private var spool: URL { AppStateFiles.all(in: folder).spoolDirectory }
 
@@ -108,6 +110,7 @@ final class CaptureFlowTests: XCTestCase {
         settings.pdfSearchable = false
         settings.destinationPath = saved.path
         state.settings = settings
+        state.counterDefaults = UserDefaults(suiteName: suite)!
         return state
     }
 

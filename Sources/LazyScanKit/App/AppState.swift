@@ -2629,10 +2629,13 @@ public final class AppState: ObservableObject {
 
     /// Where the running number of {counter} is kept, in the user's defaults.
     static let counterKey = "LazyScan.counter"
+    /// The defaults that running number is kept in; a test gives its state its own, since the test
+    /// processes of `swift test --parallel` share the standard ones.
+    var counterDefaults: UserDefaults = .standard
 
     private func nextCounter() -> Int {
-        let value = UserDefaults.standard.integer(forKey: Self.counterKey) + 1
-        UserDefaults.standard.set(value, forKey: Self.counterKey)
+        let value = counterDefaults.integer(forKey: Self.counterKey) + 1
+        counterDefaults.set(value, forKey: Self.counterKey)
         return value
     }
 
@@ -2640,7 +2643,7 @@ public final class AppState: ObservableObject {
     /// example, `NamingTokens.example`); the running number is read, not taken. Twin of the Windows
     /// view model's `FileNamePreview`.
     public func fileNameExample(_ template: String, format: OutputFormat) -> String {
-        let next = UserDefaults.standard.integer(forKey: Self.counterKey) + 1
+        let next = counterDefaults.integer(forKey: Self.counterKey) + 1
         return NamingTokens.example(template, settings: settings, format: format, counter: next, date: Date())
     }
 
