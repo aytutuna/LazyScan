@@ -323,7 +323,7 @@
   },
   "{0} page from {1} added to the queue.": {
     "other": "{0} pages from {1} added to the queue.",
-    "note": "{1} is the name of the phone that sent the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone that sent the pages."
   },
   "Keep the page?": {
     "other": "Keep the {0} pages?"
@@ -356,7 +356,7 @@
   },
   "Adding {0} page to {1}…": {
     "other": "Adding {0} pages to {1}…",
-    "note": "{1} is the name of the PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the PDF file."
   },
   "Put {0} sheet in order — {1} in queue.": {
     "other": "Put {0} sheets in order — {1} in queue."
@@ -366,32 +366,34 @@
   },
   "{0} page sent to {1}.": {
     "other": "{0} pages sent to {1}.",
-    "note": "{1} is the name of the computer as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the computer."
   },
   "Put {0} document in the cloud folder for {1}.": {
     "other": "Put {0} documents in the cloud folder for {1}.",
-    "note": "{1} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of a phone."
   },
-  "your phones": {},
+  "your phones": {
+    "note": "Stands in for the phone name when pages from several phones are waiting, so it must read where the sentence puts the name."
+  },
   "{0} page from {1} will be added to the queue when this two-sided stack is finished.": {
     "other": "{0} pages from {1} will be added to the queue when this two-sided stack is finished.",
-    "note": "{1} is the name of the phone that sent the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone that sent the pages."
   },
   "{0} page from {1} will be added to the queue when the current step is done.": {
     "other": "{0} pages from {1} will be added to the queue when the current step is done.",
-    "note": "{1} is the name of the phone that sent the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone that sent the pages."
   },
   "{0} page from {1} is waiting: {2}. Leave the task or pick Document to PDF to add it to the queue.": {
     "other": "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue.",
-    "note": "{1} is the name of the phone that sent the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone that sent the pages."
   },
   "{0} page from {1} is waiting: choose Document mode, or a document task, with Collect pages before saving on, to add it to the queue.": {
     "other": "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue.",
-    "note": "{1} is the name of the phone that sent the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone that sent the pages."
   },
   "Added {0} page from {1} — {2} in queue.": {
     "other": "Added {0} pages from {1} — {2} in queue.",
-    "note": "{1} is the name of the phone or the source of the pages as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of the phone or the source of the pages."
   },
   "{0} page in the queue.": {
     "other": "{0} pages in the queue."
@@ -430,7 +432,7 @@
   },
   "Saved {0} photo to {1}": {
     "other": "Saved {0} photos to {1}",
-    "note": "{1} is a folder path as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is a folder path."
   },
   "Scanned {0} front side before the feeder stopped. {1}": {
     "other": "Scanned {0} front sides before the feeder stopped. {1}"
@@ -461,7 +463,7 @@
   },
   "Sent {0} page to {1}.": {
     "other": "Sent {0} pages to {1}.",
-    "note": "{1} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the printer name."
   },
   "{0} spread split into pages.": {
     "other": "{0} spreads split into pages.",
@@ -539,7 +541,7 @@
   },
   "{0} file in {1}": {
     "other": "{0} files in {1}",
-    "note": "{1} is a folder name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is a folder name."
   },
   "This document has more than {1} page.": {
     "other": "This document has more than {1} pages."
@@ -763,7 +765,9 @@
   "No phone is paired": {},
   "Listening on port {0} while the pairing code is shown.": {},
   "Ready for phones": {},
-  "this network": {},
+  "this network": {
+    "note": "Stands in for the network name in sentences that use it when the network has no name, so it must read where those sentences put the name."
+  },
   "{0} is a private network": {},
   "Lazy Scan listens for phones only on networks you allow. If {0} is a network you trust, such as your home Wi-Fi, turn on Allow receiving on this network.": {},
   "Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.": {},
@@ -780,7 +784,7 @@
     "note": "Joins two names in a list; {0} is the names so far, {1} the last."
   },
   "No scanner answers at {0}": {
-    "note": "{0} is the scanner address or name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner address or name."
   },
   "Check that it is on and its address hasn't changed.": {},
   "Its network settings page or control panel shows the current address. The app tries the address again every minute.": {},
@@ -816,7 +820,7 @@
     "note": "{0} is the short title of a scanner problem such as 'Paper jam', {1} the scanner name."
   },
   "Could not connect to {0}": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "Check that it is on, awake and connected.": {},
   "It must be on the same network as this device.": {},
@@ -1038,7 +1042,7 @@
   "Saved the QR separator sheet: {0}. Print as many as you need and put one in front of each document.": {},
   "Sent the QR separator sheet for “{0}” to {1}. Put it in front of that document; the document is named “{0}”.": {},
   "Sent the QR separator sheet to {0}. Put one in front of each document; print more copies as you need them.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Not split": {
     "note": "Strip label: this spread was left as one page."
@@ -1250,11 +1254,11 @@
   "The separator sheet could not be drawn.": {},
   "The separator sheet could not be saved: {0}": {},
   "Printing the separator sheet on {0}…": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Printing cancelled.": {},
   "Sent the separator sheet to {0}. Put one in front of each document after the first; print more copies as you need them.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Barcode reading failed: the page could not be prepared for reading.": {},
   "Barcode reading failed: {0}": {},
@@ -1298,7 +1302,7 @@
   "Add the pages anyway?": {},
   "Save as new PDF": {},
   "Add to {0}": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "The file has no password, so the added pages have none either.": {},
   "{0} is not a PDF, so pages can't be added to it.": {},
@@ -1309,16 +1313,16 @@
   "{0} is open in another app. Close it there, then add the pages again.": {},
   "{0} was changed by another app while the pages were being added, so it was left as it was. Try again.": {},
   "The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "The pages could not be added to {0}: the updated file did not check out, so the original was left as it was.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, named {1}. Rename it back to {0}, then add the pages again.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "The pages could not be added to {0}, and the file could not be put back under its name. It is unchanged, in the same folder, under a name ending in .pdf.bak. Rename it back to {0}, then add the pages again.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.": {},
   "{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.": {},
@@ -1337,18 +1341,18 @@
   "no OCR language pack is installed (Settings → Time & Language → Language).": {},
   "no recognizer could process the page.": {},
   "The new version was kept as {0}.": {
-    "note": "{0} is a file name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a file name."
   },
   "Could not write {0}: {1}": {},
   "Could not write to {0}.": {
-    "note": "{0} is a file name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a file name."
   },
   "Writing page {0} of {1}…": {},
   "OCR page {0} of {1}…": {},
   "Page {0} could not be stored in the PDF.": {},
   "Writing PDF…": {},
   "Nothing was added to {0}.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "Running OCR and adding pages…": {},
   "Adding pages…": {},
@@ -1364,37 +1368,37 @@
   "Page discarded.": {},
   "The copy could not be prepared for printing.": {},
   "Printing on {0}…": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Saving the PDF…": {},
   "The PDF was not saved (cancelled).": {},
   "{0} PDF not saved (cancelled).": {},
   "The PDF could not be saved either: {0}": {},
   "The scan was saved as {0}.": {
-    "note": "{0} is a file name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a file name."
   },
   "Could not print on {0}: {1}": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Copy ready to print.": {},
   "Ready to print.": {},
   "Copy discarded.": {},
   "The page could not be drawn.": {},
   "Printing the ID card on {0}…": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Sent the ID card to {0} on {1}, made smaller to fit.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Sent the ID card to {0} on {1}, at real size.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "The ruler test page could not be drawn.": {},
   "Printing the ruler test page on {0}…": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Sent the ruler test page to {0}. At real size each square measures 1 inch (2.54 cm) and each tick 1 cm.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Saved nothing.": {},
   "Saved {0}: {1}": {},
@@ -1403,20 +1407,22 @@
   "No back side. Check the front, then save.": {},
   "Looking for scanners…": {},
   "Connecting to {0}…": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "No scanner selected.": {},
   "Scanner is no longer available.": {},
   "scanner|lowercase label": {
-    "note": "Lowercase noun used inside a sentence when the scanner has no name, e.g. 'the scanner'."
+    "note": "Stands in for the scanner name inside a sentence when the scanner has no name, so it must read where the sentence puts the name."
   },
   "Could not connect to {0}.": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "{0} To review the new certificate, choose the scanner in the list.": {},
-  "the scanner": {},
+  "the scanner": {
+    "note": "Stands in for the scanner name in sentences that use it when the scanner has no name, so it must read where those sentences put the name."
+  },
   "Not connected to {0}. Choose it in the list again to retry.": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "This scanner has no preview.": {},
   "Preview needs the flatbed. Choose Flatbed as the source to preview.": {},
@@ -1444,7 +1450,7 @@
   "Applied preset “{0}”.": {},
   "No scanner selected. Choose one under Scanners (or the Demo Scanner).": {},
   "Not connected to {0}. Turn it on and choose it in the list again, or pick another scanner.": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "Reading the text of page {0} of {1}…": {},
   "Writing the Word document…": {},
@@ -1495,37 +1501,39 @@
   "{0} is not on this network.": {},
   "{0} cannot be reached on this network.": {},
   "Paired with {0}.": {
-    "note": "{0} is the name of a phone or computer as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone or computer."
   },
   "This device is no longer paired with {0}.": {
-    "note": "{0} is the name of a computer as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a computer."
   },
   "{0} was not sent: {1}": {},
   "Put {0} in the cloud folder for {1}.": {
-    "note": "{1} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of a phone."
   },
   "Received {0} from {1}.": {
-    "note": "{1} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of a phone."
   },
   "The computer refused the request (HTTP {0}).": {},
   "Another copy of Lazy Scan receives from phones. Pair and manage phones there.": {},
   "The phone link could not start: {0}": {},
   "Adding pages from {0}…": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added: one of its pictures could not be read.": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added: one of its pictures could not be read ({1}).": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
-  "a phone": {},
+  "a phone": {
+    "note": "Stands in for the phone name in sentences such as 'Added {0} page from {1}' when the phone has no name, so it must read where the sentence puts the name."
+  },
   "Add to pages": {},
   "Open as new": {},
   "Not added": {},
@@ -1574,12 +1582,12 @@
   "Transferring page {0}…": {},
   "{0} sent page {1} in a form that could not be read ({2}).": {},
   "No scanner answered at {0} (the check was stopped).": {
-    "note": "{0} is the scanner address or name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner address or name."
   },
   "its name could not be found": {},
   "it is not a usable address": {},
   "No scanner answered at {0} ({1}).": {
-    "note": "{0} is the scanner address or name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner address or name."
   },
   "The selected scanner is not connected.": {},
   "{0} did not answer ({1}).": {},
@@ -1612,7 +1620,7 @@
   "A file in the cloud folder could not be read: {0}. {1}": {},
   "The key for a phone could not be read, so files from it cannot be opened. Pair the phone again.": {},
   "The key for {0} could not be read, so files from it cannot be opened. Pair the phone again.": {
-    "note": "{0} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone."
   },
   "The scanner did not describe the image it was sending.": {},
   "The security certificate cannot be used to receive from phones.": {},
@@ -1675,11 +1683,11 @@
   "Sent from a paired phone": {},
   "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {
     "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
-    "note": "{1} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of a phone."
   },
   "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {
     "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts.",
-    "note": "{1} is the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the name of a phone."
   },
   "Network (eSCL)": {},
   "Demo": {},
@@ -1693,7 +1701,9 @@
   "The archive holds an entry with an unsafe name ({0}).": {},
   "The archive holds {0} more than once.": {},
   "{0} is a link or a special file, not a plain file.": {},
-  "The archive holds more than {0} entries.": {},
+  "The archive holds more than {0} entries.": {
+    "note": "{0} is always 4096, the most entries a document may hold. Use it as a number so the noun agrees with it."
+  },
   "The archive's contents are larger than {0} MB.": {},
   "{0} is larger than {1} MB.": {},
   "{0} declares sizes that do not match its data.": {},
@@ -1719,24 +1729,22 @@
   "Confirm the scanner's certificate to continue.": {},
   "The scanner was not added, because its certificate was not trusted.": {},
   "No scanner answered at {0}.": {
-    "note": "{0} is the scanner address or name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner address or name."
   },
   "Trust and connect": {},
   "Trust and add": {},
   "Scanner certificate changed": {},
   "Trust this scanner?": {},
   "Trust the scanner at {0}?": {
-    "note": "{0} is the scanner address as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner address."
   },
   "Trust {0}?": {
-    "note": "{0} is the scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the scanner name."
   },
   "The scanner identified itself with a different certificate from the one you trusted on {0}.": {
-    "note": "{0} is the scanner address as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the date the old certificate was trusted, in the user's short date format."
   },
-  "The scanner identified itself with a different certificate from the one you trusted.": {
-    "note": "{0} is the scanner address as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
-  },
+  "The scanner identified itself with a different certificate from the one you trusted.": {},
   "A firmware update or a reset of the scanner can change it, but so can another device on the network that pretends to be your scanner.": {},
   "This scanner offers an encrypted connection and identifies itself with a certificate it made itself. Windows cannot vouch for such certificates; that is normal for scanners.": {},
   "Trust the new certificate only if you know why it changed. Otherwise choose Cancel and check the scanner.": {},
@@ -1757,7 +1765,7 @@
   "Windows treats this network as private, so paired phones can always send here.": {},
   "For a network you trust that Windows treats as public, such as your school's Wi-Fi. Only phones you paired can send.": {},
   "Allow receiving on {0}": {
-    "note": "{0} is a network name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a network name."
   },
   "The first time a phone connects here, Windows Firewall may ask about Lazy Scan: tick Public networks, then choose Allow.": {},
   "{0}, {1}, {2}": {},
@@ -1770,7 +1778,7 @@
   "Show a new code": {},
   "Pair a phone": {},
   "Paired with {0}. Documents sent from it are added to the queue.": {
-    "note": "{0} is the name of a phone or computer as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a phone or computer."
   },
   "The code expired. Choose Pair a phone to show a new one.": {},
   "Scan this code with your phone. It works for {0} more.": {},
@@ -1794,7 +1802,7 @@
   "Not watching: no folder chosen.": {},
   "Watching {0}.": {},
   "Waiting for {0}: the folder is not there now.": {
-    "note": "{0} is a folder path as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a folder path."
   },
   "Choose the cloud folder": {},
   "The photo could not be shown: {0}": {},
@@ -1807,7 +1815,7 @@
   "{0} from the left": {},
   "{0} from the top": {},
   "More about {0}": {
-    "note": "{0} is a setting or topic title as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a setting or topic title."
   },
   "More information": {},
   "Discard {0} receipt?": {
@@ -1874,7 +1882,7 @@
   "{0} {1}.": {},
   "{0} Not available: {1}": {},
   "Preset for {0}. {1}.": {
-    "note": "{0} is a preset name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the title of the task the preset was saved for, such as Receipts; {1} is the summary of its settings."
   },
   "{0} preset": {},
   "The clipboard is in use by another app. Try again.": {},
@@ -1899,12 +1907,12 @@
   },
   "Demo (no hardware)": {},
   "via {0}": {
-    "note": "{0} is the connection kind or the name of a phone as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is how the scanner is reached: WIA, TWAIN, or a phrase such as Network (eSCL)."
   },
   "TWAIN (32-bit driver)": {},
   "TWAIN driver": {},
   "Connection for {0}: {1}": {
-    "note": "{0} is a scanner name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a scanner name."
   },
   "Last PDF: {0}": {},
   "Place the original face down, then select Scan.": {},
@@ -1918,7 +1926,7 @@
   "The next file is named {0}": {},
   "Save password-protected PDF": {},
   "Pages are collected until they are added to {0}. The × under Save saves new files again.": {
-    "note": "{0} is the name of a PDF file as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the name of a PDF file."
   },
   "Off: each scan is saved right away": {},
   "{0}, step {1} of {2}: {3}": {},
@@ -1990,9 +1998,11 @@
   "Made smaller to fit the paper, never larger. It is not at real size.": {},
   "At real size, like a photocopier: 1 inch on the glass is 1 inch on paper.": {},
   "Print at real size on {0}": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
-  "the default printer": {},
+  "the default printer": {
+    "note": "Stands in for the printer name in sentences such as 'Print at real size on {0}' when no printer is chosen, so it must read where that sentence puts the name."
+  },
   "Photos and documents": {},
   "Lazy Scan documents": {},
   "All files": {},
@@ -2019,15 +2029,15 @@
   "Saves a QR separator sheet ({0}) carrying the name above as a PDF in the scans folder, to print on any printer.": {},
   "Saves a Patch T separator sheet ({0}) as a PDF in the scans folder. Print it at actual size (100%) on any printer.": {},
   "Prints one now on {0}, at actual size": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Print QR separator sheet": {},
   "Print separator sheet": {},
   "Prints a QR separator sheet carrying the name above at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "Prints a Patch T separator sheet at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {
-    "note": "{0} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is the printer name."
   },
   "{0}. Save the separator sheet as a PDF to print it elsewhere.": {},
   "Still stopping the current operation. Quit now anyway? A file being written may be left incomplete.": {},
@@ -2418,7 +2428,7 @@
   "Show {0} in File Explorer": {},
   "Rotate {0} 90° clockwise": {},
   "More actions for {0}": {
-    "note": "{0} is a file or page name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{0} is a file or page name."
   },
   "Opens a menu: open, open with, show in folder, share, email, copy": {},
   "Open folder": {},
@@ -2482,7 +2492,7 @@
   },
   "Sent {0} page to {1}. Copies: {2}.": {
     "other": "Sent {0} pages to {1}. Copies: {2}.",
-    "note": "{1} is the printer name as the system or the user wrote it. Use it as it is: it takes no case ending, article or gender. The sentence may be reordered so the name comes last."
+    "note": "{1} is the printer name."
   },
   "Cancelled. Pages saved: {1} of {2}. The other one is kept in the queue.": {
     "other": "Cancelled. Pages saved: {1} of {2}. The other {0} are kept in the queue."
@@ -2527,15 +2537,25 @@
   "Up to {0} dpi (black & white {1}), gray pages saved in gray.": {},
   "Up to {0} dpi (black & white {1}), more compression.": {},
   "Up to {0} dpi (black & white {1}), most compression.": {},
-  "The rotation of page {0} must be {1} to {2} quarter turns.": {},
+  "The rotation of page {0} must be {1} to {2} quarter turns.": {
+    "note": "{0} is the page number; {1} is always 0 and {2} always 3, the quarter turns allowed. Use them as numbers so the noun agrees with them."
+  },
   "The sheet number of page {0} cannot be negative.": {},
   "The original picture of page {0}": {},
   "The picture of page {0}": {},
   "The Word document would be larger than {1}, too large to write. Save fewer pages in each document, choose a smaller page image size, or turn off “{0}”.": {},
-  "Weak · use {0}+ characters": {},
-  "Weak: easy to guess. Longer is stronger: use {0} or more characters, or a few unrelated words.": {},
-  "The archive uses ZIP64 (for archives past {0} or {1} entries), which is not supported.": {},
-  "the photo is too large (more than {0} megapixels).": {},
+  "Weak · use {0}+ characters": {
+    "note": "{0} is always 12, the shortest length that counts as strong. Use it as a number so the noun agrees with it."
+  },
+  "Weak: easy to guess. Longer is stronger: use {0} or more characters, or a few unrelated words.": {
+    "note": "{0} is always 12. Use it as a number so the noun agrees with it."
+  },
+  "The archive uses ZIP64 (for archives past {0} or {1} entries), which is not supported.": {
+    "note": "{0} is a size with its unit, '4 GB'; {1} is always 65,535, the number of entries. Use {1} as a number so the noun agrees with it."
+  },
+  "the photo is too large (more than {0} megapixels).": {
+    "note": "{0} is always 150, a number of megapixels. Use it as a number so the noun agrees with it."
+  },
   "Task “{0}” saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.": {},
   "Networks receiving from phones: {0}.": {},
   "Networks not receiving from phones: {0}.": {},
