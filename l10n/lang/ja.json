@@ -2376,5 +2376,19 @@
     "last seen today at %@": "最終接続: 今日%@",
     "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "Lazy Scanにローカルネットワーク上のデバイスの検出を許可するかどうか、macOSから一度確認されることがあります。iPhoneからこのMacを見つけられるように、“許可”を選択してください。"
   },
-  "win": {}
+  "win": {},
+  "infoplist": {
+    "ios": {
+      "NSCameraUsageDescription": "Lazy Scanは、書類や写真のスキャンと、コンピュータに表示されるペアリングコードの読み取りにカメラを使用します。スキャンした内容は、共有しない限りこのデバイスから外部に送信されません。",
+      "NSLocalNetworkUsageDescription": "Lazy Scanは、ローカルネットワーク上のスキャナ（スキャン機能付きプリンタなど）と、ペアリングしたコンピュータを探します。見つかったスキャナでスキャンしたり、スキャンしたデータをコンピュータに送信したりできます。",
+      "NSPhotoLibraryAddUsageDescription": "Lazy Scanは、共有シートで“画像を保存”を選択したときだけ、スキャンを写真ライブラリに追加します。",
+      "Lazy Scan document": "Lazy Scan書類",
+      "PDF document": "PDF書類",
+      "Image": "画像"
+    },
+    "mac": {
+      "NSLocalNetworkUsageDescription": "Lazy Scanは、ペアリング済みのiPhoneからローカルネットワーク経由で書類を受信します。",
+      "Lazy Scan document": "Lazy Scan書類"
+    }
+  }
 }
