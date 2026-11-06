@@ -173,13 +173,13 @@ public static class PhotoImport
     /// </summary>
     public static string? OwnSaveTaskReason(ScanSettings settings) =>
         settings.Intent == ScanIntent.Document && settings.Task is { } task && !IsOffered(settings)
-            ? Loc.T("Task “{0}” saves its scans on its own", TaskCatalog.Definition(task).Title)
+            ? Loc.T("The task “{0}” saves its scans on its own", TaskCatalog.Definition(task).Title)
             : null;
 
     /// <summary>Why photos are not imported with these settings, and what to change to import them.</summary>
     public static string NotOfferedMessage(ScanSettings settings) =>
         OwnSaveTaskReason(settings) is not null && settings.Task is { } task
-            ? Loc.T("Task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.Definition(task).Title)
+            ? Loc.T("The task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.Definition(task).Title)
             : Loc.T("Photos of documents are added to the page queue: choose Document mode, or a document task, to import them.");
 
     /// <summary>The photo the right way up: <paramref name="stored"/> mirrored and turned as <paramref name="orientation"/> says.</summary>

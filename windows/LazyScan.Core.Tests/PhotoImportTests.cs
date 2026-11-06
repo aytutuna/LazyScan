@@ -332,12 +332,12 @@ public class PhotoImportTests
     public void TheRefusalNamesTheTaskThatSavesOnItsOwn()
     {
         var receipts = TaskCatalog.Apply(ScanTask.Receipt, new ScanSettings());
-        Assert.Equal("Task “Receipts” saves its scans on its own", PhotoImport.OwnSaveTaskReason(receipts));
-        Assert.Equal("Task “ID card” saves its scans on its own",
+        Assert.Equal("The task “Receipts” saves its scans on its own", PhotoImport.OwnSaveTaskReason(receipts));
+        Assert.Equal("The task “ID card” saves its scans on its own",
                      PhotoImport.OwnSaveTaskReason(TaskCatalog.Apply(ScanTask.IdCard, new ScanSettings())));
-        Assert.Equal("Task “Photocopy” saves its scans on its own",
+        Assert.Equal("The task “Photocopy” saves its scans on its own",
                      PhotoImport.OwnSaveTaskReason(TaskCatalog.Apply(ScanTask.Copy, new ScanSettings())));
-        Assert.Equal("Task “Receipts” saves its scans on its own, so photos cannot be added as pages here. "
+        Assert.Equal("The task “Receipts” saves its scans on its own, so photos cannot be added as pages here. "
                      + "Leave the task or pick Document to PDF to import them.",
                      PhotoImport.NotOfferedMessage(receipts));
         // Nothing keeps photos out of the queue: no reason.

@@ -2556,17 +2556,17 @@
   "the photo is too large (more than {0} megapixels).": {
     "note": "{0} is always 150, a number of megapixels. Use it as a number so the noun agrees with it."
   },
-  "Task “{0}” saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.": {},
-  "Networks receiving from phones: {0}.": {},
-  "Networks not receiving from phones: {0}.": {},
   "Receiving allowed: {0}": {},
   "Not receiving: {0}": {},
   "{0} is not in its declared image format ({1}).": {},
-  "Could not create a file at {1}. Format: {0}.": {},
-  "Task “{0}” saves its scans on its own": {},
-  "Task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.": {},
   "The scanner's certificate has changed: {0}": {},
   "On: pages are collected until you save them. Off: each scan is saved right away.": {},
+  "The task “{0}” saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.": {},
+  "Receiving from phones ({0}).": {},
+  "Not receiving from phones ({0}).": {},
+  "Could not create the {0} file at {1}.": {},
+  "The task “{0}” saves its scans on its own": {},
+  "The task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

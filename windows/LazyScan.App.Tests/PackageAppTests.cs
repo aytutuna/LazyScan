@@ -85,7 +85,7 @@ public sealed class PackageAppTests : IDisposable
     [Fact]
     public void NotOfferedMessage_NamesTheTaskThatSavesOnItsOwn()
     {
-        Assert.Equal("Task “Receipts” saves its scans on its own, so a document's pages cannot be added here. "
+        Assert.Equal("The task “Receipts” saves its scans on its own, so a document's pages cannot be added here. "
                      + "Leave the task or pick Document to PDF to add them.",
                      PackageText.NotOfferedMessage(TaskCatalog.Apply(ScanTask.Receipt, new ScanSettings())));
         Assert.Equal("A document's pages are added to the page queue: choose Document mode, or a document task, "

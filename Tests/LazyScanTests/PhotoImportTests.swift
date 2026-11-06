@@ -324,13 +324,13 @@ final class PhotoImportTests: XCTestCase {
 
     func testTheRefusalNamesTheTaskThatSavesOnItsOwn() {
         let receipts = TaskCatalog.apply(.receipt, to: ScanSettings())
-        XCTAssertEqual(PhotoImport.ownSaveTaskReason(receipts), "Task “Receipts” saves its scans on its own")
+        XCTAssertEqual(PhotoImport.ownSaveTaskReason(receipts), "The task “Receipts” saves its scans on its own")
         XCTAssertEqual(PhotoImport.ownSaveTaskReason(TaskCatalog.apply(.idCard, to: ScanSettings())),
-                       "Task “ID card” saves its scans on its own")
+                       "The task “ID card” saves its scans on its own")
         XCTAssertEqual(PhotoImport.ownSaveTaskReason(TaskCatalog.apply(.copy, to: ScanSettings())),
-                       "Task “Photocopy” saves its scans on its own")
+                       "The task “Photocopy” saves its scans on its own")
         XCTAssertEqual(PhotoImport.notOfferedMessage(for: receipts),
-                       "Task “Receipts” saves its scans on its own, so photos cannot be added as pages here. "
+                       "The task “Receipts” saves its scans on its own, so photos cannot be added as pages here. "
                            + "Leave the task or pick Document to PDF to import them.")
         // Nothing keeps photos out of the queue: no reason.
         XCTAssertNil(PhotoImport.ownSaveTaskReason(ScanSettings()))

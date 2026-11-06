@@ -34,7 +34,7 @@ public enum ImageExporter {
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL,
                                                                 utType.identifier as CFString,
                                                                 1, nil) else {
-            throw ScanError.exportFailed(L10n.t("Could not create a file at {1}. Format: {0}.", format.label, url.path))
+            throw ScanError.exportFailed(L10n.t("Could not create the {0} file at {1}.", format.label, url.path))
         }
 
         var properties: [CFString: Any] = [
