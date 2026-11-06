@@ -39,7 +39,7 @@ final class ScannerPickerTests: XCTestCase {
 
         let message: XCUIElement = app.staticTexts["address.message"]
         XCTAssertTrue(message.waitForExistence(timeout: 30), "What is wrong with the address")
-        XCTAssertEqual(message.label, "\"300.1.1.1\" is not a valid IP address or host name.")
+        XCTAssertEqual(message.label, "“300.1.1.1” is not a valid IP address or host name.")
 
         app.buttons["address.cancel"].tap()
         XCTAssertTrue(demo.waitForExistence(timeout: 30), "Back in the picker")
