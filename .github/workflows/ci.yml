@@ -357,7 +357,10 @@ jobs:
     # silently. Source: actions/runner-images, images/macos/macos-26-arm64-Readme.md.
     needs: macos
     runs-on: macos-26
-    timeout-minutes: 150
+    timeout-minutes: 180
+    env:
+      # The languages ci/l10n walks the screens in, read there before they go live.
+      SHOT_LANGUAGES: de ar ja ru
     steps:
       - uses: actions/checkout@v7
       - name: Select Xcode 26.6
@@ -503,11 +506,11 @@ jobs:
       # marker skipped the lookup. Not on the release ref, and a failure here does not fail the job.
       - name: Run the screenshots in the pseudo language
         id: pseudo
-        if: github.ref != 'refs/heads/ci/testflight'
+        if: github.ref != 'refs/heads/ci/testflight' && github.ref != 'refs/heads/ci/l10n'
         continue-on-error: true
         timeout-minutes: 40
         env:
-          TEST_RUNNER_LAZYSCAN_PSEUDO: '1'
+          TEST_RUNNER_LAZYSCAN_LANGUAGE: qps-ploc
         run: |
           set -eo pipefail
           python3 scripts/gen_l10n.py --pseudo
@@ -523,11 +526,12 @@ jobs:
             -only-testing:LazyScaniOSUITests/ScreenshotTests \
             -resultBundlePath "$RUNNER_TEMP/ios-pseudo-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
-      # The same walk with the English bundle laid out right to left (forced by launch arguments, since no
-      # Arabic lproj exists yet): images must stay left to right. Not on the release ref either.
+      # The same walk with the English bundle laid out right to left (forced by launch arguments), so the
+      # mirroring can be read apart from any translation: images must stay left to right. Not on the
+      # release ref either.
       - name: Run the screenshots right to left
         id: rtl
-        if: github.ref != 'refs/heads/ci/testflight'
+        if: github.ref != 'refs/heads/ci/testflight' && github.ref != 'refs/heads/ci/l10n'
         continue-on-error: true
         timeout-minutes: 40
         env:
@@ -543,14 +547,40 @@ jobs:
             -only-testing:LazyScaniOSUITests/ScreenshotTests \
             -resultBundlePath "$RUNNER_TEMP/ios-rtl-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
+      # The same walk in each of SHOT_LANGUAGES, whose lproj the build already has, so a translation's
+      # screens can be read for cut-off text before the language goes live. Only on ci/l10n, which
+      # leaves out the pseudo and right-to-left walks to stay within the job's time.
+      - name: Run the screenshots in each language
+        id: languages
+        if: github.ref == 'refs/heads/ci/l10n'
+        continue-on-error: true
+        timeout-minutes: 100
+        run: |
+          set -o pipefail
+          for lang in $SHOT_LANGUAGES; do
+            TEST_RUNNER_LAZYSCAN_LANGUAGE="$lang" xcodebuild test-without-building \
+              -project ios/LazyScaniOS.xcodeproj \
+              -scheme LazyScaniOS \
+              -configuration Release \
+              -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+              -derivedDataPath "$RUNNER_TEMP/app-build" \
+              -only-testing:LazyScaniOSUITests/ScreenshotTests \
+              -resultBundlePath "$RUNNER_TEMP/ios-$lang-tests.xcresult" \
+              CODE_SIGNING_ALLOWED=NO || echo "The $lang walk failed"
+          done
       # The screens ScreenshotTests keeps, renamed from the export's own file names to their attachment
       # names (01-camera.png, ...) through the manifest the export writes.
       - name: Export the screenshots
         if: always()
         run: |
-          for run in "ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo" "ios-rtl-tests ios-screenshots-rtl"; do
+          runs=("ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo" "ios-rtl-tests ios-screenshots-rtl")
+          for lang in $SHOT_LANGUAGES; do
+            runs+=("ios-$lang-tests ios-screenshots-languages/$lang")
+          done
+          for run in "${runs[@]}"; do
             set -- $run
             out="$RUNNER_TEMP/$2"
+            mkdir -p "$(dirname "$out")"
             if [ ! -d "$RUNNER_TEMP/$1.xcresult" ]; then
               echo "No $1 results to export"
               continue
@@ -602,6 +632,13 @@ jobs:
           name: ios-screenshots-rtl
           path: ${{ runner.temp }}/ios-screenshots-rtl
           if-no-files-found: ignore
+      - name: Upload the screenshots in each language
+        if: always() && steps.languages.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-screenshots-languages
+          path: ${{ runner.temp }}/ios-screenshots-languages
+          if-no-files-found: warn
       - name: Upload the test results
         if: failure() || steps.pseudo.outcome == 'failure' || steps.rtl.outcome == 'failure'
         uses: actions/upload-artifact@v7

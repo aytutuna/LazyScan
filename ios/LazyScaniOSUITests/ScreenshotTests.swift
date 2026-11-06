@@ -13,13 +13,13 @@ import XCTest
 // screens change; a "skipped-" screenshot shows what was on screen instead.
 
 final class ScreenshotTests: XCTestCase {
-    /// CI's pseudo-language run sets LAZYSCAN_PSEUDO: the app then starts in qps-ploc, where every
-    /// string that went through the lookup is wrapped in [!! !!].
-    private static let language: [String] = (ProcessInfo.processInfo.environment["LAZYSCAN_PSEUDO"] == nil
-        ? [] : ["-AppleLanguages", "(qps-ploc)"]) + direction
+    /// CI's language runs set LAZYSCAN_LANGUAGE and the app starts in it: qps-ploc, where every string
+    /// that went through the lookup is wrapped in [!! !!], or a language read before it goes live.
+    private static let language: [String] = (ProcessInfo.processInfo.environment["LAZYSCAN_LANGUAGE"]
+        .map { ["-AppleLanguages", "(\($0))"] } ?? []) + direction
 
-    /// The RTL run sets LAZYSCAN_RTL: the English bundle laid out right to left, which -AppleLanguages (ar)
-    /// cannot do before Arabic has a lproj.
+    /// The RTL run sets LAZYSCAN_RTL: the English bundle laid out right to left, so the mirroring can be
+    /// read apart from the Arabic text.
     private static let direction: [String] = ProcessInfo.processInfo.environment["LAZYSCAN_RTL"] == nil
         ? [] : ["-AppleTextDirection", "YES", "-NSForceRightToLeftWritingDirection", "YES"]
 
