@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import ImageIO
 import SwiftUI
 import XCTest
 @testable import LazyScanKit
@@ -31,20 +32,16 @@ final class MacStoreShotsTests: XCTestCase {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    /// A light page with dark bars like lines of text.
-    private func page(width: Int, height: Int) -> ScannedPage {
-        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.setFillColor(CGColor(red: 0.96, green: 0.96, blue: 0.94, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        context.setFillColor(CGColor(red: 0.15, green: 0.15, blue: 0.18, alpha: 1))
-        for line in 0..<14 {
-            let y = height - height / 8 - line * height / 20
-            let w = line % 5 == 4 ? width / 3 : width * 2 / 3
-            context.fill(CGRect(x: width / 6, y: y, width: w, height: max(3, height / 90)))
+    /// The public-domain scans the website shows, read from site/assets/demo in the repository.
+    private func demoPages() throws -> [ScannedPage] {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return try ["document", "faded-photo", "bed"].map { name in
+            let url = root.appendingPathComponent("site/assets/demo/\(name).jpg")
+            let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil), "\(url.path) is missing")
+            let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+            return ScannedPage(image: image, dpi: 300, colorMode: .color)
         }
-        return ScannedPage(image: context.makeImage()!, dpi: 75, colorMode: .color)
     }
 
     /// A state with the demo scanner. With `pages` it is past the first run, on the scanner view with that many
@@ -72,7 +69,8 @@ final class MacStoreShotsTests: XCTestCase {
         let state = AppState(backends: backends, presetStore: PresetStore(directory: folder),
                              files: AppStateFiles.all(in: folder))
         state.start()
-        XCTAssertTrue(state.ingest((0..<pages).map { _ in page(width: 510, height: 660) }, source: .scanner))
+        let queued = Array(try demoPages().prefix(pages))
+        XCTAssertTrue(state.ingest(queued, source: .scanner))
         let deadline = Date().addingTimeInterval(20)
         while (state.scannedPages.count < pages || state.scanHistory.isEmpty) && Date() < deadline {
             try await Task.sleep(nanoseconds: 50_000_000)
