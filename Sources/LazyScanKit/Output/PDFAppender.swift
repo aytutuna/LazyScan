@@ -417,18 +417,18 @@ public enum PDFAppender {
         defer {
             if isOpen { try? original.close() }
         }
-        #if os(iOS)
         let directory: String
-        do {
-            directory = try manager.url(for: .itemReplacementDirectory, in: .userDomainMask,
-                                        appropriateFor: URL(fileURLWithPath: full), create: true).path
-        } catch {
-            throw refusal(.notWritten, full, error)
+        if keepsToItsOwnFile {
+            do {
+                directory = try manager.url(for: .itemReplacementDirectory, in: .userDomainMask,
+                                            appropriateFor: URL(fileURLWithPath: full), create: true).path
+            } catch {
+                throw refusal(.notWritten, full, error)
+            }
+        } else {
+            directory = (full as NSString).deletingLastPathComponent
         }
-        defer { try? manager.removeItem(atPath: directory) }
-        #else
-        let directory = (full as NSString).deletingLastPathComponent
-        #endif
+        defer { if keepsToItsOwnFile { try? manager.removeItem(atPath: directory) } }
         let tmp = (directory as NSString).appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
         do {
             let reader = try read(original, full)
@@ -466,20 +466,27 @@ public enum PDFAppender {
         }
     }
 
+    /// Whether the file may be changed but not its folder: the iPhone, and the sandboxed Mac app, where an open panel
+    /// grants the one file. Then the temporary file lives in the system's replacement folder and no backup is made beside
+    /// the original.
+    private static var keepsToItsOwnFile: Bool {
+        #if os(iOS)
+        return true
+        #else
+        return ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
+        #endif
+    }
+
     /// The checked temporary file takes the original's place with `FileManager.replaceItemAt`, which
     /// keeps what belongs to the original file rather than to its bytes (its creation date and
     /// permissions). The original is moved aside under a backup name in the same folder meanwhile and
     /// removed after. When the new file then cannot take the name and the original is left under the
     /// backup name, it is moved back; if that also fails it stays there, which the refusal gives
-    /// (`PDFAppendProblem.leftAsBackup`). The iPhone keeps no backup, as its folder may take no new
-    /// file (see `appendToFile`): the two files swap places, or nothing changes.
+    /// (`PDFAppendProblem.leftAsBackup`). The iPhone and the sandboxed Mac app keep no backup, as the folder may take no
+    /// new file (see `appendToFile`): the two files swap places, or nothing changes.
     package static func replaceOriginal(_ tmp: String, _ path: String) throws {
         let manager = FileManager.default
-        #if os(iOS)
-        let backupName: String? = nil
-        #else
-        let backupName: String? = ".\(UUID().uuidString).pdf.bak"
-        #endif
+        let backupName: String? = keepsToItsOwnFile ? nil : ".\(UUID().uuidString).pdf.bak"
         do {
             _ = try manager.replaceItemAt(URL(fileURLWithPath: path), withItemAt: URL(fileURLWithPath: tmp),
                                           backupItemName: backupName, options: [])
