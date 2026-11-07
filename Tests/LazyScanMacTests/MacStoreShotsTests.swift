@@ -65,6 +65,7 @@ final class MacStoreShotsTests: XCTestCase {
         settings.documentMultiPage = true
         settings.taskId = nil
         settings.namingTemplate = "Scan"
+        settings.destinationPath = folder.path
         first.settings = settings
         // With settings on disk the next state is not a first run.
         try await Task.sleep(nanoseconds: 800_000_000)

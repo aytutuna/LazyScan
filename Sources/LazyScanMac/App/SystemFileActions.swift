@@ -109,8 +109,16 @@ public final class SystemFileActions: FileActionService {
         guard let app = Self.lazyPrintApp else {
             throw ScanError.unsupported(L10n.t("Lazy Print is not installed."))
         }
-        NSWorkspace.shared.open(urls, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration(),
-                                completionHandler: nil)
+        NSWorkspace.shared.open(urls, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            guard error != nil else { return }
+            // The call has returned by now, so the refusal is an alert; the old address path said the same when it failed.
+            Task { @MainActor in
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = L10n.t("Lazy Print is not installed.")
+                alert.runModal()
+            }
+        }
     }
 
     public func copyText(_ text: String) throws {

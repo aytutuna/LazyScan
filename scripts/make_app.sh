@@ -66,7 +66,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
         <dict>
             <key>UTTypeIdentifier</key>      <string>com.lazyscan.package</string>
             <key>UTTypeDescription</key>     <string>Lazy Scan document</string>
-            <key>UTTypeConformsTo</key>      <array><string>public.data</string><string>public.content</string></array>
+            <key>UTTypeConformsTo</key>      <array><string>public.data</string><string>public.archive</string></array>
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key> <array><string>lsdoc</string></array>
