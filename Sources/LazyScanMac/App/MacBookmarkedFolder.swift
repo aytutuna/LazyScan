@@ -14,16 +14,23 @@ final class MacBookmarkedFolder: @unchecked Sendable {
     /// The folder whose security-scoped access was started.
     private var accessed: URL?
 
+    /// Whether the app runs in the App Sandbox, where a folder without a bookmark is lost at the next launch.
+    static var isSandboxed: Bool {
+        ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
+    }
+
     /// The bookmark of `folder`, picked in an open panel; throws when none can be made of it.
     static func bookmark(of folder: URL) throws -> Data {
         try folder.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
     }
 
     /// The folder `bookmark` stands for, opened, and the bookmark to keep (made again when it is stale); nil when it does not
-    /// resolve.
-    func resolve(_ bookmark: Data) -> (folder: URL, bookmark: Data)? {
+    /// resolve. Nothing is asked of the user; with `mounting` false a share that is offline is not mounted either.
+    func resolve(_ bookmark: Data, mounting: Bool = true) -> (folder: URL, bookmark: Data)? {
         var stale = false
-        guard let folder = try? URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil,
+        var options: URL.BookmarkResolutionOptions = [.withSecurityScope, .withoutUI]
+        if !mounting { options.insert(.withoutMounting) }
+        guard let folder = try? URL(resolvingBookmarkData: bookmark, options: options, relativeTo: nil,
                                     bookmarkDataIsStale: &stale) else {
             close()
             return nil
@@ -49,11 +56,16 @@ final class MacBookmarkedFolder: @unchecked Sendable {
 }
 
 extension AppState {
-    /// Saves to `folder`, picked in an open panel, from now on and after a relaunch. Without a bookmark the path alone is
-    /// kept, which is enough outside the sandbox.
+    /// Saves to `folder`, picked in an open panel, from now on and after a relaunch. When no bookmark can be made the pick
+    /// is refused in the sandbox, which could not open the folder again; elsewhere the path alone is kept.
     func chooseSaveFolder(_ folder: URL) {
+        let bookmark = try? MacBookmarkedFolder.bookmark(of: folder)
+        if bookmark == nil, MacBookmarkedFolder.isSandboxed {
+            errorMessage = String(localized: "The setting could not be saved.")
+            return
+        }
         var chosen = settings
-        chosen.destinationBookmark = try? MacBookmarkedFolder.bookmark(of: folder)
+        chosen.destinationBookmark = bookmark
         chosen.destinationPath = folder.path
         settings = chosen
         openBookmarkedFolder()

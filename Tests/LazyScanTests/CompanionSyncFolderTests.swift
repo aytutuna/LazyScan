@@ -38,7 +38,7 @@ final class CompanionSyncFolderTests: XCTestCase {
         let attempts = Guarded(0)
         var options = makeOptions()
         // Opens from the third try on.
-        options.resolveSyncFolder = { _ in
+        options.resolveSyncFolder = { _, _ in
             attempts.value += 1
             return attempts.value >= 3 ? (folder: cloud, bookmark: bookmark) : nil
         }
@@ -67,7 +67,7 @@ final class CompanionSyncFolderTests: XCTestCase {
     func testABookmarkThatNeverOpens_StillWatchesTheSavedPath() async throws {
         let cloud = directory.appendingPathComponent("Cloud", isDirectory: true)
         var options = makeOptions()
-        options.resolveSyncFolder = { _ in nil }
+        options.resolveSyncFolder = { _, _ in nil }
         options.syncFolderRetryInterval = 60
         let service = CompanionService(options)
         self.service = service
