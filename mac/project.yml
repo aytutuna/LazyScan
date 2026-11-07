@@ -1,0 +1,74 @@
+# The Mac App Store build of Lazy Scan, for XcodeGen (CI pins its release and SHA-256; see the mac-store job in
+# .github/workflows/ci.yml). `xcodegen generate --spec mac/project.yml` writes mac/LazyScanMacApp.xcodeproj, which is not
+# checked in. The target holds no logic: it starts LazyScanApp from the package at the repository root
+# (Sources/LazyScanMac). scripts/make_app.sh stays the unsandboxed build for development. Run scripts/gen_l10n.py first
+# (with --ship for a build that goes to the store): the strings are read from l10n/out/mac.
+name: LazyScanMacApp
+
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+packages:
+  LazyScan:
+    path: ..
+
+targets:
+  LazyScanMacApp:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: LazyScanMacApp
+        excludes:
+          - Info.plist
+          - LazyScanMac.entitlements
+          - PrivacyInfo.xcprivacy
+      - path: LazyScanMacApp/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      # Kit.strings, InfoPlist.strings and Localizable.strings per language, written by scripts/gen_l10n.py.
+      - path: ../l10n/out/mac
+        buildPhase: resources
+      - path: ../THIRD-PARTY-NOTICES.txt
+        buildPhase: resources
+      # Where FastViTCornerModel looks first in a packaged app, as make_app.sh lays it out. The model is there only
+      # after scripts/fetch_docaligner.sh; without it the app finds pages with its own search.
+      - path: ../Sources/LazyScanModel/Models/ONNXRuntime-LICENSE.txt
+        buildPhase: resources
+      - path: ../Sources/LazyScanModel/Models/ONNXRuntime-THIRD-PARTY-NOTICES.txt
+        buildPhase: resources
+      - path: ../Sources/LazyScanModel/Models/DocAligner-LICENSE.txt
+        buildPhase: resources
+      - path: ../Sources/LazyScanModel/Models/fastvit_t8_h_e_bifpn_256_fp32.onnx
+        buildPhase: resources
+        optional: true
+    dependencies:
+      - package: LazyScan
+        product: LazyScanMac
+    settings:
+      base:
+        PRODUCT_NAME: Lazy Scan
+        PRODUCT_MODULE_NAME: LazyScanMacApp
+        PRODUCT_BUNDLE_IDENTIFIER: com.lazyscan.lazyscan
+        INFOPLIST_FILE: LazyScanMacApp/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: LazyScanMacApp/LazyScanMac.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: YES
+        SUPPORTED_PLATFORMS: macosx
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+schemes:
+  LazyScanMacApp:
+    build:
+      targets:
+        LazyScanMacApp: all
