@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Lazy Scan &mdash; one scanning app for documents and photos, on macOS and Windows</title>
+<title>Lazy Scan &mdash; one scanning app for documents and photos, on iPhone, Mac and Windows</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
 :root{
@@ -15,9 +15,9 @@
   --head-bg:rgba(236,238,233,.9);
   --shot-shadow:0 1px 1px rgba(19,23,26,.06),0 14px 30px -12px rgba(19,23,26,.30),0 44px 80px -44px rgba(19,23,26,.40);
   --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --f-display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,sans-serif;
-  --f-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+  --f-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --f-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
   --s-n2:.75rem; --s-n1:.875rem; --s-0:1.0625rem; --s-1:1.25rem;
   --s-2:clamp(1.4rem,1.15rem + 1vw,1.85rem);
   --s-3:clamp(1.95rem,1.3rem + 2.5vw,3.15rem);
@@ -366,19 +366,16 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
 </style>
-<meta name="description" content="Lazy Scan is a native scanning app for macOS and Windows. Documents become searchable PDFs; several photos on the glass become separate, straightened files with one press of Scan.">
+<meta name="description" content="Lazy Scan is a native scanning app for iPhone, macOS and Windows. Documents become searchable PDFs; several photos on the glass become separate, straightened files with one press of Scan.">
 <meta name="theme-color" content="#ECEEE9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101416" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Lazy Scan &mdash; one scanning app for documents and photos">
-<meta property="og:description" content="A native scanning app for macOS and Windows. Paperwork into searchable PDFs, a pile of photos into separate, straightened files.">
+<meta property="og:description" content="A native scanning app for iPhone, macOS and Windows. Paperwork into searchable PDFs, a pile of photos into separate, straightened files.">
 <meta property="og:image" content="https://raw.githubusercontent.com/aytutuna/LazyScan/main/site/assets/og-image.jpg">
 <meta property="og:image:alt" content="The Lazy Scan window on Windows, showing a preview of three old prints lying tilted on the scanner glass.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23B5155A' stroke-width='2.4'%3E%3Ccircle cx='16' cy='16' r='8.5'/%3E%3Cpath d='M16 1.5v29M1.5 16h29'/%3E%3C/g%3E%3Cpath d='M16 7.5a8.5 8.5 0 0 1 0 17z' fill='%23B5155A'/%3E%3C/svg%3E">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
 <script>try{var t=localStorage.getItem("ls-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
@@ -420,16 +417,16 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
 <section class="hero" id="top" aria-labelledby="hero-title">
   <div class="wrap hero-grid">
     <div>
-      <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Scanning app for macOS and Windows</p>
+      <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Scanning app for iPhone, Mac and Windows</p>
       <h1 id="hero-title">One app for the <span>pages and prints</span> on your scanner.</h1>
     </div>
     <div>
-      <p class="lede">Letters and contracts become one searchable PDF. A handful of photos laid on the glass come back as separate, straightened files from a single press of Scan. Lazy Scan is a native app on both systems and talks to your scanner through the drivers your computer already uses, or over the network.</p>
+      <p class="lede">Letters and contracts become one searchable PDF. A handful of photos laid on the glass come back as separate, straightened files from a single press of Scan. Lazy Scan is a native app on iPhone, Mac and Windows and talks to your scanner through the drivers your computer already uses, or over the network.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/aytutuna/LazyScan">Get it on GitHub</a>
-        <a class="btn btn-ghost" href="#demo">See it work</a>
+        <a class="btn btn-primary" href="#demo">See it work</a>
+        <a class="btn btn-ghost" href="https://github.com/aytutuna/LazyScan">Source on GitHub</a>
       </div>
-      <p class="fine">There is no installer yet. You build the app from its source code with a few commands, <a href="#get">shown below</a>.</p>
+      <p class="fine">Lazy Scan is coming to the App Store, the Mac App Store and the Microsoft Store, free. It is not in any of them yet; developers can <a href="#get">build it from source</a>.</p>
     </div>
   </div>
   <div class="wrap hero-figure">
@@ -535,7 +532,7 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>What it does</p>
       <h2 id="needs-title">Start from what you're holding.</h2>
-      <p class="lede">A stack of bills, a shoebox of prints, one faded wedding photo, a newspaper clipping. Each has its own way through the app. Everything below works on both systems unless it's marked otherwise.</p>
+      <p class="lede">A stack of bills, a shoebox of prints, one faded wedding photo, a newspaper clipping. Each has its own way through the app. Everything below works on the Mac and Windows unless it's marked otherwise.</p>
       <p class="fine">The screenshots show the Windows app with public-domain scans from museum and archive collections loaded in place of a scanner's output (<a href="#credits">image credits</a>). The &ldquo;Flatbed scanner, Sample scans&rdquo; entry in the sidebar is the stand-in that hands those scans to the app, not a physical scanner, and the photo layouts are separate print scans laid on a simulated scanner bed.</p>
     </header>
     <div class="needs">
@@ -859,7 +856,7 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Get it</p>
       <h2 id="get-title">Build it from source</h2>
-      <p class="lede">There are no ready-made downloads yet; the app is built from the code on <a href="https://github.com/aytutuna/LazyScan">GitHub</a>. Start by getting the code, then follow the steps for your system.</p>
+      <p class="lede">Lazy Scan is coming to the App Store, the Mac App Store and the Microsoft Store. Until then, developers can build the Mac and Windows apps from the code on <a href="https://github.com/aytutuna/LazyScan">GitHub</a>. Start by getting the code, then follow the steps for your system.</p>
     </header>
     <div class="clone">
       <div class="code">
@@ -984,7 +981,7 @@ open "dist/Lazy Scan.app"</code></pre>
       <h2 id="support-title">Something not working?</h2>
     </header>
     <p class="lede">Write to <a href="mailto:support@alazy.app">support@alazy.app</a>. Say which app (iPhone, Mac or Windows) and its version, the scanner model if a scanner is involved, and what you did and what happened instead. A screenshot helps. Bugs and ideas can also go on <a href="https://github.com/aytutuna/LazyScan/issues">GitHub</a>.</p>
-    <p class="fine">The iPhone app's <a href="privacy.html">privacy policy</a>.</p>
+    <p class="fine">Read the <a href="privacy.html">privacy policy</a>.</p>
   </div>
 </section>
 
@@ -993,7 +990,7 @@ open "dist/Lazy Scan.app"</code></pre>
 <footer class="site-foot">
   <div class="wrap foot-row">
     <a class="brand" href="#top"><svg aria-hidden="true"><use href="#reg"/></svg><span>Lazy Scan</span></a>
-    <p style="margin:0">One scanning app for macOS and Windows. Screenshots show the Windows app with public-domain scans, see the <a href="#credits">image credits</a>. <a href="#support">Support</a> &middot; <a href="privacy.html">Privacy</a></p>
+    <p style="margin:0">One scanning app for iPhone, macOS and Windows. Screenshots show the Windows app with public-domain scans, see the <a href="#credits">image credits</a>. <a href="#support">Support</a> &middot; <a href="privacy.html">Privacy</a><br>Source available under the <a href="https://github.com/aytutuna/LazyScan/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a> licence.</p>
     <a href="https://github.com/aytutuna/LazyScan">github.com/aytutuna/LazyScan</a>
   </div>
 </footer>
@@ -1039,9 +1036,9 @@ function easeInOut(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
 function easeOut(t){return 1-Math.pow(1-t,3);}
 function rr(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
 function lg(c,x0,y0,x1,y1,stops){var g=c.createLinearGradient(x0,y0,x1,y1);stops.forEach(function(s){g.addColorStop(s[0],s[1]);});return g;}
-var MONO='"IBM Plex Mono", ui-monospace, Consolas, monospace';
-var DISP='"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif';
-var BODY='"IBM Plex Sans", "Segoe UI", system-ui, sans-serif';
+var MONO='ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace';
+var DISP='"Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+var BODY='"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
 function fmtA(a){var v=Math.round(Math.abs(a)*10)/10;return (a<-0.05?"\u2212":"")+v.toFixed(1)+"\u00b0";}
 function pad2(n){return (n<10?"0":"")+n;}
 function today(){var d=new Date();return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
