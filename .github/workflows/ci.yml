@@ -229,6 +229,24 @@ jobs:
             test "$(stat -f %z "$f")" -gt 12000
             cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
           done
+      # The Mac App Store screenshots (MacStoreShotsTests): 2560 x 1600, no alpha channel.
+      - name: Render the store screenshots
+        run: |
+          set -euo pipefail
+          LAZYSCAN_STORE_SHOTS_DIR="$RUNNER_TEMP/store-shots" swift test -c release -Xswiftc -enable-testing --filter MacStoreShotsTests
+          test "$(ls "$RUNNER_TEMP/store-shots" | wc -l | tr -d ' ')" -eq 3
+          for f in "$RUNNER_TEMP"/store-shots/*.png; do
+            test "$(sips -g pixelWidth "$f" | awk '/pixelWidth/ {print $2}')" -eq 2560
+            test "$(sips -g pixelHeight "$f" | awk '/pixelHeight/ {print $2}')" -eq 1600
+            test "$(sips -g hasAlpha "$f" | awk '/hasAlpha/ {print $2}')" = no
+          done
+      - name: Upload the store screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-store-screenshots
+          path: ${{ runner.temp }}/store-shots
+          if-no-files-found: warn
       # Right to left, to see which parts of the window mirror. Not compared.
       - name: Render screenshots (right to left)
         run: LAZYSCAN_SHOTS_RTL=1 LAZYSCAN_SHOTS_DIR="$RUNNER_TEMP/shots-rtl" swift test -c release -Xswiftc -enable-testing --filter ScreenshotTests
@@ -348,6 +366,80 @@ jobs:
           done < l10n/out/languages.mac.txt > "$RUNNER_TEMP/bundled.txt"
           plutil -extract CFBundleLocalizations xml1 -o - "$app/Contents/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - "$RUNNER_TEMP/bundled.txt"
           find "$app" -name '*.strings' -print0 | xargs -0 -n1 plutil -lint
+
+  # The sandboxed Mac App Store target (mac/project.yml), built on the image and Xcode macappstore.yml uploads with
+  # (macos-26, Xcode 26.6), so a compiler or SDK break shows here and not at upload. Signed ad hoc, which still puts the
+  # entitlements in the binary; the upload workflow signs it for real. Nothing needs this job, so it does not hold up
+  # the iOS jobs.
+  mac-store:
+    needs: macos
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Fetch the corner model
+        run: bash scripts/fetch_docaligner.sh
+      # Same pinned XcodeGen as the ios job.
+      - name: Install XcodeGen
+        env:
+          XCODEGEN_VERSION: 2.46.0
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/xcodegen.zip"
+          curl -fsSL -o "$zip" "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          hash=$(shasum -a 256 "$zip" | cut -d ' ' -f 1)
+          if [ "$hash" != "$XCODEGEN_SHA256" ]; then
+            echo "XcodeGen checksum mismatch: $hash"
+            exit 1
+          fi
+          unzip -q "$zip" -d "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION"
+          echo "$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Write the strings
+        run: python3 scripts/gen_l10n.py --ship
+      - name: Write the app's project
+        run: |
+          xcodegen generate --spec mac/project.yml
+          plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.mac.txt)" mac/LazyScanMacApp/Info.plist
+      - name: Build the store target
+        run: |
+          set -o pipefail
+          xcodebuild build             -project mac/LazyScanMacApp.xcodeproj             -scheme LazyScanMacApp             -configuration Release             -destination generic/platform=macOS             -derivedDataPath "$RUNNER_TEMP/mac-store"             CODE_SIGN_IDENTITY=-             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
+      - name: Check the bundle
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/mac-store/Build/Products/Release/Lazy Scan.app"
+          plutil -lint "$app/Contents/Info.plist"
+          plutil -lint "$app/Contents/Resources/PrivacyInfo.xcprivacy"
+          codesign -d --entitlements :- "$app" > "$RUNNER_TEMP/entitlements.plist"
+          cat "$RUNNER_TEMP/entitlements.plist"
+          for key in app-sandbox network.client network.server print device.usb files.user-selected.read-write files.downloads.read-write files.bookmarks.app-scope; do
+            [ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.security.$key" "$RUNNER_TEMP/entitlements.plist")" = "true" ]               || { echo "Missing entitlement: $key"; exit 1; }
+          done
+          if /usr/libexec/PlistBuddy -c "Print :com.apple.security.get-task-allow" "$RUNNER_TEMP/entitlements.plist" >/dev/null 2>&1; then
+            echo "get-task-allow is set"
+            exit 1
+          fi
+          codesign -dv "$app" 2>&1 | grep -q "runtime"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app/Contents/Info.plist" | grep -qx "com.lazyscan.lazyscan"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleName" "$app/Contents/Info.plist" | grep -qx "Lazy Scan"
+          while read -r lang; do
+            [ -d "$app/Contents/Resources/$lang.lproj" ] || { echo "$lang.lproj is not in the app" >&2; exit 1; }
+          done < l10n/out/languages.mac.txt
+          plutil -extract CFBundleLocalizations xml1 -o - "$app/Contents/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - l10n/out/languages.mac.txt
+          for file in THIRD-PARTY-NOTICES.txt ONNXRuntime-THIRD-PARTY-NOTICES.txt fastvit_t8_h_e_bifpn_256_fp32.onnx; do
+            [ -f "$app/Contents/Resources/$file" ] || { echo "$file is not in the app" >&2; exit 1; }
+          done
+      # The upload workflow deletes ONNX Runtime's framework copy from the archive, which is only safe when the
+      # executable does not load it.
+      - name: Check ONNX Runtime is linked in
+        run: |
+          app="$RUNNER_TEMP/mac-store/Build/Products/Release/Lazy Scan.app"
+          if otool -L "$app/Contents/MacOS/Lazy Scan" | grep -q onnxruntime; then
+            echo "The executable loads onnxruntime.framework"
+            exit 1
+          fi
 
   ios:
     # The shared Swift suite (LazyScanKit's tests) and the iPhone's own tests on the iOS
