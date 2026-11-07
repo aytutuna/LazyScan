@@ -86,45 +86,45 @@ final class MacStoreShotsTests: XCTestCase {
     @MainActor
     private func shoot(_ name: String, appearance: NSAppearance.Name, state: AppState) async throws {
         let size = CGSize(width: 1280, height: 800)
-        let hosting = NSHostingView(rootView: ContentView().environmentObject(state))
-        hosting.sceneBridgingOptions = [.toolbars]
-        // A real titled window, drawn whole: the content sits under the title bar as in the app, and a window that
-        // is key draws its link and selection colours instead of the washed-out inactive ones.
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
+        let root = ContentView()
+            .environmentObject(state)
+            .frame(width: size.width, height: size.height)
+            .background(Color(nsColor: .windowBackgroundColor))
+        let hosting = NSHostingView(rootView: root)
+        // Left to size itself the view grows past 800 points and the top of it falls outside the picture.
+        hosting.sizingOptions = []
+        // Borderless: a titled window is shrunk to the runner's small screen.
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
-        window.toolbarStyle = .unified
         window.contentView = hosting
-        window.setFrame(NSRect(x: -20_000, y: -20_000, width: size.width, height: size.height), display: false)
-        // The test runner starts as a background process, which cannot own a key window.
-        NSApplication.shared.setActivationPolicy(.regular)
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        let frameView = try XCTUnwrap(window.contentView?.superview)
+        window.orderFront(nil)
+        hosting.frame = CGRect(origin: .zero, size: size)
         // Photos load off the main thread: give them time, laying out again as they land.
         for _ in 0..<10 {
-            frameView.layoutSubtreeIfNeeded()
+            hosting.layoutSubtreeIfNeeded()
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        frameView.layoutSubtreeIfNeeded()
+        hosting.layoutSubtreeIfNeeded()
+        print("store shot \(name): window \(window.frame.size), view \(hosting.frame.size), fitting \(hosting.fittingSize)")
+        XCTAssertEqual(window.frame.size, size)
+        XCTAssertEqual(hosting.frame.size, size)
         let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2560, pixelsHigh: 1600,
                                                  bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
                                                  colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
-        rep.size = frameView.bounds.size
-        frameView.cacheDisplay(in: frameView.bounds, to: rep)
+        rep.size = size
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
         window.orderOut(nil)
         window.contentView = nil
-        // The rounded window corners are transparent: fill them with something that matches the window.
-        try write(try XCTUnwrap(rep.cgImage), as: name, behind: appearance == .darkAqua ? 0 : 1)
+        try write(try XCTUnwrap(rep.cgImage), as: name)
     }
 
     /// The picture drawn onto an opaque bitmap, so the PNG has no alpha channel.
-    private func write(_ image: CGImage, as name: String, behind gray: CGFloat) throws {
+    private func write(_ image: CGImage, as name: String) throws {
         let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
                                               bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                               bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
-        context.setFillColor(CGColor(red: gray, green: gray, blue: gray, alpha: 1))
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: image.width, height: image.height))
         context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
         let flat = try XCTUnwrap(context.makeImage())
