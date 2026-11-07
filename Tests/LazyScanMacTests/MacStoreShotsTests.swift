@@ -90,9 +90,12 @@ final class MacStoreShotsTests: XCTestCase {
             .environmentObject(state)
             .frame(width: size.width, height: size.height)
             .background(Color(nsColor: .windowBackgroundColor))
+            // The split view reaches up into a title-bar inset that a borderless window does not have, which moved
+            // the top 20 points out of the picture.
+            .ignoresSafeArea()
         let hosting = NSHostingView(rootView: root)
-        // Left to size itself the view grows past 800 points and the top of it falls outside the picture.
         hosting.sizingOptions = []
+        hosting.sceneBridgingOptions = []
         // Borderless: a titled window is shrunk to the runner's small screen.
         let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: size.width, height: size.height),
                               styleMask: [.borderless], backing: .buffered, defer: false)
@@ -106,7 +109,7 @@ final class MacStoreShotsTests: XCTestCase {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         hosting.layoutSubtreeIfNeeded()
-        print("store shot \(name): window \(window.frame.size), view \(hosting.frame.size), fitting \(hosting.fittingSize)")
+        print("store shot \(name): window \(window.frame.size), view \(hosting.frame.size), safe area \(hosting.safeAreaInsets)")
         XCTAssertEqual(window.frame.size, size)
         XCTAssertEqual(hosting.frame.size, size)
         let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2560, pixelsHigh: 1600,
