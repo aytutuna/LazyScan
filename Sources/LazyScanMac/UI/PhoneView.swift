@@ -477,7 +477,15 @@ struct PhoneView: View {
         return String(localized: "Watching \(folder.path).")
     }
 
-    /// Starts in the folder chosen now, or else in iCloud Drive when it is set up on this Mac.
+    /// The user's own home folder. `homeDirectoryForCurrentUser` is the app's container when it is sandboxed.
+    private static var realHome: URL {
+        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
+            return FileManager.default.homeDirectoryForCurrentUser
+        }
+        return URL(fileURLWithPath: String(cString: directory), isDirectory: true)
+    }
+
+    /// Starts in the folder chosen now, or else in iCloud Drive.
     private func chooseSyncFolder(_ current: URL?) {
         let panel = NSOpenPanel()
         panel.title = String(localized: "Choose the cloud folder")
@@ -485,12 +493,12 @@ struct PhoneView: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        let iCloud = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
         if let current, FileManager.default.fileExists(atPath: current.path) {
             panel.directoryURL = current
-        } else if FileManager.default.fileExists(atPath: iCloud.path) {
-            panel.directoryURL = iCloud
+        } else {
+            // Not checked for: a sandboxed app cannot see the folder, but the panel can, and ignores a start that is not there.
+            panel.directoryURL = PhoneView.realHome
+                .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
         }
         panel.prompt = String(localized: "Choose")
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -498,8 +506,18 @@ struct PhoneView: View {
     }
 
     private func setSyncFolder(_ folder: URL?) {
-        if !state.setPhoneSyncFolder(folder) {
+        var bookmark: Data?
+        if let folder {
+            guard let made = try? MacBookmarkedFolder.bookmark(of: folder) else {
+                footerMessage = String(localized: "The setting could not be saved.")
+                return
+            }
+            bookmark = made
+        }
+        if !state.setPhoneSyncFolder(folder, bookmark: bookmark) {
             footerMessage = String(localized: "The setting could not be saved.")
+        } else if folder == nil {
+            MacBookmarkedFolder.syncFolder.close()
         }
     }
 

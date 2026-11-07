@@ -44,7 +44,8 @@ extension AppState {
     /// when it is in the build (`FastViTCornerModel`), the password dialog of a protected
     /// PDF (`PDFPasswordWindow`), the question before adding pages to a signed or PDF/A file, and the
     /// phone link's pieces (the keychain identity, the interfaces, DNS-SD, the phones' sync keys in the
-    /// keychain), started when a phone is paired.
+    /// keychain), started when a phone is paired. The save folder and the cloud folder are opened through
+    /// their bookmarks, which the sandboxed build needs.
     @MainActor
     static func makeForMac() -> AppState {
         let backends: [any ScannerBackend] = [ICScannerBackend(), AppState.makeDemoBackend()]
@@ -54,6 +55,8 @@ extension AppState {
                              printService: SystemPrintService(),
                              lifecycle: AppKitLifecycle())
         state.cornerModel = FastViTCornerModel.isAvailable ? FastViTCornerModel.shared : nil
+        state.resolveDestinationBookmark = { MacBookmarkedFolder.saveFolder.resolve($0) }
+        state.openBookmarkedFolder()
         state.askPDFPassword = { PDFPasswordWindow.ask() }
         state.confirmAppend = { AppState.confirmAppendAlert($0) }
         let computerName = SCDynamicStoreCopyComputerName(nil, nil) as String? ?? "Mac"
@@ -64,6 +67,7 @@ extension AppState {
                                                 networks: MacNetworkSource(), desktopName: computerName)
         companion.advertiser = MacDnsSdAdvertiser()
         companion.syncKeyStore = MacCompanionSyncKeys()
+        companion.resolveSyncFolder = { MacBookmarkedFolder.syncFolder.resolve($0) }
         state.setUpCompanionHost(companion)
         return state
     }

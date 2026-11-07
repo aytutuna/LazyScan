@@ -706,8 +706,16 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// The task of `taskId`, when this version knows it.
     public var task: ScanTask? { ScanTask.tryParse(taskId) }
 
+    /// The Mac saves to Downloads/Lazy Scan, which its sandbox opens with an entitlement; the iPhone to the
+    /// app's own Documents/Lazy Scan, which the Files app shows.
     public static var defaultDestinationPath: String {
-        (NSHomeDirectory() as NSString).appendingPathComponent("Documents/Lazy Scan")
+        #if os(macOS)
+        let downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true)
+        return downloads.appendingPathComponent("Lazy Scan", isDirectory: true).path
+        #else
+        return (NSHomeDirectory() as NSString).appendingPathComponent("Documents/Lazy Scan")
+        #endif
     }
 
     /// `path` moved into `documents` when it lies in another iOS app container's Documents folder
