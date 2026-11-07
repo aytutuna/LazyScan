@@ -10,7 +10,7 @@ import PackageDescription
 // - LazyScanIOS: the iPhone's and iPad's services and views. Every file is wrapped in
 //   `#if os(iOS)`, so it builds to nothing for macOS.
 // - LazyScanModel: the page corner model (DocAligner's FastViT-T8 on ONNX Runtime) for both apps.
-// - LazyScan: the Mac app.
+// - LazyScan: the Mac app as `swift build` makes it. The App Store build (mac/project.yml) links LazyScanMac.
 // iOS 18 needs PackageDescription 6.0; the code stays in the Swift 5 language mode.
 let package = Package(
     name: "LazyScan",
@@ -18,6 +18,7 @@ let package = Package(
     products: [
         .executable(name: "LazyScan", targets: ["LazyScan"]),
         .library(name: "LazyScanKit", targets: ["LazyScanKit"]),
+        .library(name: "LazyScanMac", targets: ["LazyScanMac"]),
         .library(name: "LazyScanIOS", targets: ["LazyScanIOS"]),
     ],
     dependencies: [
