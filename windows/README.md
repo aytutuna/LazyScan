@@ -1907,23 +1907,10 @@ row's **via** menu chooses between them.
 
 ## Third-party notices
 
-The app and its 32-bit TWAIN helper (not Core, not the Mac app) include these packages, unchanged,
-each under its own license (the helper uses NTwain only):
-
-- **ZXing.Net** 0.16.11 (barcode and QR separator sheets, and the phone pairing code) — by Michael Jahn, a port of ZXing ("Zebra Crossing") by the ZXing
-  authors. Licensed under the Apache License, Version 2.0
-  (<https://www.apache.org/licenses/LICENSE-2.0>); the package ships no NOTICE file.
-  <https://github.com/micjahn/ZXing.Net>
-- **NTwain** 3.7.6 — by Eugene Wang. Licensed under the MIT License.
-  <https://github.com/soukoku/ntwain>
-- **ONNX Runtime** 1.24.2 (`Microsoft.ML.OnnxRuntime`, the page corner model) — by Microsoft.
-  Licensed under the MIT License. <https://github.com/microsoft/onnxruntime>
-- **DocAligner FastViT-T8** (`Models\fastvit_t8_h_e_bifpn_256_fp32.onnx` next to the app, fetched by
-  `scripts/fetch_docaligner.sh`) — by DocsaidLab, release 1.1.1. Licensed under the Apache License,
-  Version 2.0; its license text is copied next to it (`Models\DocAligner-LICENSE.txt`).
-  <https://github.com/DocsaidLab/DocAligner>
-
-The tests also use PdfPig 0.1.16 (Apache-2.0), which is never shipped.
+The packages the app and its 32-bit TWAIN helper include (ZXing.Net, NTwain, ONNX Runtime and
+DocAligner's model), with their licences, are listed in
+[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt) at the root of the repository. The tests also
+use PdfPig 0.1.16 (Apache-2.0), which is never shipped.
 
 ## Settings files
 

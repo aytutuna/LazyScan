@@ -37,6 +37,8 @@ targets:
       # Kit.strings, InfoPlist.strings and Localizable.strings per language, written by scripts/gen_l10n.py.
       - path: ../l10n/out/ios
         buildPhase: resources
+      - path: ../THIRD-PARTY-NOTICES.txt
+        buildPhase: resources
     dependencies:
       - package: LazyScan
         product: LazyScanIOS
