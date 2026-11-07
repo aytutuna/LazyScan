@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The three values marked PartnerCenter come from Partner Center, Product identity. scripts/make_msix.ps1
+     replaces them, the version and the Resources list (from l10n/out/languages.win.txt) when it packs; the file stays as it is in the repository. -->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap3 desktop2 rescap">
+
+  <Identity Name="PartnerCenterIdentityName"
+            Publisher="CN=PartnerCenterPublisher"
+            Version="1.0.0.0"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Lazy Scan</DisplayName>
+    <PublisherDisplayName>PartnerCenterPublisherDisplayName</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="LazyScan" Executable="LazyScan.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Lazy Scan"
+                          Description="Scan documents and photos from your scanner into searchable PDFs and straightened picture files."
+                          BackgroundColor="#1769AA"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"
+                         Square71x71Logo="Assets\Square71x71Logo.png"
+                         Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Lazy Print and Lazy PDF start the app through this address. The quotes keep a path with spaces one argument. -->
+        <uap3:Extension Category="windows.protocol" EntryPoint="Windows.FullTrustApplication" Executable="LazyScan.exe">
+          <uap3:Protocol Name="lazyscan" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>Lazy Scan</uap:DisplayName>
+          </uap3:Protocol>
+        </uap3:Extension>
+        <!-- Documents sent from a phone or another computer. Windows keeps the user's default program; an app cannot take it from the manifest. -->
+        <uap3:Extension Category="windows.fileTypeAssociation" EntryPoint="Windows.FullTrustApplication" Executable="LazyScan.exe">
+          <uap3:FileTypeAssociation Name="lsdoc" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>Lazy Scan document</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.lsdoc</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Extensions>
+    <!-- The phone link listener (CompanionProtocol.DefaultPort). The app itself listens only on networks the user trusts. -->
+    <desktop2:Extension Category="windows.firewallRules">
+      <desktop2:FirewallRules Executable="LazyScan.exe">
+        <desktop2:Rule Direction="in" IPProtocol="TCP" LocalPortMin="52731" LocalPortMax="52731" Profile="all" />
+      </desktop2:FirewallRules>
+    </desktop2:Extension>
+  </Extensions>
+</Package>
