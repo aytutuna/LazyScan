@@ -62,7 +62,10 @@ final class MacStoreShotsTests: XCTestCase {
         settings.documentMultiPage = true
         settings.taskId = nil
         settings.namingTemplate = "Scan"
-        settings.destinationPath = folder.path
+        // The row shows the folder's name, which is what a user sees by default.
+        let saveFolder = folder.appendingPathComponent("Lazy Scan", isDirectory: true)
+        try FileManager.default.createDirectory(at: saveFolder, withIntermediateDirectories: true)
+        settings.destinationPath = saveFolder.path
         first.settings = settings
         // With settings on disk the next state is not a first run.
         try await Task.sleep(nanoseconds: 800_000_000)
@@ -87,13 +90,15 @@ final class MacStoreShotsTests: XCTestCase {
             .environmentObject(state)
             .frame(width: size.width, height: size.height)
             .background(Color(nsColor: .windowBackgroundColor))
+            // The link style takes the accent colour, which comes out white in a window that is never active.
+            .tint(Color(nsColor: .systemBlue))
         let hosting = NSHostingView(rootView: root)
-        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.titled],
-                              backing: .buffered, defer: false)
+        // Borderless, so no title bar takes part of the 800 points and pushes the top of the content out of the picture.
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
         window.contentView = hosting
-        window.setFrameOrigin(CGPoint(x: -10000, y: -10000))
-        window.orderBack(nil)
+        window.orderFront(nil)
         hosting.frame = CGRect(origin: .zero, size: size)
         // Photos load off the main thread: give them time, laying out again as they land.
         for _ in 0..<10 {
