@@ -15,9 +15,9 @@
   --head-bg:rgba(236,238,233,.9);
   --shot-shadow:0 1px 1px rgba(19,23,26,.06),0 14px 30px -12px rgba(19,23,26,.30),0 44px 80px -44px rgba(19,23,26,.40);
   --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --f-display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,sans-serif;
-  --f-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+  --f-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --f-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
   --s-n2:.75rem; --s-n1:.875rem; --s-0:1.0625rem; --s-1:1.25rem;
   --s-2:clamp(1.4rem,1.15rem + 1vw,1.85rem);
   --s-3:clamp(1.95rem,1.3rem + 2.5vw,3.15rem);
@@ -372,13 +372,10 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
 .prose ul{margin:0 0 1em;padding-left:1.2em}
 .prose li{margin-bottom:.4em}
 </style>
-<meta name="description" content="What the Lazy Scan iPhone app stores, what it sends and which permissions it asks for.">
+<meta name="description" content="What the Lazy Scan iPhone, Mac and Windows apps store, what they send and which permissions they ask for.">
 <meta name="theme-color" content="#ECEEE9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101416" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23B5155A' stroke-width='2.4'%3E%3Ccircle cx='16' cy='16' r='8.5'/%3E%3Cpath d='M16 1.5v29M1.5 16h29'/%3E%3C/g%3E%3Cpath d='M16 7.5a8.5 8.5 0 0 1 0 17z' fill='%23B5155A'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
 <script>try{var t=localStorage.getItem("ls-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
@@ -409,35 +406,58 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Privacy policy</p>
       <h1>Privacy</h1>
-      <p class="fine" style="margin-top:18px">28 October 2026</p>
+      <p class="fine" style="margin-top:18px">7 November 2026</p>
     </header>
     <div class="prose">
-      <p class="lede">Lazy Scan collects nothing. Your scans stay on your device, and there are no accounts, no analytics and no ads. This page covers the iPhone app.</p>
+      <p class="lede">Lazy Scan has no accounts, no ads, no analytics and no crash reporting of its own, and it sends nothing to its developer or to any server run for it. Your scans stay on your devices. This page covers the iPhone, Mac and Windows apps and this website.</p>
 
-      <h2>What the app stores</h2>
-      <p>Scans, photos, ID card pages and the PDFs and image files made from them are kept on your iPhone, in the app's own storage and in the folders you save to. The app also keeps its settings, the addresses and certificates of scanners you added, and the pairing with your desktop app. None of it leaves the device unless you send it somewhere yourself. Deleting the app deletes its own storage; files you saved to folders stay where you put them.</p>
-
-      <h2>What the app sends</h2>
-      <p>We run no servers, so there is nothing for the app to send us. It talks over your local network in two cases, and only when you use them:</p>
+      <h2>What the apps connect to</h2>
+      <p>The only network traffic the apps make is on your local network, and only when you use the feature:</p>
       <ul>
-        <li>to your own AirScan (eSCL) printer-scanner, to find it and fetch the pages you scan;</li>
-        <li>to your own computer, if you paired the iPhone with the Lazy Scan desktop app, to send it the pages.</li>
+        <li><strong>Scanners.</strong> The app looks for AirScan (eSCL) scanners on your local network (the <code>_uscan._tcp</code> and <code>_uscans._tcp</code> services) and talks to the ones you scan with. You can also type a scanner's address, and the app connects to whatever address you type, so an address outside your network is reached as well. A scanner that uses HTTPS makes its own certificate, so the app trusts it the first time you connect and remembers its key; if the key changes, it warns you and stops until you trust the new one.</li>
+        <li><strong>The phone link.</strong> You can pair the iPhone with Lazy Scan on a Mac or a Windows PC to send it your scans. While a phone is paired or a pairing code is on screen, the computer listens on your local network (TCP port 52731 by default) and announces itself as <code>_lazyscan._tcp</code>. The phone connects to it over TLS and accepts only the certificate whose key was in the pairing code. The computer listens only on networks you have approved: on Windows, networks Windows calls Private, or others after you allow it in the app; on the Mac, networks you allow in the Phone window. The link never leaves your network.</li>
+        <li><strong>Scanner drivers.</strong> Scanners that are plugged in or installed on the computer are used through the system: ImageCaptureCore on the Mac, and WIA and TWAIN on Windows. The drivers belong to the scanner's maker, and what they do is up to them.</li>
+        <li><strong>Other apps.</strong> Sharing a file through the share sheet, or saving it to a folder or an app such as Mail, is handled by the system and the app you pick. On the Mac and Windows, Lazy Scan can hand saved files to Lazy Print, if you have it, by opening its <code>lazyprint:</code> address with the file paths on the same computer. The Mac app's Help menu opens this website in your browser.</li>
       </ul>
-      <p>Sharing a file through the share sheet, or saving it to a folder or an app such as Mail, is handled by iOS and the app you pick.</p>
+
+      <h2>What is kept on your devices</h2>
+      <ul>
+        <li><strong>Scans and saved files.</strong> Scans, photos, ID card pages and the PDFs and image files made from them are kept in the folder you tell the app to save to. If you have not chosen one, that is <code>Documents\Lazy Scan</code> on Windows, <code>Documents/Lazy Scan</code> on the Mac, and the app's own folder on the iPhone, which you can see in the Files app. On the iPhone you can pick another folder, such as one in iCloud Drive; the app keeps a bookmark to it. While you work on the Mac and Windows, queued pages wait in temporary files in the system's temporary folder (<code>%TEMP%\LazyScan-pages</code> on Windows), which the app deletes when it closes or, after a crash, the next time it starts. On the iPhone, queued pages are kept in the app's storage so they survive a relaunch, until you save or remove them.</li>
+        <li><strong>Settings.</strong> Your settings, presets, the addresses and trusted certificates of scanners you added, and the file-name counter are kept in <code>%APPDATA%\Lazy Scan</code> on Windows, <code>~/Library/Application Support/Lazy Scan</code> on the Mac (inside the app's container in <code>~/Library/Containers</code> when you install it from the Mac App Store), and the app's own storage on the iPhone. A PDF password is never stored; the app asks for it when you save.</li>
+        <li><strong>Phone link keys.</strong> The list of paired phones or computers, and the keys and certificate that protect the link, are kept on the device. Windows keeps only a hash of each phone's secret, protects the cloud folder keys with the Data Protection API for your account, and keeps the certificate and its key, called Lazy Scan phone link, in your account's certificate store. The Mac and the iPhone use the Keychain.</li>
+        <li><strong>Documents on their way.</strong> A document a phone has not yet delivered stays in the app's outbox on the iPhone until the computer has received it or you remove it. A document the computer holds for a phone is kept for 7 days at most. Files received from a phone wait in a folder in the app's data (<code>%LOCALAPPDATA%\Lazy Scan\Companion</code> on Windows, <code>Application Support/Lazy Scan/Companion</code> on the Mac) and are deleted once they are in the queue.</li>
+        <li><strong>A log.</strong> The app writes <code>devices.txt</code>, a report of the scanners it found and the results of its connection checks, to <code>%LOCALAPPDATA%\Lazy Scan\Logs</code> on Windows and to <code>~/Library/Logs/Lazy Scan</code> on the Mac and the iPhone. It is not sent anywhere.</li>
+      </ul>
+      <p>Windows keeps the data of the Microsoft Store version in storage that belongs to the app and removes it when you uninstall. The phone link's certificate is kept in your account's certificate store, so uninstalling may leave it; you can remove it there.</p>
+
+      <h2>The optional cloud folder</h2>
+      <p>If the network keeps your phone and computer apart, such as a school or café network, the phone can put its documents into a folder that you choose and that your computer also syncs, such as one in iCloud Drive or OneDrive. Each document is encrypted with a key that only that phone and the computer hold, and the computer deletes the file once it has taken the document. The service that syncs the folder does so under its own terms. Lazy Scan does not use it for anything else and does not sign in to it.</p>
 
       <h2>Permissions</h2>
       <ul>
-        <li><strong>Camera</strong>: to photograph pages, and to scan the pairing code shown by the desktop app. Pictures are not uploaded.</li>
-        <li><strong>Local network</strong>: to find and use your scanner and your paired computer. The app does not look at other devices on the network.</li>
-        <li><strong>Photo library (add only)</strong>: when you choose Save Image in the share sheet, the image is written to Photos. Importing works the other way round through the system picker: the app receives only the photos you pick and never reads the rest of your library.</li>
+        <li><strong>Camera (iPhone)</strong>: to photograph pages, and to read the pairing code shown by the computer. Pictures are not uploaded.</li>
+        <li><strong>Local network (iPhone and Mac)</strong>: to find your scanners and your paired computer and to talk to them. The app does not look at other devices on the network.</li>
+        <li><strong>Photo library (iPhone, add only)</strong>: when you choose Save Image in the share sheet, the image is written to Photos. Importing works the other way round through the system picker: the app receives only the photos you pick and never reads the rest of your library.</li>
+        <li><strong>Files and folders</strong>: the apps read and write only what you pick, open or drop onto them, and the folders you save to.</li>
       </ul>
-      <p>The page-finding model (DocAligner) and ONNX Runtime run on the device.</p>
+
+      <h2>Work done on the device</h2>
+      <p>Finding the corners of a page, straightening it and recognizing text for searchable PDFs all happen on your device. The page-finding model (DocAligner) runs on ONNX Runtime and is part of the app. Text recognition uses what the system provides: Vision on the iPhone and Mac, and the text recognition built into Windows.</p>
+
+      <h2>Stores and the system</h2>
+      <p>If you get an app from the App Store, the Mac App Store or the Microsoft Store, the store knows you installed it, and the operating system can send crash reports if you allow that in its settings. Both fall under Apple's and Microsoft's terms. Lazy Scan does not see them and adds nothing to them.</p>
+
+      <h2>This website</h2>
+      <p>This website is hosted on GitHub Pages. It has no cookies, tracking scripts or analytics of its own and loads nothing from other sites; like any web host, GitHub sees the internet address of whoever requests a page and keeps server logs under its own terms. If you write to support@alazy.app, your message and anything you send in it are read only to answer you.</p>
 
       <h2>Children</h2>
-      <p>There are no accounts and the app collects no data, so there is nothing about a child to collect or to delete.</p>
+      <p>There are no accounts and the apps collect no data, so there is nothing about a child to collect or to delete.</p>
+
+      <h2>Third-party code</h2>
+      <p>The apps include ONNX Runtime and the DocAligner model, and the Windows app includes NTwain and ZXing.Net. None of them makes connections of its own. Their licences are in the <a href="https://github.com/aytutuna/LazyScan/blob/main/THIRD-PARTY-NOTICES.txt">third-party notices</a>.</p>
 
       <h2>Changes to this policy</h2>
-      <p>If the app starts to do something that changes the above, this page is updated first and the date at the top changes.</p>
+      <p>If an app starts to do something that changes the above, this page is updated first and the date at the top changes.</p>
 
       <h2>Contact</h2>
       <p>Questions about privacy: <a href="mailto:support@alazy.app">support@alazy.app</a>.</p>
