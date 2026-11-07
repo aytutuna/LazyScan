@@ -1021,6 +1021,7 @@
     "The pairing could not be saved on this device. Try again.": "Не удалось сохранить пару на этом устройстве. Повторите попытку.",
     "Set a cloud folder in My computer to send when the computer cannot be reached.": "Укажите облачную папку в разделе «Мой компьютер», чтобы отправлять документы, когда компьютер недоступен.",
     "The cloud folder could not be opened. Choose it again in My computer.": "Не удалось открыть облачную папку. Выберите ее снова в разделе «Мой компьютер».",
+    "The cloud folder could not be opened. Choose it again.": "Не удалось открыть облачную папку. Выберите ее снова.",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "Папка в iCloud Drive или OneDrive, которая синхронизируется и на компьютере. Когда компьютер недоступен, документы отправляются сюда в зашифрованном виде.",
     "{0} is not on this network.": "Компьютера «{0}» нет в этой сети.",
     "{0} cannot be reached on this network.": "Не удается связаться с компьютером «{0}» в этой сети.",
@@ -2392,7 +2393,7 @@
       "Image": "Изображение"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "Lazy Scan принимает по локальной сети документы с телефона в паре.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan ищет в локальной сети сканеры и принтеры со сканером, с которых можно сканировать, и принимает документы с телефона в паре.",
       "Lazy Scan document": "Документ Lazy Scan"
     }
   }

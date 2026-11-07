@@ -20,6 +20,11 @@ public struct CompanionServiceOptions {
     /// Where the phones' sync keys for the cloud sync folder are kept (the Mac's Keychain); nil: no keys
     /// are made, and phones pair without the folder.
     public var syncKeyStore: (any CompanionSecretStore)?
+    /// Opens the sync folder a bookmark stands for and gives it with the bookmark to keep (made again when the old one is
+    /// stale); nil when it no longer resolves. Without it the folder is the saved path.
+    public var resolveSyncFolder: ((Data) -> (folder: URL, bookmark: Data)?)?
+    /// How often a bookmark that did not resolve is tried again.
+    public var syncFolderRetryInterval: TimeInterval = SyncFolderWatcher.pollInterval
     public var clock: () -> Date = { Date() }
     /// The name phones show, the DNS-SD instance's name.
     public var desktopName: String
@@ -58,6 +63,7 @@ public final class CompanionService: @unchecked Sendable {
     private var pairingTimer: Task<Void, Never>?
     private var pages = 0
     private var syncWatcher: SyncFolderWatcher?
+    private var syncRetry: Task<Void, Never>?
 
     /// Called (on any thread) when the status, the paired phones, the networks or the pairing changed.
     public var onChange: (() -> Void)?
@@ -66,8 +72,9 @@ public final class CompanionService: @unchecked Sendable {
     /// A paired phone sent a document (on the request's task), or put it in the sync folder (on the
     /// watcher's task). Release it from `inbox` once imported.
     public var onPackageReceived: ((ReceivedPackage, PairedDevice) -> Void)?
-    /// A file in the sync folder could not be read: the message for the status, once per file.
-    public var onSyncFolderProblem: ((String) -> Void)?
+    /// A file in the sync folder could not be read, or its bookmark could not be opened: the message for the status, once
+    /// per file. nil when the folder opened again.
+    public var onSyncFolderProblem: ((String?) -> Void)?
 
     public init(_ options: CompanionServiceOptions) {
         self.options = options
@@ -161,8 +168,8 @@ public final class CompanionService: @unchecked Sendable {
     /// Chooses the cloud sync folder (nil: none) and watches it from now on; false when that could not
     /// be saved.
     @discardableResult
-    public func setSyncFolder(_ folder: URL?) -> Bool {
-        guard devices.setSyncFolder(folder) else { return false }
+    public func setSyncFolder(_ folder: URL?, bookmark: Data? = nil) -> Bool {
+        guard devices.setSyncFolder(folder, bookmark: bookmark) else { return false }
         watchSyncFolder()
         return true
     }
@@ -327,11 +334,26 @@ public final class CompanionService: @unchecked Sendable {
 
     // MARK: - Private
 
-    /// Watches the folder chosen now, and no other.
+    /// Watches the folder chosen now, and no other. When the app keeps a bookmark and it does not open, the saved path is
+    /// watched meanwhile (it works where the app is not sandboxed), the problem is reported, and the bookmark is tried again
+    /// until it opens.
     private func watchSyncFolder() {
-        let folder = devices.syncFolder
+        let (folder, unresolved) = openSyncFolder()
+        if unresolved { onSyncFolderProblem?(CompanionService.syncFolderUnresolvedMessage) }
         lock.lock()
         defer { lock.unlock() }
+        syncRetry?.cancel()
+        syncRetry = nil
+        if unresolved {
+            let interval = UInt64(options.syncFolderRetryInterval * 1_000_000_000)
+            syncRetry = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: interval)
+                    guard !Task.isCancelled, let self else { return }
+                    if self.retrySyncFolder() { return }
+                }
+            }
+        }
         guard syncWatcher?.folder.path != folder?.path else { return }
         syncWatcher?.stop()
         syncWatcher = nil
@@ -343,8 +365,41 @@ public final class CompanionService: @unchecked Sendable {
         syncWatcher = watcher
     }
 
+    public static var syncFolderUnresolvedMessage: String { L10n.t("The cloud folder could not be opened. Choose it again.") }
+
+    /// One try at the bookmark; when it opens, the folder is watched from the start, since a watcher made before could not
+    /// see into it.
+    private func retrySyncFolder() -> Bool {
+        let (_, unresolved) = openSyncFolder()
+        if unresolved { return false }
+        lock.lock()
+        syncWatcher?.stop()
+        syncWatcher = nil
+        syncRetry = nil
+        lock.unlock()
+        onSyncFolderProblem?(nil)
+        watchSyncFolder()
+        return true
+    }
+
+    /// The folder to watch: the bookmark's when the app keeps one, else the saved path; `unresolved` when there is a
+    /// bookmark that did not open (the saved path is given then). A folder that was moved, or a bookmark that went stale, is
+    /// saved again under what the bookmark says now.
+    private func openSyncFolder() -> (folder: URL?, unresolved: Bool) {
+        guard let bookmark = devices.syncFolderBookmark, let resolve = options.resolveSyncFolder else {
+            return (devices.syncFolder, false)
+        }
+        guard let opened = resolve(bookmark) else { return (devices.syncFolder, true) }
+        if opened.bookmark != bookmark || opened.folder.path != devices.syncFolder?.path {
+            devices.setSyncFolder(opened.folder, bookmark: opened.bookmark)
+        }
+        return (opened.folder, false)
+    }
+
     private func stopSyncWatcher() {
         lock.lock()
+        syncRetry?.cancel()
+        syncRetry = nil
         syncWatcher?.stop()
         syncWatcher = nil
         lock.unlock()
