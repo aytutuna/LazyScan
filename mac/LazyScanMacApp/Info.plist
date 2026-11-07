@@ -67,8 +67,6 @@
 	<true/>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_uscan._tcp</string>
-		<string>_uscans._tcp</string>
 		<string>_lazyscan._tcp</string>
 	</array>
 	<key>NSHighResolutionCapable</key>

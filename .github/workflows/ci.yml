@@ -405,7 +405,15 @@ jobs:
       - name: Build the store target
         run: |
           set -o pipefail
-          xcodebuild build             -project mac/LazyScanMacApp.xcodeproj             -scheme LazyScanMacApp             -configuration Release             -destination generic/platform=macOS             -derivedDataPath "$RUNNER_TEMP/mac-store"             CODE_SIGN_IDENTITY=-             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
+          xcodebuild build \
+            -project mac/LazyScanMacApp.xcodeproj \
+            -scheme LazyScanMacApp \
+            -configuration Release \
+            -destination generic/platform=macOS \
+            -derivedDataPath "$RUNNER_TEMP/mac-store" \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
       - name: Check the bundle
         run: |
           set -euo pipefail
@@ -415,7 +423,8 @@ jobs:
           codesign -d --entitlements :- "$app" > "$RUNNER_TEMP/entitlements.plist"
           cat "$RUNNER_TEMP/entitlements.plist"
           for key in app-sandbox network.client network.server print device.usb files.user-selected.read-write files.downloads.read-write files.bookmarks.app-scope; do
-            [ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.security.$key" "$RUNNER_TEMP/entitlements.plist")" = "true" ]               || { echo "Missing entitlement: $key"; exit 1; }
+            [ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.security.$key" "$RUNNER_TEMP/entitlements.plist")" = "true" ] \
+              || { echo "Missing entitlement: $key"; exit 1; }
           done
           if /usr/libexec/PlistBuddy -c "Print :com.apple.security.get-task-allow" "$RUNNER_TEMP/entitlements.plist" >/dev/null 2>&1; then
             echo "get-task-allow is set"
