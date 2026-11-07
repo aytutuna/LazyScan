@@ -12,6 +12,7 @@ namespace LazyScan.App.Services;
 /// pointing at the exe that runs. The app has no installer, so nothing removes them; a value already
 /// right is not written again. A bare <c>lazyscan:</c> only opens the app (Lazy Print does that); a pairing
 /// code (<c>lazyscan://pair</c>) is pasted or scanned and is not read from the command line.
+/// The Store package declares the extension and the scheme in its manifest and writes nothing.
 /// </summary>
 public static class FileAssociation
 {
@@ -59,11 +60,18 @@ public static class FileAssociation
         try
         {
             using var classes = Registry.CurrentUser.CreateSubKey(@"Software\Classes");
-            if (Register(classes, exe)) SHChangeNotify(ShcneAssocChanged, ShcnfIdList, IntPtr.Zero, IntPtr.Zero);
+            RegisterForCurrentUser(classes, exe);
         }
         catch (Exception e) when (e is UnauthorizedAccessException or SecurityException or IOException)
         {
         }
+    }
+
+    /// <summary>The write of <see cref="RegisterForCurrentUser()"/> under <paramref name="classes"/>; nothing when packaged.</summary>
+    public static void RegisterForCurrentUser(RegistryKey classes, string exePath)
+    {
+        if (Packaging.IsPackaged) return;
+        if (Register(classes, exePath)) SHChangeNotify(ShcneAssocChanged, ShcnfIdList, IntPtr.Zero, IntPtr.Zero);
     }
 
     private const int ShcneAssocChanged = 0x08000000;
