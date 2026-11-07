@@ -989,6 +989,7 @@
     "Writing the text file…": "Textdatei wird erstellt …",
     "Reading the text of page {0}…": "Text von Seite {0} wird erkannt …",
     "The save folder could not be opened, so this save went to the app's folder.": "Der Zielordner ließ sich nicht öffnen. Stattdessen wurde im Ordner der App gesichert.",
+    "The save folder could not be opened, so this save went to Downloads/Lazy Scan.": "Der Zielordner ließ sich nicht öffnen. Stattdessen wurde in Downloads/Lazy Scan gesichert.",
     "Ready.": "Bereit.",
     "The spread is no longer available.": "Die Doppelseite ist nicht mehr verfügbar.",
     "Edges may lose up to {0} mm": "Am Rand gehen bis zu {0} mm verloren",

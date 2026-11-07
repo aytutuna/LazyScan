@@ -397,8 +397,8 @@ public enum PDFAppender {
 
     /// Adds `pages` to the end of the PDF at `path`. The file is held open (with a shared lock, so
     /// apps that lock files may read it, not change it) while the original and the update are written
-    /// to a hidden temporary file in its folder (on the iPhone in the system's folder for replacing
-    /// it, since a file picked in Files comes without its folder); that file is read back and must
+    /// to a hidden temporary file in its folder (on the iPhone and in the sandboxed Mac app in the
+    /// system's folder for replacing it, since a file picked there comes without its folder); that file is read back and must
     /// have the original's bytes at its start, an update pointing back at the original's last section
     /// and every page;
     /// then it takes the original's place (`replaceOriginal(_:_:)`), keeping what belongs to the file

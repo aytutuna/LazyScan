@@ -650,9 +650,9 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// 0 ... 1
     public var jpegQuality: Double = 0.9
     public var destinationPath: String = ScanSettings.defaultDestinationPath
-    /// The save folder picked outside the app on the iPhone (iCloud Drive, a USB drive), as a bookmark:
-    /// iOS lets the app back into such a folder only through one. `destinationPath` is its path. Not
-    /// used on the Mac and Windows. Left out of the file when nil.
+    /// The save folder picked outside the app on the iPhone (iCloud Drive, a USB drive) or on the Mac, as a
+    /// bookmark: iOS and the sandboxed Mac app get back into such a folder only through one. `destinationPath`
+    /// is its path. Not used on Windows. Left out of the file when nil.
     public var destinationBookmark: Data?
     public var namingTemplate: String = "Scan {date} {counter}"
 
@@ -710,8 +710,10 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// app's own Documents/Lazy Scan, which the Files app shows.
     public static var defaultDestinationPath: String {
         #if os(macOS)
-        let downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true)
+        // In the sandbox this is a link inside the container to the real folder, which is what the user knows.
+        let downloads: URL = (FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true))
+            .resolvingSymlinksInPath()
         return downloads.appendingPathComponent("Lazy Scan", isDirectory: true).path
         #else
         return (NSHomeDirectory() as NSString).appendingPathComponent("Documents/Lazy Scan")

@@ -989,6 +989,7 @@
     "Writing the text file…": "Создание текстового файла…",
     "Reading the text of page {0}…": "Распознавание текста: страница {0}…",
     "The save folder could not be opened, so this save went to the app's folder.": "Не удалось открыть папку для сохранения, поэтому сохранено в папку приложения.",
+    "The save folder could not be opened, so this save went to Downloads/Lazy Scan.": "Не удалось открыть папку для сохранения, поэтому сохранено в Downloads/Lazy Scan.",
     "Ready.": "Готов.",
     "The spread is no longer available.": "Разворот больше недоступен.",
     "Edges may lose up to {0} mm": "По краям может обрезаться до {0} мм",
