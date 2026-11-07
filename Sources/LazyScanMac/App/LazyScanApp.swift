@@ -67,7 +67,7 @@ extension AppState {
                                                 networks: MacNetworkSource(), desktopName: computerName)
         companion.advertiser = MacDnsSdAdvertiser()
         companion.syncKeyStore = MacCompanionSyncKeys()
-        companion.resolveSyncFolder = { MacBookmarkedFolder.syncFolder.resolve($0) }
+        companion.resolveSyncFolder = { MacBookmarkedFolder.syncFolder.resolve($0, mounting: $1) }
         state.setUpCompanionHost(companion)
         return state
     }
