@@ -100,14 +100,17 @@ public final class SystemFileActions: FileActionService {
     }
 
     public func lazyPrintInstalled() -> Bool {
-        NSWorkspace.shared.urlForApplication(toOpen: Self.lazyPrintScheme) != nil
+        Self.lazyPrintApp != nil
     }
 
+    /// The files are opened with Lazy Print by the system, which grants it access to them; a sandboxed Lazy Print could
+    /// not read a path named in its address.
     public func openInLazyPrint(_ urls: [URL]) throws {
-        guard lazyPrintInstalled(), let address = URL(string: LazyPrintUrl.build(urls.map(\.path))),
-              NSWorkspace.shared.open(address) else {
+        guard let app = Self.lazyPrintApp else {
             throw ScanError.unsupported(L10n.t("Lazy Print is not installed."))
         }
+        NSWorkspace.shared.open(urls, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration(),
+                                completionHandler: nil)
     }
 
     public func copyText(_ text: String) throws {
@@ -120,8 +123,11 @@ public final class SystemFileActions: FileActionService {
 
     // MARK: Helpers
 
-    /// What Lazy Print registers: the scheme alone, to ask the system whether anything opens it.
-    private static var lazyPrintScheme: URL { URL(string: LazyPrintUrl.scheme + ":")! }
+    /// Lazy Print from the Mac App Store, or else whatever app opens its address (a build made by its make_app.sh).
+    private static var lazyPrintApp: URL? {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.lazyprint.lazyprint")
+            ?? NSWorkspace.shared.urlForApplication(toOpen: URL(string: LazyPrintUrl.scheme + ":")!)
+    }
 
     /// The anchor window's content view and the point in it where menus and the share picker
     /// open (see `anchorPoint`); nil without a window.
