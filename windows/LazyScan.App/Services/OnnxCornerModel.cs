@@ -70,6 +70,8 @@ public sealed class OnnxCornerModel : ICornerModel
 
     private static InferenceSession CreateSession(string path)
     {
+        // The official Windows build sends usage events to Windows unless told not to.
+        OrtEnv.Instance().DisableTelemetryEvents();
         using var options = new SessionOptions { GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL };
         return new InferenceSession(path, options);
     }
