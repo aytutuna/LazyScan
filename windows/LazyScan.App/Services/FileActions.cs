@@ -92,11 +92,20 @@ public sealed class WindowsFileActions : IFileActions
         Clipboard.SetDataObject(data, copy: true);
     }
 
-    public bool LazyPrintInstalled()
+    public bool LazyPrintInstalled() => HasProtocolHandler(LazyPrintUrl.Scheme);
+
+    /// <summary>Whether an app handles <paramref name="scheme"/>: asks the shell, so a Store app's manifest counts as well as registry keys.</summary>
+    internal static bool HasProtocolHandler(string scheme)
     {
-        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + LazyPrintUrl.Scheme);
-        return key is not null;
+        uint length = 0;
+        return AssocQueryString(AssocfIsProtocol, AssocstrExecutable, scheme, null, null, ref length) is 0 or 1; // S_OK, S_FALSE (buffer too small)
     }
+
+    private const uint AssocfIsProtocol = 0x00001000;
+    private const uint AssocstrExecutable = 2;
+
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, EntryPoint = "AssocQueryStringW", ExactSpelling = true)]
+    private static extern int AssocQueryString(uint flags, uint str, string assoc, string? extra, char[]? output, ref uint length);
 
     public void OpenInLazyPrint(IReadOnlyList<string> paths) =>
         Process.Start(new ProcessStartInfo(LazyPrintUrl.Build(paths)) { UseShellExecute = true });
