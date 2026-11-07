@@ -654,7 +654,7 @@ struct InspectorView: View {
         panel.prompt = String(localized: "Choose")
         panel.message = String(localized: "Choose where scans are saved.")
         if panel.runModal() == .OK, let url = panel.url {
-            state.settings.destinationPath = url.path
+            state.chooseSaveFolder(url)
         }
     }
 
