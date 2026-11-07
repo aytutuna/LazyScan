@@ -1021,6 +1021,7 @@
     "The pairing could not be saved on this device. Try again.": "Eşleştirme bu aygıta kaydedilemedi. Yeniden deneyin.",
     "Set a cloud folder in My computer to send when the computer cannot be reached.": "Bilgisayara ulaşılamadığında göndermek için Bilgisayarım’da bir bulut klasörü ayarlayın.",
     "The cloud folder could not be opened. Choose it again in My computer.": "Bulut klasörü açılamadı. Bilgisayarım’da yeniden seçin.",
+    "The cloud folder could not be opened. Choose it again.": "Bulut klasörü açılamadı. Yeniden seçin.",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "iCloud Drive ya da OneDrive’da, bilgisayarınızın da eşzamanladığı bir klasör. Bilgisayara ulaşılamadığında belgeler buraya şifreli olarak gider.",
     "{0} is not on this network.": "{0} bu ağda değil.",
     "{0} cannot be reached on this network.": "Bu ağda ulaşılamıyor: {0}.",
@@ -2461,7 +2462,7 @@
       "Image": "Görüntü"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "Lazy Scan, eşleştirilmiş telefonunuzdan yerel ağınız üzerinden belge alır.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan, tarama yapabilmeniz için yerel ağınızdaki tarayıcıları (tarama özellikli yazıcılar gibi) arar ve eşleştirilmiş telefonunuzdan belge alır.",
       "Lazy Scan document": "Lazy Scan belgesi"
     }
   }

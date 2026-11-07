@@ -42,7 +42,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>NSPrincipalClass</key>          <string>NSApplication</string>
     <key>NSApplicationSupportsSecureRestorableState</key> <true/>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Lazy Scan receives documents from your paired phone on your local network.</string>
+    <string>Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and receives documents from your paired phone.</string>
     <key>NSBonjourServices</key>
     <array><string>_lazyscan._tcp</string></array>
     <key>CFBundleDocumentTypes</key>

@@ -100,7 +100,7 @@ extension AppState {
         service.onSyncFolderProblem = { [weak self] message in
             Task { @MainActor in
                 self?.syncFolderProblem = message
-                self?.statusMessage = message
+                if let message { self?.statusMessage = message }
             }
         }
         service.onChange = { [weak self] in
@@ -124,8 +124,8 @@ extension AppState {
     /// Chooses the cloud folder phones put documents in (nil: none); false when that could not be saved.
     /// Twin of C# `SetPhoneSyncFolder`.
     @discardableResult
-    public func setPhoneSyncFolder(_ folder: URL?) -> Bool {
-        guard let service = companionService, service.setSyncFolder(folder) else { return false }
+    public func setPhoneSyncFolder(_ folder: URL?, bookmark: Data? = nil) -> Bool {
+        guard let service = companionService, service.setSyncFolder(folder, bookmark: bookmark) else { return false }
         syncFolderProblem = nil
         return true
     }

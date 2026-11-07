@@ -1021,6 +1021,7 @@
     "The pairing could not be saved on this device. Try again.": "تعذر حفظ الإقران على هذا الجهاز. يُرجى المحاولة مرة أخرى.",
     "Set a cloud folder in My computer to send when the computer cannot be reached.": "يُرجى تعيين مجلد سحابي في \"الكمبيوتر الخاص بي\" لإرسال المستندات إليه عند تعذر الوصول إلى الكمبيوتر.",
     "The cloud folder could not be opened. Choose it again in My computer.": "تعذر فتح المجلد السحابي. يُرجى اختياره مرة أخرى في \"الكمبيوتر الخاص بي\".",
+    "The cloud folder could not be opened. Choose it again.": "تعذر فتح المجلد السحابي. يُرجى اختياره مرة أخرى.",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "مجلد في iCloud Drive أو OneDrive يزامنه الكمبيوتر أيضًا. تُرسل المستندات إليه مشفّرة عند تعذر الوصول إلى الكمبيوتر.",
     "{0} is not on this network.": "الكمبيوتر {0} ليس على هذه الشبكة.",
     "{0} cannot be reached on this network.": "تعذر الوصول إلى الكمبيوتر {0} على هذه الشبكة.",
@@ -2411,7 +2412,7 @@
       "Image": "صورة"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "يستقبل Lazy Scan المستندات من هاتفك المقترن عبر الشبكة المحلية.",
+      "NSLocalNetworkUsageDescription": "يبحث Lazy Scan في الشبكة المحلية عن الماسحات الضوئية، بما فيها الطابعات متعددة الوظائف، للمسح الضوئي عبرها، ويستقبل المستندات من هاتفك المقترن.",
       "Lazy Scan document": "مستند Lazy Scan"
     }
   }

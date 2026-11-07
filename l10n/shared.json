@@ -1493,6 +1493,7 @@
   "The pairing could not be saved on this device. Try again.": {},
   "Set a cloud folder in My computer to send when the computer cannot be reached.": {},
   "The cloud folder could not be opened. Choose it again in My computer.": {},
+  "The cloud folder could not be opened. Choose it again.": {},
   "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": {},
   "{0} is not on this network.": {},
   "{0} cannot be reached on this network.": {},
@@ -2577,7 +2578,7 @@
       "Image": "Image"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "Lazy Scan receives documents from your paired phone on your local network.",
+      "NSLocalNetworkUsageDescription": "Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and receives documents from your paired phone.",
       "Lazy Scan document": "Lazy Scan document"
     }
   }

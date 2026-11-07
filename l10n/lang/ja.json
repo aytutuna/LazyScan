@@ -1021,6 +1021,7 @@
     "The pairing could not be saved on this device. Try again.": "ペアリング情報をこのデバイスに保存できませんでした。やり直してください。",
     "Set a cloud folder in My computer to send when the computer cannot be reached.": "コンピュータに接続できないときに送信できるよう、“自分のコンピュータ”でクラウドフォルダを設定してください。",
     "The cloud folder could not be opened. Choose it again in My computer.": "クラウドフォルダを開けませんでした。“自分のコンピュータ”でもう一度選択してください。",
+    "The cloud folder could not be opened. Choose it again.": "クラウドフォルダを開けませんでした。もう一度選択してください。",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "お使いのコンピュータでも同期しているiCloud DriveまたはOneDrive内のフォルダです。コンピュータに接続できないときは、書類が暗号化されてここに送信されます。",
     "{0} is not on this network.": "“{0}”はこのネットワークにありません。",
     "{0} cannot be reached on this network.": "このネットワークでは“{0}”に接続できません。",
@@ -2387,7 +2388,7 @@
       "Image": "画像"
     },
     "mac": {
-      "NSLocalNetworkUsageDescription": "Lazy Scanは、ペアリング済みのiPhoneからローカルネットワーク経由で書類を受信します。",
+      "NSLocalNetworkUsageDescription": "Lazy Scanは、ローカルネットワーク上のスキャナ（スキャン機能付きプリンタなど）を探し、見つかったスキャナでスキャンできるようにします。また、ペアリング済みのiPhoneから書類を受信します。",
       "Lazy Scan document": "Lazy Scan書類"
     }
   }
