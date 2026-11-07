@@ -99,9 +99,9 @@ public sealed class LocTests
     public void ResourceLookupFallsBackToEnglishInTurkish() =>
         InTurkish(null, () =>
         {
-            Assert.Equal("Save as PDF", Loc.T("Save as PDF"));
-            Assert.Equal("Scan", Loc.T("Scan|noun"));
-            Assert.Equal("2 files", Loc.Plural(2, "{0} file", "{0} files"));
+            Assert.Equal("Not in any language", Loc.T("Not in any language"));
+            Assert.Equal("Not in any language", Loc.T("Not in any language|button"));
+            Assert.Equal("2 widgets", Loc.Plural(2, "{0} widget", "{0} widgets"));
         });
 
     [Fact]
