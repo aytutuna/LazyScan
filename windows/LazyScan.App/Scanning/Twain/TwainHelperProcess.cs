@@ -20,7 +20,16 @@ internal sealed record TwainHelperOptions(string HelperPath, bool Simulate = fal
 {
     public const string FileName = "LazyScan.TwainHelper.exe";
 
-    public static TwainHelperOptions Default => new(Path.Combine(AppContext.BaseDirectory, FileName));
+    // The Store package carries a self-contained copy in Twain; a build from source has the framework-dependent one beside the app.
+    public static TwainHelperOptions Default
+    {
+        get
+        {
+            // "Twain" is the folder scripts/make_msix.ps1 puts the helper in.
+            string packaged = Path.Combine(AppContext.BaseDirectory, "Twain", FileName);
+            return new(File.Exists(packaged) ? packaged : Path.Combine(AppContext.BaseDirectory, FileName));
+        }
+    }
 
     public TimeSpan ConnectTimeout => StartTimeout ?? TimeSpan.FromSeconds(30);
 

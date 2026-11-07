@@ -16,6 +16,7 @@
     <RootNamespace>LazyScan.TwainHelper</RootNamespace>
     <AssemblyName>LazyScan.TwainHelper</AssemblyName>
     <IsPackable>false</IsPackable>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

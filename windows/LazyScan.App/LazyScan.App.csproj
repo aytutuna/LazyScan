@@ -24,9 +24,15 @@
   <ItemGroup>
     <ProjectReference Include="..\LazyScan.Core\LazyScan.Core.csproj" />
     <!-- The 32-bit TWAIN helper (x86): built with the app, not referenced as an assembly; its files
-         are copied next to LazyScan.exe by the target below. -->
-    <ProjectReference Include="..\LazyScan.TwainHelper\LazyScan.TwainHelper.csproj"
+         are copied next to LazyScan.exe by the target below. scripts/make_msix.ps1 passes SkipTwainHelper
+         and publishes the helper on its own: a reference to it would pass the app's win-x64 or win-arm64
+         runtime to the x86 project (NETSDK1032). -->
+    <ProjectReference Include="..\LazyScan.TwainHelper\LazyScan.TwainHelper.csproj" Condition="'$(SkipTwainHelper)' != 'true'"
                       ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,7 +43,7 @@
        app's, wherever the helper was built (artifacts output included). Its other files, the Core
        library and NTwain, are the app's own. As copy-to-output items they also reach projects that
        reference the app (its tests). -->
-  <Target Name="AddTwainHelperFiles" BeforeTargets="AssignTargetPaths">
+  <Target Name="AddTwainHelperFiles" BeforeTargets="AssignTargetPaths" Condition="'$(SkipTwainHelper)' != 'true'">
     <MSBuild Projects="..\LazyScan.TwainHelper\LazyScan.TwainHelper.csproj" Targets="GetTargetPath">
       <Output TaskParameter="TargetOutputs" ItemName="_TwainHelperTarget" />
     </MSBuild>
@@ -71,6 +77,11 @@
   <ItemGroup Condition="Exists('..\..\Sources\LazyScanModel\Models\fastvit_t8_h_e_bifpn_256_fp32.onnx')">
     <None Include="..\..\Sources\LazyScanModel\Models\fastvit_t8_h_e_bifpn_256_fp32.onnx;..\..\Sources\LazyScanModel\Models\DocAligner-LICENSE.txt"
           Link="Models\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <!-- ONNX Runtime's third-party notices travel with the app. -->
+  <ItemGroup>
+    <Content Include="..\..\Sources\LazyScanModel\Models\ONNXRuntime-THIRD-PARTY-NOTICES.txt" Link="ONNXRuntime-THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
