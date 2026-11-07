@@ -989,6 +989,7 @@
     "Writing the text file…": "テキストファイルを書き出し中…",
     "Reading the text of page {0}…": "{0}ページ目のテキストを読み取り中…",
     "The save folder could not be opened, so this save went to the app's folder.": "保存フォルダを開けなかったため、アプリのフォルダに保存しました。",
+    "The save folder could not be opened, so this save went to Downloads/Lazy Scan.": "保存フォルダを開けなかったため、Downloads/Lazy Scanに保存しました。",
     "Ready.": "準備ができました。",
     "The spread is no longer available.": "この見開きは使用できなくなりました。",
     "Edges may lose up to {0} mm": "端が最大{0} mm切れることがあります",

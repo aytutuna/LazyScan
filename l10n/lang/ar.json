@@ -989,6 +989,7 @@
     "Writing the text file…": "جارٍ كتابة الملف النصي…",
     "Reading the text of page {0}…": "جارٍ قراءة نص الصفحة {0}…",
     "The save folder could not be opened, so this save went to the app's folder.": "تعذر فتح مجلد الحفظ، لذا تم الحفظ هذه المرة في مجلد التطبيق.",
+    "The save folder could not be opened, so this save went to Downloads/Lazy Scan.": "تعذر فتح مجلد الحفظ، لذا تم الحفظ هذه المرة في Downloads/Lazy Scan.",
     "Ready.": "جاهز.",
     "The spread is no longer available.": "لم تعد الصفحتان المتقابلتان متاحتين.",
     "Edges may lose up to {0} mm": "قد يُقتطع من الحواف حتى {0} مم",

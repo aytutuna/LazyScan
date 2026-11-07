@@ -320,10 +320,13 @@ public final class AppState: ObservableObject {
     /// "Add pages to a PDF"); nil otherwise. Kept for this session only (AppState+Append.swift).
     @Published public internal(set) var appendTarget: URL?
 
-    /// Opens the folder of `ScanSettings.destinationBookmark` (the iPhone's save folder outside the app)
-    /// and gives it with the bookmark to keep, made again when the old one is stale; nil when it no longer
-    /// resolves. Set by `makeForIOS`; without it the bookmark is not used.
+    /// Opens the folder of `ScanSettings.destinationBookmark` (the save folder outside the app) and gives it
+    /// with the bookmark to keep, made again when the old one is stale; nil when it no longer resolves. Set by
+    /// `makeForIOS` and `makeForMac`; without it the bookmark is not used.
     public var resolveDestinationBookmark: (@MainActor (Data) -> (folder: URL, bookmark: Data)?)?
+    /// The Mac said once this launch that a save went to the default folder because the picked one did not
+    /// open; the next saves do not say it again until the folder has opened.
+    private var saveFolderFallbackSaid = false
     /// This install's Documents folder, which a save folder kept as a path into an earlier install's is
     /// moved into (`ScanSettings.rebasedDestinationPath`); nil on the Mac. Set by `makeForIOS`.
     public package(set) var documentsFolder: URL?
@@ -2603,7 +2606,14 @@ public final class AppState: ObservableObject {
                 // The picked folder is out of reach now (its drive unplugged, say): this save goes to the
                 // app's folder and the bookmark is kept for the next one.
                 path = ScanSettings.defaultDestinationPath
+                #if os(macOS)
+                if !saveFolderFallbackSaid {
+                    saveFolderFallbackSaid = true
+                    errorMessage = L10n.t("The save folder could not be opened, so this save went to Downloads/Lazy Scan.")
+                }
+                #else
                 errorMessage = L10n.t("The save folder could not be opened, so this save went to the app's folder.")
+                #endif
             }
             path = ScanSettings.rebasedDestinationPath((path as NSString).expandingTildeInPath, documents: documentsFolder)
             url = URL(fileURLWithPath: path, isDirectory: true)
@@ -2620,6 +2630,7 @@ public final class AppState: ObservableObject {
     public func openBookmarkedFolder() -> URL? {
         guard let bookmark = settings.destinationBookmark, let resolve = resolveDestinationBookmark,
               let resolved = resolve(bookmark) else { return nil }
+        saveFolderFallbackSaid = false
         var updated = settings
         updated.destinationBookmark = resolved.bookmark
         updated.destinationPath = resolved.folder.path

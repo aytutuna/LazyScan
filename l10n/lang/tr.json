@@ -989,6 +989,7 @@
     "Writing the text file…": "Metin dosyası yazılıyor…",
     "Reading the text of page {0}…": "{0}. sayfanın metni okunuyor…",
     "The save folder could not be opened, so this save went to the app's folder.": "Kayıt klasörü açılamadı; dosya uygulamanın klasörüne kaydedildi.",
+    "The save folder could not be opened, so this save went to Downloads/Lazy Scan.": "Kayıt klasörü açılamadı; dosya Downloads/Lazy Scan klasörüne kaydedildi.",
     "Ready.": "Hazır.",
     "The spread is no longer available.": "Çift sayfa artık kullanılamıyor.",
     "Edges may lose up to {0} mm": "Kenarlardan en fazla {0} mm kesilebilir",
