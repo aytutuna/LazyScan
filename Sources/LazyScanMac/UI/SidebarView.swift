@@ -30,6 +30,8 @@ struct SidebarView: View {
                             state.showTroubleshooter = true
                         }
                         .buttonStyle(.link)
+                        // In a sidebar row the link style can take the row's text colour, white on the light grey.
+                        .foregroundStyle(Color(nsColor: .linkColor))
                         .font(.callout)
                         .help("Why isn't my scanner listed?")
                     }
