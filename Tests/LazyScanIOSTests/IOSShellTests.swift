@@ -578,10 +578,9 @@ final class IOSShellTests: XCTestCase {
     func test_save_withATarget_namesTheFile() {
         var settings = ScanSettings()
         settings.format = .pdf
-        let plan: SavePlan = SavePlan.make([], options: settings.document)
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
-        XCTAssertEqual(ScanScreen.saveTitle(settings, plan: plan, target: target), "Add to Contract.pdf")
-        XCTAssertEqual(ScanScreen.saveTitle(settings, plan: plan, target: nil), IOSShell.saveTitle(settings, plan: plan))
+        XCTAssertEqual(IOSShell.saveTitle(target: target), "Add to Contract.pdf")
+        XCTAssertEqual(IOSShell.saveTitle(target: nil), "Save")
         XCTAssertEqual(ScanScreen.clearTargetLabel(target), "Stop Adding to Contract.pdf")
     }
 

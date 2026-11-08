@@ -454,18 +454,20 @@ final class IOSFlowTests: XCTestCase {
         }
     }
 
-    func test_floatingSave_saysTheFormatAndThePages() {
+    func test_saveButton_saysSave_andLeavesTheFormatAndThePagesToVoiceOver() {
         let document: ScanSettings = TaskCatalog.apply(.document, to: ScanSettings())
         let plan: SavePlan = SavePlan.make([flowPage(), flowPage(), flowPage()], options: document.document)
-        XCTAssertEqual(IOSShell.floatingSaveTitle(document, plan: plan, target: nil), "Save PDF \u{00B7} 3")
+        XCTAssertEqual(IOSShell.saveTitle(target: nil), "Save")
+        XCTAssertEqual(IOSShell.saveDetail(document, plan: plan, target: nil), "Save PDF (3 pages)")
         var word: ScanSettings = document
         word.format = .word
-        XCTAssertEqual(IOSShell.floatingSaveTitle(word, plan: plan, target: nil), "Save Word \u{00B7} 3")
+        XCTAssertEqual(IOSShell.saveDetail(word, plan: plan, target: nil), "Save Word (3 pages)")
         var jpeg: ScanSettings = document
         jpeg.format = .jpeg
-        XCTAssertEqual(IOSShell.floatingSaveTitle(jpeg, plan: plan, target: nil), "Save JPEG (3 pages)")
+        XCTAssertEqual(IOSShell.saveDetail(jpeg, plan: plan, target: nil), "Save JPEG (3 pages)")
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
-        XCTAssertEqual(IOSShell.floatingSaveTitle(document, plan: plan, target: target), "Add to Contract.pdf")
+        XCTAssertEqual(IOSShell.saveTitle(target: target), "Add to Contract.pdf")
+        XCTAssertEqual(IOSShell.saveDetail(document, plan: plan, target: target), "3 pages")
     }
 
     func test_offersSave_whileCollecting_orWhileADocumentTaskHoldsPages() {

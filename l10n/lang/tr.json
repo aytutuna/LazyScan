@@ -1895,7 +1895,6 @@
     "%@ wide, %@ high, %@ from the left, %@ from the top": "Genişlik %@, yükseklik %@, soldan %@, üstten %@",
     "%@ · %@": "%@ · %@",
     "%@ · %@ dpi": "%@ · %@ dpi",
-    "%@ · %lld": "%@ · %lld",
     "%@ × %@ in": "%@ × %@ inç",
     "%@. %@": "%@. %@",
     "%@. %@.": "%@. %@.",

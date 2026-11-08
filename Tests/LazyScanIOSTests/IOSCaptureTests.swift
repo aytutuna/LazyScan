@@ -55,9 +55,9 @@ final class IOSCaptureTests: XCTestCase {
         let plan: SavePlan = SavePlan.make([first, second], options: ScanSettings().document)
         XCTAssertEqual(plan.pageCount, 2)
         settings.format = .jpeg
-        XCTAssertEqual(IOSShell.saveTitle(settings, plan: plan), "Save JPEG (2 pages)")
+        XCTAssertEqual(IOSShell.saveDetail(settings, plan: plan, target: nil), "Save JPEG (2 pages)")
         settings.format = .pdf
-        XCTAssertEqual(IOSShell.saveTitle(settings, plan: plan), plan.saveTitle(.pdf))
+        XCTAssertEqual(IOSShell.saveDetail(settings, plan: plan, target: nil), plan.saveTitle(.pdf))
     }
 
     func test_theImportLaunchOption_carriesOnePhoto() {

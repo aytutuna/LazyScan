@@ -448,26 +448,26 @@ public enum IOSShell {
         }
     }
 
-    /// The Save button's title: "Save JPEG (3 pages)" for pictures (`AppState.imagesSaveTitle`), else the
-    /// queue's own ("Save PDF (3 pages)", "Save Word").
-    public static func saveTitle(_ settings: ScanSettings, plan: SavePlan) -> String {
+    /// The main Save buttons' title: just "Save", or "Add to Contract.pdf" while the pages go into a PDF
+    /// picked, which is a different action. The format and the pages are in `saveDetail`.
+    public static func saveTitle(target: URL?) -> String {
+        if let target {
+            return PDFAppender.saveTitle(target.lastPathComponent)
+        }
+        return String(localized: "Save")
+    }
+
+    /// What the title leaves out, for the button's accessibility value: "Save JPEG (3 pages)" for pictures
+    /// (`AppState.imagesSaveTitle`), else the queue's own ("Save PDF (3 pages)", "Save Word"); the pages
+    /// alone ("3 pages") while they go into a PDF picked.
+    public static func saveDetail(_ settings: ScanSettings, plan: SavePlan, target: URL?) -> String {
+        if target != nil {
+            return L10n.plural(plan.pageCount, one: "{0} page", other: "{0} pages")
+        }
         if savesImages(settings) {
             return AppState.imagesSaveTitle(settings.format, pageCount: plan.pageCount)
         }
         return plan.saveTitle(settings.format)
-    }
-
-    /// The Save button floating on camera mode's viewfinder: the format's own words and the pages to save
-    /// ("Save PDF · 3"); a split queue's own title ("Save 2 PDFs (5 pages)"), "Add to Contract.pdf" while
-    /// the pages go into a PDF picked, and "Save JPEG (3 pages)" for pictures, as the printer screen's Save says.
-    public static func floatingSaveTitle(_ settings: ScanSettings, plan: SavePlan, target: URL?) -> String {
-        if let target {
-            return PDFAppender.saveTitle(target.lastPathComponent)
-        }
-        if savesImages(settings) || plan.isSplit {
-            return saveTitle(settings, plan: plan)
-        }
-        return String(localized: "\(settings.format.saveTitle) \u{00B7} \(plan.pageCount)")
     }
 
     /// The question before something that would leave the queued pages without a Save (a kind,

@@ -90,7 +90,8 @@ final class ImportTests: XCTestCase {
             waitUntilGone(question, timeout: 10)
             XCTAssertEqual(app.pickedKind, "document", "Cancel keeps the kind")
             XCTAssertEqual(app.pagesButton.pageCount, 1, "Cancel keeps the page")
-            XCTAssertEqual(app.buttons["save.button"].label, "Save PDF \u{00B7} 1")
+            XCTAssertEqual(app.buttons["save.button"].label, "Save")
+            XCTAssertEqual(app.buttons["save.button"].value as? String, "Save PDF (1 page)")
         }
 
         // Book is two kinds away in camera mode's row, past the ID card: the printer screen's chip is one tap.

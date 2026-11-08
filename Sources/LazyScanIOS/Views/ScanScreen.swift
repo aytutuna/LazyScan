@@ -20,7 +20,7 @@ enum ScanCover: String, Identifiable {
 /// The scan screen, in the phone's mode (`IOSScanMode`), which is also where the pages come from. Camera
 /// mode, the default, is the viewfinder as the screen (`CameraScreen`): this screen hands it the notices
 /// (the package banner, an import's progress, the files saved last), Save floating on the viewfinder once
-/// there are pages ("Save PDF · 3", `IOSShell.floatingSaveTitle`) with the menu beside it, the kinds it
+/// there are pages ("Save", `IOSShell.saveTitle`) with the menu beside it, the kinds it
 /// picks, the page strip, the Export sheet behind the drawer's More… Printer mode is
 /// the printer screen: the kinds as chips in its top row with the camera at their end (`mode.camera`,
 /// back to camera mode, which selects no scanner so none of its limits apply to the camera) and under
@@ -516,7 +516,8 @@ struct ScanScreen: View {
 
     private var floatingSaveButton: some View {
         let plan: SavePlan = savePlan
-        let title: String = IOSShell.floatingSaveTitle(state.settings, plan: plan, target: state.appendTarget)
+        let title: String = IOSShell.saveTitle(target: state.appendTarget)
+        let detail: String = IOSShell.saveDetail(state.settings, plan: plan, target: state.appendTarget)
         let enabled: Bool = !saveBlocked && plan.pageCount > 0
         return Button {
             saveWithActions()
@@ -535,6 +536,7 @@ struct ScanScreen: View {
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.5)
         .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
+        .accessibilityValue(Text(detail))
         .accessibilityIdentifier("save.button")
     }
 
@@ -1518,7 +1520,8 @@ struct ScanScreen: View {
 
     private var saveButton: some View {
         let plan: SavePlan = savePlan
-        let title: String = Self.saveTitle(state.settings, plan: plan, target: state.appendTarget)
+        let title: String = IOSShell.saveTitle(target: state.appendTarget)
+        let detail: String = IOSShell.saveDetail(state.settings, plan: plan, target: state.appendTarget)
         return Button {
             saveWithActions()
         } label: {
@@ -1533,6 +1536,7 @@ struct ScanScreen: View {
         .buttonBorderShape(.roundedRectangle(radius: 12))
         .disabled(saveBlocked || plan.pageCount == 0)
         .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
+        .accessibilityValue(Text(detail))
         .accessibilityIdentifier("save.button")
     }
 
@@ -1637,15 +1641,6 @@ struct ScanScreen: View {
             }
             .accessibilityIdentifier("append.target.clear")
         }
-    }
-
-    /// The Save button's title: "Add to Contract.pdf" while the pages go into a PDF picked in the task
-    /// list, else the queue's own (`IOSShell.saveTitle`).
-    static func saveTitle(_ settings: ScanSettings, plan: SavePlan, target: URL?) -> String {
-        if let target {
-            return PDFAppender.saveTitle(target.lastPathComponent)
-        }
-        return IOSShell.saveTitle(settings, plan: plan)
     }
 
     /// The Save menu's item that goes back to saving new files.
