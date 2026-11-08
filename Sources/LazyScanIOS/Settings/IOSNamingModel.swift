@@ -21,21 +21,32 @@ public final class IOSNamingModel: ObservableObject {
         self.text = state.settings.namingTemplate
     }
 
-    /// `NamingTokens.all`, but on the phone a document's name comes from its QR sheet, not the page strip.
+    /// `NamingTokens.all`, but on the phone a document's name comes from its QR sheet, not the page strip, and
+    /// {docdate} is the day the file is saved: receipts are not read for the date printed on them.
     public var parts: [NamingToken] {
         NamingTokens.all.map { (part: NamingToken) -> NamingToken in
-            guard part.token == "{label}" else { return part }
-            return NamingToken(label: part.label, token: part.token, help: String(localized: "The document's name from its QR sheet"))
+            switch part.token {
+            case "{label}":
+                return NamingToken(label: part.label, token: part.token, help: String(localized: "The document's name from its QR sheet"))
+            case "{docdate}":
+                return NamingToken(label: String(localized: "Day saved"), token: part.token, help: String(localized: "The day the file is saved"))
+            default:
+                return part
+            }
         }
     }
 
     /// What is wrong with the template typed; nil when it is fine.
     public var problem: String? { NamingTokens.problem(text) }
 
-    /// The format the next file is saved in: a picture a page when the scan screen saves its pages as
-    /// pictures (`IOSShell.savesImages`), else what the desktop's save writes.
+    /// The format the next file is saved in: the one chosen where the scan screen saves what it collects
+    /// (`IOSShell.collectsPages`: any format for Photos and Receipts, a picture a page when pictures are saved,
+    /// `IOSShell.savesImages`), else what the desktop's save writes.
     public var format: OutputFormat {
         let settings: ScanSettings = state.settings
+        if IOSSettingsSections.offersEveryFormat(settings) {
+            return settings.format
+        }
         if IOSShell.collectsPages(settings) && IOSShell.savesImages(settings) {
             return settings.format.imageFormatOrJPEG
         }

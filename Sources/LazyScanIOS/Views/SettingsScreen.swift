@@ -366,8 +366,8 @@ struct ScannerSettingsRows: View {
     }
 }
 
-/// Output: the format (an image format for photos and the Text kind's held page, a PDF or an image for
-/// receipts and the ID card), the PDF's size, Searchable PDF while a PDF is written, Collect pages (locked on
+/// Output: the format (any for Photos and Receipts, an image format for the Text kind's held page, a PDF or an
+/// image for the ID card), the PDF's size, Searchable PDF while a PDF is written, Collect pages (locked on
 /// while the camera's Both sides pairs the sides, and while a PDF picked in the task list takes the pages),
 /// and where files are saved; Photos in Photos mode.
 private struct OutputSettingsRows: View {
@@ -392,7 +392,7 @@ private struct OutputSettingsRows: View {
             }
         }
         .accessibilityIdentifier("settings.format")
-        if shown == OutputFormat.pdf && s.intent == ScanIntent.document {
+        if shown == OutputFormat.pdf && (s.intent == ScanIntent.document || IOSSettingsSections.offersEveryFormat(s)) {
             Picker("PDF size", selection: $state.settings.output.pdfSize) {
                 ForEach(PDFSizePreset.displayOrder, id: \.self) { (size: PDFSizePreset) in
                     Text(size.label).tag(size)
@@ -416,9 +416,12 @@ private struct OutputSettingsRows: View {
         SaveFolderRow()
     }
 
-    /// Every format for documents, the image formats for photos and the Text kind's held page (saved as a
-    /// picture); receipts and the ID card are saved as a PDF or an image.
+    /// Every format for documents, Photos and Receipts (the format Options saves them in), the image formats
+    /// for the Text kind's held page (saved as a picture); the ID card is saved as a PDF or an image.
     private var formats: [OutputFormat] {
+        if IOSSettingsSections.offersEveryFormat(state.settings) {
+            return OutputFormat.offered(for: ScanIntent.document)
+        }
         if state.activeTask == ScanTask.quickScan && !state.settings.documentMultiPage {
             return OutputFormat.offered(for: ScanIntent.photo)
         }
@@ -745,7 +748,7 @@ private struct ArchiveSettingsRows: View {
     }
 }
 
-/// The text beside each PDF and the file name; what happens after a save is set in Export's After saving
+/// The text beside each PDF and the file name; what happens after a save is set in Options' After saving
 /// (`AfterSaveSection`), with the rest of what follows a save.
 private struct MoreSettingsRows: View {
     @EnvironmentObject private var state: AppState

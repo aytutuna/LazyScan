@@ -91,7 +91,7 @@ public struct IOSSettingsSection: Identifiable, Equatable {
 /// The iPhone differs where it saves pictures: a queue saved as pictures (`IOSShell.savesImages`) and the
 /// Text kind's held page (`AppState.saveQuickScan`) write no PDF, so Archive & password is hidden there and
 /// the text beside a PDF does not count, and Output shows that page's picture format (`shownFormat`).
-/// More options leaves out the action after a save, which the phone sets under Export's After saving
+/// More options leaves out the action after a save, which the phone sets under Options' After saving
 /// (`IOSAfterSave.thenTitle`). Camera mode has no Scanner section, the camera measuring its own pages, and
 /// its Pages header counts only what runs on them (`cameraShown`). Which sections the user left open is kept
 /// in the user's defaults (`storageKey`), not in presets, as on the desktop.
@@ -104,15 +104,30 @@ public enum IOSSettingsSections {
         (IOSShell.collectsPages(s) && IOSShell.savesImages(s)) || (s.task == .quickScan && !s.documentMultiPage)
     }
 
-    /// The format Output shows: the Text kind's held page (Collect pages off) is saved as a picture (JPEG
-    /// unless an image format is chosen), the rest as `InspectorSections.shownFormat` says.
+    /// Photos and Receipts save the pages they found in the format chosen in Options, any of them, where the
+    /// desktop saves photos as pictures and receipts as a PDF or a picture.
+    private static func savesChosenFormat(_ s: ScanSettings) -> Bool {
+        let flow: TaskFlowKind = TaskCatalog.flow(of: s)
+        return flow == .photoSplit || flow == .receiptSplit
+    }
+
+    /// The format Output shows: the format chosen for Photos and Receipts, the Text kind's held page (Collect
+    /// pages off) as a picture (JPEG unless an image format is chosen), the rest as
+    /// `InspectorSections.shownFormat` says.
     public static func shownFormat(_ s: ScanSettings) -> OutputFormat {
-        s.task == .quickScan && !s.documentMultiPage ? s.format.imageFormatOrJPEG : InspectorSections.shownFormat(s)
+        if savesChosenFormat(s) { return s.format }
+        return s.task == .quickScan && !s.documentMultiPage ? s.format.imageFormatOrJPEG : InspectorSections.shownFormat(s)
     }
 
     /// Archive & password and Searchable PDF apply: a save of `s` writes a PDF here.
     public static func writesPDF(_ s: ScanSettings) -> Bool {
-        InspectorSections.writesPDF(s) && !savesPictures(s)
+        if savesChosenFormat(s) { return s.format == .pdf }
+        return InspectorSections.writesPDF(s) && !savesPictures(s)
+    }
+
+    /// Whether the Output rows offer every format, not the desktop's list for the task.
+    public static func offersEveryFormat(_ s: ScanSettings) -> Bool {
+        savesChosenFormat(s)
     }
 
     /// The Scanner section's rows are a selected scanner's; with none (printer mode's scanner not found yet)
@@ -132,7 +147,7 @@ public enum IOSSettingsSections {
     }
 
     /// Why the Source row is locked, nil while it is free: a side of an ID card held, or a task that needs the
-    /// flatbed (ID card, Book, Text) while the row offers the feeder, which would end the task under its chip.
+    /// flatbed (ID card, Book, Text) while the row offers the feeder, which would end the task under its Type.
     /// A scanner without a flatbed never has such a task (connecting to it ends the task), so the lock keeps
     /// nothing from it.
     public static func sourceLockReason(task: ScanTask?, cardHeld: Bool, sources: [ScanSource]) -> String? {
@@ -144,7 +159,8 @@ public enum IOSSettingsSections {
 
     /// Also save text applies here.
     public static func textApplies(_ s: ScanSettings) -> Bool {
-        InspectorSections.textApplies(s) && !savesPictures(s)
+        if savesChosenFormat(s) { return s.format == .pdf && s.intent == .document }
+        return InspectorSections.textApplies(s) && !savesPictures(s)
     }
 
     /// `s` with only the page options that run on camera mode's pages, which its Pages header counts: they
@@ -162,7 +178,8 @@ public enum IOSSettingsSections {
     public static func sections(_ s: ScanSettings, camera: Bool = false) -> [IOSSettingsSection] {
         let pages: ScanSettings = camera ? cameraShown(s) : s
         var result: [IOSSettingsSection] = []
-        for id in InspectorSections.shown(s) {
+        let shown: [String] = InspectorSections.shown(s)
+        for id in InspectorSections.all where shown.contains(id) || (id == InspectorSections.archive && writesPDF(s)) {
             if id == InspectorSections.archive && !writesPDF(s) { continue }
             if id == InspectorSections.scanner && camera { continue }
             if id == InspectorSections.task && TaskCatalog.flow(of: s) == .receiptSplit { continue }
@@ -287,7 +304,7 @@ public enum IOSAdjustment: String, CaseIterable, Identifiable {
     }
 }
 
-/// Export's After saving on the iPhone: what runs each time Save writes a document, checked in any
+/// Options' After saving on the iPhone: what runs each time Save writes a document, checked in any
 /// combination and kept in the user's defaults, not in the settings file. They run in the order of the
 /// cases: Send to computer and Print take the queue, which the save empties, so they come before the file is
 /// written (the save follows once the copy screen has closed); Email goes out with the saved file. Under the
