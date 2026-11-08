@@ -149,4 +149,14 @@ final class AppStateTaskSwitchTests: XCTestCase {
         XCTAssertEqual(state.scannedPages.map(\.id), ids)
         XCTAssertEqual(state.pagesLeftBehind(by: .receipt), 1)
     }
+
+    @MainActor
+    func test_whereObjectsAreListed_onlyTheIdCardAndTheCopyLeavePagesBehind() async throws {
+        let state = try await makeState(pages: 2)
+        state.listsFoundObjects = true
+        for definition in TaskCatalog.all {
+            let leaves: Bool = definition.flow == .idCard || definition.flow == .copy
+            XCTAssertEqual(state.pagesLeftBehind(by: definition.task), leaves ? 2 : 0, definition.task.rawValue)
+        }
+    }
 }

@@ -81,11 +81,13 @@ struct QueueRecord: Codable, Sendable {
     }
 
     /// The record in `spool` when its pages can come back: it reads and the settings the app starts with
-    /// save a queue (`TaskFlowKind.documentQueue`). A page whose file is gone is left out (the record is
+    /// save a queue (`TaskFlowKind.documentQueue`, or Photos and Receipts, whose objects the iPhone queues,
+    /// `AppState.listsFoundObjects`). A page whose file is gone is left out (the record is
     /// written a moment after a page goes, and the app may end in between); nil when none is left, and the
     /// spool is emptied as it always was.
     static func read(in spool: URL, settings: ScanSettings) -> QueueRecord? {
-        guard TaskCatalog.flow(of: settings) == .documentQueue,
+        let flow: TaskFlowKind = TaskCatalog.flow(of: settings)
+        guard flow == .documentQueue || flow == .photoSplit || flow == .receiptSplit,
               let data = try? Data(contentsOf: spool.appendingPathComponent(fileName)),
               var record = try? JSONDecoder().decode(QueueRecord.self, from: data) else {
             return nil

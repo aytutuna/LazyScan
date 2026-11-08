@@ -195,6 +195,9 @@ public final class AppState: ObservableObject {
     var spreadSources: [UUID: SpreadSource] = [:]
     @Published public var detectedPhotos: [DetectedPhoto] = []
     @Published public var showPhotoReview = false
+    /// The objects found in a shot of Photos or Receipts go to the page queue, a page each, instead of the
+    /// photo review (`listObjects`). Swift only: the iPhone and iPad turn it on, the Mac keeps its review.
+    public var listsFoundObjects = false
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
@@ -1291,7 +1294,18 @@ public final class AppState: ObservableObject {
         guard self.isCurrent(generation) else { return nil }
         if flag.isCancelled { throw ScanError.cancelled }
         let raw = cleaned.arranged
-        let processed = cleaned.pages
+        let ownFlow: TaskFlowKind = TaskCatalog.flow(of: s)
+        let listsObjects: Bool = listsFoundObjects && (ownFlow == .photoSplit || ownFlow == .receiptSplit)
+        let cleanedPages = cleaned.pages
+        let processed: [ScannedPage]
+        if listsObjects {
+            processed = try await Task.detached(priority: .userInitiated) {
+                try Self.listObjects(cleanedPages, flow: ownFlow, settings: s, flag: flag)
+            }.value
+            guard self.isCurrent(generation) else { return nil }
+        } else {
+            processed = cleanedPages
+        }
 
         // The canvas shows the RAW scan: PreviewCanvasView applies the current
         // adjustment settings to it live, so slider changes are visible
@@ -1314,9 +1328,9 @@ public final class AppState: ObservableObject {
             guard await self.addToHistory(raw, intent: s.intent, generation: generation) else { return nil }
         }
 
-        switch TaskCatalog.flow(of: s) {
+        switch listsObjects ? TaskFlowKind.documentQueue : ownFlow {
         case .documentQueue:
-            if s.documentMultiPage {
+            if s.documentMultiPage || listsObjects {
                 // Spill full-resolution pages to disk; keep only previews in the queue. The
                 // spreads book pages were cut from are kept too, to join or split them again.
                 let spreads = cleaned.spreads
@@ -1503,7 +1517,7 @@ public final class AppState: ObservableObject {
         }
     }
 
-    private nonisolated static func splitPhotos(from page: ScannedPage, settings s: ScanSettings) -> [DetectedPhoto] {
+    nonisolated static func splitPhotos(from page: ScannedPage, settings s: ScanSettings) -> [DetectedPhoto] {
         // One object of a camera's shot, cut out already: the photo is the page.
         if let cut = cutOutPhoto(page) { return [cut] }
         guard s.photoAutoSplit else {

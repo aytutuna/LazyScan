@@ -103,9 +103,18 @@ extension AppState {
 
     /// The queued pages starting `task` would leave without a Save (`TaskCatalog.carriesPages`): all of
     /// them for a task that does not collect pages, none for one that does, which keeps them. The iPhone
-    /// asks before it starts a task that leaves pages behind.
+    /// asks before it starts a task that leaves pages behind. Where `listsFoundObjects` is on, only the ID
+    /// card (its own steps) and the copy (its own screen) do: every other task keeps the queue, saved with
+    /// the choices then in use.
     public func pagesLeftBehind(by task: ScanTask) -> Int {
-        TaskCatalog.carriesPages(task) ? 0 : scannedPages.count
+        let carried: Bool
+        if listsFoundObjects {
+            let flow: TaskFlowKind = TaskCatalog.definition(task).flow
+            carried = flow != .idCard && flow != .copy
+        } else {
+            carried = TaskCatalog.carriesPages(task)
+        }
+        return carried ? 0 : scannedPages.count
     }
 
     /// Starts `task` as `startTask(_:)` does, then lets the queued pages go with their spooled files: the

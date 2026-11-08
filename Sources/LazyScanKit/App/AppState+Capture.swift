@@ -32,6 +32,33 @@ extension AppState {
                              sourcePageID: page.id, colorMode: page.colorMode)
     }
 
+    /// The objects found on the pages of a shot of Photos or Receipts as pages of the queue, in order
+    /// (`AppState.listsFoundObjects`). An object a camera's shot was cut into (`CaptureObjects.isCutOut`) is
+    /// a page already, with its photo and corners for Crop. On any other page the search the review made
+    /// looks for them (`splitPhotos`, `splitReceipts`): each found is a page of its own, and a page in which
+    /// none is found stays whole as one.
+    nonisolated static func listObjects(_ pages: [ScannedPage], flow: TaskFlowKind, settings s: ScanSettings,
+                                        flag: CancelFlag) throws -> [ScannedPage] {
+        var listed: [ScannedPage] = []
+        for page in pages {
+            if flag.isCancelled { throw ScanError.cancelled }
+            if CaptureObjects.isCutOut(page) {
+                listed.append(page)
+                continue
+            }
+            let found: [DetectedPhoto] = flow == .receiptSplit
+                ? splitReceipts(from: page, settings: s)
+                : splitPhotos(from: page, settings: s)
+            for object in found {
+                var cut = ScannedPage(image: object.image, dpi: object.dpi, colorMode: object.colorMode,
+                                      createdAt: page.createdAt)
+                cut.source = page.source
+                listed.append(cut)
+            }
+        }
+        return listed
+    }
+
     /// A side of the ID card cut out of a camera's shot along its corners at its real size: the whole page
     /// is the side, the photo as taken is kept (in memory) for Fix crop, and the side's note says when its
     /// shape matched no ID-1 card, so it is not at real size, and gives the glare hint when the photo shows

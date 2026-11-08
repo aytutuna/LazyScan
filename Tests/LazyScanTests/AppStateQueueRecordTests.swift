@@ -172,12 +172,24 @@ final class AppStateQueueRecordTests: XCTestCase {
     @MainActor
     func test_aQueueTheSettingsCannotSave_isEmptiedAtLaunch() async throws {
         _ = try await makeQueue { (settings: ScanSettings) -> ScanSettings in
-            TaskCatalog.apply(.photos, to: settings)
+            TaskCatalog.apply(.idCard, to: settings)
         }
         let after = makeState()
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertTrue(after.scannedPages.isEmpty)
         XCTAssertEqual(spoolNames(), [])
+    }
+
+    @MainActor
+    func test_aQueueOfPhotos_comesBackAtLaunch_asTheIPhoneQueuesThem() async throws {
+        let before = try await makeQueue { (settings: ScanSettings) -> ScanSettings in
+            TaskCatalog.apply(.photos, to: settings)
+        }
+        let ids: [UUID] = before.scannedPages.map(\.id)
+        let after = makeState()
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.map(\.id), ids)
+        XCTAssertEqual(after.activeTask, .photos)
     }
 
     @MainActor
