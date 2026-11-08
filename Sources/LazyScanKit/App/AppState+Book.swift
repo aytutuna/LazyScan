@@ -76,10 +76,10 @@ extension AppState {
     }
 
     /// Drops the spreads no queued page was cut from any more, and their files. Runs whenever the
-    /// queue changes (`scannedPages`).
+    /// queue changes (`scannedPages`); a save held for Undo keeps the spreads of its pages.
     func pruneSpreads() {
         guard !spreadSources.isEmpty else { return }
-        let used = Set(scannedPages.compactMap(\.spreadID))
+        let used = Set((scannedPages + (savedUndo?.pages ?? [])).compactMap(\.spreadID))
         for (id, source) in spreadSources where !used.contains(id) {
             Self.deleteSpreadFiles([source])
             spreadSources[id] = nil

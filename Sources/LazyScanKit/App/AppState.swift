@@ -186,6 +186,7 @@ public final class AppState: ObservableObject {
     /// (`pruneSpreads`, AppState+Book.swift), and a queue kept is recorded again (`QueueRecord`).
     @Published public internal(set) var scannedPages: [ScannedPage] = [] {
         didSet {
+            if savedUndo != nil && !scannedPages.isEmpty { discardSavedUndo() }
             pruneSpreads()
             companionService?.queuedPages = scannedPages.count
             scheduleQueueRecord()
@@ -198,6 +199,12 @@ public final class AppState: ObservableObject {
     /// The objects found in a shot of Photos or Receipts go to the page queue, a page each, instead of the
     /// photo review (`listObjects`). Swift only: the iPhone and iPad turn it on, the Mac keeps its review.
     public var listsFoundObjects = false
+    /// A save keeps the pages it wrote, with their spool files, until the next scan, import or save so that
+    /// `undoSave()` can bring them back (AppState+Undo.swift). Swift only: the iPhone turns it on, the Mac
+    /// deletes the spool files at once.
+    public var keepsSavedForUndo = false
+    /// The last save, held for `undoSave()`; nil when none is, or the Mac.
+    @Published var savedUndo: SavedUndo?
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
@@ -291,6 +298,7 @@ public final class AppState: ObservableObject {
     @Published public var qrSheetName = ""
     @Published public internal(set) var lastSavedURLs: [URL] = [] {
         didSet {
+            if let held = savedUndo, held.shown != lastSavedURLs { discardSavedUndo() }
             if let scoped = scopedSavedURL, lastSavedURLs != [scoped] {
                 scoped.stopAccessingSecurityScopedResource()
                 scopedSavedURL = nil
@@ -1598,7 +1606,7 @@ public final class AppState: ObservableObject {
                     }
                 }.value
                 self.lastSavedURLs = [url]
-                self.dropSaved(queued)
+                self.dropSaved(queued, wrote: [url])
                 self.resetFlow()
                 self.setStatus(TextExport.savedMessage(format: format, pageCount: pages.count,
                                                        fileName: url.lastPathComponent, hasText: hasText) + left,
@@ -1625,7 +1633,7 @@ public final class AppState: ObservableObject {
             }.value
             self.lastSavedURLs = [url]
             self.notePDFSize(of: url, protected: options.isProtected)
-            self.dropSaved(queued)
+            self.dropSaved(queued, wrote: [url] + [textResult?.url].compactMap { $0 })
             self.resetFlow()
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
             let saved = TextExport.savedPDFMessage(pageCount: pages.count, fileName: url.lastPathComponent,
@@ -2605,9 +2613,19 @@ public final class AppState: ObservableObject {
     /// A save's end: the pages it saved (`queued`, the queue as the save found it) leave the queue with their
     /// spooled files. Nothing can join the queue while a save runs, so this empties it; a page that got in
     /// all the same stays.
-    func dropSaved(_ queued: [ScannedPage]) {
-        deleteSpoolFiles(of: queued)
+    ///
+    /// Where `keepsSavedForUndo` is on, the pages and their files are held for `undoSave()` instead, with the
+    /// `files` the save wrote and, for pages added to a PDF, the `appended` copy of it from before. `undoable` is
+    /// false for a save that has nothing to go back to (the copy of the PDF could not be made).
+    func dropSaved(_ queued: [ScannedPage], wrote files: [URL] = [], appended: AppendedPDF? = nil,
+                   undoable: Bool = true) {
         let saved: Set<UUID> = Set(queued.map(\.id))
+        if keepsSavedForUndo && undoable {
+            savedUndo = SavedUndo(pages: queued, files: files, shown: lastSavedURLs, appended: appended,
+                                  taskFlow: taskFlow, cameraSides: cameraSides)
+        } else {
+            deleteSpoolFiles(of: queued)
+        }
         scannedPages.removeAll { saved.contains($0.id) }
     }
 

@@ -1350,6 +1350,14 @@
   "Nothing was added to {0}.": {
     "note": "{0} is the name of a PDF file."
   },
+  "Undoing the save…": {},
+  "Save undone: the pages are in the queue again.": {},
+  "Save undone: {0} is as it was, and the pages are in the queue again.": {
+    "note": "{0} is the name of a PDF file."
+  },
+  "{0} could not be put back as it was: {1}": {
+    "note": "{0} is the name of a PDF file; {1} is the reason."
+  },
   "Running OCR and adding pages…": {},
   "Adding pages…": {},
   "Reading {0}…": {},

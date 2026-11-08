@@ -69,7 +69,8 @@ extension AppState {
             let pages: [ScannedPage] = collected
             let count: Int = pages.count
             self.statusMessage = s.pdfSearchable ? L10n.t("Running OCR and adding pages…") : L10n.t("Adding pages…")
-            let result: PDFAppendResult = try await Task.detached(priority: .userInitiated) { () throws -> PDFAppendResult in
+            let backup: URL? = self.keepsSavedForUndo ? self.spoolDirectory.appendingPathComponent("\(UUID().uuidString).pdf") : nil
+            let (result, kept): (PDFAppendResult, Bool) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendResult, Bool) in
                 let report: (String) -> Void = { [weak self] msg in
                     Task { @MainActor in self?.statusMessage = msg }
                 }
@@ -81,9 +82,17 @@ extension AppState {
                     textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: nil, pages: pages))
                 reportAdding(L10n.plural(count, one: "Adding {0} page to {1}…", other: "Adding {0} pages to {1}…", name),
                              StatusDetail(head: .addingPages(count)))
-                return try Self.accessing(url, writing: true, through: access) { (file: URL) throws -> PDFAppendResult in
-                    try PDFAppender.appendToFile(path: file.path, pages: inputs,
-                                                 shouldContinue: { !flag.isCancelled })
+                return try Self.accessing(url, writing: true, through: access) { (file: URL) throws -> (PDFAppendResult, Bool) in
+                    // A copy from before, for Undo; without one the save cannot be undone.
+                    let copied: Bool = backup.map { (try? FileManager.default.copyItem(at: file, to: $0)) != nil } ?? false
+                    do {
+                        let added: PDFAppendResult = try PDFAppender.appendToFile(path: file.path, pages: inputs,
+                                                                                  shouldContinue: { !flag.isCancelled })
+                        return (added, copied)
+                    } catch {
+                        if copied, let backup { try? FileManager.default.removeItem(at: backup) }
+                        throw error
+                    }
                 }
             }.value
             self.lastPDFByteCount = Int64(result.bytes)
@@ -95,7 +104,7 @@ extension AppState {
                 self.scopedSavedURL = url
             }
             self.appendTarget = nil
-            self.dropSaved(queued)
+            self.dropSaved(queued, appended: backup.map { AppendedPDF(url: url, backup: $0) }, undoable: kept)
             self.resetFlow()
             let size: String = ByteCountFormatter.string(fromByteCount: Int64(result.bytes), countStyle: .file)
             var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: size)

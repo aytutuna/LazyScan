@@ -3580,6 +3580,17 @@ extension AppState {
     public nonisolated static func imagesSavedMessage(_ urls: [URL], format: OutputFormat) -> String     // "Saved 3 JPEG files: ..."
 }
 
+// App/AppState+Undo.swift (LazyScanKit, Swift only): Undo after a save, the iPhone's saved bar. AppState.keepsSavedForUndo
+// (default false; makeForIOS turns it on) makes dropSaved hold the saved pages with their spool files instead of deleting
+// them, with the files the save wrote and, for pages added to a picked PDF, a copy of it taken first (in the spool).
+// The hold lasts until the queue gets a page or another file is reported saved (lastSavedURLs changes), when the spool
+// files and the copy go; the spool is emptied at launch as before. The ID card, Photos and Receipts reviews, Copy, Quick
+// scan and saves at once (Collect pages off) keep no pages, so they get no Undo.
+extension AppState {
+    public var canUndoSave: Bool                                   // a save is held
+    public func undoSave()                                         // deletes its files (or puts the PDF back through accessPDFForAppend), pages back in order, appendTarget and steps restored
+}
+
 // LazyScanIOS/Camera/IOSCameraAvailability.swift:
 public enum IOSCameraAvailability: Equatable, Sendable {
     case available, noCamera, denied, restricted
