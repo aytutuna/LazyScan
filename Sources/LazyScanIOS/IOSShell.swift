@@ -399,6 +399,13 @@ public enum IOSShell {
         return IOSNetworkText.noScanner
     }
 
+    /// The status line's text is only the idle "Ready" (with the scanner's name once one is connected), which
+    /// the Scanner sheet's check already says. A warning kept on the line makes it differ, so it stays.
+    public static func isIdleReady(_ shown: String, deviceName: String?) -> Bool {
+        if let name = deviceName, !name.isEmpty, shown == StatusLine.short(L10n.t("Ready — {0}", name)) { return true }
+        return shown == L10n.t("Ready")
+    }
+
     /// Printer mode's line while scanners are listed and none is in use, and its card's way to the Scanner
     /// options.
     public static var noScannerInUse: String { String(localized: "No scanner is in use.") }

@@ -286,6 +286,17 @@ final class IOSShellTests: XCTestCase {
         }
     }
 
+    func test_isIdleReady_onlyForTheIdleReadyLine() {
+        let ready: String = StatusLine.short(L10n.t("Ready — {0}", "Demo Scanner"))
+        XCTAssertTrue(IOSShell.isIdleReady(ready, deviceName: "Demo Scanner"))
+        XCTAssertTrue(IOSShell.isIdleReady(L10n.t("Ready"), deviceName: nil))
+        let warned: String = StatusLine.short(L10n.t("Ready — {0}", "Demo Scanner"),
+                                              StatusDetail(warnings: [.feederUsed]), deviceName: "Demo Scanner")
+        XCTAssertFalse(IOSShell.isIdleReady(warned, deviceName: "Demo Scanner"))
+        XCTAssertFalse(IOSShell.isIdleReady(L10n.t("Saved"), deviceName: "Demo Scanner"))
+        XCTAssertFalse(IOSShell.isIdleReady("", deviceName: nil))
+    }
+
     func test_migratedScanner_takesTheOldSourcesScanner_once() throws {
         let name: String = "migration.\(UUID().uuidString)"
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))

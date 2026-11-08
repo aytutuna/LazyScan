@@ -1442,11 +1442,14 @@ struct ScanScreen: View {
         if let offered = state.pendingPackage {
             PackageBanner(offered: offered, onOpenAsNew: openPackageAsNew)
         }
+        // The idle "Ready" is hidden, not removed, so the bar keeps its height.
         Text(statusText)
             .font(.footnote)
             .foregroundStyle(Color.secondary)
             .lineLimit(2)
             .truncationMode(.tail)
+            .opacity(showsStatus ? 1 : 0)
+            .accessibilityHidden(!showsStatus)
             .accessibilityLabel(Text(statusSentence))
             .accessibilityIdentifier("status.line")
         if let device = retryDevice {
@@ -1653,10 +1656,18 @@ struct ScanScreen: View {
     /// The status in six words at most (`StatusLine.shown`), as on the Mac's status bar.
     private var statusText: String {
         let idle: Bool = !state.isBusy
-        let selected: String? = state.selectedDeviceID
-        let device: String? = state.devices.first(where: { (info: ScannerInfo) -> Bool in info.id == selected })?.name
         let savedShown: Bool = idle && !state.lastSavedURLs.isEmpty
-        return StatusLine.shown(statusSentence, statusDetail, deviceName: device, reviewShown: false, savedShown: savedShown)
+        return StatusLine.shown(statusSentence, statusDetail, deviceName: selectedDeviceName, reviewShown: false, savedShown: savedShown)
+    }
+
+    private var selectedDeviceName: String? {
+        let selected: String? = state.selectedDeviceID
+        return state.devices.first(where: { (info: ScannerInfo) -> Bool in info.id == selected })?.name
+    }
+
+    /// Whether the status line says more than the idle "Ready".
+    private var showsStatus: Bool {
+        !IOSShell.isIdleReady(statusText, deviceName: selectedDeviceName)
     }
 
     /// The status, or while no scanner is in use and nothing runs, where the search is (as the card says it)
