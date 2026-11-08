@@ -42,7 +42,7 @@ final class SmokeTests: XCTestCase {
     }
 
     @MainActor
-    func test_printFromSave_showsThePagesAsACopy_andCloseKeepsThem() throws {
+    func test_printFromOptions_showsThePagesAsACopy_andCloseKeepsThem() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demoScanner"]
         app.launch()
@@ -55,15 +55,14 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(scan.waitForExistence(timeout: 30), "The scan screen's Scan button")
         waitUntilEnabled(scan, timeout: 60)
         scan.tap()
-        let pages: XCUIElement = app.descendants(matching: .any)["capture.pages"].firstMatch
-        XCTAssertTrue(pages.waitForPageCount(1, timeout: 240), "1 page in the capture bar")
+        let pages: XCUIElement = app.pagesButton
+        XCTAssertTrue(pages.waitForPageCount(1, timeout: 240), "1 page on the pages' button")
 
-        let menu: XCUIElement = app.descendants(matching: .any)["save.menu"].firstMatch
-        waitUntilEnabled(menu, timeout: 60)
-        menu.tap()
-        XCTAssertTrue(app.buttons["save.email"].waitForExistence(timeout: 10), "Email\u{2026} in Save's menu")
-        let printItem: XCUIElement = app.buttons["save.print"]
-        XCTAssertTrue(printItem.waitForExistence(timeout: 10), "Print\u{2026} in Save's menu")
+        app.openOptions()
+        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email\u{2026} in Options")
+        let printItem: XCUIElement = app.scrolledTo("save.print")
+        XCTAssertTrue(printItem.exists, "Print\u{2026} in Options")
+        waitUntilEnabled(printItem, timeout: 60)
         printItem.tap()
 
         let close: XCUIElement = app.buttons["copy.discard"].firstMatch

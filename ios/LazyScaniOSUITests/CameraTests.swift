@@ -2,9 +2,10 @@ import XCTest
 
 // Camera mode as a person meets it on the Simulator: launched on the demo scanner alone (`-demoScanner`),
 // the viewfinder is the scan screen. The Simulator has no camera, so the viewfinder says so in one line,
-// the shutter is dimmed and no permission prompt is shown; the kinds sit in a row under it, and the chevron
-// swaps them for the options drawer, whose Camera group has Auto, Both sides and Items in frame.
-// The printer button switches to printer mode and its camera button back.
+// the shutter is dimmed and no permission prompt is shown; the bottom bar has Options and Save, then the
+// pages, the shutter, Photos and Files. The arrow opens the options drawer, whose Camera group has Auto, Both
+// sides and Items in frame; what is saved is in the Options sheet, whose Type row lists the camera's kinds.
+// The scanner button switches to printer mode and its camera button back; the bottom bar is the same there.
 // Nothing is photographed.
 
 final class CameraTests: XCTestCase {
@@ -31,7 +32,9 @@ final class CameraTests: XCTestCase {
         let pages: XCUIElement = app.descendants(matching: .any)["camera.pages"].firstMatch
         XCTAssertTrue(pages.exists, "The pages")
         XCTAssertEqual(pages.pageCount, 0)
-        XCTAssertFalse(app.buttons["save.button"].exists, "No Save before there are pages")
+        XCTAssertTrue(app.buttons["options.button"].exists, "Options")
+        XCTAssertTrue(app.buttons["save.button"].exists, "Save")
+        XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save before there are pages")
         XCTAssertTrue(app.buttons["import.photos"].exists, "Photos")
         XCTAssertTrue(app.buttons["import.files"].exists, "Files")
         XCTAssertFalse(app.buttons["scan.button"].exists, "No Scan in camera mode")
@@ -40,41 +43,41 @@ final class CameraTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["camera.auto"].firstMatch.exists, "The Auto switch")
         XCTAssertTrue(app.switches["options.bothSides"].firstMatch.exists, "Both sides")
         XCTAssertTrue(app.descendants(matching: .any)["camera.itemsInFrame"].firstMatch.exists, "Items in frame")
-        XCTAssertFalse(app.descendants(matching: .any)["kinds.row"].exists, "The drawer in the kinds' place")
-        app.openDrawer("export")
-        XCTAssertTrue(app.descendants(matching: .any)["drawer.format"].firstMatch.waitForExistence(timeout: 10),
-                      "The format in Export")
-        XCTAssertTrue(app.descendants(matching: .any)["chip.more"].firstMatch.exists, "More of Export")
+        XCTAssertFalse(app.buttons["drawer.export"].exists, "What is saved is not in the drawer")
+        XCTAssertFalse(app.buttons["drawer.quality"].exists, "The PDF's size is not in the drawer")
         app.closeDrawer()
+
+        app.openOptions()
+        XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
+                      "The format in Options")
+        XCTAssertTrue(app.descendants(matching: .any)["pdf.size"].firstMatch.exists, "The PDF's size in Options")
+        XCTAssertTrue(app.buttons["save.email"].exists, "Email in Options")
+        app.closeOptions()
         XCTAssertEqual(app.pickedKind, "document")
     }
 
     @MainActor
-    func test_swipingAKindIntoTheMiddle_picksIt() throws {
+    func test_typeRow_listsTheCameraKinds_andPicksOne() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demoScanner"]
         app.launch()
 
         app.switchToCamera()
-        app.pickTask("photos")
-
-        // With Photo in the middle the leftmost kind showing is Photo too; once Document is dragged to the
-        // middle Photo still shows on the left, so this catches the leftmost kind being taken for the middle.
-        let row: XCUIElement = app.descendants(matching: .any)["kinds.row"].firstMatch
-        let document: XCUIElement = app.descendants(matching: .any)["kinds.document"].firstMatch
-        XCTAssertTrue(document.waitForExistence(timeout: 10), "The document kind")
-        let photos: XCUIElement = app.descendants(matching: .any)["kinds.photos"].firstMatch
-        let centred = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
-            abs(photos.frame.midX - row.frame.midX) < 2
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [centred], timeout: 10), .completed, "Photo in the row's middle once picked")
-        let from: XCUICoordinate = document.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let to: XCUICoordinate = row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        from.press(forDuration: 0.1, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
-        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: document)
-        XCTAssertEqual(XCTWaiter.wait(for: [picked], timeout: 10), .completed, "Document picked by the swipe")
-        XCTAssertFalse(app.descendants(matching: .any)["kinds.photos"].firstMatch.isSelected, "Photo let go")
-        XCTAssertEqual(abs(document.frame.midX - row.frame.midX), 0, accuracy: 2, "Document in the row's middle")
+        app.openOptions()
+        let menu: XCUIElement = app.descendants(matching: .any)["options.type"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 30), "The Type row")
+        menu.tap()
+        for kind in ["photos", "document", "receipts", "idCard", "book"] {
+            XCTAssertTrue(app.descendants(matching: .any)["type.\(kind)"].firstMatch.waitForExistence(timeout: 10),
+                          "The \(kind) type")
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["type.text"].firstMatch.exists, "Text is the scanner tab's")
+        app.descendants(matching: .any)["type.photos"].firstMatch.tap()
+        app.waitForType("photos")
+        // Photos are saved from their review: Save stays dimmed, and Restore is under the Type row.
+        XCTAssertTrue(app.switches["options.restore"].firstMatch.waitForExistence(timeout: 10), "Restore faded colors")
+        app.closeOptions()
+        XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save for Photo")
     }
 
     @MainActor
@@ -87,7 +90,11 @@ final class CameraTests: XCTestCase {
         app.switchToPrinter()
         XCTAssertTrue(app.buttons["scan.button"].waitForExistence(timeout: 30), "Scan in printer mode")
         XCTAssertFalse(app.buttons["camera.shutter"].exists, "No shutter in printer mode")
-        XCTAssertTrue(app.descendants(matching: .any)["capture.pages"].firstMatch.waitForExistence(timeout: 10), "The pages")
+        XCTAssertTrue(app.descendants(matching: .any)["camera.pages"].firstMatch.waitForExistence(timeout: 10), "The pages")
+        XCTAssertTrue(app.buttons["options.button"].exists, "Options on the scanner tab too")
+        XCTAssertTrue(app.buttons["save.button"].exists, "Save on the scanner tab too")
+        XCTAssertEqual(app.buttons["scan.button"].label, "Scan page")
+        XCTAssertTrue(app.buttons["import.photos"].exists, "Photos on the scanner tab too")
         app.switchToCamera()
         XCTAssertTrue(app.buttons["camera.shutter"].waitForExistence(timeout: 30), "The shutter again")
         XCTAssertFalse(app.buttons["scan.button"].exists, "No Scan in camera mode")

@@ -3,25 +3,24 @@ import XCTest
 // By identifier among every element: toolbar items and some rows are not buttons in the Simulator's tree.
 
 extension XCUIApplication {
-    /// The kinds in camera mode's row, left to right (`IOSShell.cameraKinds`).
-    static let cameraKinds: [String] = ["photos", "document", "idCard", "book"]
-    /// The printer screen's chips (`IOSScanKind`), which keep Receipts and Text.
-    static let printerKinds: [String] = ["document", "photos", "receipts", "idCard", "book", "text"]
+    /// What the Options sheet's Type row says for each kind (`IOSScanKind`): camera mode calls Photos "Photo".
+    static let typeTitles: [String: [String]] = [
+        "document": ["Document"], "photos": ["Photo", "Photos"], "receipts": ["Receipts"], "idCard": ["ID card"],
+        "book": ["Book"], "text": ["Text"],
+    ]
 
-    /// Waits for the scan screen in either mode and says which: true for camera mode (its kinds row, or the
-    /// drawer in its place), false for printer mode (its chips). The app comes back in the mode the last run
-    /// left.
+    /// Waits for the scan screen in either mode and says which: true for camera mode (its printer button),
+    /// false for printer mode (its camera button). The app comes back in the mode the last run left.
     @MainActor
     @discardableResult
     func waitForScanScreen(file: StaticString = #filePath, line: UInt = #line) -> Bool {
-        let row: XCUIElement = descendants(matching: .any)["kinds.row"].firstMatch
-        let drawer: XCUIElement = descendants(matching: .any)["drawer"].firstMatch
-        let chips: XCUIElement = descendants(matching: .any)["task.chips"].firstMatch
+        let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
+        let camera: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
         let deadline: Date = Date().addingTimeInterval(60)
         while Date() < deadline {
-            if row.exists || drawer.exists { return true }
-            if chips.exists { return false }
-            _ = row.waitForExistence(timeout: 1)
+            if printer.exists { return true }
+            if camera.exists { return false }
+            _ = printer.waitForExistence(timeout: 1)
         }
         XCTFail("The scan screen", file: file, line: line)
         return false
@@ -35,12 +34,11 @@ extension XCUIApplication {
         XCTAssertTrue(button.waitForExistence(timeout: 10), "The camera button", file: file, line: line)
         waitUntilEnabled(button, "The camera button", file: file, line: line)
         button.tap()
-        let row: XCUIElement = descendants(matching: .any)["kinds.row"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 30), "Camera mode's kinds", file: file, line: line)
-        // The printer screen's chips are still there for a moment while the screens change places, and
-        // the next question about the mode would be answered by them.
-        waitUntilGone(descendants(matching: .any)["task.chips"].firstMatch, "The printer screen's kinds gone",
-                      file: file, line: line)
+        let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
+        XCTAssertTrue(printer.waitForExistence(timeout: 30), "Camera mode's printer button", file: file, line: line)
+        // The scanner tab is still there for a moment while the screens change places, and the next
+        // question about the mode would be answered by it.
+        waitUntilGone(button, "The scanner tab gone", file: file, line: line)
     }
 
     /// Printer mode, from camera mode by its printer button; nothing when it is up already. The scanner is
@@ -56,100 +54,75 @@ extension XCUIApplication {
         XCTAssertTrue(button.waitForExistence(timeout: 10), "The printer button", file: file, line: line)
         waitUntilEnabled(button, "The printer button", file: file, line: line)
         button.tap()
-        let chips: XCUIElement = descendants(matching: .any)["task.chips"].firstMatch
-        XCTAssertTrue(chips.waitForExistence(timeout: 30), "The printer screen's kinds", file: file, line: line)
-        waitUntilGone(descendants(matching: .any)["kinds.row"].firstMatch, "Camera mode's kinds gone",
-                      file: file, line: line)
+        let camera: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
+        XCTAssertTrue(camera.waitForExistence(timeout: 30), "The scanner tab's camera button", file: file, line: line)
+        waitUntilGone(button, "Camera mode gone", file: file, line: line)
     }
 
-    /// Picks what is scanned the way a person does, in either mode: the kind's chip in the printer screen's
-    /// top row, swiped into view when the row has scrolled it off, or the kind in camera mode's row, reached
-    /// a neighbour at a time as each tap centres it. `task` is the kind's name ("document", "photos", "idCard",
-    /// "book", and in printer mode "receipts" and "text"). The kind already picked changes nothing, and the app
-    /// comes back on the task the last run left, so that one is set up afresh by way of another kind.
+    /// Picks what is scanned the way a person does, in either mode: Options, its Type row and the kind in
+    /// its menu, then Done. `task` is the kind's name ("document", "photos", "idCard", "book", "receipts", and
+    /// in printer mode "text"). The kind already picked changes nothing, and the app comes back on the task
+    /// the last run left, so that one is set up afresh by way of another kind.
     @MainActor
     func pickTask(_ task: String, file: StaticString = #filePath, line: UInt = #line) {
-        if waitForScanScreen(file: file, line: line) {
-            pickCameraKind(task, file: file, line: line)
-            return
+        waitForScanScreen(file: file, line: line)
+        openOptions(file: file, line: line)
+        if typeShown == task {
+            chooseType(task == "document" ? "photos" : "document", file: file, line: line)
         }
-        let chips: XCUIElement = descendants(matching: .any)["task.chips"].firstMatch
-        let chip: XCUIElement = descendants(matching: .any)["task.\(task)"].firstMatch
-        XCTAssertTrue(chip.waitForExistence(timeout: 30), "The \(task) chip", file: file, line: line)
-        if chip.isSelected {
-            tapChip(task == "receipts" ? "document" : "receipts", in: chips, file: file, line: line)
-        }
-        tapChip(task, in: chips, file: file, line: line)
+        chooseType(task, file: file, line: line)
+        closeOptions(file: file, line: line)
     }
 
+    /// Picks `task` in the Options sheet's Type menu, opening the sheet when it is not up, and leaves it
+    /// open (a question about the pages queued closes it).
     @MainActor
-    private func tapChip(_ task: String, in chips: XCUIElement, file: StaticString, line: UInt) {
-        let chip: XCUIElement = descendants(matching: .any)["task.\(task)"].firstMatch
-        XCTAssertTrue(chip.waitForExistence(timeout: 30), "The \(task) chip", file: file, line: line)
-        // The row keeps the picked chip in its middle, so the one wanted may be off either edge.
-        var swipes: Int = 0
-        while !chip.isHittable && swipes < 3 {
-            if chip.frame.midX < chips.frame.midX {
-                chips.swipeRight()
-            } else {
-                chips.swipeLeft()
-            }
-            swipes += 1
+    func chooseType(_ task: String, file: StaticString = #filePath, line: UInt = #line) {
+        let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
+        if !done.exists {
+            openOptions(file: file, line: line)
         }
-        waitUntilEnabled(chip, "The \(task) chip", file: file, line: line)
-        chip.tap()
-        waitUntilSelected(chip, "The \(task) chip picked", file: file, line: line)
-    }
-
-    @MainActor
-    private func pickCameraKind(_ task: String, file: StaticString, line: UInt) {
-        let drawer: XCUIElement = descendants(matching: .any)["drawer"].firstMatch
-        if drawer.exists {
-            closeDrawer(file: file, line: line)
-        }
-        guard let target = XCUIApplication.cameraKinds.firstIndex(of: task) else {
-            XCTFail("No kind \(task)", file: file, line: line)
-            return
-        }
-        var index: Int = XCUIApplication.cameraKinds.firstIndex(of: cameraKind) ?? 1
-        if index == target {
-            index = target == 0 ? 1 : target - 1
-            tapCameraKind(XCUIApplication.cameraKinds[index], file: file, line: line)
-        }
-        while index != target {
-            index += index < target ? 1 : -1
-            tapCameraKind(XCUIApplication.cameraKinds[index], file: file, line: line)
-        }
-    }
-
-    @MainActor
-    private func tapCameraKind(_ task: String, file: StaticString, line: UInt) {
-        let item: XCUIElement = descendants(matching: .any)["kinds.\(task)"].firstMatch
-        XCTAssertTrue(item.waitForExistence(timeout: 30), "The \(task) kind", file: file, line: line)
-        waitUntilEnabled(item, "The \(task) kind", file: file, line: line)
+        let menu: XCUIElement = descendants(matching: .any)["options.type"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 30), "The Type row", file: file, line: line)
+        waitUntilEnabled(menu, "The Type row", file: file, line: line)
+        menu.tap()
+        let item: XCUIElement = descendants(matching: .any)["type.\(task)"].firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 10), "The \(task) type", file: file, line: line)
+        waitUntilEnabled(item, "The \(task) type", file: file, line: line)
         item.tap()
-        waitUntilSelected(item, "The \(task) kind picked", file: file, line: line)
     }
 
-    /// The name of the kind picked in camera mode's row; empty when none is.
+    /// Waits until the Type row says `task`.
     @MainActor
-    private var cameraKind: String {
-        for kind in XCUIApplication.cameraKinds {
-            let item: XCUIElement = descendants(matching: .any)["kinds.\(kind)"].firstMatch
-            if item.exists && item.isSelected {
-                return kind
-            }
+    func waitForType(_ task: String, file: StaticString = #filePath, line: UInt = #line) {
+        let menu: XCUIElement = descendants(matching: .any)["options.type"].firstMatch
+        let titles: [String] = XCUIApplication.typeTitles[task] ?? []
+        let shown = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            titles.contains(menu.value as? String ?? "")
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [shown], timeout: 30), .completed, "The \(task) type picked",
+                       file: file, line: line)
+    }
+
+    /// The kind the Type row of the Options sheet, which is open, says: "document"; empty when none.
+    @MainActor
+    private var typeShown: String {
+        let menu: XCUIElement = descendants(matching: .any)["options.type"].firstMatch
+        guard menu.waitForExistence(timeout: 30), let value = menu.value as? String else { return "" }
+        for (kind, titles) in XCUIApplication.typeTitles where titles.contains(value) {
+            return kind
         }
         return ""
     }
 
-    /// Opens camera mode's options drawer on a group: "export", "colour", "quality", "flash" or "camera".
+    /// Opens the options drawer on a group: "colour", "scanner" (printer mode), "flash" or "camera" (camera
+    /// mode).
     @MainActor
     func openDrawer(_ group: String, file: StaticString = #filePath, line: UInt = #line) {
         let drawer: XCUIElement = descendants(matching: .any)["drawer"].firstMatch
         if !drawer.exists {
             let toggle: XCUIElement = descendants(matching: .any)["drawer.toggle"].firstMatch
-            XCTAssertTrue(toggle.waitForExistence(timeout: 30), "The drawer's chevron", file: file, line: line)
+            XCTAssertTrue(toggle.waitForExistence(timeout: 30), "The drawer's arrow", file: file, line: line)
             toggle.tap()
             XCTAssertTrue(drawer.waitForExistence(timeout: 10), "The options drawer", file: file, line: line)
         }
@@ -159,14 +132,13 @@ extension XCUIApplication {
         waitUntilSelected(button, "The drawer's \(group) group picked", file: file, line: line)
     }
 
-    /// Closes the options drawer: the kinds come back.
+    /// Closes the options drawer.
     @MainActor
     func closeDrawer(file: StaticString = #filePath, line: UInt = #line) {
         let toggle: XCUIElement = descendants(matching: .any)["drawer.toggle"].firstMatch
-        XCTAssertTrue(toggle.waitForExistence(timeout: 10), "The drawer's chevron", file: file, line: line)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10), "The drawer's arrow", file: file, line: line)
         toggle.tap()
-        let row: XCUIElement = descendants(matching: .any)["kinds.row"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "The kinds again", file: file, line: line)
+        waitUntilGone(descendants(matching: .any)["drawer"].firstMatch, "The drawer closed", file: file, line: line)
     }
 
     /// The element by identifier, the printer screen's list scrolled until it is on screen: the list makes
@@ -186,16 +158,23 @@ extension XCUIApplication {
         return element
     }
 
-    /// Opens an option group of the printer screen as its sheet by the row's name: "Scanner" (the scanners,
-    /// then the one picked's settings), "Book", "Photos" (Restore faded colours) or "Export" (the format,
-    /// Separate documents, the PDF's choices, After saving).
+    /// Opens a sheet as its button or row does, in either mode: "Options" (the Type, what is saved, the
+    /// actions on the pages) from the bottom bar, or "Scanner" (the scanners, then the flatbed's preview)
+    /// from the scanner tab's row.
     @MainActor
-    func openOptions(_ group: String, file: StaticString = #filePath, line: UInt = #line) {
-        let row: XCUIElement = scrolledTo("options.row.\(group.lowercased())")
-        XCTAssertTrue(row.exists && row.isHittable, "The \(group) options' row", file: file, line: line)
-        row.tap()
+    func openOptions(_ group: String = "Options", file: StaticString = #filePath, line: UInt = #line) {
+        if group == "Scanner" {
+            let row: XCUIElement = scrolledTo("options.row.scanner")
+            XCTAssertTrue(row.exists && row.isHittable, "The Scanner row", file: file, line: line)
+            row.tap()
+        } else {
+            let button: XCUIElement = descendants(matching: .any)["options.button"].firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 30), "The Options button", file: file, line: line)
+            waitUntilEnabled(button, "The Options button", file: file, line: line)
+            button.tap()
+        }
         let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 10), "The \(group) options' sheet", file: file, line: line)
+        XCTAssertTrue(done.waitForExistence(timeout: 10), "The \(group) sheet", file: file, line: line)
     }
 
     /// In printer mode, opens the Scanner options and picks the scanner there by its row
@@ -224,7 +203,7 @@ extension XCUIApplication {
         return XCTWaiter.wait(for: [picked], timeout: timeout) == .completed
     }
 
-    /// Drags the Scanner options' sheet from half height to full: the scanner's settings sit below the
+    /// Drags the Scanner sheet from half height to full: the scanner's settings sit below the
     /// list, and the list makes its rows only once they come on screen.
     @MainActor
     func growOptions() {
@@ -235,7 +214,7 @@ extension XCUIApplication {
         bar.press(forDuration: 0.1, thenDragTo: coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)))
     }
 
-    /// Closes the option group's sheet with Done.
+    /// Closes the sheet with Done.
     @MainActor
     func closeOptions(file: StaticString = #filePath, line: UInt = #line) {
         let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
@@ -267,25 +246,21 @@ extension XCUIApplication {
                        file: file, line: line)
     }
 
-    /// The kind picked, in either mode: "document"; empty when none is.
+    /// The kind picked, in either mode: "document"; empty when none is. Reads the Type row of the Options
+    /// sheet, which it opens and closes.
     @MainActor
     var pickedKind: String {
-        for kind in XCUIApplication.printerKinds {
-            for id in ["task.\(kind)", "kinds.\(kind)"] {
-                let chip: XCUIElement = descendants(matching: .any)[id].firstMatch
-                if chip.exists && chip.isSelected {
-                    return kind
-                }
-            }
-        }
-        return ""
+        waitForScanScreen()
+        openOptions()
+        let kind: String = typeShown
+        closeOptions()
+        return kind
     }
 
-    /// The pages' button of the mode shown: camera mode's stack or the printer screen's capture bar.
+    /// The pages' button, the same stack on both tabs.
     @MainActor
     var pagesButton: XCUIElement {
-        let stack: XCUIElement = descendants(matching: .any)["camera.pages"].firstMatch
-        return stack.exists ? stack : descendants(matching: .any)["capture.pages"].firstMatch
+        descendants(matching: .any)["camera.pages"].firstMatch
     }
 
     /// Waits for the pages' button to count `count` pages, then opens the page strip's sheet and waits for

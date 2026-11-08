@@ -59,7 +59,7 @@ final class ImportTests: XCTestCase {
         XCTAssertFalse(app.buttons["import.stop"].exists, "The scan screen's Stop button")
         app.switchToPrinter()
         XCTAssertTrue(app.buttons["save.button"].waitForExistence(timeout: 30), "The printer screen")
-        XCTAssertEqual(app.descendants(matching: .any)["capture.pages"].firstMatch.pageCount, 0,
+        XCTAssertEqual(app.pagesButton.pageCount, 0,
                        "A page came in after Stop")
         XCTAssertFalse(app.buttons["save.button"].isEnabled, "Save with nothing to save")
     }
@@ -77,10 +77,7 @@ final class ImportTests: XCTestCase {
         app.switchToCamera()
         XCTAssertEqual(app.pickedKind, "document")
         for kind in ["photos", "idCard"] {
-            let item: XCUIElement = app.descendants(matching: .any)["kinds.\(kind)"].firstMatch
-            XCTAssertTrue(item.waitForExistence(timeout: 30), "The \(kind) kind")
-            app.waitUntilEnabled(item, "The \(kind) kind")
-            item.tap()
+            app.chooseType(kind)
             let question: XCUIElement = app.alerts.firstMatch
             XCTAssertTrue(question.waitForExistence(timeout: 10), "Asked before \(kind)")
             // First match: the Simulator lists an alert's button twice.
@@ -94,8 +91,6 @@ final class ImportTests: XCTestCase {
             XCTAssertEqual(app.buttons["save.button"].value as? String, "Save PDF (1 page)")
         }
 
-        // Book is two kinds away in camera mode's row, past the ID card: the printer screen's chip is one tap.
-        app.switchToPrinter()
         app.pickTask("book")
         XCTAssertEqual(app.pickedKind, "book")
         XCTAssertEqual(app.pagesButton.pageCount, 1, "Book keeps the page")
