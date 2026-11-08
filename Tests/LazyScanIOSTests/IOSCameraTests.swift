@@ -1203,9 +1203,9 @@ final class IOSCameraTests: XCTestCase {
         var single: ScanSettings = state.settings
         single.documentMultiPage = false
         XCTAssertFalse(IOSShell.capturesContinuously(single))
-        // Photos and receipts go to the review after each shot; the ID card takes its front, then its back.
-        XCTAssertFalse(IOSShell.capturesContinuously(photos))
-        XCTAssertFalse(IOSShell.capturesContinuously(TaskCatalog.apply(.receipt, to: state.settings)))
+        // Photos and receipts add their objects to the pages; the ID card takes its front, then its back.
+        XCTAssertTrue(IOSShell.capturesContinuously(photos))
+        XCTAssertTrue(IOSShell.capturesContinuously(TaskCatalog.apply(.receipt, to: state.settings)))
         XCTAssertTrue(IOSShell.capturesContinuously(TaskCatalog.apply(.idCard, to: state.settings)))
     }
 

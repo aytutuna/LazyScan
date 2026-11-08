@@ -13,7 +13,7 @@ import SwiftUI
 /// since the root's cannot show over it. Discard asks first.
 struct IdCardReviewScreen: View {
     @EnvironmentObject private var state: AppState
-    let model: IOSPhotoReviewModel
+    let model: IOSIdCardReviewModel
     /// The phone's mode: in camera mode the camera took the sides, so their buttons say Take, not Scan.
     @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
     @State private var cropping: IOSCropRequest?
@@ -231,7 +231,7 @@ struct IdCardReviewScreen: View {
         let held: DetectedPhoto? = side == .front ? state.idCardFront : state.idCardBack
         guard let photo = held else { return }
         preparing = true
-        let review: IOSPhotoReviewModel = model
+        let review: IOSIdCardReviewModel = model
         let name: String = side == .front ? IOSReviewText.frontTitle : IOSReviewText.backTitle
         Task { @MainActor in
             let crop: IOSCropRequest? = await review.cropRequest(for: photo, name: name, number: 1, count: 1)
@@ -337,7 +337,7 @@ private struct SideCard: View {
             let image: CGImage = held.image
             let turns: Int = held.rotationQuarterTurns
             let small: CGImage = await Task.detached(priority: .userInitiated) { () -> CGImage in
-                let reduced: CGImage = IOSPhotoReviewModel.thumbnail(image, maxSide: 500)
+                let reduced: CGImage = IOSIdCardReviewModel.thumbnail(image, maxSide: 500)
                 return turns == 0 ? reduced : ImagePipeline.rotate(reduced, quarterTurns: turns)
             }.value
             thumbnail = small

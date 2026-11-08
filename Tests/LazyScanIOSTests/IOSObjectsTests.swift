@@ -8,10 +8,10 @@ import XCTest
 
 // Several objects in one shot on the iPhone (I13): what Vision's rectangle search is asked for each kind,
 // Vision's outlines mapped into the photo and picked (`IOSObjectFinder`, on hand-made observations and, where
-// Vision runs, on a drawn photo); a shot of two prints imported under the Photos task opening the photo
-// review, Fix crop through the corner editor's request and Save writing two JPEGs (`IOSPhotoReviewModel`);
-// the next shot read only once that review is closed; a shot with no outline coming in whole; the receipts'
-// choices; a Document or Photo shot going by Items in frame, and a slip measured as a receipt roll; the ID
+// Vision runs, on a drawn photo); a shot of two prints imported under the Photos task making two pages of the
+// queue, Crop through the corner editor's start on the photo, and Save writing JPEGs; several shots adding up;
+// a shot with no outline coming in whole; a Receipts shot saved by the Options' format; a type picked with
+// pages in; a Document or Photo shot going by Items in frame, and a slip measured as a receipt roll; the ID
 // card taken from shots as the step's sides, in memory only (no spool, no history, no file);
 // the guide frame, its prompts and the glare line; the launch option of the photos UI test. The object
 // search is a stand-in where a test needs known outlines.
@@ -241,10 +241,10 @@ final class IOSObjectsTests: XCTestCase {
         XCTAssertLessThan(quads[1].maxCornerDistance(printB), 30)
     }
 
-    // MARK: The photo review
+    // MARK: The pages
 
     @MainActor
-    func test_aShotOfTwoPrints_opensTheReview_fixesACrop_andSavesTwoJPEGs() async throws {
+    func test_aShotOfTwoPrints_addsTwoPages_cropsOne_andSavesTwoJPEGs() async throws {
         let state: AppState = makeState(.photos)
         let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([printA, printB], for: .photo))
         XCTAssertTrue(importer.canImport)
@@ -252,180 +252,149 @@ final class IOSObjectsTests: XCTestCase {
                                                                                   kind: .image)])
         XCTAssertEqual(outcome.added, 2)
         XCTAssertEqual(outcome.problems, [])
-        // No corner editor: the review opens on the prints, cut out at their size.
+        // No corner editor and no review: both prints are pages of the queue, cut out at their size.
         XCTAssertNil(importer.cornerRequest)
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        let review = IOSPhotoReviewModel(state: state)
-        XCTAssertEqual(review.title, "Found 2 photos")
-        XCTAssertEqual(review.saveTitle, "Save 2 photos")
-        XCTAssertFalse(review.isReceipts)
-        XCTAssertEqual(review.formats, [])
-        XCTAssertEqual(review.photos.count, 2)
-        guard review.photos.count == 2 else { return }
-        let first: DetectedPhoto = review.photos[0]
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertFalse(state.showPhotoReview)
+        XCTAssertTrue(IOSShell.offersSave(state.settings, pageCount: 2))
+        XCTAssertEqual(state.settings.format, .jpeg)
+        guard state.scannedPages.count == 2 else { return }
+        let first: ScannedPage = state.scannedPages[0]
         XCTAssertEqual(first.image.width, 450)
         XCTAssertEqual(first.image.height, 300)
-        XCTAssertEqual(IOSReviewText.sizeCaption(width: first.image.width, height: first.image.height, dpi: first.dpi),
-                       "6.0 \u{00D7} 4.0 in")
-        XCTAssertTrue(state.scannedPages.isEmpty)
-        XCTAssertEqual(names(spool), [])
+        XCTAssertEqual(first.capture?.kind, .photo)
+        XCTAssertEqual(state.scannedPages[1].capture?.quad, printB)
 
-        // Keep, rotate.
-        review.toggle(first.id)
-        XCTAssertFalse(review.isIncluded(first.id))
-        XCTAssertEqual(review.saveTitle, "Save 1 photo")
-        review.toggle(first.id)
-        XCTAssertTrue(review.isIncluded(first.id))
-        review.rotate(first.id)
-        XCTAssertEqual(review.photos[0].rotationQuarterTurns, 1)
-
-        // Fix crop: the corner editor's request on the photo as taken, with the print's corners, worded for a photo.
-        let asked: IOSCropRequest? = await review.cropRequest(for: first, name: PhotoImport.label, number: 1, count: 2)
-        let crop: IOSCropRequest = try XCTUnwrap(asked)
-        XCTAssertEqual(crop.photoID, first.id)
-        XCTAssertEqual(crop.request.photo.width, 1200)
-        XCTAssertEqual(crop.request.photo.height, 900)
-        XCTAssertEqual(crop.request.plan.corners, printA)
-        XCTAssertEqual(crop.request.plan.reason, PhotoReviewReason.none)
-        XCTAssertEqual(crop.request.kind, CaptureKind.photo)
+        // Crop: the corner editor's start on the photo as taken, with the print's corners; a photo has no filter.
+        XCTAssertTrue(PageRecut.canCrop(first))
+        XCTAssertFalse(PageRecut.canRecut(first))
+        let asked: PhotoCropStart? = await state.pageCropStart(id: first.id)
+        let start: PhotoCropStart = try XCTUnwrap(asked)
+        XCTAssertEqual(start.source.width, 1200)
+        XCTAssertEqual(start.source.height, 900)
+        XCTAssertLessThan(start.corners.maxCornerDistance(printA), 1)
+        XCTAssertEqual(start.kind, .photo)
         // The border left out: 414 × 264 px, cut again with the perspective warp.
         let inner = Quad(topLeft: CGPoint(x: 138, y: 168), topRight: CGPoint(x: 552, y: 168),
                          bottomRight: CGPoint(x: 552, y: 432), bottomLeft: CGPoint(x: 138, y: 432))
-        review.applyCrop(crop, answer: PhotoCornersAnswer(choice: .useCorners, corners: inner))
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.detectedPhotos.first?.image.width == 414 }
-        XCTAssertEqual(review.photos[0].id, first.id)
-        XCTAssertEqual(review.photos[0].rotationQuarterTurns, 1)
-        // Cancel in the editor changes nothing.
-        review.applyCrop(crop, answer: PhotoCornersAnswer.skip)
-        XCTAssertEqual(review.photos[0].image.width, 414)
+        state.recropPage(id: first.id, corners: inner, rotation: 0)
+        try await ImportTestSupport.waitUntil(timeout: 60) { state.scannedPages.first?.image.width == 414 }
+        XCTAssertEqual(state.scannedPages[0].id, first.id)
+        state.rotatePage(id: first.id)
+        try await ImportTestSupport.waitUntil(timeout: 60) { state.scannedPages.first?.rotationQuarterTurns == 1 }
 
-        XCTAssertTrue(review.canSave)
-        review.save()
-        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && !state.showPhotoReview }
+        // An unwanted print is deleted from the pages, the other saved as a JPEG.
+        state.removePage(id: state.scannedPages[1].id)
+        XCTAssertEqual(state.scannedPages.count, 1)
+        IOSShell.saveQueue(state)
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.lastSavedURLs.count == 1 }
         XCTAssertNil(state.errorMessage)
-        let files: [String] = names(saved)
-        XCTAssertEqual(files.count, 2)
-        for name in files {
-            XCTAssertTrue(name.hasSuffix(".jpg"), name)
-        }
-        XCTAssertEqual(state.lastSavedURLs.count, 2)
+        XCTAssertEqual(names(saved).count, 1)
+        XCTAssertTrue(names(saved).allSatisfy { (name: String) -> Bool in name.hasSuffix(".jpg") })
     }
 
     @MainActor
-    func test_theNextShot_isReadOnceTheReviewIsClosed() async throws {
+    func test_severalShots_addUpInOrder_withoutWaitingForAReview() async throws {
         let state: AppState = makeState(.photos)
         let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([printA, printB], for: .photo))
         let data: Data = png(printsOnTable())
         let items: [IOSImportItem] = [IOSImportItem(name: "a.png", data: data, kind: .image),
                                       IOSImportItem(name: "b.png", data: data, kind: .image)]
-        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
-            await importer.importItems(items)
-        }
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        // The second shot waits for the review of the first.
-        try await Task.sleep(nanoseconds: 400_000_000)
-        XCTAssertTrue(importer.isImporting)
-        XCTAssertEqual(state.detectedPhotos.count, 2)
-        IOSPhotoReviewModel(state: state).cancel()
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        let outcome: IOSImportOutcome = await importing.value
+        let outcome: IOSImportOutcome = await importer.importItems(items)
         XCTAssertEqual(outcome.added, 4)
         XCTAssertEqual(outcome.problems, [])
-        XCTAssertEqual(state.detectedPhotos.count, 2)
-        state.cancelPhotoReview()
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 4 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertEqual(state.scannedPages.compactMap { (page: ScannedPage) -> Quad? in page.capture?.quad },
+                       [printA, printB, printA, printB])
     }
 
     @MainActor
-    func test_stop_whileTheReviewIsOpen_endsTheImport_withoutAProblem() async throws {
-        let state: AppState = makeState(.photos)
-        let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([printA, printB], for: .photo))
-        let data: Data = png(printsOnTable())
-        let items: [IOSImportItem] = [IOSImportItem(name: "a.png", data: data, kind: .image),
-                                      IOSImportItem(name: "b.png", data: data, kind: .image)]
-        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
-            await importer.importItems(items)
-        }
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        importer.stop()
-        let outcome: IOSImportOutcome = await importing.value
-        XCTAssertEqual(outcome.added, 2)
-        XCTAssertEqual(outcome.problems, [])
-        XCTAssertNil(state.errorMessage)
-        XCTAssertTrue(state.showPhotoReview)
-        state.cancelPhotoReview()
-    }
-
-    @MainActor
-    func test_aPDFsNextPage_isReadOnceTheReviewIsClosed() async throws {
+    func test_aPDFsPages_areSearchedOneAfterTheOther_intoPages() async throws {
         let state: AppState = makeState(.photos)
         let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([], for: .photo))
-        let data: Data = try printsPDF(2)
-        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
-            await importer.importItems([IOSImportItem(name: "prints.pdf", data: data, kind: .pdf)])
-        }
-        try await ImportTestSupport.waitUntil(timeout: 120) { state.showPhotoReview && !state.isBusy }
-        // The second page waits for the review of the first.
-        try await Task.sleep(nanoseconds: 400_000_000)
-        XCTAssertTrue(importer.isImporting)
-        XCTAssertNil(state.errorMessage)
-        let firstPage: Set<UUID> = Set(state.detectedPhotos.map { (photo: DetectedPhoto) -> UUID in photo.id })
-        XCTAssertFalse(firstPage.isEmpty)
-        IOSPhotoReviewModel(state: state).cancel()
-        let outcome: IOSImportOutcome = await importing.value
+        let outcome: IOSImportOutcome = await importer.importItems([IOSImportItem(name: "prints.pdf", data: try printsPDF(2),
+                                                                                  kind: .pdf)])
         XCTAssertEqual(outcome.added, 2)
         XCTAssertEqual(outcome.problems, [])
+        try await ImportTestSupport.waitUntil(timeout: 120) { !state.isBusy && state.scannedPages.count >= 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
         XCTAssertNil(state.errorMessage)
-        XCTAssertTrue(state.showPhotoReview)
-        XCTAssertTrue(firstPage.isDisjoint(with: state.detectedPhotos.map { (photo: DetectedPhoto) -> UUID in photo.id }))
-        state.cancelPhotoReview()
+        XCTAssertFalse(state.showPhotoReview)
     }
 
     @MainActor
-    func test_aShotWithNoOutline_comesInWhole_forThePhotoSearch() async throws {
+    func test_aShotWithNoOutline_comesInWhole_andThePhotoSearchMakesPagesOfWhatItFinds() async throws {
         let state: AppState = makeState(.photos)
         let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([], for: .photo))
         let outcome: IOSImportOutcome = await importer.importItems([IOSImportItem(name: "prints.png", data: png(printsOnTable()),
                                                                                   kind: .image)])
         XCTAssertEqual(outcome.added, 1)
-        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && !state.scannedPages.isEmpty }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
         // The flatbed's photo search of the whole shot at 200 dpi finds both prints.
-        XCTAssertTrue(state.showPhotoReview)
-        XCTAssertEqual(state.detectedPhotos.count, 2)
-        // Fix crop starts from the region found, on the whole shot.
-        if let first = state.detectedPhotos.first {
-            let crop: IOSCropRequest? = await IOSPhotoReviewModel(state: state).cropRequest(for: first, name: "Photo",
-                                                                                           number: 1, count: 2)
-            XCTAssertEqual(crop?.request.photo.width, 1200)
-        }
-        state.cancelPhotoReview()
+        XCTAssertEqual(state.scannedPages.count, 2)
+        XCTAssertFalse(state.showPhotoReview)
+        // Those pages were cut by the search, not along corners in a photo: no Crop for them.
+        XCTAssertFalse(PageRecut.canCrop(state.scannedPages[0]))
     }
 
     @MainActor
-    func test_theReceiptsReview_offersNamingByDate_oneForAll_andPDFOrJPEG() async throws {
+    func test_aReceiptsShotOfTwoItems_makesTwoPages_withSaveOn_andTheOptionsFormatApplies() async throws {
         let state: AppState = makeState(.receipt)
         let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([printA, printB], for: .receipt))
-        let outcome: IOSImportOutcome = await importer.importItems([IOSImportItem(name: "receipts.png", data: png(printsOnTable()),
-                                                                                  kind: .image)])
+        let data: Data = png(printsOnTable())
+        let outcome: IOSImportOutcome = await importer.importItems([IOSImportItem(name: "receipts.png", data: data, kind: .image)])
         XCTAssertEqual(outcome.added, 2)
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        let review = IOSPhotoReviewModel(state: state)
-        XCTAssertTrue(review.isReceipts)
-        XCTAssertEqual(review.title, Receipts.reviewTitle(2))
-        XCTAssertEqual(review.formats, [.pdf, .jpeg])
-        XCTAssertEqual(review.format, .pdf)
-        XCTAssertTrue(review.offersCombine)
-        XCTAssertTrue(review.nameByDate)
-        review.setNameByDate(false)
-        XCTAssertFalse(state.settings.taskOptions.receiptNameByDate)
-        review.setCombine(true)
-        XCTAssertTrue(state.settings.taskOptions.receiptCombine)
-        XCTAssertEqual(review.saveTitle, "Save as One PDF")
-        review.setFormat(.jpeg)
-        XCTAssertEqual(state.settings.format, .jpeg)
-        XCTAssertFalse(review.offersCombine)
-        review.cancel()
+        XCTAssertEqual(outcome.problems, [])
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
         XCTAssertFalse(state.showPhotoReview)
-        XCTAssertEqual(state.statusMessage, "Receipts discarded.")
+        XCTAssertEqual(state.scannedPages.map { (page: ScannedPage) -> CaptureKind? in page.capture?.kind }, [.receipt, .receipt])
+        // Save is on, with the receipts' own choices: a grey Compact PDF.
+        XCTAssertTrue(IOSShell.offersSave(state.settings, pageCount: state.scannedPages.count))
+        XCTAssertEqual(SavePlan.make(state.scannedPages, options: state.settings.document).pageCount, 2)
+        XCTAssertEqual(IOSShell.exportFormat(state.settings), .pdf)
+        XCTAssertEqual(state.settings.colorMode, .grayscale)
+        XCTAssertEqual(state.settings.output.pdfSize, .compact)
+        XCTAssertTrue(IOSShell.offersPDFOptions(state.settings))
+
+        IOSShell.saveQueue(state)
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.isEmpty }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(names(saved).filter { (name: String) -> Bool in name.hasSuffix(".pdf") }.count, 1)
+
+        // The Options' format: JPEG, a file for each receipt; the kind stays Receipts.
+        _ = await importer.importItems([IOSImportItem(name: "receipts.png", data: data, kind: .image)])
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        var jpeg: ScanSettings = state.settings
+        jpeg.format = .jpeg
+        state.settings = IOSShell.keepingKind(jpeg)
+        XCTAssertEqual(state.settings.task, .receipt)
+        XCTAssertFalse(IOSShell.offersPDFOptions(state.settings))
+        IOSShell.saveQueue(state)
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.isEmpty }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(names(saved).filter { (name: String) -> Bool in name.hasSuffix(".jpg") }.count, 2)
+    }
+
+    @MainActor
+    func test_changingTheType_keepsThePages_onlyTheIdCardAsks() async throws {
+        let state: AppState = makeState(.receipt)
+        let importer = IOSImportSession(state: state, finder: noPage, objectFinder: fixedObjects([printA, printB], for: .receipt))
+        _ = await importer.importItems([IOSImportItem(name: "receipts.png", data: png(printsOnTable()), kind: .image)])
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let name: String = "IOSObjectsTests-\(UUID().uuidString)"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        for kind in [IOSScanKind.photos, .document, .text, .receipts] {
+            XCTAssertEqual(state.pagesLeftBehind(by: kind.task), 0, kind.rawValue)
+            XCTAssertTrue(IOSShell.startKind(kind, in: state, defaults: defaults), kind.rawValue)
+            XCTAssertEqual(state.scannedPages.count, 2, kind.rawValue)
+        }
+        XCTAssertEqual(state.pagesLeftBehind(by: IOSScanKind.idCard.task), 2)
     }
 
     // MARK: Items in frame
@@ -569,10 +538,9 @@ final class IOSObjectsTests: XCTestCase {
                                         defaults: defaults)
         let outcome: IOSImportOutcome = await importer.importShot(IOSCameraShot(data: png(printsOnTable()), liveOutline: nil))
         XCTAssertEqual(outcome.added, 1)
-        try await ImportTestSupport.waitUntil(timeout: 60) { state.showPhotoReview && !state.isBusy }
-        XCTAssertEqual(state.detectedPhotos.count, 1)
-        XCTAssertEqual(state.detectedPhotos.first?.image.width, 450)
-        state.cancelPhotoReview()
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertEqual(state.scannedPages.first?.image.width, 450)
     }
 
     func test_aDocumentPage_snapsToARollByItsShape_fromTwoPointTwoTimesAsLongAsWide() {
@@ -638,7 +606,7 @@ final class IOSObjectsTests: XCTestCase {
         XCTAssertTrue(state.showIdCardReview)
         XCTAssertFalse(importer.canImport)
         // Fix crop of a side: the photo as taken, with the card's corners, worded for a card.
-        let review = IOSPhotoReviewModel(state: state)
+        let review = IOSIdCardReviewModel(state: state)
         let asked: IOSCropRequest? = await review.cropRequest(for: side, name: IOSReviewText.frontTitle, number: 1, count: 1)
         let crop: IOSCropRequest = try XCTUnwrap(asked)
         XCTAssertEqual(crop.request.photo.width, 1200)

@@ -127,7 +127,7 @@ public struct IOSRootView: View {
             openFiles([url])
         }
         .modifier(FileActionPresenters(fileActions: fileActions, state: state))
-        .modifier(ScanCovers(state: state, importer: importer, cover: $scanCover, spreadEditor: $spreadEditor))
+        .modifier(ScanCovers(state: state, cover: $scanCover, spreadEditor: $spreadEditor))
         .overlay {
             if cameraIntroDue && showsScanner {
                 CameraIntroCard(onContinue: continueToCamera)
@@ -216,7 +216,7 @@ public struct IOSRootView: View {
         // A share or a send reads the spooled pages that starting over them could drop.
         guard !state.readsQueue else { return }
         if state.pagesLeftBehind(by: task) > 0 {
-            let reason: String = IOSShell.keepPagesReason(IOSShell.kind(of: task), mode: mode)
+            let reason: String = IOSShell.keepPagesReason(IOSShell.kind(of: task))
             leavingPages = PagesLeave(reason: reason) { (discarding: Bool) in
                 startTask(task, target: target, discardingPages: discarding)
             }
@@ -336,7 +336,7 @@ public struct IOSRootView: View {
     /// A switch of scanner would end a scan, close a review or a cover, or drop an ID card's side or an
     /// import's pages, so the selection waits for them (as `AppState`'s own switches do).
     private var selectionCanMove: Bool {
-        !state.isBusy && !state.showPhotoReview && !state.showIdCardReview && !state.hasIdCardCaptures
+        !state.isBusy && !state.showIdCardReview && !state.hasIdCardCaptures
             && !importer.isImporting && scanCover == nil
     }
 
@@ -429,7 +429,7 @@ public struct IOSRootView: View {
             IOSImportItem.kind(forFileName: url.lastPathComponent, data: Data()) == .pdf
         }
         let free: Bool = !state.hasIdCardCaptures && state.quickScanPage == nil && state.copyPages.isEmpty
-            && !state.showPhotoReview && !importer.isImporting
+            && !importer.isImporting
         let task: ScanTask? = pdf && free && !IOSShell.collectsPages(state.settings) ? ScanTask.document : nil
         let pushed: Bool = prepareForImport(task)
         let session: IOSImportSession = importer

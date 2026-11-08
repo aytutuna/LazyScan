@@ -111,8 +111,9 @@ final class IOSSettingsTests: XCTestCase {
         var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
         receipts.format = .pdf
         let receiptSections: [IOSSettingsSection] = IOSSettingsSections.sections(receipts)
-        XCTAssertEqual(receiptSections.first?.id, InspectorSections.task)
-        XCTAssertEqual(receiptSections.first?.title, "Receipts")
+        // Receipts are pages of the queue: no section of their own, as their review is gone.
+        XCTAssertFalse(receiptSections.contains { (section: IOSSettingsSection) -> Bool in section.id == InspectorSections.task })
+        XCTAssertEqual(receiptSections.first?.id, InspectorSections.scanner)
 
         var photos: ScanSettings = ScanSettings()
         photos.intent = .photo

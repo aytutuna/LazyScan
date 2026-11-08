@@ -223,18 +223,14 @@ public enum IOSShell {
         return s
     }
 
-    /// The settings with a Receipts or Quick scan task (a preset's, saved in printer mode or an older build) as
-    /// Document, for a preset applied in camera mode, where its pages are collected into the queue (a Receipts
-    /// preset with a shot holding several, `IOSPresetsModel`). Unlike `adoptCameraKind` the preset's own
-    /// choices stay, a Receipts preset's grey Compact PDF among them; a Quick scan's pages are collected into a
-    /// PDF, as a Document's are.
+    /// The settings with a Quick scan task (a preset's, saved in printer mode or an older build) as Document,
+    /// for a preset applied in camera mode, which has no Text: its own choices stay, and its pages are
+    /// collected into a PDF, as a Document's are.
     public static func cameraPreset(_ settings: ScanSettings) -> ScanSettings {
-        guard settings.task == .receipt || settings.task == .quickScan else { return settings }
+        guard settings.task == .quickScan else { return settings }
         var s: ScanSettings = settings
-        if settings.task == .quickScan {
-            s.documentMultiPage = true
-            s.format = .pdf
-        }
+        s.documentMultiPage = true
+        s.format = .pdf
         s.taskId = ScanTask.document.rawValue
         return s
     }
@@ -263,7 +259,7 @@ public enum IOSShell {
     }
 
     /// Whether this app offers a task: the tasks whose pages are collected and saved, since I13 Photos,
-    /// Restore old photos and Receipts (several objects in one shot, then the photo review) and the ID card
+    /// Restore old photos and Receipts (several objects in one shot, each a page of the queue) and the ID card
     /// (front then back, then its review), since I14 Quick scan (one shot, then a picture or its text) and
     /// Archive document (with the Archive & password choices), and since I16 the photocopy (the page held on
     /// the copy screen, then printed over AirPrint). Every task is offered now.
@@ -272,7 +268,7 @@ public enum IOSShell {
     }
 
     /// Whether the scan screen takes photos for the settings' task (our camera, Photos and Files): pages
-    /// collected in the queue, the objects of a shot for the photo review (photos, receipts), a side of the
+    /// collected in the queue (a document's pages, and the objects found in a shot of photos or receipts), a side of the
     /// ID card, or the page of a photocopy.
     public static func takesPhotos(_ settings: ScanSettings) -> Bool {
         takesPhotos(flow: TaskCatalog.flow(of: settings))
@@ -286,10 +282,17 @@ public enum IOSShell {
     }
 
     /// Whether the scan screen collects pages to save (Save and the PDF or JPEG choice): the document
-    /// tasks that collect pages. Photos, receipts and the ID card are saved from their reviews, a Quick scan
-    /// from its own screen.
+    /// tasks that collect pages, and Photos and Receipts, whose objects found in a shot are pages of the queue
+    /// (`AppState.listsFoundObjects`). The ID card is saved from its review, a Quick scan from its own screen.
     public static func collectsPages(_ settings: ScanSettings) -> Bool {
-        TaskCatalog.flow(of: settings) == .documentQueue && settings.documentMultiPage
+        switch TaskCatalog.flow(of: settings) {
+        case .documentQueue:
+            return settings.documentMultiPage
+        case .photoSplit, .receiptSplit:
+            return true
+        case .idCard, .copy:
+            return false
+        }
     }
 
     /// Whether the scan screen offers Save, its menu and Export: while it collects pages, and while a document
@@ -305,8 +308,8 @@ public enum IOSShell {
         collectsPages(settings) && !savesImages(settings) && settings.format.savesPDF(collectsPages: true)
     }
 
-    /// Whether the ID card's and the receipts' reviews show Password: their Save writes a PDF, which takes the
-    /// password set in Settings (Archive & password) though these kinds have no Export of their own.
+    /// Whether the ID card's review shows Password: its Save writes a PDF, which takes the password set in
+    /// Settings (Archive & password) though the card has no Export of its own.
     public static func reviewOffersPassword(_ settings: ScanSettings) -> Bool {
         settings.format.pageFormat == .pdf
     }
@@ -421,9 +424,7 @@ public enum IOSShell {
     /// the queue, or takes the ID card's front then its back, so the camera stays open after each photo
     /// and the corner editor opens only for a page (or card) its photo's own search is unsure of.
     public static func capturesContinuously(_ settings: ScanSettings) -> Bool {
-        let flow: TaskFlowKind = TaskCatalog.flow(of: settings)
-        if flow == .idCard { return true }
-        return flow == .documentQueue && settings.documentMultiPage
+        TaskCatalog.flow(of: settings) == .idCard || collectsPages(settings)
     }
 
     /// The formats Options' Export offers for the collected pages: a PDF, a picture a page (JPEG, or the PNG
@@ -476,7 +477,7 @@ public enum IOSShell {
         return plan.saveTitle(settings.format)
     }
 
-    /// The question before something that would leave the queued pages without a Save (a kind,
+    /// The question before something that would leave the queued pages without a Save (the ID card,
     /// `AppState.pagesLeftBehind(by:)`, a preset, a document opened as new): "Keep the 3 pages?".
     public static func keepPagesTitle(_ count: Int) -> String {
         L10n.plural(count, one: "Keep the page?", other: "Keep the {0} pages?")
@@ -492,9 +493,9 @@ public enum IOSShell {
                            other: "{1} They cannot be saved now: discard them, or cancel to keep them.", reason)
     }
 
-    /// "Photos does not collect pages.", "Photo does not collect pages." in camera mode (`cameraTitle`).
-    public static func keepPagesReason(_ kind: IOSScanKind, mode: IOSScanMode = .printer) -> String {
-        String(localized: "\(mode == .camera ? kind.cameraTitle : kind.title) does not collect pages.")
+    /// "ID card does not collect pages.": the one kind that keeps no pages, with its own steps.
+    public static func keepPagesReason(_ kind: IOSScanKind) -> String {
+        String(localized: "\(kind.title) does not collect pages.")
     }
 
     /// "The preset “Receipts” does not collect pages."
@@ -1194,6 +1195,7 @@ extension AppState {
                                        printService: printService ?? IOSPrintService(), lifecycle: lifecycle,
                                        keepsQueue: !options.demoScannerOnly)
         state.platform = .ios
+        state.listsFoundObjects = true
         IOSShell.adoptOriginalFilter(state, defaults: UserDefaults.standard)
         if UserDefaults.standard.string(forKey: IOSShell.scanModeKey) != IOSScanMode.printer.rawValue {
             IOSShell.adoptCameraKind(state, defaults: UserDefaults.standard)

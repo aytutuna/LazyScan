@@ -169,9 +169,6 @@ public enum IOSImportText {
     public static var filesLabel: String { String(localized: "Files") }
     /// Ends the import after the photo or page in hand.
     public static var stopLabel: String { String(localized: "Stop") }
-    /// The photo review's Stop: the review opens once for each photo or page an import brings in.
-    public static var stopImportLabel: String { String(localized: "Stop import") }
-    public static var stopImportHint: String { String(localized: "Brings in no more photos or pages; this review stays open") }
     /// While a PDF's pages come in: "Importing page 2 of 5…".
     public static func importingPage(_ number: Int, of count: Int) -> String {
         String(localized: "Importing page \(number) of \(count)\u{2026}")
@@ -223,10 +220,10 @@ public enum IOSImportText {
 ///
 /// For the tasks that photograph objects (I13, `CaptureObjects.kind(for:)`) a photo is searched for them
 /// instead (`IOSObjectFinder`: Vision's rectangles, `MultiQuadPicker`): the receipts or photos of a shot come
-/// in together, each a page with its corners (the clean-up stage cuts each out at its real size and the
-/// photo review opens), with no corner editor; a shot in which none was found comes in whole
-/// (`CaptureObjects.fallbackPage`), for the flatbed's search of the task to look at it; the next photo, or
-/// the next page of a PDF, is read once that review is closed. An ID card found clearly in a shot that asks
+/// in together, each a page with its corners (the clean-up stage cuts each out at its real size, and each
+/// is a page of the queue), with no corner editor; a shot in which none was found comes in whole
+/// (`CaptureObjects.fallbackPage`), for the flatbed's search of the task to look at it
+/// (`AppState.listObjects`). An ID card found clearly in a shot that asks
 /// only when unsure (its shape snaps to ID-1) goes in as the step's side without the editor; one found
 /// otherwise opens the editor on its corners, one not found on the page finder's; Use whole photo takes the
 /// whole photo as the card.
@@ -451,9 +448,6 @@ public final class IOSImportSession: ObservableObject {
         } else {
             progressText = IOSImportText.importingFile(source.name)
         }
-        // The objects of the shot before are in their review: the next shot is read once it is closed.
-        await waitForReview()
-        if stopRequested && state.showPhotoReview { return outcome }
         if await isFull(leaving: 1) { return outcome }
         // Nothing is read while the state cannot take pages (a review open, say).
         guard await canTakePages() else {
@@ -523,11 +517,6 @@ public final class IOSImportSession: ObservableObject {
         while page <= pageCount {
             if page > 1 && stopRequested { break }
             if page > 1, await isFull(leaving: pageCount - page + 1) { break }
-            if page > 1 && CaptureObjects.findsSeveral(kind) {
-                // The objects of the page before are in their review: the next page is read once it is closed.
-                await waitForReview()
-                if stopRequested { break }
-            }
             let count: Int = max(number, photoNumber + waitingPhotos)
             canStop = !pending.isEmpty || page < pageCount
             if !importsShot {
@@ -665,17 +654,10 @@ public final class IOSImportSession: ObservableObject {
             outcome.add(error.message)
             return outcome
         }
-        let kind: CaptureKind = CaptureObjects.kind(for: state.settings)
         var index: Int = 0
         while index < pageCount {
             if stopRequested { break }
             if index > 0, await isFull(leaving: pageCount - index) { break }
-            if index > 0 && CaptureObjects.findsSeveral(kind) {
-                // The photos or receipts found on the page before are in their review: the next page is
-                // read once it is closed.
-                await waitForReview()
-                if stopRequested { break }
-            }
             canStop = !pending.isEmpty || index + 1 < pageCount
             progressText = IOSImportText.importingPage(index + 1, of: pageCount)
             let pageIndex: Int = index
@@ -698,8 +680,8 @@ public final class IOSImportSession: ObservableObject {
     }
 
     /// The objects of one shot (receipts, photos, a Document shot's pages) into the state together, each a page
-    /// with its corners; the whole shot when none was found. No corner editor: the photo review that opens has
-    /// Fix crop, and a Document's pages have Crop in the page viewer.
+    /// with its corners; the whole shot when none was found. No corner editor: the pages have Crop in the
+    /// page viewer.
     private func importObjects(_ prepared: IOSPreparedPhoto, shownName: String, kind: CaptureKind,
                                byShape: Bool) async -> IOSImportOutcome {
         var outcome = IOSImportOutcome()
@@ -727,14 +709,6 @@ public final class IOSImportSession: ObservableObject {
             outcome.add(notAddedMessage(shownName))
         }
         return outcome
-    }
-
-    /// Waits while the photo review of the objects brought in before is open (receipts and photos), so the
-    /// next shot is read once it is closed; Stop ends the wait.
-    private func waitForReview() async {
-        while state.showPhotoReview && !stopRequested && CaptureObjects.findsSeveral(CaptureObjects.kind(for: state.settings)) {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
     }
 
     /// Shows the corner editor for `request` and waits for the answer (`answer`).

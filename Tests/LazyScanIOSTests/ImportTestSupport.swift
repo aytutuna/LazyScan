@@ -38,14 +38,15 @@ enum ImportTestSupport {
         return folder
     }
 
-    /// An AppState with no scanner, its files in `folder`, collecting document pages and saving
-    /// PDFs without text recognition into `folder`/Saved.
+    /// An AppState with no scanner, its files in `folder`, collecting document pages (and the objects found
+    /// in a shot, as the iPhone's does) and saving PDFs without text recognition into `folder`/Saved.
     @MainActor
     static func makeState(in folder: URL) -> AppState {
         let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
                              fileActions: IOSFileActions(pasteboard: nil, openSystemURL: { (_: URL) -> Void in }),
                              orientationScorer: ImportTestScorer(), barcodeReader: ImportTestBarcodes(),
                              files: AppStateFiles.all(in: folder))
+        state.listsFoundObjects = true
         var settings = ScanSettings()
         settings.intent = .document
         settings.documentMultiPage = true

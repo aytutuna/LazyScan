@@ -112,19 +112,22 @@ final class IOSCameraTasksTests: XCTestCase {
 
     // MARK: Archive and Password
 
-    func test_reviews_showThePassword_whenTheirSaveWritesAPDF() {
-        for task in [ScanTask.idCard, .receipt] {
-            var s: ScanSettings = TaskCatalog.apply(task, to: ScanSettings())
-            s.output.protect = true
-            // No Export on these kinds: the review is where the password shows.
-            XCTAssertFalse(IOSShell.offersPDFOptions(s), task.rawValue)
-            s.format = .pdf
-            XCTAssertTrue(IOSShell.reviewOffersPassword(s), task.rawValue)
-            s.format = .text
-            XCTAssertTrue(IOSShell.reviewOffersPassword(s), task.rawValue)
-            s.format = .jpeg
-            XCTAssertFalse(IOSShell.reviewOffersPassword(s), task.rawValue)
-        }
+    func test_theIdCardReview_showsThePassword_andReceiptsOfferItInExport_whenTheirSaveWritesAPDF() {
+        var card: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
+        card.output.protect = true
+        // No Export on the ID card: the review is where the password shows.
+        XCTAssertFalse(IOSShell.offersPDFOptions(card))
+        card.format = .pdf
+        XCTAssertTrue(IOSShell.reviewOffersPassword(card))
+        card.format = .text
+        XCTAssertTrue(IOSShell.reviewOffersPassword(card))
+        card.format = .jpeg
+        XCTAssertFalse(IOSShell.reviewOffersPassword(card))
+        // Receipts are pages of the queue: the PDF's choices, the password among them, are in Export.
+        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        XCTAssertTrue(IOSShell.offersPDFOptions(receipts))
+        receipts.format = .jpeg
+        XCTAssertFalse(IOSShell.offersPDFOptions(receipts))
     }
 
     func test_archiveAndPassword_excludeEachOther() {

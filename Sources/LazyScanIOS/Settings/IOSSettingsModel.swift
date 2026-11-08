@@ -29,8 +29,6 @@ public enum IOSSettingsText {
     /// Why Collect pages is locked while the camera's Both sides is on: its fronts and backs are paired in
     /// the queue.
     public static var bothSidesCollectsReason: String { String(localized: "Both sides pairs the pages in the stack") }
-    public static var docdateReason: String { String(localized: "Needs {docdate} in File name") }
-    public static var onlyPDFReason: String { String(localized: "Only for PDFs") }
     public static var importingReason: String { String(localized: "Can be changed once the import has finished") }
     public static var busyReason: String { String(localized: "Can be changed once the scan or save has finished") }
     /// Why Source is locked while a side of an ID card is held (from the camera or the scanner alike).
@@ -167,6 +165,7 @@ public enum IOSSettingsSections {
         for id in InspectorSections.shown(s) {
             if id == InspectorSections.archive && !writesPDF(s) { continue }
             if id == InspectorSections.scanner && camera { continue }
+            if id == InspectorSections.task && TaskCatalog.flow(of: s) == .receiptSplit { continue }
             let title: String = InspectorSections.title(id, for: s)
             var summary: String = InspectorSections.summary(id, for: s)
             var changed: Bool = InspectorSections.changed(id, for: s)

@@ -209,8 +209,8 @@ final class IOSLibraryTests: XCTestCase {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let model: IOSPresetsModel = IOSPresetsModel(state: state, importer: IOSImportSession(state: state))
         let document: ScanSettings = state.settings
-        state.settings = TaskCatalog.apply(.photos, to: document)
-        XCTAssertTrue(model.save(named: "Holiday"))
+        state.settings = TaskCatalog.apply(.idCard, to: document)
+        XCTAssertTrue(model.save(named: "Card"))
         var single: ScanSettings = TaskCatalog.apply(.document, to: document)
         single.documentMultiPage = false
         state.settings = single
@@ -218,8 +218,8 @@ final class IOSLibraryTests: XCTestCase {
         state.settings = TaskCatalog.apply(.book, to: document)
         XCTAssertTrue(model.save(named: "Book"))
         let rows: [IOSPresetRow] = model.rows
-        XCTAssertEqual(rows.map(\.name), ["Holiday", "One by one", "Book"])
-        let holiday: UUID = rows[0].id
+        XCTAssertEqual(rows.map(\.name), ["Card", "One by one", "Book"])
+        let card: UUID = rows[0].id
         state.settings = document
 
         let pages: [ScannedPage] = [0, 1].map { (_: Int) -> ScannedPage in
@@ -231,10 +231,10 @@ final class IOSLibraryTests: XCTestCase {
         XCTAssertEqual(files.count, 2)
 
         let applied: LibraryFlag = LibraryFlag()
-        let photos: IOSPresetApply = model.apply(holiday) {
+        let idCard: IOSPresetApply = model.apply(card) {
             applied.value = true
         }
-        XCTAssertEqual(photos, IOSPresetApply.waitsForPages("Holiday"))
+        XCTAssertEqual(idCard, IOSPresetApply.waitsForPages("Card"))
         // Document with Collect pages before saving off has no Save for a queue either.
         let oneByOne: IOSPresetApply = model.apply(rows[1].id) {
             applied.value = true
@@ -252,19 +252,19 @@ final class IOSLibraryTests: XCTestCase {
 
         // No preset while a share or a send reads the pages.
         state.queueReaders = 1
-        let reading: IOSPresetApply = model.apply(holiday, discardingPages: true) {
+        let reading: IOSPresetApply = model.apply(card, discardingPages: true) {
             applied.value = true
         }
         XCTAssertEqual(reading, IOSPresetApply.refused)
         XCTAssertEqual(state.scannedPages.count, 2)
         state.queueReaders = 0
 
-        let discarded: IOSPresetApply = model.apply(holiday, discardingPages: true) {
+        let discarded: IOSPresetApply = model.apply(card, discardingPages: true) {
             applied.value = true
         }
         XCTAssertEqual(discarded, IOSPresetApply.applied)
         XCTAssertTrue(applied.value)
-        XCTAssertEqual(state.activeTask, ScanTask.photos)
+        XCTAssertEqual(state.activeTask, ScanTask.idCard)
         XCTAssertTrue(state.scannedPages.isEmpty)
         for file in files {
             XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), file.lastPathComponent)

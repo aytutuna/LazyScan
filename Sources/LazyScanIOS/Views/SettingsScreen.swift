@@ -230,52 +230,10 @@ private struct ReasonLine: View {
     }
 }
 
-/// Receipts: named by the date printed on them, one PDF for all. The photocopy's choices are on its own
-/// screen, once the page is in (`CopyScreen`).
+/// The photocopy's choices are on its own screen, once the page is in (`CopyScreen`); the section tells so.
 private struct TaskSettingsRows: View {
-    @EnvironmentObject private var state: AppState
-
     var body: some View {
-        if state.isReceiptFlow {
-            let options: TaskOptions = state.settings.taskOptions
-            let pdf: Bool = state.settings.format.pageFormat == OutputFormat.pdf
-            Toggle("Name by receipt date", isOn: nameByDate)
-                .accessibilityHint(Text("Uses the date printed on the receipt, or today"))
-            if options.receiptNameByDate && !Receipts.namesByDate(state.settings) {
-                ReasonLine(text: IOSSettingsText.docdateReason)
-            }
-            Toggle("One PDF for all", isOn: combine)
-                .disabled(!pdf)
-                .accessibilityHint(Text(combineHint(pdf)))
-            if !pdf {
-                ReasonLine(text: IOSSettingsText.onlyPDFReason)
-            }
-        } else {
-            ReasonLine(text: IOSCopyText.settingsNote)
-        }
-    }
-
-    private func combineHint(_ pdf: Bool) -> String {
-        pdf ? String(localized: "Off: a PDF for each receipt")
-            : String(localized: "Only for PDFs: each receipt is saved as an image of its own.")
-    }
-
-    private var nameByDate: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { appState.settings.taskOptions.receiptNameByDate },
-            set: { (on: Bool) in
-                appState.setReceiptNameByDate(on)
-            })
-    }
-
-    private var combine: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { appState.settings.taskOptions.receiptCombine },
-            set: { (on: Bool) in
-                appState.setReceiptCombine(on)
-            })
+        ReasonLine(text: IOSCopyText.settingsNote)
     }
 }
 

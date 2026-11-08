@@ -58,7 +58,7 @@ final class IOSFlowTests: XCTestCase {
     }
 
     @MainActor
-    func test_aReceiptsOrTextPreset_isAppliedAsDocument_inCameraMode() throws {
+    func test_aTextPreset_isAppliedAsDocument_inCameraMode_aReceiptsOneStaysReceipts() throws {
         let folder: URL = try ImportTestSupport.makeFolder("cameraPreset")
         defer { try? FileManager.default.removeItem(at: folder) }
         let suite: String = "cameraPreset.\(UUID().uuidString)"
@@ -76,30 +76,25 @@ final class IOSFlowTests: XCTestCase {
         state.settings = TaskCatalog.apply(.document, to: state.settings)
         state.scannedPages = [flowPage()]
 
-        // The Document collects the page queued, so nothing is asked first.
+        // Receipts collect pages, so the page queued stays and nothing is asked first, in either mode.
         XCTAssertEqual(model.apply(rows[0].id) {}, IOSPresetApply.applied)
-        XCTAssertEqual(state.activeTask, ScanTask.document)
-        XCTAssertEqual(IOSShell.shownKind(state.settings), .document)
+        XCTAssertEqual(state.activeTask, ScanTask.receipt)
         XCTAssertEqual(state.scannedPages.count, 1)
-        // The receipts' grey Compact PDF stays, and a shot holds several of them.
         XCTAssertEqual(state.settings.colorMode, .grayscale)
         XCTAssertEqual(state.settings.output.pdfSize, .compact)
-        XCTAssertEqual(defaults.string(forKey: IOSShell.itemsInFrameKey), "several")
+        XCTAssertNil(defaults.string(forKey: IOSShell.itemsInFrameKey))
 
         XCTAssertEqual(model.apply(rows[1].id) {}, IOSPresetApply.applied)
         XCTAssertEqual(state.activeTask, ScanTask.document)
         XCTAssertTrue(state.settings.documentMultiPage)
         XCTAssertEqual(state.settings.format, .pdf)
 
-        // Printer mode has Receipts: the preset stays one, which saves from its review, not the queue.
+        // Printer mode has Text: the preset stays one, which keeps no pages.
         defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.scanModeKey)
-        defaults.removeObject(forKey: IOSShell.itemsInFrameKey)
-        XCTAssertEqual(model.apply(rows[0].id) {}, IOSPresetApply.waitsForPages("Receipts"))
-        XCTAssertEqual(model.apply(rows[0].id, discardingPages: true) {}, IOSPresetApply.applied)
-        XCTAssertEqual(state.activeTask, ScanTask.receipt)
-        XCTAssertNil(defaults.string(forKey: IOSShell.itemsInFrameKey))
-
-        for task in [ScanTask.document, .photos, .idCard, .book] {
+        XCTAssertEqual(model.apply(rows[1].id) {}, IOSPresetApply.waitsForPages("Text"))
+        XCTAssertEqual(model.apply(rows[1].id, discardingPages: true) {}, IOSPresetApply.applied)
+        XCTAssertEqual(state.activeTask, ScanTask.quickScan)
+        for task in [ScanTask.document, .photos, .receipt, .idCard, .book] {
             let settings: ScanSettings = TaskCatalog.apply(task, to: ScanSettings())
             XCTAssertEqual(IOSShell.cameraPreset(settings), settings, task.rawValue)
         }
@@ -495,18 +490,26 @@ final class IOSFlowTests: XCTestCase {
         var word: ScanSettings = single
         word.format = .word
         XCTAssertTrue(IOSShell.offersSave(word, pageCount: 2), "Pages a failed Word save put back")
-        for task in [ScanTask.photos, .receipt, .idCard] {
+        // Photos and Receipts collect the objects found in a shot as pages; the ID card is saved from its review.
+        for task in [ScanTask.photos, .photoRestore, .receipt] {
             let settings: ScanSettings = TaskCatalog.apply(task, to: ScanSettings())
-            XCTAssertFalse(IOSShell.offersSave(settings, pageCount: 0), task.rawValue)
-            XCTAssertFalse(IOSShell.offersSave(settings, pageCount: 2), task.rawValue)
+            XCTAssertTrue(IOSShell.collectsPages(settings), task.rawValue)
+            XCTAssertTrue(IOSShell.offersSave(settings, pageCount: 0), task.rawValue)
         }
+        let card: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
+        XCTAssertFalse(IOSShell.offersSave(card, pageCount: 0))
+        XCTAssertFalse(IOSShell.offersSave(card, pageCount: 2))
     }
 
-    func test_onlyDocumentAndBook_takeThePagesAlong() {
-        let carried: [IOSScanKind] = IOSScanKind.allCases.filter { (kind: IOSScanKind) -> Bool in
-            TaskCatalog.carriesPages(kind.task)
+    @MainActor
+    func test_everyKindButTheIdCard_takesThePagesAlong() throws {
+        let folder: URL = try ImportTestSupport.makeFolder("takesPagesAlong")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        state.scannedPages = [flowPage(), flowPage()]
+        for kind in IOSScanKind.allCases {
+            XCTAssertEqual(state.pagesLeftBehind(by: kind.task), kind == .idCard ? 2 : 0, kind.rawValue)
         }
-        XCTAssertEqual(carried, [.document, .book])
     }
 
     func test_keepPagesQuestion_countsThePages_andSavesAsSaveWould() {
@@ -514,19 +517,16 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(IOSShell.keepPagesTitle(1), "Keep the page?")
         XCTAssertEqual(IOSShell.discardPagesLabel(3), "Discard 3 pages")
         XCTAssertEqual(IOSShell.discardPagesLabel(1), "Discard 1 page")
-        XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(.photos), count: 3, canSave: true),
-                       "Photos does not collect pages. Save them first, or discard them.")
+        XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(.idCard), count: 3, canSave: true),
+                       "ID card does not collect pages. Save them first, or discard them.")
         XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(.idCard), count: 1, canSave: true),
                        "ID card does not collect pages. Save it first, or discard it.")
         XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(preset: "Till slips"), count: 2, canSave: true),
                        "The preset \u{201C}Till slips\u{201D} does not collect pages. Save them first, or discard them.")
         XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(package: "Trip.lsdoc"), count: 2, canSave: false),
                        "\u{201C}Trip.lsdoc\u{201D} opens in their place. They cannot be saved now: discard them, or cancel to keep them.")
-        XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(.photos), count: 1, canSave: false),
-                       "Photos does not collect pages. It cannot be saved now: discard it, or cancel to keep it.")
-        // Camera mode's row names it Photo.
-        XCTAssertEqual(IOSShell.keepPagesReason(.photos, mode: .camera), "Photo does not collect pages.")
-        XCTAssertEqual(IOSShell.keepPagesReason(.idCard, mode: .camera), "ID card does not collect pages.")
+        XCTAssertEqual(IOSShell.keepPagesLine(IOSShell.keepPagesReason(.idCard), count: 1, canSave: false),
+                       "ID card does not collect pages. It cannot be saved now: discard it, or cancel to keep it.")
         let document: ScanSettings = TaskCatalog.apply(.document, to: ScanSettings())
         XCTAssertEqual(IOSShell.saveFirstLabel(document, pageCount: 3, target: nil), "Save PDF first")
         var jpeg: ScanSettings = document

@@ -5,11 +5,10 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The full-screen covers the scan screen opens: the flatbed preview to choose the scan area on, (I13) the photo or receipt review and the ID card's review, (I14) Quick scan's page
+/// The full-screen covers the scan screen opens: the flatbed preview to choose the scan area on, (I13) the ID card's review, (I14) Quick scan's page
 /// and (I16) the photocopy's screen. Camera mode's camera rests while one is up.
 enum ScanCover: String, Identifiable {
     case crop
-    case photoReview
     case idCardReview
     case quickScan
     case copy
@@ -193,18 +192,13 @@ struct ScanScreen: View {
     private var following: some View {
         screen
             .onAppear {
-                if state.showPhotoReview {
-                    cover = .photoReview
-                } else if state.showIdCardReview {
+                if state.showIdCardReview {
                     cover = .idCardReview
                 } else if state.quickScanPage != nil {
                     cover = .quickScan
                 } else if !state.copyPages.isEmpty {
                     cover = .copy
                 }
-            }
-            .onChange(of: state.showPhotoReview) { (_: Bool, shown: Bool) in
-                showReview(shown, as: .photoReview)
             }
             .onChange(of: state.showIdCardReview) { (_: Bool, shown: Bool) in
                 showReview(shown, as: .idCardReview)
@@ -534,18 +528,17 @@ struct ScanScreen: View {
 
     /// Picking a type in the Options sheet starts its task as the task list's tile does (fresh steps, and no PDF
     /// picked to add to), the Options' choices the kind was left with laid back over its defaults
-    /// (`IOSShell.startKind`). The sheet stays open, unless the pages taken are to be asked about: the pages
-    /// stay when the kind collects pages too (Document, Book); any other kind would leave them without a
-    /// Save, so it asks first (`KeepPagesQuestion`), which cannot show over the sheet. With a side of an ID
-    /// card held it asks about the card too. The type already picked changes nothing, so a stray tap keeps
-    /// Both sides, the steps and the PDF picked. Nothing changes while a share or a send reads the spooled
-    /// pages, which Discard would delete.
+    /// (`IOSShell.startKind`). A type only sets choices, so the pages taken stay and the sheet stays open;
+    /// the ID card, which starts its own steps, asks first (`KeepPagesQuestion`), which cannot show over the
+    /// sheet. With a side of an ID card held it asks about the card too. The type already picked changes
+    /// nothing, so a stray tap keeps Both sides, the steps and the PDF picked. Nothing changes while a share
+    /// or a send reads the spooled pages, which Discard would delete.
     private func pickKind(_ kind: IOSScanKind) {
         guard !saveBlocked else { return }
         guard kind != IOSShell.shownKind(state.settings) || state.activeTask == nil else { return }
         if state.pagesLeftBehind(by: kind.task) > 0 {
             afterOptions {
-                leavingPages = PagesLeave(reason: IOSShell.keepPagesReason(kind, mode: mode)) { (discarding: Bool) in
+                leavingPages = PagesLeave(reason: IOSShell.keepPagesReason(kind)) { (discarding: Bool) in
                     switchKind(kind, discardingPages: discarding)
                 }
             }
@@ -862,7 +855,6 @@ struct ScanScreen: View {
     /// Whether the review is still due once the sheet it waited for has closed.
     private func wantsReview(_ review: ScanCover) -> Bool {
         switch review {
-        case .photoReview: return state.showPhotoReview
         case .idCardReview: return state.showIdCardReview
         case .quickScan: return state.quickScanPage != nil
         case .copy: return !state.copyPages.isEmpty
@@ -1401,8 +1393,8 @@ struct PagesLeave {
     let action: @MainActor (_ discarding: Bool) -> Void
 }
 
-/// Keep the 3 pages? Asked before something that would leave the queued pages without a Save: a kind or a
-/// task that does not collect pages (`AppState.pagesLeftBehind(by:)`), a preset that does not, a document
+/// Keep the 3 pages? Asked before something that would leave the queued pages without a Save: the ID card
+/// (`AppState.pagesLeftBehind(by:)`), a preset that does not collect pages, a document
 /// opened as new. Save first (`IOSShell.saveFirstLabel`) saves them as Save would, without After saving's
 /// steps, and goes on once the save has emptied the queue; a save that fails or is cancelled keeps the pages
 /// and changes nothing. It is left out when the save could write nothing (every page skipped) or cannot run
@@ -1722,13 +1714,12 @@ private struct PackageBanner: View {
     }
 }
 
-/// The scan screen's full-screen covers (the scan area, the reviews, Quick scan's page,
+/// The scan screen's full-screen covers (the scan area, the ID card's review, Quick scan's page,
 /// the copy screen) and a book spread's split sheet. The root view presents them, not the scan screen: the
 /// window's two layouts each build their own scan screen, and one going away would close them mid-task.
 @MainActor
 struct ScanCovers: ViewModifier {
     @ObservedObject var state: AppState
-    @ObservedObject var importer: IOSImportSession
     @Binding var cover: ScanCover?
     @Binding var spreadEditor: SpreadEditorSource?
 
@@ -1743,12 +1734,8 @@ struct ScanCovers: ViewModifier {
                 case .crop:
                     CropScreen(onClose: closeCover)
                         .environmentObject(state)
-                case .photoReview:
-                    PhotoReviewScreen(model: IOSPhotoReviewModel(state: state))
-                        .environmentObject(state)
-                        .environmentObject(importer)
                 case .idCardReview:
-                    IdCardReviewScreen(model: IOSPhotoReviewModel(state: state))
+                    IdCardReviewScreen(model: IOSIdCardReviewModel(state: state))
                         .environmentObject(state)
                 case .quickScan:
                     QuickScanScreen(model: IOSQuickScanModel(state: state))
