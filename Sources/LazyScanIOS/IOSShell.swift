@@ -159,7 +159,7 @@ public enum IOSShell {
     /// the kind; with Collect pages before saving off it says each scan is saved right away. Photos, Restore
     /// old photos and Receipts with the feeder as the source are fed, not laid on the glass. Separate
     /// documents' help on the Mac sends you to "Split into documents, on the right" and the page strip, but
-    /// here the separator sheet is saved under Export and the splits are checked in the pages. Text's words on
+    /// here the separator sheet is saved under Options and the splits are checked in the pages. Text's words on
     /// the Mac speak of dragging over its preview and of a scan saved at once, but here the preview is in the
     /// Scanner options, the area is chosen by tapping the preview, and the page waits on the Quick scan
     /// screen. Other steps are as `TaskCatalog.shownStep` words them.
@@ -191,7 +191,7 @@ public enum IOSShell {
 
     static var printerTextPrompt: String { String(localized: "Preview under Scanner, tap it to choose the area, then scan.") }
     static var printerTextHelp: String { String(localized: "Then copy the text, or save the page as a picture.") }
-    static var printerBatchHelp: String { String(localized: "1. Save a separator sheet under Export › Separate documents and print it. 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the pages, then save.") }
+    static var printerBatchHelp: String { String(localized: "1. Save a separator sheet under Options › Separate documents and print it. 2. Put one in front of each document after the first. 3. Load the stack and scan. 4. Check the splits in the pages, then save.") }
     static var printerFeederPhotosPrompt: String { String(localized: "Feed the photos one by one and scan.") }
     static var printerFeederReceiptPrompt: String { String(localized: "Feed each receipt and scan.") }
 
@@ -212,7 +212,7 @@ public enum IOSShell {
     }
 
     /// The settings with a photocopy or Email task (a preset's, or one kept from before) as Document, the
-    /// rest kept: on the iPhone they are Save's Print… and Email…, and the chip could not show them. Nothing
+    /// rest kept: on the iPhone they are Save's Print… and Email…, and the Type list does not offer them. Nothing
     /// runs after saving, as Document starts: Email's share sheet would open on every Save with nothing on
     /// the scan screen saying why. Its Compact size stays, which Options shows.
     public static func savingActionsAsDocument(_ settings: ScanSettings) -> ScanSettings {
@@ -295,7 +295,13 @@ public enum IOSShell {
         }
     }
 
-    /// Whether the scan screen offers Save, its menu and Export: while it collects pages, and while a document
+    /// Whether a Lazy Scan document or a PDF can be added to the queue: only Document with Collect pages before
+    /// saving on. Photos and Receipts collect pages too, but cut the pages they are given into objects.
+    public static func takesWholePages(_ settings: ScanSettings) -> Bool {
+        PhotoImport.isOffered(settings) && settings.documentMultiPage
+    }
+
+    /// Whether the scan screen offers Save and the save options in Options: while it collects pages, and while a document
     /// task holds pages it no longer collects (Collect pages before saving turned off over them, or the pages
     /// a failed save at once put back), so that queued pages always have a Save.
     public static func offersSave(_ settings: ScanSettings, pageCount: Int) -> Bool {
@@ -954,12 +960,14 @@ public enum IOSShell {
     }
 
     /// Restore faded colours for Photos: the Restore old photos task's adjustments and PNG files; off,
-    /// Photos as JPEGs again.
+    /// Photos as JPEGs again. A format that is not a picture's (a PDF, Word) chosen in Options stays.
     public static func settingRestore(_ on: Bool, in settings: ScanSettings) -> ScanSettings {
         var s: ScanSettings = settings
         s.adjustments.restoreFadedColors = on
         s.adjustments.autoEnhance = on
-        s.format = on ? .png : .jpeg
+        if s.format.isImageFormat {
+            s.format = on ? .png : .jpeg
+        }
         s.taskId = (on ? ScanTask.photoRestore : ScanTask.photos).rawValue
         return s
     }
@@ -1075,9 +1083,9 @@ private struct IOSKindChoices: Codable {
     let namingTemplate: String
 }
 
-/// What the iPhone's scan screen asks first, as chips in its top row: what is being scanned. The rest (the
-/// feeder, both sides, separate documents, the format, PDF/A, email and printing) is an option of the scan
-/// screen or an action of Save.
+/// What the iPhone's scan screen asks first, as the Type in Options: what is being scanned. The rest (the
+/// feeder, both sides, separate documents, the format, PDF/A, email and printing) is an option or an action
+/// in Options.
 public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
     case document
     case photos
@@ -1103,7 +1111,7 @@ public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .document: return String(localized: "Pages into a PDF")
         case .photos: return String(localized: "Prints and pictures")
-        case .receipts: return String(localized: "Named by their date")
+        case .receipts: return String(localized: "Named by the day saved")
         case .idCard: return String(localized: "Front and back on one page")
         case .book: return String(localized: "Pages or whole spreads")
         case .text: return String(localized: "One scan, copy its text")
@@ -1139,7 +1147,7 @@ public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// A kind as the scan screen's chips and kinds row, the iPad's task list and its sidebar offer it: the kind,
+/// A kind as the Options sheet's Type menu, the iPad's task list and its sidebar offer it: the kind,
 /// what its task sets, whether it can be picked, and whether it is the kind set up now.
 public struct IOSKindTile: Identifiable, Equatable {
     public let kind: IOSScanKind

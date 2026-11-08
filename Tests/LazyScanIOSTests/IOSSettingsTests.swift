@@ -117,11 +117,35 @@ final class IOSSettingsTests: XCTestCase {
 
         var photos: ScanSettings = ScanSettings()
         photos.intent = .photo
+        photos.format = .jpeg
         var titles: [String] = []
         for section in IOSSettingsSections.sections(photos) {
             titles.append(section.title)
         }
         XCTAssertEqual(titles, ["Scanner", "Photos", "Adjustments", "More options"])
+    }
+
+    func test_photosAndReceipts_showTheFormatOptionsSaves_whateverItIs() {
+        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        receipts.format = .word
+        XCTAssertEqual(IOSSettingsSections.shownFormat(receipts), .word)
+        XCTAssertFalse(IOSSettingsSections.writesPDF(receipts))
+        XCTAssertFalse(IOSSettingsSections.textApplies(receipts))
+        // The desktop saves receipts as a PDF or a picture.
+        XCTAssertEqual(InspectorSections.shownFormat(receipts), .pdf)
+
+        var photos: ScanSettings = TaskCatalog.apply(.photos, to: ScanSettings())
+        XCTAssertEqual(IOSSettingsSections.shownFormat(photos), .jpeg)
+        photos.format = .pdf
+        XCTAssertEqual(IOSSettingsSections.shownFormat(photos), .pdf)
+        XCTAssertTrue(IOSSettingsSections.writesPDF(photos))
+        var ids: [String] = []
+        for section in IOSSettingsSections.sections(photos) {
+            ids.append(section.id)
+        }
+        XCTAssertTrue(ids.contains(InspectorSections.archive))
+        XCTAssertEqual(IOSShell.settingRestore(true, in: photos).format, .pdf)
+        XCTAssertEqual(IOSShell.settingRestore(false, in: photos).format, .pdf)
     }
 
     func test_sections_moreOptions_leavesOutTheActionAfterSaving_whichExportSets() {

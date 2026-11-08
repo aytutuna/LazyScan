@@ -410,10 +410,11 @@ public struct IOSRootView: View {
     }
 
     /// Files opened in this app: a Lazy Scan document to the scan screen's banner, the others imported;
-    /// the scan screen shown, Settings and the share sheets closed. A PDF goes into Document to PDF unless
-    /// the task set up collects pages or holds what it took (a side of the ID card, a Text page, a copy, the
-    /// photo review, an import under way), which starting Document would drop or change; photos stay in the
-    /// task set up (`prepareForImport`).
+    /// the scan screen shown, Settings and the share sheets closed. A PDF goes into Document to PDF, from Photos
+    /// and Receipts too, which would cut its pages into objects, unless the task set up is Document collecting
+    /// pages (`IOSShell.takesWholePages`) or holds what it took (a side of the ID card, a Text page, a copy, an
+    /// import under way), which starting Document would drop or change; photos stay in the task set up
+    /// (`prepareForImport`).
     private func openFiles(_ urls: [URL]) {
         var imports: [URL] = []
         for url in urls {
@@ -430,7 +431,7 @@ public struct IOSRootView: View {
         }
         let free: Bool = !state.hasIdCardCaptures && state.quickScanPage == nil && state.copyPages.isEmpty
             && !importer.isImporting
-        let task: ScanTask? = pdf && free && !IOSShell.collectsPages(state.settings) ? ScanTask.document : nil
+        let task: ScanTask? = pdf && free && !IOSShell.takesWholePages(state.settings) ? ScanTask.document : nil
         let pushed: Bool = prepareForImport(task)
         let session: IOSImportSession = importer
         Task { @MainActor in

@@ -27,8 +27,8 @@ enum ScanCover: String, Identifiable {
 /// Photos and Files. Save runs what After saving has checked (`IOSAfterSave`), as a PDF, a JPEG a page, Word
 /// or text (`IOSShell.exportFormats`), or adds the pages to the end of a PDF picked in Files
 /// (`AppState.appendToPDF(at:)`; with a PDF picked, `AppState.appendTarget`, Save adds them to that one);
-/// it stays dimmed for Photos, receipts and the ID card, which are saved from their reviews. Camera mode is
-/// the viewfinder as the screen (`CameraScreen`): this screen hands it the notices (the package banner, an
+/// it stays dimmed for the ID card, which is saved from its review. Camera mode is the
+/// viewfinder as the screen (`CameraScreen`): this screen hands it the notices (the package banner, an
 /// import's progress, the files saved last) and the Options and Save row. The scanner tab is a list: the
 /// step card only while a step needs it (`IOSShell.showsStepCard`, in the step's own words, which speak of the
 /// scanner; while no scanner is in use, a card in its place saying what is missing, `noScannerCard`), the
@@ -38,9 +38,10 @@ enum ScanCover: String, Identifiable {
 /// up, anything else the screen presents (a review, the library, the ID card's question) waits for it to
 /// close. Above the bars the status line with a scan's progress, which is hidden while the status is only
 /// "Ready"; once saved, the saved file with Share and Show in Files. Picking a type starts its task as the
-/// task list's tile does (`pickKind`). Photos and receipts open the photo review once found, the ID card its
-/// review once its sides are in, Quick scan its page and the photocopy its copy screen, each full screen; a
-/// book page's spread can be split again (`SpreadSplitSheet`). PDFs and pictures dropped on the screen are
+/// task list's tile does (`pickKind`). Photos and receipts add the objects found in a shot to the pages, the
+/// ID card opens its review once its sides are in, Quick scan its page and the photocopy its copy screen, each
+/// full screen; a book page's spread can be split again (`SpreadSplitSheet`). PDFs and pictures dropped on the
+/// screen are
 /// imported as Files' are, and Command-S saves. Its covers and the spread's sheet are the root view's
 /// (`ScanCovers`), so resizing the window across the width classes, which builds this screen anew, leaves
 /// them open. On the iPad's sidebar layout (`pickerInSidebar`) the sidebar has the kinds and the scanners, the
@@ -574,7 +575,7 @@ struct ScanScreen: View {
     /// share or a send reads them.
     private func openPackageAsNew() {
         guard !saveBlocked else { return }
-        guard IOSShell.collectsPages(state.settings) else {
+        guard IOSShell.takesWholePages(state.settings) else {
             if IOSShell.shownKind(state.settings) == .document {
                 state.settings.documentMultiPage = true
                 openPackageReplacingPages()
@@ -1688,7 +1689,7 @@ private struct PackageBanner: View {
                 .accessibilityIdentifier("package.close")
             }
             HStack(spacing: 12) {
-                if IOSShell.collectsPages(state.settings) {
+                if IOSShell.takesWholePages(state.settings) {
                     Button(PackageText.addToPages) {
                         _ = state.addPendingPackageToPages()
                     }

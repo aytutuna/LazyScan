@@ -2316,7 +2316,7 @@ public final class AppState: ObservableObject {
     /// Saves the collected pages as Save does (`saveImages` for pictures, else `savePDF`), then sends the
     /// saved files by email as the Email task does after its saves (`.email`: Mail's composer, else the
     /// share sheet), whatever these settings do after a save. For this save only: the iPhone's Email… in
-    /// the Save menu.
+    /// Options.
     public func saveAndEmail(images: Bool) {
         guard !isBusy, !scannedPages.isEmpty else { return }
         emailsAfterSave = true
