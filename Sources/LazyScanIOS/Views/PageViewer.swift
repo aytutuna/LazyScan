@@ -74,7 +74,8 @@ enum PageViewerText {
 /// may) on a badge in its corner. Its toolbar shows the filters of a camera's page (a row of small pictures
 /// of this page with each, `AppState.filterPreviews`), turns it a quarter, opens the corner editor on its
 /// photo for Crop (`AppState.pageCropStart`, `recropPage`), shows the text on it (`PageTextSheet`), keeps or
-/// skips it as the grid's menu does (`PageStripCell.toggle`), and deletes it once asked; the edits are off
+/// skips it (`PageStripCell.toggle`), for a book's page splits its spread again (`onEditSpread`) or joins its
+/// two pages, and deletes it once asked; the edits are off
 /// while the app is busy, and the filters, Crop and Delete also while a share or a send reads the pages
 /// (`AppState.readsQueue`).
 /// Filters and Crop are left out for pages that cannot be cut again (`PageRecut.canRecut`): scans, imported
@@ -83,6 +84,8 @@ struct PageViewer: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.displayScale) private var displayScale
+    /// Opens the split sheet for the spread the page shown was cut from; nil where the viewer cannot.
+    let onEditSpread: (@MainActor (UUID) -> Void)?
     let onClose: () -> Void
     @State private var selection: UUID?
     @State private var showsFilters: Bool = false
@@ -167,7 +170,8 @@ struct PageViewer: View {
         }
     }
 
-    init(startID: UUID, onClose: @escaping () -> Void) {
+    init(startID: UUID, onEditSpread: (@MainActor (UUID) -> Void)? = nil, onClose: @escaping () -> Void) {
+        self.onEditSpread = onEditSpread
         self.onClose = onClose
         _selection = State(initialValue: startID)
     }
@@ -480,11 +484,39 @@ struct PageViewer: View {
             .accessibilityIdentifier("viewer.keep")
             Spacer()
         }
+        if let page = current, state.canEditSpread(of: page) {
+            if let split = BookPages.splitActionLabel(page), onEditSpread != nil {
+                Button(action: splitCurrent) {
+                    Label(split, systemImage: "rectangle.split.2x1")
+                }
+                .disabled(blocked)
+                .accessibilityIdentifier("viewer.split")
+                Spacer()
+            }
+            if let join = BookPages.joinActionLabel(page) {
+                Button(action: joinCurrent) {
+                    Label(join, systemImage: "rectangle")
+                }
+                .disabled(blocked)
+                .accessibilityIdentifier("viewer.join")
+                Spacer()
+            }
+        }
         Button(role: .destructive, action: askDelete) {
             Label(PageViewerText.deleteLabel, systemImage: "trash")
         }
         .disabled(state.isBusy || state.readsQueue)
         .accessibilityIdentifier("viewer.delete")
+    }
+
+    private func splitCurrent() {
+        guard let id = selection else { return }
+        onEditSpread?(id)
+    }
+
+    private func joinCurrent() {
+        guard let id = selection else { return }
+        state.joinSpread(id: id)
     }
 
     private func toggleFilters() {

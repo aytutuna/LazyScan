@@ -8,7 +8,7 @@ import UIKit
 /// One page of the strip: its number and its picture; the side of a two-sided sheet ("1 · back") or the
 /// page of a book's spread ("2 · left") it is; the title over it when it starts a document of a queue
 /// saved as several ("Document 2"); the note on a page saving leaves out ("Separator", "Blank"); and the
-/// Keep or Skip its menu and the page viewer offer.
+/// Keep or Skip the page viewer offers.
 struct PageStripCell: Identifiable {
     let id: UUID
     let number: Int
@@ -69,21 +69,15 @@ struct PageStripCell: Identifiable {
 /// screen until a pinch changes it (one to six across an iPhone, up to ten on an iPad; kept in the defaults
 /// under `columnsKey`), with the queue's summary: each page with its number, its side or book badge, the
 /// title of the document it starts and its note (blank, separator) on a badge over it. A tap opens the page
-/// (`onOpen`); its menu turns it, keeps or skips it (`PageStripCell.toggle`), deletes it once asked
-/// (`onDelete`), and for a book's page splits its spread again (`onEditSpread`) or joins its two pages, each
-/// off while the app is busy, Delete also while a share or a send reads the pages (`AppState.readsQueue`). A
-/// page dragged onto another takes its place (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the
-/// same. While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it has no menu
-/// and is not dragged.
+/// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted. A
+/// page pressed and dragged onto another, or into the gap beside it, takes its place, and one dropped past the
+/// last goes to the end (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the same.
+/// While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it is not dragged.
 struct PageStripView: View {
     @EnvironmentObject private var state: AppState
-    /// Opens the split sheet for the spread the page with this id was cut from.
-    var onEditSpread: (@MainActor (UUID) -> Void)?
     /// The pages picked; nil when the grid is not selecting.
     var selection: Binding<Set<UUID>>?
     let onOpen: @MainActor (UUID) -> Void
-    /// The menu's Delete for the page with this id; the sheet asks first.
-    let onDelete: @MainActor (UUID) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The pages across chosen with a pinch; 0 until one is.
     @AppStorage(PageStripView.columnsKey) private var chosenColumns: Int = 0
@@ -93,6 +87,10 @@ struct PageStripView: View {
     @GestureState private var pinching: Bool = false
 
     static let columnsKey = "pages.columns"
+
+    /// Under the UI tests (`-demoScanner`) each tile's accessibility value is its page's id, so a test can tell
+    /// pages that look alike apart.
+    private static let identifiesPages: Bool = ProcessInfo.processInfo.arguments.contains(IOSLaunchOptions.demoScannerArgument)
 
     /// As many pages across as fit at 150 pt each within the grid's margins: two on an iPhone held upright,
     /// more on an iPad or turned sideways.
@@ -129,7 +127,8 @@ struct PageStripView: View {
         let pad: Bool = UIDevice.current.userInterfaceIdiom == .pad
         let count: Int = Self.columnCount(chosen: chosenColumns, width: width, pad: pad)
         let spacing: CGFloat = Self.spacing(columns: count)
-        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: .top), count: count)
+        // The gaps belong to the tiles, so a page dropped between two lands on one of them.
+        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 0, alignment: .top), count: count)
         let compact: Bool = count >= 4
         return ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -140,14 +139,23 @@ struct PageStripView: View {
                         .foregroundStyle(Color.secondary)
                         .accessibilityIdentifier("pages.summary")
                 }
-                LazyVGrid(columns: columns, alignment: .leading, spacing: spacing + 4) {
+                if selection == nil && cells.count > 1 {
+                    Text("Press and hold a page, then drag it to move it.")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .accessibilityIdentifier("pages.dragHint")
+                }
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 0) {
                     ForEach(cells) { (cell: PageStripCell) in
                         if let selection {
-                            selectTile(cell, selection: selection, compact: compact)
+                            selectTile(cell, selection: selection, compact: compact, spacing: spacing)
                         } else {
-                            tile(cell, compact: compact)
+                            tile(cell, compact: compact, spacing: spacing)
                         }
                     }
+                }
+                .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
+                    dropPageAtEnd(items)
                 }
             }
             .padding(16)
@@ -190,73 +198,36 @@ struct PageStripView: View {
         }
     }
 
-    private func tile(_ cell: PageStripCell, compact: Bool) -> some View {
+    private func tile(_ cell: PageStripCell, compact: Bool, spacing: CGFloat) -> some View {
         let pageID: UUID = cell.id
-        let page: ScannedPage? = state.scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == pageID })
-        let splitLabel: String? = page.flatMap { (item: ScannedPage) -> String? in BookPages.splitActionLabel(item) }
-        let joinLabel: String? = page.flatMap { (item: ScannedPage) -> String? in BookPages.joinActionLabel(item) }
-        let canEdit: Bool = state.canEditSpread(id: pageID)
-        return Button {
-            onOpen(pageID)
-        } label: {
-            PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: false)
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button {
-                state.rotatePage(id: pageID)
-            } label: {
-                Label(PageViewerText.rotateLabel, systemImage: "rotate.right")
+        // The tile is not a Button: a button's own press competes with the lift of a drag.
+        return PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: false)
+            .onTapGesture {
+                onOpen(pageID)
             }
-            .disabled(state.isBusy)
-            if let splitLabel, canEdit, let edit = onEditSpread {
-                Button {
-                    edit(pageID)
-                } label: {
-                    Label(splitLabel, systemImage: "rectangle.split.2x1")
-                }
-                .disabled(state.isBusy)
-                .accessibilityIdentifier("page.split")
+            .draggable(pageID.uuidString)
+            .padding(.horizontal, spacing / 2)
+            .padding(.vertical, (spacing + 4) / 2)
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
+                dropPage(items, onto: pageID)
             }
-            if let joinLabel, canEdit {
-                Button {
-                    state.joinSpread(id: pageID)
-                } label: {
-                    Label(joinLabel, systemImage: "rectangle")
-                }
-                .disabled(state.isBusy)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Text(cell.accessibilityLabel))
+            .accessibilityValue(Text(Self.identifiesPages ? pageID.uuidString : ""))
+            .accessibilityHint(Text(PageViewerText.openHint))
+            .accessibilityAction(named: Text("Move page earlier")) {
+                state.movePage(id: pageID, by: -1)
             }
-            if let toggle = cell.toggle {
-                Button {
-                    state.togglePageInclusion(id: pageID)
-                } label: {
-                    Label(toggle, systemImage: cell.toggleSymbol)
-                }
-                .disabled(state.isBusy)
+            .accessibilityAction(named: Text("Move page later")) {
+                state.movePage(id: pageID, by: 1)
             }
-            Button(role: .destructive) {
-                onDelete(pageID)
-            } label: {
-                Label(PageViewerText.deleteLabel, systemImage: "trash")
-            }
-            .disabled(state.isBusy || state.readsQueue)
-        }
-        .draggable(pageID.uuidString)
-        .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
-            dropPage(items, onto: pageID)
-        }
-        .accessibilityLabel(Text(cell.accessibilityLabel))
-        .accessibilityHint(Text(PageViewerText.openHint))
-        .accessibilityAction(named: Text("Move page earlier")) {
-            state.movePage(id: pageID, by: -1)
-        }
-        .accessibilityAction(named: Text("Move page later")) {
-            state.movePage(id: pageID, by: 1)
-        }
-        .accessibilityIdentifier("page.\(cell.number)")
+            .accessibilityIdentifier("page.\(cell.number)")
     }
 
-    private func selectTile(_ cell: PageStripCell, selection: Binding<Set<UUID>>, compact: Bool) -> some View {
+    private func selectTile(_ cell: PageStripCell, selection: Binding<Set<UUID>>, compact: Bool,
+                            spacing: CGFloat) -> some View {
         let pageID: UUID = cell.id
         let picked: Bool = selection.wrappedValue.contains(pageID)
         return Button {
@@ -269,6 +240,8 @@ struct PageStripView: View {
             PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: picked)
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, spacing / 2)
+        .padding(.vertical, (spacing + 4) / 2)
         .accessibilityLabel(Text(cell.accessibilityLabel))
         .accessibilityAddTraits(picked ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier("page.\(cell.number)")
@@ -278,6 +251,13 @@ struct PageStripView: View {
     private func dropPage(_ items: [String], onto target: UUID) -> Bool {
         guard let text = items.first, let moving = IOSPageDrop.pageID(text) else { return false }
         return IOSPageDrop.move(moving, onto: target, in: state)
+    }
+
+    /// A page of the grid dropped past the last one: it goes to the end.
+    private func dropPageAtEnd(_ items: [String]) -> Bool {
+        guard let text = items.first, let moving = IOSPageDrop.pageID(text), !state.isBusy else { return false }
+        IOSPageSelection.move([moving], toStart: false, in: state)
+        return true
     }
 }
 
@@ -378,9 +358,8 @@ private struct PageTile: View {
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
 /// start or the end, and deletes them once asked. Outside Select a bottom bar has Delete All, which empties the
-/// queue once asked; the sheet then closes, as it does whenever the pages run out. Delete in a page's menu
-/// asks first too, as in the viewer. The deletes are off while a share or a send reads the pages
-/// (`AppState.readsQueue`).
+/// queue once asked; the sheet then closes, as it does whenever the pages run out. The deletes are off while
+/// a share or a send reads the pages (`AppState.readsQueue`).
 struct PageStripSheet: View {
     @EnvironmentObject private var state: AppState
     var onEditSpread: (@MainActor (UUID) -> Void)?
@@ -392,15 +371,12 @@ struct PageStripSheet: View {
     @State private var selected: Set<UUID> = []
     @State private var asksDelete: Bool = false
     @State private var asksDeleteAll: Bool = false
-    /// The page whose menu asked to delete it, until the question is answered.
-    @State private var deleting: UUID?
     @State private var sharing: Bool = false
     @State private var share: ShareRequest?
 
     var body: some View {
         NavigationStack {
-            PageStripView(onEditSpread: onEditSpread, selection: selecting ? $selected : nil, onOpen: openPage,
-                          onDelete: askDeletePage)
+            PageStripView(selection: selecting ? $selected : nil, onOpen: openPage)
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -460,20 +436,11 @@ struct PageStripSheet: View {
             }
             .accessibilityIdentifier("pages.confirmDeleteAll")
         }
-        .confirmationDialog(PageViewerText.deleteQuestion, isPresented: asksDeletePage, titleVisibility: .visible,
-                            presenting: deleting) { (id: UUID) in
-            Button(PageViewerText.deleteLabel, role: .destructive) {
-                state.removePage(id: id)
-            }
-            .accessibilityIdentifier("pages.confirmDeleteOne")
-        } message: { (_: UUID) in
-            Text(PageViewerText.deleteMessage)
-        }
         .sheet(item: $share) { (request: ShareRequest) in
             ActivityView(items: request.urls, onDone: closeShare)
         }
         .fullScreenCover(item: $viewing) { (start: PageViewerStart) in
-            PageViewer(startID: start.id, onClose: closeViewer)
+            PageViewer(startID: start.id, onEditSpread: editSpread, onClose: closeViewer)
                 .environmentObject(state)
         }
         // The root's alert cannot show over a sheet.
@@ -483,16 +450,6 @@ struct PageStripSheet: View {
     private var title: String {
         guard selecting else { return IOSCameraText.pageCount(state.scannedPages.count) }
         return PageViewerText.selectedTitle(selected.count)
-    }
-
-    private var asksDeletePage: Binding<Bool> {
-        Binding<Bool>(
-            get: { deleting != nil },
-            set: { (shown: Bool) in
-                if !shown {
-                    deleting = nil
-                }
-            })
     }
 
     private var allSelected: Bool {
@@ -596,10 +553,6 @@ struct PageStripSheet: View {
         asksDeleteAll = true
     }
 
-    private func askDeletePage(_ id: UUID) {
-        deleting = id
-    }
-
     private func deleteSelected() {
         guard !state.isBusy, !state.readsQueue else { return }
         for id in IOSPageSelection.ordered(selected, in: state.scannedPages) {
@@ -614,6 +567,11 @@ struct PageStripSheet: View {
 
     private func closeViewer() {
         viewing = nil
+    }
+
+    private func editSpread(_ id: UUID) {
+        viewing = nil
+        onEditSpread?(id)
     }
 }
 #endif
