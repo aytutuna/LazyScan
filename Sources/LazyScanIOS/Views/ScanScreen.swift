@@ -96,6 +96,8 @@ struct ScanScreen: View {
     /// Save waits for the copy screen After saving's Print opened, then emails when `emailsAfterPrint`.
     @State private var savesAfterPrint: Bool = false
     @State private var emailsAfterPrint: Bool = false
+    /// Save waits for the hand-off to Lazy Print After saving's Print started, then emails when `emailsAfterPrint`.
+    @State private var savesAfterHandoff: Bool = false
     /// After saving's steps left once Send to computer's alert closes: the copy screen and Mail cannot show over it.
     @State private var stepsAfterAlert: [IOSAfterSave]?
     /// What was asked for that would leave the pages without a Save, while the question about them is up.
@@ -215,6 +217,11 @@ struct ScanScreen: View {
                 }
             }
             .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
+                if !busy && savesAfterHandoff {
+                    savesAfterHandoff = false
+                    saveNow(emails: emailsAfterPrint)
+                    return
+                }
                 // Print… held nothing (nothing to print, or cancelled), so no copy screen will close.
                 if !busy && savesAfterPrint && state.copyPages.isEmpty {
                     savesAfterPrint = false
@@ -441,8 +448,9 @@ struct ScanScreen: View {
             savedRowStale = false
         }
         let message: String = state.statusMessage
+        // Undo empties the saved files, which leaves no card to say it: the message is shown instead.
         guard cameraMode, !message.isEmpty, message != statusBeforeBusy || busySends, state.errorMessage == nil,
-              !importer.isImporting, state.lastSavedURLs == savedBeforeBusy else { return }
+              !importer.isImporting, state.lastSavedURLs == savedBeforeBusy || state.lastSavedURLs.isEmpty else { return }
         statusAfterBusy = message
     }
 
@@ -1126,15 +1134,25 @@ struct ScanScreen: View {
         }
     }
 
-    /// After saving's Print, whose copy screen the save waits for, then the save, emailing when checked.
+    /// After saving's Print, handed to Lazy Print where it is installed, else on the copy screen the save waits
+    /// for, then the save, emailing when checked.
     private func printThenSave(_ steps: [IOSAfterSave]) {
         let emails: Bool = steps.contains(.email)
         guard steps.contains(.print) else {
             saveNow(emails: emails)
             return
         }
-        savesAfterPrint = true
         emailsAfterPrint = emails
+        // Lazy Print takes the pages as a PDF, so there is no copy screen: the save follows once it has them.
+        if state.canPrintQueueWithLazyPrint {
+            savesAfterHandoff = true
+            state.printQueueWithLazyPrint()
+            if !state.isBusy {
+                savesAfterHandoff = false
+            }
+            return
+        }
+        savesAfterPrint = true
         state.printQueueAsCopy()
         if !state.isBusy {
             savesAfterPrint = false
@@ -1649,7 +1667,7 @@ private struct SavedFilesRow: View {
                     .font(.subheadline)
                 }
                 .accessibilityLabel(Text("Undo"))
-                .accessibilityHint(Text("Deletes the saved files and puts the pages back. Files already shared or sent stay where they went."))
+                .accessibilityHint(Text("Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went."))
                 .accessibilityIdentifier("save.undo")
             }
             if SaveActions.canPrintWithLazyPrint(urls) {
