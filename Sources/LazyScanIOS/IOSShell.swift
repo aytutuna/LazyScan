@@ -402,7 +402,10 @@ public enum IOSShell {
     /// The status line's text is only the idle "Ready" (with the scanner's name once one is connected), which
     /// the Scanner sheet's check already says. A warning kept on the line makes it differ, so it stays.
     public static func isIdleReady(_ shown: String, deviceName: String?) -> Bool {
-        if let name = deviceName, !name.isEmpty, shown == StatusLine.short(L10n.t("Ready — {0}", name)) { return true }
+        if let name = deviceName, !name.isEmpty {
+            let line: String = L10n.t("Ready — {0}", name)
+            if shown == line || shown == StatusLine.short(line) { return true }
+        }
         return shown == L10n.t("Ready")
     }
 
@@ -556,9 +559,10 @@ public enum IOSShell {
     public static let straightenKey = "camera.straighten"
 
     /// Whether camera mode offers Straighten pages for the settings: a Document taken a side at a time and a
-    /// Book. Photos, receipts and the ID card are not pages, and Both sides straightens its own pages.
+    /// Book, and Both sides, whose shots are straightened too (`PageProcessor.forCapture` ignores
+    /// `autoStraighten`). Photos, receipts and the ID card are not pages.
     public static func offersStraighten(_ settings: ScanSettings) -> Bool {
-        guard TaskCatalog.flow(of: settings) == .documentQueue, settings.task != .twoSided else { return false }
+        guard TaskCatalog.flow(of: settings) == .documentQueue else { return false }
         let kind: IOSScanKind = shownKind(settings)
         return kind == .document || kind == .book
     }

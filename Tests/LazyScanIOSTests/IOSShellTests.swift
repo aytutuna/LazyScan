@@ -297,6 +297,13 @@ final class IOSShellTests: XCTestCase {
         XCTAssertFalse(IOSShell.isIdleReady("", deviceName: nil))
     }
 
+    func test_isIdleReady_acceptsTheFullLineOfALongName() {
+        let name: String = "Brother MFC-L8900CDW series scanner in the back office"
+        let full: String = L10n.t("Ready — {0}", name)
+        XCTAssertTrue(IOSShell.isIdleReady(full, deviceName: name))
+        XCTAssertFalse(IOSShell.isIdleReady(full, deviceName: "Demo Scanner"))
+    }
+
     func test_migratedScanner_takesTheOldSourcesScanner_once() throws {
         let name: String = "migration.\(UUID().uuidString)"
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
