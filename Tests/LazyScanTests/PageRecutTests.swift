@@ -137,6 +137,22 @@ final class PageRecutTests: XCTestCase {
         }
     }
 
+    func testAPhotoPrint_hasNoFilter_butIsCutAgainAlongNewCorners() throws {
+        let (photo, page) = shot()
+        let facts: CaptureFacts = try XCTUnwrap(page.capture)
+        let print: ScannedPage = page.withCapture(CaptureFacts(quad: facts.quad, sourceWidth: page.image.width,
+                                                               sourceHeight: page.image.height, kind: .photo))
+        let cut: ScannedPage = EnhanceStep(mode: nil).apply(PerspectiveStep().apply(print))
+        XCTAssertNil(PageRecut.filter(of: cut))
+        let inner = Quad(topLeft: CGPoint(x: 80, y: 80), topRight: CGPoint(x: 260, y: 80),
+                         bottomRight: CGPoint(x: 260, y: 330), bottomLeft: CGPoint(x: 80, y: 330))
+        let cropped: ScannedPage = try XCTUnwrap(PageRecut.recut(cut, photo: photo, filter: nil, corners: inner))
+        XCTAssertEqual(cropped.capture?.quad, inner)
+        XCTAssertEqual(cropped.geometry?.quad, inner)
+        XCTAssertNil(cropped.capture?.filter)
+        XCTAssertNotNil(cropped.capture?.enhancement)
+    }
+
     func testOnlyACameraPageWithAFilterCanBeCutAgain() throws {
         let (_, page) = shot()
         let scanned = ScannedPage(image: page.image, dpi: 300, colorMode: .color)

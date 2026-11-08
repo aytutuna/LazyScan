@@ -10,13 +10,17 @@ import ImageIO
 /// gives the pixels the same filter gives as the page is taken. Swift only: the Windows app takes no camera
 /// shots.
 public enum PageRecut {
-    /// Whether `page` can be cut again: a camera's page cut out along its corners and shown that way (not
-    /// swapped to its photo), with a filter (a photo or a card has none), its pixels and its photo in spool
-    /// files.
+    /// Whether `page` can be cut again along other corners (Crop): a camera's page cut out along its corners
+    /// and shown that way (not swapped to its photo), its pixels and its photo in spool files. A photo or a
+    /// card has no filter but is cut again as the photo it is.
+    public static func canCrop(_ page: ScannedPage) -> Bool {
+        page.capture?.scale != nil && page.geometry?.basis == .perspective && !page.showsOriginal
+            && page.fileURL != nil && page.alternate?.fileURL != nil
+    }
+
+    /// Whether `page` can be cut again with another filter too: it can be cropped and has a filter.
     public static func canRecut(_ page: ScannedPage) -> Bool {
-        guard page.capture?.scale != nil, page.geometry?.basis == .perspective, !page.showsOriginal,
-              page.fileURL != nil, page.alternate?.fileURL != nil else { return false }
-        return filter(of: page) != nil
+        canCrop(page) && filter(of: page) != nil
     }
 
     /// The page's filter: the one recorded, or for a page queued before filters the one its clean-up stands
@@ -38,8 +42,9 @@ public enum PageRecut {
     /// the page's own). The pixels come back turned as the spool file holds the page, not by its rotation;
     /// the resolution, the real size, the corners and the filter are the new cut's, and everything else the
     /// queue knows about the page (its rotation, its photo, its blank check, its codes) is kept. Nil when the
-    /// corners cut nothing.
-    public static func recut(_ page: ScannedPage, photo: CGImage, filter: CaptureFilter, corners: Quad? = nil) -> ScannedPage? {
+    /// corners cut nothing. `adjusting` is run on the new cut last (`adjustment(for:settings:)`).
+    public static func recut(_ page: ScannedPage, photo: CGImage, filter: CaptureFilter?, corners: Quad? = nil,
+                             adjusting: AdjustmentStep? = nil) -> ScannedPage? {
         guard var facts = page.capture else { return nil }
         let turns: Int = fileTurns(page)
         let taken: CGImage = turns == 0 ? photo : ImagePipeline.rotate(photo, quarterTurns: 4 - turns)
@@ -53,9 +58,11 @@ public enum PageRecut {
         facts.filter = nil
         let source = ScannedPage(image: taken, dpi: page.dpi, colorMode: .color, id: page.id, createdAt: page.createdAt)
             .withCapture(facts)
-        var cut: ScannedPage = EnhanceStep(mode: filter.mode).apply(PerspectiveStep().apply(source))
+        var cut: ScannedPage = EnhanceStep(mode: filter?.mode).apply(PerspectiveStep().apply(source))
         if straightens { cut = ShotStraightenStep().apply(cut) }
-        guard cut.geometry?.basis == .perspective, cut.capture?.filter != nil else { return nil }
+        if let adjusting { cut = adjusting.apply(cut) }
+        let cutAgain: Bool = filter == nil ? cut.capture?.enhancement != nil : cut.capture?.filter != nil
+        guard cut.geometry?.basis == .perspective, cutAgain else { return nil }
         let image: CGImage = turns == 0 ? cut.image : ImagePipeline.rotate(cut.image, quarterTurns: turns)
         var result = ScannedPage(image: image, dpi: cut.dpi, colorMode: cut.colorMode, id: page.id, createdAt: page.createdAt)
         result.rotationQuarterTurns = page.rotationQuarterTurns
@@ -63,6 +70,13 @@ public enum PageRecut {
         result.geometry = cut.geometry
         result.capture = cut.capture
         return result
+    }
+
+    /// The adjustments a photo of Photos was given when it was taken (Restore faded colors, the colour mode),
+    /// which a cut again takes too; nil for any other page, and when they change nothing.
+    static func adjustment(for page: ScannedPage, settings: ScanSettings) -> AdjustmentStep? {
+        guard page.capture?.kind == .photo, !(settings.adjustments.isIdentity && settings.colorMode == .color) else { return nil }
+        return AdjustmentStep(adjustments: settings.adjustments, colorMode: settings.colorMode, adjustsAlternate: false)
     }
 
     /// The corners `corners`, placed on the page's photo turned `quarterTurns` clockwise, on the photo as taken.
@@ -105,12 +119,12 @@ extension AppState {
     /// keeping its filter; as `setPageFilter(id:_:)` does it. Nothing happens once the page was turned since.
     public func recropPage(id: UUID, corners: Quad, rotation: Int) {
         guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              page.rotationQuarterTurns == rotation, PageRecut.canRecut(page), let filter = PageRecut.filter(of: page),
+              page.rotationQuarterTurns == rotation, PageRecut.canCrop(page),
               let facts = page.capture else { return }
         let turns: Int = PageRecut.fileTurns(page) + page.rotationQuarterTurns
         let taken: Quad = PageRecut.cornersAsTaken(corners, facts: facts, quarterTurns: turns)
         enqueuePageEdit { (state: AppState) async -> Void in
-            await state.recut(id: id, filter: filter, corners: taken)
+            await state.recut(id: id, filter: PageRecut.filter(of: page), corners: taken)
         }
     }
 
@@ -120,7 +134,7 @@ extension AppState {
     public func pageCropStart(id: UUID) async -> PhotoCropStart? {
         await pageEditChain?.value
         guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canRecut(page), let facts = page.capture, let url = page.alternate?.fileURL else { return nil }
+              PageRecut.canCrop(page), let facts = page.capture, let url = page.alternate?.fileURL else { return nil }
         let rotation: Int = page.rotationQuarterTurns
         let photo: CGImage? = await Task.detached(priority: .userInitiated) { () -> CGImage? in
             guard let stored = AppState.imageInFile(url) else { return nil }
@@ -153,15 +167,16 @@ extension AppState {
 
     /// Cuts the page again and puts it in the queue with a spool file of its own, if the page is still there
     /// as it was when the work started (not removed, turned or swapped meanwhile); the old file goes.
-    func recut(id: UUID, filter: CaptureFilter, corners: Quad?) async {
+    func recut(id: UUID, filter: CaptureFilter?, corners: Quad?) async {
         guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canRecut(page), corners != nil || PageRecut.filter(of: page) != filter,
+              PageRecut.canCrop(page), corners != nil || PageRecut.filter(of: page) != filter,
               let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return }
         let spool: URL = spoolDirectory
+        let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page, settings: settings)
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
             guard let photo = AppState.imageInFile(photoURL),
-                  let cut = PageRecut.recut(page, photo: photo, filter: filter, corners: corners) else { return nil }
+                  let cut = PageRecut.recut(page, photo: photo, filter: filter, corners: corners, adjusting: adjusting) else { return nil }
             return AppState.spoolRecut(cut, to: spool)
         }.value
         recuttingPages.remove(id)
@@ -182,7 +197,11 @@ extension AppState {
         updated.capture = made.capture
         scannedPages[index] = updated
         try? FileManager.default.removeItem(at: oldFile)
-        statusMessage = corners == nil ? PageRecut.filterNote(filter, number: index + 1) : PageRecut.cropNote(number: index + 1)
+        if corners == nil, let filter {
+            statusMessage = PageRecut.filterNote(filter, number: index + 1)
+        } else {
+            statusMessage = PageRecut.cropNote(number: index + 1)
+        }
         // The record names the new file at once: the old one is gone.
         if keepsQueue { writeQueueRecord() }
     }

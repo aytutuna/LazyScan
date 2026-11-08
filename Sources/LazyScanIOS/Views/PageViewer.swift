@@ -78,8 +78,8 @@ enum PageViewerText {
 /// two pages, and deletes it once asked; the edits are off
 /// while the app is busy, and the filters, Crop and Delete also while a share or a send reads the pages
 /// (`AppState.readsQueue`).
-/// Filters and Crop are left out for pages that cannot be cut again (`PageRecut.canRecut`): scans, imported
-/// PDFs, the pages of a book's spread taken whole.
+/// Filters (`PageRecut.canRecut`; not for a photo) and Crop (`PageRecut.canCrop`) are left out for pages that
+/// cannot be cut again: scans, imported PDFs, the pages of a book's spread taken whole.
 struct PageViewer: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -226,6 +226,10 @@ struct PageViewer: View {
 
     private var canRecut: Bool {
         current.map { (page: ScannedPage) -> Bool in PageRecut.canRecut(page) } ?? false
+    }
+
+    private var canCrop: Bool {
+        current.map { (page: ScannedPage) -> Bool in PageRecut.canCrop(page) } ?? false
     }
 
     /// The page shown as the grid has it, for its Keep or Skip.
@@ -462,7 +466,7 @@ struct PageViewer: View {
         .disabled(blocked)
         .accessibilityIdentifier("viewer.rotate")
         Spacer()
-        if canRecut {
+        if canCrop {
             Button(action: openCrop) {
                 Label(PageViewerText.cropLabel, systemImage: "crop")
             }
@@ -664,7 +668,7 @@ struct PageViewer: View {
         let plan = PhotoImportPlan(action: .review, corners: start.corners, reason: PhotoReviewReason.none,
                                    detection: PhotoDocumentDetection.nothing)
         // One "photo": the editor's counter then shows the page's name.
-        let request = PhotoCornersRequest(photo: picture, plan: plan, fileName: name, number: 1, count: 1)
+        let request = PhotoCornersRequest(photo: picture, plan: plan, fileName: name, number: 1, count: 1, kind: start.kind)
         return IOSCropRequest(photoID: id, request: request)
     }
 
