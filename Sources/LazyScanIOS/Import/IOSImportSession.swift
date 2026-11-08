@@ -257,7 +257,7 @@ public final class IOSImportSession: ObservableObject {
     private let state: AppState
     private let finder: @Sendable (RgbaImage) -> IOSFoundPage
     private let objectFinder: @Sendable (RgbaImage, CaptureKind) -> [Quad]
-    /// Where Items in frame is kept.
+    /// Where Items in frame and Straighten pages are kept.
     private let defaults: UserDefaults
     private var continuation: CheckedContinuation<PhotoCornersAnswer, Never>?
     private var stopRequested: Bool = false
@@ -777,11 +777,13 @@ public final class IOSImportSession: ObservableObject {
         return state.canIngest
     }
 
-    /// Waits until the state can take pages, hands `pages` over (`AppState.ingest`, from a photo) and
-    /// waits until they are in; false when the state did not take them.
+    /// Waits until the state can take pages, hands `pages` over (`AppState.ingest`, from a photo, straightened
+    /// when they are our camera's and `IOSShell.straightensShots` says so) and waits until they are in; false
+    /// when the state did not take them.
     private func bringIn(_ pages: [ScannedPage]) async -> Bool {
         await waitUntilIdle()
-        guard state.ingest(pages, source: .photo) else { return false }
+        let straightens: Bool = importsShot && IOSShell.straightensShots(state.settings, defaults: defaults)
+        guard state.ingest(pages, source: .photo, straightens: straightens) else { return false }
         await waitUntilIdle()
         return true
     }

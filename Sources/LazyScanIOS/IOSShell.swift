@@ -552,6 +552,23 @@ public enum IOSShell {
         return IOSItemsInFrame(rawValue: defaults.string(forKey: itemsInFrameKey) ?? "") ?? .auto
     }
 
+    /// The user's defaults key of camera mode's Straighten pages.
+    public static let straightenKey = "camera.straighten"
+
+    /// Whether camera mode offers Straighten pages for the settings: a Document taken a side at a time and a
+    /// Book. Photos, receipts and the ID card are not pages, and Both sides straightens its own pages.
+    public static func offersStraighten(_ settings: ScanSettings) -> Bool {
+        guard TaskCatalog.flow(of: settings) == .documentQueue, settings.task != .twoSided else { return false }
+        let kind: IOSScanKind = shownKind(settings)
+        return kind == .document || kind == .book
+    }
+
+    /// Whether a camera shot is straightened: Straighten pages kept in `defaults` (on when none is), where it
+    /// is offered.
+    public static func straightensShots(_ settings: ScanSettings, defaults: UserDefaults) -> Bool {
+        offersStraighten(settings) && (defaults.object(forKey: straightenKey) as? Bool ?? true)
+    }
+
     /// The user's defaults key of the drawer's choices `kind` was left with (`rememberChoices`).
     static func choicesKey(_ kind: IOSScanKind) -> String {
         "scan.choices.\(kind.rawValue)"

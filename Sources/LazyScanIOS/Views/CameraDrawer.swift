@@ -359,6 +359,9 @@ struct CameraDrawer: View {
             if IOSShell.offersItemsInFrame(state.settings) {
                 ItemsInFramePicker(kind: IOSShell.shownKind(state.settings))
             }
+            if IOSShell.offersStraighten(state.settings) {
+                StraightenToggle()
+            }
         }
     }
 
@@ -433,6 +436,17 @@ private struct ItemsInFramePicker: View {
             set: { (choice: IOSItemsInFrame) in
                 kept.wrappedValue = choice
             })
+    }
+}
+
+/// The drawer's Straighten pages, kept in the user's defaults (`IOSShell.straightenKey`) where the import of
+/// the next shot reads it; on until it is turned off.
+private struct StraightenToggle: View {
+    @AppStorage(IOSShell.straightenKey) private var straighten: Bool = true
+
+    var body: some View {
+        Toggle("Straighten pages", isOn: $straighten)
+            .accessibilityIdentifier("camera.straighten")
     }
 }
 

@@ -150,8 +150,9 @@ public enum IOSSettingsSections {
     }
 
     /// `s` with only the page options that run on camera mode's pages, which its Pages header counts: they
-    /// are cut out of the photo along their corners already, so never cropped or straightened, and facing
-    /// pages are split only from spreads taken whole (`PageProcessor.forCapture`).
+    /// are cut out of the photo along their corners already, so never cropped, and facing pages are split
+    /// only from spreads taken whole (`PageProcessor.forCapture`). Their straightening is the camera's own
+    /// (`IOSShell.straightenKey`), not the setting, so it is not counted.
     public static func cameraShown(_ s: ScanSettings) -> ScanSettings {
         var shown: ScanSettings = s
         shown.document.autoCrop = false

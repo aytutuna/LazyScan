@@ -583,7 +583,7 @@ private struct AdjustmentSettingsRows: View {
 /// Skip blank pages (with what counts as blank), crop and straighten, rotate upright, and split facing
 /// pages with the book's choices: on pages collected before saving only. Camera mode offers what runs on
 /// its pages (`PageProcessor.forCapture`): they are cut along their corners already, so there is nothing to
-/// crop or straighten, and spreads are split only with Whole spread picked, so Split facing pages shows
+/// crop, their straightening is the drawer's own (`IOSShell.straightenKey`), and spreads are split only with Whole spread picked, so Split facing pages shows
 /// only then and the book's choices only while whole spreads are cut.
 private struct PageSettingsRows: View {
     @EnvironmentObject private var state: AppState

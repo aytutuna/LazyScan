@@ -401,6 +401,29 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(tiles.filter(\.isCurrent).map(\.kind), [.document])
     }
 
+    func test_straightenShots_isForDocumentAndBook_onUntilTurnedOff() throws {
+        let name: String = "straighten.\(UUID().uuidString)"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        XCTAssertEqual(IOSShell.straightenKey, "camera.straighten")
+        for task in [ScanTask.document, .email, .word, .archive, .book] {
+            let s: ScanSettings = TaskCatalog.apply(task, to: ScanSettings())
+            XCTAssertTrue(IOSShell.offersStraighten(s), task.rawValue)
+            XCTAssertTrue(IOSShell.straightensShots(s, defaults: defaults), task.rawValue)
+        }
+        // Photos, receipts and the ID card are not pages, and Both sides straightens its own.
+        for task in [ScanTask.photos, .photoRestore, .receipt, .idCard, .twoSided, .copy, .quickScan] {
+            let s: ScanSettings = TaskCatalog.apply(task, to: ScanSettings())
+            XCTAssertFalse(IOSShell.offersStraighten(s), task.rawValue)
+            XCTAssertFalse(IOSShell.straightensShots(s, defaults: defaults), task.rawValue)
+        }
+        let document: ScanSettings = TaskCatalog.apply(.document, to: ScanSettings())
+        defaults.set(false, forKey: IOSShell.straightenKey)
+        XCTAssertFalse(IOSShell.straightensShots(document, defaults: defaults))
+        defaults.set(true, forKey: IOSShell.straightenKey)
+        XCTAssertTrue(IOSShell.straightensShots(document, defaults: defaults))
+    }
+
     func test_itemsInFrame_isForPhotoAndDocument_autoUntilChosen() throws {
         let name: String = "items.\(UUID().uuidString)"
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
