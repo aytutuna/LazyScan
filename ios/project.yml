@@ -31,6 +31,7 @@ targets:
       - path: LazyScaniOS
         excludes:
           - Info.plist
+          - LazyScan.entitlements
           - PrivacyInfo.xcprivacy
       - path: LazyScaniOS/PrivacyInfo.xcprivacy
         buildPhase: resources
@@ -48,6 +49,7 @@ targets:
         PRODUCT_MODULE_NAME: LazyScaniOS
         PRODUCT_BUNDLE_IDENTIFIER: com.lazyscan.lazyscan
         INFOPLIST_FILE: LazyScaniOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: LazyScaniOS/LazyScan.entitlements
         GENERATE_INFOPLIST_FILE: NO
         # iPhone only for now: iPads run it in iPhone compatibility mode. Vision Pro has no camera
         # for camera mode, the root screen.
