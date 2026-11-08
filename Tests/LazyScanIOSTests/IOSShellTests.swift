@@ -177,7 +177,7 @@ final class IOSShellTests: XCTestCase {
         XCTAssertEqual(split.help, IOSShell.printerBatchHelp)
         XCTAssertFalse(split.help.contains("on the right"))
         XCTAssertFalse(split.help.contains("page strip"))
-        XCTAssertTrue(split.help.contains("Export"))
+        XCTAssertTrue(split.help.contains("Options"))
         XCTAssertEqual(split.id, batch.id)
         XCTAssertEqual(split.prompt, batch.prompt)
         XCTAssertEqual(split.primaryActionLabel, batch.primaryActionLabel)
