@@ -5,7 +5,8 @@ import ImageIO
 /// A camera's queued page cut out of its photo again (the iPhone's page viewer): with another filter
 /// (`CaptureFilter`), or along corners placed again (Crop). The photo is the page's other version, in its
 /// spool file; the corners and the real size are in the page's capture facts. The cut goes through the steps
-/// the page went through when it was taken (`PerspectiveStep`, `EnhanceStep`), so a filter chosen afterwards
+/// the page went through when it was taken (`PerspectiveStep`, `EnhanceStep`, and `ShotStraightenStep` when it
+/// was straightened), so a filter chosen afterwards
 /// gives the pixels the same filter gives as the page is taken. Swift only: the Windows app takes no camera
 /// shots.
 public enum PageRecut {
@@ -45,12 +46,15 @@ public enum PageRecut {
         if let corners {
             facts.quad = Quad.fromCorners(corners.corners)
         }
+        let straightens: Bool = facts.straightened == true
         facts.scale = nil
+        facts.straightened = nil
         facts.enhancement = nil
         facts.filter = nil
         let source = ScannedPage(image: taken, dpi: page.dpi, colorMode: .color, id: page.id, createdAt: page.createdAt)
             .withCapture(facts)
-        let cut: ScannedPage = EnhanceStep(mode: filter.mode).apply(PerspectiveStep().apply(source))
+        var cut: ScannedPage = EnhanceStep(mode: filter.mode).apply(PerspectiveStep().apply(source))
+        if straightens { cut = ShotStraightenStep().apply(cut) }
         guard cut.geometry?.basis == .perspective, cut.capture?.filter != nil else { return nil }
         let image: CGImage = turns == 0 ? cut.image : ImagePipeline.rotate(cut.image, quarterTurns: turns)
         var result = ScannedPage(image: image, dpi: cut.dpi, colorMode: cut.colorMode, id: page.id, createdAt: page.createdAt)

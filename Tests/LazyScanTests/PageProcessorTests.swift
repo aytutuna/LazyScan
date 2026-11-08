@@ -444,7 +444,9 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertTrue(abs(geometry.angleDegrees - TestPages.minus4.degrees) <= 0.3, "\(geometry.angleDegrees)")
         XCTAssertFalse(turned.image === sheetImage)
         XCTAssertTrue(turned.alternate?.image === sheetImage)
-        XCTAssertEqual(turned.capture, shot.capture)
+        var turnedFacts = facts
+        turnedFacts.straightened = true
+        XCTAssertEqual(turned.capture, turnedFacts)
         // A page the analysis is not sure about, and a page that is no camera's, stay as they are.
         let blank = page(blankImage).withCapture(facts)
         XCTAssertTrue(ShotStraightenStep().apply(blank).image === blankImage)
@@ -461,6 +463,17 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertFalse(turned.image === sheetImage)
         XCTAssertEqual(turned.geometry, corners)
         XCTAssertTrue(turned.alternate?.image === blankImage)
+    }
+
+    func test_shotStraightenStep_keepsTheCutPageItsPixelSize() throws {
+        let corners = PageGeometry(cropped: true, angleDegrees: 0, basis: .perspective)
+        let facts = CaptureFacts(quad: Quad(topLeft: .zero, topRight: .zero, bottomRight: .zero, bottomLeft: .zero),
+                                 sourceWidth: 1, sourceHeight: 1)
+        let cut = page(sheetImage).withGeometry(sheetImage, geometry: corners).withCapture(facts)
+        let turned = ShotStraightenStep().apply(cut)
+        XCTAssertFalse(turned.image === sheetImage)
+        XCTAssertEqual(turned.image.width, sheetImage.width)
+        XCTAssertEqual(turned.image.height, sheetImage.height)
     }
 
     func test_adjustmentStep_adjustsBothVersions() throws {

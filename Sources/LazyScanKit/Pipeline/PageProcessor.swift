@@ -88,7 +88,7 @@ public struct PerspectiveStep: PageStep {
 /// (`CaptureFacts.enhancement`) with the filter it stands for (`CaptureFacts.filter`); a gray or black and
 /// white result sets the page's color mode. No mode (the Original filter) keeps the cut's pixels and records
 /// only the filter. Once only: pages cleaned up or filtered already, pages not cut out along their corners
-/// (Apple's document scanner hands its pages over cleaned up and whole) and pages from scanners stay as they
+/// (imported photos and files, whole) and pages from scanners stay as they
 /// are; the photo kept as the other version is not changed. Runs right after `PerspectiveStep`. Twin of C#
 /// `EnhanceStep`.
 public struct EnhanceStep: PageStep {
@@ -155,19 +155,32 @@ public struct GeometryStep: PageStep {
 /// only, no crop). A page cut out along its corners keeps its geometry and the photo as its other version;
 /// a photo that was not cut gets the turn as its geometry and itself as the other version. Pages from scanners
 /// and files, and pages the analysis is not sure about, stay as they are. Only the iPhone's camera asks for
-/// it (`PageProcessor.forCapture`).
+/// it (`PageProcessor.forCapture`), and the turn is recorded on the capture (`CaptureFacts.straightened`) so
+/// `PageRecut` can make it again. Swift only: the Windows app takes no camera shots.
 public struct ShotStraightenStep: PageStep {
     public var name: String { "straighten" }
 
     public init() {}
 
     public func apply(_ page: ScannedPage) -> ScannedPage {
-        guard page.capture != nil,
+        guard var facts = page.capture,
               let pixels = RgbaImage(cgImage: page.image),
-              let corrected = DocumentGeometry.correct(pixels, dpi: page.dpi, crop: false, straighten: true),
-              let image = corrected.image.makeCGImage() else { return page }
-        if page.geometry != nil { return page.withImage(image) }
-        return page.withGeometry(image, geometry: corrected.geometry)
+              let corrected = DocumentGeometry.correct(pixels, dpi: page.dpi, crop: false, straighten: true) else { return page }
+        facts.straightened = true
+        if page.geometry != nil {
+            // The turn grows the canvas; a cut page keeps its pixel size, or it would stop being real size.
+            var turned: RgbaImage = corrected.image
+            if turned.width >= pixels.width, turned.height >= pixels.height,
+               turned.width != pixels.width || turned.height != pixels.height,
+               let trimmed = turned.cropped(CGRect(x: (turned.width - pixels.width) / 2, y: (turned.height - pixels.height) / 2,
+                                                   width: pixels.width, height: pixels.height)) {
+                turned = trimmed
+            }
+            guard let image = turned.makeCGImage() else { return page }
+            return page.withImage(image).withCapture(facts)
+        }
+        guard let image = corrected.image.makeCGImage() else { return page }
+        return page.withGeometry(image, geometry: corrected.geometry).withCapture(facts)
     }
 }
 
@@ -458,7 +471,7 @@ public struct PageProcessor {
     /// asked for, between the blank-page and separator checks as on a scan. `arrangement` marks the sides of
     /// the iPhone's two-sided pages (`ScanArrangement.cameraFront`, `.cameraBack`). `straightens` (the
     /// iPhone's camera, never a scan or a file) puts `ShotStraightenStep` after the blank-page check of pages
-    /// that go to the queue, whatever `autoStraighten` says. Twin of C# `PageProcessor.ForCapture`.
+    /// that go to the queue, whatever `autoStraighten` says. Twin of C# `PageProcessor.ForCapture`, without `straightens` (Swift only).
     public static func forCapture(_ settings: ScanSettings, scorer: (any OrientationScorer)? = nil,
                                   barcodes: (any BarcodeReader)? = nil,
                                   arrangement: ScanArrangement = .asScanned,

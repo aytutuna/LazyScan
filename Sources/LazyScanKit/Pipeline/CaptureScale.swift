@@ -113,6 +113,9 @@ public struct CaptureFacts: Equatable, Codable, Sendable {
     /// The filter the page was given once cut out (`EnhanceStep`); nil until then, and for a photo or a card.
     /// Kept with the queue the iPhone records, not in companion packages.
     public var filter: CaptureFilter? = nil
+    /// Whether `ShotStraightenStep` turned the page, so a cut again turns it the same way. Nil for pages that
+    /// were not (and for queues recorded before it); kept with the queue, not in companion packages.
+    public var straightened: Bool? = nil
 
     public init(quad: Quad, sourceWidth: Int, sourceHeight: Int, kind: CaptureKind = .document,
                 focalLength: Double? = nil, scale: CaptureScaleResult? = nil) {

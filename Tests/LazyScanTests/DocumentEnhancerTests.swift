@@ -568,7 +568,7 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertNil(EnhanceStep(mode: .gray).apply(printCut).capture?.filter)
         XCTAssertEqual(EnhanceStep(mode: nil).apply(printCut).capture?.enhancement, .photo)
         XCTAssertNil(EnhanceStep(mode: nil).apply(printCut).capture?.filter)
-        // Not cut out yet, cut out whole (Apple's scanner) or a scanner's page: left alone.
+        // Not cut out yet, cut out whole (an imported page) or a scanner's page: left alone.
         XCTAssertTrue(step.apply(page).image === page.image)
         XCTAssertNil(step.apply(page).capture?.enhancement)
         let sheetImage: CGImage = try XCTUnwrap(sheet.makeCGImage())

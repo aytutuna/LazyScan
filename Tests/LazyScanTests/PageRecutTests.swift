@@ -94,6 +94,14 @@ final class PageRecutTests: XCTestCase {
         XCTAssertEqual(again.capture, enhanced.capture)
     }
 
+    func testARecutOfAPageNeverStraightenedLeavesItSo() throws {
+        let (photo, page) = shot()
+        let enhanced: ScannedPage = try XCTUnwrap(PageProcessor.forCapture(ScanSettings()).process([page]).pages.first)
+        XCTAssertNil(enhanced.capture?.straightened)
+        let recut: ScannedPage = try XCTUnwrap(PageRecut.recut(enhanced, photo: photo, filter: .grayscale))
+        XCTAssertNil(recut.capture?.straightened)
+    }
+
     func testAPageTurnedUpright_isCutInTheTurnItsFileHolds() throws {
         let (photo, page) = shot()
         let enhanced: ScannedPage = try XCTUnwrap(PageProcessor.forCapture(ScanSettings()).process([page]).pages.first)

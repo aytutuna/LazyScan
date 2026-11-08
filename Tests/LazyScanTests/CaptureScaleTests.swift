@@ -230,7 +230,7 @@ final class CaptureScaleTests: XCTestCase {
     }
 
     func testFromAspectKeepsThePixelsOfAnUprightPage() {
-        // Apple's scanner's A4 page, 2480 × 3508: 300 dpi.
+        // A whole A4 page, 2480 × 3508: 300 dpi.
         let a4 = CaptureScale.fromAspect(pixelWidth: 2480, pixelHeight: 3508, kind: .document)
         XCTAssertEqual(a4.size, "a4")
         XCTAssertEqual(a4.dpi, 300)
