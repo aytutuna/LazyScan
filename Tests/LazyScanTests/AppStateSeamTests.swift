@@ -48,6 +48,8 @@ private final class SeamFileActions: FileActionService {
     private(set) var revealed: [[URL]] = []
     var lazyPrintReady = false
     private(set) var lazyPrintOpened: [[URL]] = []
+    /// Read as the file opens: the iPhone deletes its temp copy straight after.
+    private(set) var lazyPrintPageCount: Int?
 
     func open(_ url: URL) throws {}
     func openWith(_ url: URL) throws {}
@@ -71,6 +73,7 @@ private final class SeamFileActions: FileActionService {
 
     func openInLazyPrint(_ urls: [URL]) throws {
         lazyPrintOpened.append(urls)
+        lazyPrintPageCount = urls.first.flatMap { PDFDocument(url: $0)?.pageCount }
     }
 }
 
@@ -356,7 +359,7 @@ final class AppStateSeamTests: XCTestCase {
         let url: URL = try XCTUnwrap(files.lazyPrintOpened.first?.first)
         defer { try? FileManager.default.removeItem(at: url) }
         XCTAssertEqual(url.pathExtension, "pdf")
-        XCTAssertEqual(PDFDocument(url: url)?.pageCount, 1)
+        XCTAssertEqual(files.lazyPrintPageCount, 1)
         XCTAssertFalse(url.path.hasPrefix(state.spoolDirectory.path))
         XCTAssertEqual(state.scannedPages.count, 1)
         XCTAssertEqual(state.statusMessage, status)
