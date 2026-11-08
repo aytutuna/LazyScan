@@ -1204,6 +1204,7 @@ extension AppState {
                                        keepsQueue: !options.demoScannerOnly)
         state.platform = .ios
         state.listsFoundObjects = true
+        state.keepsSavedForUndo = true
         IOSShell.adoptOriginalFilter(state, defaults: UserDefaults.standard)
         if UserDefaults.standard.string(forKey: IOSShell.scanModeKey) != IOSScanMode.printer.rawValue {
             IOSShell.adoptCameraKind(state, defaults: UserDefaults.standard)

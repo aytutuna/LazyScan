@@ -1616,7 +1616,7 @@ private struct PreviewArea: View {
     }
 }
 
-/// The files saved last, with Share and Show in Files.
+/// The files saved last, with Undo (when the save can be taken back), Share and Show in Files.
 private struct SavedFilesRow: View {
     @EnvironmentObject private var state: AppState
 
@@ -1631,6 +1631,22 @@ private struct SavedFilesRow: View {
                 .lineLimit(2)
                 .accessibilityIdentifier("saved.files")
             Spacer(minLength: 0)
+            if state.canUndoSave {
+                Button {
+                    state.undoSave()
+                } label: {
+                    ViewThatFits(in: .horizontal) {
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                            .labelStyle(.titleAndIcon)
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                            .labelStyle(.iconOnly)
+                    }
+                    .font(.subheadline)
+                }
+                .accessibilityLabel(Text("Undo"))
+                .accessibilityHint(Text("Deletes the saved files and puts the pages back. Files already shared or sent stay where they went."))
+                .accessibilityIdentifier("save.undo")
+            }
             Button {
                 state.runFileAction(.share, urls: urls)
             } label: {
