@@ -74,10 +74,12 @@ final class CameraTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["type.text"].firstMatch.exists, "Text is the scanner tab's")
         app.descendants(matching: .any)["type.photos"].firstMatch.tap()
         app.waitForType("photos")
-        // Photos are saved from their review: Save stays dimmed, and Restore is under the Type row.
+        // Photos are pages like a document's: Export's format is there (JPEG to start with) beside Restore,
+        // which is under the Type row, and Save waits for a page.
         XCTAssertTrue(app.switches["options.restore"].firstMatch.waitForExistence(timeout: 10), "Restore faded colors")
+        XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.exists, "Export's format for Photo")
         app.closeOptions()
-        XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save for Photo")
+        XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save without a page")
     }
 
     @MainActor

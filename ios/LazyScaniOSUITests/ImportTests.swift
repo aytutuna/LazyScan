@@ -8,8 +8,9 @@ import XCTest
 // editor opens with its corners, Use corners puts the straightened page in the strip, and Save writes
 // a PDF in the app's own Documents folder in the Simulator, with Save floating on camera mode's
 // viewfinder. With the photo to import twice, Stop in the first one's corner editor ends the
-// import: no page comes in. The page stays when Book is picked, which collects pages too; Receipts and the
-// ID card would leave it without a Save, so picking either asks first, and Cancel keeps the kind and the page.
+// import: no page comes in. A type only sets choices, so the page stays when Photos, Receipts or Book is
+// picked, nothing asked; the ID card starts its own steps and would leave it without a Save, so picking it
+// asks first, and Cancel keeps the kind and the page.
 
 final class ImportTests: XCTestCase {
     override func setUpWithError() throws {
@@ -65,7 +66,7 @@ final class ImportTests: XCTestCase {
     }
 
     @MainActor
-    func test_book_keepsThePage_photoAndTheIdCardAskFirst() throws {
+    func test_everyTypeKeepsThePage_onlyTheIdCardAsksFirst() throws {
         let app: XCUIApplication = try launchWithFixture(task: "document")
         let use: XCUIElement = app.buttons["corners.use"]
         XCTAssertTrue(use.waitForExistence(timeout: 120), "The corner editor's Use corners button")
@@ -76,26 +77,25 @@ final class ImportTests: XCTestCase {
 
         app.switchToCamera()
         XCTAssertEqual(app.pickedKind, "document")
-        for kind in ["photos", "idCard"] {
-            app.chooseType(kind)
-            let question: XCUIElement = app.alerts.firstMatch
-            XCTAssertTrue(question.waitForExistence(timeout: 10), "Asked before \(kind)")
-            // First match: the Simulator lists an alert's button twice.
-            XCTAssertTrue(question.buttons["keepPages.save"].firstMatch.exists, "Save PDF first")
-            XCTAssertTrue(question.buttons["keepPages.discard"].firstMatch.exists, "Discard 1 page")
-            question.buttons["keepPages.cancel"].firstMatch.tap()
-            waitUntilGone(question, timeout: 10)
-            XCTAssertEqual(app.pickedKind, "document", "Cancel keeps the kind")
-            XCTAssertEqual(app.pagesButton.pageCount, 1, "Cancel keeps the page")
-            XCTAssertEqual(app.buttons["save.button"].label, "Save")
-            XCTAssertEqual(app.buttons["save.button"].value as? String, "Save PDF (1 page)")
+        for kind in ["photos", "receipts", "book"] {
+            app.pickTask(kind)
+            XCTAssertEqual(app.pickedKind, kind)
+            XCTAssertFalse(app.alerts.firstMatch.exists, "Nothing asked for \(kind)")
+            XCTAssertEqual(app.pagesButton.pageCount, 1, "\(kind) keeps the page")
+            XCTAssertTrue(app.buttons["save.button"].isEnabled, "Save still has the page")
         }
 
-        app.pickTask("book")
-        XCTAssertEqual(app.pickedKind, "book")
-        XCTAssertEqual(app.pagesButton.pageCount, 1, "Book keeps the page")
-        XCTAssertTrue(app.buttons["save.button"].isEnabled, "Save still has the page")
-        XCTAssertFalse(app.alerts.firstMatch.exists, "Nothing asked for Book")
+        app.chooseType("idCard")
+        let question: XCUIElement = app.alerts.firstMatch
+        XCTAssertTrue(question.waitForExistence(timeout: 10), "Asked before the ID card")
+        // First match: the Simulator lists an alert's button twice.
+        XCTAssertTrue(question.buttons["keepPages.save"].firstMatch.exists, "Save first")
+        XCTAssertTrue(question.buttons["keepPages.discard"].firstMatch.exists, "Discard 1 page")
+        question.buttons["keepPages.cancel"].firstMatch.tap()
+        waitUntilGone(question, timeout: 10)
+        XCTAssertEqual(app.pickedKind, "book", "Cancel keeps the kind")
+        XCTAssertEqual(app.pagesButton.pageCount, 1, "Cancel keeps the page")
+        XCTAssertEqual(app.buttons["save.button"].label, "Save")
     }
 
     /// The app on the demo scanner with the fixture photo to import at launch, `count` times, into `task` when

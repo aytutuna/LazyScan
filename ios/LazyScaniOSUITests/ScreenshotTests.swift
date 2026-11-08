@@ -7,7 +7,8 @@ import XCTest
 // sheet, two scanned pages in the page grid (and selecting, one ticked), the Options sheet with the pages
 // queued and its actions, Settings with My computer and Presets, and the library from camera mode, with
 // Troubleshooter and the file name's editor from Settings and a book page's split sheet; and, on runs of
-// their own, a photo of a page in the page viewer with its filters, the ID card's review with its menus and
+// their own, a photo of a page in the page viewer with its filters, two prints as the pages of Photos with
+// one in the page viewer and Photos' options, the ID card's review with its menus and
 // the copy screen, a batch's and a two-sided sheet's pages, and the password sheet. The corner editor's
 // Retake and the ID card guide only come with a camera, which the Simulator does not have. A screen whose
 // button is not there is left out rather than failed, so the walk stays green while the screens change; a
@@ -132,6 +133,46 @@ final class ScreenshotTests: XCTestCase {
         if discard.waitForExistence(timeout: 5), discard.isHittable {
             discard.tap()
             waitUntilGone(printCopy)
+        }
+        backToDocument(app)
+    }
+
+    /// Two prints from one imported photo under Photos: the pages' grid with a page for each print, a print in
+    /// the page viewer (Crop and Rotate, no filters), and the Options sheet with Photos' format (JPEG).
+    @MainActor
+    func test_photosPages() throws {
+        let app: XCUIApplication = try launchImporting("photos-on-table", "png", task: "photos")
+        app.waitForScanScreen()
+        let pages: XCUIElement = app.pagesButton
+        guard pages.waitForExistence(timeout: 60), pages.waitForPageCount(2, timeout: 240) else {
+            shot("skipped-19-photos-pages")
+            return
+        }
+        pages.tap()
+        if element(app, "page.2").waitForExistence(timeout: 30) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("19-photos-pages")
+        } else {
+            shot("skipped-19-photos-pages")
+        }
+        if tapIfThere(app, "page.1", for: "19a-photo-viewer") {
+            if element(app, "viewer.crop").waitForExistence(timeout: 10) {
+                Thread.sleep(forTimeInterval: 1)
+                shot("19a-photo-viewer")
+            } else {
+                shot("skipped-19a-photo-viewer")
+            }
+            if tapIfThere(app, "viewer.done", for: "viewer-closed") {
+                waitUntilGone(element(app, "viewer.done"))
+            }
+        }
+        if tapIfThere(app, "pages.done", for: "19-photos-pages-closed") {
+            waitUntilGone(element(app, "pages.done"))
+        }
+        if tapIfThere(app, "options.button", for: "19b-photos-options") {
+            Thread.sleep(forTimeInterval: 1)
+            shot("19b-photos-options")
+            closeOptions(app)
         }
         backToDocument(app)
     }
