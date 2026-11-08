@@ -457,7 +457,7 @@ The facts follow the photo: `CaptureFacts.Oriented` turns and mirrors them with 
 facts to a photo kept at another size and records them in that photo's pixels, so the corners always
 match the photo kept as the other version, and leaves a photo turned without its facts as it is
 (`DescribesPhoto`). Pages a phone sends keep those facts (companion packages carry them from format
-1.1). The iPhone app uses this to import photos and to bring in Apple's document scanner's pages (I7),
+1.1). The iPhone app uses this to import photos and files (I7),
 and for the photos of its own camera (I8), which go through the same import: the page outline it
 draws live over the preview is found by the same `PhotoDocumentDetector` on small frames, and how
 steady it is by the same `CaptureStability`, so the camera itself (AVFoundation, iOS only) adds
