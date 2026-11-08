@@ -8,7 +8,7 @@ import UIKit
 /// large, with how many there are when several, then Copies, Fit to page (on and fixed, with why, when a
 /// page has no known size), Also save a PDF, the printer the copy goes to and the status while it prints;
 /// Print shows AirPrint's printer picker, Copy again prints on the printer picked last without it, and
-/// Discard lets the pages go and closes the screen (Close, for the queue's pages printed from Save's menu,
+/// Discard lets the pages go and closes the screen (Close, for the queue's pages printed from Options,
 /// which stay in the queue; the screen is then Print, with Print again). It stays open after printing, for
 /// another copy. It shows the error alert itself, since the root's cannot show over it.
 struct CopyScreen: View {

@@ -284,9 +284,11 @@ private struct TaskSettingsRows: View {
 /// scanner selected yet a line says where to pick one instead. Source is locked while a side of an ID card
 /// is held, as on the Mac: another source would end the task and drop the card. With a feeder it is locked
 /// under ID card, Book and Text too, whose tasks need the flatbed, so the feeder never ends the task under the
-/// chip. Also the scan screen's Options, outside a form, so each picker sits beside its name (`LabeledContent`).
+/// chip. Also the scan screen's drawer, outside a form, so each picker sits beside its name (`LabeledContent`).
 struct ScannerSettingsRows: View {
     @EnvironmentObject private var state: AppState
+    /// Color is left out where its own control is beside these (the scan screen's drawer).
+    var includesColor: Bool = true
 
     var body: some View {
         if let reason = IOSSettingsSections.scannerRowsReason(selected: state.selectedDeviceID) {
@@ -340,13 +342,15 @@ struct ScannerSettingsRows: View {
             }
             .labelsHidden()
         }
-        LabeledContent("Color") {
-            Picker("Color", selection: $state.settings.colorMode) {
-                ForEach(ColorMode.allCases) { (mode: ColorMode) in
-                    Text(mode.label).tag(mode)
+        if includesColor {
+            LabeledContent("Color") {
+                Picker("Color", selection: $state.settings.colorMode) {
+                    ForEach(ColorMode.allCases) { (mode: ColorMode) in
+                        Text(mode.label).tag(mode)
+                    }
                 }
+                .labelsHidden()
             }
-            .labelsHidden()
         }
     }
 
@@ -421,7 +425,7 @@ private struct OutputSettingsRows: View {
         // from printer mode or a preset with Collect off can still turn it on.
         let paired: Bool = camera && state.cameraSides != nil && s.documentMultiPage
         // A PDF picked in the task list takes the pages only while they are collected: turned off, each scan
-        // would be saved as a new file. Stop Adding in Save's menu is the way back.
+        // would be saved as a new file. Stop Adding in Options is the way back.
         let reason: String? = paired ? IOSSettingsText.bothSidesCollectsReason
             : state.appendTarget.map { IOSSettingsText.addingToReason($0.lastPathComponent) }
         Picker("Format", selection: format) {

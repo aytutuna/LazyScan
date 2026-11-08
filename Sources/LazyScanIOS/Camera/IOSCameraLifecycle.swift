@@ -217,11 +217,8 @@ public enum IOSCameraText {
     /// The camera's light, a torch, by the name people know it by (the drawer's group and its switch).
     public static var flashLabel: String { String(localized: "Flash") }
     public static var settingsLabel: String { String(localized: "Settings") }
-    /// The last page and the count: back to the page strip (camera).
+    /// The last page and the count: back to the page strip (both tabs).
     public static var pagesHint: String { String(localized: "Shows the pages taken") }
-    /// The same button on the scan screen, where the strip opens as a sheet: its pages come from the scanner,
-    /// Photos or Files, not from shots.
-    public static var pagesHintScanner: String { String(localized: "Shows the pages") }
     /// The card before the first camera permission prompt (`IOSShell.cameraOnOpen`).
     public static var introLine: String { String(localized: "Lazy Scan scans with the camera.") }
     public static var introHelp: String { String(localized: "iOS asks once for access. Photos and Files work without it.") }

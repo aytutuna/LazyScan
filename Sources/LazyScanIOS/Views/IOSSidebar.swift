@@ -14,7 +14,7 @@ enum IOSDetail: Hashable {
 /// The iPad's sidebar (a regular width, `IOSLayout.usesSidebar`): the user's presets, the kinds and "Add
 /// pages to a PDF" as the task list has them (`IOSShell.kindTiles`: dimmed with the reason when
 /// one cannot be started, the kind set up marked; in camera mode only camera mode's, `IOSShell.cameraKinds`,
-/// named as the camera row names them), the scanners, one of which picked is printer mode's
+/// named as the camera's Type list names them), the scanners, one of which picked is printer mode's
 /// (`ScannerPickerSections`, with Add by address and Troubleshoot), and the library: Presets, Scans, Saved files and Settings
 /// (Command-comma). A kind picked goes to the root view (`onTask`), which asks about the pages and an ID card
 /// held; a preset picked while a side of an ID card is held asks to discard the card first

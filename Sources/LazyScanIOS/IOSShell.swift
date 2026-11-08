@@ -224,9 +224,10 @@ public enum IOSShell {
     }
 
     /// The settings with a Receipts or Quick scan task (a preset's, saved in printer mode or an older build) as
-    /// Document, for camera mode, which has neither kind. Unlike `adoptCameraKind` the preset's own choices
-    /// stay, a Receipts preset's grey Compact PDF among them; a Quick scan's pages are collected into a PDF, as
-    /// a Document's are.
+    /// Document, for a preset applied in camera mode, where its pages are collected into the queue (a Receipts
+    /// preset with a shot holding several, `IOSPresetsModel`). Unlike `adoptCameraKind` the preset's own
+    /// choices stay, a Receipts preset's grey Compact PDF among them; a Quick scan's pages are collected into a
+    /// PDF, as a Document's are.
     public static func cameraPreset(_ settings: ScanSettings) -> ScanSettings {
         guard settings.task == .receipt || settings.task == .quickScan else { return settings }
         var s: ScanSettings = settings
@@ -413,6 +414,8 @@ public enum IOSShell {
     /// options.
     public static var noScannerInUse: String { String(localized: "No scanner is in use.") }
     public static var pickScannerLabel: String { String(localized: "Pick a scanner") }
+    /// What VoiceOver says after the scanner tab's round Scan button.
+    public static var scanHint: String { String(localized: "Starts the scanner") }
 
     /// Whether our camera takes page after page (continuous capture): the task collects several pages in
     /// the queue, or takes the ID card's front then its back, so the camera stays open after each photo
@@ -527,10 +530,9 @@ public enum IOSShell {
     public static var finishStackLine: String { String(localized: "The front sides wait for their backs. Camera mode ends the stack; the pages stay as they are.") }
     public static var keepStackLabel: String { String(localized: "Keep pages as they are") }
 
-    /// The kinds in camera mode's row under the viewfinder. Receipts are a Document shot that holds several
-    /// (`itemsInFrame`) and Text is the page viewer's, so neither is a kind here; printer mode's chips still
-    /// offer both.
-    public static let cameraKinds: [IOSScanKind] = [.photos, .document, .idCard, .book]
+    /// The types the camera's Options list offers. Text is the page viewer's, so it is not one here; the
+    /// scanner tab's list still offers it.
+    public static let cameraKinds: [IOSScanKind] = [.photos, .document, .receipts, .idCard, .book]
 
     /// The user's defaults key of camera mode's Items in frame (`IOSItemsInFrame`).
     public static let itemsInFrameKey = "camera.itemsInFrame"
@@ -573,12 +575,12 @@ public enum IOSShell {
         offersStraighten(settings) && (defaults.object(forKey: straightenKey) as? Bool ?? true)
     }
 
-    /// The user's defaults key of the drawer's choices `kind` was left with (`rememberChoices`).
+    /// The user's defaults key of the Options' choices `kind` was left with (`rememberChoices`).
     static func choicesKey(_ kind: IOSScanKind) -> String {
         "scan.choices.\(kind.rawValue)"
     }
 
-    /// Keeps the drawer's choices of the kind the settings are shown as in `defaults`, for when that kind is
+    /// Keeps the Options' choices of the kind the settings are shown as in `defaults`, for when that kind is
     /// picked again (`restoringChoices`).
     static func rememberChoices(_ settings: ScanSettings, defaults: UserDefaults) {
         let choices: IOSKindChoices = IOSKindChoices(
@@ -590,7 +592,7 @@ public enum IOSShell {
         defaults.set(data, forKey: choicesKey(shownKind(settings)))
     }
 
-    /// The settings of `kind`'s task, just started, with the drawer's choices the kind was left with laid back
+    /// The settings of `kind`'s task, just started, with the Options' choices the kind was left with laid back
     /// over them (none kept: unchanged): the format, the PDF's size, PDF/A unless a password was turned on
     /// since (a PDF/A file can't have one), Also .txt, One PDF per page, the colour, the adjustments (restored
     /// colours make Photos Restore old photos again) and the file name, unless it was Separate documents',
@@ -618,7 +620,7 @@ public enum IOSShell {
         return s
     }
 
-    /// A kind picked on the printer screen's chips or camera mode's row: the drawer's choices of the kind shown
+    /// A kind picked on the Options sheet's Type: the Options' choices of the kind shown
     /// are kept (`rememberChoices`), the picked kind's task starts as its tile did, with the availability check,
     /// fresh steps and the fit to the scanner (`AppState.startTask`; `discardPages(andStart:)` when the queued
     /// pages go), and the choices that kind was left with go back over the task's (`restoringChoices`). False
@@ -635,9 +637,9 @@ public enum IOSShell {
         return started
     }
 
-    /// Camera mode has no Receipts or Text: their task, kept from printer mode or an older build, starts the
-    /// Document over in camera mode, with the choices it was left with (`startKind`), as do settings left
-    /// without a task in printer mode, since camera mode always shows a kind.
+    /// Camera mode has no Text: its task, kept from printer mode or an older build, starts the Document over
+    /// in camera mode, with the choices it was left with (`startKind`), as do settings left without a task in
+    /// printer mode, since camera mode always shows a kind.
     @MainActor
     static func adoptCameraKind(_ state: AppState, defaults: UserDefaults) {
         if let task = state.settings.task, cameraKinds.contains(kind(of: task)) { return }
@@ -795,7 +797,7 @@ public enum IOSShell {
         }
     }
 
-    /// The kind a task is shown as on the iPhone (the printer screen's chips, camera mode's kinds): the
+    /// The kind a task is shown as on the iPhone (the Options sheet's types): the
     /// document tasks are a Document with its options set (the feeder, both sides, separate documents, the
     /// format, PDF/A, Email…, Print…), Restore old photos is Photos with faded colours restored, Quick scan
     /// is Text.
@@ -821,7 +823,7 @@ public enum IOSShell {
         kind(of: TaskCatalog.infer(settings))
     }
 
-    /// The printer screen's chips, the iPad sidebar's rows and camera mode's kinds (`cameraKinds`): one per
+    /// The Options sheet's types, the iPad sidebar's rows and camera mode's kinds (`cameraKinds`): one per
     /// kind, in `order`, each as its task's card can be picked.
     public static func kindTiles(_ cards: [TaskCard], current: IOSScanKind,
                                  order: [IOSScanKind] = IOSScanKind.allCases) -> [IOSKindTile] {
@@ -836,8 +838,8 @@ public enum IOSShell {
         return tiles
     }
 
-    /// The line under the printer screen's chips for the kinds that are dimmed, a sentence for each reason in
-    /// the chips' order ("ID card, Book and Text need a flatbed."); nil while none is.
+    /// The line under the Options sheet's Type for the kinds that are dimmed, a sentence for each reason in
+    /// the list's order ("ID card, Book and Text need a flatbed."); nil while none is.
     public static func unavailableKindsLine(_ tiles: [IOSKindTile]) -> String? {
         let dimmed: [IOSKindTile] = tiles.filter { (tile: IOSKindTile) -> Bool in !tile.availability.isAvailable }
         var reasons: [String] = []
@@ -1060,7 +1062,7 @@ public enum IOSItemsInFrame: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// The drawer's choices a kind was left with, kept in the user's defaults (`IOSShell.rememberChoices`).
+/// The Options' choices a kind was left with, kept in the user's defaults (`IOSShell.rememberChoices`).
 private struct IOSKindChoices: Codable {
     let format: OutputFormat
     let pdfSize: PDFSizePreset
@@ -1107,7 +1109,7 @@ public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The kind in camera mode's row: one print or several there, so Photo.
+    /// The kind in camera mode's Type list: one print or several there, so Photo.
     public var cameraTitle: String {
         self == .photos ? String(localized: "Photo") : title
     }

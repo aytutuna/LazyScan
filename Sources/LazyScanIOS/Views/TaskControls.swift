@@ -312,7 +312,7 @@ struct RestoreToggle: View {
     }
 }
 
-/// The Export sheet's sections, while the scan screen collects pages: the format (a PDF, a JPEG a page, Word
+/// The Options sheet's save sections, while the scan screen collects pages: the format (a PDF, a JPEG a page, Word
 /// or text) on its own at the top; for a document Separate documents (the Separate documents task, with its
 /// separator sheets; dimmed without a feeder as its tile was, and while Both sides is on, since one task holds
 /// either), One PDF per page for a PDF that is not split otherwise, and the PDF's choices while Save writes
@@ -407,8 +407,8 @@ struct ExportOptions: View {
 }
 
 /// After saving (`IOSAfterSave`): what Save also does, each a check, and under them Then, the settings' own
-/// action after a save (`OutputOptions.afterSave`) in the phone's words. In the Export sheet, and on its own
-/// from Save's menu. Send to computer is dimmed, with its reason under it, while nothing can send; its
+/// action after a save (`OutputOptions.afterSave`) in the phone's words. In the Options sheet. Send to
+/// computer is dimmed, with its reason under it, while nothing can send; its
 /// check stays as it was. Then is dimmed while Email is checked: the email goes in its place.
 struct AfterSaveSection: View {
     @EnvironmentObject private var state: AppState
@@ -447,7 +447,7 @@ struct AfterSaveSection: View {
         }
     }
 
-    /// Why `action` cannot run now, nil while it can. Only Send to computer can be out of reach: Save's menu
+    /// Why `action` cannot run now, nil while it can. Only Send to computer can be out of reach: Options
     /// shows it under the same test (`IOSShell.offersSendToComputer`).
     private func unavailableReason(of action: IOSAfterSave) -> String? {
         let s: ScanSettings = state.settings

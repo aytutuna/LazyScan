@@ -6,9 +6,9 @@ import UniformTypeIdentifiers
 /// The task list: what are you scanning? The iPad's detail beside the sidebar; the iPhone has the kinds on
 /// its scan screen instead. The user's presets first (when there are any, as on the
 /// Mac), then one tile per kind (`IOSScanKind`: Document, Photos, Receipts, ID card, Book, Text; in camera
-/// mode the camera's four, `IOSShell.cameraKinds`, named as its row names them): an icon,
+/// mode the camera's five, `IOSShell.cameraKinds`, named as its Type list names them): an icon,
 /// the title and the one-line subtitle; the feeder, both sides, the format and the rest are the scan
-/// screen's Options and Save's menu. A kind whose task cannot be started (no feeder or flatbed,
+/// screen's Options. A kind whose task cannot be started (no feeder or flatbed,
 /// `IOSShell.availability`) is dimmed with one short line saying why. Picking a tile starts the kind's
 /// task through the root view (`onTask`, which asks about queued pages and an ID card held) or sets the
 /// preset's settings up, and opens the scan screen (`onOpenScanner`); not while an import runs, whose pages

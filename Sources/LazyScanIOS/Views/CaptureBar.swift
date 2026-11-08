@@ -5,89 +5,12 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The capture bar of the printer screen: the last page with how many the queue holds (it opens the page
-/// strip in a sheet, `onPages`, and bumps with a tap felt as a page comes in) and Photos and Files
-/// (`ImportButtons`), with an import's progress above them while one runs (Stop while more photos or
-/// pages follow). Imported photos go to the corner editor one by one (`IOSImportSession`); the root view
-/// shows it. Scan is on the action row beside Save, and the camera's shutter is camera mode's
-/// (`CameraScreen`).
-struct CaptureBar: View {
-    @EnvironmentObject private var state: AppState
-    @EnvironmentObject private var importer: IOSImportSession
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
-
-    /// Opens the page strip.
-    let onPages: @MainActor () -> Void
-
+/// What Photos (`ImportButtons`) brings in: the most photos picked at once, and each picked photo loaded
+/// only when its turn comes (`load`), so one photo's bytes are in memory at a time. Imported photos go to
+/// the corner editor one by one (`IOSImportSession`); the root view shows it.
+enum CaptureBar {
     /// The most photos picked at once.
     static let maxPicked: Int = 50
-
-    @State private var bumped: Bool = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if importer.progressText != nil {
-                ImportProgressRow()
-            }
-            HStack(alignment: .center, spacing: 12) {
-                pagesButton
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                ImportButtons()
-            }
-        }
-    }
-
-    /// The last page taken and the count; it opens the page strip.
-    private var pagesButton: some View {
-        let count: Int = state.scannedPages.count
-        let last: CGImage? = state.scannedPages.last?.image
-        return Button {
-            onPages()
-        } label: {
-            HStack(spacing: 8) {
-                Group {
-                    if let image = last {
-                        Image(decorative: image, scale: 1)
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 40, height: 52)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color(uiColor: .separator), lineWidth: 1))
-                    } else {
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Color(uiColor: .tertiaryLabel), style: StrokeStyle(lineWidth: 1, dash: [3]))
-                            .frame(width: 40, height: 52)
-                    }
-                }
-                .scaleEffect(bumped ? 1.3 : 1)
-                Text(IOSCameraText.pageCount(count))
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .lineLimit(1)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(count == 0)
-        .onChange(of: count) { (old: Int, new: Int) in
-            guard new > old, !reduceMotion else { return }
-            withAnimation(.spring(duration: 0.15)) {
-                bumped = true
-            } completion: {
-                withAnimation(.spring(duration: 0.55, bounce: 0.25)) {
-                    bumped = false
-                }
-            }
-        }
-        .sensoryFeedback(SensoryFeedback.impact(weight: SensoryFeedback.Weight.medium), trigger: count) { (old: Int, new: Int) -> Bool in
-            new > old
-        }
-        .accessibilityLabel(Text(IOSCameraText.pageCount(count)))
-        .accessibilityHint(Text(IOSCameraText.pagesHintScanner))
-        .accessibilityIdentifier("capture.pages")
-    }
 
     /// The picked photos in the order picked, each loaded only when its turn comes (`load`), so one
     /// photo's bytes are in memory at a time.
@@ -118,7 +41,7 @@ struct CaptureBar: View {
 }
 
 /// An import's progress ("Importing photo 2 of 5…", a shot's "Reading the photo…") with Stop while more
-/// photos or pages follow the one in hand, on the capture bar and over camera mode's viewfinder.
+/// photos or pages follow the one in hand, over the scanner tab's bars and over camera mode's viewfinder.
 struct ImportProgressRow: View {
     @EnvironmentObject private var importer: IOSImportSession
 
@@ -149,9 +72,9 @@ struct ImportProgressRow: View {
 }
 
 /// Photos (the system's photo picker, several in the order picked) and Files (photos and PDFs, and a
-/// Lazy Scan document, which goes to the scan screen's banner instead), as icons on the capture bar
-/// and, in grey circles (`round`), on camera mode's bar, which rests its camera while one is open
-/// (`onPresenting`). Each picked photo is loaded only when its turn comes.
+/// Lazy Scan document, which goes to the scan screen's banner instead), as icons, or in grey circles
+/// (`round`) as on the bottom bar, which rests the camera while one is open (`onPresenting`). Each picked
+/// photo is loaded only when its turn comes.
 struct ImportButtons: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession

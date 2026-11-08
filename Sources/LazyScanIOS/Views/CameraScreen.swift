@@ -6,35 +6,35 @@ import SwiftUI
 import UIKit
 
 /// Camera mode, the iPhone's scan screen unless printer mode was picked (`IOSScanMode`): the viewfinder is
-/// the screen. Its top bar has the library (`onLibrary`; none where the sidebar has it), a small round
-/// chevron that swaps the kinds for the options drawer (`CameraDrawer`), the photo size ("24 MP", where
-/// the camera offers more than one: a tap steps to the next, the first pick of a size that may not fit in
-/// the phone's memory says so once), and the printer, which switches to printer mode (`onPrinter`). The
-/// viewfinder shows the whole photo as it will be taken (black bands where the screen is taller or wider), the page's outline over it (yellow, green once the page holds
-/// still), one status line at its top (the glare hint, why the automatic shutter waits, "Page found · hold
-/// still", else the task's camera line, `CameraTaskCatalog`), the ID card's guide frame, and at its foot
-/// what the scan screen hands in (`notices`: the package banner, the app's progress with Cancel while it is
-/// busy, an import's progress with Stop, the files saved last), the task's buttons between shots (`CameraTaskButtons`, No back side for the ID card) and
-/// Save with its menu once there are pages (`saveControls`). Where the camera cannot be used (no camera,
-/// as in the Simulator; access off, with Settings; not allowed) or waits (too warm, interrupted), one short
-/// line says why in its place. Under it the kinds as a snapping row (`KindsRow`) or the drawer, then the
-/// bar: the pages as a stack with their count (`onPages`, the page strip's sheet), the shutter with a ring
-/// that fills while the page holds still, and Photos and Files. With Auto on the photo is taken by itself
-/// once the page held still on a sharp, lit frame (`IOSCameraModel`), with a short tap felt; VoiceOver
-/// says the wait once per wait (`IOSWaitAnnouncer`). Each photo goes through the photo import
-/// (`IOSImportSession.importShot`); in continuous capture (`IOSShell.capturesContinuously`) a page found
-/// clearly goes straight into the queue, otherwise the root view's corner editor opens. The camera rests
-/// while anything covers it (`resting`: a sheet, a cover, the corner editor; Photos or Files), so Auto
-/// takes nothing meanwhile, and waits for the card saying why it is asked for (`waitsForIntro`) before
-/// iOS asks. With a keyboard, Space takes a photo.
-struct CameraScreen<Notices: View, SaveControls: View>: View {
+/// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), a
+/// small round arrow that opens the options drawer (`ScanDrawer`) above the bottom bar, the photo size
+/// ("24 MP", where the camera offers more than one: a tap steps to the next, the first pick of a size that
+/// may not fit in the phone's memory says so once), and the scanner, which switches to printer mode
+/// (`onPrinter`). The viewfinder shows the whole photo as it will be taken (black bands where the screen is
+/// taller or wider), the page's outline over it (yellow, green once the page holds still), one status line at
+/// its top (the glare hint, why the automatic shutter waits, "Page found · hold still", else the task's
+/// camera line, `CameraTaskCatalog`), the ID card's guide frame, and at its foot what the scan screen hands
+/// in (`notices`: the package banner, the app's progress with Cancel while it is busy, an import's progress
+/// with Stop, the files saved last) and the task's buttons between shots (`CameraTaskButtons`, No back side
+/// for the ID card). Where the camera cannot be used (no camera, as in the Simulator; access off, with
+/// Settings; not allowed) or waits (too warm, interrupted), one short line says why in its place. Under it
+/// the bottom bar: the scan screen's Options and Save (`optionsRow`), then the pages as a stack with their
+/// count (`onPages`, the page strip's sheet), the shutter with a ring that fills while the page holds still,
+/// and Photos and Files. With Auto on the photo is taken by itself once the page held still on a sharp, lit
+/// frame (`IOSCameraModel`), with a short tap felt; VoiceOver says the wait once per wait
+/// (`IOSWaitAnnouncer`). Each photo goes through the photo import (`IOSImportSession.importShot`); in
+/// continuous capture (`IOSShell.capturesContinuously`) a page found clearly goes straight into the queue,
+/// otherwise the root view's corner editor opens. The camera rests while anything covers it (`resting`: a
+/// sheet, a cover, the corner editor; Photos or Files), so Auto takes nothing meanwhile, and waits for the
+/// card saying why it is asked for (`waitsForIntro`) before iOS asks. With a keyboard, Space takes a photo.
+struct CameraScreen<Notices: View, OptionsRow: View>: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model: IOSCameraModel
     @State private var waitAnnouncer: IOSWaitAnnouncer = IOSWaitAnnouncer()
     @State private var showsDrawer: Bool = false
-    @State private var drawerGroup: CameraDrawerGroup = .export
+    @State private var drawerGroup: DrawerGroup = .colour
     /// Photos or Files is open over the camera.
     @State private var picking: Bool = false
     /// The photo size picked, as Settings keeps it; 0 until one is.
@@ -46,27 +46,20 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
     private let onLibrary: (() -> Void)?
     private let onPrinter: () -> Void
     private let onPages: () -> Void
-    private let onKind: (IOSScanKind) -> Void
-    private let onExportSheet: () -> Void
     private let notices: () -> Notices
-    private let saveControls: () -> SaveControls
+    private let optionsRow: () -> OptionsRow
 
-    /// `onKind` picks a kind as the printer screen's chips do; `onExportSheet` opens the Export options
-    /// in full.
     init(resting: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
-         onPrinter: @escaping () -> Void, onPages: @escaping () -> Void, onKind: @escaping (IOSScanKind) -> Void,
-         onExportSheet: @escaping () -> Void,
-         @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder saveControls: @escaping () -> SaveControls) {
+         onPrinter: @escaping () -> Void, onPages: @escaping () -> Void,
+         @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder optionsRow: @escaping () -> OptionsRow) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
         self.resting = resting
         self.waitsForIntro = waitsForIntro
         self.onLibrary = onLibrary
         self.onPrinter = onPrinter
         self.onPages = onPages
-        self.onKind = onKind
-        self.onExportSheet = onExportSheet
         self.notices = notices
-        self.saveControls = saveControls
+        self.optionsRow = optionsRow
     }
 
     var body: some View {
@@ -136,17 +129,12 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
     // MARK: The top bar
 
     private var topBar: some View {
-        HStack(spacing: 0) {
-            libraryButton
-                .frame(maxWidth: .infinity, alignment: .leading)
-            drawerToggle
+        ScanTopBar(showsDrawer: $showsDrawer, onLibrary: onLibrary) {
             HStack(spacing: 0) {
                 resolutionButton
                 printerButton
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 8)
     }
 
     private var printerButton: some View {
@@ -189,45 +177,6 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
         }
     }
 
-    @ViewBuilder
-    private var libraryButton: some View {
-        if let open = onLibrary {
-            Button {
-                open()
-            } label: {
-                Image(systemName: "books.vertical")
-                    .font(.title3)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel(Text(IOSSettingsText.libraryLabel))
-            .accessibilityIdentifier("open.library")
-        } else {
-            Color.clear
-                .frame(width: 44, height: 44)
-        }
-    }
-
-    private var drawerToggle: some View {
-        let open: Bool = showsDrawer
-        return Button {
-            withAnimation(Animation.snappy) {
-                showsDrawer.toggle()
-            }
-        } label: {
-            Image(systemName: open ? "chevron.down" : "chevron.up")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(open ? Color.white : Color.primary)
-                .frame(width: 28, height: 28)
-                .background(Circle().fill(open ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(open ? IOSCameraText.hideOptions : IOSCameraText.showOptions))
-        .accessibilityIdentifier("drawer.toggle")
-    }
-
     // MARK: The viewfinder
 
     private var viewfinder: some View {
@@ -254,7 +203,7 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
         .accessibilityIdentifier("camera.screen")
     }
 
-    /// The status line at the top; at the foot the notices, the task's buttons and Save.
+    /// The status line at the top; at the foot the notices and the task's buttons.
     private var overlays: some View {
         VStack(spacing: 8) {
             if model.message == nil, let status = statusLine {
@@ -285,10 +234,6 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(state.isBusy || importer.isImporting)
                 .accessibilityIdentifier("camera.skipBack")
-            }
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                saveControls()
             }
         }
     }
@@ -375,58 +320,27 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
     @ViewBuilder
     private var lowerRow: some View {
         if showsDrawer {
-            CameraDrawer(model: model, group: $drawerGroup, onExportSheet: onExportSheet)
-                .transition(.opacity)
-        } else {
-            KindsRow(onKind: onKind)
-                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            ScanDrawer(model: model, torch: model.hasTorch, group: $drawerGroup)
                 .transition(.opacity)
         }
     }
 
     private var bottomBar: some View {
-        HStack(alignment: .center, spacing: 12) {
-            PagesStack(onPages: onPages)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            shutter
-            ImportButtons(round: true, onPresenting: setPicking)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+        VStack(spacing: 10) {
+            optionsRow()
+            CaptureRow(onPages: onPages, onPresenting: setPicking) {
+                shutter
+            }
         }
-        .padding(.horizontal, 24)
         .padding(.top, 10)
         .padding(.bottom, 8)
     }
 
     private var shutter: some View {
-        let ring: CGFloat = ringProgress
-        let enabled: Bool = canShoot
-        return Button {
-            shoot()
-        } label: {
-            ZStack {
-                Circle()
-                    .strokeBorder(Color.accentColor, lineWidth: 3)
-                Circle()
-                    .fill(Color.accentColor)
-                    .padding(7)
-                // The automatic shutter's countdown: full when the page held still long enough.
-                Circle()
-                    .trim(from: 0, to: ring)
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .rotationEffect(Angle.degrees(-90))
-                    .padding(1.5)
-                    .animation(Animation.linear(duration: 0.1), value: ring)
-            }
-            .frame(width: 74, height: 74)
-            .contentShape(Circle())
-        }
-        .buttonStyle(ShutterButtonStyle())
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.4)
-        .keyboardShortcut(IOSShortcuts.shutter.keyboardShortcut)
-        .accessibilityLabel(Text(IOSCameraText.shutterLabel))
-        .accessibilityHint(Text(IOSCameraText.shutterHint(CaptureObjects.kind(for: state.settings))))
-        .accessibilityIdentifier("camera.shutter")
+        ShutterRing(progress: ringProgress, enabled: canShoot, label: IOSCameraText.shutterLabel,
+                    hint: IOSCameraText.shutterHint(CaptureObjects.kind(for: state.settings)),
+                    identifier: "camera.shutter", action: shoot)
+            .keyboardShortcut(IOSShortcuts.shutter.keyboardShortcut)
     }
 
     /// How far the page is through the steady time, for the ring around the shutter (Auto on, while a photo
@@ -538,109 +452,6 @@ private struct StatusPill: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.black.opacity(0.55)))
             .accessibilityHint(Text(hint ?? ""))
-    }
-}
-
-/// The pages taken, as the last one whole on a white card shaped as the page is, a second card behind it
-/// once there are two, and the count on a badge inside the card; it opens the page strip. It springs and a
-/// tap is felt as a page comes in.
-private struct PagesStack: View {
-    @EnvironmentObject private var state: AppState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
-    let onPages: () -> Void
-    @State private var bumped: Bool = false
-
-    /// The page's long side on the card, inside its white rim.
-    private static let longSide: CGFloat = 62
-    private static let rim: CGFloat = 3
-
-    var body: some View {
-        let count: Int = state.scannedPages.count
-        Button {
-            onPages()
-        } label: {
-            stack(count: count)
-                .scaleEffect(bumped ? 1.1 : 1)
-                .animation(reduceMotion ? nil : Animation.spring(duration: 0.4, bounce: 0.3), value: count)
-                .frame(width: 76, height: 76)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(count == 0)
-        .onChange(of: count) { (old: Int, new: Int) in
-            guard new > old, !reduceMotion else { return }
-            withAnimation(.spring(duration: 0.15)) {
-                bumped = true
-            } completion: {
-                withAnimation(.spring(duration: 0.45, bounce: 0.35)) {
-                    bumped = false
-                }
-            }
-        }
-        .sensoryFeedback(SensoryFeedback.impact(weight: SensoryFeedback.Weight.light), trigger: count) { (old: Int, new: Int) -> Bool in
-            new > old
-        }
-        .accessibilityLabel(Text(IOSCameraText.pageCount(count)))
-        .accessibilityHint(Text(IOSCameraText.pagesHint))
-        .accessibilityIdentifier("camera.pages")
-    }
-
-    @ViewBuilder
-    private func stack(count: Int) -> some View {
-        if let image = state.scannedPages.last?.image {
-            let page: CGSize = Self.pageSize(image)
-            let card: CGSize = CGSize(width: page.width + Self.rim * 2, height: page.height + Self.rim * 2)
-            ZStack {
-                if count > 1 {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color(uiColor: .systemGray5))
-                        .frame(width: card.width, height: card.height)
-                        .rotationEffect(Angle.degrees(6))
-                        .offset(x: 3, y: -2)
-                        .environment(\.layoutDirection, .leftToRight)
-                }
-                front(image, page: page, count: count)
-            }
-        } else {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .strokeBorder(Color(uiColor: .tertiaryLabel), style: StrokeStyle(lineWidth: 1, dash: [3]))
-                .frame(width: 48, height: 64)
-        }
-    }
-
-    private func front(_ image: CGImage, page: CGSize, count: Int) -> some View {
-        Image(decorative: image, scale: 1)
-            .resizable()
-            .interpolation(.high)
-            .scaledToFill()
-            .frame(width: page.width, height: page.height)
-            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-            .padding(Self.rim)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color(uiColor: .separator), lineWidth: 0.5))
-            .shadow(color: Color.black.opacity(0.3), radius: 2, y: 1)
-            .overlay(alignment: .topTrailing) {
-                Text("\(count)")
-                    .font(.caption2.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 4)
-                    .frame(minWidth: 18, minHeight: 18)
-                    .background(Capsule().fill(Color.accentColor))
-                    .padding(Self.rim + 1)
-                    .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-            }
-    }
-
-    /// The page in the card's box, its own shape kept: a landscape page lies on its side. Only a page
-    /// narrower than a long receipt has its ends cut a little, so the card never gets thinner than its badge.
-    static func pageSize(_ image: CGImage) -> CGSize {
-        let width: CGFloat = CGFloat(max(image.width, 1))
-        let height: CGFloat = CGFloat(max(image.height, 1))
-        if height >= width {
-            return CGSize(width: max(20, longSide * width / height), height: longSide)
-        }
-        return CGSize(width: longSide, height: max(20, longSide * height / width))
     }
 }
 

@@ -345,24 +345,22 @@ final class IOSShellTests: XCTestCase {
     }
 
     @MainActor
-    func test_adoptCameraKind_turnsReceiptsAndText_intoTheDocument() throws {
+    func test_adoptCameraKind_turnsText_intoTheDocument() throws {
         let name: String = "adopt.\(UUID().uuidString)"
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
                              fileActions: IOSFileActions(pasteboard: nil, openSystemURL: { (_: URL) -> Void in }),
                              files: AppStateFiles.all(in: folder))
-        for task in [ScanTask.receipt, .quickScan] {
-            XCTAssertTrue(state.startTask(task), task.rawValue)
-            IOSShell.adoptCameraKind(state, defaults: defaults)
-            XCTAssertEqual(state.settings.task, .document, task.rawValue)
-            XCTAssertEqual(IOSShell.shownKind(state.settings), .document, task.rawValue)
-            // The Document's own choices, not the receipts' grey Compact PDF.
-            XCTAssertEqual(state.settings.colorMode, .color, task.rawValue)
-            XCTAssertEqual(state.settings.output.pdfSize, .standard, task.rawValue)
-        }
-        // A kind of the row stays, with its choices.
-        for task in [ScanTask.photos, .photoRestore, .idCard, .book, .email] {
+        XCTAssertTrue(state.startTask(.quickScan))
+        IOSShell.adoptCameraKind(state, defaults: defaults)
+        XCTAssertEqual(state.settings.task, .document)
+        XCTAssertEqual(IOSShell.shownKind(state.settings), .document)
+        // The Document's own choices.
+        XCTAssertEqual(state.settings.colorMode, .color)
+        XCTAssertEqual(state.settings.output.pdfSize, .standard)
+        // A kind of the list stays, with its choices.
+        for task in [ScanTask.photos, .photoRestore, .receipt, .idCard, .book, .email] {
             XCTAssertTrue(state.startTask(task), task.rawValue)
             IOSShell.adoptCameraKind(state, defaults: defaults)
             XCTAssertEqual(state.settings.task, task, task.rawValue)
