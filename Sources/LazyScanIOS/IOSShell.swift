@@ -1205,6 +1205,9 @@ extension AppState {
         state.platform = .ios
         state.listsFoundObjects = true
         state.keepsSavedForUndo = true
+        fileActions.reportFailure = { [weak state] (message: String) -> Void in
+            state?.errorMessage = message
+        }
         IOSShell.adoptOriginalFilter(state, defaults: UserDefaults.standard)
         if UserDefaults.standard.string(forKey: IOSShell.scanModeKey) != IOSScanMode.printer.rawValue {
             IOSShell.adoptCameraKind(state, defaults: UserDefaults.standard)

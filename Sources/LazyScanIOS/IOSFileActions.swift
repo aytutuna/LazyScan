@@ -54,10 +54,14 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     @Published public var mailRequest: MailRequest?
 
     private let pasteboard: UIPasteboard
-    private let openSystemURL: @MainActor (URL) -> Void
+    /// Opens an address and says whether the system did, once it knows.
+    private let openSystemURL: @MainActor (URL, @escaping @MainActor (Bool) -> Void) -> Void
     private let mailAvailable: @MainActor () -> Bool
     private let lazyPrintReachable: @MainActor () -> Bool
     private let handoffContainer: @MainActor () -> URL?
+    /// Tells the user of a failure that comes after the action returned (Lazy Print not opening); the app's
+    /// state shows it as an error (`IOSShell.makeForIOS`).
+    var reportFailure: (@MainActor (String) -> Void)?
 
     /// `pasteboard` nil: the general pasteboard. `openSystemURL` nil: `UIApplication.open` (tests
     /// pass their own to see the Files app's address without opening it). `mailAvailable` nil: whether
@@ -69,10 +73,15 @@ public final class IOSFileActions: ObservableObject, FileActionService {
                 handoffContainer: (@MainActor () -> URL?)? = nil) {
         self.pasteboard = pasteboard ?? UIPasteboard.general
         if let openSystemURL {
-            self.openSystemURL = openSystemURL
+            self.openSystemURL = { (url: URL, done: @escaping @MainActor (Bool) -> Void) -> Void in
+                openSystemURL(url)
+                done(true)
+            }
         } else {
-            self.openSystemURL = { (url: URL) -> Void in
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            self.openSystemURL = { (url: URL, done: @escaping @MainActor (Bool) -> Void) -> Void in
+                UIApplication.shared.open(url, options: [:]) { (opened: Bool) -> Void in
+                    Task { @MainActor in done(opened) }
+                }
             }
         }
         if let mailAvailable {
@@ -118,7 +127,7 @@ public final class IOSFileActions: ObservableObject, FileActionService {
 
     public func reveal(_ urls: [URL]) {
         guard let target = IOSFileActions.filesAppURL(for: urls) else { return }
-        openSystemURL(target)
+        openSystemURL(target) { (_: Bool) -> Void in }
     }
 
     public func sendProbe(for urls: [URL]) -> SendProbe {
@@ -178,25 +187,52 @@ public final class IOSFileActions: ObservableObject, FileActionService {
         }
         let id = try IOSFileActions.stageHandoff(urls, in: container)
         guard let address = URL(string: LazyPrintUrl.buildHandoff(id)) else {
+            IOSFileActions.removeHandoff(id, in: container)
             throw ScanError.unsupported(L10n.t("Lazy Print can't open this file."))
         }
-        openSystemURL(address)
+        openSystemURL(address) { [weak self] (opened: Bool) -> Void in
+            guard !opened else { return }
+            IOSFileActions.removeHandoff(id, in: container)
+            self?.reportFailure?(L10n.t("Lazy Print could not be opened, so nothing was handed over."))
+        }
+    }
+
+    /// Deletes what earlier hand-offs left in the shared folder; Lazy Print has read them by now.
+    public func clearHandoffs() {
+        guard let container = handoffContainer() else { return }
+        try? FileManager.default.removeItem(at: container.appendingPathComponent(LazyPrintUrl.handoffFolder))
     }
 
     /// Copies `urls` under their own names into a new folder `Handoff/<id>` of `container`, after
-    /// deleting the folders of earlier hand-offs, and returns the id.
+    /// deleting the folders of earlier hand-offs, and returns the id. The folder is kept out of backups, and
+    /// goes again if a file cannot be copied.
     public nonisolated static func stageHandoff(_ urls: [URL], in container: URL, id: UUID = UUID()) throws -> UUID {
         let manager = FileManager.default
-        let root = container.appendingPathComponent(LazyPrintUrl.handoffFolder, isDirectory: true)
+        var root = container.appendingPathComponent(LazyPrintUrl.handoffFolder, isDirectory: true)
         if manager.fileExists(atPath: root.path) {
             try manager.removeItem(at: root)
         }
         let folder = root.appendingPathComponent(id.uuidString, isDirectory: true)
         try manager.createDirectory(at: folder, withIntermediateDirectories: true)
-        for url in urls {
-            try manager.copyItem(at: url, to: folder.appendingPathComponent(url.lastPathComponent))
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? root.setResourceValues(values)
+        do {
+            for url in urls {
+                try manager.copyItem(at: url, to: folder.appendingPathComponent(url.lastPathComponent))
+            }
+        } catch {
+            try? manager.removeItem(at: folder)
+            throw error
         }
         return id
+    }
+
+    /// Deletes hand-off `id`'s folder.
+    nonisolated static func removeHandoff(_ id: UUID, in container: URL) {
+        let folder = container.appendingPathComponent(LazyPrintUrl.handoffFolder, isDirectory: true)
+            .appendingPathComponent(id.uuidString, isDirectory: true)
+        try? FileManager.default.removeItem(at: folder)
     }
 
     /// The Files app's address of the folder holding the first file (`shareddocuments://` and the

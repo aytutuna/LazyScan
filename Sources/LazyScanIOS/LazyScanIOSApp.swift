@@ -24,6 +24,7 @@ public struct LazyScanIOSApp: App {
         let process: ProcessInfo = ProcessInfo.processInfo
         let options: IOSLaunchOptions = IOSLaunchOptions(arguments: process.arguments, environment: process.environment)
         let actions: IOSFileActions = IOSFileActions()
+        actions.clearHandoffs()
         let network: IOSNetworkScanners? = options.demoScannerOnly ? nil : IOSNetworkScanners()
         let browser: IOSCompanionBrowser? = options.demoScannerOnly ? nil : IOSCompanionBrowser()
         let prompt: IOSPasswordPrompt = IOSPasswordPrompt()
