@@ -2,7 +2,8 @@ import XCTest
 
 // The page grid's Select mode, as a person uses it on the Simulator: the three pages of the batch fixture
 // brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Delete and
-// its question, and one page is left; and Delete All, which empties the queue and closes the sheet.
+// its question, and one page is left; Delete All, which empties the queue and closes the sheet; and a page
+// dragged onto another, which takes its place.
 
 final class PagesTests: XCTestCase {
     override func setUpWithError() throws {
@@ -51,6 +52,47 @@ final class PagesTests: XCTestCase {
         XCTAssertTrue(titleCount(app, is: 1), "The title counts the remaining page")
         app.closePages()
         XCTAssertTrue(app.pagesButton.waitForPageCount(1, timeout: 30), "1 page on the pages' button")
+    }
+
+    // Pressing the third page and dragging it onto the first puts it first. The demo scanner's pages look
+    // alike, so each tile's accessibility value (the page's id, under -demoScanner) tells them apart.
+    @MainActor
+    func test_pageDraggedOntoTheFirst_takesItsPlace() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner"]
+        app.launch()
+
+        app.switchToPrinter()
+        app.pickTask("document")
+        app.pickScanner("scanner.row.mock:demo")
+        app.closeOptions()
+        let scan: XCUIElement = app.buttons["scan.button"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 30), "The scan screen's Scan button")
+        for count in 1...3 {
+            app.waitUntilEnabled(scan, "Scan", timeout: 120)
+            scan.tap()
+            XCTAssertTrue(app.pagesButton.waitForPageCount(count, timeout: 240), "\(count) on the pages' button")
+        }
+        app.openPages(3)
+
+        let ids: [String] = (1...3).map { (number: Int) -> String in pageID(app, number) }
+        XCTAssertEqual(Set(ids).count, 3, "Three different pages")
+
+        let first: XCUIElement = app.descendants(matching: .any)["page.1"].firstMatch
+        let third: XCUIElement = app.descendants(matching: .any)["page.3"].firstMatch
+        third.press(forDuration: 1, thenDragTo: first)
+
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            self.pageID(app, 1) == ids[2]
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 15), .completed, "The third page is first")
+        XCTAssertEqual((1...3).map { (number: Int) -> String in pageID(app, number) }, [ids[2], ids[0], ids[1]],
+                       "The others moved down one")
+    }
+
+    @MainActor
+    private func pageID(_ app: XCUIApplication, _ number: Int) -> String {
+        app.descendants(matching: .any)["page.\(number)"].firstMatch.value as? String ?? ""
     }
 
     // The sheet's title says its count in digits, in any language.

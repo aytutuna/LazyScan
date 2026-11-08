@@ -604,9 +604,9 @@ final class ScreenshotTests: XCTestCase {
             shot("skipped-14-spread-grid")
             return
         }
-        page.press(forDuration: 1)
+        page.tap()
         let split: XCUIElement = app.buttons.matching(NSPredicate(
-            format: "identifier == 'page.split' OR label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
+            format: "identifier == 'viewer.split' OR label BEGINSWITH 'Split' OR label BEGINSWITH 'Change'")).firstMatch
         guard split.waitForExistence(timeout: 5) else {
             shot("skipped-14-spread-menu")
             return
