@@ -250,47 +250,4 @@ struct ShutterButtonStyle: ButtonStyle {
             .animation(reduceMotion ? Animation.easeInOut(duration: 0.2) : Animation.spring(duration: 0.2), value: configuration.isPressed)
     }
 }
-
-/// Apple's document scanner on the Document, Email and Word tasks: a secondary way in, in camera mode's
-/// options drawer (Camera), dimmed with one short line where it cannot run (as in the Simulator).
-struct AppleScannerRow: View {
-    @EnvironmentObject private var importer: IOSImportSession
-    /// Whether Apple's scanner can be opened here.
-    let scanner: IOSCameraAvailability
-    /// Opens Apple's scanner.
-    let onScanner: @MainActor () -> Void
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Button {
-                onScanner()
-            } label: {
-                Label(IOSImportText.scannerLabel, systemImage: "doc.viewfinder")
-                    .font(.footnote)
-            }
-            .buttonStyle(.borderless)
-            .disabled(!scanner.isAvailable || !importer.canImport)
-            .accessibilityLabel(Text(IOSImportText.scannerName))
-            .accessibilityHint(Text(scanner.reason ?? String(localized: "Apple's scanner finds each page and takes it")))
-            .accessibilityIdentifier("capture.scanner")
-            if let reason = scanner.reason {
-                Text(reason)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .accessibilityIdentifier("scanner.reason")
-                if scanner.opensSettings {
-                    Button(IOSCameraText.settingsLabel) {
-                        openSettings()
-                    }
-                    .font(.caption)
-                }
-            }
-        }
-    }
-
-    private func openSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
-    }
-}
 #endif

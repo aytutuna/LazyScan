@@ -7,8 +7,7 @@ import XCTest
 // scripts/make_ios_ui_fixture.py: a sheet on a table, no real document). The page is found, the corner
 // editor opens with its corners, Use corners puts the straightened page in the strip, and Save writes
 // a PDF in the app's own Documents folder in the Simulator, with Save floating on camera mode's
-// viewfinder. The Simulator has no document scanner, so Use Apple's scanner, in camera mode's drawer, is
-// dimmed with its reason. With the photo to import twice, Stop in the first one's corner editor ends the
+// viewfinder. With the photo to import twice, Stop in the first one's corner editor ends the
 // import: no page comes in. The page stays when Book is picked, which collects pages too; Receipts and the
 // ID card would leave it without a Save, so picking either asks first, and Cancel keeps the kind and the page.
 
@@ -19,8 +18,7 @@ final class ImportTests: XCTestCase {
 
     @MainActor
     func test_photoImport_goesThroughTheCornerEditor_andSavesAPDF() throws {
-        // Into Document by name: without it the photo goes into the task kept from the test before (Book),
-        // which has no Use Apple's scanner.
+        // Into Document by name: without it the photo goes into the task kept from the test before (Book).
         let app: XCUIApplication = try launchWithFixture(task: "document")
 
         let use: XCUIElement = app.buttons["corners.use"]
@@ -34,15 +32,7 @@ final class ImportTests: XCTestCase {
         app.openPages(1)
         app.closePages()
 
-        // The Simulator has no document scanner: Use Apple's scanner is in the drawer's Camera group,
-        // dimmed, with why, beside our camera's shutter (the viewfinder says there is no camera).
         app.switchToCamera()
-        app.openDrawer("camera")
-        let scanner: XCUIElement = app.buttons["capture.scanner"]
-        XCTAssertTrue(scanner.waitForExistence(timeout: 10), "The Use Apple's scanner button")
-        XCTAssertFalse(scanner.isEnabled, "No document scanner in the Simulator")
-        XCTAssertTrue(app.staticTexts["scanner.reason"].exists, "Why there is no document scanner")
-        app.closeDrawer()
         XCTAssertTrue(app.buttons["camera.shutter"].exists, "The shutter")
 
         let save: XCUIElement = app.buttons["save.button"]

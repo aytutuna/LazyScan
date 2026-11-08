@@ -509,8 +509,6 @@ final class IOSCameraTests: XCTestCase {
         for button in buttons {
             XCTAssertLessThanOrEqual(words(button), 2, button)
         }
-        // The secondary way in names whose scanner it is.
-        XCTAssertLessThanOrEqual(words(IOSImportText.scannerLabel), 3)
         // The shutter's hint says what becomes of the photo for each kind.
         var hints: Set<String> = []
         for kind in CaptureKind.allCases {
@@ -1199,11 +1197,7 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertTrue(IOSShell.offersOwnCamera(TaskCatalog.apply(.receipt, to: state.settings)))
         XCTAssertTrue(IOSShell.offersOwnCamera(TaskCatalog.apply(.idCard, to: state.settings)))
         XCTAssertTrue(IOSShell.offersOwnCamera(TaskCatalog.apply(.copy, to: state.settings)))
-        // Apple's scanner stays on its three tasks, as the secondary way in.
-        XCTAssertTrue(IOSShell.offersCamera(.document))
-        XCTAssertFalse(IOSShell.offersCamera(.feeder))
         XCTAssertEqual(IOSImportText.cameraLabel, "Camera")
-        XCTAssertEqual(IOSImportText.scannerLabel, "Use Apple's scanner")
         // Page after page wherever several pages are collected.
         XCTAssertTrue(IOSShell.capturesContinuously(state.settings))
         var single: ScanSettings = state.settings

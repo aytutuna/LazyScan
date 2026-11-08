@@ -292,8 +292,7 @@ holds still on a sharp, lit frame (Auto, on unless turned off, with a ring that 
 continuous capture, page after page, with the corner editor only for a page the photo leaves unsure;
 camera pages kept as the camera saw them (Original), each of which can take another filter in the
 page viewer (Enhanced: the lighting evened out, the paper white and the print black; Grayscale; B&W),
-cut again from the photo kept with it, and Crop to place its corners again on that photo; Apple's document scanner kept as "Use Apple's scanner" on Document to PDF, Email a
-document and Scan to Word; photos and PDFs imported from Photos, Files or other apps with a touch
+cut again from the photo kept with it, and Crop to place its corners again on that photo; photos and PDFs imported from Photos, Files or other apps with a touch
 corner editor and magnifier, the pages as a grid of whole pages (two across on the iPhone) that opens
 each one full screen, with pinch and double-tap zoom and a swipe to the next, Save as PDF or JPEG and
 the share sheet; several
@@ -459,7 +458,7 @@ target for each platform's own parts:
 - `Sources/LazyScanIOS` — the iPhone and iPad only (each file inside `#if os(iOS)`):
   `UIKitLifecycle`, `UIKitBackgroundActivity` (the system's background time for a network scan),
   the app shell's services (`IOSShell`, `IOSFileActions`: Quick Look, the share
-  sheet, Mail's composer, the Files app), the password sheet (`Protection/`), Apple's document scanner and our own camera (`Camera/`: the capture session,
+  sheet, Mail's composer, the Files app), the password sheet (`Protection/`), the camera (`Camera/`: the capture session,
   the lens choice, the live page outline, the automatic shutter, when the camera runs), importing photos and PDFs with the
   corner editor (`Import/`: decoding with the EXIF turn, PDF pages at 300 dpi, the page corner model
   (FastViT-T8) with the shared page search behind it, Vision's rectangles for several objects in one shot, the import session), the photo, receipt and ID

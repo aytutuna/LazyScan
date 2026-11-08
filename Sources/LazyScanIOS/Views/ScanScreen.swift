@@ -5,11 +5,9 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The full-screen covers the scan screen opens: Apple's document scanner, the flatbed preview to choose
-/// the scan area on, (I13) the photo or receipt review and the ID card's review, (I14) Quick scan's page
+/// The full-screen covers the scan screen opens: the flatbed preview to choose the scan area on, (I13) the photo or receipt review and the ID card's review, (I14) Quick scan's page
 /// and (I16) the photocopy's screen. Camera mode's camera rests while one is up.
 enum ScanCover: String, Identifiable {
-    case scanner
     case crop
     case photoReview
     case idCardReview
@@ -23,7 +21,7 @@ enum ScanCover: String, Identifiable {
 /// mode, the default, is the viewfinder as the screen (`CameraScreen`): this screen hands it the notices
 /// (the package banner, an import's progress, the files saved last), Save floating on the viewfinder once
 /// there are pages ("Save PDF · 3", `IOSShell.floatingSaveTitle`) with the menu beside it, the kinds it
-/// picks, the page strip, the Export sheet behind the drawer's More… and Apple's scanner. Printer mode is
+/// picks, the page strip, the Export sheet behind the drawer's More… Printer mode is
 /// the printer screen: the kinds as chips in its top row with the camera at their end (`mode.camera`,
 /// back to camera mode, which selects no scanner so none of its limits apply to the camera) and under
 /// them one line naming the kinds that are dimmed and why (`IOSShell.unavailableKindsLine`), the step
@@ -73,7 +71,6 @@ struct ScanScreen: View {
     /// The root presents something over the screen (Settings, the share sheet, Mail, Quick Look): camera
     /// mode's camera rests.
     var rests: Bool = false
-    @State private var scanner: IOSCameraAvailability = .noCamera
     /// The camera or printer mode, switched with the top row's printer and camera buttons; picking a
     /// scanner also switches to printer mode.
     @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
@@ -205,7 +202,6 @@ struct ScanScreen: View {
     private var following: some View {
         screen
             .onAppear {
-                scanner = IOSCameraAvailability.current
                 if state.showPhotoReview {
                     cover = .photoReview
                 } else if state.showIdCardReview {
@@ -248,11 +244,6 @@ struct ScanScreen: View {
             }
             .onChange(of: state.companionNotice) { (_: CompanionNotice?, notice: CompanionNotice?) in
                 companionNoticed(notice)
-            }
-            .onChange(of: cover) { (_: ScanCover?, shown: ScanCover?) in
-                if shown == nil {
-                    scanner = IOSCameraAvailability.current
-                }
             }
             .onChange(of: IOSShell.shownKind(state.settings)) { (_: IOSScanKind, _: IOSScanKind) in
                 openGroup = nil
@@ -362,9 +353,8 @@ struct ScanScreen: View {
     /// The viewfinder as the screen (`CameraScreen`), with what this screen hands it: the notices at the
     /// viewfinder's foot and Save with its menu.
     private var cameraLayout: some View {
-        CameraScreen(resting: cameraCovered, waitsForIntro: waitsForIntro, scanner: scanner, onLibrary: libraryAction,
-                     onPrinter: switchToPrinter, onPages: openPages, onKind: pickKind, onExportSheet: openExportSheet,
-                     onAppleScanner: openScanner) {
+        CameraScreen(resting: cameraCovered, waitsForIntro: waitsForIntro, onLibrary: libraryAction,
+                     onPrinter: switchToPrinter, onPages: openPages, onKind: pickKind, onExportSheet: openExportSheet) {
             cameraNotices
         } saveControls: {
             floatingSave
@@ -1029,16 +1019,6 @@ struct ScanScreen: View {
         showsTroubleshooter = true
     }
 
-    // MARK: Cameras
-
-    private func openScanner() {
-        scanner = IOSCameraAvailability.current
-        guard scanner.isAvailable, importer.canImport else { return }
-        afterOptions {
-            cover = .scanner
-        }
-    }
-
     // MARK: Dropped files
 
     /// PDFs and pictures dropped on the screen come in as files picked in Files do, while this task takes
@@ -1079,7 +1059,7 @@ struct ScanScreen: View {
         case .idCardReview: return state.showIdCardReview
         case .quickScan: return state.quickScanPage != nil
         case .copy: return !state.copyPages.isEmpty
-        case .scanner, .crop: return true
+        case .crop: return true
         }
     }
 
@@ -2079,7 +2059,7 @@ private struct PackageBanner: View {
     }
 }
 
-/// The scan screen's full-screen covers (Apple's scanner, the scan area, the reviews, Quick scan's page,
+/// The scan screen's full-screen covers (the scan area, the reviews, Quick scan's page,
 /// the copy screen) and a book spread's split sheet. The root view presents them, not the scan screen: the
 /// window's two layouts each build their own scan screen, and one going away would close them mid-task.
 @MainActor
@@ -2097,9 +2077,6 @@ struct ScanCovers: ViewModifier {
             }
             .fullScreenCover(item: $cover) { (shown: ScanCover) in
                 switch shown {
-                case .scanner:
-                    DocumentCameraView(onFinish: cameraFinished, onCancel: closeCover, onFail: cameraFailed)
-                        .ignoresSafeArea()
                 case .crop:
                     CropScreen(onClose: closeCover)
                         .environmentObject(state)
@@ -2126,20 +2103,6 @@ struct ScanCovers: ViewModifier {
 
     private func closeSpreadEditor() {
         spreadEditor = nil
-    }
-
-    private func cameraFinished(_ images: [CGImage]) {
-        closeCover()
-        let pages: [ScannedPage] = IOSDocumentCamera.pages(images)
-        let session: IOSImportSession = importer
-        Task { @MainActor in
-            await session.bringInScans(pages)
-        }
-    }
-
-    private func cameraFailed(_ message: String) {
-        closeCover()
-        state.errorMessage = message
     }
 }
 #endif

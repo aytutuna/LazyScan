@@ -272,15 +272,13 @@ enum CameraDrawerGroup: String, Identifiable, CaseIterable {
 /// Colour: the filter new pages get, or the colour mode for the kinds that collect no pages (and Restore
 /// faded colours for Photos). Quality: the PDF's size. Flash: the camera's light (its torch), where it has
 /// one. Camera: the automatic shutter, Both sides and how the sides or a book's pages are taken, Items in
-/// frame for Photo and Document, and Use Apple's scanner where the task offers it.
+/// frame for Photo and Document.
 struct CameraDrawer: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
     @ObservedObject var model: IOSCameraModel
     @Binding var group: CameraDrawerGroup
-    let scanner: IOSCameraAvailability
     let onExportSheet: () -> Void
-    let onAppleScanner: () -> Void
 
     var body: some View {
         let groups: [CameraDrawerGroup] = CameraDrawerGroup.shown(state.settings, pageCount: state.scannedPages.count,
@@ -360,9 +358,6 @@ struct CameraDrawer: View {
             TaskWayPicker()
             if IOSShell.offersItemsInFrame(state.settings) {
                 ItemsInFramePicker(kind: IOSShell.shownKind(state.settings))
-            }
-            if IOSShell.offersCamera(state.activeTask) {
-                AppleScannerRow(scanner: scanner, onScanner: onAppleScanner)
             }
         }
     }

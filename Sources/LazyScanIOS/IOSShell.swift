@@ -313,13 +313,6 @@ public enum IOSShell {
     /// Why a task is not offered yet: the tile's one visible line.
     public static var notYetReason: String { String(localized: "Not in this version yet") }
 
-    /// Whether a task's scan screen also offers Apple's document scanner (Document, Email, Word), as
-    /// "Use Apple's scanner" beside our own camera, the default since I9.
-    public static func offersCamera(_ task: ScanTask?) -> Bool {
-        guard let task else { return false }
-        return IOSDocumentCamera.tasks.contains(task)
-    }
-
     /// Whether the scan screen can offer our own camera (`CameraScreen`), the default way to take pages:
     /// wherever photos are taken (`takesPhotos`), as photos are imported.
     public static func offersOwnCamera(_ settings: ScanSettings) -> Bool {

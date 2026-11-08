@@ -43,33 +43,28 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
     @State private var memoryWarned: IOSPhotoSize?
     private let resting: Bool
     private let waitsForIntro: Bool
-    private let scanner: IOSCameraAvailability
     private let onLibrary: (() -> Void)?
     private let onPrinter: () -> Void
     private let onPages: () -> Void
     private let onKind: (IOSScanKind) -> Void
     private let onExportSheet: () -> Void
-    private let onAppleScanner: () -> Void
     private let notices: () -> Notices
     private let saveControls: () -> SaveControls
 
-    /// `scanner` says whether Apple's scanner can run, for the drawer's Use Apple's scanner
-    /// (`onAppleScanner`); `onKind` picks a kind as the printer screen's chips do; `onExportSheet` opens
-    /// the Export options in full.
-    init(resting: Bool, waitsForIntro: Bool, scanner: IOSCameraAvailability, onLibrary: (() -> Void)?,
+    /// `onKind` picks a kind as the printer screen's chips do; `onExportSheet` opens the Export options
+    /// in full.
+    init(resting: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
          onPrinter: @escaping () -> Void, onPages: @escaping () -> Void, onKind: @escaping (IOSScanKind) -> Void,
-         onExportSheet: @escaping () -> Void, onAppleScanner: @escaping () -> Void,
+         onExportSheet: @escaping () -> Void,
          @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder saveControls: @escaping () -> SaveControls) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
         self.resting = resting
         self.waitsForIntro = waitsForIntro
-        self.scanner = scanner
         self.onLibrary = onLibrary
         self.onPrinter = onPrinter
         self.onPages = onPages
         self.onKind = onKind
         self.onExportSheet = onExportSheet
-        self.onAppleScanner = onAppleScanner
         self.notices = notices
         self.saveControls = saveControls
     }
@@ -380,8 +375,7 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
     @ViewBuilder
     private var lowerRow: some View {
         if showsDrawer {
-            CameraDrawer(model: model, group: $drawerGroup, scanner: scanner, onExportSheet: onExportSheet,
-                         onAppleScanner: onAppleScanner)
+            CameraDrawer(model: model, group: $drawerGroup, onExportSheet: onExportSheet)
                 .transition(.opacity)
         } else {
             KindsRow(onKind: onKind)

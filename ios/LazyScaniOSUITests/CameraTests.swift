@@ -3,8 +3,8 @@ import XCTest
 // Camera mode as a person meets it on the Simulator: launched on the demo scanner alone (`-demoScanner`),
 // the viewfinder is the scan screen. The Simulator has no camera, so the viewfinder says so in one line,
 // the shutter is dimmed and no permission prompt is shown; the kinds sit in a row under it, and the chevron
-// swaps them for the options drawer, whose Camera group has Auto, Both sides and Use Apple's scanner
-// (dimmed there with its reason). The printer button switches to printer mode and its camera button back.
+// swaps them for the options drawer, whose Camera group has Auto, Both sides and Items in frame.
+// The printer button switches to printer mode and its camera button back.
 // Nothing is photographed.
 
 final class CameraTests: XCTestCase {
@@ -36,15 +36,10 @@ final class CameraTests: XCTestCase {
         XCTAssertTrue(app.buttons["import.files"].exists, "Files")
         XCTAssertFalse(app.buttons["scan.button"].exists, "No Scan in camera mode")
 
-        // Apple's document scanner is in the drawer's Camera group, dimmed in the Simulator.
         app.openDrawer("camera")
         XCTAssertTrue(app.descendants(matching: .any)["camera.auto"].firstMatch.exists, "The Auto switch")
         XCTAssertTrue(app.switches["options.bothSides"].firstMatch.exists, "Both sides")
         XCTAssertTrue(app.descendants(matching: .any)["camera.itemsInFrame"].firstMatch.exists, "Items in frame")
-        let scanner: XCUIElement = app.buttons["capture.scanner"]
-        XCTAssertTrue(scanner.waitForExistence(timeout: 10), "The Use Apple's scanner button")
-        XCTAssertFalse(scanner.isEnabled, "No document scanner in the Simulator")
-        XCTAssertTrue(app.staticTexts["scanner.reason"].exists, "Why there is no document scanner")
         XCTAssertFalse(app.descendants(matching: .any)["kinds.row"].exists, "The drawer in the kinds' place")
         app.openDrawer("export")
         XCTAssertTrue(app.descendants(matching: .any)["drawer.format"].firstMatch.waitForExistence(timeout: 10),

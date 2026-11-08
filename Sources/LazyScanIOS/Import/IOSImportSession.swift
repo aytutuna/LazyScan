@@ -154,10 +154,6 @@ public struct IOSImportOutcome: Equatable, Sendable {
 public enum IOSImportText {
     /// Our own camera (`CameraScreen`), the default way to take pages.
     public static var cameraLabel: String { String(localized: "Camera") }
-    /// Apple's document scanner (VisionKit), offered beside our camera on the Document, Email and Word tasks.
-    public static var scannerLabel: String { String(localized: "Use Apple's scanner") }
-    /// What VoiceOver calls Apple's document scanner's button.
-    public static var scannerName: String { String(localized: "Use Apple's document scanner") }
     /// The name of a photo from our camera as an item; the corner editor, the progress and the messages have
     /// words of their own for a shot (below).
     public static var shotName: String { String(localized: "Camera photo") }
@@ -169,8 +165,6 @@ public enum IOSImportText {
     /// A shot that could not be read, and one whose page could not be added.
     public static var shotUnreadableMessage: String { String(localized: "The photo could not be read. Take it again.") }
     public static var shotNotAddedMessage: String { String(localized: "The photo could not be added. Try again.") }
-    /// The pages Apple's document scanner took, in the message when they could not be added.
-    public static var scannedPagesName: String { String(localized: "Scanned pages") }
     public static var photosLabel: String { String(localized: "Photos") }
     public static var filesLabel: String { String(localized: "Files") }
     /// Ends the import after the photo or page in hand.
@@ -218,7 +212,7 @@ public enum IOSImportText {
 /// stage cuts the page out at its real size (`AppState.ingest`, `PageProcessor.forCapture`:
 /// `PerspectiveStep`, `CaptureScale`); Use whole photo takes the photo as it is
 /// (`PhotoImport.wholePhotoPage`); Skip leaves it out. Each PDF page is drawn at 300 dpi (`IOSPDFPages`)
-/// and goes to the queue as it is. Pages from Apple's document scanner come in through `bringInScans`.
+/// and goes to the queue as it is.
 /// Each item's bytes are read only when its turn comes (`IOSImportSource`) and let go once its photo is
 /// decoded (a TIFF's and a PDF's while their pages come in), so only one item is in memory at a time;
 /// each page is added once the one before is in. What arrives while an import runs (another pick, a
@@ -380,17 +374,6 @@ public final class IOSImportSession: ObservableObject {
             sources.append(IOSImportSource.file(url))
         }
         return await importSources(sources)
-    }
-
-    /// The pages Apple's document scanner took (`IOSDocumentCamera.pages`), into the queue together.
-    @discardableResult
-    public func bringInScans(_ pages: [ScannedPage]) async -> Bool {
-        guard !pages.isEmpty else { return false }
-        let taken: Bool = await bringIn(pages)
-        if !taken {
-            state.errorMessage = IOSImportText.notAddedMessage(IOSImportText.scannedPagesName)
-        }
-        return taken
     }
 
     /// A photo our camera took, imported as a photo is (see `importSources`): read with its orientation
