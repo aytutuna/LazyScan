@@ -10,6 +10,11 @@ import XCTest
 // App Store Connect takes, and written without an alpha channel. Does nothing unless LAZYSCAN_STORE_SHOTS_DIR names the
 // folder for the images.
 
+/// A titled window is otherwise cut down to the screen, and the CI runner's screen is smaller than 1280 x 800.
+private final class FullSizeWindow: NSWindow {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+}
+
 final class MacStoreShotsTests: XCTestCase {
     private var folder: URL!
     private var outDir: URL!
@@ -90,18 +95,17 @@ final class MacStoreShotsTests: XCTestCase {
             .environmentObject(state)
             .frame(width: size.width, height: size.height)
             .background(Color(nsColor: .windowBackgroundColor))
-            // The split view reaches up into a title-bar inset that a borderless window does not have, which moved
-            // the top 20 points out of the picture.
-            .ignoresSafeArea()
         let hosting = NSHostingView(rootView: root)
         hosting.sizingOptions = []
         hosting.sceneBridgingOptions = []
-        // Borderless: a titled window is shrunk to the runner's small screen.
-        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: size.width, height: size.height),
-                              styleMask: [.borderless], backing: .buffered, defer: false)
+        // Titled, as in ScreenshotTests: in a borderless window the split view draws its top 20 points out of the
+        // picture. Only the content view is drawn, so the title bar is not in it.
+        let window = FullSizeWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.titled],
+                                    backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
         window.contentView = hosting
-        window.orderFront(nil)
+        window.setFrameOrigin(CGPoint(x: -10_000, y: -10_000))
+        window.orderBack(nil)
         hosting.frame = CGRect(origin: .zero, size: size)
         // Photos load off the main thread: give them time, laying out again as they land.
         for _ in 0..<10 {
@@ -109,8 +113,9 @@ final class MacStoreShotsTests: XCTestCase {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         hosting.layoutSubtreeIfNeeded()
-        print("store shot \(name): window \(window.frame.size), view \(hosting.frame.size), safe area \(hosting.safeAreaInsets)")
-        XCTAssertEqual(window.frame.size, size)
+        print("store shot \(name): window \(window.frame.size), content \(window.contentLayoutRect.size), view \(hosting.frame.size), "
+              + "split \(splitFrames(in: hosting))")
+        XCTAssertEqual(window.contentLayoutRect.size, size)
         XCTAssertEqual(hosting.frame.size, size)
         let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2560, pixelsHigh: 1600,
                                                  bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
@@ -120,6 +125,11 @@ final class MacStoreShotsTests: XCTestCase {
         window.orderOut(nil)
         window.contentView = nil
         try write(try XCTUnwrap(rep.cgImage), as: name)
+    }
+
+    // TODO: drop once the shots stop losing their top.
+    private func splitFrames(in view: NSView) -> [CGRect] {
+        (view is NSSplitView ? [view.convert(view.bounds, to: nil)] : []) + view.subviews.flatMap { splitFrames(in: $0) }
     }
 
     /// The picture drawn onto an opaque bitmap, so the PNG has no alpha channel.
