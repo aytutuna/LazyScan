@@ -106,7 +106,9 @@ import UIKit
         controller.printingItems = urls
         controller.showsNumberOfCopies = true
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            let once = OneShot()
             let handler: UIPrintInteractionController.CompletionHandler = { _, completed, error in
+                guard once.first() else { return }
                 if let error {
                     continuation.resume(throwing: PrintError.failed(error.localizedDescription))
                 } else {
@@ -114,13 +116,13 @@ import UIKit
                 }
             }
             let shown: Bool
-            if let anchor = Self.topViewController() {
+            if let anchor = Self.popoverAnchor() {
                 shown = controller.present(from: anchor.view.bounds, in: anchor.view, animated: true, completionHandler: handler)
             } else {
                 shown = controller.present(animated: true, completionHandler: handler)
             }
             // A sheet that is not shown never calls its handler.
-            if !shown {
+            if !shown, once.first() {
                 continuation.resume(throwing: PrintError.failed(Self.sheetNotShown))
             }
         }
@@ -134,7 +136,9 @@ import UIKit
     private func pickPrinter(initiallySelected: UIPrinter?) async throws -> UIPrinter? {
         let picker = UIPrinterPickerController(initiallySelectedPrinter: initiallySelected)
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UIPrinter?, Error>) in
+            let once = OneShot()
             let handler: UIPrinterPickerController.CompletionHandler = { controller, completed, error in
+                guard once.first() else { return }
                 if let error {
                     continuation.resume(throwing: PrintError.failed(error.localizedDescription))
                 } else {
@@ -142,12 +146,12 @@ import UIKit
                 }
             }
             let shown: Bool
-            if let anchor = Self.topViewController() {
+            if let anchor = Self.popoverAnchor() {
                 shown = picker.present(from: anchor.view.bounds, in: anchor.view, animated: true, completionHandler: handler)
             } else {
                 shown = picker.present(animated: true, completionHandler: handler)
             }
-            if !shown {
+            if !shown, once.first() {
                 continuation.resume(throwing: PrintError.failed(Self.sheetNotShown))
             }
         }
@@ -157,13 +161,17 @@ import UIKit
         let controller = UIPrintInteractionController.shared
         controller.printInfo = info
         controller.printPageRenderer = renderer
+        // Files set by `printFiles` would be printed instead of the renderer's pages.
+        controller.printingItems = nil
         controller.delegate = self
         // Not left set: the share sheet's Print uses the same controller.
         defer { controller.delegate = nil }
         // The renderer repeats the pages for the copies, so the printer is asked for one.
         controller.showsNumberOfCopies = false
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            let once = OneShot()
             _ = controller.print(to: printer) { _, completed, error in
+                guard once.first() else { return }
                 if let error {
                     continuation.resume(throwing: PrintError.failed(String(localized: "Could not print on \(printer.displayName): \(error.localizedDescription)")))
                 } else {
@@ -185,6 +193,11 @@ import UIKit
         PaperSizes.inches(PaperSizes.defaultForRegion(Locale.current.region?.identifier)) ?? CGSize(width: 8.5, height: 11)
     }
 
+    /// The view controller to anchor a popover to: the iPad needs one, a phone presents full width without.
+    private static func popoverAnchor() -> UIViewController? {
+        UIDevice.current.userInterfaceIdiom == .pad ? topViewController() : nil
+    }
+
     /// The front-most view controller, to present the picker from (an anchor is required on iPad).
     private static func topViewController() -> UIViewController? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -194,6 +207,20 @@ import UIKit
             controller = presented
         }
         return controller
+    }
+}
+
+/// True once, for the first caller: a continuation is resumed by whoever gets it, however many times UIKit calls back.
+private final class OneShot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fired = false
+
+    func first() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if fired { return false }
+        fired = true
+        return true
     }
 }
 
