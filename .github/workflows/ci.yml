@@ -229,15 +229,15 @@ jobs:
             test "$(stat -f %z "$f")" -gt 12000
             cmp "$f" "$RUNNER_TEMP/shots-b/$(basename "$f")"
           done
-      # The Mac App Store screenshots (MacStoreShotsTests): 2560 x 1600, no alpha channel.
+      # The Mac App Store screenshots (MacStoreShotsTests): 2880 x 1800, no alpha channel.
       - name: Render the store screenshots
         run: |
           set -euo pipefail
           LAZYSCAN_STORE_SHOTS_DIR="$RUNNER_TEMP/store-shots" swift test -c release -Xswiftc -enable-testing --filter MacStoreShotsTests
           test "$(ls "$RUNNER_TEMP/store-shots" | wc -l | tr -d ' ')" -eq 3
           for f in "$RUNNER_TEMP"/store-shots/*.png; do
-            test "$(sips -g pixelWidth "$f" | awk '/pixelWidth/ {print $2}')" -eq 2560
-            test "$(sips -g pixelHeight "$f" | awk '/pixelHeight/ {print $2}')" -eq 1600
+            test "$(sips -g pixelWidth "$f" | awk '/pixelWidth/ {print $2}')" -eq 2880
+            test "$(sips -g pixelHeight "$f" | awk '/pixelHeight/ {print $2}')" -eq 1800
             test "$(sips -g hasAlpha "$f" | awk '/hasAlpha/ {print $2}')" = no
           done
       - name: Upload the store screenshots

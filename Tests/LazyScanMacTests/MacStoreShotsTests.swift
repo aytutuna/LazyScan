@@ -6,11 +6,12 @@ import XCTest
 @testable import LazyScanKit
 @testable import LazyScanMac
 
-// The Mac App Store screenshots: the window at 1280 x 800 points, drawn at twice that, which is the 2560 x 1600 pixels
-// App Store Connect takes, and written without an alpha channel. Does nothing unless LAZYSCAN_STORE_SHOTS_DIR names the
+// The Mac App Store screenshots: the window at 1440 x 900 points, drawn at twice that, which is the 2880 x 1800 pixels
+// App Store Connect takes, and written without an alpha channel. At 1280 x 800 the split view, which needs 814 points of
+// height, ran over the top of the picture. Does nothing unless LAZYSCAN_STORE_SHOTS_DIR names the
 // folder for the images.
 
-/// A titled window is otherwise cut down to the screen, and the CI runner's screen is smaller than 1280 x 800.
+/// A titled window is otherwise cut down to the screen, and the CI runner's screen is smaller than 1440 x 900.
 private final class FullSizeWindow: NSWindow {
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
@@ -87,10 +88,10 @@ final class MacStoreShotsTests: XCTestCase {
         return state
     }
 
-    /// Draws the window in `appearance` and writes it as `name`.png: 2560 x 1600 pixels, opaque.
+    /// Draws the window in `appearance` and writes it as `name`.png: 2880 x 1800 pixels, opaque.
     @MainActor
     private func shoot(_ name: String, appearance: NSAppearance.Name, state: AppState) async throws {
-        let size = CGSize(width: 1280, height: 800)
+        let size = CGSize(width: 1440, height: 900)
         let root = ContentView()
             .environmentObject(state)
             .frame(width: size.width, height: size.height)
@@ -98,8 +99,7 @@ final class MacStoreShotsTests: XCTestCase {
         let hosting = NSHostingView(rootView: root)
         hosting.sizingOptions = []
         hosting.sceneBridgingOptions = []
-        // Titled, as in ScreenshotTests: in a borderless window the split view draws its top 20 points out of the
-        // picture. Only the content view is drawn, so the title bar is not in it.
+        // Titled, as in ScreenshotTests. Only the content view is drawn, so the title bar is not in it.
         let window = FullSizeWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.titled],
                                     backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
@@ -113,11 +113,9 @@ final class MacStoreShotsTests: XCTestCase {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         hosting.layoutSubtreeIfNeeded()
-        print("store shot \(name): window \(window.frame.size), content \(window.contentLayoutRect.size), view \(hosting.frame.size), "
-              + "split \(splitFrames(in: hosting))")
         XCTAssertEqual(window.contentLayoutRect.size, size)
         XCTAssertEqual(hosting.frame.size, size)
-        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2560, pixelsHigh: 1600,
+        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2880, pixelsHigh: 1800,
                                                  bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
                                                  colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
         rep.size = size
@@ -125,11 +123,6 @@ final class MacStoreShotsTests: XCTestCase {
         window.orderOut(nil)
         window.contentView = nil
         try write(try XCTUnwrap(rep.cgImage), as: name)
-    }
-
-    // TODO: drop once the shots stop losing their top.
-    private func splitFrames(in view: NSView) -> [CGRect] {
-        (view is NSSplitView ? [view.convert(view.bounds, to: nil)] : []) + view.subviews.flatMap { splitFrames(in: $0) }
     }
 
     /// The picture drawn onto an opaque bitmap, so the PNG has no alpha channel.
@@ -145,8 +138,8 @@ final class MacStoreShotsTests: XCTestCase {
         let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil))
         CGImageDestinationAddImage(destination, flat, nil)
         XCTAssertTrue(CGImageDestinationFinalize(destination))
-        XCTAssertEqual(flat.width, 2560)
-        XCTAssertEqual(flat.height, 1600)
+        XCTAssertEqual(flat.width, 2880)
+        XCTAssertEqual(flat.height, 1800)
         XCTAssertEqual(flat.alphaInfo, .noneSkipLast)
     }
 
