@@ -38,7 +38,10 @@ public struct MailRequest: Identifiable, Equatable {
 /// where the user picks Mail, Files or another app), Email opens a Mail message with the files attached
 /// when Mail is set up (`MFMailComposeViewController.canSendMail`) and the share sheet otherwise, Show in
 /// folder opens the Files app at the file's folder, and Copy puts the files (and the picture of a single
-/// image) on the pasteboard, on this device only. Show in folder for a folder opens that folder. The app's root view presents what `shareRequest`,
+/// image) on the pasteboard, on this device only. Show in folder for a folder opens that folder. Lazy Print
+/// takes files through the app group both apps hold (`LazyPrintUrl.handoffGroup`), since an iPhone app
+/// cannot read another app's paths: the files are copied into a folder there and Lazy Print is opened
+/// with the folder's name. The app's root view presents what `shareRequest`,
 /// `mailRequest` and `previewURL` ask for; nothing leaves the device unless the user sends the message or
 /// picks where it goes in the share sheet.
 @MainActor
@@ -53,12 +56,17 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     private let pasteboard: UIPasteboard
     private let openSystemURL: @MainActor (URL) -> Void
     private let mailAvailable: @MainActor () -> Bool
+    private let lazyPrintReachable: @MainActor () -> Bool
+    private let handoffContainer: @MainActor () -> URL?
 
     /// `pasteboard` nil: the general pasteboard. `openSystemURL` nil: `UIApplication.open` (tests
     /// pass their own to see the Files app's address without opening it). `mailAvailable` nil: whether
-    /// Mail is set up on the device (`canSendMail`; tests say).
+    /// Mail is set up on the device (`canSendMail`; tests say). `lazyPrintReachable` nil: `canOpenURL` for
+    /// `lazyprint:`. `handoffContainer` nil: the app group's container, which a build signed without the
+    /// entitlement does not have.
     public init(pasteboard: UIPasteboard? = nil, openSystemURL: (@MainActor (URL) -> Void)? = nil,
-                mailAvailable: (@MainActor () -> Bool)? = nil) {
+                mailAvailable: (@MainActor () -> Bool)? = nil, lazyPrintReachable: (@MainActor () -> Bool)? = nil,
+                handoffContainer: (@MainActor () -> URL?)? = nil) {
         self.pasteboard = pasteboard ?? UIPasteboard.general
         if let openSystemURL {
             self.openSystemURL = openSystemURL
@@ -72,6 +80,21 @@ public final class IOSFileActions: ObservableObject, FileActionService {
         } else {
             self.mailAvailable = { () -> Bool in
                 IOSFileActions.canSendMail()
+            }
+        }
+        if let lazyPrintReachable {
+            self.lazyPrintReachable = lazyPrintReachable
+        } else {
+            self.lazyPrintReachable = { () -> Bool in
+                guard let address = URL(string: LazyPrintUrl.scheme + ":") else { return false }
+                return UIApplication.shared.canOpenURL(address)
+            }
+        }
+        if let handoffContainer {
+            self.handoffContainer = handoffContainer
+        } else {
+            self.handoffContainer = { () -> URL? in
+                FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: LazyPrintUrl.handoffGroup)
             }
         }
     }
@@ -142,6 +165,38 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     public func copyText(_ text: String) throws {
         let item: [String: Any] = [UTType.utf8PlainText.identifier: text]
         pasteboard.setItems([item], options: [UIPasteboard.OptionsKey.localOnly: true])
+    }
+
+    /// Lazy Print is installed and the shared container is there to hand files over in.
+    public func lazyPrintInstalled() -> Bool {
+        handoffContainer() != nil && lazyPrintReachable()
+    }
+
+    public func openInLazyPrint(_ urls: [URL]) throws {
+        guard let container = handoffContainer(), lazyPrintReachable() else {
+            throw ScanError.unsupported(L10n.t("Lazy Print is not installed."))
+        }
+        let id = try IOSFileActions.stageHandoff(urls, in: container)
+        guard let address = URL(string: LazyPrintUrl.buildHandoff(id)) else {
+            throw ScanError.unsupported(L10n.t("Lazy Print can't open this file."))
+        }
+        openSystemURL(address)
+    }
+
+    /// Copies `urls` under their own names into a new folder `Handoff/<id>` of `container`, after
+    /// deleting the folders of earlier hand-offs, and returns the id.
+    public nonisolated static func stageHandoff(_ urls: [URL], in container: URL, id: UUID = UUID()) throws -> UUID {
+        let manager = FileManager.default
+        let root = container.appendingPathComponent(LazyPrintUrl.handoffFolder, isDirectory: true)
+        if manager.fileExists(atPath: root.path) {
+            try manager.removeItem(at: root)
+        }
+        let folder = root.appendingPathComponent(id.uuidString, isDirectory: true)
+        try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+        for url in urls {
+            try manager.copyItem(at: url, to: folder.appendingPathComponent(url.lastPathComponent))
+        }
+        return id
     }
 
     /// The Files app's address of the folder holding the first file (`shareddocuments://` and the

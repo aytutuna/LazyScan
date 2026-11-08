@@ -39,6 +39,9 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(saved.waitForExistence(timeout: 240), "The saved file's name")
         XCTAssertTrue(saved.label.hasSuffix(".pdf"), saved.label)
         XCTAssertTrue(app.buttons["share.button"].exists, "The saved file's Share button")
+        let printButton: XCUIElement = app.buttons["saved.print"]
+        XCTAssertTrue(printButton.exists, "The saved file's Print button")
+        XCTAssertEqual(printButton.label, "Print")
     }
 
     @MainActor
@@ -65,6 +68,7 @@ final class SmokeTests: XCTestCase {
         waitUntilEnabled(printItem, timeout: 60)
         printItem.tap()
 
+        // Lazy Print is not installed on the Simulator, so Print shows the pages on the copy screen for AirPrint.
         let close: XCUIElement = app.buttons["copy.discard"].firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 60), "The copy screen")
         XCTAssertEqual(close.label, "Close")

@@ -408,6 +408,7 @@
  {"key": "The photos are found in the shot", "comment": ""},
  {"key": "The photos stay on this device and are cleared once you save or discard them.", "comment": ""},
  {"key": "The preset “%@” does not collect pages.", "comment": ""},
+ {"key": "The print dialog could not be shown. Try again.", "comment": ""},
  {"key": "The receipts are found in the photo", "comment": ""},
  {"key": "The save folder could not be read.", "comment": ""},
  {"key": "The scanner was not added, because its certificate was not trusted.", "comment": ""},

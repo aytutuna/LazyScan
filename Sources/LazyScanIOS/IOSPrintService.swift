@@ -88,23 +88,67 @@ import UIKit
         if reusePrinter, let printer = lastPrinter {
             return try await printTo(printer, info: info, renderer: renderer)
         }
-        guard let printer = await pickPrinter(initiallySelected: lastPrinter) else { return false }
+        guard let printer = try await pickPrinter(initiallySelected: lastPrinter) else { return false }
         lastPrinter = printer
         return try await printTo(printer, info: info, renderer: renderer)
     }
 
-    /// Shows the system printer picker from the top view controller; the picked printer, or nil when the
-    /// user cancelled.
-    private func pickPrinter(initiallySelected: UIPrinter?) async -> UIPrinter? {
-        let picker = UIPrinterPickerController(initiallySelectedPrinter: initiallySelected)
-        return await withCheckedContinuation { (continuation: CheckedContinuation<UIPrinter?, Never>) in
-            let handler: UIPrinterPickerController.CompletionHandler = { controller, completed, error in
-                continuation.resume(returning: completed && error == nil ? controller.selectedPrinter : nil)
+    /// Prints saved PDFs and pictures as they are, in the system print sheet; the sheet's own options
+    /// (copies, paper, scaling) apply. True when printed, false when the user cancelled.
+    public func printFiles(_ urls: [URL]) async throws -> Bool {
+        guard UIPrintInteractionController.isPrintingAvailable else { throw PrintError.noPrinter }
+        let info = UIPrintInfo.printInfo()
+        info.jobName = SaveActions.shareTitle(urls)
+        info.outputType = .general
+        let controller = UIPrintInteractionController.shared
+        controller.printInfo = info
+        controller.printPageRenderer = nil
+        controller.printingItems = urls
+        controller.showsNumberOfCopies = true
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            let handler: UIPrintInteractionController.CompletionHandler = { _, completed, error in
+                if let error {
+                    continuation.resume(throwing: PrintError.failed(error.localizedDescription))
+                } else {
+                    continuation.resume(returning: completed)
+                }
             }
+            let shown: Bool
             if let anchor = Self.topViewController() {
-                _ = picker.present(from: anchor.view.bounds, in: anchor.view, animated: true, completionHandler: handler)
+                shown = controller.present(from: anchor.view.bounds, in: anchor.view, animated: true, completionHandler: handler)
             } else {
-                _ = picker.present(animated: true, completionHandler: handler)
+                shown = controller.present(animated: true, completionHandler: handler)
+            }
+            // A sheet that is not shown never calls its handler.
+            if !shown {
+                continuation.resume(throwing: PrintError.failed(Self.sheetNotShown))
+            }
+        }
+    }
+
+    private static var sheetNotShown: String { String(localized: "The print dialog could not be shown. Try again.") }
+
+    /// Shows the system printer picker from the top view controller; the picked printer, or nil when the
+    /// user cancelled. A picker that cannot be shown throws: UIKit then never calls the handler, and the
+    /// print would wait for it for good.
+    private func pickPrinter(initiallySelected: UIPrinter?) async throws -> UIPrinter? {
+        let picker = UIPrinterPickerController(initiallySelectedPrinter: initiallySelected)
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UIPrinter?, Error>) in
+            let handler: UIPrinterPickerController.CompletionHandler = { controller, completed, error in
+                if let error {
+                    continuation.resume(throwing: PrintError.failed(error.localizedDescription))
+                } else {
+                    continuation.resume(returning: completed ? controller.selectedPrinter : nil)
+                }
+            }
+            let shown: Bool
+            if let anchor = Self.topViewController() {
+                shown = picker.present(from: anchor.view.bounds, in: anchor.view, animated: true, completionHandler: handler)
+            } else {
+                shown = picker.present(animated: true, completionHandler: handler)
+            }
+            if !shown {
+                continuation.resume(throwing: PrintError.failed(Self.sheetNotShown))
             }
         }
     }

@@ -761,7 +761,11 @@ struct ScanScreen: View {
             case .email:
                 saveAndEmail()
             case .print:
-                state.printQueueAsCopy()
+                if state.canPrintQueueWithLazyPrint {
+                    state.printQueueWithLazyPrint()
+                } else {
+                    state.printQueueAsCopy()
+                }
             case .share:
                 sharePackage()
             case .send:
@@ -1616,7 +1620,8 @@ private struct PreviewArea: View {
     }
 }
 
-/// The files saved last, with Undo (when the save can be taken back), Share and Show in Files.
+/// The files saved last, with Undo (when the save can be taken back), Print (PDFs and pictures), Share and
+/// Show in Files. Print hands the files to Lazy Print when it is installed, else shows the AirPrint sheet.
 private struct SavedFilesRow: View {
     @EnvironmentObject private var state: AppState
 
@@ -1647,6 +1652,16 @@ private struct SavedFilesRow: View {
                 .accessibilityHint(Text("Deletes the saved files and puts the pages back. Files already shared or sent stay where they went."))
                 .accessibilityIdentifier("save.undo")
             }
+            if SaveActions.canPrintWithLazyPrint(urls) {
+                Button {
+                    printSaved(urls)
+                } label: {
+                    Label("Print", systemImage: "printer")
+                        .labelStyle(.iconOnly)
+                }
+                .accessibilityLabel(Text("Print"))
+                .accessibilityIdentifier("saved.print")
+            }
             Button {
                 state.runFileAction(.share, urls: urls)
             } label: {
@@ -1663,6 +1678,22 @@ private struct SavedFilesRow: View {
             }
             .accessibilityLabel(Text("Show in Files"))
             .accessibilityIdentifier("reveal.button")
+        }
+    }
+
+    private func printSaved(_ urls: [URL]) {
+        if state.lazyPrintInstalled {
+            state.runFileAction(.lazyPrint, urls: urls)
+            return
+        }
+        guard let service = state.printService as? IOSPrintService else { return }
+        let appState: AppState = state
+        Task { @MainActor in
+            do {
+                _ = try await service.printFiles(urls)
+            } catch {
+                appState.errorMessage = error.localizedDescription
+            }
         }
     }
 

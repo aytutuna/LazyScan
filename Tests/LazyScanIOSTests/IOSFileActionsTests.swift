@@ -193,5 +193,75 @@ final class IOSFileActionsTests: XCTestCase {
         let broken = try file("Photo 1.png")
         XCTAssertThrowsError(try actions.copy(ClipboardContent(files: [broken], imageFile: broken)))
     }
+
+    // MARK: Hand-off to Lazy Print
+
+    /// File actions that reach Lazy Print (`installed`) through `container`, nil for a build without the app group.
+    @MainActor
+    private func makeHandoffActions(_ opened: OpenedAddresses, installed: Bool = true, container: URL?) -> IOSFileActions {
+        IOSFileActions(pasteboard: nil, openSystemURL: { (url: URL) -> Void in
+            opened.urls.append(url)
+        }, lazyPrintReachable: { () -> Bool in
+            installed
+        }, handoffContainer: { () -> URL? in
+            container
+        })
+    }
+
+    private func handoffFolders(in container: URL) throws -> [String] {
+        let root: URL = container.appendingPathComponent(LazyPrintUrl.handoffFolder)
+        return try FileManager.default.contentsOfDirectory(atPath: root.path).sorted()
+    }
+
+    @MainActor
+    func test_lazyPrintInstalled_needsTheAppAndTheContainer() {
+        let opened = OpenedAddresses()
+        XCTAssertTrue(makeHandoffActions(opened, container: folder).lazyPrintInstalled())
+        XCTAssertFalse(makeHandoffActions(opened, installed: false, container: folder).lazyPrintInstalled())
+        XCTAssertFalse(makeHandoffActions(opened, container: nil).lazyPrintInstalled())
+    }
+
+    @MainActor
+    func test_openInLazyPrint_copiesTheFilesUnderTheirNames_andOpensTheFolderByItsUuid() throws {
+        let opened = OpenedAddresses()
+        let actions = makeHandoffActions(opened, container: folder)
+        let first = try file("Scan 1.pdf")
+        let second = try file("Scan 2.pdf")
+        try actions.openInLazyPrint([first, second])
+
+        let address = try XCTUnwrap(opened.urls.first)
+        XCTAssertEqual(opened.urls.count, 1)
+        let query = try XCTUnwrap(URLComponents(url: address, resolvingAgainstBaseURL: false)?.queryItems?.first)
+        XCTAssertEqual(query.name, "handoff")
+        let id = try XCTUnwrap(UUID(uuidString: query.value ?? ""))
+        let copied = folder.appendingPathComponent("Handoff/\(id.uuidString)")
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: copied.path).sorted(), ["Scan 1.pdf", "Scan 2.pdf"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.path), "The saved file stays")
+    }
+
+    @MainActor
+    func test_openInLazyPrint_clearsEarlierHandoffs() throws {
+        let actions = makeHandoffActions(OpenedAddresses(), container: folder)
+        let scan = try file("Scan 1.pdf")
+        try actions.openInLazyPrint([scan])
+        try actions.openInLazyPrint([scan])
+        XCTAssertEqual(try handoffFolders(in: folder).count, 1)
+    }
+
+    @MainActor
+    func test_openInLazyPrint_withoutTheContainer_isRefused_andOpensNothing() throws {
+        let opened = OpenedAddresses()
+        let actions = makeHandoffActions(opened, container: nil)
+        XCTAssertThrowsError(try actions.openInLazyPrint([try file("Scan 1.pdf")]))
+        XCTAssertTrue(opened.urls.isEmpty)
+    }
+
+    @MainActor
+    func test_openInLazyPrint_whenNotInstalled_isRefused() throws {
+        let opened = OpenedAddresses()
+        let actions = makeHandoffActions(opened, installed: false, container: folder)
+        XCTAssertThrowsError(try actions.openInLazyPrint([try file("Scan 1.pdf")]))
+        XCTAssertTrue(opened.urls.isEmpty)
+    }
 }
 #endif

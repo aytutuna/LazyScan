@@ -2163,6 +2163,7 @@
     "The photos are found in the shot": "撮影した画像から写真を検出します",
     "The photos stay on this device and are cleared once you save or discard them.": "写真はこのデバイス内にとどまり、保存または破棄すると消去されます。",
     "The preset “%@” does not collect pages.": "プリセット“%@”ではページをまとめません。",
+    "The print dialog could not be shown. Try again.": "プリントのダイアログを表示できませんでした。もう一度お試しください。",
     "The receipts are found in the photo": "写真の中からレシートを検出します",
     "The save folder could not be read.": "保存フォルダを読み込めませんでした。",
     "The text could not be read": "テキストを読み取れませんでした",

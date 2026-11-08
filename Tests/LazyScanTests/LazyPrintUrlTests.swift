@@ -34,4 +34,16 @@ final class LazyPrintUrlTests: XCTestCase {
         let address = try XCTUnwrap(URL(string: LazyPrintUrl.build(["/My Scans/şiğli çay.pdf"])))
         XCTAssertEqual(address.scheme, LazyPrintUrl.scheme)
     }
+
+    // Swift only: the iPhone's hand-off address has no Windows twin.
+    func test_buildHandoff_namesTheFolderByItsUuid() throws {
+        let id = try XCTUnwrap(UUID(uuidString: "6F9619FF-8B86-D011-B42D-00C04FC964FF"))
+        XCTAssertEqual(LazyPrintUrl.buildHandoff(id), "lazyprint:open?handoff=6F9619FF-8B86-D011-B42D-00C04FC964FF")
+    }
+
+    func test_buildHandoff_makesAnAddressTheSystemCanOpen() throws {
+        let address = try XCTUnwrap(URL(string: LazyPrintUrl.buildHandoff(UUID())))
+        XCTAssertEqual(address.scheme, LazyPrintUrl.scheme)
+        XCTAssertEqual(URLComponents(url: address, resolvingAgainstBaseURL: false)?.queryItems?.first?.name, "handoff")
+    }
 }
