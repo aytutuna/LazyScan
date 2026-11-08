@@ -461,8 +461,8 @@ target for each platform's own parts:
   sheet, Mail's composer, the Files app), the password sheet (`Protection/`), the camera (`Camera/`: the capture session,
   the lens choice, the live page outline, the automatic shutter, when the camera runs), importing photos and PDFs with the
   corner editor (`Import/`: decoding with the EXIF turn, PDF pages at 300 dpi, the page corner model
-  (FastViT-T8) with the shared page search behind it, Vision's rectangles for several objects in one shot, the import session), the photo, receipt and ID
-  card reviews (`Review/`, `Views/PhotoReviewScreen.swift`, `Views/IdCardReviewScreen.swift`, the
+  (FastViT-T8) with the shared page search behind it, Vision's rectangles for several objects in one shot, the import session), the ID
+  card review (`Review/`, `Views/IdCardReviewScreen.swift`, the
   card's guide frame on the camera), Quick scan's screen with Live Text, the tasks' camera buttons and
   choices (`Views/TaskControls.swift`), a spread split again, the presets, the scans and the saved
   files (`Library/`), Settings and the file name editor (`Settings/`, `Views/SettingsScreen.swift`,
