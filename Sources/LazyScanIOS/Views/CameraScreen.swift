@@ -158,7 +158,7 @@ struct CameraScreen<Notices: View, SaveControls: View>: View {
         Button {
             onPrinter()
         } label: {
-            Image(systemName: "printer")
+            Image(systemName: "scanner")
                 .font(.title3)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
