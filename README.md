@@ -276,14 +276,14 @@ xcodebuild test -scheme LazyScan-Package   -destination 'platform=iOS Simulator,
 
 The app itself (iPhone only for now, which an iPad runs in iPhone compatibility mode, so the iPad
 layouts described below wait for a later version; on the iPhone it opens straight on the camera,
-whose viewfinder is the scan screen, with the last task used set up and what you scan (Photo, Document,
-ID card or Book; several receipts or prints laid on the table are split automatically) in a snapping row
-under it, a chevron that swaps that row for a drawer
-of options (export, color, quality, flash, camera) and Save floating over the picture once there are
-pages; the pages taken stay when you switch between Document and Book, and any other kind asks first
+whose viewfinder is the scan screen, with the last task used set up; what you scan (Document, Photo,
+Receipts, ID card or Book; several receipts or prints laid on the table are split into pages
+automatically) is the Type under Options, which also holds the format, the PDF's choices and the actions
+on the pages, a chevron opens a drawer of camera options (color, flash, camera) and Save sits beside Options in the
+bottom bar; the pages taken stay when you change the Type, and only the ID card asks first
 whether to save them or discard them; a printer button switches to printer mode, where one scanner is picked in the Scanner sheet and
 Scan sits beside Save, and a camera button switches back, the scanner kept for next time; Print… and
-Email… in Save's menu, and what runs after each save (Email, Print, Send to computer) under After saving;
+Email… in Options, and what runs after each save (Email, Print, Send to computer) under After saving;
 so far the Demo Scanner,
 our own camera as the default way to take pages, with the page's outline found by the page corner
 model (FastViT-T8) and held
@@ -297,9 +297,9 @@ corner editor and magnifier, the pages as a grid of whole pages (two across on t
 each one full screen, with pinch and double-tap zoom and a swipe to the next, Save as PDF or JPEG and
 the share sheet; several
 receipts or photos in one shot for Receipts, Photos and Restore old photos, each found with Vision's
-rectangles, cut out at its real size and reviewed (keep, rotate, fix the crop with the corner editor,
-save; receipts named by their date), a shot in which none is outlined searched whole as the scanner's
-glass is; the ID card in a frame of the card's shape, front then back, laid out at real size on one
+rectangles, cut out at its real size and added to the pages (keep, rotate, Crop with the corner editor,
+save in the format chosen in Options; receipts named by the day they are saved), a shot in which none is
+outlined searched whole as the scanner's glass is; the ID card in a frame of the card's shape, front then back, laid out at real size on one
 page, kept in memory only (never written before Save, never in Photos, never read), with a one-line
 "Tilt to avoid glare" when a reflection hid part of it, and a Print button that prints both sides at
 real size over AirPrint (a ruler test page to check that is in Settings); two-sided documents taken as Flip & capture
@@ -312,12 +312,12 @@ size and fitted to the page otherwise, with Copies, Also save a PDF and Copy aga
 printer; Email a document through Mail's composer (or the share sheet); Archive document and the PDF's
 size, Archive and Password choices, the password asked for in a sheet and never stored; the pages
 added to the end of a PDF picked in Files or in the saved files, as the same incremental update as on
-the desktop (signed files and PDF/A files that may not stay PDF/A asked about first), from the menu
-beside Save or from the iPad's Add pages to a PDF, which picks the file first so that Save
+the desktop (signed files and PDF/A files that may not stay PDF/A asked about first), from
+Options or from the iPad's Add pages to a PDF, which picks the file first so that Save
 reads "Add to Contract.pdf"; the queue shared
 as a Lazy Scan document (`.lsdoc`), and one opened from AirDrop, Files or Mail offered on a
 banner with Add to pages or Open as new; the pages taken kept when iOS ends the app in the
-background, and asked about (save them first, discard them or cancel) before a kind, a preset or
+background, and asked about (save them first, discard them or cancel) before the ID card, a preset or
 Open as new would leave them without a Save; network
 scanners (AirScan/eSCL) found on the Wi-Fi or added by address, picked from a sheet on iPhone or a
 sidebar on iPad, with a flatbed preview to choose the scan area on, a feeder's progress with Cancel,
