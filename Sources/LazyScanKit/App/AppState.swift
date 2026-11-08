@@ -109,6 +109,8 @@ struct PageIntake {
     var areaSelected = false
     /// The feeder stopped before it ran out (`ScannerSession.lastScanStop`).
     var stopped = false
+    /// The pages are a camera's, straightened whatever the settings say (`PageProcessor.forCapture`).
+    var straightens = false
 }
 
 /// Central controller: owns backends, the open scanner session, settings, scan results,
@@ -1167,9 +1169,10 @@ public final class AppState: ObservableObject {
     /// Pages that belong to no scanner are kept when another scanner is chosen meanwhile. Returns
     /// whether the pages were taken: not when there are none, nor when they cannot be now
     /// (`canIngest`), nor when the ID card's sides are in already (its review opens instead). A caller
-    /// keeps the pages it was refused, to bring them in later.
+    /// keeps the pages it was refused, to bring them in later. `straightens`: a camera's pages are
+    /// straightened too (`PageProcessor.forCapture`).
     @discardableResult
-    public func ingest(_ pages: [ScannedPage], source: PageSource) -> Bool {
+    public func ingest(_ pages: [ScannedPage], source: PageSource, straightens: Bool = false) -> Bool {
         guard !pages.isEmpty, canIngest else { return false }
         let idCard = TaskCatalog.flow(of: settings) == .idCard
         let cardSide: PageSide? = idCard ? IdCardSteps.sideOf(taskFlow?.current?.id) : nil
@@ -1209,6 +1212,7 @@ public final class AppState: ObservableObject {
             intake.copySetup = copySetup
             intake.arrangement = markedArrangement
             intake.cameraSide = markedSide
+            intake.straightens = straightens
             _ = try await self.ingestPages(marked, intake: intake, flag: flag)
         }
         return true
@@ -1229,14 +1233,17 @@ public final class AppState: ObservableObject {
     /// `arrangement` says), a camera's or an imported photo's (`PageProcessor.forCapture`: a page with
     /// capture facts not yet measured is cut out of its photo first, `PerspectiveStep`, which leaves
     /// every other page alone, then `forPhotoImport`'s steps), or only the arrangement for a phone's
-    /// pages, which the phone has cleaned up already.
+    /// pages, which the phone has cleaned up already. `straightens` is for a camera's pages
+    /// (`PageIntake.straightens`).
     nonisolated static func cleanUpStage(for source: PageSource, settings: ScanSettings, arrangement: ScanArrangement,
-                                         scorer: any OrientationScorer, barcodes: any BarcodeReader) -> PageProcessor {
+                                         scorer: any OrientationScorer, barcodes: any BarcodeReader,
+                                         straightens: Bool = false) -> PageProcessor {
         switch source {
         case .scanner:
             return PageProcessor.forScan(settings, arrangement: arrangement, scorer: scorer, barcodes: barcodes)
         case .photo:
-            return PageProcessor.forCapture(settings, scorer: scorer, barcodes: barcodes, arrangement: arrangement)
+            return PageProcessor.forCapture(settings, scorer: scorer, barcodes: barcodes, arrangement: arrangement,
+                                            straightens: straightens)
         case .phone:
             return PageProcessor(steps: [], arrangement: arrangement, binding: settings.backBinding)
         }
@@ -1275,8 +1282,10 @@ public final class AppState: ObservableObject {
         // pages and steps.
         let scorer = self.orientationScorer
         let barcodes = self.barcodeReader
+        let straightens = intake.straightens
         let cleaned: ProcessedScan = try await Task.detached(priority: .userInitiated) {
-            try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes)
+            try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes,
+                                  straightens: straightens)
                 .process(scanned, shouldContinue: { !flag.isCancelled })
         }.value
         guard self.isCurrent(generation) else { return nil }

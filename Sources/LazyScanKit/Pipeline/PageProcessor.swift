@@ -150,6 +150,27 @@ public struct GeometryStep: PageStep {
     }
 }
 
+/// Straightens a page taken by a camera (`ScannedPage.capture`) by the slant left after it was cut out along
+/// its corners, or by the slant of the whole photo when no page was found (`DocumentGeometry.correct`, turning
+/// only, no crop). A page cut out along its corners keeps its geometry and the photo as its other version;
+/// a photo that was not cut gets the turn as its geometry and itself as the other version. Pages from scanners
+/// and files, and pages the analysis is not sure about, stay as they are. Only the iPhone's camera asks for
+/// it (`PageProcessor.forCapture`).
+public struct ShotStraightenStep: PageStep {
+    public var name: String { "straighten" }
+
+    public init() {}
+
+    public func apply(_ page: ScannedPage) -> ScannedPage {
+        guard page.capture != nil,
+              let pixels = RgbaImage(cgImage: page.image),
+              let corrected = DocumentGeometry.correct(pixels, dpi: page.dpi, crop: false, straighten: true),
+              let image = corrected.image.makeCGImage() else { return page }
+        if page.geometry != nil { return page.withImage(image) }
+        return page.withGeometry(image, geometry: corrected.geometry)
+    }
+}
+
 /// Softens the shadow along the spine on a page cut from a spread (`SpineShadow.soften`), keeping the page
 /// as scanned as the other version (`ScannedPage.withSpineShadow`): the edge along the spine is the edge of
 /// the cut, turned by the book's rotation (`rotationQuarterTurns`, the turn every page of the spread was
@@ -435,21 +456,26 @@ public struct PageProcessor {
     /// at its own pixels (`PerspectiveStep.spread`) and cleaned up before it is cut at its spine;
     /// its pages then get the spine's softening when
     /// asked for, between the blank-page and separator checks as on a scan. `arrangement` marks the sides of
-    /// the iPhone's two-sided pages (`ScanArrangement.cameraFront`, `.cameraBack`). Twin of C#
-    /// `PageProcessor.ForCapture`.
+    /// the iPhone's two-sided pages (`ScanArrangement.cameraFront`, `.cameraBack`). `straightens` (the
+    /// iPhone's camera, never a scan or a file) puts `ShotStraightenStep` after the blank-page check of pages
+    /// that go to the queue, whatever `autoStraighten` says. Twin of C# `PageProcessor.ForCapture`.
     public static func forCapture(_ settings: ScanSettings, scorer: (any OrientationScorer)? = nil,
                                   barcodes: (any BarcodeReader)? = nil,
-                                  arrangement: ScanArrangement = .asScanned) -> PageProcessor {
+                                  arrangement: ScanArrangement = .asScanned,
+                                  straightens: Bool = false) -> PageProcessor {
         let spreads: Bool = splitsCameraSpreads(settings)
         let cut: [any PageStep] = [PerspectiveStep(spread: spreads),
                                    EnhanceStep(mode: DocumentEnhancer.mode(for: settings))]
         var steps: [any PageStep] = []
         if TaskCatalog.flow(of: settings) == .documentQueue {
             steps = forPhotoImport(settings, scorer: scorer, barcodes: barcodes).steps
+            if straightens {
+                steps.insert(ShotStraightenStep(), at: 1)
+            }
             if spreads {
                 if softensSpineShadow(settings) {
                     let turns: Int = BookSplitOptions.of(settings).rotationQuarterTurns
-                    steps.insert(SpineShadowStep(rotationQuarterTurns: turns), at: 1)
+                    steps.insert(SpineShadowStep(rotationQuarterTurns: turns), at: straightens ? 2 : 1)
                 }
                 return PageProcessor(steps: steps, arrangement: arrangement, book: BookSplitOptions.of(settings),
                                      prepare: cut)
