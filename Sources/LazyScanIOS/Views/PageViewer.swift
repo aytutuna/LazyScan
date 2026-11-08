@@ -517,6 +517,7 @@ struct PageViewer: View {
     private func joinCurrent() {
         guard let id = selection else { return }
         state.joinSpread(id: id)
+        onClose()
     }
 
     private func toggleFilters() {

@@ -217,6 +217,7 @@ struct PageStripView: View {
             .accessibilityLabel(Text(cell.accessibilityLabel))
             .accessibilityValue(Text(Self.identifiesPages ? pageID.uuidString : ""))
             .accessibilityHint(Text(PageViewerText.openHint))
+            .accessibilityAction { onOpen(pageID) }
             .accessibilityAction(named: Text("Move page earlier")) {
                 state.movePage(id: pageID, by: -1)
             }
