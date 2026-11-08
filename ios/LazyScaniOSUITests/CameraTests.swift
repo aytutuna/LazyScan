@@ -51,7 +51,7 @@ final class CameraTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
                       "The format in Options")
         XCTAssertTrue(app.descendants(matching: .any)["pdf.size"].firstMatch.exists, "The PDF's size in Options")
-        XCTAssertTrue(app.buttons["save.email"].exists, "Email in Options")
+        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email in Options")
         app.closeOptions()
         XCTAssertEqual(app.pickedKind, "document")
     }
