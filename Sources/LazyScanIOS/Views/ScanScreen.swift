@@ -1999,7 +1999,9 @@ private struct SavedFilesRow: View {
                 state.runFileAction(.share, urls: urls)
             } label: {
                 Label("Share", systemImage: "square.and.arrow.up")
+                    .labelStyle(.iconOnly)
             }
+            .accessibilityLabel(Text("Share"))
             .accessibilityIdentifier("share.button")
             Button {
                 state.runFileAction(.reveal, urls: urls)
