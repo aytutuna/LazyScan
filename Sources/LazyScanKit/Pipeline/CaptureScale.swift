@@ -116,6 +116,11 @@ public struct CaptureFacts: Equatable, Codable, Sendable {
     /// Whether `ShotStraightenStep` turned the page, so a cut again turns it the same way. Nil for pages that
     /// were not (and for queues recorded before it); kept with the queue, not in companion packages.
     public var straightened: Bool? = nil
+    /// The adjustments and color mode a photo of Photos was given when it was cut out, so a cut again gives it
+    /// the same whatever the settings are by then; nil for other pages and when they changed nothing. Kept with
+    /// the queue, not in companion packages.
+    public var adjustments: AdjustmentSettings? = nil
+    public var adjustedColorMode: ColorMode? = nil
 
     public init(quad: Quad, sourceWidth: Int, sourceHeight: Int, kind: CaptureKind = .document,
                 focalLength: Double? = nil, scale: CaptureScaleResult? = nil) {

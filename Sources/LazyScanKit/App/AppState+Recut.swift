@@ -42,7 +42,7 @@ public enum PageRecut {
     /// the page's own). The pixels come back turned as the spool file holds the page, not by its rotation;
     /// the resolution, the real size, the corners and the filter are the new cut's, and everything else the
     /// queue knows about the page (its rotation, its photo, its blank check, its codes) is kept. Nil when the
-    /// corners cut nothing. `adjusting` is run on the new cut last (`adjustment(for:settings:)`).
+    /// corners cut nothing. `adjusting` is run on the new cut last (`adjustment(for:)`), and a receipt is then made easy to read.
     public static func recut(_ page: ScannedPage, photo: CGImage, filter: CaptureFilter?, corners: Quad? = nil,
                              adjusting: AdjustmentStep? = nil) -> ScannedPage? {
         guard var facts = page.capture else { return nil }
@@ -61,6 +61,7 @@ public enum PageRecut {
         var cut: ScannedPage = EnhanceStep(mode: filter?.mode).apply(PerspectiveStep().apply(source))
         if straightens { cut = ShotStraightenStep().apply(cut) }
         if let adjusting { cut = adjusting.apply(cut) }
+        if facts.kind == .receipt { cut = enhancedAsReceipt(cut) }
         let cutAgain: Bool = filter == nil ? cut.capture?.enhancement != nil : cut.capture?.filter != nil
         guard cut.geometry?.basis == .perspective, cutAgain else { return nil }
         let image: CGImage = turns == 0 ? cut.image : ImagePipeline.rotate(cut.image, quarterTurns: turns)
@@ -73,10 +74,19 @@ public enum PageRecut {
     }
 
     /// The adjustments a photo of Photos was given when it was taken (Restore faded colors, the colour mode),
-    /// which a cut again takes too; nil for any other page, and when they change nothing.
-    static func adjustment(for page: ScannedPage, settings: ScanSettings) -> AdjustmentStep? {
-        guard page.capture?.kind == .photo, !(settings.adjustments.isIdentity && settings.colorMode == .color) else { return nil }
-        return AdjustmentStep(adjustments: settings.adjustments, colorMode: settings.colorMode, adjustsAlternate: false)
+    /// as recorded on its capture facts, which a cut again takes too; nil for any other page, and when they
+    /// changed nothing.
+    static func adjustment(for page: ScannedPage) -> AdjustmentStep? {
+        guard let facts = page.capture, facts.kind == .photo, let adjustments = facts.adjustments else { return nil }
+        return AdjustmentStep(adjustments: adjustments, colorMode: facts.adjustedColorMode ?? .color, adjustsAlternate: false)
+    }
+
+    /// `page` with its pixels made easy to read as a receipt (`ReceiptEnhancer`); the page as it is when it
+    /// cannot be.
+    nonisolated static func enhancedAsReceipt(_ page: ScannedPage) -> ScannedPage {
+        guard let pixels = RgbaImage(cgImage: page.image),
+              let cleaned = ReceiptEnhancer.enhance(pixels, dpi: page.dpi).makeCGImage() else { return page }
+        return page.withImage(cleaned)
     }
 
     /// The corners `corners`, placed on the page's photo turned `quarterTurns` clockwise, on the photo as taken.
@@ -172,7 +182,7 @@ extension AppState {
               PageRecut.canCrop(page), corners != nil || PageRecut.filter(of: page) != filter,
               let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return }
         let spool: URL = spoolDirectory
-        let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page, settings: settings)
+        let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
             guard let photo = AppState.imageInFile(photoURL),

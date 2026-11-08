@@ -43,12 +43,22 @@ extension AppState {
         for page in pages {
             if flag.isCancelled { throw ScanError.cancelled }
             if CaptureObjects.isCutOut(page) {
-                listed.append(page)
+                var cutOut: ScannedPage = page
+                if page.capture?.kind == .receipt {
+                    cutOut = PageRecut.enhancedAsReceipt(page)
+                } else if page.capture?.kind == .photo, !(s.adjustments.isIdentity && s.colorMode == .color) {
+                    // Kept for Crop, which cuts the photo again the way it was taken.
+                    cutOut.capture?.adjustments = s.adjustments
+                    cutOut.capture?.adjustedColorMode = s.colorMode
+                }
+                listed.append(cutOut)
                 continue
             }
             let found: [DetectedPhoto] = flow == .receiptSplit
                 ? splitReceipts(from: page, settings: s)
                 : splitPhotos(from: page, settings: s)
+            // A page the search could not read stays whole rather than vanishing.
+            if found.isEmpty { listed.append(page) }
             for object in found {
                 var cut = ScannedPage(image: object.image, dpi: object.dpi, colorMode: object.colorMode,
                                       createdAt: page.createdAt)

@@ -153,6 +153,38 @@ final class PageRecutTests: XCTestCase {
         XCTAssertNotNil(cropped.capture?.enhancement)
     }
 
+    func testAListedPhoto_keepsItsAdjustments_forACropAfterTheSettingsChange() throws {
+        let (_, page) = shot()
+        let facts: CaptureFacts = try XCTUnwrap(page.capture)
+        let print: ScannedPage = page.withCapture(CaptureFacts(quad: facts.quad, sourceWidth: page.image.width,
+                                                               sourceHeight: page.image.height, kind: .photo))
+        var settings: ScanSettings = TaskCatalog.apply(.photos, to: ScanSettings())
+        settings.colorMode = .grayscale
+        let cut: ScannedPage = try XCTUnwrap(PageProcessor.forCapture(settings).process([print]).pages.first)
+        let listed: [ScannedPage] = try AppState.listObjects([cut], flow: .photoSplit, settings: settings, flag: CancelFlag())
+        XCTAssertEqual(listed.count, 1)
+        XCTAssertEqual(listed.first?.capture?.adjustedColorMode, .grayscale)
+        settings.colorMode = .color
+        let step: AdjustmentStep = try XCTUnwrap(PageRecut.adjustment(for: try XCTUnwrap(listed.first)))
+        XCTAssertEqual(step.colorMode, .grayscale)
+        // Nothing to take where the photo was given none.
+        let plain: [ScannedPage] = try AppState.listObjects([cut], flow: .photoSplit, settings: ScanSettings(), flag: CancelFlag())
+        XCTAssertNil(plain.first.flatMap { (item: ScannedPage) -> AdjustmentStep? in PageRecut.adjustment(for: item) })
+    }
+
+    func testAListedReceipt_isMadeEasyToRead() throws {
+        let (_, page) = shot()
+        let facts: CaptureFacts = try XCTUnwrap(page.capture)
+        let slip: ScannedPage = page.withCapture(CaptureFacts(quad: facts.quad, sourceWidth: page.image.width,
+                                                              sourceHeight: page.image.height, kind: .receipt))
+        let settings: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        let cut: ScannedPage = try XCTUnwrap(PageProcessor.forCapture(settings).process([slip]).pages.first)
+        let listed: [ScannedPage] = try AppState.listObjects([cut], flow: .receiptSplit, settings: settings, flag: CancelFlag())
+        XCTAssertEqual(listed.count, 1)
+        XCTAssertNotEqual(pixels(try XCTUnwrap(listed.first).image), pixels(cut.image))
+        XCTAssertEqual(listed.first?.geometry?.basis, .perspective)
+    }
+
     func testOnlyACameraPageWithAFilterCanBeCutAgain() throws {
         let (_, page) = shot()
         let scanned = ScannedPage(image: page.image, dpi: 300, colorMode: .color)
