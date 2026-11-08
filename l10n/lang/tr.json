@@ -1881,7 +1881,11 @@
     "“{0}” is a link or a special file, not a plain file.": "“{0}” normal bir dosya değil; bir bağlantı ya da özel dosya.",
     "“{0}” is larger than {1} MB.": "“{0}”, {1} MB sınırını aşıyor.",
     "“{0}” declares sizes that do not match its data.": "“{0}” içinde bildirilen boyutlar verilerle uyuşmuyor.",
-    "“{0}” is damaged: its checksum does not match its data.": "“{0}” hasarlı: sağlama toplamı verileriyle uyuşmuyor."
+    "“{0}” is damaged: its checksum does not match its data.": "“{0}” hasarlı: sağlama toplamı verileriyle uyuşmuyor.",
+    "Lazy Print could not be opened, so nothing was handed over.": "Lazy Print açılamadı, bu yüzden hiçbir şey aktarılmadı.",
+    "{0} was changed after the pages were added, so Undo left it as it is.": "{0} sayfalar eklendikten sonra değiştirildiği için Geri Al dosyayı olduğu gibi bıraktı.",
+    "{0} was changed after it was saved, so Undo left it as it is.": "{0} kaydedildikten sonra değiştirildiği için Geri Al dosyayı olduğu gibi bıraktı.",
+    "{0} could not be deleted: {1}": "{0} silinemedi: {1}"
   },
   "views": {
     "%@ (default)": "%@ (varsayılan)",
@@ -1967,7 +1971,7 @@
     "Delete All": "Tümünü Sil",
     "Delete the page; can't be undone": "Sayfayı sil; geri alınamaz",
     "Delete this page?": "Bu sayfa silinsin mi?",
-    "Deletes the saved files and puts the pages back. Files already shared or sent stay where they went.": "Kaydedilen dosyaları siler ve sayfaları geri getirir. Daha önce paylaşılan veya gönderilen dosyalar olduğu yerde kalır.",
+    "Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.": "Sayfaları yeniden kuyruğa koyar; kaydedilen dosyaları siler veya sayfaların eklendiği PDF'yi eski haline getirir. Daha önce paylaşılan veya gönderilen dosyalar olduğu yerde kalır.",
     "Deletes the sides taken; can't be undone": "Çekilen yüzleri siler; geri alınamaz",
     "Deselect All": "Seçimi Kaldır",
     "Discard the ID card?": "Kimlik kartı atılsın mı?",

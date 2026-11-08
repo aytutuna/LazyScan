@@ -1881,7 +1881,11 @@
     "“{0}” is a link or a special file, not a plain file.": "Элемент «{0}» — ссылка или специальный файл, а не обычный файл.",
     "“{0}” is larger than {1} MB.": "Файл «{0}» больше {1} МБ.",
     "“{0}” declares sizes that do not match its data.": "Размеры файла «{0}» не соответствуют его данным.",
-    "“{0}” is damaged: its checksum does not match its data.": "Файл «{0}» поврежден: контрольная сумма не совпадает с данными."
+    "“{0}” is damaged: its checksum does not match its data.": "Файл «{0}» поврежден: контрольная сумма не совпадает с данными.",
+    "Lazy Print could not be opened, so nothing was handed over.": "Не удалось открыть Lazy Print, поэтому файлы не переданы.",
+    "{0} was changed after the pages were added, so Undo left it as it is.": "Файл «{0}» изменён после добавления страниц, поэтому «Отменить» оставило его как есть.",
+    "{0} was changed after it was saved, so Undo left it as it is.": "Файл «{0}» изменён после сохранения, поэтому «Отменить» оставило его как есть.",
+    "{0} could not be deleted: {1}": "Не удалось удалить файл «{0}»: {1}"
   },
   "views": {
     "%@ (default)": "%@ (по умолчанию)",
@@ -1966,7 +1970,7 @@
     "Delete All": "Удалить все",
     "Delete the page; can't be undone": "Удалить страницу безвозвратно",
     "Delete this page?": "Удалить эту страницу?",
-    "Deletes the saved files and puts the pages back. Files already shared or sent stay where they went.": "Удаляет сохранённые файлы и возвращает страницы в очередь. Файлы, которыми уже поделились или которые уже отправили, останутся у получателей.",
+    "Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.": "Возвращает страницы в очередь: удаляет сохранённые файлы или восстанавливает PDF, в который их добавили. Файлы, которыми уже поделились или которые уже отправили, останутся у получателей.",
     "Deletes the sides taken; can't be undone": "Удаляет снятые стороны безвозвратно",
     "Deselect All": "Отменить выбор",
     "Discard the ID card?": "Удалить удостоверение?",

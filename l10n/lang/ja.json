@@ -1881,7 +1881,11 @@
     "“{0}” is a link or a special file, not a plain file.": "“{0}”は通常のファイルではなく、リンクまたは特殊なファイルです。",
     "“{0}” is larger than {1} MB.": "“{0}”は{1} MBを超えています。",
     "“{0}” declares sizes that do not match its data.": "“{0}”に記録されたサイズがデータと一致しません。",
-    "“{0}” is damaged: its checksum does not match its data.": "“{0}”は破損しています。チェックサムがデータと一致しません。"
+    "“{0}” is damaged: its checksum does not match its data.": "“{0}”は破損しています。チェックサムがデータと一致しません。",
+    "Lazy Print could not be opened, so nothing was handed over.": "Lazy Printを開けなかったため、何も渡されませんでした。",
+    "{0} was changed after the pages were added, so Undo left it as it is.": "“{0}”はページの追加後に変更されたため、「取り消す」ではそのままにしました。",
+    "{0} was changed after it was saved, so Undo left it as it is.": "“{0}”は保存後に変更されたため、「取り消す」ではそのままにしました。",
+    "{0} could not be deleted: {1}": "“{0}”を削除できませんでした：{1}"
   },
   "views": {
     "%@ (default)": "%@（デフォルト）",
@@ -1966,7 +1970,7 @@
     "Delete All": "すべてを削除",
     "Delete the page; can't be undone": "ページを削除します。この操作は取り消せません",
     "Delete this page?": "このページを削除しますか?",
-    "Deletes the saved files and puts the pages back. Files already shared or sent stay where they went.": "保存したファイルを削除し、ページを元に戻します。すでに共有または送信したファイルはそのまま残ります。",
+    "Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.": "ページをキューに戻し、保存したファイルを削除するか、ページを追加したPDFを元に戻します。すでに共有または送信したファイルはそのまま残ります。",
     "Deletes the sides taken; can't be undone": "撮影した面を削除します。この操作は取り消せません",
     "Deselect All": "すべてを選択解除",
     "Discard the ID card?": "IDカードを破棄しますか?",

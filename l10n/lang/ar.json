@@ -1881,7 +1881,11 @@
     "“{0}” is a link or a special file, not a plain file.": "العنصر \"{0}\" رابط أو ملف خاص، وليس ملفًا عاديًا.",
     "“{0}” is larger than {1} MB.": "حجم العنصر \"{0}\" أكبر من {1} MB.",
     "“{0}” declares sizes that do not match its data.": "الأحجام المعلنة للعنصر \"{0}\" لا تطابق بياناته.",
-    "“{0}” is damaged: its checksum does not match its data.": "العنصر \"{0}\" تالف: مجموعه الاختباري لا يطابق بياناته."
+    "“{0}” is damaged: its checksum does not match its data.": "العنصر \"{0}\" تالف: مجموعه الاختباري لا يطابق بياناته.",
+    "Lazy Print could not be opened, so nothing was handed over.": "تعذّر فتح Lazy Print، لذا لم يتم تسليم أي شيء.",
+    "{0} was changed after the pages were added, so Undo left it as it is.": "تم تغيير الملف {0} بعد إضافة الصفحات، لذا تركه «تراجع» كما هو.",
+    "{0} was changed after it was saved, so Undo left it as it is.": "تم تغيير الملف {0} بعد حفظه، لذا تركه «تراجع» كما هو.",
+    "{0} could not be deleted: {1}": "تعذّر حذف الملف {0}: {1}"
   },
   "views": {
     "%@ (default)": "%@ (الافتراضي)",
@@ -1966,7 +1970,7 @@
     "Delete All": "حذف الكل",
     "Delete the page; can't be undone": "حذف الصفحة دون إمكانية التراجع",
     "Delete this page?": "حذف هذه الصفحة؟",
-    "Deletes the saved files and puts the pages back. Files already shared or sent stay where they went.": "يحذف الملفات المحفوظة ويعيد الصفحات. تبقى الملفات التي تمت مشاركتها أو إرسالها بالفعل كما هي لدى المستلمين.",
+    "Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.": "يعيد الصفحات إلى قائمة الانتظار، ويحذف الملفات المحفوظة أو يستعيد ملف PDF الذي أُضيفت إليه. تبقى الملفات التي تمت مشاركتها أو إرسالها بالفعل كما هي لدى المستلمين.",
     "Deletes the sides taken; can't be undone": "يحذف الوجهين الملتقطين دون إمكانية التراجع",
     "Deselect All": "إلغاء تحديد الكل",
     "Discard the ID card?": "استبعاد بطاقة الهوية؟",

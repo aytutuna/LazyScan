@@ -622,8 +622,8 @@ extension AppState {
 
     /// Runs `body` on `url` in a coordinated write, so the provider of a folder picked in Files learns of
     /// the change (an uncoordinated one may never be uploaded).
-    private static func coordinateWriting(_ url: URL, options: NSFileCoordinator.WritingOptions,
-                                          _ body: (URL) throws -> Void) throws {
+    nonisolated static func coordinateWriting(_ url: URL, options: NSFileCoordinator.WritingOptions,
+                                              _ body: (URL) throws -> Void) throws {
         var coordinationError: NSError?
         var failure: Error?
         NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: options,

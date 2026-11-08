@@ -2621,12 +2621,18 @@ public final class AppState: ObservableObject {
                    undoable: Bool = true) {
         let saved: Set<UUID> = Set(queued.map(\.id))
         if keepsSavedForUndo && undoable {
-            savedUndo = SavedUndo(pages: queued, files: files, shown: lastSavedURLs, appended: appended,
+            var stamps: [URL: FileStamp] = [:]
+            for url in files {
+                stamps[url] = FileStamp(of: url)
+            }
+            savedUndo = SavedUndo(pages: queued, files: files, stamps: stamps, shown: lastSavedURLs, appended: appended,
                                   taskFlow: taskFlow, cameraSides: cameraSides)
         } else {
             deleteSpoolFiles(of: queued)
         }
         scannedPages.removeAll { saved.contains($0.id) }
+        // The held pages' files are not the queue's: a record left for the delay could bring them back as one.
+        if keepsSavedForUndo && undoable && keepsQueue { writeQueueRecord() }
     }
 
     func deleteSpoolFiles(of pages: [ScannedPage]) {

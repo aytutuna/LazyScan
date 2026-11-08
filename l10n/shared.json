@@ -2577,6 +2577,16 @@
   "“{0}” is larger than {1} MB.": {},
   "“{0}” declares sizes that do not match its data.": {},
   "“{0}” is damaged: its checksum does not match its data.": {},
+  "Lazy Print could not be opened, so nothing was handed over.": {},
+  "{0} was changed after the pages were added, so Undo left it as it is.": {
+    "note": "{0} is the name of a PDF file."
+  },
+  "{0} was changed after it was saved, so Undo left it as it is.": {
+    "note": "{0} is the name of a saved file."
+  },
+  "{0} could not be deleted: {1}": {
+    "note": "{0} is the name of a saved file, {1} the reason."
+  },
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

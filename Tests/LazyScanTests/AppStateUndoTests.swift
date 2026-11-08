@@ -222,6 +222,53 @@ final class AppStateUndoTests: XCTestCase {
     }
 
     @MainActor
+    func test_undo_ofAFileChangedSinceTheSave_isRefused_andKeepsTheFile() async throws {
+        let state = try await makeState(pages: 2, undo: true)
+        state.savePDF()
+        try await finish(state)
+        let pdf = try XCTUnwrap(state.lastSavedURLs.first)
+        let edited = try Data(contentsOf: pdf) + Data("%edited\n".utf8)
+        try edited.write(to: pdf)
+
+        state.undoSave()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNotNil(state.errorMessage)
+        XCTAssertEqual(try Data(contentsOf: pdf), edited)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+        XCTAssertTrue(state.canUndoSave)
+    }
+
+    @MainActor
+    func test_undo_ofAppendedPages_withNoTargetSet_leavesNoTarget() async throws {
+        let state = try await makeState(pages: 1, undo: true)
+        let data = try PDFBuilder.makePDF(pages: [undoPage()], pdfSize: .best, progress: nil, textLayer: nil, options: nil)
+        try FileManager.default.createDirectory(at: saveFolder, withIntermediateDirectories: true)
+        let url = saveFolder.appendingPathComponent("Contract.pdf")
+        try data.write(to: url)
+        state.appendToPDF(at: url)
+        try await finish(state)
+        state.undoSave()
+        try await finish(state)
+        XCTAssertNil(state.appendTarget)
+        XCTAssertEqual(try Data(contentsOf: url), data)
+    }
+
+    @MainActor
+    func test_startingATaskThatKeepsNoQueue_purgesTheUndo() async throws {
+        let state = try await makeState(pages: 1, undo: true)
+        state.listsFoundObjects = true
+        state.savePDF()
+        try await finish(state)
+        XCTAssertTrue(state.canUndoSave)
+        XCTAssertTrue(state.startTask(.document))
+        XCTAssertTrue(state.canUndoSave, "A task that keeps the queue keeps the undo")
+        // The ID card keeps no queue; it may be unavailable without a scanner, which changes nothing.
+        if state.startTask(.idCard) {
+            XCTAssertFalse(state.canUndoSave)
+        }
+    }
+
+    @MainActor
     func test_aNewScan_afterAppend_removesTheCopyOfThePDF() async throws {
         let state = try await makeState(pages: 1, undo: true)
         let data = try PDFBuilder.makePDF(pages: [undoPage()], pdfSize: .best, progress: nil, textLayer: nil, options: nil)

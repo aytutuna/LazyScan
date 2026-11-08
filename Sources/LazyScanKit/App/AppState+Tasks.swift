@@ -84,6 +84,8 @@ extension AppState {
             errorMessage = TaskCatalog.unavailableMessage(task, reason: availability.reason ?? "")
             return false
         }
+        // A task that keeps no queue would leave the held pages with nowhere to come back to.
+        if savedUndo != nil && !carriesQueue(task) { discardSavedUndo() }
         // A feeder not asked yet whether it scans both sides is taken to (`sidesCapabilities`); the
         // check that follows the change of source switches to turning over by hand if it does not.
         let adapted = SettingsAdapter.adapt(TaskCatalog.apply(task, to: settings), to: sidesCapabilities)
@@ -107,14 +109,16 @@ extension AppState {
     /// card (its own steps) and the copy (its own screen) do: every other task keeps the queue, saved with
     /// the choices then in use.
     public func pagesLeftBehind(by task: ScanTask) -> Int {
-        let carried: Bool
+        carriesQueue(task) ? 0 : scannedPages.count
+    }
+
+    /// Starting `task` keeps the queue (see `pagesLeftBehind(by:)`).
+    private func carriesQueue(_ task: ScanTask) -> Bool {
         if listsFoundObjects {
             let flow: TaskFlowKind = TaskCatalog.definition(task).flow
-            carried = flow != .idCard && flow != .copy
-        } else {
-            carried = TaskCatalog.carriesPages(task)
+            return flow != .idCard && flow != .copy
         }
-        return carried ? 0 : scannedPages.count
+        return TaskCatalog.carriesPages(task)
     }
 
     /// Starts `task` as `startTask(_:)` does, then lets the queued pages go with their spooled files: the
