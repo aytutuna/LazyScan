@@ -246,6 +246,22 @@ final class IOSShellTests: XCTestCase {
         XCTAssertFalse(IOSShell.showsFlatbedPreview(s))
     }
 
+    func test_scannerPicture_followsTheQueue_andTheNewerOfOverviewAndPage() {
+        // A page waiting shows, whatever the source; with none, nothing, so a save, Discard or a delete clears it
+        // and Undo, which brings the pages back, shows the last again.
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: false, hasOverview: false, overviewIsNewer: true, pageCount: 2), .page)
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: false, hasOverview: false, overviewIsNewer: true, pageCount: 0), .empty)
+        // The feeder shows no overview even when an old one is held.
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: false, hasOverview: true, overviewIsNewer: true, pageCount: 1), .page)
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: false, hasOverview: true, overviewIsNewer: true, pageCount: 0), .empty)
+        // The flatbed's overview is shown with no page queued, and over the last page while it is newer.
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: true, hasOverview: true, overviewIsNewer: false, pageCount: 0), .overview)
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: true, hasOverview: true, overviewIsNewer: true, pageCount: 3), .overview)
+        // A scan after the overview shows the scan.
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: true, hasOverview: true, overviewIsNewer: false, pageCount: 3), .page)
+        XCTAssertEqual(IOSShell.scannerPicture(flatbed: true, hasOverview: false, overviewIsNewer: true, pageCount: 0), .empty)
+    }
+
     func test_printerScanner_isTheRememberedScanner_inPrinterModeWhileListedAndSelected() {
         let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
         let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")
@@ -284,24 +300,6 @@ final class IOSShellTests: XCTestCase {
                      IOSNetworkText.noScanner, IOSShell.noScannerInUse] {
             XCTAssertLessThanOrEqual(StatusLine.words(line), StatusLine.maxWords, line)
         }
-    }
-
-    func test_isIdleReady_onlyForTheIdleReadyLine() {
-        let ready: String = StatusLine.short(L10n.t("Ready — {0}", "Demo Scanner"))
-        XCTAssertTrue(IOSShell.isIdleReady(ready, deviceName: "Demo Scanner"))
-        XCTAssertTrue(IOSShell.isIdleReady(L10n.t("Ready"), deviceName: nil))
-        let warned: String = StatusLine.short(L10n.t("Ready — {0}", "Demo Scanner"),
-                                              StatusDetail(warnings: [.feederUsed]), deviceName: "Demo Scanner")
-        XCTAssertFalse(IOSShell.isIdleReady(warned, deviceName: "Demo Scanner"))
-        XCTAssertFalse(IOSShell.isIdleReady(L10n.t("Saved"), deviceName: "Demo Scanner"))
-        XCTAssertFalse(IOSShell.isIdleReady("", deviceName: nil))
-    }
-
-    func test_isIdleReady_acceptsTheFullLineOfALongName() {
-        let name: String = "Brother MFC-L8900CDW series scanner in the back office"
-        let full: String = L10n.t("Ready — {0}", name)
-        XCTAssertTrue(IOSShell.isIdleReady(full, deviceName: name))
-        XCTAssertFalse(IOSShell.isIdleReady(full, deviceName: "Demo Scanner"))
     }
 
     func test_migratedScanner_takesTheOldSourcesScanner_once() throws {

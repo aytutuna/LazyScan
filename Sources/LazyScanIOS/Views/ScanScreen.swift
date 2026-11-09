@@ -21,31 +21,32 @@ enum ScanCover: String, Identifiable {
 /// the arrow that opens the options drawer (`ScanDrawer`: Colour, and Flash and Camera on the camera, the
 /// scanner's Source, Sides and Resolution on the scanner tab) and the other tab's icon (`mode.printer`, and
 /// `mode.camera`, back to camera mode, which selects no scanner so none of its limits apply to the camera).
-/// The bottom bar: Options (`OptionsSections` in a sheet: the Type, the Book's and Photos' choices, what is
-/// saved, and the actions Add to a PDF, Email, Print, Share as Lazy Scan document and Send to computer) and
-/// Save, then the pages, the shutter (Scan on the scanner tab, named for the step, `primaryActionLabel`),
-/// Photos and Files. Save runs what After saving has checked (`IOSAfterSave`), as a PDF, a JPEG a page, Word
-/// or text (`IOSShell.exportFormats`), or adds the pages to the end of a PDF picked in Files
-/// (`AppState.appendToPDF(at:)`; with a PDF picked, `AppState.appendTarget`, Save adds them to that one);
-/// it stays dimmed for the ID card, which is saved from its review. Camera mode is the
-/// viewfinder as the screen (`CameraScreen`): this screen hands it the notices (the package banner, an
-/// import's progress, the files saved last) and the Options and Save row. The scanner tab is a list: the
-/// step card only while a step needs it (`IOSShell.showsStepCard`, in the step's own words, which speak of the
-/// scanner; while no scanner is in use, a card in its place saying what is missing, `noScannerCard`), the
-/// flatbed preview or the last scan, the Scanner row (the scanners, "No scanner found", Add by address and
-/// Troubleshoot, then the flatbed's Preview; the row reads the scanner and its source, or "No scanner") and
-/// the Settings row (`onOpenSettings`, Command-comma). The rows never change with the type. While a sheet is
-/// up, anything else the screen presents (a review, the library, the ID card's question) waits for it to
-/// close. Above the bars the status line with a scan's progress, which is hidden while the status is only
-/// "Ready"; once saved, the saved file with Share and Show in Files. Picking a type starts its task as the
-/// task list's tile does (`pickKind`). Photos and receipts add the objects found in a shot to the pages, the
-/// ID card opens its review once its sides are in, Quick scan its page and the photocopy its copy screen, each
-/// full screen; a book page's spread can be split again (`SpreadSplitSheet`). PDFs and pictures dropped on the
-/// screen are
-/// imported as Files' are, and Command-S saves. Its covers and the spread's sheet are the root view's
-/// (`ScanCovers`), so resizing the window across the width classes, which builds this screen anew, leaves
-/// them open. On the iPad's sidebar layout (`pickerInSidebar`) the sidebar has the kinds and the scanners, the
-/// library and Settings; the bars, the drawer and the Options sheet are the same.
+/// Over the bottom corners of the picture, on both tabs, Options (`OptionsSections` in a sheet: the Type, the
+/// Book's and Photos' choices, what is saved, and the actions Add to a PDF, Email, Print, Share as Lazy Scan
+/// document and Send to computer) and Save (`PictureButtons`). The bottom bar: the pages, the shutter (Scan on
+/// the scanner tab, named for the step, `primaryActionLabel`), Photos and Files. Save runs what After saving
+/// has checked (`IOSAfterSave`), as a PDF, a JPEG a page, Word or text (`IOSShell.exportFormats`), or adds the
+/// pages to the end of a PDF picked in Files (`AppState.appendToPDF(at:)`; with a PDF picked,
+/// `AppState.appendTarget`, Save adds them to that one and the picture's foot says "Adding to" it); it stays
+/// dimmed for the ID card, which is saved from its review. Camera mode is the viewfinder as the screen
+/// (`CameraScreen`): this screen hands it the notices (the package banner, an import's progress, the files
+/// saved last) and the buttons. The scanner tab is the same picture on black: under the top bar the Scanner
+/// row (the scanners, "No scanner found", Add by address and Troubleshoot, then the flatbed's Preview; the row
+/// reads the scanner and its source, or "No scanner"), then the flatbed's overview with its scan area or the
+/// last page queued, whole (`IOSShell.scannerPicture`), and with neither the step in white on black
+/// (`IOSShell.showsStepCard`, in the step's own words, which speak of the scanner; while no scanner is in use,
+/// a card in its place saying what is missing, `noScannerCard`). At the picture's foot go the notices, as on
+/// the camera (a scan's progress with Cancel, the status a scan left, an import's progress, the package
+/// banner, the files saved last), the task's buttons, and Try again when the scanner in use could not be
+/// connected to. While a sheet is up, anything else the screen presents (a review, the library, the ID
+/// card's question) waits for it to close. Picking a type starts its task as the task list's tile does
+/// (`pickKind`). Photos and receipts add the objects found in a shot to the pages, the ID card opens its
+/// review once its sides are in, Quick scan its page and the photocopy its copy screen, each full screen; a
+/// book page's spread can be split again (`SpreadSplitSheet`). PDFs and pictures dropped on the screen are
+/// imported as Files' are, and Command-S saves and Command-comma opens Settings. Its covers and the spread's
+/// sheet are the root view's (`ScanCovers`), so resizing the window across the width classes, which builds
+/// this screen anew, leaves them open. On the iPad's sidebar layout (`pickerInSidebar`) the sidebar has the
+/// kinds and the scanners, the library and Settings; the bars, the drawer and the Options sheet are the same.
 struct ScanScreen: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
@@ -119,6 +120,8 @@ struct ScanScreen: View {
     /// The options drawer is open, and the group it shows.
     @State private var showsDrawer: Bool = false
     @State private var drawerGroup: DrawerGroup = .colour
+    /// The flatbed's overview came after the last page queued, so the picture shows it (`IOSShell.scannerPicture`).
+    @State private var overviewIsNewer: Bool = true
 
     var body: some View {
         following
@@ -136,6 +139,16 @@ struct ScanScreen: View {
                     pagesShown = false
                 } else {
                     savedRowStale = true
+                }
+            }
+            .onChange(of: state.scannedPages.count) { (old: Int, new: Int) in
+                if new > old {
+                    overviewIsNewer = false
+                }
+            }
+            .onChange(of: overviewTag) { (_: ObjectIdentifier?, tag: ObjectIdentifier?) in
+                if tag != nil {
+                    overviewIsNewer = true
                 }
             }
             .onChange(of: state.lastSavedURLs) { (_: [URL], _: [URL]) in
@@ -177,7 +190,7 @@ struct ScanScreen: View {
 
     private var screen: some View {
         content
-            .background(cameraMode ? Color(uiColor: .systemBackground) : Color(uiColor: .systemGroupedBackground))
+            .background(Color(uiColor: .systemBackground))
             .navigationTitle(barTitle)
             .navigationBarTitleDisplayMode(.inline)
             // The iPad keeps its bar in camera mode too, for the sidebar's button.
@@ -294,60 +307,28 @@ struct ScanScreen: View {
             ScanTopBar(showsDrawer: $showsDrawer, onLibrary: libraryAction) {
                 cameraModeButton
             }
-            List {
-                Section {
-                    if printerNeedsScanner {
-                        noScannerCard
-                    } else {
-                        stepCard
-                    }
-                    if CameraTaskButtons.showsAny(state, printer: !cameraMode) {
-                        CameraTaskButtons(printer: !cameraMode)
-                    }
-                    if TurnedOverButtons.showsAny(state) {
-                        TurnedOverButtons()
-                    }
-                    // The camera's own mismatch is said in camera mode, beside its Combine anyway.
-                    if let mismatch = state.sidesMismatch, state.isTurningOverByHand {
-                        Label(mismatch, systemImage: "exclamationmark.triangle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(Color.orange)
-                            .accessibilityIdentifier("task.mismatch")
-                    }
-                    viewfinder
-                }
-                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                Section {
-                    scannerRow
-                }
-                if onOpenSettings != nil {
-                    Section {
-                        settingsRow
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
+            scannerRow
+            picture
             if showsDrawer {
                 ScanDrawer(model: nil, torch: false, group: $drawerGroup)
                     .transition(.opacity)
             }
-            Divider()
-            bottomBar
+            CaptureRow(onPages: openPages, onPresenting: nil) {
+                scanRing
+            }
         }
     }
 
     // MARK: Camera mode
 
     /// The viewfinder as the screen (`CameraScreen`), with what this screen hands it: the notices at the
-    /// viewfinder's foot and the Options and Save row.
+    /// viewfinder's foot and the Options and Save buttons.
     private var cameraLayout: some View {
         CameraScreen(resting: cameraCovered, waitsForIntro: waitsForIntro, onLibrary: libraryAction,
                      onPrinter: switchToPrinter, onPages: openPages) {
             cameraNotices
-        } optionsRow: {
-            optionsRow
+        } pictureButtons: {
+            pictureButtons
         }
     }
 
@@ -386,7 +367,7 @@ struct ScanScreen: View {
     /// The package banner, the app's progress with Cancel while it is busy (a save, an export, After saving's
     /// steps), an import's progress with Stop, the status a busy spell left (`busyChanged`) or the companion
     /// said while idle (`companionNoticed`), and the files saved last until the next page comes in, back with
-    /// the next save only (`savedRowStale`), each on a card over the viewfinder.
+    /// the next save only (`savedRowStale`), each on a card over the picture.
     @ViewBuilder
     private var cameraNotices: some View {
         if let offered = state.pendingPackage {
@@ -430,7 +411,7 @@ struct ScanScreen: View {
         state.isBusy || sendsToComputer || sharesPackage
     }
 
-    /// A busy spell began or ended. Camera mode has no status line, so once it ends the status it left is
+    /// A busy spell began or ended. The picture has no status line, so once it ends the status it left is
     /// shown on a card when it changed and nothing else says it: an alert, the import's card, or the card of
     /// the files saved.
     private func busyChanged(_ busy: Bool) {
@@ -449,15 +430,15 @@ struct ScanScreen: View {
         }
         let message: String = state.statusMessage
         // Undo empties the saved files, which leaves no card to say it: the message is shown instead.
-        guard cameraMode, !message.isEmpty, message != statusBeforeBusy || busySends, state.errorMessage == nil,
+        guard !message.isEmpty, message != statusBeforeBusy || busySends, state.errorMessage == nil,
               !importer.isImporting, state.lastSavedURLs == savedBeforeBusy || state.lastSavedURLs.isEmpty else { return }
         statusAfterBusy = message
     }
 
     /// The companion said a document was sent, put in the cloud folder or received, which happens while nothing
-    /// is busy too (the pull, the drain on becoming active): camera mode shows it on the busy spell's card.
+    /// is busy too (the pull, the drain on becoming active): the picture shows it on the busy spell's card.
     private func companionNoticed(_ notice: CompanionNotice?) {
-        guard let notice, cameraMode, !working, state.errorMessage == nil else { return }
+        guard let notice, !working, state.errorMessage == nil else { return }
         statusAfterBusy = notice.text
     }
 
@@ -608,42 +589,141 @@ struct ScanScreen: View {
         }
     }
 
-    // MARK: The viewfinder
+    // MARK: The picture
 
-    /// The flatbed preview (only while the flatbed is the source, `IOSShell.showsFlatbedPreview`) or the last
-    /// scan; with neither, the camera's line centred where the preview would be, unless the step card already
-    /// says what to do.
-    @ViewBuilder
-    private var viewfinder: some View {
-        let flatbed: Bool = IOSShell.showsFlatbedPreview(state.settings)
-        let shown: CGImage? = flatbed ? state.canvasImage : state.lastScanImage
-        if shown != nil {
-            PreviewArea(image: shown, overview: flatbed ? state.overviewImage : nil, onChooseArea: openCrop)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("preview.area")
-        } else if !showsStepCard, let camera = cameraLine {
-            VStack(spacing: 8) {
-                Image(systemName: "viewfinder")
-                    .font(.largeTitle)
-                    .foregroundStyle(Color.secondary)
-                    .accessibilityHidden(true)
-                Text(camera.prompt)
-                    .font(.headline)
-            }
-            .multilineTextAlignment(.center)
-            .padding(16)
-            .frame(maxWidth: .infinity)
-            .containerRelativeFrame(Axis.Set.vertical) { (length: CGFloat, _: Axis) -> CGFloat in
-                PreviewArea.height(for: length)
-            }
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .secondarySystemGroupedBackground)))
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("preview.area")
+    /// The overview's identity, to tell a new overview from the same one drawn again.
+    private var overviewTag: ObjectIdentifier? {
+        state.overviewImage.map { (image: CGImage) -> ObjectIdentifier in ObjectIdentifier(image) }
+    }
+
+    private var pictureShown: ScannerPicture {
+        IOSShell.scannerPicture(flatbed: IOSShell.showsFlatbedPreview(state.settings),
+                                hasOverview: state.overviewImage != nil, overviewIsNewer: overviewIsNewer,
+                                pageCount: state.scannedPages.count)
+    }
+
+    /// The scanner tab's picture, on black as the camera's viewfinder is: the flatbed's overview, the last
+    /// page queued or what the step asks for, with the notices at its foot and the buttons over its corners.
+    private var picture: some View {
+        ZStack {
+            Color.black
+            pictureContent
+            pictureOverlays
+            pictureButtons
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("preview.area")
+    }
+
+    @ViewBuilder
+    private var pictureContent: some View {
+        switch pictureShown {
+        case .overview:
+            if let overview = state.overviewImage {
+                Button(action: openCrop) {
+                    FlatbedThumbnail(image: overview)
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(state.isBusy)
+                .accessibilityLabel(Text("Flatbed preview"))
+                .accessibilityValue(Text("Scan area: \(IOSCropGeometry.describe(state.selectionRect))"))
+                .accessibilityHint(Text("Opens it full screen to choose the scan area."))
+                .accessibilityIdentifier("flatbed.preview")
+            }
+        case .page:
+            if let page = state.scannedPages.last?.image {
+                Image(decorative: page, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .padding(8)
+                    .accessibilityLabel(Text("Last scan"))
+                    .accessibilityIdentifier("last.scan")
+            }
+        case .empty:
+            ViewThatFits(in: .vertical) {
+                emptyPicture
+                ScrollView {
+                    emptyPicture
+                }
+            }
+            .padding(.bottom, PictureButtons.clearance)
+        }
+    }
+
+    /// With nothing to show, the step's words (or what is missing, with no scanner in use) in white.
+    private var emptyPicture: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if printerNeedsScanner {
+                noScannerCard
+            } else {
+                stepCard
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
+        .environment(\.colorScheme, ColorScheme.dark)
+    }
+
+    /// The step's one line while the picture shows a page or the overview, which leave no room for its card.
+    private var stepLine: String? {
+        if printerNeedsScanner {
+            return noScannerLine
+        }
+        guard let current = state.taskFlow?.current, showsStepCard else { return nil }
+        return cameraLine?.prompt ?? IOSShell.printerStep(current, settings: state.settings).prompt
+    }
+
+    /// Over the picture: the step's line at its top while it shows something, and at its foot the notices,
+    /// the sides mismatch, the task's buttons and Try again, above the corners the buttons are in.
+    private var pictureOverlays: some View {
+        let populated: Bool = pictureShown != .empty
+        return VStack(spacing: 8) {
+            if populated, let line = stepLine {
+                StatusPill(text: line, hint: nil)
+                    .accessibilityIdentifier("step.prompt")
+            }
+            Spacer(minLength: 0)
+            cameraNotices
+            if let mismatch = state.sidesMismatch, state.isTurningOverByHand {
+                MismatchPill(text: mismatch)
+            }
+            if CameraTaskButtons.showsAny(state, printer: true) {
+                CameraTaskButtons(onDark: true, printer: true)
+            }
+            if TurnedOverButtons.showsAny(state) {
+                TurnedOverButtons()
+                    .environment(\.colorScheme, ColorScheme.dark)
+            }
+            if let device = retryDevice {
+                Button(IOSNetworkText.retry) {
+                    state.userSelectDevice(device.id)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(importer.isImporting)
+                .accessibilityIdentifier("scanner.retry")
+            }
+            if populated && state.canSkipStep {
+                Button(IdCardSteps.skipBackLabel) {
+                    state.skipStep()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(state.isBusy)
+                .accessibilityIdentifier("step.skip")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+        .padding(.bottom, PictureButtons.clearance)
     }
 
     // MARK: The options
 
+    /// The slim row under the top bar: the scanner in use and its source, which opens the Scanner sheet.
     private var scannerRow: some View {
         Button {
             openGroup = .scanner
@@ -660,22 +740,15 @@ struct ScanScreen: View {
                     .foregroundStyle(Color(uiColor: .tertiaryLabel))
                     .accessibilityHidden(true)
             }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .padding(.horizontal, 24)
+            .frame(minHeight: 40)
             .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         // An import's corner editor needs the screen; the sheet closes as one starts.
         .disabled(importer.isImporting)
         .accessibilityIdentifier("options.row.scanner")
-    }
-
-    private var settingsRow: some View {
-        Button {
-            if let open = onOpenSettings {
-                afterOptions(open)
-            }
-        } label: {
-            Label(IOSSettingsText.title, systemImage: "gearshape")
-        }
-        .accessibilityIdentifier("scan.settings")
     }
 
     /// What the Scanner row says: the scanner and its source ("No scanner" until one is picked or found).
@@ -1232,82 +1305,19 @@ struct ScanScreen: View {
         state.isBusy || importer.isImporting || state.readsQueue || sharesPackage || sendsToComputer
     }
 
-    private var bottomBar: some View {
-        VStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 10) {
-                statusRows
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 24)
-            optionsRow
-            CaptureRow(onPages: openPages, onPresenting: nil) {
-                scanRing
-            }
-        }
-        .padding(.top, 10)
-        .padding(.bottom, 8)
-    }
-
     /// Options and Save; Save while the pages are saved here (`IOSShell.offersSave`) and one is queued.
-    private var optionsRow: some View {
+    private var pictureButtons: some View {
         let plan: SavePlan = savePlan
         let offered: Bool = IOSShell.offersSave(state.settings, pageCount: state.scannedPages.count)
-        return OptionsSaveRow(title: IOSShell.saveTitle(target: state.appendTarget),
+        return PictureButtons(title: IOSShell.saveTitle(target: state.appendTarget),
                               detail: IOSShell.saveDetail(state.settings, plan: plan, target: state.appendTarget),
                               canSave: offered && !saveBlocked && plan.pageCount > 0,
+                              adding: state.appendTarget?.lastPathComponent,
                               onOptions: openOptions, onSave: saveWithActions)
     }
 
     private func openOptions() {
         openGroup = .options
-    }
-
-    /// A scan's progress with Cancel (none while the kept queue comes back), an import's progress, the package
-    /// banner, the status line, Try again while the scanner in use could not be connected to, and the files
-    /// saved last.
-    @ViewBuilder
-    private var statusRows: some View {
-        if importer.progressText != nil {
-            ImportProgressRow()
-        }
-        if state.isBusy {
-            HStack(spacing: 12) {
-                ScanProgressRow(progress: state.progress)
-                if !state.restoringQueue {
-                    Button(role: .cancel) {
-                        state.cancelScan()
-                    } label: {
-                        Text("Cancel")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("cancel.button")
-                }
-            }
-        }
-        if let offered = state.pendingPackage {
-            PackageBanner(offered: offered, onOpenAsNew: openPackageAsNew)
-        }
-        // The idle "Ready" is hidden, not removed, so the bars keep their place.
-        Text(statusText)
-            .font(.footnote)
-            .foregroundStyle(Color.secondary)
-            .lineLimit(2)
-            .truncationMode(.tail)
-            .opacity(showsStatus ? 1 : 0)
-            .accessibilityHidden(!showsStatus)
-            .accessibilityLabel(Text(statusSentence))
-            .accessibilityIdentifier("status.line")
-        if let device = retryDevice {
-            Button(IOSNetworkText.retry) {
-                state.userSelectDevice(device.id)
-            }
-            .buttonStyle(.bordered)
-            .disabled(importer.isImporting)
-            .accessibilityIdentifier("scanner.retry")
-        }
-        if !state.lastSavedURLs.isEmpty && !state.isBusy {
-            SavedFilesRow()
-        }
     }
 
     /// Scan, the round button of the bottom bar, once the scanner is connected and nothing else runs. It is
@@ -1325,35 +1335,6 @@ struct ScanScreen: View {
     /// The Options row that goes back to saving new files.
     static func clearTargetLabel(_ target: URL) -> String {
         String(localized: "Stop Adding to \(target.lastPathComponent)")
-    }
-
-    /// The status in six words at most (`StatusLine.shown`), as on the Mac's status bar.
-    private var statusText: String {
-        let idle: Bool = !state.isBusy
-        let savedShown: Bool = idle && !state.lastSavedURLs.isEmpty
-        return StatusLine.shown(statusSentence, statusDetail, deviceName: selectedDeviceName, reviewShown: false, savedShown: savedShown)
-    }
-
-    private var selectedDeviceName: String? {
-        let selected: String? = state.selectedDeviceID
-        return state.devices.first(where: { (info: ScannerInfo) -> Bool in info.id == selected })?.name
-    }
-
-    /// Whether the status line says more than the idle "Ready".
-    private var showsStatus: Bool {
-        !IOSShell.isIdleReady(statusText, deviceName: selectedDeviceName)
-    }
-
-    /// The status, or while no scanner is in use and nothing runs, where the search is (as the card says it)
-    /// in place of the "Ready" or the camera's status left from before.
-    private var statusSentence: String {
-        guard printerNeedsScanner, !state.isBusy, !importer.isImporting else { return state.statusMessage }
-        return noScannerLine
-    }
-
-    /// What goes with `statusSentence` for the short line: nothing for the search line.
-    private var statusDetail: StatusDetail {
-        printerNeedsScanner && !state.isBusy && !importer.isImporting ? StatusDetail() : state.statusDetail
     }
 }
 
@@ -1498,13 +1479,13 @@ struct KeepPagesQuestion: ViewModifier {
     }
 }
 
-/// A notice over camera mode's viewfinder: on a rounded card of the system's material.
+/// A notice over the picture: on a rounded card of the system's plain background.
 private struct NoticeCard: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -1588,53 +1569,6 @@ struct TurnedOverButtons: View {
     /// Whether any button shows, so the scan screen leaves out an empty row.
     static func showsAny(_ state: AppState) -> Bool {
         state.canFinishFronts || state.awaitingBacks
-    }
-}
-
-/// The flatbed preview with its scan area when there is one, else the last scan. The preview is only
-/// shown here, in the scrolling column (a drag on it scrolls); tapping it opens it full
-/// screen to choose the area on (`onChooseArea`).
-private struct PreviewArea: View {
-    @EnvironmentObject private var state: AppState
-    let image: CGImage?
-    let overview: CGImage?
-    let onChooseArea: () -> Void
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-            if let overview {
-                Button(action: onChooseArea) {
-                    FlatbedThumbnail(image: overview)
-                        .padding(8)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(state.isBusy)
-                .accessibilityLabel(Text("Flatbed preview"))
-                .accessibilityValue(Text("Scan area: \(IOSCropGeometry.describe(state.selectionRect))"))
-                .accessibilityHint(Text("Opens it full screen to choose the scan area."))
-                .accessibilityIdentifier("flatbed.preview")
-            } else if let image {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .padding(8)
-                    .accessibilityLabel(Text("Last scan"))
-                    .accessibilityIdentifier("last.scan")
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .containerRelativeFrame(Axis.Set.vertical) { (length: CGFloat, _: Axis) -> CGFloat in
-            PreviewArea.height(for: length)
-        }
-    }
-
-    /// About half the visible height, so it fits a phone, an iPad and any Stage Manager window size.
-    static func height(for visible: CGFloat) -> CGFloat {
-        min(max(visible * 0.45, 200), 560)
     }
 }
 

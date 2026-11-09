@@ -72,6 +72,13 @@ public struct IOSLaunchOptions: Equatable, Sendable {
     }
 }
 
+/// What the scanner tab's picture shows (`IOSShell.scannerPicture`).
+public enum ScannerPicture {
+    case overview
+    case page
+    case empty
+}
+
 /// What the iPhone's and iPad's app shell passes `AppState`: its scanner connections, its file actions,
 /// its troubleshooter service, its lifecycle and AirPrint printing (`IOSPrintService`, I16).
 public enum IOSShell {
@@ -200,6 +207,18 @@ public enum IOSShell {
     /// for the flatbed, as on the Mac.
     public static func showsFlatbedPreview(_ settings: ScanSettings) -> Bool {
         settings.source == .flatbed
+    }
+
+    /// What the scanner tab's picture shows: the flatbed's overview (with its scan area) while it is the
+    /// source and the overview is newer than the last page queued, or when no page is queued; else the last
+    /// page queued, which goes with the queue (a save, a delete or Discard empties it, Undo brings it back);
+    /// else nothing, and the picture says what the step asks for.
+    public static func scannerPicture(flatbed: Bool, hasOverview: Bool, overviewIsNewer: Bool,
+                                      pageCount: Int) -> ScannerPicture {
+        if flatbed && hasOverview && (overviewIsNewer || pageCount == 0) {
+            return .overview
+        }
+        return pageCount > 0 ? .page : .empty
     }
 
     /// The task the iPhone opens on: the one set up last time (kept in the settings), else Document to PDF.
@@ -409,16 +428,6 @@ public enum IOSShell {
         return IOSNetworkText.noScanner
     }
 
-    /// The status line's text is only the idle "Ready" (with the scanner's name once one is connected), which
-    /// the Scanner sheet's check already says. A warning kept on the line makes it differ, so it stays.
-    public static func isIdleReady(_ shown: String, deviceName: String?) -> Bool {
-        if let name = deviceName, !name.isEmpty {
-            let line: String = L10n.t("Ready — {0}", name)
-            if shown == line || shown == StatusLine.short(line) { return true }
-        }
-        return shown == L10n.t("Ready")
-    }
-
     /// Printer mode's line while scanners are listed and none is in use, and its card's way to the Scanner
     /// options.
     public static var noScannerInUse: String { String(localized: "No scanner is in use.") }
@@ -461,13 +470,18 @@ public enum IOSShell {
         }
     }
 
-    /// The main Save buttons' title: just "Save", or "Add to Contract.pdf" while the pages go into a PDF
-    /// picked, which is a different action. The format and the pages are in `saveDetail`.
+    /// The main Save button's accessibility label: just "Save", or "Add to Contract.pdf" while the pages go
+    /// into a PDF picked, which is a different action. The format and the pages are in `saveDetail`.
     public static func saveTitle(target: URL?) -> String {
         if let target {
             return PDFAppender.saveTitle(target.lastPathComponent)
         }
         return String(localized: "Save")
+    }
+
+    /// The caption at the picture's foot while the pages go into the PDF picked: "Adding to Contract.pdf".
+    public static func addingCaption(_ fileName: String) -> String {
+        String(localized: "Adding to \(fileName)")
     }
 
     /// What the title leaves out, for the button's accessibility value: "Save JPEG (3 pages)" for pictures

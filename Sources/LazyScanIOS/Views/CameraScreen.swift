@@ -17,17 +17,18 @@ import UIKit
 /// in (`notices`: the package banner, the app's progress with Cancel while it is busy, an import's progress
 /// with Stop, the files saved last) and the task's buttons between shots (`CameraTaskButtons`, No back side
 /// for the ID card). Where the camera cannot be used (no camera, as in the Simulator; access off, with
-/// Settings; not allowed) or waits (too warm, interrupted), one short line says why in its place. Under it
-/// the bottom bar: the scan screen's Options and Save (`optionsRow`), then the pages as a stack with their
-/// count (`onPages`, the page strip's sheet), the shutter with a ring that fills while the page holds still,
-/// and Photos and Files. With Auto on the photo is taken by itself once the page held still on a sharp, lit
+/// Settings; not allowed) or waits (too warm, interrupted), one short line says why in its place. Over the
+/// viewfinder's bottom corners the scan screen's Options and Save buttons (`pictureButtons`, `PictureButtons`),
+/// which the notices, the ID card's guide and the message keep clear of. Under it the bottom bar: the pages
+/// as a stack with their count (`onPages`, the page strip's sheet), the shutter with a ring that fills while
+/// the page holds still, and Photos and Files. With Auto on the photo is taken by itself once the page held still on a sharp, lit
 /// frame (`IOSCameraModel`), with a short tap felt; VoiceOver says the wait once per wait
 /// (`IOSWaitAnnouncer`). Each photo goes through the photo import (`IOSImportSession.importShot`); in
 /// continuous capture (`IOSShell.capturesContinuously`) a page found clearly goes straight into the queue,
 /// otherwise the root view's corner editor opens. The camera rests while anything covers it (`resting`: a
 /// sheet, a cover, the corner editor; Photos or Files), so Auto takes nothing meanwhile, and waits for the
 /// card saying why it is asked for (`waitsForIntro`) before iOS asks. With a keyboard, Space takes a photo.
-struct CameraScreen<Notices: View, OptionsRow: View>: View {
+struct CameraScreen<Notices: View, Buttons: View>: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
     @Environment(\.scenePhase) private var scenePhase
@@ -47,11 +48,11 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
     private let onPrinter: () -> Void
     private let onPages: () -> Void
     private let notices: () -> Notices
-    private let optionsRow: () -> OptionsRow
+    private let pictureButtons: () -> Buttons
 
     init(resting: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
          onPrinter: @escaping () -> Void, onPages: @escaping () -> Void,
-         @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder optionsRow: @escaping () -> OptionsRow) {
+         @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder pictureButtons: @escaping () -> Buttons) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
         self.resting = resting
         self.waitsForIntro = waitsForIntro
@@ -59,7 +60,7 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
         self.onPrinter = onPrinter
         self.onPages = onPages
         self.notices = notices
-        self.optionsRow = optionsRow
+        self.pictureButtons = pictureButtons
     }
 
     var body: some View {
@@ -67,7 +68,9 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
             topBar
             viewfinder
             lowerRow
-            bottomBar
+            CaptureRow(onPages: onPages, onPresenting: setPicking) {
+                shutter
+            }
         }
         .background(Color(uiColor: .systemBackground))
         .onAppear {
@@ -190,12 +193,17 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
             }
             if model.message == nil, let prompt = cardPrompt {
                 IdCardGuide(prompt: prompt)
+                    .padding(.bottom, PictureButtons.clearance)
             }
             if let line = model.message {
                 messageCard(line)
+                    .padding(.bottom, PictureButtons.clearance)
             }
             overlays
-                .padding(12)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, PictureButtons.clearance)
+            pictureButtons()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
@@ -213,18 +221,7 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
             Spacer(minLength: 0)
             notices()
             if let mismatch = state.sidesMismatch, state.cameraSides != nil {
-                Label {
-                    Text(mismatch)
-                        .foregroundStyle(Color.white)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(Color.orange)
-                }
-                .font(.footnote)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Color.black.opacity(0.75)))
-                .accessibilityIdentifier("task.mismatch")
+                MismatchPill(text: mismatch)
             }
             CameraTaskButtons(onDark: true)
             if state.canSkipStep {
@@ -323,17 +320,6 @@ struct CameraScreen<Notices: View, OptionsRow: View>: View {
             ScanDrawer(model: model, torch: model.hasTorch, group: $drawerGroup)
                 .transition(.opacity)
         }
-    }
-
-    private var bottomBar: some View {
-        VStack(spacing: 10) {
-            optionsRow()
-            CaptureRow(onPages: onPages, onPresenting: setPicking) {
-                shutter
-            }
-        }
-        .padding(.top, 10)
-        .padding(.bottom, 8)
     }
 
     private var shutter: some View {
@@ -438,8 +424,8 @@ private struct CameraStatus {
     let identifier: String
 }
 
-/// A line on a dark capsule over the viewfinder.
-private struct StatusPill: View {
+/// A line on a dark capsule over a picture.
+struct StatusPill: View {
     let text: String
     let hint: String?
 

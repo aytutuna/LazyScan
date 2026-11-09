@@ -476,6 +476,8 @@ final class IOSFlowTests: XCTestCase {
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
         XCTAssertEqual(IOSShell.saveTitle(target: target), "Add to Contract.pdf")
         XCTAssertEqual(IOSShell.saveDetail(document, plan: plan, target: target), "3 pages")
+        // The icon button has no words, so the picture's foot says where the pages go.
+        XCTAssertEqual(IOSShell.addingCaption(target.lastPathComponent), "Adding to Contract.pdf")
     }
 
     func test_offersSave_whileCollecting_orWhileADocumentTaskHoldsPages() {

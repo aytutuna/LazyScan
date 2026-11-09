@@ -67,52 +67,108 @@ struct ScanTopBar<Trailing: View>: View {
     }
 }
 
-/// The bottom bar's first row on both tabs: Options, which opens the sheet of everything about what is
-/// saved, and the larger Save. Both are always there; Save is dimmed while nothing can be saved. Its title
-/// is "Save", and the format and the pages are its accessibility value (`detail`).
-struct OptionsSaveRow: View {
+/// Options and Save as round buttons over the bottom corners of the picture on both tabs, Options at the
+/// leading corner (it opens the sheet of everything about what is saved) and Save at the trailing one. Both
+/// are always there; Save is dimmed while nothing can be saved. Save's accessibility label is its `title`
+/// ("Save", or "Add to Contract.pdf" while the pages go into a PDF picked) and the format and the pages are
+/// its value (`detail`); while a PDF is picked the caption `adding` between the buttons says so in words.
+struct PictureButtons: View {
     @EnvironmentObject private var importer: IOSImportSession
     let title: String
     let detail: String
     let canSave: Bool
+    let adding: String?
     let onOptions: () -> Void
     let onSave: () -> Void
 
+    static let diameter: CGFloat = 52
+    static let margin: CGFloat = 16
+    /// How far up from the picture's foot the notices and the other overlays stay, clear of the buttons.
+    static let clearance: CGFloat = margin + diameter + 8
+
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onOptions) {
-                Label("Options", systemImage: "slider.horizontal.3")
-                    .font(.headline)
+        HStack(spacing: 8) {
+            optionsButton
+            if let adding {
+                Text(IOSShell.addingCaption(adding))
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .buttonBorderShape(.roundedRectangle(radius: 12))
-            // An import's corner editor needs the screen; the sheet closes as one starts.
-            .disabled(importer.isImporting)
-            .accessibilityIdentifier("options.button")
-            Button(action: onSave) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.black.opacity(0.55)))
                     .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
+            } else {
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .buttonBorderShape(.roundedRectangle(radius: 12))
-            .disabled(!canSave)
-            .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
-            .accessibilityValue(Text(detail))
-            .accessibilityIdentifier("save.button")
+            saveButton
         }
-        .padding(.horizontal, 24)
+        .padding(Self.margin)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+
+    private var optionsButton: some View {
+        Button(action: onOptions) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: Self.diameter, height: Self.diameter)
+                .background(Circle().fill(Color(white: 0.15)))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        // An import's corner editor needs the screen; the sheet closes as one starts.
+        .disabled(importer.isImporting)
+        .opacity(importer.isImporting ? 0.4 : 1)
+        .accessibilityLabel(Text("Options"))
+        .accessibilityIdentifier("options.button")
+    }
+
+    private var saveButton: some View {
+        Button(action: onSave) {
+            Image(systemName: "square.and.arrow.down")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: Self.diameter, height: Self.diameter)
+                .background(Circle().fill(Color.accentColor))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSave)
+        .opacity(canSave ? 1 : 0.4)
+        .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(detail))
+        .accessibilityIdentifier("save.button")
     }
 }
 
-/// The bottom bar's second row on both tabs: the pages as a stack (`onPages`), `centre` (the shutter, or
-/// Scan), and Photos and Files, which rest the camera while one is open (`onPresenting`).
+/// The sides mismatch on a dark capsule over a picture: white words, an orange icon.
+struct MismatchPill: View {
+    let text: String
+
+    var body: some View {
+        Label {
+            Text(text)
+                .foregroundStyle(Color.white)
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Color.orange)
+        }
+        .font(.footnote)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.black.opacity(0.75)))
+        .accessibilityIdentifier("task.mismatch")
+    }
+}
+
+/// The bottom bar of both tabs: the pages as a stack (`onPages`), `centre` (the shutter, or Scan), and Photos
+/// and Files, which rest the camera while one is open (`onPresenting`). The tabs share it, so the centre
+/// button stays where it is when the tab is switched.
 struct CaptureRow<Centre: View>: View {
     let onPages: () -> Void
     let onPresenting: (@MainActor (Bool) -> Void)?
@@ -133,6 +189,8 @@ struct CaptureRow<Centre: View>: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 24)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 }
 
