@@ -1316,10 +1316,11 @@ struct ScanScreen: View {
                               detail: IOSShell.saveDetail(state.settings, plan: plan, target: state.appendTarget),
                               canSave: offered && !saveBlocked && plan.pageCount > 0,
                               adding: state.appendTarget?.lastPathComponent,
-                              onOptions: openOptions, onSave: saveWithActions)
+                              onOptions: openOptions, onSave: { afterOptions(saveWithActions) })
     }
 
     private func openOptions() {
+        guard !importer.isImporting else { return }
         openGroup = .options
     }
 
