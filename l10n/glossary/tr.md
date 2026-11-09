@@ -356,7 +356,7 @@ Apple's value on the iPhone and the Mac, Microsoft's on Windows, written as the 
 | keychain | Anahtar Zinciri |
 | Personal Hotspot | Kişisel Erişim Noktası |
 | Apple's document scanner | Apple’ın belge tarayıcısı |
-| Settings › My computer (the app's iPhone settings) | Ayarlar › Bilgisayarım |
+| Options › My computer (the app's iPhone options) | Seçenekler › Bilgisayarım |
 | Enter pairing text (the app's iPhone button) | Eşleştirme Metnini Gir |
 | Windows Security | Windows Güvenliği |
 | Firewall & network protection | Güvenlik duvarı ve ağ koruması |

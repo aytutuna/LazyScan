@@ -204,7 +204,7 @@ struct PhoneView: View {
         let shown = codeShown(service)
         let title: String = shown ? String(localized: "Show a new code") : String(localized: "Pair a phone")
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Open Lazy Scan on your phone, go to Settings \u{203A} My computer, and scan the code shown here. The code works once, for 5 minutes.")
+            Text("Open Lazy Scan on your phone, go to Options \u{203A} My computer, and scan the code shown here. The code works once, for 5 minutes.")
                 .fixedSize(horizontal: false, vertical: true)
             Button(title) {
                 Task { await pair() }
@@ -267,7 +267,7 @@ struct PhoneView: View {
                     Text(expiry(at: context.date, service: service))
                         .font(.headline)
                 }
-                Text("Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it under Settings \u{203A} My computer \u{203A} Enter pairing text, then compare the check code.")
+                Text("Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it under Options \u{203A} My computer \u{203A} Enter pairing text, then compare the check code.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 4) {

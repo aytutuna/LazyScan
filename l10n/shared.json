@@ -2384,9 +2384,9 @@
   "Send from your phone": {},
   "Documents scanned with Lazy Scan on a paired phone are added to the page queue here. Nothing goes through the internet: the phone and this PC talk directly, encrypted, on networks you trust.": {},
   "Networks": {},
-  "Open Lazy Scan on your phone, go to Settings › My computer, and scan the code shown here. The code works once, for 5 minutes.": {},
+  "Open Lazy Scan on your phone, go to Options › My computer, and scan the code shown here. The code works once, for 5 minutes.": {},
   "Pairing code to scan with your phone": {},
-  "Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it under Settings › My computer › Enter pairing text, then compare the check code.": {},
+  "Cannot scan the code? Get this pairing text onto the phone (a message to yourself, say) and paste it under Options › My computer › Enter pairing text, then compare the check code.": {},
   "Pairing text": {
     "note": "Label of the text form of the pairing code, which the user can paste when the QR code cannot be scanned."
   },

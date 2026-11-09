@@ -41,7 +41,7 @@ App Review notes:
 Nothing to sign in to; there are no accounts.
 Camera mode (the first screen) works on its own: photograph any sheet of paper, then Save.
 Printer mode (printer icon, top right) needs an AirScan (eSCL) printer-scanner on the same Wi-Fi. We have no way to supply one, so the reviewer will see an empty scanner list; the Local Network prompt appears the first time the list opens.
-Settings > My computer pairs with the Lazy Scan desktop app on a Mac or Windows PC. It is optional and needs that PC.
+Options > My computer pairs with the Lazy Scan desktop app on a Mac or Windows PC. It is optional and needs that PC.
 
 macOS version (same record, its own listing)
 

@@ -539,7 +539,7 @@ route are the iPhone's own (Swift only).
 A phone with Lazy Scan sends what it scans straight into this PC's page queue. **Phone** (at
 the bottom of the side pane) opens the phone window:
 
-- **Pair a phone** shows a QR code to scan with the phone (Settings › My computer, on the phone). The code
+- **Pair a phone** shows a QR code to scan with the phone (Options › My computer, on the phone). The code
   works once and for 5 minutes, and five wrong tries close it. When a phone presents it, the window
   asks **Allow "Aytu's iPhone" to send documents to this PC?**; nothing is paired without Allow (no
   answer in 2 minutes counts as Don't allow; the question stays until it is answered). Without a camera, the pairing text is shown
