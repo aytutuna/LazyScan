@@ -66,13 +66,13 @@ struct LibraryPanel: View {
                 .offset(x: pull * toward)
                 Color.clear
                     .frame(width: 24)
-                    .padding(.top, proxy.safeAreaInsets.top + 52)
                     .contentShape(Rectangle())
                     .gesture(drag(width: proxy.size.width))
+                    .padding(.top, proxy.safeAreaInsets.top + 52)
             }
             .background(Color(uiColor: .systemBackground))
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
         .accessibilityAction(.escape) {
             closeSliding()
         }
