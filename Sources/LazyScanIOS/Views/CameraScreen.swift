@@ -190,12 +190,22 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
 
     // MARK: The viewfinder
 
+    /// The look the viewfinder shows over the preview: the saved page's filter and adjustments, while the
+    /// camera runs in the front and is not too warm; nil for Original with nothing adjusted, where the plain
+    /// preview is all there is.
+    private var filterLook: LiveLook? {
+        guard scenePhase == .active, model.lifecycle.isLive,
+              IOSCameraLifecycle.thermalAllows(ProcessInfo.processInfo.thermalState) else { return nil }
+        let look: LiveLook = LiveLook(settings: state.settings)
+        return look.isFiltering ? look : nil
+    }
+
     private var viewfinder: some View {
         ZStack {
             Color.black
             if model.showsPreview, let controller = model.driver as? IOSCameraController {
                 CameraPreview(controller: controller, outline: model.live?.outline,
-                              steady: model.live?.isSteady ?? false)
+                              steady: model.live?.isSteady ?? false, look: filterLook)
                     .environment(\.layoutDirection, .leftToRight)
                     .accessibilityHidden(true)
             }
@@ -456,29 +466,38 @@ struct StatusPill: View {
     }
 }
 
-/// The camera's live preview with the page's outline drawn over it. The outline comes as shares of the
-/// sensor's frame (as the live frames are searched) and is placed with the preview layer's own
-/// conversion (`layerPointConverted(fromCaptureDevicePoint:)`), which knows how the preview is turned
-/// and where the whole frame sits in the view.
+/// The camera's live preview with the page's outline drawn over it, and over the preview, under the
+/// outline, the picture with the saved page's filter (`look`, `LiveViewfinder`) when there is one. The
+/// outline comes as shares of the sensor's frame (as the live frames are searched) and is placed with the
+/// preview layer's own conversion (`layerPointConverted(fromCaptureDevicePoint:)`), which knows how the
+/// preview is turned and where the whole frame sits in the view.
 struct CameraPreview: UIViewRepresentable {
     let controller: IOSCameraController
     let outline: Quad?
     let steady: Bool
+    let look: LiveLook?
 
     func makeUIView(context: Context) -> CameraPreviewView {
         let view = CameraPreviewView()
-        controller.attach(previewLayer: view.previewLayer)
+        controller.attach(previewLayer: view.previewLayer, viewfinder: view.viewfinder)
         return view
     }
 
     func updateUIView(_ uiView: CameraPreviewView, context: Context) {
         uiView.show(outline: outline, steady: steady)
+        uiView.viewfinder?.show(look)
+    }
+
+    static func dismantleUIView(_ uiView: CameraPreviewView, coordinator: ()) {
+        uiView.viewfinder?.show(nil)
     }
 }
 
-/// A view whose layer is the session's preview, with the outline in a shape layer over it.
+/// A view whose layer is the session's preview, with the filtered picture in a Metal layer over it and the
+/// outline in a shape layer over that.
 final class CameraPreviewView: UIView {
     private let outlineLayer = CAShapeLayer()
+    let viewfinder: LiveViewfinder? = LiveViewfinder()
     private var outline: Quad?
     private var steady: Bool = false
 
@@ -496,6 +515,9 @@ final class CameraPreviewView: UIView {
         backgroundColor = UIColor.black
         outlineLayer.lineWidth = 3
         outlineLayer.lineJoin = .round
+        if let finder = viewfinder {
+            layer.addSublayer(finder.layer)
+        }
         layer.addSublayer(outlineLayer)
     }
 
@@ -507,6 +529,10 @@ final class CameraPreviewView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         outlineLayer.frame = bounds
+        if let finder = viewfinder {
+            finder.layer.contentsScale = traitCollection.displayScale
+            finder.updateFrame()
+        }
         redraw()
     }
 

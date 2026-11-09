@@ -9,16 +9,21 @@ import Foundation
 
 /// The camera's live frames for the page outline: each BGRA frame of the video output made small
 /// (`IOSFrameScaler`, at most `LiveQuadTracker.analysisLongSide` px), searched whole by the corner model
-/// (`modelPage`, the page in the small frame's pixels) and handed to the tracker on the frames' own queue.
-/// The model sees the frame turned upright, the tracker the frame as the sensor gives it, since its outline
-/// is in the sensor's frame. Frames that come sooner than `LiveQuadTracker.minFrameGapMs` after the last one
-/// handed over are passed over before any work, and the video output drops frames while one is being
-/// searched (`alwaysDiscardsLateVideoFrames`), so the work per second stays bounded. Without the model the
-/// frames go to the tracker's own search alone.
+/// (`modelPage`, the page in the small frame's pixels) and handed to the tracker on a queue of its own, so a
+/// model run never holds up the frames behind it. The model sees the frame turned upright, the tracker the
+/// frame as the sensor gives it, since its outline is in the sensor's frame. Frames that come sooner than
+/// `LiveQuadTracker.minFrameGapMs` after the last one handed over are passed over before any work, and so are
+/// frames that come while the tracker still works on one; the small copy is all the tracker and the model
+/// keep, never the camera's buffer. Without the model the frames go to the tracker's own search alone. Every
+/// frame is also drawn by the viewfinder (`LiveViewfinder`) when it has a look to show, and the same small
+/// copy is what it measures.
 final class IOSFrameFeed: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, FrameSource, @unchecked Sendable {
     private let lock = NSLock()
+    private let trackQueue = DispatchQueue(label: "LazyScan.camera.track", qos: .userInitiated)
     private var deliver: (@Sendable (IOSCameraFrame) -> Void)?
     private var lastMs: Double?
+    private var tracking: Bool = false
+    private var viewfinder: LiveViewfinder?
     /// A phone held upright shows the back camera's frames turned a quarter clockwise.
     private var uprightTurn: Int = 90
 
@@ -39,24 +44,42 @@ final class IOSFrameFeed: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
                        from connection: AVCaptureConnection) {
         let time: CMTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let seconds: Double = CMTimeGetSeconds(time)
-        guard seconds.isFinite else { return }
+        guard seconds.isFinite, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let ms: Double = seconds * 1000.0
         lock.lock()
         let handler: (@Sendable (IOSCameraFrame) -> Void)? = deliver
-        var due: Bool = handler != nil
+        let finder: LiveViewfinder? = viewfinder
+        var due: Bool = handler != nil && !tracking
         if let last = lastMs, ms >= last, ms - last < LiveQuadTracker.minFrameGapMs {
             due = false
         }
-        if due {
-            lastMs = ms
-        }
         lock.unlock()
-        guard due, let send = handler, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-              let image = IOSFrameFeed.image(pixelBuffer) else { return }
+        finder?.draw(pixelBuffer)
+        let measures: Bool = finder?.measuresDue(ms) ?? false
+        guard due || measures, let image = IOSFrameFeed.image(pixelBuffer) else { return }
+        if measures {
+            finder?.measure(image, atMs: ms)
+        }
+        guard due, let send = handler else { return }
         lock.lock()
+        lastMs = ms
+        tracking = true
         let turn: Int = uprightTurn
         lock.unlock()
-        send(IOSCameraFrame(image: image, timestampMs: ms, page: IOSFrameFeed.modelPage(image, turn: turn)))
+        trackQueue.async {
+            let frame = IOSCameraFrame(image: image, timestampMs: ms, page: IOSFrameFeed.modelPage(image, turn: turn))
+            send(frame)
+            self.lock.lock()
+            self.tracking = false
+            self.lock.unlock()
+        }
+    }
+
+    /// The viewfinder that draws the frames, or none.
+    func setViewfinder(_ finder: LiveViewfinder?) {
+        lock.lock()
+        viewfinder = finder
+        lock.unlock()
     }
 
     /// The preview's turn (clockwise degrees, a multiple of 90) that shows the sensor's frames upright, from
@@ -402,6 +425,7 @@ public final class IOSCameraController: IOSCameraDriving {
     private var rotation: AVCaptureDevice.RotationCoordinator?
     private var rotationObservation: NSKeyValueObservation?
     private weak var previewLayer: AVCaptureVideoPreviewLayer?
+    private var viewfinder: LiveViewfinder?
     private var prepared: Bool = false
 
     public init(center: NotificationCenter = .default) {
@@ -491,14 +515,17 @@ public final class IOSCameraController: IOSCameraDriving {
         return IOSCameraPhoto(data: bytes, rotationDegrees: degrees, mirrored: front)
     }
 
-    /// The preview's layer, once its view is made: it shows the session and turns with the screen.
-    func attach(previewLayer layer: AVCaptureVideoPreviewLayer) {
+    /// The preview's layer, once its view is made: it shows the session and turns with the screen. The
+    /// `viewfinder` over it (nil where there is none) is turned with it and gets the frames.
+    func attach(previewLayer layer: AVCaptureVideoPreviewLayer, viewfinder finder: LiveViewfinder?) {
         if previewLayer !== layer {
             // A new preview: its turn comes from a coordinator of its own.
             rotationObservation = nil
             rotation = nil
         }
         previewLayer = layer
+        viewfinder = finder
+        capture.feed.setViewfinder(finder)
         layer.session = capture.session
         // The whole 4:3 frame, as the photo will be, rather than a crop that looks zoomed in.
         layer.videoGravity = .resizeAspect
@@ -529,6 +556,9 @@ public final class IOSCameraController: IOSCameraDriving {
         capture.feed.setUprightTurn(angle)
         if connection.isVideoRotationAngleSupported(angle) {
             connection.videoRotationAngle = angle
+        }
+        if let layer = previewLayer {
+            viewfinder?.setTurn(angle, mirrored: connection.isVideoMirrored, over: layer)
         }
     }
 
