@@ -236,9 +236,11 @@ public enum IOSOptionsPage: String, Hashable, Identifiable {
         return pages
     }
 
-    /// Save as: "PDF · Standard", "Word", "JPEG".
+    /// Save as: "PDF · Standard", "Word", "JPEG"; a PDF that is archival or has a password says so after it.
     public static func saveAsValue(_ s: ScanSettings) -> String {
-        InspectorSections.outputSummary(s, shownFormat: IOSSettingsSections.shownFormat(s))
+        let format: String = InspectorSections.outputSummary(s, shownFormat: IOSSettingsSections.shownFormat(s))
+        guard InspectorSections.writesPDF(s) && (s.output.protect || s.output.archival) else { return format }
+        return format + " \u{00B7} " + InspectorSections.archiveSummary(s.output)
     }
 
     /// Look: the filter new pages get on the camera tab (where it is offered), then what is adjusted.

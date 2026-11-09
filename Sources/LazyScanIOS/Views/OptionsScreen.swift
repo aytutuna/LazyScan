@@ -139,7 +139,9 @@ struct OptionsScreen: View {
             return IOSCameraText.pageCount(state.scannedPages.count)
         case .computer:
             return state.companionDesktop?.name ?? IOSCompanionText.notPaired
-        case .fileName, .presets, .help, .about, .licences:
+        case .fileName:
+            return s.namingTemplate
+        case .presets, .help, .about, .licences:
             return ""
         }
     }

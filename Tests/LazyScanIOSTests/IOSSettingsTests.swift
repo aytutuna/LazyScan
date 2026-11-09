@@ -92,6 +92,12 @@ final class IOSSettingsTests: XCTestCase {
         var word: ScanSettings = ScanSettings()
         word.format = .word
         XCTAssertEqual(IOSOptionsPage.saveAsValue(word), "Word")
+        var locked: ScanSettings = ScanSettings()
+        locked.output.protect = true
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(locked), "PDF \u{00B7} Standard \u{00B7} Password on")
+        locked.output.protect = false
+        locked.output.archival = true
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(locked), "PDF \u{00B7} Standard \u{00B7} PDF/A")
         // An ID card is a PDF or a picture, never Word.
         var idCard: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
         idCard.format = .word
