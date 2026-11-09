@@ -190,8 +190,7 @@ final class CameraTaskTests: XCTestCase {
                                 CameraTaskCatalog.putInOrderLabel, CameraTaskCatalog.combineLabel,
                                 CameraTaskCatalog.newDocumentLabel, CameraTaskCatalog.flipLabel,
                                 CameraTaskCatalog.frontsFirstLabel, CameraTaskCatalog.pageByPageLabel,
-                                CameraTaskCatalog.wholeSpreadLabel, CameraTaskCatalog.separatorSheetLabel,
-                                CameraTaskCatalog.patchCodeLabel, CameraTaskCatalog.qrCodeLabel]
+                                CameraTaskCatalog.wholeSpreadLabel]
         for label in labels {
             XCTAssertLessThanOrEqual(wordCount(label), 3, label)
         }

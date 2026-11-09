@@ -43,9 +43,6 @@ public enum CameraTaskCatalog {
     public static var rightToLeftHint: String { L10n.t("Arabic, Hebrew, manga: the right page of each spread comes first.") }
     /// Under the Book picker while a scanner is in use: the choice steers only the photos brought in.
     public static var spreadsWithScannerNote: String { L10n.t("For photos from Photos and Files. The scanner's spreads are always cut at the spine.") }
-    public static var separatorSheetLabel: String { L10n.t("Separator sheet") }
-    public static var patchCodeLabel: String { L10n.t("Patch code") }
-    public static var qrCodeLabel: String { L10n.t("QR code") }
     /// Why a patch code on a photographed page may not be read: its bars are measured in inches.
     public static var separatorHint: String { L10n.t("Read once the page matches a paper size") }
 
