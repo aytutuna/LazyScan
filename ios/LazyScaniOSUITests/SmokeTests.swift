@@ -88,6 +88,7 @@ final class SmokeTests: XCTestCase {
         let library: XCUIElement = app.buttons["open.library"].firstMatch
         XCTAssertTrue(library.waitForExistence(timeout: 30), "Camera mode's Library button")
         library.tap()
+        XCTAssertTrue(app.buttons["library.back"].waitForExistence(timeout: 30), "Back at the library's leading corner")
         let settings: XCUIElement = app.descendants(matching: .any)["library.settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 30), "Settings in the library's toolbar")
         settings.tap()

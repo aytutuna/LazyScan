@@ -9,8 +9,8 @@ import UIKit
 /// for the task used last (`IOSShell.launchTask`), in the mode kept in the user's defaults
 /// (`IOSShell.scanModeKey`): camera mode, the viewfinder as the screen, where the first time a card says
 /// why the camera is asked for before iOS asks (`IOSShell.cameraOnOpen`), or printer mode; the library is
-/// pushed, with Settings in its toolbar. On a regular width (iPad, `IOSLayout.usesSidebar`) a sidebar with
-/// the tasks, the presets, the scanners and the library beside the scan screen (or the start screen, the
+/// slid in over it from the leading edge, with Settings in its toolbar. On a regular width (iPad,
+/// `IOSLayout.usesSidebar`) a sidebar with the tasks, the presets, the scanners and the library beside the scan screen (or the start screen, the
 /// presets, the scans or the saved files). Settings opens as a sheet (Command-comma). Also the share
 /// sheet, Mail's composer and the Quick Look preview the file actions ask for (`FileActionPresenters`,
 /// which the Settings sheet has too), the scan screen's covers (`ScanCovers`, kept here so they outlive a
@@ -159,14 +159,20 @@ public struct IOSRootView: View {
         }
     }
 
-    /// iPhone: the scan screen, with the library pushed.
+    /// iPhone: the scan screen, with the library over it, slid in from the leading edge. Disabled under the
+    /// library so its shortcuts (Save, the shutter, Settings) stay quiet.
     private var stackLayout: some View {
         NavigationStack {
             ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, onOpenSettings: openSettings,
                        onOpenLibrary: openLibrary, waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
-                .navigationDestination(isPresented: $showsLibrary) {
-                    LibraryScreen(onOpenSettings: openSettings)
-                }
+        }
+        .disabled(showsLibrary)
+        .accessibilityHidden(showsLibrary)
+        .overlay {
+            if showsLibrary {
+                LibraryPanel(onOpenSettings: openSettings, onClose: closeLibrary)
+                    .transition(.move(edge: .leading))
+            }
         }
     }
 
@@ -255,7 +261,13 @@ public struct IOSRootView: View {
     }
 
     private func openLibrary() {
-        showsLibrary = true
+        withAnimation {
+            showsLibrary = true
+        }
+    }
+
+    private func closeLibrary() {
+        showsLibrary = false
     }
 
     /// In camera mode, the first time, the card saying why the camera is asked for comes before iOS asks
@@ -275,10 +287,10 @@ public struct IOSRootView: View {
         cameraIntroShown = true
     }
 
-    /// What the root presents over camera mode: Settings, the share sheet, Mail and Quick Look. The camera
-    /// rests under them, so Auto takes nothing meanwhile.
+    /// What covers camera mode: the library, and what the root presents over it: Settings, the share sheet,
+    /// Mail and Quick Look. The camera rests under them, so Auto takes nothing meanwhile.
     private var cameraRests: Bool {
-        showsSettings || fileActions.shareRequest != nil || fileActions.mailRequest != nil
+        showsLibrary || showsSettings || fileActions.shareRequest != nil || fileActions.mailRequest != nil
             || fileActions.previewURL != nil
     }
 

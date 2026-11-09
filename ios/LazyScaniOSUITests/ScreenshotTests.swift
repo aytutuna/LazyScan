@@ -693,7 +693,11 @@ final class ScreenshotTests: XCTestCase {
         } else {
             shot("skipped-12-library-saved")
         }
-        back(app)
+        let close: XCUIElement = element(app, "library.back")
+        if close.waitForExistence(timeout: 5) {
+            close.tap()
+            waitUntilGone(close)
+        }
     }
 
     @MainActor
