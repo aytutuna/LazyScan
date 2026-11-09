@@ -3,9 +3,10 @@ import XCTest
 // Walks the app's main screens on the demo scanner and keeps a screenshot of each, named by screen, so
 // CI's ios-screenshots artifact shows what the screens look like after a change: camera mode (the
 // Simulator's viewfinder says there is no camera), its Options sheet with the Type menu open and Photo and
-// Book picked, and its drawer on Camera and Colour, then printer mode, its drawer on Scanner, its Scanner
-// sheet, two scanned pages in the page grid (and selecting, one ticked), the Options sheet with the pages
-// queued and its actions, Settings with My computer and Presets, and the library from camera mode, with
+// Book picked, and its drawer on Camera and Colour, then printer mode empty, with its drawer on Scanner, its
+// Scanner sheet, the flatbed's overview, a scanned page in the picture (and with the drawer open), two
+// scanned pages in the page grid (and selecting, one ticked), the Options sheet with the pages queued and
+// its actions, Settings (from the library) with My computer and Presets, and the library from camera mode, with
 // Troubleshooter and the file name's editor from Settings and a book page's split sheet; and, on runs of
 // their own, a photo of a page in the page viewer with its filters, two prints as the pages of Photos with
 // one in the page viewer and Photos' options, the ID card's review with its menus and
@@ -448,8 +449,9 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// Printer mode with its drawer on Scanner, the demo scanner picked in its Scanner sheet, two pages
-    /// scanned, and the Options sheet with them queued.
+    /// Printer mode empty and with its drawer on Scanner, the demo scanner picked in its Scanner sheet, a page
+    /// scanned (the picture with it, and with the drawer open), two pages in the grid, and the Options sheet
+    /// with them queued.
     @MainActor
     private func printerScreens(_ app: XCUIApplication) {
         guard tapIfThere(app, "mode.printer", for: "04-printer") else { return }
@@ -470,6 +472,10 @@ final class ScreenshotTests: XCTestCase {
                 shot("skipped-05-scanner-sheet")
             }
             closeOptions(app)
+            if element(app, "flatbed.preview").waitForExistence(timeout: 5) {
+                Thread.sleep(forTimeInterval: 1)
+                shot("05c-printer-overview")
+            }
         }
         if tapIfThere(app, "drawer.toggle", for: "04a-drawer-scanner") {
             if tapIfThere(app, "drawer.scanner", for: "04a-drawer-scanner") {
@@ -488,6 +494,8 @@ final class ScreenshotTests: XCTestCase {
         }
         scan.tap()
         if pages.waitForPageCount(1, timeout: 60) {
+            Thread.sleep(forTimeInterval: 1)
+            shot("04b-printer-page")
             // A second page, so the grid shows two across.
             if waitUntilEnabled(scan, timeout: 30) {
                 scan.tap()
@@ -513,6 +521,15 @@ final class ScreenshotTests: XCTestCase {
             }
         } else {
             shot("skipped-06-pages")
+        }
+        if tapIfThere(app, "drawer.toggle", for: "04c-printer-page-drawer") {
+            if tapIfThere(app, "drawer.scanner", for: "04c-printer-page-drawer") {
+                Thread.sleep(forTimeInterval: 1)
+                shot("04c-printer-page-drawer")
+            }
+            if tapIfThere(app, "drawer.toggle", for: "drawer-closed") {
+                waitUntilGone(element(app, "drawer"))
+            }
         }
         if tapIfThere(app, "options.button", for: "07-options") {
             if element(app, "options.format").waitForExistence(timeout: 5) {
@@ -640,10 +657,14 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// Settings from printer mode's row, with My computer and Presets.
+    /// Settings from the library's toolbar, opened from printer mode's top bar, with My computer and Presets.
     @MainActor
     private func settingsScreens(_ app: XCUIApplication) {
-        guard tapIfThere(app, "scan.settings", for: "09-settings") else { return }
+        guard tapIfThere(app, "open.library", for: "09-settings") else { return }
+        guard tapIfThere(app, "library.settings", for: "09-settings") else {
+            closeLibrary(app)
+            return
+        }
         if element(app, "settings.presets").waitForExistence(timeout: 5) {
             shot("09-settings")
             if tapIfThere(app, "settings.companion", for: "10-my-computer") {
@@ -669,6 +690,7 @@ final class ScreenshotTests: XCTestCase {
             done.tap()
             waitUntilGone(done)
         }
+        closeLibrary(app)
     }
 
     /// The library from camera mode's top bar, its saved files and its scans.
@@ -693,6 +715,11 @@ final class ScreenshotTests: XCTestCase {
         } else {
             shot("skipped-12-library-saved")
         }
+        closeLibrary(app)
+    }
+
+    @MainActor
+    private func closeLibrary(_ app: XCUIApplication) {
         let close: XCUIElement = element(app, "library.back")
         if close.waitForExistence(timeout: 5) {
             close.tap()
@@ -715,10 +742,10 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Taps the element if it comes, else keeps a "skipped-" screenshot of what is there instead. The
-    /// printer screen's list rows (`options.row.*`, Settings) and Settings' own rows are scrolled into view first.
+    /// Scanner row and Settings' own rows are scrolled into view first.
     @MainActor
     private func tapIfThere(_ app: XCUIApplication, _ id: String, for screen: String) -> Bool {
-        let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("settings.") || id == "scan.settings"
+        let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("settings.")
         let target: XCUIElement = inList ? app.scrolledTo(id) : element(app, id)
         guard target.waitForExistence(timeout: 5) else {
             shot("skipped-\(screen)")

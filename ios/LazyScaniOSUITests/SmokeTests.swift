@@ -30,6 +30,9 @@ final class SmokeTests: XCTestCase {
 
         app.openPages(1)
         app.closePages()
+        // The page just scanned is the scanner tab's picture while it waits to be saved.
+        let lastScan: XCUIElement = app.descendants(matching: .any)["last.scan"].firstMatch
+        XCTAssertTrue(lastScan.waitForExistence(timeout: 30), "The page scanned, whole in the picture")
 
         let save: XCUIElement = app.buttons["save.button"]
         waitUntilEnabled(save, timeout: 120)
@@ -42,6 +45,14 @@ final class SmokeTests: XCTestCase {
         let printButton: XCUIElement = app.buttons["saved.print"]
         XCTAssertTrue(printButton.exists, "The saved file's Print button")
         XCTAssertEqual(printButton.label, "Print")
+
+        // Saved, the page is no longer waiting: the picture lets go of it, and Undo brings it back.
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: lastScan)
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 30), .completed, "The saved page gone from the picture")
+        let undo: XCUIElement = app.buttons["save.undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 10), "Undo beside the saved file")
+        undo.tap()
+        XCTAssertTrue(lastScan.waitForExistence(timeout: 30), "The page back in the picture after Undo")
     }
 
     @MainActor

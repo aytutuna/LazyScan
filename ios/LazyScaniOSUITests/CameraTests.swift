@@ -83,6 +83,42 @@ final class CameraTests: XCTestCase {
     }
 
     @MainActor
+    func test_optionsAndSave_areRoundButtonsInThePicture_onBothTabs_andTheShutterStaysPut() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner"]
+        app.launch()
+
+        app.switchToCamera()
+        let viewfinder: XCUIElement = app.descendants(matching: .any)["camera.screen"].firstMatch
+        XCTAssertTrue(viewfinder.waitForExistence(timeout: 30), "The viewfinder")
+        let options: XCUIElement = app.buttons["options.button"]
+        let save: XCUIElement = app.buttons["save.button"]
+        XCTAssertTrue(options.exists && save.exists, "Options and Save")
+        XCTAssertTrue(viewfinder.frame.contains(options.frame), "Options over the viewfinder's corner")
+        XCTAssertTrue(viewfinder.frame.contains(save.frame), "Save over the viewfinder's corner")
+        XCTAssertLessThan(options.frame.midX, save.frame.midX, "Options at the left, Save at the right")
+        XCTAssertEqual(options.frame.midY, save.frame.midY, accuracy: 1)
+        XCTAssertEqual(options.label, "Options")
+        XCTAssertEqual(save.label, "Save")
+        XCTAssertGreaterThanOrEqual(save.frame.width, 44, "A hit area of 44 points")
+        XCTAssertEqual(viewfinder.frame.maxY - save.frame.maxY, 16, accuracy: 1, "16 points from the picture's foot")
+        let shutter: CGRect = app.buttons["camera.shutter"].frame
+
+        app.switchToPrinter()
+        let picture: XCUIElement = app.descendants(matching: .any)["preview.area"].firstMatch
+        XCTAssertTrue(picture.waitForExistence(timeout: 30), "The scanner tab's picture")
+        XCTAssertTrue(picture.frame.contains(options.frame), "Options over the picture's corner")
+        XCTAssertTrue(picture.frame.contains(save.frame), "Save over the picture's corner")
+        XCTAssertLessThan(options.frame.midX, save.frame.midX, "Options at the left, Save at the right")
+        let row: XCUIElement = app.descendants(matching: .any)["options.row.scanner"].firstMatch
+        XCTAssertTrue(row.exists, "The Scanner row")
+        XCTAssertLessThanOrEqual(row.frame.maxY, picture.frame.minY + 1, "The Scanner row is above the picture")
+        let scan: CGRect = app.buttons["scan.button"].frame
+        XCTAssertEqual(scan.midX, shutter.midX, accuracy: 1, "Scan where the shutter was")
+        XCTAssertEqual(scan.midY, shutter.midY, accuracy: 1, "Scan where the shutter was")
+    }
+
+    @MainActor
     func test_printerButton_andCameraButton_switchTheMode() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demoScanner"]
