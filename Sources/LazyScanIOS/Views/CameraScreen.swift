@@ -5,6 +5,12 @@ import QuartzCore
 import SwiftUI
 import UIKit
 
+/// Warm (`.fair` or more) or in Low Power Mode: the viewfinder's filter is shed before the camera has to stop.
+private func phoneUnderLoad() -> Bool {
+    let info: ProcessInfo = ProcessInfo.processInfo
+    return info.isLowPowerModeEnabled || info.thermalState.rawValue >= ProcessInfo.ThermalState.fair.rawValue
+}
+
 /// Camera mode, the iPhone's scan screen unless printer mode was picked (`IOSScanMode`): the viewfinder is
 /// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), a
 /// small round arrow that opens the options drawer (`ScanDrawer`) above the bottom bar, the photo size
@@ -42,6 +48,8 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
     /// The size just picked here that may not fit in this phone's memory, for its alert.
     @State private var memoryWarned: IOSPhotoSize?
+    /// The phone is warm or saving power: the plain preview shows, so the filter goes before the camera must stop.
+    @State private var shedsFilter: Bool = phoneUnderLoad()
     private let resting: Bool
     private let holdsAuto: Bool
     private let waitsForIntro: Bool
@@ -87,6 +95,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             if !waits {
                 start()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification)) { (_: Notification) in
+            shedsFilter = phoneUnderLoad()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { (_: Notification) in
+            shedsFilter = phoneUnderLoad()
         }
         .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
             if phase == .background {
@@ -191,11 +205,10 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     // MARK: The viewfinder
 
     /// The look the viewfinder shows over the preview: the saved page's filter and adjustments, while the
-    /// camera runs in the front and is not too warm; nil for Original with nothing adjusted, where the plain
-    /// preview is all there is.
+    /// camera runs in the front and the phone is neither warm nor in Low Power Mode; nil for Original with nothing
+    /// adjusted, where the plain preview is all there is.
     private var filterLook: LiveLook? {
-        guard scenePhase == .active, model.lifecycle.isLive,
-              IOSCameraLifecycle.thermalAllows(ProcessInfo.processInfo.thermalState) else { return nil }
+        guard scenePhase == .active, model.lifecycle.isLive, !shedsFilter else { return nil }
         let look: LiveLook = LiveLook(settings: state.settings)
         return look.isFiltering ? look : nil
     }
