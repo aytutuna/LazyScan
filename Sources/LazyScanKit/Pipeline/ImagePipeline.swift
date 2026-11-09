@@ -18,7 +18,27 @@ public enum ImagePipeline {
     public static func apply(_ settings: AdjustmentSettings, to image: CGImage, colorMode: ColorMode) -> CGImage {
         if settings.isIdentity && colorMode == .color { return image }
 
-        var ci = CIImage(cgImage: image)
+        let ci = adjusted(CIImage(cgImage: image), with: settings, colorMode: colorMode)
+
+        // 7. Render, preserving the exact pixel dimensions of the input.
+        //    Grayscale/B&W output renders as true 8-bit gray so memory and saved
+        //    files don't inflate to 4-byte RGBA.
+        let renderRect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        if colorMode != .color,
+           let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2),
+           let output = sharedContext.createCGImage(ci, from: renderRect, format: .L8, colorSpace: gray) {
+            return output
+        }
+        guard let output = sharedContext.createCGImage(ci, from: renderRect) else { return image }
+        return output
+    }
+
+    /// Steps 1-6 of `apply` as a Core Image chain, not rendered: the live viewfinder runs the same chain on
+    /// each camera frame.
+    public static func adjusted(_ image: CIImage, with settings: AdjustmentSettings, colorMode: ColorMode) -> CIImage {
+        if settings.isIdentity && colorMode == .color { return image }
+
+        var ci = image
 
         // 1. Auto enhance (Core Image's suggested filters, red-eye disabled), in order.
         if settings.autoEnhance {
@@ -101,17 +121,7 @@ public enum ImagePipeline {
             ])
         }
 
-        // 7. Render, preserving the exact pixel dimensions of the input.
-        //    Grayscale/B&W output renders as true 8-bit gray so memory and saved
-        //    files don't inflate to 4-byte RGBA.
-        let renderRect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-        if colorMode != .color,
-           let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2),
-           let output = sharedContext.createCGImage(ci, from: renderRect, format: .L8, colorSpace: gray) {
-            return output
-        }
-        guard let output = sharedContext.createCGImage(ci, from: renderRect) else { return image }
-        return output
+        return ci
     }
 
     /// Lossless 90° steps, clockwise. quarterTurns 0...3.
