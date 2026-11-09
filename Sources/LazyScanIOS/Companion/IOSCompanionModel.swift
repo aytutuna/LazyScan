@@ -36,7 +36,7 @@ public enum IOSCompanionText {
     public static var intoOpenDocument: String { String(localized: "Into the open document") }
     /// Under After saving's Send to computer while it is dimmed.
     public static var sendNeedsPagesReason: String { String(localized: "Send to computer needs the pages collected before saving") }
-    public static var sendNeedsPairingReason: String { String(localized: "Pair a computer in Settings > My computer first") }
+    public static var sendNeedsPairingReason: String { String(localized: "Pair a computer in Options > My computer first") }
 
     /// The link's state in one line: "Connected · 3 pages queued there", or why not.
     public static func status(_ status: CompanionStatus) -> String {

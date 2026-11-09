@@ -4,221 +4,8 @@ import LazyScanModel
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings: the presets first (scans and saved files are the library's), then the settings in the shared
-/// sections (`IOSSettingsSections`, built on `InspectorSections`: which are shown, in which order, their
-/// titles and the summaries their collapsed headers show; the task's own, Scanner and Output start open;
-/// camera mode has no Scanner), then in camera mode the camera's photo size where the camera offers more
-/// than one (`CameraSettingsRows`, this device's own), then Troubleshoot and About. My computer (since I20)
-/// pairs the phone with a computer and sends to it (`CompanionScreen`). Which sections are open is kept for
-/// the user, not in presets; a task started opens the section it needs (`AppState.sectionsOpenedByTask`)
-/// until it is closed. While an import runs the settings cannot be changed: its pages belong to the task
-/// and format it started with. The same holds while a scan or a save runs, which also keeps a preset from
-/// being applied; a line says so, and My computer, Troubleshoot and About stay usable.
-struct SettingsScreen: View {
-    @EnvironmentObject private var state: AppState
-    @EnvironmentObject private var importer: IOSImportSession
-    /// Makes the troubleshooter's Add by address.
-    let makeAddModel: () -> IOSAddScannerModel
-    /// Runs once a preset's settings are in use (the scan screen opens).
-    let onPresetApplied: @MainActor () -> Void
-    /// Closes the sheet (Done); nil: no Done button.
-    var onClose: (() -> Void)?
-    /// The troubleshooter over Settings; the root view's, so the error alert in the sheet can open it too.
-    @Binding var showsTroubleshooter: Bool
-    /// Browses the computers on the network for My computer; nil when the app does not (`-demoScanner`).
-    var companion: IOSCompanionBrowser?
-    /// The network scanners, for the troubleshooter's explanation card; nil when the app has none (`-demoScanner`).
-    var network: IOSNetworkScanners?
-    @AppStorage(IOSSettingsSections.storageKey) private var openText: String = IOSSettingsSections.defaultText
-    /// The phone's mode (`IOSScanMode`), which some rows follow.
-    @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
-
-    var body: some View {
-        let camera: Bool = mode == .camera
-        let sections: [IOSSettingsSection] = IOSSettingsSections.sections(state.settings, camera: camera)
-        let working: Bool = importer.isImporting || state.isBusy
-        Form {
-            Section {
-                NavigationLink {
-                    PresetsScreen(onApplied: onPresetApplied)
-                } label: {
-                    Label(IOSSettingsText.presetsLabel, systemImage: "slider.horizontal.3")
-                }
-                .disabled(state.isBusy)
-                .accessibilityIdentifier("settings.presets")
-                NavigationLink {
-                    CompanionScreen(state: state, browser: companion)
-                } label: {
-                    Label(IOSSettingsText.companionLabel, systemImage: "laptopcomputer.and.iphone")
-                }
-                .accessibilityIdentifier("settings.companion")
-            }
-            if importer.isImporting {
-                Section {
-                    ReasonLine(text: IOSSettingsText.importingReason)
-                }
-            }
-            if state.isBusy && !importer.isImporting {
-                Section {
-                    ReasonLine(text: IOSSettingsText.busyReason)
-                }
-            }
-            ForEach(sections) { (section: IOSSettingsSection) in
-                Section {
-                    DisclosureGroup(isExpanded: openBinding(section.id)) {
-                        SettingsSectionRows(id: section.id, camera: camera)
-                            .disabled(working)
-                    } label: {
-                        SettingsSectionHeader(section: section, collapsed: !isOpen(section.id))
-                    }
-                    .accessibilityIdentifier("settings.section.\(section.id)")
-                }
-            }
-            if camera && IOSCameraLens.choices(IOSCameraLens.offered).count > 1 {
-                Section {
-                    CameraSettingsRows(offered: IOSCameraLens.offered)
-                } header: {
-                    Text(IOSSettingsText.cameraTitle)
-                }
-                .disabled(state.isBusy)
-            }
-            Section {
-                if state.hasPrinter {
-                    Button {
-                        state.printRulerPage()
-                    } label: {
-                        Label(IOSSettingsText.rulerLabel, systemImage: "ruler")
-                    }
-                    .disabled(state.isBusy)
-                    .accessibilityHint(Text(IOSSettingsText.rulerHint))
-                    .accessibilityIdentifier("settings.ruler")
-                }
-                Button {
-                    showsTroubleshooter = true
-                } label: {
-                    Label(IOSSettingsText.troubleshootLabel, systemImage: "questionmark.circle")
-                }
-                .accessibilityIdentifier("settings.troubleshoot")
-                NavigationLink {
-                    AboutScreen()
-                } label: {
-                    Label(IOSSettingsText.aboutLabel, systemImage: "info.circle")
-                }
-                .accessibilityIdentifier("settings.about")
-            }
-        }
-        .navigationTitle(IOSSettingsText.title)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                if let close = onClose {
-                    Button(IOSSettingsText.doneLabel) {
-                        close()
-                    }
-                    .accessibilityIdentifier("settings.done")
-                }
-            }
-        }
-        .sheet(isPresented: $showsTroubleshooter) {
-            TroubleshooterScreen(makeAddModel: makeAddModel, network: network, onClose: closeTroubleshooter)
-                .environmentObject(state)
-        }
-    }
-
-    private func isOpen(_ id: String) -> Bool {
-        IOSSettingsSections.isOpen(id, stored: IOSSettingsSections.open(openText),
-                                   openedByTask: state.sectionsOpenedByTask)
-    }
-
-    /// Open as the user left it or as a task opened it; closing it forgets the task's opening, as on the Mac.
-    private func openBinding(_ id: String) -> Binding<Bool> {
-        let appState: AppState = state
-        let stored: Binding<String> = $openText
-        return Binding<Bool>(
-            get: {
-                IOSSettingsSections.isOpen(id, stored: IOSSettingsSections.open(stored.wrappedValue),
-                                           openedByTask: appState.sectionsOpenedByTask)
-            },
-            set: { (open: Bool) in
-                appState.sectionsOpenedByTask.remove(id)
-                var current: Set<String> = IOSSettingsSections.open(stored.wrappedValue)
-                if open {
-                    current.insert(id)
-                } else {
-                    current.remove(id)
-                }
-                stored.wrappedValue = IOSSettingsSections.text(current)
-            })
-    }
-
-    private func closeTroubleshooter() {
-        showsTroubleshooter = false
-    }
-}
-
-/// A section's header: its title, and while it is collapsed its summary (with a lock while a password is
-/// on) and a dot when something in it differs from the default.
-private struct SettingsSectionHeader: View {
-    let section: IOSSettingsSection
-    let collapsed: Bool
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(section.title)
-                .foregroundStyle(Color.primary)
-            Spacer(minLength: 8)
-            if collapsed {
-                if section.locked {
-                    Image(systemName: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                }
-                if !section.summary.isEmpty {
-                    Text(section.summary)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                        .lineLimit(1)
-                }
-                if section.changed {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 6, height: 6)
-                }
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(section.accessibilityLabel))
-    }
-}
-
-/// The settings of one section.
-private struct SettingsSectionRows: View {
-    let id: String
-    let camera: Bool
-
-    var body: some View {
-        switch id {
-        case InspectorSections.task:
-            TaskSettingsRows()
-        case InspectorSections.scanner:
-            ScannerSettingsRows()
-        case InspectorSections.output:
-            OutputSettingsRows(camera: camera)
-        case InspectorSections.adjustments:
-            AdjustmentSettingsRows()
-        case InspectorSections.pages:
-            PageSettingsRows(camera: camera)
-        case InspectorSections.split:
-            SplitSettingsRows()
-        case InspectorSections.archive:
-            ArchiveSettingsRows()
-        default:
-            MoreSettingsRows()
-        }
-    }
-}
-
 /// A reason beside a dimmed setting, or a consequence not to miss: an icon and a few words.
-private struct ReasonLine: View {
+struct ReasonLine: View {
     let text: String
     var systemImage: String = "info.circle"
 
@@ -227,13 +14,6 @@ private struct ReasonLine: View {
             .font(.caption)
             .foregroundStyle(Color.secondary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// The photocopy's choices are on its own screen, once the page is in (`CopyScreen`); the section tells so.
-private struct TaskSettingsRows: View {
-    var body: some View {
-        ReasonLine(text: IOSCopyText.settingsNote)
     }
 }
 
@@ -366,88 +146,10 @@ struct ScannerSettingsRows: View {
     }
 }
 
-/// Output: the format (any for Photos and Receipts, an image format for the Text kind's held page, a PDF or an
-/// image for the ID card), the PDF's size, Searchable PDF while a PDF is written, Collect pages (locked on
-/// while the camera's Both sides pairs the sides, and while a PDF picked in the task list takes the pages),
-/// and where files are saved; Photos in Photos mode.
-private struct OutputSettingsRows: View {
-    @EnvironmentObject private var state: AppState
-    let camera: Bool
-
-    var body: some View {
-        let s: ScanSettings = state.settings
-        let shown: OutputFormat = IOSSettingsSections.shownFormat(s)
-        let flow: TaskFlowKind = TaskCatalog.flow(of: s)
-        // Both sides pairs the camera's fronts and backs in the queue; a feeder scanning both sides keeps a
-        // scan's sheets together even when each scan is saved at once. Locked only while on: Both sides kept
-        // from printer mode or a preset with Collect off can still turn it on.
-        let paired: Bool = camera && state.cameraSides != nil && s.documentMultiPage
-        // A PDF picked in the task list takes the pages only while they are collected: turned off, each scan
-        // would be saved as a new file. Stop Adding in Options is the way back.
-        let reason: String? = paired ? IOSSettingsText.bothSidesCollectsReason
-            : state.appendTarget.map { IOSSettingsText.addingToReason($0.lastPathComponent) }
-        Picker("Format", selection: format) {
-            ForEach(formats) { (choice: OutputFormat) in
-                Text(choice.label).tag(choice)
-            }
-        }
-        .accessibilityIdentifier("settings.format")
-        if shown == OutputFormat.pdf && (s.intent == ScanIntent.document || IOSSettingsSections.offersEveryFormat(s)) {
-            Picker("PDF size", selection: $state.settings.output.pdfSize) {
-                ForEach(PDFSizePreset.displayOrder, id: \.self) { (size: PDFSizePreset) in
-                    Text(size.label).tag(size)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityHint(Text("\(s.output.pdfSize.hint). \(s.output.pdfSize.detail)"))
-        }
-        if IOSSettingsSections.writesPDF(s) && flow != TaskFlowKind.copy && flow != TaskFlowKind.idCard {
-            Toggle("Searchable PDF", isOn: $state.settings.pdfSearchable)
-                .accessibilityHint(Text("Lets you search and copy the text (OCR)"))
-        }
-        if s.intent == ScanIntent.document && flow != TaskFlowKind.receiptSplit && flow != TaskFlowKind.idCard {
-            Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
-                .disabled(reason != nil)
-                .accessibilityHint(Text(reason ?? String(localized: "Off: each page is saved right away")))
-            if let reason {
-                ReasonLine(text: reason)
-            }
-        }
-        SaveFolderRow()
-    }
-
-    /// Every format for documents, Photos and Receipts (the format Options saves them in), the image formats
-    /// for the Text kind's held page (saved as a picture); the ID card is saved as a PDF or an image.
-    private var formats: [OutputFormat] {
-        if IOSSettingsSections.offersEveryFormat(state.settings) {
-            return OutputFormat.offered(for: ScanIntent.document)
-        }
-        if state.activeTask == ScanTask.quickScan && !state.settings.documentMultiPage {
-            return OutputFormat.offered(for: ScanIntent.photo)
-        }
-        let offered: [OutputFormat] = OutputFormat.offered(for: state.settings.intent)
-        guard InspectorSections.savesPageFormat(state.settings) else { return offered }
-        var list: [OutputFormat] = []
-        for choice in offered where choice.pageFormat == choice {
-            list.append(choice)
-        }
-        return list
-    }
-
-    private var format: Binding<OutputFormat> {
-        let appState: AppState = state
-        return Binding<OutputFormat>(
-            get: { IOSSettingsSections.shownFormat(appState.settings) },
-            set: { (choice: OutputFormat) in
-                appState.settings.format = choice
-            })
-    }
-}
-
 /// Where files are saved: the app's own folder in Files (On My iPhone › Lazy Scan) or one picked with
 /// Choose… (iCloud Drive, a USB drive; `IOSSaveFolder`), with Show in Files. Use app folder goes back to
 /// the app's own once another is picked.
-private struct SaveFolderRow: View {
+struct SaveFolderRow: View {
     @EnvironmentObject private var state: AppState
     @State private var choosing: Bool = false
 
@@ -498,8 +200,8 @@ private struct SaveFolderRow: View {
 }
 
 /// Auto-enhance, the four sliders on one -100…+100 scale with Reset, Remove print dots and Restore faded
-/// colors.
-private struct AdjustmentSettingsRows: View {
+/// colors, which for Photos is the drawer's own switch (`RestoreToggle`: Restore old photos under the hood).
+struct AdjustmentSettingsRows: View {
     @EnvironmentObject private var state: AppState
 
     var body: some View {
@@ -516,7 +218,11 @@ private struct AdjustmentSettingsRows: View {
         .accessibilityHint(Text("Puts the four sliders back to neutral"))
         Toggle("Remove print dots", isOn: $state.settings.adjustments.descreen)
             .accessibilityHint(Text("Smooths the dot pattern of magazines and printed photos (descreen)"))
-        Toggle("Restore faded colors", isOn: $state.settings.adjustments.restoreFadedColors)
+        if IOSShell.shownKind(state.settings) == .photos {
+            RestoreToggle()
+        } else {
+            Toggle("Restore faded colors", isOn: $state.settings.adjustments.restoreFadedColors)
+        }
     }
 
     private func slider(_ adjustment: IOSAdjustment) -> some View {
@@ -550,7 +256,7 @@ private struct AdjustmentSettingsRows: View {
 /// its pages (`PageProcessor.forCapture`): they are cut along their corners already, so there is nothing to
 /// crop, their straightening is the drawer's own (`IOSShell.straightenKey`), and spreads are split only with Whole spread picked, so Split facing pages shows
 /// only then and the book's choices only while whole spreads are cut.
-private struct PageSettingsRows: View {
+struct PageSettingsRows: View {
     @EnvironmentObject private var state: AppState
     let camera: Bool
 
@@ -629,7 +335,7 @@ private struct PageSettingsRows: View {
 
 /// Split into documents: the choice (through `AppState.setSplitMode`), its one line, the sheet count, and at
 /// QR codes where the codes are; Save sheet makes the separator sheet to print.
-private struct SplitSettingsRows: View {
+struct SplitSettingsRows: View {
     @EnvironmentObject private var state: AppState
 
     var body: some View {
@@ -646,6 +352,7 @@ private struct SplitSettingsRows: View {
         }
         .disabled(!collecting)
         .accessibilityHint(Text(mode.hint))
+        .accessibilityIdentifier("options.split")
         if collecting && !mode.caption.isEmpty {
             Text(mode.caption)
                 .font(.caption)
@@ -656,6 +363,7 @@ private struct SplitSettingsRows: View {
                 Text(L10n.plural(DocumentSplitter.clampSheetCount(s.document.splitSheetCount),
                                  one: "New document every {0} sheet", other: "New document every {0} sheets"))
             }
+            .accessibilityIdentifier("split.sheets")
         }
         if collecting && mode == SplitMode.barcode {
             Picker("Codes are on", selection: startsDocument) {
@@ -663,6 +371,7 @@ private struct SplitSettingsRows: View {
                 Text("First pages").tag(true)
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("split.codes")
             Text(BarcodeSeparators.startsDocumentCaption(s.document.barcodeStartsDocument))
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
@@ -670,6 +379,7 @@ private struct SplitSettingsRows: View {
         if collecting && (mode == SplitMode.separatorSheet || (mode == SplitMode.barcode && !s.document.barcodeStartsDocument)) {
             if mode == SplitMode.barcode {
                 TextField("Name on sheet", text: $state.qrSheetName, prompt: Text("Optional"))
+                    .accessibilityIdentifier("separator.name")
             }
             Button {
                 state.saveSeparatorSheet()
@@ -677,6 +387,10 @@ private struct SplitSettingsRows: View {
                 Label("Save sheet", systemImage: "square.and.arrow.down")
             }
             .accessibilityHint(Text("Saves a PDF of the sheet; print it at 100%"))
+            .accessibilityIdentifier("separator.save")
+            if mode == SplitMode.separatorSheet {
+                ReasonLine(text: CameraTaskCatalog.separatorHint)
+            }
         }
     }
 
@@ -685,7 +399,7 @@ private struct SplitSettingsRows: View {
         return Binding<SplitMode>(
             get: { appState.settings.document.splitMode },
             set: { (mode: SplitMode) in
-                appState.setSplitMode(mode)
+                IOSShell.setSplit(mode, in: appState)
             })
     }
 
@@ -708,73 +422,40 @@ private struct SplitSettingsRows: View {
     }
 }
 
-/// Archival PDF (PDF/A) and Require a password, which exclude each other (`IOSPDFOptions`, as on the scan
-/// screen); the password is asked for when saving and never kept.
-private struct ArchiveSettingsRows: View {
+/// Collect pages before saving: locked on while the camera's Both sides pairs the sides in the queue, and
+/// while a PDF picked in the task list takes the pages, since turned off each scan would be saved as a new
+/// file. Not for Receipts and the ID card, which save from their own screens.
+struct CollectPagesRow: View {
     @EnvironmentObject private var state: AppState
+    let camera: Bool
 
     var body: some View {
-        let output: OutputOptions = state.settings.output
-        Toggle(PDFA.optionLabel, isOn: archival)
-            .disabled(output.protect)
-            .accessibilityHint(Text(output.protect ? PDFA.cannotProtectNote : PDFA.optionHint))
-        if let reason = IOSPDFOptions.archivalReason(output) {
-            ReasonLine(text: reason, systemImage: "lock")
-        }
-        Toggle(PDFProtection.optionLabel, isOn: protect)
-            .disabled(IOSPDFOptions.archivalShown(output))
-            .accessibilityHint(Text(IOSPDFOptions.archivalShown(output) ? PDFA.cannotProtectNote : PDFProtection.optionHint))
-        if let reason = IOSPDFOptions.protectReason(output) {
-            ReasonLine(text: reason, systemImage: "lock")
-        }
-    }
-
-    private var archival: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { IOSPDFOptions.archivalShown(appState.settings.output) },
-            set: { (on: Bool) in
-                appState.settings.output = IOSPDFOptions.settingArchival(on, in: appState.settings.output)
-            })
-    }
-
-    private var protect: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { appState.settings.output.protect },
-            set: { (on: Bool) in
-                appState.settings.output = IOSPDFOptions.settingProtect(on, in: appState.settings.output)
-            })
-    }
-}
-
-/// The text beside each PDF and the file name; what happens after a save is set in Options' After saving
-/// (`AfterSaveSection`), with the rest of what follows a save.
-private struct MoreSettingsRows: View {
-    @EnvironmentObject private var state: AppState
-
-    var body: some View {
-        if IOSSettingsSections.textApplies(state.settings) {
-            Toggle(IOSPDFOptions.alsoSaveTextLabel, isOn: $state.settings.output.alsoSaveText)
-                .accessibilityHint(Text(IOSPDFOptions.alsoSaveTextHint))
-        }
-        NavigationLink {
-            NamingEditorScreen(model: IOSNamingModel(state: state))
-        } label: {
-            LabeledContent(IOSSettingsText.fileNameLabel) {
-                Text(state.settings.namingTemplate)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+        let s: ScanSettings = state.settings
+        let flow: TaskFlowKind = TaskCatalog.flow(of: s)
+        // Both sides pairs the camera's fronts and backs in the queue; a feeder scanning both sides keeps a
+        // scan's sheets together even when each scan is saved at once. Locked only while on: Both sides kept
+        // from printer mode or a preset with Collect off can still turn it on.
+        let paired: Bool = camera && state.cameraSides != nil && s.documentMultiPage
+        // A PDF picked in the task list takes the pages only while they are collected: turned off, each scan
+        // would be saved as a new file. Stop Adding under Share now is the way back.
+        let reason: String? = paired ? IOSSettingsText.bothSidesCollectsReason
+            : state.appendTarget.map { IOSSettingsText.addingToReason($0.lastPathComponent) }
+        if s.intent == ScanIntent.document && flow != TaskFlowKind.receiptSplit && flow != TaskFlowKind.idCard {
+            Toggle("Collect pages before saving", isOn: $state.settings.documentMultiPage)
+                .disabled(reason != nil)
+                .accessibilityHint(Text(reason ?? String(localized: "Off: each page is saved right away")))
+                .accessibilityIdentifier("options.collect")
+            if let reason {
+                ReasonLine(text: reason)
             }
         }
-        .accessibilityIdentifier("settings.fileName")
     }
 }
 
 /// The size the camera's photos are taken at, among those this phone's camera offers (`IOSCameraLens.choices`),
 /// the default marked; kept on this device (`IOSCameraLens.megapixelsKey`), not in presets, as the camera's
 /// own button keeps it. A size whose pages may not fit in this phone's memory says so under it.
-private struct CameraSettingsRows: View {
+struct CameraSettingsRows: View {
     let offered: [IOSPhotoSize]
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
 
@@ -805,57 +486,6 @@ private struct CameraSettingsRows: View {
             set: { (picked: Int) in
                 stored.wrappedValue = picked
             })
-    }
-}
-
-/// About: the app's name and version, what it is built with, and where scans stay.
-struct AboutScreen: View {
-    var body: some View {
-        let info: [String: Any]? = Bundle.main.infoDictionary
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Lazy Scan")
-                        .font(.headline)
-                    Text(IOSSettingsText.version(info))
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                        .accessibilityIdentifier("about.version")
-                }
-                .accessibilityElement(children: .combine)
-            }
-            Section {
-                Text(IOSSettingsText.aboutBuiltWith)
-                Text(IOSSettingsText.aboutPrivacy)
-            }
-            Section {
-                NavigationLink(IOSSettingsText.licencesLabel) {
-                    LicencesScreen()
-                }
-                .accessibilityIdentifier("about.licences")
-            }
-        }
-        .navigationTitle(IOSSettingsText.aboutLabel)
-    }
-}
-
-/// The licence texts of DocAligner and ONNX Runtime, as they go with the app (`FastViTCornerModel.licence`).
-struct LicencesScreen: View {
-    var body: some View {
-        List {
-            licence("DocAligner", file: "DocAligner-LICENSE", id: "licences.docaligner")
-            licence("ONNX Runtime", file: "ONNXRuntime-LICENSE", id: "licences.onnxruntime")
-        }
-        .navigationTitle(IOSSettingsText.licencesLabel)
-    }
-
-    private func licence(_ title: String, file: String, id: String) -> some View {
-        Section(title) {
-            Text(FastViTCornerModel.licence(file) ?? IOSSettingsText.licenceMissing)
-                .font(.footnote.monospaced())
-                .textSelection(.enabled)
-                .accessibilityIdentifier(id)
-        }
     }
 }
 #endif

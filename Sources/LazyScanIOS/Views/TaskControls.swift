@@ -138,6 +138,8 @@ private struct SecondaryTaskButton: ViewModifier {
 struct TaskWayPicker: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
+    /// The book's Reads right to left is left out where the Pages page has it among the book's choices.
+    var includesRightToLeft: Bool = true
 
     var body: some View {
         if state.activeTask == .twoSided {
@@ -161,7 +163,7 @@ struct TaskWayPicker: View {
                         .font(.footnote)
                         .foregroundStyle(Color.secondary)
                 }
-                if IOSShell.showsRightToLeft(state.settings, device: selectedDevice) {
+                if includesRightToLeft && IOSShell.showsRightToLeft(state.settings, device: selectedDevice) {
                     Toggle(CameraTaskCatalog.rightToLeftLabel, isOn: rightToLeft)
                         .accessibilityHint(Text(CameraTaskCatalog.rightToLeftHint))
                         .accessibilityIdentifier("task.rightToLeft")
@@ -200,57 +202,6 @@ struct TaskWayPicker: View {
             get: { appState.settings.taskOptions.bookRightToLeft },
             set: { (on: Bool) in
                 appState.settings.taskOptions.bookRightToLeft = on
-            })
-    }
-}
-
-/// Separate documents' separator sheets: Patch code or QR code (with the name the QR sheet carries), and
-/// Separator sheet, which saves the sheet as a PDF to print here or elsewhere (Share). A photographed
-/// sheet's patch code is read once the page matches a paper size, so its bars are measured in inches.
-struct SeparatorSheetRow: View {
-    @EnvironmentObject private var state: AppState
-
-    var body: some View {
-        if state.activeTask == .batch {
-            VStack(alignment: .leading, spacing: 8) {
-                Picker("Separators", selection: qrSheets) {
-                    Text(CameraTaskCatalog.patchCodeLabel).tag(false)
-                    Text(CameraTaskCatalog.qrCodeLabel).tag(true)
-                }
-                .pickerStyle(.segmented)
-                .disabled(state.isBusy)
-                .accessibilityIdentifier("separator.kind")
-                HStack(spacing: 10) {
-                    if state.settings.document.splitMode == .barcode {
-                        TextField("Name (optional)", text: $state.qrSheetName)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(state.isBusy)
-                            .accessibilityIdentifier("separator.name")
-                    }
-                    Button {
-                        state.saveSeparatorSheet()
-                    } label: {
-                        Label(CameraTaskCatalog.separatorSheetLabel, systemImage: "doc.text")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(state.isBusy)
-                    .accessibilityHint(Text("Saves the sheet as a PDF to print"))
-                    .accessibilityIdentifier("separator.save")
-                }
-                Label(CameraTaskCatalog.separatorHint, systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-            }
-        }
-    }
-
-    /// QR code sheets: split at barcode or QR sheets; Patch code: at separator sheets.
-    private var qrSheets: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { appState.settings.document.splitMode == .barcode },
-            set: { (on: Bool) in
-                appState.setSplitMode(on ? SplitMode.barcode : SplitMode.separatorSheet)
             })
     }
 }
@@ -312,78 +263,29 @@ struct RestoreToggle: View {
     }
 }
 
-/// The Options sheet's save sections, while the scan screen collects pages: the format (a PDF, a JPEG a page, Word
-/// or text) on its own at the top; for a document Separate documents (the Separate documents task, with its
-/// separator sheets; dimmed without a feeder as its tile was, and while Both sides is on, since one task holds
-/// either), One PDF per page for a PDF that is not split otherwise, and the PDF's choices while Save writes
-/// one; then After saving (`IOSAfterSave`).
-struct ExportOptions: View {
+/// Options' Separate documents: the Separate documents task under the hood (`IOSShell.setSeparate`), with its
+/// New document button and separator sheets; dimmed without a feeder as its tile was, and while Both sides is
+/// on, since one task holds either. Split into documents (`SplitSettingsRows`) is the same setting seen as the
+/// queue's split, and turns this on and off from its choices.
+struct SeparateToggle: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
-    /// The phone's mode: the camera pairs the sides only for Both sides (`IOSShell.eachPageTitle`).
-    @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
 
     var body: some View {
         let s: ScanSettings = state.settings
         let busy: Bool = state.isBusy || importer.isImporting
         let separates: Bool = IOSShell.separatesDocuments(s)
         let bothSides: Bool = !separates && state.activeTask == .twoSided
-        let camera: Bool = mode == IOSScanMode.camera
         let availability: TaskAvailability = TaskCatalog.availability(of: .batch, capabilities: state.capabilities)
-        Section {
-            Picker("Format", selection: format) {
-                ForEach(IOSShell.exportFormats(s)) { (choice: OutputFormat) in
-                    Text(Self.label(choice)).tag(choice)
-                }
-            }
-            .pickerStyle(.segmented)
-            .disabled(busy)
-            .accessibilityIdentifier("options.format")
+        Toggle("Separate documents", isOn: separate)
+            .disabled(busy || (!separates && (!availability.isAvailable || bothSides)))
+            .accessibilityHint(Text("Splits the pages into documents at separator sheets"))
+            .accessibilityIdentifier("options.separate")
+        if bothSides {
+            OptionReason(text: IOSCameraText.notWithBothSides)
+        } else if !separates, let reason = availability.reason {
+            OptionReason(text: reason)
         }
-        Section {
-            // A book stays a book: its spreads are split, not its stack.
-            if IOSShell.shownKind(s) == .document {
-                Toggle("Separate documents", isOn: separate)
-                    .disabled(busy || (!separates && (!availability.isAvailable || bothSides)))
-                    .accessibilityHint(Text("Splits the pages into documents at separator sheets"))
-                    .accessibilityIdentifier("options.separate")
-                if bothSides {
-                    OptionReason(text: IOSCameraText.notWithBothSides)
-                } else if !separates, let reason = availability.reason {
-                    OptionReason(text: reason)
-                }
-                SeparatorSheetRow()
-            }
-            if !separates && IOSShell.exportFormat(s) == .pdf {
-                Toggle(IOSShell.eachPageTitle(s, camera: camera), isOn: eachPage)
-                    .disabled(busy)
-                    .accessibilityIdentifier("options.eachPage")
-            }
-            if IOSShell.offersPDFOptions(s) {
-                PDFOptionsSection()
-            }
-        }
-        AfterSaveSection()
-    }
-
-    /// The segment's short name: "PDF", "JPEG", "Word", "Text".
-    static func label(_ format: OutputFormat) -> String {
-        switch format {
-        case .word: return String(localized: "Word")
-        case .text: return String(localized: "Text")
-        default: return format.label
-        }
-    }
-
-    private var format: Binding<OutputFormat> {
-        let appState: AppState = state
-        return Binding<OutputFormat>(
-            get: { IOSShell.exportFormat(appState.settings) },
-            set: { (choice: OutputFormat) in
-                var s: ScanSettings = appState.settings
-                s.format = choice
-                appState.settings = IOSShell.keepingKind(s)
-            })
     }
 
     private var separate: Binding<Bool> {
@@ -391,24 +293,14 @@ struct ExportOptions: View {
         return Binding<Bool>(
             get: { IOSShell.separatesDocuments(appState.settings) },
             set: { (on: Bool) in
-                let s: ScanSettings = IOSShell.settingSeparate(on, in: appState.settings)
-                appState.settings = SettingsAdapter.adapt(s, to: appState.capabilities).settings
-            })
-    }
-
-    private var eachPage: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { IOSShell.savesEachPage(appState.settings) },
-            set: { (on: Bool) in
-                appState.settings = IOSShell.settingEachPage(on, in: appState.settings)
+                IOSShell.setSeparate(on, in: appState)
             })
     }
 }
 
 /// After saving (`IOSAfterSave`): what Save also does, each a check, and under them Then, the settings' own
-/// action after a save (`OutputOptions.afterSave`) in the phone's words. In the Options sheet. Send to
-/// computer is dimmed, with its reason under it, while nothing can send; its
+/// action after a save (`OutputOptions.afterSave`) in the phone's words. The After saving page's content. Send
+/// to computer is dimmed, with its reason under it, while nothing can send; its
 /// check stays as it was. Then is dimmed while Email is checked: the email goes in its place.
 struct AfterSaveSection: View {
     @EnvironmentObject private var state: AppState
@@ -425,8 +317,6 @@ struct AfterSaveSection: View {
                 }
             }
             thenRow
-        } header: {
-            Text(IOSAfterSave.title)
         } footer: {
             Text(IOSAfterSave.footer)
         }
@@ -502,23 +392,34 @@ private struct OptionReason: View {
     }
 }
 
-/// The PDF's choices while Save writes one: its size (Best, Standard, Compact, Smallest), then Archive
-/// (PDF/A) and Password, which exclude each other (`IOSPDFOptions`), and the pages' text in a .txt file
-/// beside the PDF (`OutputOptions.alsoSaveText`, as on the Mac). The password itself is asked for when
-/// saving (`IOSPasswordPrompt`) and never kept.
+/// The PDF's choices while a save writes one (`IOSSettingsSections.writesPDF`): its size (Best, Standard,
+/// Compact, Smallest), Searchable PDF (not for the ID card), Archive (PDF/A) and Password, which exclude each
+/// other (`IOSPDFOptions`), and the pages' text in a .txt file beside the PDF (`OutputOptions.alsoSaveText`, as
+/// on the Mac). The password itself is asked for when saving (`IOSPasswordPrompt`) and never kept.
 struct PDFOptionsSection: View {
     @EnvironmentObject private var state: AppState
 
     var body: some View {
-        let output: OutputOptions = state.settings.output
-        Group {
+        let s: ScanSettings = state.settings
+        let output: OutputOptions = s.output
+        let flow: TaskFlowKind = TaskCatalog.flow(of: s)
+        if IOSSettingsSections.shownFormat(s) == OutputFormat.pdf
+            && (s.intent == ScanIntent.document || IOSSettingsSections.offersEveryFormat(s)) {
             Picker("PDF size", selection: pdfSize) {
                 ForEach(PDFSizePreset.displayOrder, id: \.self) { (size: PDFSizePreset) in
                     Text(size.label).tag(size)
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityHint(Text("\(output.pdfSize.hint). \(output.pdfSize.detail)"))
             .accessibilityIdentifier("pdf.size")
+        }
+        if IOSSettingsSections.writesPDF(s) {
+            if flow != TaskFlowKind.copy && flow != TaskFlowKind.idCard {
+                Toggle("Searchable PDF", isOn: $state.settings.pdfSearchable)
+                    .accessibilityHint(Text("Lets you search and copy the text (OCR)"))
+                    .accessibilityIdentifier("pdf.searchable")
+            }
             Toggle(PDFA.optionLabel, isOn: archival)
                 .disabled(output.protect)
                 .accessibilityHint(Text(output.protect ? PDFA.cannotProtectNote : PDFA.optionHint))
@@ -533,11 +434,12 @@ struct PDFOptionsSection: View {
             if let reason = IOSPDFOptions.protectReason(output) {
                 reasonLine(reason)
             }
+        }
+        if IOSSettingsSections.textApplies(s) {
             Toggle(IOSPDFOptions.alsoSaveTextLabel, isOn: alsoSaveText)
                 .accessibilityHint(Text(IOSPDFOptions.alsoSaveTextHint))
                 .accessibilityIdentifier("pdf.alsoSaveText")
         }
-        .disabled(state.isBusy)
     }
 
     private func reasonLine(_ reason: String) -> some View {

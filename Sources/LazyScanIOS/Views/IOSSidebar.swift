@@ -15,8 +15,8 @@ enum IOSDetail: Hashable {
 /// pages to a PDF" as the task list has them (`IOSShell.kindTiles`: dimmed with the reason when
 /// one cannot be started, the kind set up marked; in camera mode only camera mode's, `IOSShell.cameraKinds`,
 /// named as the camera's Type list names them), the scanners, one of which picked is printer mode's
-/// (`ScannerPickerSections`, with Add by address and Troubleshoot), and the library: Presets, Scans, Saved files and Settings
-/// (Command-comma). A kind picked goes to the root view (`onTask`), which asks about the pages and an ID card
+/// (`ScannerPickerSections`, with Add by address and Troubleshoot), and the library: Presets, Scans and Saved files.
+/// A kind picked goes to the root view (`onTask`), which asks about the pages and an ID card
 /// held; a preset picked while a side of an ID card is held asks to discard the card first
 /// (`IdCardDiscardQuestion`), and one that would leave the queued pages without a Save asks about them
 /// (`KeepPagesQuestion`). The rows do nothing while an import runs or while a share or a send reads the
@@ -33,7 +33,6 @@ struct IOSSidebar: View {
     /// Brings the scan screen back: a preset applied, or a scanner picked or added.
     let onPresetApplied: @MainActor () -> Void
     let onDetail: (IOSDetail) -> Void
-    let onSettings: () -> Void
     @State private var showsAdd: Bool = false
     @State private var showsTroubleshooter: Bool = false
     @State private var askedToDiscard: Bool = false
@@ -71,13 +70,6 @@ struct IOSSidebar: View {
                            identifier: "sidebar.history")
                 libraryRow(IOSSettingsText.savedLabel, symbol: "tray", target: IOSDetail.saved,
                            identifier: "sidebar.saved")
-                Button {
-                    onSettings()
-                } label: {
-                    Label(IOSSettingsText.title, systemImage: "gearshape")
-                }
-                .keyboardShortcut(IOSShortcuts.settings.keyboardShortcut)
-                .accessibilityIdentifier("open.settings")
             }
         }
         .listStyle(.sidebar)

@@ -30,15 +30,15 @@ public struct IOSShortcut: Equatable {
 }
 
 /// The keyboard shortcuts, as the iPad's Command key overlay lists them: Command-S saves the pages,
-/// Command-N starts a new document (Separate documents), Command-comma opens Settings, Space takes a photo
+/// Command-N starts a new document (Separate documents), Command-comma opens Options, Space takes a photo
 /// in camera mode.
 public enum IOSShortcuts {
     public static var save: IOSShortcut { IOSShortcut(key: "s", command: true, title: String(localized: "Save")) }
     public static var newDocument: IOSShortcut { IOSShortcut(key: "n", command: true, title: String(localized: "New document")) }
-    public static var settings: IOSShortcut { IOSShortcut(key: ",", command: true, title: String(localized: "Settings")) }
+    public static var options: IOSShortcut { IOSShortcut(key: ",", command: true, title: String(localized: "Options")) }
     public static var shutter: IOSShortcut { IOSShortcut(key: " ", command: false, title: String(localized: "Take photo")) }
 
-    public static var all: [IOSShortcut] { [save, newDocument, settings, shutter] }
+    public static var all: [IOSShortcut] { [save, newDocument, options, shutter] }
 }
 
 /// Moving a page of the strip by dragging it onto another: it takes that page's place, the pages between

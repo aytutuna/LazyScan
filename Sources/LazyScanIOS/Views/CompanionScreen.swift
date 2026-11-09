@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// My computer, pushed from Settings (`IOSCompanionModel`): with no computer paired, Pair with a computer
+/// My computer, a page of the Options sheet (`IOSCompanionModel`): with no computer paired, Pair with a computer
 /// (the camera looking for its code, the code's text to enter instead, the check code to compare, the
 /// name the computer will list the phone under, Pair); once paired, the computer's name and state
 /// (checked when the screen opens, and on Refresh), Unpair, and the documents waiting to be sent with

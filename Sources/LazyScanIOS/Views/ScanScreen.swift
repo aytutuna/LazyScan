@@ -21,11 +21,11 @@ enum ScanCover: String, Identifiable {
 /// the arrow that opens the options drawer (`ScanDrawer`: Colour, and Flash and Camera on the camera, the
 /// scanner's Source, Sides and Resolution on the scanner tab) and the other tab's icon (`mode.printer`, and
 /// `mode.camera`, back to camera mode, which selects no scanner so none of its limits apply to the camera).
-/// Over the bottom corners of the picture, on both tabs, Options (`OptionsSections` in a sheet: the Type, the
-/// Book's and Photos' choices, what is saved, and the actions Add to a PDF, Email, Print, Share as Lazy Scan
-/// document and Send to computer) and Save (`PictureButtons`). The bottom bar: the pages, the shutter (Scan on
+/// Over the bottom corners of the picture, on both tabs, Options (`OptionsScreen` in a sheet that opens at half
+/// height: the Type and a short list of pages, each with its value, that holds every setting; the camera keeps
+/// running above it) and Save (`PictureButtons`). The bottom bar: the pages, the shutter (Scan on
 /// the scanner tab, named for the step, `primaryActionLabel`), Photos and Files. Save runs what After saving
-/// has checked (`IOSAfterSave`), as a PDF, a JPEG a page, Word or text (`IOSShell.exportFormats`), or adds the
+/// has checked (`IOSAfterSave`), as a PDF, a picture a page, Word or text (`IOSShell.exportFormat`), or adds the
 /// pages to the end of a PDF picked in Files (`AppState.appendToPDF(at:)`; with a PDF picked,
 /// `AppState.appendTarget`, Save adds them to that one and the picture's foot says "Adding to" it); it stays
 /// dimmed for the ID card, which is saved from its review. Camera mode is the viewfinder as the screen
@@ -43,10 +43,10 @@ enum ScanCover: String, Identifiable {
 /// (`pickKind`). Photos and receipts add the objects found in a shot to the pages, the ID card opens its
 /// review once its sides are in, Quick scan its page and the photocopy its copy screen, each full screen; a
 /// book page's spread can be split again (`SpreadSplitSheet`). PDFs and pictures dropped on the screen are
-/// imported as Files' are, and Command-S saves and Command-comma opens Settings. Its covers and the spread's
+/// imported as Files' are, and Command-S saves and Command-comma opens Options. Its covers and the spread's
 /// sheet are the root view's (`ScanCovers`), so resizing the window across the width classes, which builds
 /// this screen anew, leaves them open. On the iPad's sidebar layout (`pickerInSidebar`) the sidebar has the
-/// kinds and the scanners, the library and Settings; the bars, the drawer and the Options sheet are the same.
+/// kinds and the scanners, and the library; the bars, the drawer and the Options sheet are the same.
 struct ScanScreen: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
@@ -58,14 +58,14 @@ struct ScanScreen: View {
     /// The iPad's sidebar lists the scanners and the tasks, so the Scanner options only name the source and
     /// the top row is left out.
     var pickerInSidebar: Bool = false
-    /// Opens Settings; nil when the sidebar has it.
-    var onOpenSettings: (() -> Void)?
+    /// Browses the computers on the network for Options' My computer; nil when the app does not (`-demoScanner`).
+    var companion: IOSCompanionBrowser?
     /// Opens the library (iPhone); nil when the sidebar has it.
     var onOpenLibrary: (() -> Void)?
     /// The card saying why the camera is asked for is up, or the app has not started: camera mode's camera
     /// waits for it.
     var waitsForIntro: Bool = false
-    /// The root presents something over the screen (Settings, the share sheet, Mail, Quick Look): camera
+    /// The root presents something over the screen (the share sheet, Mail, Quick Look): camera
     /// mode's camera rests.
     var rests: Bool = false
     /// The camera or printer mode, switched with the top row's printer and camera buttons; picking a
@@ -200,7 +200,7 @@ struct ScanScreen: View {
                 importDropped(items)
             }
             .background {
-                settingsShortcut
+                optionsShortcut
             }
     }
 
@@ -263,18 +263,15 @@ struct ScanScreen: View {
             }
     }
 
-    /// The Settings row is built lazily, so the shortcut lives on a button that always exists.
-    @ViewBuilder
-    private var settingsShortcut: some View {
-        if let open = onOpenSettings {
-            Button("") {
-                afterOptions(open)
-            }
-            .keyboardShortcut(IOSShortcuts.settings.keyboardShortcut)
-            .frame(width: 0, height: 0)
-            .opacity(0)
-            .accessibilityHidden(true)
+    /// The shortcut lives on a button that always exists.
+    private var optionsShortcut: some View {
+        Button("") {
+            openOptions()
         }
+        .keyboardShortcut(IOSShortcuts.options.keyboardShortcut)
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 
     private var cameraMode: Bool {
@@ -758,46 +755,53 @@ struct ScanScreen: View {
         return "\(device.name) \u{00B7} \(state.settings.source.label)"
     }
 
-    /// The heights of the screen's sheets. Camera mode's camera rests under a sheet, so a half sheet would
-    /// show the stopped viewfinder above it: full height only.
+    /// The heights of the page strip's sheet. Camera mode's camera rests under it, so a half sheet would show
+    /// the stopped viewfinder above it: full height only.
     private var sheetDetents: Set<PresentationDetent> {
         cameraMode ? [.large] : [.medium, .large]
     }
 
-    private var sheetInteraction: PresentationBackgroundInteraction {
-        cameraMode ? .disabled : .enabled(upThrough: .medium)
-    }
-
-    /// A group's sheet: the Scanner's in half height first, with the screen still usable above it; the
-    /// Options' at full height, since it is long and the camera rests under it.
+    /// A group's sheet, in half height first with the screen still usable above it: the Options' pages
+    /// (`OptionsScreen`), whose Look changes the camera shows live, or the Scanner's.
     private func optionsSheet(_ group: ScanOptionGroup) -> some View {
-        NavigationStack {
-            Form {
-                optionsContent(group)
-            }
-            .navigationTitle(group.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(IOSSettingsText.doneLabel) {
-                        openGroup = nil
-                    }
-                    .accessibilityIdentifier("options.done")
-                }
-            }
+        sheetContent(group)
             .modifier(ScannerPickerSheets(picker: picker, showsAdd: $showsAdd, showsTroubleshooter: $showsTroubleshooter,
                                           asksAboutCard: $cardAskedInOptions))
             .modifier(IdCardDiscardQuestion(state: state, asked: $cardAskedInOptions))
-        }
-        .presentationDetents(group == .options ? [.large] : sheetDetents)
-        .presentationDragIndicator(.visible)
-        .presentationBackgroundInteraction(group == .options ? .disabled : sheetInteraction)
-        // The root's alert cannot show over a sheet, nor its troubleshooter until the sheet has closed.
-        .modifier(ErrorAlert(state: state, onTroubleshoot: openTroubleshooter))
-        // Nor its question about a changed certificate, which a scanner picked here asks.
-        .background {
-            if let network = picker.network {
-                CertificateQuestion(network: network)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            // The root's alert cannot show over a sheet, nor its troubleshooter until the sheet has closed.
+            .modifier(ErrorAlert(state: state, onTroubleshoot: openTroubleshooter))
+            // Nor its question about a changed certificate, which a scanner picked here asks.
+            .background {
+                if let network = picker.network {
+                    CertificateQuestion(network: network)
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func sheetContent(_ group: ScanOptionGroup) -> some View {
+        switch group {
+        case .options:
+            OptionsScreen(blocked: saveBlocked, companion: companion, onType: pickKind, onAction: runAction,
+                          onPresetApplied: closeOptions, onTroubleshoot: openPickerTroubleshooter, onDone: closeOptions)
+        case .scanner:
+            NavigationStack {
+                Form {
+                    scannerContent
+                }
+                .navigationTitle(group.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(IOSSettingsText.doneLabel) {
+                            closeOptions()
+                        }
+                        .accessibilityIdentifier("options.done")
+                    }
+                }
             }
         }
     }
@@ -810,25 +814,24 @@ struct ScanScreen: View {
     }
 
     @ViewBuilder
-    private func optionsContent(_ group: ScanOptionGroup) -> some View {
-        switch group {
-        case .options:
-            OptionsSections(blocked: saveBlocked, onType: pickKind, onAction: runAction)
-        case .scanner:
-            if pickerBeside {
-                Section {
-                    sourceRow
-                }
-            } else {
-                ScannerPickerSections(picker: picker, onAdd: openAdd, onTroubleshoot: openPickerTroubleshooter,
-                                      asksAboutCard: $cardAskedInOptions)
+    private var scannerContent: some View {
+        if pickerBeside {
+            Section {
+                sourceRow
             }
-            if sourceDevice != nil && usesFlatbed {
-                Section {
-                    previewControls
-                }
+        } else {
+            ScannerPickerSections(picker: picker, onAdd: openAdd, onTroubleshoot: openPickerTroubleshooter,
+                                  asksAboutCard: $cardAskedInOptions)
+        }
+        if sourceDevice != nil && usesFlatbed {
+            Section {
+                previewControls
             }
         }
+    }
+
+    private func closeOptions() {
+        openGroup = nil
     }
 
     /// An Options row's action, once the sheet has closed.

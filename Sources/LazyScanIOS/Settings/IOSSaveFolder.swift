@@ -2,7 +2,7 @@
 import LazyScanKit
 import Foundation
 
-/// A save folder outside the app (iCloud Drive, a USB drive) picked in Settings. iOS lets the app back into
+/// A save folder outside the app (iCloud Drive, a USB drive) picked in Options. iOS lets the app back into
 /// such a folder only through a bookmark (`ScanSettings.destinationBookmark`); its path is kept too, so what
 /// reads `destinationPath` works on. The folder is opened once and kept open while the app runs, since it is
 /// written to again and again (`AppState.resolveDestinationBookmark`, set by `makeForIOS`).

@@ -38,7 +38,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @State private var drawerGroup: DrawerGroup = .colour
     /// Photos or Files is open over the camera.
     @State private var picking: Bool = false
-    /// The photo size picked, as Settings keeps it; 0 until one is.
+    /// The photo size picked, as Options keeps it; 0 until one is.
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
     /// The size just picked here that may not fit in this phone's memory, for its alert.
     @State private var memoryWarned: IOSPhotoSize?

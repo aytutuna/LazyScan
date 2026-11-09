@@ -3,11 +3,9 @@ import LazyScanKit
 import SwiftUI
 
 /// The iPhone's library, out of the capture path: the saved files or this session's scans, picked with a
-/// segmented control in the navigation bar, a back control at its leading corner (`onClose`) and Settings
-/// in its toolbar (`onOpenSettings`, Command-comma). The iPad's sidebar lists them on their own.
+/// segmented control in the navigation bar and a back control at its leading corner (`onClose`). The iPad's
+/// sidebar lists them on their own.
 struct LibraryScreen: View {
-    /// Opens Settings; nil where it is offered elsewhere.
-    var onOpenSettings: (() -> Void)?
     let onClose: () -> Void
     @State private var part: LibraryPart = .saved
 
@@ -40,22 +38,6 @@ struct LibraryScreen: View {
                 .fixedSize()
                 .accessibilityIdentifier("library.part")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                settingsButton
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var settingsButton: some View {
-        if let open = onOpenSettings {
-            Button {
-                open()
-            } label: {
-                Label(IOSSettingsText.title, systemImage: "gearshape")
-            }
-            .keyboardShortcut(IOSShortcuts.settings.keyboardShortcut)
-            .accessibilityIdentifier("library.settings")
         }
     }
 }
@@ -65,7 +47,6 @@ struct LibraryScreen: View {
 /// trailing edge, below the bar, closes it following the finger; elsewhere a drag belongs to the list's
 /// scrolling, its row swipes and the segmented control.
 struct LibraryPanel: View {
-    var onOpenSettings: () -> Void
     /// Closes without an animation; the panel animates the ways out itself.
     let onClose: () -> Void
     @Environment(\.layoutDirection) private var direction: LayoutDirection
@@ -80,7 +61,7 @@ struct LibraryPanel: View {
         GeometryReader { (proxy: GeometryProxy) in
             ZStack(alignment: .trailing) {
                 NavigationStack {
-                    LibraryScreen(onOpenSettings: onOpenSettings, onClose: closeSliding)
+                    LibraryScreen(onClose: closeSliding)
                 }
                 .offset(x: pull * toward)
                 Color.clear

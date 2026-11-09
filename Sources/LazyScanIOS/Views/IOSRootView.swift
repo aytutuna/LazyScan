@@ -9,18 +9,18 @@ import UIKit
 /// for the task used last (`IOSShell.launchTask`), in the mode kept in the user's defaults
 /// (`IOSShell.scanModeKey`): camera mode, the viewfinder as the screen, where the first time a card says
 /// why the camera is asked for before iOS asks (`IOSShell.cameraOnOpen`), or printer mode; the library is
-/// slid in over it from the leading edge, with Settings in its toolbar. On a regular width (iPad,
+/// slid in over it from the leading edge. On a regular width (iPad,
 /// `IOSLayout.usesSidebar`) a sidebar with the tasks, the presets, the scanners and the library beside the scan screen (or the start screen, the
-/// presets, the scans or the saved files). Settings opens as a sheet (Command-comma). Also the share
-/// sheet, Mail's composer and the Quick Look preview the file actions ask for (`FileActionPresenters`,
-/// which the Settings sheet has too), the scan screen's covers (`ScanCovers`, kept here so they outlive a
+/// presets, the scans or the saved files). Also the share
+/// sheet, Mail's composer and the Quick Look preview the file actions ask for (`FileActionPresenters`),
+/// the scan screen's covers (`ScanCovers`, kept here so they outlive a
 /// change of layout), the corner editor of an imported photo or a photo from the camera, the
 /// troubleshooter, the question about a network scanner's changed certificate, and the error alert (with
-/// Troubleshoot when it is about a scanner; in the Settings sheet it opens Settings' own troubleshooter).
+/// Troubleshoot when it is about a scanner).
 /// It keeps the screen on while a network scanner's job runs, and keeps the selected scanner on the mode:
 /// in printer mode the remembered scanner once it is listed, else none, so no scanner's limits apply to
 /// the camera. Photos and PDFs opened in this app from another one ("Open in Lazy Scan") are
-/// imported with Settings and the share sheets closed: photos into the task set up, a PDF into Document to
+/// imported with the share sheets closed: photos into the task set up, a PDF into Document to
 /// PDF unless that task collects pages or holds what it took (`openFiles`); while an import runs they wait
 /// for it (`IOSImportSession`). A Lazy Scan document (`.lsdoc`,
 /// I18) is not imported: the scan screen offers it on its banner. Leaving the scan screen stops an import
@@ -42,8 +42,6 @@ public struct IOSRootView: View {
     @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
     @AppStorage(IOSShell.scannerKey) private var scanner: String = ""
     @State private var detail: IOSDetail = IOSDetail.start
-    @State private var showsSettings: Bool = false
-    @State private var showsSettingsTroubleshooter: Bool = false
     @State private var scanCover: ScanCover?
     @State private var spreadEditor: SpreadEditorSource?
     @State private var columns: NavigationSplitViewVisibility = NavigationSplitViewVisibility.all
@@ -56,7 +54,7 @@ public struct IOSRootView: View {
     /// `importer` brings photos and PDFs in for the state the view is given; `launchImports` are the files
     /// imported at launch (`IOSLaunchOptions`), in order, into `launchTask` when given; `picker` lists the
     /// scanners (with the network scanners, unless the app was launched with the demo scanner alone);
-    /// `companion` browses the computers on the network for Settings' My computer; `demoScanner` (the UI
+    /// `companion` browses the computers on the network for Options' My computer; `demoScanner` (the UI
     /// tests' `-demoScanner`) keeps the camera from opening by itself.
     public init(fileActions: IOSFileActions, importer: IOSImportSession, picker: IOSScannerPickerModel,
                 launchImports: [IOSImportItem] = [], launchTask: ScanTask? = nil,
@@ -146,31 +144,20 @@ public struct IOSRootView: View {
                 CertificateQuestion(network: network)
             }
         }
-        .sheet(isPresented: $showsSettings) {
-            NavigationStack {
-                SettingsScreen(makeAddModel: makeAddModel, onPresetApplied: presetApplied, onClose: closeSettings,
-                               showsTroubleshooter: $showsSettingsTroubleshooter, companion: companion,
-                               network: picker.network)
-            }
-            .modifier(FileActionPresenters(fileActions: fileActions, state: state,
-                                           onTroubleshoot: openSettingsTroubleshooter))
-            .environmentObject(state)
-            .environmentObject(importer)
-        }
     }
 
     /// iPhone: the scan screen, with the library over it, slid in from the leading edge. Disabled under the
-    /// library so its shortcuts (Save, the shutter, Settings) stay quiet.
+    /// library so its shortcuts (Save, the shutter, Options) stay quiet.
     private var stackLayout: some View {
         NavigationStack {
-            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, onOpenSettings: openSettings,
+            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, companion: companion,
                        onOpenLibrary: openLibrary, waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
         }
         .disabled(showsLibrary)
         .accessibilityHidden(showsLibrary)
         .overlay {
             if showsLibrary {
-                LibraryPanel(onOpenSettings: openSettings, onClose: closeLibrary)
+                LibraryPanel(onClose: closeLibrary)
                     .transition(.move(edge: .leading))
             }
         }
@@ -180,7 +167,7 @@ public struct IOSRootView: View {
     private var sidebarLayout: some View {
         NavigationSplitView(columnVisibility: $columns) {
             IOSSidebar(picker: picker, scannerShown: showsScanner, detail: detail, onTask: pickTask,
-                       onPresetApplied: openScanner, onDetail: showDetail, onSettings: openSettings)
+                       onPresetApplied: openScanner, onDetail: showDetail)
                 .navigationTitle("Lazy Scan")
         } detail: {
             NavigationStack {
@@ -195,7 +182,7 @@ public struct IOSRootView: View {
     private var splitDetail: some View {
         if showsScanner {
             ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, pickerInSidebar: true,
-                       waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
+                       companion: companion, waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
         } else {
             switch detail {
             case .start:
@@ -255,11 +242,6 @@ public struct IOSRootView: View {
         showsScanner = false
     }
 
-    private func openSettings() {
-        showsSettingsTroubleshooter = false
-        showsSettings = true
-    }
-
     private func openLibrary() {
         withAnimation {
             showsLibrary = true
@@ -287,26 +269,11 @@ public struct IOSRootView: View {
         cameraIntroShown = true
     }
 
-    /// What covers camera mode: the library, and what the root presents over it: Settings, the share sheet,
+    /// What covers camera mode: the library, and what the root presents over it: the share sheet,
     /// Mail and Quick Look. The camera rests under them, so Auto takes nothing meanwhile.
     private var cameraRests: Bool {
-        showsLibrary || showsSettings || fileActions.shareRequest != nil || fileActions.mailRequest != nil
+        showsLibrary || fileActions.shareRequest != nil || fileActions.mailRequest != nil
             || fileActions.previewURL != nil
-    }
-
-    private func closeSettings() {
-        showsSettings = false
-    }
-
-    /// The root cannot present the troubleshooter over Settings, so the error alert there opens Settings' own.
-    private func openSettingsTroubleshooter() {
-        showsSettingsTroubleshooter = true
-    }
-
-    /// A preset picked in Settings is in use: Settings closes and the scan screen shows.
-    private func presetApplied() {
-        showsSettings = false
-        openScanner()
     }
 
     private func makeAddModel() -> IOSAddScannerModel {
@@ -422,7 +389,7 @@ public struct IOSRootView: View {
     }
 
     /// Files opened in this app: a Lazy Scan document to the scan screen's banner, the others imported;
-    /// the scan screen shown, Settings and the share sheets closed. A PDF goes into Document to PDF, from Photos
+    /// the scan screen shown and the share sheets closed. A PDF goes into Document to PDF, from Photos
     /// and Receipts too, which would cut its pages into objects, unless the task set up is Document collecting
     /// pages (`IOSShell.takesWholePages`) or holds what it took (a side of the ID card, a Text page, a copy, an
     /// import under way), which starting Document would drop or change; photos stay in the task set up
@@ -452,7 +419,7 @@ public struct IOSRootView: View {
         }
     }
 
-    /// A `.lsdoc` opened in this app, offered on the scan screen's banner, with Settings closed so it is seen.
+    /// A `.lsdoc` opened in this app, offered on the scan screen's banner.
     /// Document to PDF is set up when no task is; a task set up is kept (an ID card half taken, say), and in
     /// one that does not collect pages the banner offers to open it in Document.
     private func openPackage(_ url: URL) {
@@ -460,7 +427,6 @@ public struct IOSRootView: View {
             IOSShell.rememberChoices(state.settings, defaults: UserDefaults.standard)
             _ = state.startTask(.document)
         }
-        showsSettings = false
         openScanner()
         let appState: AppState = state
         Task { @MainActor in
@@ -470,7 +436,7 @@ public struct IOSRootView: View {
 
     /// `task` is set up when given; otherwise the task set up is kept (every task takes photos), and Document
     /// to PDF is set up when there is none or it is the photocopy, which holds one batch of pages; a copy still
-    /// held keeps its task and the import is refused, as a held Quick scan is. Settings, the share sheet, Mail
+    /// held keeps its task and the import is refused, as a held Quick scan is. The share sheet, Mail
     /// and Quick Look close, since the corner editor cannot show over them, and the scan screen is shown. True
     /// when it was brought to the front now (shown on the iPad, the library closed on the iPhone, or what was
     /// presented over it closed).
@@ -485,7 +451,6 @@ public struct IOSRootView: View {
             _ = state.startTask(.document)
         }
         let presented: Bool = cameraRests
-        showsSettings = false
         fileActions.shareRequest = nil
         fileActions.mailRequest = nil
         fileActions.previewURL = nil
@@ -547,14 +512,11 @@ private struct CameraIntroCard: View {
 }
 
 /// The share sheet, Mail's composer and the Quick Look preview the file actions ask for, and the error
-/// alert. The root view has them, and so does the Settings sheet: a sheet's view cannot present while
-/// another is up over it, so these would otherwise show nothing until Settings closed.
+/// alert.
 @MainActor
 private struct FileActionPresenters: ViewModifier {
     @ObservedObject var fileActions: IOSFileActions
     @ObservedObject var state: AppState
-    /// The error alert's Troubleshoot (`ErrorAlert.onTroubleshoot`).
-    var onTroubleshoot: (@MainActor () -> Void)? = nil
 
     func body(content: Content) -> some View {
         content
@@ -565,7 +527,7 @@ private struct FileActionPresenters: ViewModifier {
                 MailSheet(fileActions: fileActions)
             }
             .quickLookPreview($fileActions.previewURL)
-            .modifier(ErrorAlert(state: state, onTroubleshoot: onTroubleshoot))
+            .modifier(ErrorAlert(state: state))
     }
 
     private func closeShareSheet() {
@@ -633,7 +595,7 @@ struct CertificateQuestion: View {
 @MainActor
 struct ErrorAlert: ViewModifier {
     @ObservedObject var state: AppState
-    /// Opens a troubleshooter where the root's cannot show (the Settings sheet); nil: the root's
+    /// Opens a troubleshooter where the root's cannot show (the Options sheet); nil: the root's
     /// (`AppState.showTroubleshooter`).
     var onTroubleshoot: (@MainActor () -> Void)? = nil
 

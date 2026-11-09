@@ -22,8 +22,6 @@ public enum IOSCopyText {
     public static var printPageName: String { String(localized: "Page to print") }
     public static var printAgainLabel: String { String(localized: "Print again") }
     public static var noPrinterYet: String { String(localized: "You choose the printer when printing") }
-    /// Settings' Photocopy section: its choices are on the copy screen.
-    public static var settingsNote: String { String(localized: "Copies, Fit to page and the PDF are chosen on the copy screen.") }
 
     /// "Copies: 2".
     public static func copiesTitle(_ count: Int) -> String {

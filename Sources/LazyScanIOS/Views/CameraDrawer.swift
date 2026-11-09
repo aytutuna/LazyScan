@@ -227,6 +227,32 @@ private struct StraightenToggle: View {
     }
 }
 
+/// The filter new pages get on the camera tab (Original, Enhanced, Grayscale, B&W; `IOSShell.drawerFilter`,
+/// `settingDrawerFilter`): the drawer's Colour group and the Look page are two places for the one setting.
+struct CaptureFilterPicker: View {
+    @EnvironmentObject private var state: AppState
+    let identifier: String
+
+    var body: some View {
+        Picker("Color", selection: filter) {
+            ForEach(CaptureFilter.displayOrder, id: \.self) { (choice: CaptureFilter) in
+                Text(choice.label).tag(choice)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var filter: Binding<CaptureFilter> {
+        let appState: AppState = state
+        return Binding<CaptureFilter>(
+            get: { IOSShell.drawerFilter(appState.settings) },
+            set: { (choice: CaptureFilter) in
+                appState.settings = IOSShell.settingDrawerFilter(choice, in: appState.settings)
+            })
+    }
+}
+
 /// The drawer's Colour group: on the camera tab the filter new pages get (Original, Enhanced, Grayscale, B&W)
 /// for the kinds that collect pages, else the colour mode, and for Photos whether faded colours are restored.
 private struct ColourDrawer: View {
@@ -245,13 +271,7 @@ private struct ColourDrawer: View {
                 .accessibilityIdentifier("drawer.restore")
             }
             if camera && IOSShell.offersFilters(state.settings) {
-                Picker("Color", selection: filter) {
-                    ForEach(CaptureFilter.displayOrder, id: \.self) { (choice: CaptureFilter) in
-                        Text(choice.label).tag(choice)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("drawer.colourMode")
+                CaptureFilterPicker(identifier: "drawer.colourMode")
             } else {
                 Picker("Color", selection: $state.settings.colorMode) {
                     ForEach(ColorMode.allCases) { (mode: ColorMode) in
@@ -262,16 +282,6 @@ private struct ColourDrawer: View {
                 .accessibilityIdentifier("drawer.colourMode")
             }
         }
-    }
-
-    /// The filter new pages get (`IOSShell.drawerFilter`, `settingDrawerFilter`).
-    private var filter: Binding<CaptureFilter> {
-        let appState: AppState = state
-        return Binding<CaptureFilter>(
-            get: { IOSShell.drawerFilter(appState.settings) },
-            set: { (choice: CaptureFilter) in
-                appState.settings = IOSShell.settingDrawerFilter(choice, in: appState.settings)
-            })
     }
 
     private var restore: Binding<Bool> {

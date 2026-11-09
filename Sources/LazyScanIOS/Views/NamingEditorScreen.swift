@@ -2,10 +2,12 @@
 import LazyScanKit
 import SwiftUI
 
-/// The file name: the template as typed, a button for each part it can be built from (Date, Time, Number,
+/// File name and folder: where files are saved (`SaveFolderRow`), then the file name: the template as typed, a button for each part it can be built from (Date, Time, Number,
 /// Mode, Task, Document name, Day saved: `IOSNamingModel.parts`, each put at the end with its token), the
 /// name the next file gets, and what is wrong with the template (a blank one keeps the last name in use).
 struct NamingEditorScreen: View {
+    @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var importer: IOSImportSession
     @StateObject private var model: IOSNamingModel
 
     init(model: IOSNamingModel) {
@@ -14,6 +16,10 @@ struct NamingEditorScreen: View {
 
     var body: some View {
         Form {
+            Section {
+                SaveFolderRow()
+            }
+            .disabled(state.isBusy || importer.isImporting)
             Section {
                 TextField(IOSNamingModel.title, text: text)
                     .autocorrectionDisabled(true)
@@ -54,7 +60,8 @@ struct NamingEditorScreen: View {
                 .accessibilityIdentifier("naming.reset")
             }
         }
-        .navigationTitle(IOSNamingModel.title)
+        .navigationTitle(IOSSettingsText.fileNameAndFolderLabel)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var text: Binding<String> {
