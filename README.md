@@ -122,13 +122,13 @@ scanners** — including the Epson Perfection V39 II.
   labelled **From phone**. The phone and the PC talk directly, encrypted and pinned to the PC's own
   key, with no account and no server; the PC listens only on networks you trust (Windows' Private
   networks, and ones you allow in the app, such as your school's Wi-Fi) and only while a phone is
-  paired or a pairing code is shown. The iPhone app pairs from Settings > My computer. On the Mac,
+  paired or a pairing code is shown. The iPhone app pairs from Options > My computer. On the Mac,
   the **Phone** button in the sidebar pairs a phone, and each network needs **Allow receiving on this
   network** once, since macOS does not mark networks as private. Where a network keeps the phone and
   the computer apart, the phone can put its documents, encrypted, in a folder synced through iCloud
   Drive or OneDrive, and the computer watching the same folder takes them from there. On the Mac,
   choose that folder under **Cloud folder** in the Phone window; each phone's key for it stays in the
-  login keychain. On the iPhone, choose it under Cloud folder in Settings > My computer.
+  login keychain. On the iPhone, choose it under Cloud folder in Options > My computer.
 - **Rotate pages upright**: a page put in upside down or sideways is turned the right way up by
   reading its text (Vision on the Mac, Windows OCR on Windows). Only a page whose text reads clearly
   better one way is turned; blank pages, separator sheets, photos and pages the reading is unsure
@@ -302,7 +302,7 @@ save in the format chosen in Options; receipts named by the day they are saved),
 outlined searched whole as the scanner's glass is; the ID card in a frame of the card's shape, front then back, laid out at real size on one
 page, kept in memory only (never written before Save, never in Photos, never read), with a one-line
 "Tilt to avoid glare" when a reflection hid part of it, and a Print button that prints both sides at
-real size over AirPrint (a ruler test page to check that is in Settings); two-sided documents taken as Flip & capture
+real size over AirPrint (a ruler test page to check that is in Options, under Help and about); two-sided documents taken as Flip & capture
 (each front, then its back, with No back side for an empty one) or every front then every back, put in
 order; Separate documents with a New document button between shots and separator sheets (patch code,
 or QR read with Vision) found on the pages, the sheet saved as a PDF to print; a book page by page or
@@ -322,7 +322,8 @@ Open as new would leave them without a Save; network
 scanners (AirScan/eSCL) found on the Wi-Fi or added by address, picked from a sheet on iPhone or a
 sidebar on iPad, with a flatbed preview to choose the scan area on, a feeder's progress with Cancel,
 the screen kept on while a network scanner works, and the troubleshooter with its iPhone checks;
-Settings with the same sections and collapsed-header summaries as the desktop's settings column, the
+Options as a short list of pages (Save as, Look, Pages, Separate documents, File name and folder, After saving,
+Share now, Presets, My computer, Help and about), each row showing its value, the
 presets (save the current settings under a name, rename, delete, apply; also in the task list) and
 the file name with a button per part and the next file's name; the library of this session's scans and
 the saved files with Share and Show in Files; on iPad a sidebar with the tasks, presets, scanners and library,
@@ -376,7 +377,7 @@ Scanner is not listed at all. The search itself is
 checked with stand-ins for the system's browsers, and the prompt, a denial, client-isolated Wi-Fi,
 IPv6 and a feeder batch while the app goes to the background need a real iPhone and scanner.
 
-Settings > My computer pairs the iPhone with Lazy Scan on a Windows PC from the PC's QR code
+Options > My computer pairs the iPhone with Lazy Scan on a Windows PC from the PC's QR code
 (or its text, with a check code to compare), and Send to computer then sends the queue to it, keeping
 what could not go yet to send later; the Simulator has no camera for the code and the tests reach no PC,
 so those are checked with a real iPhone and PC.
@@ -465,8 +466,8 @@ target for each platform's own parts:
   card review (`Review/`, `Views/IdCardReviewScreen.swift`, the
   card's guide frame on the camera), Quick scan's screen with Live Text, the tasks' camera buttons and
   choices (`Views/TaskControls.swift`), a spread split again, the presets, the scans and the saved
-  files (`Library/`), Settings and the file name editor (`Settings/`, `Views/SettingsScreen.swift`,
-  `Views/NamingEditorScreen.swift`), the iPad's sidebar, keyboard shortcuts and drag and drop
+  files (`Library/`), the Options pages and the file name editor (`Settings/`, `Views/OptionsScreen.swift`,
+  `Views/OptionsPages.swift`, `Views/OptionsRows.swift`, `Views/NamingEditorScreen.swift`), the iPad's sidebar, keyboard shortcuts and drag and drop
   (`IOSLayout.swift`, `Views/IOSSidebar.swift`), network scanners (`Network/`: the search, run only while the app is in
   front, after a short card that explains the system's Local Network prompt; adding a scanner by
   address; the scanner picker, a sheet on iPhone and a sidebar on iPad; the troubleshooter's
@@ -477,7 +478,7 @@ target for each platform's own parts:
   UI tests (`LazyScaniOSUITests`: the smoke test, the photo import, with its fixture
   photo, two prints in one shot under the Photos task saved as two JPEGs, two pages under the
   two-sided task saved as one PDF, a patch-code sheet splitting a PDF into two, the camera screen's
-  no-camera state, the scanner picker with the add-by-address sheet, and Settings with a preset saved
+  no-camera state, the scanner picker with the add-by-address sheet, and Options with a preset saved
   and listed); the `.xcodeproj` XcodeGen
   writes is not checked in
 - `Sources/LazyScanModel` — the page corner model for the Mac and the iPhone: DocAligner's
