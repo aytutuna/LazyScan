@@ -29,6 +29,7 @@ final class LiveViewfinder: @unchecked Sendable {
     private var mirrored: Bool = false
     private var revealed: Bool = false
     private var inactive: Bool = false
+    private var skipsFrame: Bool = false
     private var measuring: Bool = false
     private var lastMeasuredMs: Double?
     private var observers: [NSObjectProtocol] = []
@@ -134,6 +135,12 @@ final class LiveViewfinder: @unchecked Sendable {
         let flipped: Bool = mirrored
         lock.unlock()
         guard let current = wanted, current.mode == nil || measured != nil else { return }
+        // Warm or saving power: half the frames, which puts off the point where the camera has to stop.
+        let info: ProcessInfo = ProcessInfo.processInfo
+        if info.isLowPowerModeEnabled || info.thermalState != .nominal {
+            skipsFrame.toggle()
+            if skipsFrame { return }
+        }
         guard drawing.wait(timeout: .now()) == .success else { return }
         guard let drawable = layer.nextDrawable(), let commands = queue.makeCommandBuffer() else {
             drawing.signal()
