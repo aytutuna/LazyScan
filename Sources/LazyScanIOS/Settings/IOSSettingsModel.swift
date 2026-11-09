@@ -20,7 +20,6 @@ public enum IOSSettingsText {
     public static var libraryLabel: String { String(localized: "Library") }
     /// The computer the phone is paired with (`CompanionScreen`, I20).
     public static var companionLabel: String { String(localized: "My computer") }
-    public static var fileNameLabel: String { String(localized: "File name") }
     public static var saveToLabel: String { String(localized: "Save to") }
     /// Picks a save folder in Files (iCloud Drive, a USB drive); Use app folder goes back to the app's own.
     public static var chooseFolderLabel: String { String(localized: "Choose\u{2026}") }

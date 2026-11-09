@@ -3931,7 +3931,7 @@ public enum IOSSavedFiles { /* title "Saved files", emptyTitle, emptyLine, faile
 // LazyScanIOS/Settings/ (I15): the Options pages' words and rules, and the file name editor
 public enum IOSSettingsText { /* doneLabel, saveAsLabel, lookLabel, pagesLabel, separateLabel, fileNameAndFolderLabel,
                                  shareNowLabel, helpLabel, presetsLabel "Presets", historyLabel "Scans", savedLabel
-                                 "Saved files", fileNameLabel "File name", saveToLabel "Save to", chooseFolderLabel
+                                 "Saved files", saveToLabel "Save to", chooseFolderLabel
                                  "Choose…", appFolderLabel "Use app folder", troubleshootLabel,
                                  aboutLabel "About", companionLabel "My computer" (I20), resetLabel, notCollectingReason, bothSidesCollectsReason, docdateReason, onlyPDFReason,
                                  aboutBuiltWith, aboutPrivacy, licencesLabel "Licences", licenceMissing, cameraTitle "Camera", cameraResolutionLabel "Resolution" */
