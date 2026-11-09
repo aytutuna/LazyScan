@@ -7,9 +7,8 @@ import XCTest
 @testable import LazyScanKit
 import LazyScanModel
 
-// The settings screen, the file name editor and the iPad's layout without a screen (I15): the sections
-// built on the shared InspectorSections (each once, in order, with their summaries), which are open, the
-// adjustments' sliders, the naming editor's parts, example and problems, the sidebar's width rule, the
+// The Options pages, the file name editor and the iPad's layout without a screen (I15): the pages and the
+// values on their rows, built on the shared InspectorSections, the adjustments' sliders, the naming editor's parts, example and problems, the sidebar's width rule, the
 // keyboard shortcuts, moving a page of the strip by dragging it, a dropped file, and the save folder (I3:
 // a folder picked in Files kept as a bookmark, the app's folder moved with the container).
 
@@ -34,95 +33,143 @@ final class IOSSettingsTests: XCTestCase {
         }
     }
 
-    // MARK: The sections
+    // MARK: The Options pages
 
-    func test_sections_areTheSharedOnes_eachOnce_inOrder_withTheirSummaries() {
-        let s: ScanSettings = ScanSettings()
-        let sections: [IOSSettingsSection] = IOSSettingsSections.sections(s)
-        var ids: [String] = []
-        for section in sections {
-            ids.append(section.id)
-            XCTAssertEqual(section.title, InspectorSections.title(section.id, for: s))
-            XCTAssertEqual(section.summary, InspectorSections.summary(section.id, for: s), section.id)
-            XCTAssertEqual(section.changed, InspectorSections.changed(section.id, for: s), section.id)
-        }
-        XCTAssertEqual(ids, InspectorSections.shown(s))
-        XCTAssertEqual(Set(ids).count, ids.count)
-        XCTAssertEqual(ids, ["scanner", "output", "adjustments", "pages", "split", "archive", "more"])
-        XCTAssertEqual(sections[0].accessibilityLabel, "Scanner, Flatbed \u{00B7} 300 dpi \u{00B7} Color")
-        XCTAssertEqual(sections[1].summary, "PDF \u{00B7} Standard")
-        XCTAssertEqual(sections[3].accessibilityLabel, "Pages")
+    func test_optionsPages_followTheTaskAndTheTab() {
+        let document: ScanSettings = ScanSettings()
+        XCTAssertEqual(IOSOptionsPage.listed(document, camera: false, pageCount: 0, photoSizes: 0),
+                       [.saveAs, .look, .pages, .separate, .fileName, .afterSaving, .scanner])
+        // The camera measures its own pages: no Scanner; Camera only where it offers more than one photo size.
+        XCTAssertEqual(IOSOptionsPage.listed(document, camera: true, pageCount: 0, photoSizes: 1),
+                       [.saveAs, .look, .pages, .separate, .fileName, .afterSaving])
+        XCTAssertEqual(IOSOptionsPage.listed(document, camera: true, pageCount: 0, photoSizes: 3),
+                       [.saveAs, .look, .pages, .separate, .fileName, .afterSaving, .camera])
 
-        var protected: ScanSettings = ScanSettings()
-        protected.output.protect = true
-        var archiveLocked: Bool = false
-        for section in IOSSettingsSections.sections(protected) where section.id == InspectorSections.archive {
-            archiveLocked = section.locked
-            XCTAssertEqual(section.summary, "Password on")
-        }
-        XCTAssertTrue(archiveLocked)
+        // Pictures are not pages to cut into documents.
+        let photos: ScanSettings = TaskCatalog.apply(.photos, to: ScanSettings())
+        XCTAssertEqual(IOSOptionsPage.listed(photos, camera: false, pageCount: 0, photoSizes: 0),
+                       [.saveAs, .look, .fileName, .afterSaving, .scanner])
+        let receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        XCTAssertEqual(IOSOptionsPage.listed(receipts, camera: false, pageCount: 0, photoSizes: 0),
+                       [.saveAs, .look, .fileName, .afterSaving, .scanner])
+        // The ID card is saved from its review: nothing to do after saving.
+        let idCard: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
+        XCTAssertEqual(IOSOptionsPage.listed(idCard, camera: false, pageCount: 0, photoSizes: 0),
+                       [.saveAs, .look, .fileName, .scanner])
+        let book: ScanSettings = TaskCatalog.apply(.book, to: ScanSettings())
+        let bookPages: [IOSOptionsPage] = IOSOptionsPage.listed(book, camera: true, pageCount: 0, photoSizes: 0)
+        XCTAssertTrue(bookPages.contains(.pages))
+        XCTAssertTrue(bookPages.contains(.separate), "The queue can be split")
+
+        XCTAssertEqual(IOSOptionsPage.more, [.shareNow, .presets, .computer, .help])
     }
 
-    func test_sections_inCameraMode_haveNoScanner_andPagesCountsWhatRunsOnTheCamerasPages() {
-        var ids: [String] = []
-        for section in IOSSettingsSections.sections(ScanSettings(), camera: true) {
-            ids.append(section.id)
+    func test_optionsPages_haveTheirOwnIdentifiersAndTitles() {
+        XCTAssertEqual(IOSOptionsPage.saveAs.identifier, "options.page.saveAs")
+        XCTAssertEqual(IOSOptionsPage.afterSaving.identifier, "options.page.afterSaving")
+        XCTAssertEqual(IOSOptionsPage.saveAs.title, "Save as")
+        XCTAssertEqual(IOSOptionsPage.separate.title, "Separate documents")
+        XCTAssertEqual(IOSOptionsPage.fileName.title, "File name and folder")
+        XCTAssertEqual(IOSOptionsPage.afterSaving.title, "After saving")
+        XCTAssertEqual(IOSOptionsPage.computer.title, "My computer")
+        XCTAssertEqual(IOSOptionsPage.help.title, "Help and about")
+        var seen: Set<String> = []
+        let pages: [IOSOptionsPage] = [.saveAs, .look, .pages, .separate, .fileName, .afterSaving, .scanner, .camera,
+                                       .shareNow, .presets, .computer, .help, .about, .licences]
+        for page in pages {
+            XCTAssertFalse(page.title.isEmpty)
+            seen.insert(page.identifier)
         }
-        XCTAssertEqual(ids, ["output", "adjustments", "pages", "split", "archive", "more"])
+        XCTAssertEqual(seen.count, pages.count)
+    }
 
+    func test_optionsRows_saveAs_showsTheFormatSaved() {
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(ScanSettings()), "PDF \u{00B7} Standard")
+        // The Text kind's screen saves its page as a picture whatever format was picked before.
+        var text: ScanSettings = TaskCatalog.apply(.quickScan, to: ScanSettings())
+        text.format = .pdf
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(text), "JPEG")
+        var word: ScanSettings = ScanSettings()
+        word.format = .word
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(word), "Word")
+        // An ID card is a PDF or a picture, never Word.
+        var idCard: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
+        idCard.format = .word
+        XCTAssertEqual(IOSOptionsPage.saveAsValue(idCard), "PDF \u{00B7} Standard")
+    }
+
+    func test_optionsRows_look_nameTheFilterOnTheCamera_andWhatIsAdjusted() {
+        var s: ScanSettings = ScanSettings()
+        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: true), IOSShell.drawerFilter(s).label)
+        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: false), InspectorSections.adjustmentsSummary(s.adjustments))
+        s = IOSShell.settingDrawerFilter(.grayscale, in: s)
+        XCTAssertTrue(IOSOptionsPage.lookValue(s, camera: true).hasPrefix(CaptureFilter.grayscale.label))
+        s.adjustments = IOSAdjustment.brightness.setting(30, in: s.adjustments)
+        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: true), CaptureFilter.grayscale.label + " \u{00B7} Edited")
+        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: false), "Edited")
+        // The kinds that keep no pages have no filters, only the adjustments.
+        var card: ScanSettings = TaskCatalog.apply(.idCard, to: ScanSettings())
+        card.adjustments = IOSAdjustment.brightness.setting(30, in: card.adjustments)
+        XCTAssertEqual(IOSOptionsPage.lookValue(card, camera: true), "Edited")
+    }
+
+    func test_optionsRows_pages_inCameraMode_countOnlyWhatRunsOnTheCamerasPages() {
         // The camera's pages are cut along their corners already: never cropped or straightened.
         var cut: ScanSettings = ScanSettings()
         cut.document.autoCrop = true
         cut.document.autoStraighten = true
-        let camera: IOSSettingsSection? = pagesSection(cut, camera: true)
-        XCTAssertEqual(camera?.summary, "")
-        XCTAssertEqual(camera?.changed, false)
-        XCTAssertEqual(camera?.accessibilityLabel, "Pages")
-        let printer: IOSSettingsSection? = pagesSection(cut, camera: false)
-        XCTAssertEqual(printer?.summary, "Crop \u{00B7} Straighten")
-        XCTAssertEqual(printer?.changed, true)
-        XCTAssertEqual(printer?.accessibilityLabel, "Pages, 2 options on")
+        XCTAssertEqual(IOSOptionsPage.pagesValue(cut, camera: true), "")
+        XCTAssertEqual(IOSOptionsPage.pagesValue(cut, camera: false), "Crop \u{00B7} Straighten")
 
         // Facing pages are split only from spreads taken whole (the Book kind's Whole spread).
         var book: ScanSettings = TaskCatalog.apply(.book, to: ScanSettings())
-        XCTAssertEqual(pagesSection(book, camera: false)?.summary, "Straighten \u{00B7} Upright +1")
-        XCTAssertEqual(pagesSection(book, camera: true)?.summary, "Upright")
+        XCTAssertEqual(IOSOptionsPage.pagesValue(book, camera: false), "Straighten \u{00B7} Upright +1")
+        XCTAssertEqual(IOSOptionsPage.pagesValue(book, camera: true), "Upright")
         book.taskOptions.cameraSpreads = true
-        XCTAssertEqual(pagesSection(book, camera: true)?.summary, "Upright \u{00B7} Facing pages")
-        XCTAssertEqual(pagesSection(book, camera: true)?.accessibilityLabel, "Pages, 2 options on")
+        XCTAssertEqual(IOSOptionsPage.pagesValue(book, camera: true), "Upright \u{00B7} Facing pages")
     }
 
-    func test_sections_aQueueSavedAsPictures_writesNoPDF_soArchiveIsHidden() {
+    func test_optionsRows_separate_saysOnOffOrHowTheQueueIsSplit() {
+        var s: ScanSettings = ScanSettings()
+        XCTAssertEqual(IOSOptionsPage.separateValue(s), "Off")
+        XCTAssertEqual(IOSOptionsPage.separateValue(IOSShell.settingSeparate(true, in: s)), "On")
+        s.document.splitMode = .sheetCount
+        s.document.splitSheetCount = 3
+        XCTAssertEqual(IOSOptionsPage.separateValue(s), InspectorSections.splitSummary(s.document))
+        s.document.splitMode = .blankSheet
+        XCTAssertEqual(IOSOptionsPage.separateValue(s), "Blank sheets")
+    }
+
+    @MainActor
+    func test_splitChoice_forTheDocumentKind_isSeparateDocumentsTurnedOnAndOff() {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        state.settings = TaskCatalog.apply(.document, to: state.settings)
+        IOSShell.setSplit(.barcode, in: state)
+        XCTAssertTrue(IOSShell.separatesDocuments(state.settings))
+        XCTAssertEqual(state.settings.document.splitMode, .barcode)
+        XCTAssertEqual(state.settings.task, .batch, "The switch's task and feeder come with the choice")
+        XCTAssertEqual(state.settings.source, .documentFeeder)
+
+        IOSShell.setSplit(.sheetCount, in: state)
+        XCTAssertFalse(IOSShell.separatesDocuments(state.settings))
+        XCTAssertEqual(state.settings.document.splitMode, .sheetCount)
+        XCTAssertEqual(state.settings.task, .document)
+        XCTAssertEqual(state.settings.source, .flatbed)
+
+        // Other kinds only set the split.
+        state.settings = TaskCatalog.apply(.book, to: state.settings)
+        IOSShell.setSplit(.separatorSheet, in: state)
+        XCTAssertEqual(state.settings.document.splitMode, .separatorSheet)
+        XCTAssertEqual(state.settings.task, .book)
+    }
+
+    func test_pdfChoices_aQueueSavedAsPictures_writesNoPDF() {
         var pictures: ScanSettings = ScanSettings()
         pictures.format = .jpeg
         pictures.output.alsoSaveText = true
         XCTAssertTrue(InspectorSections.shown(pictures).contains(InspectorSections.archive), "The desktop saves a PDF")
         XCTAssertFalse(IOSSettingsSections.writesPDF(pictures))
         XCTAssertFalse(IOSSettingsSections.textApplies(pictures))
-        var ids: [String] = []
-        var more: String?
-        for section in IOSSettingsSections.sections(pictures) {
-            ids.append(section.id)
-            if section.id == InspectorSections.more { more = section.summary }
-        }
-        XCTAssertEqual(ids, ["scanner", "output", "adjustments", "pages", "split", "more"])
-        XCTAssertEqual(more, "")
-
-        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
-        receipts.format = .pdf
-        let receiptSections: [IOSSettingsSection] = IOSSettingsSections.sections(receipts)
-        // Receipts are pages of the queue: no section of their own, as their review is gone.
-        XCTAssertFalse(receiptSections.contains { (section: IOSSettingsSection) -> Bool in section.id == InspectorSections.task })
-        XCTAssertEqual(receiptSections.first?.id, InspectorSections.scanner)
-
-        var photos: ScanSettings = ScanSettings()
-        photos.intent = .photo
-        photos.format = .jpeg
-        var titles: [String] = []
-        for section in IOSSettingsSections.sections(photos) {
-            titles.append(section.title)
-        }
-        XCTAssertEqual(titles, ["Scanner", "Photos", "Adjustments", "More options"])
     }
 
     func test_photosAndReceipts_showTheFormatOptionsSaves_whateverItIs() {
@@ -139,35 +186,8 @@ final class IOSSettingsTests: XCTestCase {
         photos.format = .pdf
         XCTAssertEqual(IOSSettingsSections.shownFormat(photos), .pdf)
         XCTAssertTrue(IOSSettingsSections.writesPDF(photos))
-        var ids: [String] = []
-        for section in IOSSettingsSections.sections(photos) {
-            ids.append(section.id)
-        }
-        XCTAssertTrue(ids.contains(InspectorSections.archive))
         XCTAssertEqual(IOSShell.settingRestore(true, in: photos).format, .pdf)
         XCTAssertEqual(IOSShell.settingRestore(false, in: photos).format, .pdf)
-    }
-
-    func test_sections_moreOptions_leavesOutTheActionAfterSaving_whichExportSets() {
-        var s: ScanSettings = ScanSettings()
-        s.output.afterSave = .reveal
-        XCTAssertEqual(InspectorSections.summary(InspectorSections.more, for: s), "Show in folder after saving",
-                       "The desktop's names it")
-        var more: IOSSettingsSection?
-        for section in IOSSettingsSections.sections(s) where section.id == InspectorSections.more {
-            more = section
-        }
-        XCTAssertEqual(more?.summary, "")
-        XCTAssertEqual(more?.changed, false)
-        XCTAssertEqual(more?.accessibilityLabel, "More options")
-
-        s.output.alsoSaveText = true
-        var withText: IOSSettingsSection?
-        for section in IOSSettingsSections.sections(s) where section.id == InspectorSections.more {
-            withText = section
-        }
-        XCTAssertEqual(withText?.summary, ".txt")
-        XCTAssertEqual(withText?.changed, true)
     }
 
     func test_output_showsTheFormatSaved_aPictureForText_aPDFForAnIdCardInWord() {
@@ -178,14 +198,6 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertEqual(IOSSettingsSections.shownFormat(text), .jpeg)
         XCTAssertFalse(IOSSettingsSections.writesPDF(text))
         XCTAssertFalse(IOSSettingsSections.textApplies(text))
-        var ids: [String] = []
-        var output: String?
-        for section in IOSSettingsSections.sections(text) {
-            ids.append(section.id)
-            if section.id == InspectorSections.output { output = section.summary }
-        }
-        XCTAssertFalse(ids.contains(InspectorSections.archive))
-        XCTAssertEqual(output, "JPEG")
 
         // With Collect pages on, its pages go to the queue and are saved in the format picked.
         text.documentMultiPage = true
@@ -197,26 +209,10 @@ final class IOSSettingsTests: XCTestCase {
         idCard.format = .word
         XCTAssertEqual(InspectorSections.shownFormat(idCard), .pdf)
         XCTAssertEqual(IOSSettingsSections.shownFormat(idCard), .pdf)
-        var cardIds: [String] = []
-        var cardOutput: String?
-        for section in IOSSettingsSections.sections(idCard) {
-            cardIds.append(section.id)
-            if section.id == InspectorSections.output { cardOutput = section.summary }
-        }
-        XCTAssertEqual(cardIds, ["scanner", "output", "adjustments", "archive", "more"])
-        XCTAssertEqual(cardOutput, "PDF \u{00B7} Standard")
+        XCTAssertTrue(IOSSettingsSections.writesPDF(idCard))
     }
 
-    func test_openSections_keptAsText_theTaskScannerAndOutputOpenAtFirst() {
-        XCTAssertEqual(IOSSettingsSections.defaultText, "task,scanner,output")
-        XCTAssertEqual(IOSSettingsSections.open("scanner,bogus,more"), Set<String>(["scanner", "more"]))
-        XCTAssertEqual(IOSSettingsSections.open(""), Set<String>())
-        XCTAssertEqual(IOSSettingsSections.text(Set<String>(["more", "scanner"])), "scanner,more")
-        let stored: Set<String> = IOSSettingsSections.open(IOSSettingsSections.defaultText)
-        XCTAssertTrue(IOSSettingsSections.isOpen("scanner", stored: stored, openedByTask: []))
-        XCTAssertFalse(IOSSettingsSections.isOpen("pages", stored: stored, openedByTask: []))
-        XCTAssertTrue(IOSSettingsSections.isOpen("pages", stored: stored, openedByTask: ["pages"]))
-    }
+    // MARK: Adjustments
 
     func test_adjustments_mapTheSlidersOntoTheSettings() {
         let neutral: AdjustmentSettings = AdjustmentSettings()
@@ -397,13 +393,13 @@ final class IOSSettingsTests: XCTestCase {
     }
 
     @MainActor
-    func test_shortcuts_saveNewDocumentSettingsAndTheShutter() {
+    func test_shortcuts_saveNewDocumentOptionsAndTheShutter() {
         XCTAssertEqual(IOSShortcuts.save.key, "s")
         XCTAssertTrue(IOSShortcuts.save.command)
         XCTAssertEqual(IOSShortcuts.newDocument.key, "n")
         XCTAssertTrue(IOSShortcuts.newDocument.command)
-        XCTAssertEqual(IOSShortcuts.settings.key, ",")
-        XCTAssertTrue(IOSShortcuts.settings.command)
+        XCTAssertEqual(IOSShortcuts.options.key, ",")
+        XCTAssertTrue(IOSShortcuts.options.command)
         XCTAssertEqual(IOSShortcuts.shutter.key, " ")
         XCTAssertFalse(IOSShortcuts.shutter.command)
         var seen: Set<String> = []
@@ -555,14 +551,6 @@ final class IOSSettingsTests: XCTestCase {
                          isDirectory: true)
         XCTAssertEqual(IOSFileActions.filesAppURL(for: [iCloud])?.absoluteString,
                        "shareddocuments:///private/var/mobile/Library/Mobile%20Documents/com~apple~CloudDocs/Scans/")
-    }
-
-    private func pagesSection(_ s: ScanSettings, camera: Bool) -> IOSSettingsSection? {
-        var pages: IOSSettingsSection?
-        for section in IOSSettingsSections.sections(s, camera: camera) where section.id == InspectorSections.pages {
-            pages = section
-        }
-        return pages
     }
 
     @MainActor

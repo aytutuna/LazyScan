@@ -334,7 +334,7 @@ public enum IOSShell {
     }
 
     /// Whether the ID card's review shows Password: its Save writes a PDF, which takes the password set in
-    /// Settings (Archive & password) though the card has no Export of its own.
+    /// Options (Save as) though the card has no Export of its own.
     public static func reviewOffersPassword(_ settings: ScanSettings) -> Bool {
         settings.format.pageFormat == .pdf
     }
@@ -442,14 +442,8 @@ public enum IOSShell {
         TaskCatalog.flow(of: settings) == .idCard || collectsPages(settings)
     }
 
-    /// The formats Options' Export offers for the collected pages: a PDF, a picture a page (JPEG, or the PNG
-    /// or TIFF chosen in Settings, so the segment names what is saved), a Word document or a text file. A
-    /// .txt beside the PDF is one of the PDF's choices (`PDFOptionsSection`).
-    public static func exportFormats(_ settings: ScanSettings) -> [OutputFormat] {
-        [.pdf, settings.format.imageFormatOrJPEG, .word, .text]
-    }
-
-    /// The Export format the settings save as, one of `exportFormats`.
+    /// The format the settings save the collected pages as: a PDF, a picture a page, a Word document or a text
+    /// file. A .txt beside the PDF is one of the PDF's choices (`PDFOptionsSection`).
     public static func exportFormat(_ settings: ScanSettings) -> OutputFormat {
         settings.format
     }
@@ -946,6 +940,26 @@ public enum IOSShell {
         s.document.removeBlankPages = on
         s.taskId = (on ? ScanTask.batch : ScanTask.document).rawValue
         return s
+    }
+
+    /// `settingSeparate`, adapted to the scanner in use: the switch's and the split choice's way of turning
+    /// Separate documents on or off.
+    @MainActor
+    static func setSeparate(_ on: Bool, in state: AppState) {
+        let s: ScanSettings = settingSeparate(on, in: state.settings)
+        state.settings = SettingsAdapter.adapt(s, to: state.capabilities).settings
+    }
+
+    /// A split choice made on the Separate documents page. For the Document kind, going to or from separator
+    /// sheets and codes is Separate documents turned on or off, as its switch does, so the task, the feeder and
+    /// the file names follow the choice; the other choices only set the split.
+    @MainActor
+    static func setSplit(_ mode: SplitMode, in state: AppState) {
+        let separates: Bool = mode == SplitMode.separatorSheet || mode == SplitMode.barcode
+        if shownKind(state.settings) == .document && separates != separatesDocuments(state.settings) {
+            setSeparate(separates, in: state)
+        }
+        state.setSplitMode(mode)
     }
 
     /// The Separate documents task's file names (`TaskCatalog.apply`), with each document's name.

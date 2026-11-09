@@ -2,11 +2,17 @@
 import LazyScanKit
 import Foundation
 
-/// The settings screen's words that are the iPhone's own; the sections' titles and summaries are the
-/// shared `InspectorSections`.
+/// The words of the Options pages that are the iPhone's own; the summaries on the rows are the shared
+/// `InspectorSections`.
 public enum IOSSettingsText {
-    public static var title: String { String(localized: "Settings") }
     public static var doneLabel: String { String(localized: "Done") }
+    public static var saveAsLabel: String { String(localized: "Save as") }
+    public static var lookLabel: String { String(localized: "Look") }
+    public static var pagesLabel: String { String(localized: "Pages") }
+    public static var separateLabel: String { String(localized: "Separate documents") }
+    public static var fileNameAndFolderLabel: String { String(localized: "File name and folder") }
+    public static var shareNowLabel: String { String(localized: "Share now") }
+    public static var helpLabel: String { String(localized: "Help and about") }
     public static var presetsLabel: String { String(localized: "Presets") }
     public static var historyLabel: String { String(localized: "Scans") }
     public static var savedLabel: String { String(localized: "Saved files") }
@@ -75,29 +81,13 @@ public enum IOSSettingsText {
     }
 }
 
-/// A section of the settings screen: its header (title, the summary while it is collapsed, the dot when
-/// something in it differs from the default, the lock while a password is on) and the name VoiceOver reads.
-public struct IOSSettingsSection: Identifiable, Equatable {
-    public let id: String
-    public let title: String
-    public let summary: String
-    public let changed: Bool
-    public let locked: Bool
-    public let accessibilityLabel: String
-}
-
-/// The settings screen's sections: the shared `InspectorSections` (which are shown, in which order, their
-/// titles, summaries and which start open), as the Mac's inspector and the Windows window lay them out.
-/// The iPhone differs where it saves pictures: a queue saved as pictures (`IOSShell.savesImages`) and the
-/// Text kind's held page (`AppState.saveQuickScan`) write no PDF, so Archive & password is hidden there and
-/// the text beside a PDF does not count, and Output shows that page's picture format (`shownFormat`).
-/// More options leaves out the action after a save, which the phone sets under Options' After saving
-/// (`IOSAfterSave.thenTitle`). Camera mode has no Scanner section, the camera measuring its own pages, and
-/// its Pages header counts only what runs on them (`cameraShown`). Which sections the user left open is kept
-/// in the user's defaults (`storageKey`), not in presets, as on the desktop.
+/// What the Options pages show, on top of the shared `InspectorSections` rules (which of the desktop's
+/// sections apply, their summaries). The iPhone differs where it saves pictures: a queue saved as pictures
+/// (`IOSShell.savesImages`) and the Text kind's held page (`AppState.saveQuickScan`) write no PDF, so the PDF's
+/// choices are hidden there and the text beside a PDF does not count, and Save as shows that page's picture
+/// format (`shownFormat`). Camera mode has no Scanner page, the camera measuring its own pages, and its Pages
+/// row counts only what runs on them (`cameraShown`).
 public enum IOSSettingsSections {
-    public static let storageKey = "settings.openSections"
-
     /// The scan screen saves the queue as a picture a page, or the Text kind's screen its page as a picture,
     /// so no PDF is written.
     public static func savesPictures(_ s: ScanSettings) -> Bool {
@@ -174,73 +164,101 @@ public enum IOSSettingsSections {
         shown.document.splitFacingPages = PageProcessor.splitsCameraSpreads(s)
         return shown
     }
+}
 
-    public static func sections(_ s: ScanSettings, camera: Bool = false) -> [IOSSettingsSection] {
-        let pages: ScanSettings = camera ? cameraShown(s) : s
-        var result: [IOSSettingsSection] = []
-        let shown: [String] = InspectorSections.shown(s)
-        for id in InspectorSections.all where shown.contains(id) || (id == InspectorSections.archive && writesPDF(s)) {
-            if id == InspectorSections.archive && !writesPDF(s) { continue }
-            if id == InspectorSections.scanner && camera { continue }
-            if id == InspectorSections.task && TaskCatalog.flow(of: s) == .receiptSplit { continue }
-            let title: String = InspectorSections.title(id, for: s)
-            var summary: String = InspectorSections.summary(id, for: s)
-            var changed: Bool = InspectorSections.changed(id, for: s)
-            if id == InspectorSections.output {
-                summary = InspectorSections.outputSummary(s, shownFormat: shownFormat(s))
-                changed = InspectorSections.outputChanged(s, shownFormat: shownFormat(s))
-            }
-            if id == InspectorSections.pages {
-                summary = InspectorSections.summary(id, for: pages)
-                changed = InspectorSections.changed(id, for: pages)
-            }
-            if id == InspectorSections.more {
-                var output: OutputOptions = s.output
-                output.afterSave = AfterSaveAction.none
-                summary = InspectorSections.moreSummary(output, textShown: textApplies(s))
-                changed = !summary.isEmpty
-            }
-            let name: String = id == InspectorSections.pages
-                ? InspectorSections.pagesHeaderName(pages.document)
-                : InspectorSections.headerName(title, summary: summary)
-            let locked: Bool = id == InspectorSections.archive && s.output.protect
-            result.append(IOSSettingsSection(id: id, title: title, summary: summary, changed: changed, locked: locked,
-                                             accessibilityLabel: name))
+/// The pages of the Options sheet, each opened from a row of its list (`OptionsScreen`) with its current
+/// value. The first group follows the settings, the second is the same for every task. About and Licences
+/// are reached from Help and about.
+public enum IOSOptionsPage: String, Hashable, Identifiable {
+    case saveAs
+    case look
+    case pages
+    case separate
+    case fileName
+    case afterSaving
+    case scanner
+    case camera
+    case shareNow
+    case presets
+    case computer
+    case help
+    case about
+    case licences
+
+    public var id: String { rawValue }
+
+    /// The pages in the list's second group.
+    public static let more: [IOSOptionsPage] = [.shareNow, .presets, .computer, .help]
+
+    public var identifier: String { "options.page.\(rawValue)" }
+
+    public var title: String {
+        switch self {
+        case .saveAs: return IOSSettingsText.saveAsLabel
+        case .look: return IOSSettingsText.lookLabel
+        case .pages: return IOSSettingsText.pagesLabel
+        case .separate: return IOSSettingsText.separateLabel
+        case .fileName: return IOSSettingsText.fileNameAndFolderLabel
+        case .afterSaving: return IOSAfterSave.title
+        case .scanner: return String(localized: "Scanner")
+        case .camera: return IOSSettingsText.cameraTitle
+        case .shareNow: return IOSSettingsText.shareNowLabel
+        case .presets: return IOSSettingsText.presetsLabel
+        case .computer: return IOSSettingsText.companionLabel
+        case .help: return IOSSettingsText.helpLabel
+        case .about: return IOSSettingsText.aboutLabel
+        case .licences: return IOSSettingsText.licencesLabel
         }
-        return result
     }
 
-    /// The sections open at first: those `InspectorSections.openByDefault` names, as stored text.
-    public static var defaultText: String {
-        var open: Set<String> = []
-        for id in InspectorSections.all where InspectorSections.openByDefault(id) {
-            open.insert(id)
+    /// The pages of the first group for `s`, in order, those that can apply only: Pages for document pages
+    /// collected in the queue (the desktop's Pages section), Separate documents for the Document kind and
+    /// wherever the queue can be split, After saving while the pages are saved here, Scanner on the scanner
+    /// tab, and Camera on the camera tab where the phone's camera offers more than one photo size
+    /// (`photoSizes`).
+    public static func listed(_ s: ScanSettings, camera: Bool, pageCount: Int, photoSizes: Int) -> [IOSOptionsPage] {
+        let sections: [String] = InspectorSections.shown(s)
+        var pages: [IOSOptionsPage] = [.saveAs, .look]
+        if sections.contains(InspectorSections.pages) {
+            pages.append(.pages)
         }
-        return text(open)
+        if IOSShell.shownKind(s) == .document || sections.contains(InspectorSections.split) {
+            pages.append(.separate)
+        }
+        pages.append(.fileName)
+        if IOSShell.offersSave(s, pageCount: pageCount) {
+            pages.append(.afterSaving)
+        }
+        if !camera {
+            pages.append(.scanner)
+        } else if photoSizes > 1 {
+            pages.append(.camera)
+        }
+        return pages
     }
 
-    /// The open sections kept as text: their ids in the column's order, comma-separated ("" for none).
-    public static func text(_ open: Set<String>) -> String {
-        var ids: [String] = []
-        for id in InspectorSections.all where open.contains(id) {
-            ids.append(id)
-        }
-        return ids.joined(separator: ",")
+    /// Save as: "PDF · Standard", "Word", "JPEG".
+    public static func saveAsValue(_ s: ScanSettings) -> String {
+        InspectorSections.outputSummary(s, shownFormat: IOSSettingsSections.shownFormat(s))
     }
 
-    /// The open sections read back; an id this version does not know is left out.
-    public static func open(_ text: String) -> Set<String> {
-        var open: Set<String> = []
-        for part in text.split(separator: ",") {
-            let id: String = String(part)
-            if InspectorSections.all.contains(id) { open.insert(id) }
-        }
-        return open
+    /// Look: the filter new pages get on the camera tab (where it is offered), then what is adjusted.
+    public static func lookValue(_ s: ScanSettings, camera: Bool) -> String {
+        let adjusted: String = InspectorSections.adjustmentsSummary(s.adjustments)
+        guard camera && IOSShell.offersFilters(s) else { return adjusted }
+        let filter: String = IOSShell.drawerFilter(s).label
+        return adjusted.isEmpty ? filter : filter + " \u{00B7} " + adjusted
     }
 
-    /// A section is open as the user left it, or because the task started opened it (until the user closes it).
-    public static func isOpen(_ id: String, stored: Set<String>, openedByTask: Set<String>) -> Bool {
-        stored.contains(id) || openedByTask.contains(id)
+    /// Pages: the options that are on; on the camera tab only those that run on its pages.
+    public static func pagesValue(_ s: ScanSettings, camera: Bool) -> String {
+        InspectorSections.pagesSummary((camera ? IOSSettingsSections.cameraShown(s) : s).document)
+    }
+
+    /// Separate documents: On or Off, or how the queue is split when that is not at separator sheets or codes.
+    public static func separateValue(_ s: ScanSettings) -> String {
+        if IOSShell.separatesDocuments(s) { return IOSCameraText.onValue }
+        return s.document.splitMode == SplitMode.none ? IOSCameraText.offValue : InspectorSections.splitSummary(s.document)
     }
 }
 
@@ -326,6 +344,15 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     public static var thenTitle: String { String(localized: "Then") }
     /// Under Then while Email is checked.
     public static var emailInsteadReason: String { String(localized: "Email is sent instead") }
+
+    /// After saving's value on the Options list: the checked actions, else what Then does.
+    public static func summary(checked: Set<IOSAfterSave>, then: AfterSaveAction) -> String {
+        var names: [String] = []
+        for action in rows where checked.contains(action) {
+            names.append(action.label)
+        }
+        return names.isEmpty ? thenLabel(then) : names.joined(separator: ", ")
+    }
 
     /// The Kit's action after a save in the phone's words: Show in folder opens the Files app here.
     public static func thenLabel(_ action: AfterSaveAction) -> String {
