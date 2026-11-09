@@ -163,9 +163,12 @@ final class LiveViewfinder: @unchecked Sendable {
         commands.addCompletedHandler { (_: MTLCommandBuffer) -> Void in
             finished.signal()
         }
+        // The Simulator's SDK has no presented handler, and it has no camera to draw from either.
+        #if !targetEnvironment(simulator)
         drawable.addPresentedHandler { [weak self] (_: MTLDrawable) -> Void in
             self?.reveal()
         }
+        #endif
         commands.present(drawable)
         commands.commit()
     }
