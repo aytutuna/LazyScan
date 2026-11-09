@@ -6,8 +6,6 @@ import SwiftUI
 /// Mode, Task, Document name, Day saved: `IOSNamingModel.parts`, each put at the end with its token), the
 /// name the next file gets, and what is wrong with the template (a blank one keeps the last name in use).
 struct NamingEditorScreen: View {
-    @EnvironmentObject private var state: AppState
-    @EnvironmentObject private var importer: IOSImportSession
     @StateObject private var model: IOSNamingModel
 
     init(model: IOSNamingModel) {
@@ -15,11 +13,10 @@ struct NamingEditorScreen: View {
     }
 
     var body: some View {
-        Form {
+        OptionsForm(title: IOSSettingsText.fileNameAndFolderLabel) {
             Section {
                 SaveFolderRow()
             }
-            .disabled(state.isBusy || importer.isImporting)
             Section {
                 TextField(IOSNamingModel.title, text: text)
                     .autocorrectionDisabled(true)
@@ -60,8 +57,6 @@ struct NamingEditorScreen: View {
                 .accessibilityIdentifier("naming.reset")
             }
         }
-        .navigationTitle(IOSSettingsText.fileNameAndFolderLabel)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var text: Binding<String> {
