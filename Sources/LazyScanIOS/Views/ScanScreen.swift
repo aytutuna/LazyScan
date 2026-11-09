@@ -81,6 +81,8 @@ struct ScanScreen: View {
     @State private var openGroup: ScanOptionGroup?
     /// What waits for the option group's sheet to close: nothing else can be presented while it is up.
     @State private var afterOptionsClosed: (() -> Void)?
+    /// My computer is open in the Options sheet; its pairing scanner uses the camera.
+    @State private var pairing: Bool = false
     @State private var showsAdd: Bool = false
     @State private var showsTroubleshooter: Bool = false
     @State private var askedToDiscard: Bool = false
@@ -333,7 +335,7 @@ struct ScanScreen: View {
     /// question or the error alert. The Options sheet does not: the camera keeps running above it, with
     /// Auto held back meanwhile (`holdsAuto`).
     private var cameraCovered: Bool {
-        let presented: Bool = cover != nil || openGroup == .scanner || pagesShown || picksPDF || spreadEditor != nil
+        let presented: Bool = cover != nil || openGroup == .scanner || pairing || pagesShown || picksPDF || spreadEditor != nil
         let asked: Bool = askedToDiscard || leavingPages != nil || asksSendTarget || state.errorMessage != nil
             || state.showTroubleshooter
         return rests || presented || asked
@@ -785,7 +787,8 @@ struct ScanScreen: View {
         switch group {
         case .options:
             OptionsScreen(blocked: saveBlocked, companion: companion, onType: pickKind, onAction: runAction,
-                          onPresetApplied: closeOptions, onTroubleshoot: openPickerTroubleshooter, onDone: closeOptions)
+                          onPresetApplied: closeOptions, onTroubleshoot: openPickerTroubleshooter, onDone: closeOptions,
+                          onPairing: { (open: Bool) -> Void in pairing = open })
         case .scanner:
             NavigationStack {
                 Form {
@@ -869,6 +872,7 @@ struct ScanScreen: View {
     }
 
     private func optionsClosed() {
+        pairing = false
         let action: (() -> Void)? = afterOptionsClosed
         afterOptionsClosed = nil
         action?()

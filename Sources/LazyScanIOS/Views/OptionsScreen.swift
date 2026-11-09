@@ -28,6 +28,8 @@ struct OptionsScreen: View {
     let onPresetApplied: @MainActor () -> Void
     let onTroubleshoot: () -> Void
     let onDone: () -> Void
+    /// Told when My computer is open: its pairing scanner needs the camera.
+    let onPairing: (Bool) -> Void
     @State private var path: [IOSOptionsPage] = []
 
     var body: some View {
@@ -44,6 +46,9 @@ struct OptionsScreen: View {
                             doneItem
                         }
                 }
+        }
+        .onChange(of: path) { (_: [IOSOptionsPage], pages: [IOSOptionsPage]) in
+            onPairing(pages.last == .computer)
         }
     }
 
