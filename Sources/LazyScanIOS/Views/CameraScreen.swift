@@ -43,6 +43,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The size just picked here that may not fit in this phone's memory, for its alert.
     @State private var memoryWarned: IOSPhotoSize?
     private let resting: Bool
+    private let holdsAuto: Bool
     private let waitsForIntro: Bool
     private let onLibrary: (() -> Void)?
     private let onPrinter: () -> Void
@@ -50,11 +51,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private let notices: () -> Notices
     private let pictureButtons: () -> Buttons
 
-    init(resting: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
+    init(resting: Bool, holdsAuto: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
          onPrinter: @escaping () -> Void, onPages: @escaping () -> Void,
          @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder pictureButtons: @escaping () -> Buttons) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
         self.resting = resting
+        self.holdsAuto = holdsAuto
         self.waitsForIntro = waitsForIntro
         self.onLibrary = onLibrary
         self.onPrinter = onPrinter
@@ -95,6 +97,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         }
         .onChange(of: covered) { (_: Bool, rests: Bool) in
             model.apply(rests ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
+        }
+        .onChange(of: holdsAuto) { (_: Bool, holds: Bool) in
+            allowPages()
+            if !holds {
+                model.rearm()
+            }
         }
         .onChange(of: canShoot) { (_: Bool, can: Bool) in
             // A page Auto decided on while no photo could be taken (an import, a save) is judged again now.
@@ -350,12 +358,19 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             let outcome: IOSImportOutcome = await session.importShot(shot, asksOnlyWhenUnsure: continuous)
             shown?.shotImported(outcome)
         }
-        shown.canTakePage = { () -> Bool in
-            !session.isImporting && session.canImport
-        }
+        allowPages()
         shown.apply(covered ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
         Task { @MainActor in
             await shown.appear()
+        }
+    }
+
+    /// Auto takes a page only while the queue can take one and nothing, an open sheet say, holds it back.
+    private func allowPages() {
+        let session: IOSImportSession = importer
+        let held: Bool = holdsAuto
+        model.canTakePage = { () -> Bool in
+            !session.isImporting && session.canImport && !held
         }
     }
 

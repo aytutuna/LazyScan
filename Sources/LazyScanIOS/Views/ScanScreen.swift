@@ -324,8 +324,8 @@ struct ScanScreen: View {
     /// The viewfinder as the screen (`CameraScreen`), with what this screen hands it: the notices at the
     /// viewfinder's foot and the Options and Save buttons.
     private var cameraLayout: some View {
-        CameraScreen(resting: cameraCovered, waitsForIntro: waitsForIntro, onLibrary: libraryAction,
-                     onPrinter: switchToPrinter, onPages: openPages) {
+        CameraScreen(resting: cameraCovered, holdsAuto: openGroup == .options, waitsForIntro: waitsForIntro,
+                     onLibrary: libraryAction, onPrinter: switchToPrinter, onPages: openPages) {
             cameraNotices
         } pictureButtons: {
             pictureButtons
@@ -333,9 +333,10 @@ struct ScanScreen: View {
     }
 
     /// Something covers the camera: what the root presents, a cover, a sheet, Files to pick a PDF in, a
-    /// question or the error alert.
+    /// question or the error alert. The Options sheet does not: the camera keeps running above it, with
+    /// Auto held back meanwhile (`holdsAuto`).
     private var cameraCovered: Bool {
-        let presented: Bool = cover != nil || openGroup != nil || pagesShown || picksPDF || spreadEditor != nil
+        let presented: Bool = cover != nil || openGroup == .scanner || pagesShown || picksPDF || spreadEditor != nil
         let asked: Bool = askedToDiscard || leavingPages != nil || asksSendTarget || state.errorMessage != nil
             || state.showTroubleshooter
         return rests || presented || asked
