@@ -253,6 +253,12 @@ struct ScanScreen: View {
             .onChange(of: state.companionNotice) { (_: CompanionNotice?, notice: CompanionNotice?) in
                 companionNoticed(notice)
             }
+            .onChange(of: state.pendingPackage != nil) { (_: Bool, offered: Bool) in
+                // The package banner is at the picture's foot, behind the half sheet.
+                if offered {
+                    openGroup = nil
+                }
+            }
             .onChange(of: importer.isImporting) { (_: Bool, importing: Bool) in
                 // The root's corner editor cannot show over a sheet (files opened in the app, the companion);
                 // a spread's split can be started again from the page strip.
