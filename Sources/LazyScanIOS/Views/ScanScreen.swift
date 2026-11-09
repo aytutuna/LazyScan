@@ -634,12 +634,11 @@ struct ScanScreen: View {
             }
         case .page:
             if let page = state.scannedPages.last?.image {
-                Image(decorative: page, scale: 1)
+                Image(page, scale: 1, label: Text("Last scan"))
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
                     .padding(8)
-                    .accessibilityLabel(Text("Last scan"))
                     .accessibilityIdentifier("last.scan")
             }
         case .empty:
