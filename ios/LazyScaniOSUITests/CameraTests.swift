@@ -48,10 +48,13 @@ final class CameraTests: XCTestCase {
         app.closeDrawer()
 
         app.openOptions()
+        app.openPage("saveAs")
         XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
-                      "The format in Options")
-        XCTAssertTrue(app.descendants(matching: .any)["pdf.size"].firstMatch.exists, "The PDF's size in Options")
-        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email in Options")
+                      "The format in Save as")
+        XCTAssertTrue(app.descendants(matching: .any)["pdf.size"].firstMatch.exists, "The PDF's size in Save as")
+        app.closePage()
+        app.openPage("shareNow")
+        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email in Share now")
         app.closeOptions()
         XCTAssertEqual(app.pickedKind, "document")
     }
@@ -74,10 +77,15 @@ final class CameraTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["type.text"].firstMatch.exists, "Text is the scanner tab's")
         app.descendants(matching: .any)["type.photos"].firstMatch.tap()
         app.waitForType("photos")
-        // Photos are pages like a document's: Export's format is there (JPEG to start with) beside Restore,
-        // which is under the Type row, and Save waits for a page.
+        // Photos are pages like a document's: Save as has the format (JPEG to start with), Look has Restore,
+        // which is the drawer's switch too, and Save waits for a page.
+        app.openPage("look")
         XCTAssertTrue(app.switches["options.restore"].firstMatch.waitForExistence(timeout: 10), "Restore faded colors")
-        XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.exists, "Export's format for Photo")
+        XCTAssertTrue(app.descendants(matching: .any)["options.filter"].firstMatch.exists, "The camera's filter")
+        app.closePage()
+        app.openPage("saveAs")
+        XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
+                      "The format for Photo")
         app.closeOptions()
         XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save without a page")
     }

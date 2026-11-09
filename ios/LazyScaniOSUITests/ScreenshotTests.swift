@@ -2,12 +2,13 @@ import XCTest
 
 // Walks the app's main screens on the demo scanner and keeps a screenshot of each, named by screen, so
 // CI's ios-screenshots artifact shows what the screens look like after a change: camera mode (the
-// Simulator's viewfinder says there is no camera), its Options sheet with the Type menu open and Photo and
-// Book picked, and its drawer on Camera and Colour, then printer mode empty, with its drawer on Scanner, its
-// Scanner sheet, the flatbed's overview, a scanned page in the picture (and with the drawer open), two
-// scanned pages in the page grid (and selecting, one ticked), the Options sheet with the pages queued and
-// its actions, Settings (from the library) with My computer and Presets, and the library from camera mode, with
-// Troubleshooter and the file name's editor from Settings and a book page's split sheet; and, on runs of
+// Simulator's viewfinder says there is no camera), its Options sheet at half height with the Type menu open,
+// each of its pages and Photo and Book picked, and its drawer on Camera and Colour, then printer mode empty,
+// with its drawer on Scanner, its Scanner sheet, the flatbed's overview, a scanned page in the picture (and
+// with the drawer open), two scanned pages in the page grid (and selecting, one ticked), the Options sheet
+// with the pages queued and its Save as and Share now pages, the Options pages of the scanner tab with
+// Presets, My computer, the file name's editor and Help and about, with the troubleshooter, About and
+// Licences, and the library from camera mode, and a book page's split sheet; and, on runs of
 // their own, a photo of a page in the page viewer with its filters, two prints as the pages of Photos with
 // one in the page viewer and Photos' options, the ID card's review with its menus and
 // the copy screen, a batch's and a two-sided sheet's pages, and the password sheet. The corner editor's
@@ -38,7 +39,7 @@ final class ScreenshotTests: XCTestCase {
         shot("01-camera")
         cameraScreens(app)
         printerScreens(app)
-        settingsScreens(app)
+        optionsPageScreens(app)
         libraryScreens(app)
     }
 
@@ -173,6 +174,7 @@ final class ScreenshotTests: XCTestCase {
         if tapIfThere(app, "options.button", for: "19b-photos-options") {
             Thread.sleep(forTimeInterval: 1)
             shot("19b-photos-options")
+            optionsPage(app, "look", ready: "options.restore", as: "19c-photos-look")
             closeOptions(app)
         }
         backToDocument(app)
@@ -200,12 +202,7 @@ final class ScreenshotTests: XCTestCase {
             waitUntilGone(element(app, "pages.done"))
         }
         if tapIfThere(app, "options.button", for: "17a-batch-export") {
-            if app.scrolledTo("separator.save").exists {
-                Thread.sleep(forTimeInterval: 1)
-                shot("17a-batch-export")
-            } else {
-                shot("skipped-17a-batch-export")
-            }
+            optionsPage(app, "separate", ready: "separator.save", as: "17a-batch-export")
             closeOptions(app)
         }
         backToDocument(app)
@@ -250,10 +247,11 @@ final class ScreenshotTests: XCTestCase {
         backToDocument(app)
     }
 
-    /// Password in the Options sheet, which is opened and closed again.
+    /// Password on the Save as page of the Options sheet, which is opened and closed again.
     @MainActor
     private func togglePassword(_ app: XCUIApplication) {
-        guard tapIfThere(app, "options.button", for: "19-password") else { return }
+        guard tapIfThere(app, "options.button", for: "19-password"),
+              tapIfThere(app, "options.page.saveAs", for: "19-password") else { return }
         let toggle: XCUIElement = app.scrolledTo("pdf.protect")
         if toggle.exists && toggle.isHittable {
             // The switch is at the row's trailing end; the row's middle is its label.
@@ -288,7 +286,7 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// The troubleshooter from Settings, then Done.
+    /// The troubleshooter from Help and about, then Done.
     @MainActor
     private func troubleshooterScreen(_ app: XCUIApplication) {
         guard tapIfThere(app, "settings.troubleshoot", for: "11a-troubleshooter") else { return }
@@ -305,44 +303,38 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// The file name's editor, from the row in Settings' More section, which is opened when it is closed.
+    /// A page of the Options sheet, which is open: opened from its row (`options.page.<name>`) and shot once
+    /// `ready` shows, then back to the list.
     @MainActor
-    private func namingScreen(_ app: XCUIApplication) {
-        // The row is no element of its own in the tree: found by the template it shows.
-        let template: XCUIElement = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier == 'settings.fileName' OR label CONTAINS '{task}'")).firstMatch
-        var row: XCUIElement = scrolledDown(app, to: template)
-        if !row.isHittable {
-            let section: XCUIElement = scrolledDown(app, to: element(app, "settings.section.more"))
-            if section.isHittable {
-                section.tap()
-                Thread.sleep(forTimeInterval: 1)
-                row = scrolledDown(app, to: template)
-            }
-        }
-        guard row.isHittable else {
-            shot("skipped-11b-naming")
-            return
-        }
-        row.tap()
-        if element(app, "naming.field").waitForExistence(timeout: 10) {
+    private func optionsPage(_ app: XCUIApplication, _ name: String, ready: String = "options.done", as screen: String) {
+        guard tapIfThere(app, "options.page.\(name)", for: screen) else { return }
+        if element(app, ready).waitForExistence(timeout: 10) {
             Thread.sleep(forTimeInterval: 1)
-            shot("11b-naming")
+            shot(screen)
         } else {
-            shot("skipped-11b-naming")
+            shot("skipped-\(screen)")
         }
         back(app)
     }
 
-    /// Settings is long, and its sections below the first are made only as they scroll into view.
+    /// Help and about, with the troubleshooter, About and Licences.
     @MainActor
-    private func scrolledDown(_ app: XCUIApplication, to target: XCUIElement) -> XCUIElement {
-        var swipes: Int = 0
-        while !(target.exists && target.isHittable) && swipes < 12 {
-            app.swipeUp()
-            swipes += 1
+    private func helpScreens(_ app: XCUIApplication) {
+        guard tapIfThere(app, "options.page.help", for: "11c-help") else { return }
+        Thread.sleep(forTimeInterval: 1)
+        shot("11c-help")
+        troubleshooterScreen(app)
+        if tapIfThere(app, "settings.about", for: "11d-about") {
+            Thread.sleep(forTimeInterval: 1)
+            shot("11d-about")
+            back(app)
         }
-        return target
+        if tapIfThere(app, "about.licences", for: "11e-licences") {
+            Thread.sleep(forTimeInterval: 1)
+            shot("11e-licences")
+            back(app)
+        }
+        back(app)
     }
 
     /// The app launched on the demo scanner with the fixture to import into `task`, `count` times.
@@ -419,6 +411,15 @@ final class ScreenshotTests: XCTestCase {
         if tapIfThere(app, "options.button", for: "02-options-camera") {
             Thread.sleep(forTimeInterval: 1)
             shot("02-options-camera")
+            // Look at half height, with the viewfinder above it; the other pages once the sheet is grown.
+            optionsPage(app, "look", ready: "options.filter", as: "02b-options-look")
+            app.growOptions()
+            optionsPage(app, "saveAs", ready: "options.format", as: "02a-options-save-as")
+            optionsPage(app, "pages", ready: "options.collect", as: "02c-options-pages")
+            optionsPage(app, "separate", ready: "options.separate", as: "02d-options-separate")
+            optionsPage(app, "fileName", ready: "naming.field", as: "02e-options-file-name")
+            optionsPage(app, "afterSaving", ready: "options.afterSave.then", as: "02f-options-after-saving")
+            optionsPage(app, "shareNow", ready: "save.email", as: "02g-options-share-now")
             if tapIfThere(app, "options.type", for: "02-type-menu") {
                 if element(app, "type.photos").waitForExistence(timeout: 5) {
                     Thread.sleep(forTimeInterval: 1)
@@ -532,13 +533,12 @@ final class ScreenshotTests: XCTestCase {
             }
         }
         if tapIfThere(app, "options.button", for: "07-options") {
-            if element(app, "options.format").waitForExistence(timeout: 5) {
+            if element(app, "options.type").waitForExistence(timeout: 5) {
                 Thread.sleep(forTimeInterval: 1)
                 shot("07-options")
-                if app.scrolledTo("append.button").exists {
-                    Thread.sleep(forTimeInterval: 1)
-                    shot("07a-options-actions")
-                }
+                app.growOptions()
+                optionsPage(app, "saveAs", ready: "options.format", as: "07b-options-save-as")
+                optionsPage(app, "shareNow", ready: "append.button", as: "07a-options-actions")
             } else {
                 shot("skipped-07-options")
             }
@@ -657,40 +657,23 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// Settings from the library's toolbar, opened from printer mode's top bar, with My computer and Presets.
+    /// The pages of the Options sheet that the scanner tab adds to the camera's: Scanner, then Presets, My
+    /// computer, the file name's editor and Help and about.
     @MainActor
-    private func settingsScreens(_ app: XCUIApplication) {
-        guard tapIfThere(app, "open.library", for: "09-settings") else { return }
-        guard tapIfThere(app, "library.settings", for: "09-settings") else {
-            closeLibrary(app)
-            return
-        }
-        if element(app, "settings.presets").waitForExistence(timeout: 5) {
-            shot("09-settings")
-            if tapIfThere(app, "settings.companion", for: "10-my-computer") {
-                Thread.sleep(forTimeInterval: 1)
-                shot("10-my-computer")
-                back(app)
-            }
-            if tapIfThere(app, "settings.presets", for: "11-presets") {
-                if element(app, "presets.save").waitForExistence(timeout: 5) {
-                    shot("11-presets")
-                } else {
-                    shot("skipped-11-presets")
-                }
-                back(app)
-            }
-            troubleshooterScreen(app)
-            namingScreen(app)
+    private func optionsPageScreens(_ app: XCUIApplication) {
+        guard tapIfThere(app, "options.button", for: "09-options") else { return }
+        if element(app, "options.type").waitForExistence(timeout: 5) {
+            shot("09-options")
+            app.growOptions()
+            optionsPage(app, "scanner", as: "09a-options-scanner")
+            optionsPage(app, "presets", ready: "presets.save", as: "11-presets")
+            optionsPage(app, "computer", as: "10-my-computer")
+            optionsPage(app, "fileName", ready: "naming.field", as: "11b-naming")
+            helpScreens(app)
         } else {
-            shot("skipped-09-settings")
+            shot("skipped-09-options")
         }
-        let done: XCUIElement = element(app, "settings.done")
-        if done.waitForExistence(timeout: 5) {
-            done.tap()
-            waitUntilGone(done)
-        }
-        closeLibrary(app)
+        closeOptions(app)
     }
 
     /// The library from camera mode's top bar, its saved files and its scans.
@@ -742,10 +725,11 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Taps the element if it comes, else keeps a "skipped-" screenshot of what is there instead. The
-    /// Scanner row and Settings' own rows are scrolled into view first.
+    /// Scanner row, the Options pages' rows and the controls of Help and about are scrolled into view first.
     @MainActor
     private func tapIfThere(_ app: XCUIApplication, _ id: String, for screen: String) -> Bool {
-        let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("settings.")
+        let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("options.page.") || id.hasPrefix("settings.")
+            || id.hasPrefix("about.")
         let target: XCUIElement = inList ? app.scrolledTo(id) : element(app, id)
         guard target.waitForExistence(timeout: 5) else {
             shot("skipped-\(screen)")

@@ -177,6 +177,32 @@ extension XCUIApplication {
         XCTAssertTrue(done.waitForExistence(timeout: 10), "The \(group) sheet", file: file, line: line)
     }
 
+    /// Opens a page of the Options sheet, which is open, from its row: "saveAs", "look", "pages", "separate",
+    /// "fileName", "afterSaving", "scanner" (printer mode), "camera", "shareNow", "presets", "computer" or
+    /// "help". The sheet opens at half height, so it is grown when the row is out of reach.
+    @MainActor
+    func openPage(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        let id: String = "options.page.\(name)"
+        var row: XCUIElement = descendants(matching: .any)[id].firstMatch
+        if !(row.waitForExistence(timeout: 10) && row.isHittable) {
+            growOptions()
+            row = scrolledTo(id)
+        }
+        XCTAssertTrue(row.exists && row.isHittable, "The \(name) page's row", file: file, line: line)
+        row.tap()
+        XCTAssertTrue(navigationBars.buttons["Options"].waitForExistence(timeout: 10), "The \(name) page",
+                      file: file, line: line)
+    }
+
+    /// Goes back from a page to the Options list.
+    @MainActor
+    func closePage(file: StaticString = #filePath, line: UInt = #line) {
+        let back: XCUIElement = navigationBars.buttons["Options"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10), "The back button", file: file, line: line)
+        back.tap()
+        waitUntilGone(back, "The page closed", file: file, line: line)
+    }
+
     /// In printer mode, opens the Scanner options and picks the scanner there by its row
     /// ("scanner.row.mock:demo" for the demo scanner). The sheet stays open, at full height. The app keeps
     /// the scanner from run to run.
@@ -203,8 +229,8 @@ extension XCUIApplication {
         return XCTWaiter.wait(for: [picked], timeout: timeout) == .completed
     }
 
-    /// Drags the Scanner sheet from half height to full: the scanner's settings sit below the
-    /// list, and the list makes its rows only once they come on screen.
+    /// Drags a sheet from half height to full: the scanner's settings sit below the list, and the list makes
+    /// its rows only once they come on screen.
     @MainActor
     func growOptions() {
         // The sheet's bar is the row Done sits in; the bar itself has no identifier to ask for.

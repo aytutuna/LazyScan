@@ -35,8 +35,9 @@ final class BatchTests: XCTestCase {
         XCTAssertEqual(app.pickedKind, "document")
         app.switchToPrinter()
         app.openOptions()
+        app.openPage("separate")
         let separate: XCUIElement = app.switches["options.separate"].firstMatch
-        XCTAssertTrue(separate.waitForExistence(timeout: 10), "Separate documents in Export")
+        XCTAssertTrue(separate.waitForExistence(timeout: 10), "Separate documents")
         XCTAssertEqual(separate.value as? String, "1")
         XCTAssertTrue(app.buttons["separator.save"].waitForExistence(timeout: 10), "Separator sheet")
         app.closeOptions()
@@ -63,6 +64,7 @@ final class BatchTests: XCTestCase {
         app.switchToPrinter()
         app.pickTask("document")
         app.openOptions()
+        app.openPage("separate")
         let sheet: XCUIElement = app.buttons["separator.save"]
         XCTAssertFalse(sheet.exists, "One document until Separate documents is on")
         app.turnSwitch("options.separate", on: true)
@@ -71,12 +73,15 @@ final class BatchTests: XCTestCase {
         XCTAssertTrue(app.buttons["task.newDocument"].exists, "New document")
         XCTAssertEqual(app.pickedKind, "document")
 
+        // The split choice is the same setting: QR codes keep the switch on and name the sheet.
         app.openOptions()
-        let kind: XCUIElement = app.descendants(matching: .any)["separator.kind"].firstMatch
-        XCTAssertTrue(kind.waitForExistence(timeout: 10), "Patch code or QR code")
-        // The segments are Patch code, then QR code.
-        kind.buttons.element(boundBy: 1).tap()
+        app.openPage("separate")
+        let split: XCUIElement = app.descendants(matching: .any)["options.split"].firstMatch
+        XCTAssertTrue(split.waitForExistence(timeout: 10), "How the queue is split")
+        split.tap()
+        app.buttons["At QR codes or barcodes"].firstMatch.tap()
         XCTAssertTrue(app.textFields["separator.name"].waitForExistence(timeout: 10), "The QR sheet's name")
+        XCTAssertEqual(app.switches["options.separate"].firstMatch.value as? String, "1", "Still separating")
 
         app.turnSwitch("options.separate", on: false)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)

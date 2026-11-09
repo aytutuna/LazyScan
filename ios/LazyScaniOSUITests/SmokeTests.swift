@@ -3,8 +3,7 @@ import XCTest
 // The app as a person uses it, on the Simulator: launched on the demo scanner alone (`-demoScanner`),
 // switch to printer mode, pick Document to PDF among the kinds and the demo scanner in the Scanner options,
 // scan a page, see it in the page strip, save the PDF, and see the saved file with its Share button; and
-// from camera mode open the library, Settings in its toolbar, Presets, save the settings as a preset and
-// see it listed (I15). The demo scanner draws made-up pages, so no scanner, camera or network is needed, and
+// from camera mode open Options, its Presets page, save the settings as a preset and see it listed (I15). The demo scanner draws made-up pages, so no scanner, camera or network is needed, and
 // the PDF goes to the app's own Documents folder in the Simulator.
 
 final class SmokeTests: XCTestCase {
@@ -73,7 +72,8 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(pages.waitForPageCount(1, timeout: 240), "1 page on the pages' button")
 
         app.openOptions()
-        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email\u{2026} in Options")
+        app.openPage("shareNow")
+        XCTAssertTrue(app.scrolledTo("save.email").exists, "Email\u{2026} in Share now")
         let printItem: XCUIElement = app.scrolledTo("save.print")
         XCTAssertTrue(printItem.exists, "Print\u{2026} in Options")
         waitUntilEnabled(printItem, timeout: 60)
@@ -90,23 +90,43 @@ final class SmokeTests: XCTestCase {
     }
 
     @MainActor
-    func test_settings_presets_saveAPreset_andSeeItListed() throws {
+    func test_options_isAListOfPages_eachWithDoneAndABackButton() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demoScanner"]
         app.launch()
 
         app.switchToCamera()
-        let library: XCUIElement = app.buttons["open.library"].firstMatch
-        XCTAssertTrue(library.waitForExistence(timeout: 30), "Camera mode's Library button")
-        library.tap()
-        XCTAssertTrue(app.buttons["library.back"].waitForExistence(timeout: 30), "Back at the library's leading corner")
-        let settings: XCUIElement = app.descendants(matching: .any)["library.settings"].firstMatch
-        XCTAssertTrue(settings.waitForExistence(timeout: 30), "Settings in the library's toolbar")
-        settings.tap()
+        app.openOptions()
+        XCTAssertTrue(app.descendants(matching: .any)["options.type"].firstMatch.waitForExistence(timeout: 30), "The Type row")
+        app.growOptions()
+        for page in ["saveAs", "look", "pages", "separate", "fileName", "afterSaving", "shareNow", "presets", "computer", "help"] {
+            XCTAssertTrue(app.scrolledTo("options.page.\(page)").exists, "The \(page) page's row")
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["options.page.scanner"].firstMatch.exists, "No Scanner on the camera tab")
+        app.openPage("look")
+        XCTAssertTrue(app.descendants(matching: .any)["options.filter"].firstMatch.waitForExistence(timeout: 10),
+                      "The camera's filter on the Look page")
+        XCTAssertTrue(app.descendants(matching: .any)["options.done"].firstMatch.exists, "Done on a page")
+        app.closePage()
+        app.closeOptions()
 
-        let presets: XCUIElement = app.buttons["settings.presets"]
-        XCTAssertTrue(presets.waitForExistence(timeout: 30), "Presets in Settings")
-        presets.tap()
+        app.switchToPrinter()
+        app.openOptions()
+        app.growOptions()
+        XCTAssertTrue(app.scrolledTo("options.page.scanner").exists, "The Scanner page on the scanner tab")
+        XCTAssertFalse(app.descendants(matching: .any)["options.page.camera"].firstMatch.exists, "No Camera page there")
+        app.closeOptions()
+    }
+
+    @MainActor
+    func test_options_presets_saveAPreset_andSeeItListed() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner"]
+        app.launch()
+
+        app.switchToCamera()
+        app.openOptions()
+        app.openPage("presets")
 
         let save: XCUIElement = app.buttons["presets.save"]
         XCTAssertTrue(save.waitForExistence(timeout: 30), "Save preset")
