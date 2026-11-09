@@ -154,7 +154,12 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertFalse(IOSShell.separatesDocuments(state.settings))
         XCTAssertEqual(state.settings.document.splitMode, .sheetCount)
         XCTAssertEqual(state.settings.task, .document)
-        XCTAssertEqual(state.settings.source, .flatbed)
+        XCTAssertEqual(state.settings.source, .documentFeeder, "A stack on the feeder stays there")
+
+        IOSShell.setSplit(.separatorSheet, in: state)
+        IOSShell.setSplit(.none, in: state)
+        XCTAssertEqual(state.settings.document.splitMode, SplitMode.none)
+        XCTAssertEqual(state.settings.source, .flatbed, "No split is one document on the glass")
 
         // Other kinds only set the split.
         state.settings = TaskCatalog.apply(.book, to: state.settings)
