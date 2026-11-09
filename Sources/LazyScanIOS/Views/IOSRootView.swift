@@ -90,6 +90,8 @@ public struct IOSRootView: View {
             // must count it as shown.
             if !sidebar {
                 showsScanner = true
+            } else {
+                showsLibrary = false
             }
         }
         .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
