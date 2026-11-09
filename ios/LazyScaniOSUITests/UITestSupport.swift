@@ -190,14 +190,14 @@ extension XCUIApplication {
         }
         XCTAssertTrue(row.exists && row.isHittable, "The \(name) page's row", file: file, line: line)
         row.tap()
-        XCTAssertTrue(navigationBars.buttons["Options"].waitForExistence(timeout: 10), "The \(name) page",
+        XCTAssertTrue(navigationBars.buttons["BackButton"].firstMatch.waitForExistence(timeout: 10), "The \(name) page",
                       file: file, line: line)
     }
 
     /// Goes back from a page to the Options list.
     @MainActor
     func closePage(file: StaticString = #filePath, line: UInt = #line) {
-        let back: XCUIElement = navigationBars.buttons["Options"]
+        let back: XCUIElement = navigationBars.buttons["BackButton"].firstMatch
         XCTAssertTrue(back.waitForExistence(timeout: 10), "The back button", file: file, line: line)
         back.tap()
         waitUntilGone(back, "The page closed", file: file, line: line)

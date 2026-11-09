@@ -174,6 +174,7 @@ final class ScreenshotTests: XCTestCase {
         if tapIfThere(app, "options.button", for: "19b-photos-options") {
             Thread.sleep(forTimeInterval: 1)
             shot("19b-photos-options")
+            app.growOptions()
             optionsPage(app, "look", ready: "options.restore", as: "19c-photos-look")
             closeOptions(app)
         }

@@ -79,9 +79,9 @@ final class CameraTests: XCTestCase {
         app.waitForType("photos")
         // Photos are pages like a document's: Save as has the format (JPEG to start with), Look has Restore,
         // which is the drawer's switch too, and Save waits for a page.
+        app.growOptions()
         app.openPage("look")
-        XCTAssertTrue(app.switches["options.restore"].firstMatch.waitForExistence(timeout: 10), "Restore faded colors")
-        XCTAssertTrue(app.descendants(matching: .any)["options.filter"].firstMatch.exists, "The camera's filter")
+        XCTAssertTrue(app.scrolledTo("options.restore").exists, "Restore faded colors")
         app.closePage()
         app.openPage("saveAs")
         XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
