@@ -48,7 +48,6 @@ final class LiveViewfinder: @unchecked Sendable {
         // Core Image writes into the drawable's texture.
         layer.framebufferOnly = false
         layer.isOpaque = true
-        layer.allowsNextDrawableTimeout = false
         layer.isHidden = true
         inactive = UIApplication.shared.applicationState != .active
         let center: NotificationCenter = NotificationCenter.default
@@ -78,7 +77,7 @@ final class LiveViewfinder: @unchecked Sendable {
             lock.unlock()
             return
         }
-        if next == nil || (next?.mode == .photo) != (look?.mode == .photo) {
+        if next == nil || look == nil || (next?.mode == .photo) != (look?.mode == .photo) {
             stats = nil
             lastMeasuredMs = nil
             revealed = false
@@ -157,9 +156,11 @@ final class LiveViewfinder: @unchecked Sendable {
         commands.addCompletedHandler { (_: MTLCommandBuffer) -> Void in
             finished.signal()
         }
+        drawable.addPresentedHandler { [weak self] (_: MTLDrawable) -> Void in
+            self?.reveal()
+        }
         commands.present(drawable)
         commands.commit()
-        reveal()
     }
 
     /// The frame turned upright as the preview shows it (and mirrored), scaled to fill `size`.
@@ -184,15 +185,20 @@ final class LiveViewfinder: @unchecked Sendable {
     /// The layer is shown once it has a frame of the current look, so an old picture is never seen.
     private func reveal() {
         lock.lock()
-        let first: Bool = !revealed
-        revealed = true
+        let first: Bool = !revealed && look != nil
+        if first {
+            revealed = true
+        }
         lock.unlock()
         guard first else { return }
         DispatchQueue.main.async {
             self.lock.lock()
             let still: Bool = self.look != nil
             self.lock.unlock()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
             self.layer.isHidden = !still
+            CATransaction.commit()
         }
     }
 
