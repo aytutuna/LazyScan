@@ -26,7 +26,7 @@ public class SaveActionsTests
         Assert.Equal(["Do nothing", "Open", "Show in folder", "Share…"],
                      Enum.GetValues<AfterSaveAction>().Select(a => a.Label()));
         Assert.All(Enum.GetValues<AfterSaveAction>(), a => Assert.False(string.IsNullOrEmpty(a.Hint())));
-        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Print with Lazy Print", "Copy"],
+        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Lazy Print", "Copy"],
                      Enum.GetValues<FileAction>().Select(a => a.Label()));
     }
 

@@ -1305,7 +1305,7 @@
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <!-- The pages as a PDF in Lazy Print; the queue stays as it is. -->
-                                                    <MenuItem x:Name="PrintQueueButton" Header="{loc:T Print with Lazy Print}"
+                                                    <MenuItem x:Name="PrintQueueButton" Header="{loc:T Lazy Print}"
                                                               ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
                                                               Click="PrintQueue_Click">
                                                         <MenuItem.Icon>
@@ -1462,7 +1462,7 @@
                                         ToolTipService.ShowOnDisabled="True"
                                         Click="IdCardPrint_Click" />
                                 <Button x:Name="IdCardLazyPrintButton" Style="{StaticResource IconTextButtonStyle}"
-                                        local:Icon.Glyph="&#xE749;" Content="{loc:T Print with Lazy Print}" Margin="0,0,8,0"
+                                        local:Icon.Glyph="&#xE749;" Content="{loc:T Lazy Print}" Margin="0,0,8,0"
                                         ToolTip="{loc:T Open it in Lazy Print\, then choose a printer and print}"
                                         Click="IdCardLazyPrint_Click" />
                                 <Button x:Name="IdCardDiscardButton" Style="{StaticResource IconTextButtonStyle}"

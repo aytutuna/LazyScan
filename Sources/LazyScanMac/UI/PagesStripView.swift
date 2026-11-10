@@ -105,7 +105,7 @@ struct PagesStripView: View {
                             state.chooseAndAppendToPDF()
                         }
                         if state.canPrintQueueWithLazyPrint {
-                            Button("Print with Lazy Print") {
+                            Button("Lazy Print") {
                                 state.printQueueWithLazyPrint()
                             }
                         }

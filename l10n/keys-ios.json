@@ -170,6 +170,7 @@
  {"key": "Keep pages as they are", "comment": ""},
  {"key": "Keeps a PDF of each copy in your save folder", "comment": ""},
  {"key": "Last scan", "comment": ""},
+ {"key": "Lazy Print", "comment": ""},
  {"key": "Lazy Scan", "comment": ""},
  {"key": "Lazy Scan scans with the camera.", "comment": ""},
  {"key": "Lazy Scan talks only to devices on your network.", "comment": ""},

@@ -55,7 +55,7 @@ public enum FileAction: String, CaseIterable, Identifiable, Sendable {
         case .reveal: return L10n.t("Show in folder")
         case .share: return L10n.t("Share…")
         case .email: return L10n.t("Email…")
-        case .lazyPrint: return L10n.t("Print with Lazy Print")
+        case .lazyPrint: return L10n.t("Lazy Print")
         case .copy: return L10n.t("Copy")
         }
     }

@@ -361,7 +361,7 @@ public static class ModelLabels
         FileAction.Reveal => Loc.T("Show in folder"),
         FileAction.Share => Loc.T("Share…"),
         FileAction.Email => Loc.T("Email…"),
-        FileAction.LazyPrint => Loc.T("Print with Lazy Print"),
+        FileAction.LazyPrint => Loc.T("Lazy Print"),
         FileAction.Copy => Loc.T("Copy"),
         _ => action.ToString(),
     };
