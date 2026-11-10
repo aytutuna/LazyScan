@@ -239,10 +239,11 @@ struct ShareNowPage: View {
         }
         .disabled(!canSave || !idle)
         .accessibilityIdentifier("save.email")
+        let printName: LocalizedStringKey = state.lazyPrintInstalled ? "Lazy Print" : "Print\u{2026}"
         Button {
             onAction(.print)
         } label: {
-            Label("Print\u{2026}", systemImage: "printer")
+            Label(printName, systemImage: "printer")
         }
         .disabled(!canSave || !idle)
         .accessibilityIdentifier("save.print")

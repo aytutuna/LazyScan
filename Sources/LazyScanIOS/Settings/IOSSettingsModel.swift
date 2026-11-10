@@ -347,10 +347,10 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     public static var emailInsteadReason: String { String(localized: "Email is sent instead") }
 
     /// After saving's value on the Options list: the checked actions, else what Then does.
-    public static func summary(checked: Set<IOSAfterSave>, then: AfterSaveAction) -> String {
+    public static func summary(checked: Set<IOSAfterSave>, then: AfterSaveAction, lazyPrintInstalled: Bool) -> String {
         var names: [String] = []
         for action in rows where checked.contains(action) {
-            names.append(action.label)
+            names.append(action.label(lazyPrintInstalled: lazyPrintInstalled))
         }
         return names.isEmpty ? thenLabel(then) : names.joined(separator: ", ")
     }
@@ -374,6 +374,11 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         case .print: return String(localized: "Print")
         case .email: return String(localized: "Email")
         }
+    }
+
+    /// Print is Lazy Print's name where that app takes the pages, else it stays Print.
+    public func label(lazyPrintInstalled: Bool) -> String {
+        self == .print && lazyPrintInstalled ? String(localized: "Lazy Print") : label
     }
 
     /// The user's defaults key the row's check is kept under.

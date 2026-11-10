@@ -128,7 +128,8 @@ struct OptionsScreen: View {
             for (action, on) in [(IOSAfterSave.email, emails), (IOSAfterSave.print, prints), (IOSAfterSave.send, sends)] where on {
                 checked.insert(action)
             }
-            return IOSAfterSave.summary(checked: checked, then: s.output.afterSave)
+            return IOSAfterSave.summary(checked: checked, then: s.output.afterSave,
+                                        lazyPrintInstalled: state.lazyPrintInstalled)
         case .scanner:
             return state.selectedDeviceID == nil ? IOSNetworkText.noScannerPicked : InspectorSections.scannerSummary(s)
         case .camera:
