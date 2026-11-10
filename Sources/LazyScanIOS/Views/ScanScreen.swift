@@ -778,6 +778,8 @@ struct ScanScreen: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            // iOS 26 draws a half sheet as glass, and the shutter and buttons under it showed through the rows.
+            .presentationBackground(Color(uiColor: .systemGroupedBackground))
             // The root's alert cannot show over a sheet, nor its troubleshooter until the sheet has closed.
             .modifier(ErrorAlert(state: state, onTroubleshoot: openTroubleshooter))
             // Nor its question about a changed certificate, which a scanner picked here asks.
