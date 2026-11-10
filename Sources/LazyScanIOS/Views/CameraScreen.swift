@@ -459,7 +459,7 @@ struct StatusPill: View {
             .multilineTextAlignment(.center)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Capsule().fill(Color.black.opacity(0.55)))
+            .background(Capsule().fill(Color.black.opacity(0.75)))
             .accessibilityHint(Text(hint ?? ""))
     }
 }
