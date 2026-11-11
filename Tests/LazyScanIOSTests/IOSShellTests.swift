@@ -262,6 +262,19 @@ final class IOSShellTests: XCTestCase {
         XCTAssertEqual(IOSShell.scannerPicture(flatbed: true, hasOverview: false, overviewIsNewer: true, pageCount: 0), .empty)
     }
 
+    func test_launch_opensOnTheStartScreen_notTheModeLeftLast() throws {
+        let suite: String = "startMode"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.scanModeKey)
+        IOSShell.applyStartMode(defaults)
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "camera", "The camera unless picked otherwise")
+        defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.startModeKey)
+        defaults.set(IOSScanMode.camera.rawValue, forKey: IOSShell.scanModeKey)
+        IOSShell.applyStartMode(defaults)
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "printer")
+    }
+
     func test_printerScanner_isTheRememberedScanner_inPrinterModeWhileListedAndSelected() {
         let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
         let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")

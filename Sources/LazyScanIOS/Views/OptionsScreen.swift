@@ -19,6 +19,7 @@ struct OptionsScreen: View {
     @AppStorage(IOSAfterSave.print.key) private var prints: Bool = false
     @AppStorage(IOSAfterSave.send.key) private var sends: Bool = false
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
+    @AppStorage(IOSShell.startModeKey) private var startMode: IOSScanMode = .camera
     let blocked: Bool
     /// Browses the computers on the network for My computer; nil when the app does not (`-demoScanner`).
     let companion: IOSCompanionBrowser?
@@ -76,6 +77,17 @@ struct OptionsScreen: View {
                 ForEach(pages) { (page: IOSOptionsPage) in
                     row(page)
                 }
+            }
+            Section {
+                Picker(String(localized: "Start screen"), selection: $startMode) {
+                    ForEach(IOSScanMode.allCases) { (option: IOSScanMode) in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("options.startScreen")
+            } footer: {
+                Text(String(localized: "The screen Lazy Scan opens on."))
             }
             Section {
                 ForEach(IOSOptionsPage.more) { (page: IOSOptionsPage) in

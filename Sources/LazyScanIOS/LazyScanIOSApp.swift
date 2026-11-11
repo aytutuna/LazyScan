@@ -25,6 +25,10 @@ public struct LazyScanIOSApp: App {
         let options: IOSLaunchOptions = IOSLaunchOptions(arguments: process.arguments, environment: process.environment)
         let actions: IOSFileActions = IOSFileActions()
         actions.clearHandoffs()
+        // The UI tests pick their mode themselves.
+        if !options.demoScannerOnly {
+            IOSShell.applyStartMode(UserDefaults.standard)
+        }
         let network: IOSNetworkScanners? = options.demoScannerOnly ? nil : IOSNetworkScanners()
         let browser: IOSCompanionBrowser? = options.demoScannerOnly ? nil : IOSCompanionBrowser()
         let prompt: IOSPasswordPrompt = IOSPasswordPrompt()

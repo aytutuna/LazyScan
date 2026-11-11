@@ -352,6 +352,16 @@ public enum IOSShell {
     /// The user's defaults key of the phone's mode (`IOSScanMode`): the camera, the default, or printer mode.
     public static let scanModeKey = "scan.mode"
 
+    /// The user's defaults key of the screen the app opens on (`IOSScanMode`): the camera unless the scanner
+    /// is picked in Options. The mode left last is not what the next launch shows.
+    public static let startModeKey = "scan.startMode"
+
+    /// At launch: the mode becomes the one picked to start with.
+    public static func applyStartMode(_ defaults: UserDefaults) {
+        let start: IOSScanMode = defaults.string(forKey: startModeKey).flatMap(IOSScanMode.init(rawValue:)) ?? .camera
+        defaults.set(start.rawValue, forKey: scanModeKey)
+    }
+
     /// The user's defaults key of the scanner printer mode scans with: the ID of the one picked last. It is
     /// kept while the camera is in use, so switching back to printer mode finds it again.
     public static let scannerKey = "scan.scanner"
@@ -1088,9 +1098,19 @@ public enum IOSShell {
 
 /// The phone's two modes, which are also where the pages come from: the camera, the default, or a scanner
 /// (printer mode). Kept in the user's defaults under `IOSShell.scanModeKey`.
-public enum IOSScanMode: String, Sendable {
+public enum IOSScanMode: String, CaseIterable, Identifiable, Sendable {
     case camera
     case printer
+
+    public var id: String { rawValue }
+
+    /// The tab's name where a person picks one (Options > Start screen).
+    public var title: String {
+        switch self {
+        case .camera: return String(localized: "Camera")
+        case .printer: return String(localized: "Scanner")
+        }
+    }
 }
 
 /// How many things a camera shot of Photo or Document holds (`IOSShell.itemsInFrame`): Auto splits the shot
