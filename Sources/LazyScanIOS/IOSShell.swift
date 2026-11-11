@@ -358,6 +358,9 @@ public enum IOSShell {
 
     /// At launch: the mode becomes the one picked to start with.
     public static func applyStartMode(_ defaults: UserDefaults) {
+        // Without a mode yet this is a first run or a build from before the two modes, which
+        // `migratedScanner` still has to read; the camera is the default then anyway.
+        guard defaults.object(forKey: scanModeKey) != nil else { return }
         let start: IOSScanMode = defaults.string(forKey: startModeKey).flatMap(IOSScanMode.init(rawValue:)) ?? .camera
         defaults.set(start.rawValue, forKey: scanModeKey)
     }
