@@ -120,7 +120,7 @@ struct SplitHereButton: View {
         }
         .buttonStyle(.plain)
         .disabled(state.isBusy || importer.isImporting || !state.canStartNewDocument)
-        .opacity(state.canStartNewDocument ? 1 : 0.4)
+        .opacity(state.canStartNewDocument && !importer.isImporting ? 1 : 0.4)
         .keyboardShortcut(IOSShortcuts.newDocument.keyboardShortcut)
         .accessibilityHint(Text(CameraTaskCatalog.newDocumentPrompt))
         .accessibilityIdentifier("task.newDocument")

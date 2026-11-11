@@ -72,7 +72,7 @@ struct ScanTopBar<Trailing: View>: View {
 /// are always there; Save is dimmed while nothing can be saved. Save's accessibility label is its `title`
 /// ("Save", or "Add to Contract.pdf" while the pages go into a PDF picked) and the format and the pages are
 /// its value (`detail`); while a PDF is picked the caption `adding` between the buttons says so in words.
-/// With Separate documents, Split here takes that place (`SplitHereButton`), at the buttons' height.
+/// With Separate documents, Split here sits there too (`SplitHereButton`), at the buttons' height.
 struct PictureButtons: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
@@ -91,23 +91,23 @@ struct PictureButtons: View {
     var body: some View {
         HStack(spacing: 8) {
             optionsButton
-            if state.offersNewDocument {
-                SplitHereButton()
-                    .frame(maxWidth: .infinity)
-            } else if let adding {
-                Text(IOSShell.addingCaption(adding))
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.white)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.black.opacity(0.55)))
-                    .frame(maxWidth: .infinity)
-                    .accessibilityHidden(true)
-            } else {
-                Spacer(minLength: 0)
+            VStack(spacing: 6) {
+                if let adding {
+                    Text(IOSShell.addingCaption(adding))
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.black.opacity(0.55)))
+                        .accessibilityHidden(true)
+                }
+                if state.offersNewDocument {
+                    SplitHereButton()
+                }
             }
+            .frame(maxWidth: .infinity)
             saveButton
         }
         .padding(Self.margin)
