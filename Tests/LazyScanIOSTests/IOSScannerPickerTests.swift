@@ -507,7 +507,7 @@ final class IOSScannerPickerTests: XCTestCase {
             XCTAssertTrue(StatusLine.words(title) <= 5, title)
         }
         let lines: [String] = [IOSNetworkText.explanationLine, IOSNetworkText.deniedLine, IOSNetworkText.addLine,
-                               IOSNetworkText.certificateLine, IOSNetworkText.networkOff]
+                               IOSNetworkText.certificateLine, IOSNetworkText.networkOff, IOSNetworkText.demoLine]
         for line in lines {
             XCTAssertTrue(StatusLine.words(line) <= 9, line)
         }
@@ -525,13 +525,14 @@ final class IOSScannerPickerTests: XCTestCase {
     // MARK: The shell
 
     @MainActor
-    func test_shell_offersNetworkScannersWithoutTheDemoScanner_neverUnderDemoScanner() {
+    func test_shell_offersNetworkScannersBesideTheDemoScanner_aloneUnderDemoScanner() {
         prepare()
         defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
         let network: IOSNetworkScanners = makeNetwork()
         let real: [any ScannerBackend] = IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: false), networkScanners: network)
-        XCTAssertEqual(real.count, 1)
+        XCTAssertEqual(real.count, 2)
         XCTAssertTrue(real[0] === network.backend)
+        XCTAssertTrue(real[1] is MockScannerBackend)
         let demo: [any ScannerBackend] = IOSShell.backends(options: IOSLaunchOptions(arguments: ["LazyScan", "-demoScanner"]),
                                                             networkScanners: network)
         XCTAssertEqual(demo.count, 1)
@@ -540,6 +541,51 @@ final class IOSScannerPickerTests: XCTestCase {
         state.start()
         XCTAssertTrue(browsers.made.isEmpty)
         XCTAssertEqual(state.devices.map(\.id), ["mock:demo"])
+    }
+
+    @MainActor
+    func test_demoScanner_isListedApart_andNeverSelectedOnItsOwn() throws {
+        prepare()
+        defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
+        let network: IOSNetworkScanners = makeNetwork()
+        let state: AppState = makeState(IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: false), networkScanners: network))
+        state.start(onlySelecting: nil)
+        let picker: IOSScannerPickerModel = IOSScannerPickerModel(state: state, network: network)
+        XCTAssertEqual(state.devices.map(\.id), ["mock:demo"])
+        XCTAssertNil(state.selectedDeviceID)
+        // Not a found scanner: no row among them, and the empty state still shows.
+        XCTAssertTrue(picker.rows.isEmpty)
+        XCTAssertTrue(picker.showsEmpty)
+        let demo: IOSScannerRow = try XCTUnwrap(picker.demoRow)
+        XCTAssertEqual(demo.name, "Demo Scanner")
+        XCTAssertEqual(demo.detail, "Try scanning without a scanner")
+        XCTAssertFalse(demo.isSelected)
+
+        picker.select(demo)
+        XCTAssertEqual(state.selectedDeviceID, "mock:demo")
+        XCTAssertEqual(picker.demoRow?.isSelected, true)
+        network.backend.stopBrowsing()
+    }
+
+    @MainActor
+    func test_demoScanner_pickedLastTime_isSelectedAgainAtLaunch() {
+        prepare()
+        defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
+        let network: IOSNetworkScanners = makeNetwork()
+        let state: AppState = makeState(IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: false), networkScanners: network))
+        state.start(onlySelecting: "mock:demo")
+        XCTAssertEqual(state.selectedDeviceID, "mock:demo")
+        network.backend.stopBrowsing()
+    }
+
+    @MainActor
+    func test_picker_underDemoScanner_listsTheDemoScannerAsItsOnlyRow_withoutASectionOfItsOwn() {
+        prepare()
+        let state: AppState = makeState(IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: true)))
+        state.start()
+        let picker: IOSScannerPickerModel = IOSScannerPickerModel(state: state, network: nil)
+        XCTAssertEqual(picker.rows.map(\.id), ["mock:demo"])
+        XCTAssertNil(picker.demoRow)
     }
 
     @MainActor

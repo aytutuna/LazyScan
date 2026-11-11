@@ -373,7 +373,8 @@ app may use the scanner's own plain HTTP address and marks the connection "Not e
 does so after a refused certificate. The addresses and the trusted certificates are kept in
 Application Support/Lazy Scan/Network, out of backups. Launched with `-demoScanner` (the UI
 tests), the app has the Demo Scanner alone and never searches the network; otherwise the Demo
-Scanner is not listed at all. The search itself is
+Scanner is a row of its own below the scanners found ("Try scanning without a scanner"), never
+selected on its own and kept once picked. The search itself is
 checked with stand-ins for the system's browsers, and the prompt, a denial, client-isolated Wi-Fi,
 IPv6 and a feeder batch while the app goes to the background need a real iPhone and scanner.
 

@@ -427,6 +427,7 @@
  {"key": "Trust the new certificate", "comment": ""},
  {"key": "Trusted before", "comment": ""},
  {"key": "Try again", "comment": ""},
+ {"key": "Try scanning without a scanner", "comment": ""},
  {"key": "Turn the stack over and scan the back sides", "comment": ""},
  {"key": "Type", "comment": ""},
  {"key": "Undo", "comment": ""},

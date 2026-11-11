@@ -361,11 +361,6 @@ public struct IOSRootView: View {
             scanner = old
             mode = .printer
         }
-        // The demo scanner is only listed under -demoScanner: printer mode left on it is the camera again.
-        if !demoScanner && scanner.hasPrefix("mock:") {
-            scanner = ""
-            mode = .camera
-        }
         let remembered: String? = mode == .printer && !scanner.isEmpty ? scanner : nil
         state.start(onlySelecting: remembered)
         if remembered == nil {

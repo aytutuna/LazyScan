@@ -57,9 +57,23 @@ public final class IOSScannerPickerModel {
         self.network = network
     }
 
-    /// The scanners listed, one row each, in the app's order.
+    /// The scanners listed, one row each, in the app's order. With the network scanners the demo scanner
+    /// is not among them (`demoRow`); alone, under `-demoScanner`, it is the one row.
     public var rows: [IOSScannerRow] {
-        IOSScannerPickerModel.rows(devices: state.devices, selected: state.selectedDeviceID, backend: network?.backend)
+        let all: [IOSScannerRow] = IOSScannerPickerModel.rows(devices: state.devices, selected: state.selectedDeviceID,
+                                                              backend: network?.backend)
+        return network == nil ? all : all.filter { (row: IOSScannerRow) -> Bool in !row.isDemo }
+    }
+
+    /// The demo scanner's row beside the network scanners, for a section of its own: it is not a scanner
+    /// that was found, and says so under its name. Nil under `-demoScanner`, whose rows have it.
+    public var demoRow: IOSScannerRow? {
+        guard network != nil else { return nil }
+        let all: [IOSScannerRow] = IOSScannerPickerModel.rows(devices: state.devices, selected: state.selectedDeviceID,
+                                                              backend: nil)
+        guard let row = all.first(where: { (row: IOSScannerRow) -> Bool in row.isDemo }) else { return nil }
+        return IOSScannerRow(id: row.id, name: row.name, connection: IOSNetworkText.demoLine, note: nil,
+                             isSelected: row.isSelected, isDemo: true, addedAddresses: [])
     }
 
     /// The rows for `devices`, the one `selected` marked.

@@ -96,20 +96,21 @@ public enum IOSShell {
     }
 
     /// The app's scanner connections: the network scanners (eSCL: found on the network, added by address),
-    /// or the demo scanner alone where `options` ask for it (`-demoScanner`, the UI tests: then nothing is
-    /// searched for) or no network scanners are passed in.
+    /// with the demo scanner beside them, or the demo scanner alone where `options` ask for it
+    /// (`-demoScanner`, the UI tests: then nothing is searched for) or no network scanners are passed in.
     @MainActor
     public static func backends(options: IOSLaunchOptions, networkScanners: IOSNetworkScanners?) -> [any ScannerBackend] {
         backends(options: options, network: networkScanners?.backend)
     }
 
-    /// The network scanner connection (eSCL), or the demo scanner alone when `options` ask for it or there
-    /// is no network connection. A real phone never lists the demo scanner, which the app would otherwise
-    /// select as soon as it starts.
+    /// The network scanner connection (eSCL) and the demo scanner, or the demo scanner alone when `options`
+    /// ask for it or there is no network connection. On a real phone the demo scanner is listed apart from
+    /// the found scanners (`IOSScannerPickerModel.demoRow`) and is only used once picked: the phone's state
+    /// selects no scanner on its own (`AppState.start(onlySelecting:)`).
     @MainActor
     static func backends(options: IOSLaunchOptions, network: EsclScannerBackend?) -> [any ScannerBackend] {
         if let network, !options.demoScannerOnly {
-            return [network]
+            return [network, AppState.makeDemoBackend()]
         }
         return [AppState.makeDemoBackend()]
     }

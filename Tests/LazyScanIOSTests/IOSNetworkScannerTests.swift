@@ -165,10 +165,11 @@ final class IOSNetworkScannerTests: XCTestCase {
                                                                   trust: EsclTrustStore(directory: folder))
         XCTAssertTrue(network.background is UIKitBackgroundActivity)
 
-        // No demo scanner beside it on a real phone.
+        // The demo scanner beside it on a real phone, listed apart by the picker.
         let backends: [any ScannerBackend] = IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: false), network: network)
-        XCTAssertEqual(backends.count, 1)
+        XCTAssertEqual(backends.count, 2)
         XCTAssertTrue(backends[0] === network)
+        XCTAssertTrue(backends[1] is MockScannerBackend)
         // Listed from what it was given; no network search, nothing sent.
         network.startBrowsing()
         XCTAssertEqual(network.devices.count, 1)

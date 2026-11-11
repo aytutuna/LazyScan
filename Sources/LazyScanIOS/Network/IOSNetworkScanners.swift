@@ -20,6 +20,8 @@ public enum IOSNetworkText {
     public static var noScannerPicked: String { String(localized: "No scanner") }
     public static var troubleshoot: String { String(localized: "Troubleshoot") }
     public static var addButton: String { String(localized: "Add by address") }
+    /// The demo scanner's line in the picker, under its name.
+    public static var demoLine: String { String(localized: "Try scanning without a scanner") }
     public static var removeAddress: String { String(localized: "Remove address") }
     public static var searching: String { String(localized: "Looking for scanners…") }
     /// Opens the scanner picked again after connecting to it failed.

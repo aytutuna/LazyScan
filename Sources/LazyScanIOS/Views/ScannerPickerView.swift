@@ -98,7 +98,7 @@ struct ScannerPickerSheets: ViewModifier {
 /// The scanners, as sections of a list (printer mode's Scanner options on iPhone, a part of the sidebar on
 /// iPad): one row per scanner with how it is reached, the one scanned with checked
 /// (`IOSShell.printerScanner`); "Looking for scanners…" while the search has just started, else "No scanner
-/// found" with Troubleshoot; the explanation card before the first search, the line about Local Network
+/// found" with Troubleshoot; the Demo Scanner in a section of its own below them; the explanation card before the first search, the line about Local Network
 /// access being off, and the buttons to add a scanner by address and open the troubleshooter. Picking a
 /// scanner selects it, remembers it and switches to printer mode; the camera is camera mode's, switched to
 /// on the scan screen. Another scanner may not have the flatbed an ID card needs, so with a side of the card
@@ -182,6 +182,12 @@ private struct ScannerPickerContent: View {
         if picker.showsDenied {
             Section {
                 DeniedRow(onSettings: openSettings)
+            }
+        }
+        if let demo = picker.demoRow {
+            Section {
+                ScannerRowView(row: demo, checked: demo.id == picked, enabled: !state.isBusy, onPick: { pick(demo) },
+                               onRemove: {})
             }
         }
         if !picker.showsExplanation {
