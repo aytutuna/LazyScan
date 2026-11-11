@@ -88,7 +88,7 @@ public enum CameraTaskCatalog {
             return CameraStepText(prompt: L10n.t("Lay up to six receipts apart on a dark table."),
                                   help: L10n.t("Each one is found, straightened and made easy to read. Check them before saving."))
         case .batch:
-            return CameraStepText(prompt: L10n.t("Take each page, then tap New document."),
+            return CameraStepText(prompt: L10n.t("Take a document's pages, then tap Split here before the next one."),
                                   help: L10n.t("Separator sheets work too, once a page matches a paper size. Check the splits in the pages, then save."))
         case .book:
             if options.cameraSpreads {

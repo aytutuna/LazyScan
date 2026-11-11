@@ -45,11 +45,11 @@ enum IOSPDFOptions {
 }
 
 /// The camera's buttons between shots for the task set up: No back side (flip & capture, while a back is
-/// due), Now the backs and Put in order or Combine anyway (fronts first), and New document (Separate
-/// documents, the main button there; Command-N). Nothing for the other tasks. The printer screen (`printer`)
-/// has New document only: a scanned page never takes the camera's sides. `onDark` draws them over the
-/// camera's live preview, which is mostly the white page or a dark desk: the secondary ones white on a dark
-/// capsule, as the status line is, the prominent ones in the accent color.
+/// due), Now the backs and Put in order or Combine anyway (fronts first). Nothing for the other tasks, nor on
+/// the printer screen (`printer`): a scanned page never takes the camera's sides. Split here sits between
+/// Options and Save instead (`SplitHereButton`). `onDark` draws them over the camera's live preview, which is
+/// mostly the white page or a dark desk: the secondary ones white on a dark capsule, as the status line is,
+/// the prominent ones in the accent color.
 struct CameraTaskButtons: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
@@ -85,27 +85,45 @@ struct CameraTaskButtons: View {
                     .accessibilityIdentifier("task.putInOrder")
                 }
             }
-            if state.offersNewDocument {
-                Button {
-                    state.startNewDocument()
-                } label: {
-                    Label(CameraTaskCatalog.newDocumentLabel, systemImage: "doc.badge.plus")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(busy || !state.canStartNewDocument)
-                .keyboardShortcut(IOSShortcuts.newDocument.keyboardShortcut)
-                .accessibilityHint(Text(CameraTaskCatalog.newDocumentPrompt))
-                .accessibilityIdentifier("task.newDocument")
-            }
         }
     }
 
     /// Whether any button shows, so the scan screen leaves out an empty row.
     static func showsAny(_ state: AppState, printer: Bool = false) -> Bool {
-        if !printer, let sides = state.cameraSides, sides.canSkipBack || sides.canStartBacks || sides.canPutInOrder {
-            return true
+        guard !printer, let sides = state.cameraSides else { return false }
+        return sides.canSkipBack || sides.canStartBacks || sides.canPutInOrder
+    }
+}
+
+/// Separate documents' page break: the next page starts a new document (Command-N). It sits between Options
+/// and Save on the picture, dark like Options, so it does not read as a second Save.
+struct SplitHereButton: View {
+    @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var importer: IOSImportSession
+
+    static var label: String { String(localized: "Split here") }
+
+    var body: some View {
+        Button {
+            state.startNewDocument()
+        } label: {
+            Label(Self.label, systemImage: "scissors")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
+                .background(Capsule().fill(Color(white: 0.15)))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
+                .contentShape(Capsule())
         }
-        return state.offersNewDocument
+        .buttonStyle(.plain)
+        .disabled(state.isBusy || importer.isImporting || !state.canStartNewDocument)
+        .opacity(state.canStartNewDocument ? 1 : 0.4)
+        .keyboardShortcut(IOSShortcuts.newDocument.keyboardShortcut)
+        .accessibilityHint(Text(CameraTaskCatalog.newDocumentPrompt))
+        .accessibilityIdentifier("task.newDocument")
     }
 }
 

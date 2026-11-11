@@ -697,9 +697,6 @@ struct ScanScreen: View {
             if let mismatch = state.sidesMismatch, state.isTurningOverByHand {
                 MismatchPill(text: mismatch)
             }
-            if CameraTaskButtons.showsAny(state, printer: true) {
-                CameraTaskButtons(onDark: true, printer: true)
-            }
             if TurnedOverButtons.showsAny(state) {
                 TurnedOverButtons()
                     .environment(\.colorScheme, ColorScheme.dark)
