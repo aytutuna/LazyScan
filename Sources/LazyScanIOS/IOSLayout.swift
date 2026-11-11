@@ -34,7 +34,7 @@ public struct IOSShortcut: Equatable {
 /// in camera mode.
 public enum IOSShortcuts {
     public static var save: IOSShortcut { IOSShortcut(key: "s", command: true, title: String(localized: "Save")) }
-    public static var newDocument: IOSShortcut { IOSShortcut(key: "n", command: true, title: String(localized: "New document")) }
+    public static var newDocument: IOSShortcut { IOSShortcut(key: "n", command: true, title: SplitHereButton.label) }
     public static var options: IOSShortcut { IOSShortcut(key: ",", command: true, title: String(localized: "Options")) }
     public static var shutter: IOSShortcut { IOSShortcut(key: " ", command: false, title: String(localized: "Take photo")) }
 
