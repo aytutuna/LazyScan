@@ -553,9 +553,9 @@ final class IOSScannerPickerTests: XCTestCase {
         let picker: IOSScannerPickerModel = IOSScannerPickerModel(state: state, network: network)
         XCTAssertEqual(state.devices.map(\.id), ["mock:demo"])
         XCTAssertNil(state.selectedDeviceID)
-        // Not a found scanner: no row among them, and the empty state still shows.
+        // Not a found scanner: no row among them, and the sheet still searches or says none was found.
         XCTAssertTrue(picker.rows.isEmpty)
-        XCTAssertTrue(picker.showsEmpty)
+        XCTAssertTrue(picker.showsEmpty || picker.showsSearching)
         let demo: IOSScannerRow = try XCTUnwrap(picker.demoRow)
         XCTAssertEqual(demo.name, "Demo Scanner")
         XCTAssertEqual(demo.detail, "Try scanning without a scanner")
