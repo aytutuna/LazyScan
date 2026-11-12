@@ -35,7 +35,8 @@ public class PaperSizeTests
     [Fact]
     public void RawValues_AreTheStoredNames()
     {
-        Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard"],
+        Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
+                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"],
                      PaperSizes.All.Select(size => size.RawValue()));
         Assert.All(PaperSizes.All, size =>
             Assert.Equal($"\"{size.RawValue()}\"", JsonSerializer.Serialize(size, StoreFiles.JsonOptions)));
@@ -52,6 +53,11 @@ public class PaperSizeTests
         AssertSize(4.1339, 5.8268, PaperSizes.Inches(PaperSize.A6));
         AssertSize(7.1654, 10.1181, PaperSizes.Inches(PaperSize.B5Jis));
         AssertSize(2.125, 3.370, PaperSizes.Inches(PaperSize.IdCard));
+        AssertSize(11.6929, 16.5354, PaperSizes.Inches(PaperSize.A3));
+        AssertSize(11, 17, PaperSizes.Inches(PaperSize.Tabloid));
+        AssertSize(2.1654, 3.5433, PaperSizes.Inches(PaperSize.BusinessCard));
+        AssertSize(4, 6, PaperSizes.Inches(PaperSize.Photo4x6));
+        AssertSize(5, 7, PaperSizes.Inches(PaperSize.Photo5x7));
         // 210 × 297 mm.
         Assert.Equal(210, PaperSizes.Inches(PaperSize.A4)!.Value.Width * 25.4, 0);
         Assert.Equal(297, PaperSizes.Inches(PaperSize.A4)!.Value.Height * 25.4, 0);
@@ -65,7 +71,9 @@ public class PaperSizeTests
         Assert.Equal(PaperSize.Letter, PaperSizes.Parse(" letter "));
         Assert.Equal(PaperSize.B5Jis, PaperSizes.Parse("b5jis"));
         Assert.Equal(PaperSize.IdCard, PaperSizes.Parse("idCard"));
-        Assert.Equal(PaperSize.Auto, PaperSizes.Parse("tabloid"));
+        Assert.Equal(PaperSize.Tabloid, PaperSizes.Parse("tabloid"));
+        Assert.Equal(PaperSize.Photo4x6, PaperSizes.Parse("photo4x6"));
+        Assert.Equal(PaperSize.Auto, PaperSizes.Parse("foolscap"));
         Assert.Equal(PaperSize.Auto, PaperSizes.Parse(""));
         Assert.Equal(PaperSize.Auto, PaperSizes.Parse(null));
     }
@@ -108,11 +116,13 @@ public class PaperSizeTests
     {
         Assert.Equal(
             [PaperSize.Auto, PaperSize.Letter, PaperSize.Legal, PaperSize.Executive, PaperSize.A4, PaperSize.A5,
-             PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard],
+             PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard, PaperSize.A3, PaperSize.Tabloid, PaperSize.BusinessCard,
+             PaperSize.Photo4x6, PaperSize.Photo5x7],
             PaperSizes.DisplayOrder("US"));
         Assert.Equal(
             [PaperSize.Auto, PaperSize.A4, PaperSize.Letter, PaperSize.Legal, PaperSize.Executive, PaperSize.A5,
-             PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard],
+             PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard, PaperSize.A3, PaperSize.Tabloid, PaperSize.BusinessCard,
+             PaperSize.Photo4x6, PaperSize.Photo5x7],
             PaperSizes.DisplayOrder("DE"));
     }
 
@@ -154,10 +164,13 @@ public class PaperSizeTests
     [Fact]
     public void LabelsAndHints()
     {
-        Assert.Equal(["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card"],
+        Assert.Equal(["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card",
+                      "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo"],
                      PaperSizes.All.Select(size => size.Label()));
         Assert.Equal("210 × 297 mm", PaperSize.A4.Detail());
         Assert.Equal("8.5 × 11 in", PaperSize.Letter.Detail());
+        Assert.Equal("297 × 420 mm", PaperSize.A3.Detail());
+        Assert.Equal("11 × 17 in", PaperSize.Tabloid.Detail());
         Assert.Equal("The whole glass, or the area selected on the preview.", PaperSizes.Hint(PaperSize.Auto, ScanSource.Flatbed));
         Assert.Equal("The sheet size the feeder takes.", PaperSizes.Hint(PaperSize.Auto, ScanSource.DocumentFeeder));
         Assert.Equal("Sheets of this size, from the feeder.", PaperSizes.Hint(PaperSize.A4, ScanSource.DocumentFeeder));

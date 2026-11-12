@@ -21,6 +21,12 @@ public enum PaperSize
     B5Jis,
     /// <summary>An ID-1 card (credit card, most ID cards and driving licences), 85.6 × 54 mm.</summary>
     IdCard,
+    A3,
+    Tabloid,
+    /// <summary>A business card, 90 × 55 mm.</summary>
+    BusinessCard,
+    Photo4x6,
+    Photo5x7,
 }
 
 /// <summary>Dimensions of the paper sizes and where they apply.</summary>
@@ -50,6 +56,11 @@ public static class PaperSizes
         PaperSize.A6 => new SizeD(4.1339, 5.8268),
         PaperSize.B5Jis => new SizeD(7.1654, 10.1181),
         PaperSize.IdCard => new SizeD(2.125, 3.370),
+        PaperSize.A3 => new SizeD(11.6929, 16.5354),
+        PaperSize.Tabloid => new SizeD(11, 17),
+        PaperSize.BusinessCard => new SizeD(2.1654, 3.5433),
+        PaperSize.Photo4x6 => new SizeD(4, 6),
+        PaperSize.Photo5x7 => new SizeD(5, 7),
         _ => null,
     };
 
@@ -65,6 +76,11 @@ public static class PaperSizes
         PaperSize.A6 => "a6",
         PaperSize.B5Jis => "b5Jis",
         PaperSize.IdCard => "idCard",
+        PaperSize.A3 => "a3",
+        PaperSize.Tabloid => "tabloid",
+        PaperSize.BusinessCard => "businessCard",
+        PaperSize.Photo4x6 => "photo4x6",
+        PaperSize.Photo5x7 => "photo5x7",
         _ => throw new ArgumentOutOfRangeException(nameof(size), size, null),
     };
 
@@ -186,6 +202,11 @@ public static class PaperSizes
         PaperSize.A6 => "A6",
         PaperSize.B5Jis => "B5 (JIS)",
         PaperSize.IdCard => Loc.T("ID card"),
+        PaperSize.A3 => "A3",
+        PaperSize.Tabloid => Loc.T("Tabloid"),
+        PaperSize.BusinessCard => Loc.T("Business card"),
+        PaperSize.Photo4x6 => Loc.T("4x6 photo"),
+        PaperSize.Photo5x7 => Loc.T("5x7 photo"),
         _ => size.ToString(),
     };
 
@@ -195,6 +216,10 @@ public static class PaperSizes
         PaperSize.Letter => "Letter",
         PaperSize.Legal => "Legal",
         PaperSize.Executive => "Executive",
+        PaperSize.Tabloid => "Tabloid",
+        PaperSize.BusinessCard => "Business card",
+        PaperSize.Photo4x6 => "4x6 photo",
+        PaperSize.Photo5x7 => "5x7 photo",
         _ => size.Label(),
     };
 
@@ -210,6 +235,11 @@ public static class PaperSizes
         PaperSize.A6 => Loc.T("{0} × {1} mm", 105, 148),
         PaperSize.B5Jis => Loc.T("{0} × {1} mm", 182, 257),
         PaperSize.IdCard => Loc.T("{0} × {1} mm", 85.6, 54),
+        PaperSize.A3 => Loc.T("{0} × {1} mm", 297, 420),
+        PaperSize.Tabloid => Loc.T("{0} × {1} in", 11, 17),
+        PaperSize.BusinessCard => Loc.T("{0} × {1} mm", 90, 55),
+        PaperSize.Photo4x6 => Loc.T("{0} × {1} in", 4, 6),
+        PaperSize.Photo5x7 => Loc.T("{0} × {1} in", 5, 7),
         _ => "",
     };
 
@@ -224,6 +254,11 @@ public static class PaperSizes
         PaperSize.A6 => Loc.T("{0} by {1} mm", 105, 148),
         PaperSize.B5Jis => Loc.T("{0} by {1} mm", 182, 257),
         PaperSize.IdCard => Loc.T("{0} by {1} mm", 85.6, 54),
+        PaperSize.A3 => Loc.T("{0} by {1} mm", 297, 420),
+        PaperSize.Tabloid => Loc.T("{0} by {1} inches", 11, 17),
+        PaperSize.BusinessCard => Loc.T("{0} by {1} mm", 90, 55),
+        PaperSize.Photo4x6 => Loc.T("{0} by {1} inches", 4, 6),
+        PaperSize.Photo5x7 => Loc.T("{0} by {1} inches", 5, 7),
         _ => "",
     };
 }

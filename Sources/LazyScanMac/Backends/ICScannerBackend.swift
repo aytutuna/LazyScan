@@ -335,11 +335,11 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     }
 
     /// The ImageCaptureCore document type of a paper size (`ICScannerDocumentType` raw values,
-    /// which follow TWAIN's paper sizes); nil for Automatic and the ID card, which has none.
+    /// which follow TWAIN's paper sizes); nil for Automatic and the sizes TWAIN has none for.
     private static func documentType(for size: PaperSize) -> ICScannerDocumentType? {
         let raw: UInt
         switch size {
-        case .auto, .idCard: return nil
+        case .auto, .idCard, .photo4x6, .photo5x7: return nil
         case .a4: raw = 1
         case .b5Jis: raw = 2
         case .letter: raw = 3
@@ -347,6 +347,9 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         case .a5: raw = 5
         case .executive: raw = 10
         case .a6: raw = 13
+        case .a3: raw = 11
+        case .tabloid: raw = 9
+        case .businessCard: raw = 53
         }
         return ICScannerDocumentType(rawValue: raw)
     }

@@ -87,7 +87,7 @@ scanners** — including the Epson Perfection V39 II.
   (it says so when the counts do not match: "3 fronts but 2 backs"). A stack larger than the
   feeder, or one that jams, is scanned a part at a time before turning it over. Back sides of
   sheets that flip on the short edge (like a calendar) are turned upright. The paper size (Letter, Legal,
-  Executive, A4, A5, A6, B5, ID card, or Automatic) sets the sheet the feeder is asked for, and
+  Executive, A4, A5, A6, B5, ID card, A3, Tabloid, business card, 4x6 or 5x7 photo, or Automatic) sets the sheet the feeder is asked for, and
   on the glass the area scanned from its corner when nothing is selected. Each page in the strip
   says which side of which sheet it is.
 - **Blank pages**: every page collected for a PDF is checked for being blank as it is scanned,

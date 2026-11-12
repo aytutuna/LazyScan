@@ -30,7 +30,8 @@ final class PaperSizeTests: XCTestCase {
 
     func test_rawValues_areTheStoredNames() throws {
         XCTAssertEqual(PaperSize.allCases.map(\.rawValue),
-                       ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard"])
+                       ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
+                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"])
         for size in PaperSize.allCases {
             let data = try JSONEncoder().encode([size])
             XCTAssertEqual(String(decoding: data, as: UTF8.self), "[\"\(size.rawValue)\"]")
@@ -46,6 +47,11 @@ final class PaperSizeTests: XCTestCase {
         assertSize(4.1339, 5.8268, PaperSizes.inches(.a6))
         assertSize(7.1654, 10.1181, PaperSizes.inches(.b5Jis))
         assertSize(2.125, 3.370, PaperSizes.inches(.idCard))
+        assertSize(11.6929, 16.5354, PaperSizes.inches(.a3))
+        assertSize(11, 17, PaperSizes.inches(.tabloid))
+        assertSize(2.1654, 3.5433, PaperSizes.inches(.businessCard))
+        assertSize(4, 6, PaperSizes.inches(.photo4x6))
+        assertSize(5, 7, PaperSizes.inches(.photo5x7))
         // 210 × 297 mm.
         XCTAssertEqual((Double(PaperSizes.inches(.a4)!.width) * 25.4).rounded(), 210)
         XCTAssertEqual((Double(PaperSizes.inches(.a4)!.height) * 25.4).rounded(), 297)
@@ -57,7 +63,9 @@ final class PaperSizeTests: XCTestCase {
         XCTAssertEqual(PaperSizes.parse(" letter "), .letter)
         XCTAssertEqual(PaperSizes.parse("b5jis"), .b5Jis)
         XCTAssertEqual(PaperSizes.parse("idCard"), .idCard)
-        XCTAssertEqual(PaperSizes.parse("tabloid"), .auto)
+        XCTAssertEqual(PaperSizes.parse("tabloid"), .tabloid)
+        XCTAssertEqual(PaperSizes.parse("photo4x6"), .photo4x6)
+        XCTAssertEqual(PaperSizes.parse("foolscap"), .auto)
         XCTAssertEqual(PaperSizes.parse(""), .auto)
         XCTAssertEqual(PaperSizes.parse(nil), .auto)
     }
@@ -92,9 +100,11 @@ final class PaperSizeTests: XCTestCase {
 
     func test_displayOrder_automaticThenTheUsualSize() {
         XCTAssertEqual(PaperSizes.displayOrder(region: "US"),
-                       [.auto, .letter, .legal, .executive, .a4, .a5, .a6, .b5Jis, .idCard])
+                       [.auto, .letter, .legal, .executive, .a4, .a5, .a6, .b5Jis, .idCard,
+                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7])
         XCTAssertEqual(PaperSizes.displayOrder(region: "DE"),
-                       [.auto, .a4, .letter, .legal, .executive, .a5, .a6, .b5Jis, .idCard])
+                       [.auto, .a4, .letter, .legal, .executive, .a5, .a6, .b5Jis, .idCard,
+                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7])
     }
 
     func test_fits_withinTheAreaAndALittleRounding() {
@@ -128,8 +138,11 @@ final class PaperSizeTests: XCTestCase {
 
     func test_labelsAndHints() {
         XCTAssertEqual(PaperSize.allCases.map(\.label),
-                       ["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card"])
+                       ["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card",
+                        "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo"])
         XCTAssertEqual(PaperSize.a4.detail, "210 \u{00D7} 297 mm")
+        XCTAssertEqual(PaperSize.a3.detail, "297 \u{00D7} 420 mm")
+        XCTAssertEqual(PaperSize.tabloid.detail, "11 \u{00D7} 17 in")
         XCTAssertEqual(PaperSize.letter.detail, "8.5 \u{00D7} 11 in")
         XCTAssertEqual(PaperSizes.hint(.auto, source: .flatbed), "The whole glass, or the area selected on the preview.")
         XCTAssertEqual(PaperSizes.hint(.auto, source: .documentFeeder), "The sheet size the feeder takes.")

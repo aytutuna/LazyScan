@@ -197,6 +197,8 @@ public class WiaErrorsTests
         Assert.Equal((44, 0, 0), WiaDocumentHandling.PageSize(PaperSize.B5Jis));
         Assert.Equal((2, 7250, 10500), WiaDocumentHandling.PageSize(PaperSize.Executive));
         Assert.Equal((2, 2125, 3370), WiaDocumentHandling.PageSize(PaperSize.IdCard));
+        Assert.Equal((2, 11693, 16535), WiaDocumentHandling.PageSize(PaperSize.A3));
+        Assert.Equal((2, 4000, 6000), WiaDocumentHandling.PageSize(PaperSize.Photo4x6));
     }
 
     [Fact]

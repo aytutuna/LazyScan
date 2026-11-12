@@ -435,6 +435,8 @@ public class WindowsScanTests
         Assert.Equal("NorthAmericaLetter", WindowsScanRequest.MediaSizeName(PaperSize.Letter));
         Assert.Equal("IsoA4", WindowsScanRequest.MediaSizeName(PaperSize.A4));
         Assert.Equal("CreditCard", WindowsScanRequest.MediaSizeName(PaperSize.IdCard));
+        Assert.Equal("IsoA3", WindowsScanRequest.MediaSizeName(PaperSize.A3));
+        Assert.Equal("NorthAmericaTabloid", WindowsScanRequest.MediaSizeName(PaperSize.Tabloid));
     }
 
     [Theory]

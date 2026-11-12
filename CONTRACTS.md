@@ -558,7 +558,7 @@ public enum DocumentSides {
 }
 
 public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
-    case auto, letter, legal, executive, a4, a5, a6, b5Jis, idCard   // first case = default and fallback
+    case auto, letter, legal, executive, a4, a5, a6, b5Jis, idCard, a3, tabloid, businessCard, photo4x6, photo5x7   // first case = default and fallback; new sizes go last
     public var label: String       // "Automatic", "Letter", "B5 (JIS)", "ID card"
     public var detail: String      // "8.5 × 11 in", "210 × 297 mm"
 }

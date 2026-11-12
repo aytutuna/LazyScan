@@ -689,7 +689,8 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(DuplexMode.allCases.map(\.rawValue), ["off", "both", "manual"])
         XCTAssertEqual(DuplexBinding.allCases.map(\.rawValue), ["longEdge", "shortEdge"])
         XCTAssertEqual(PaperSize.allCases.map(\.rawValue),
-                       ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard"])
+                       ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
+                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"])
         let settings = ScanSettings()
         XCTAssertEqual(settings.duplex, .off)
         XCTAssertEqual(settings.backBinding, .longEdge)
@@ -705,7 +706,7 @@ final class ModelsCompatTests: XCTestCase {
     }
 
     func test_unknownOrCorruptSides_fallBackToTheDefaults_restIntact() throws {
-        for sides in [#""duplex": "triple", "backBinding": "spiral", "paperSize": "tabloid""#,
+        for sides in [#""duplex": "triple", "backBinding": "spiral", "paperSize": "foolscap""#,
                       #""duplex": "Both", "backBinding": "LongEdge", "paperSize": "A4""#,
                       #""duplex": 1, "backBinding": true, "paperSize": {"width": 8}"#,
                       #""duplex": null, "backBinding": null, "paperSize": null"#] {
@@ -1127,7 +1128,7 @@ final class ModelsCompatTests: XCTestCase {
     }
 
     func test_unknownOrCorruptTaskOptions_fallBackToTheDefaults_restIntact() throws {
-        for taskOptions in [#""taskOptions": {"idCardPaper": "tabloid", "idCardSaveSidesAsImages": true}"#,
+        for taskOptions in [#""taskOptions": {"idCardPaper": "foolscap", "idCardSaveSidesAsImages": true}"#,
                             #""taskOptions": {"idCardPaper": "A4", "idCardSaveSidesAsImages": true}"#,
                             #""taskOptions": {"idCardPaper": 1, "idCardSaveSidesAsImages": true}"#,
                             #""taskOptions": {"idCardPaper": null, "idCardSaveSidesAsImages": true}"#] {

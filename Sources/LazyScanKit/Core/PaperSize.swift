@@ -19,6 +19,12 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
     case b5Jis
     /// An ID-1 card (credit card, most ID cards and driving licences), 85.6 × 54 mm.
     case idCard
+    case a3
+    case tabloid
+    /// A business card, 90 × 55 mm.
+    case businessCard
+    case photo4x6
+    case photo5x7
 
     public var id: String { rawValue }
 
@@ -34,6 +40,11 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .a6: return "A6"
         case .b5Jis: return "B5 (JIS)"
         case .idCard: return L10n.t("ID card")
+        case .a3: return "A3"
+        case .tabloid: return L10n.t("Tabloid")
+        case .businessCard: return L10n.t("Business card")
+        case .photo4x6: return L10n.t("4x6 photo")
+        case .photo5x7: return L10n.t("5x7 photo")
         }
     }
 
@@ -43,6 +54,10 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .letter: return "Letter"
         case .legal: return "Legal"
         case .executive: return "Executive"
+        case .tabloid: return "Tabloid"
+        case .businessCard: return "Business card"
+        case .photo4x6: return "4x6 photo"
+        case .photo5x7: return "5x7 photo"
         default: return label
         }
     }
@@ -59,6 +74,11 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .a6: return L10n.t("{0} × {1} mm", 105, 148)
         case .b5Jis: return L10n.t("{0} × {1} mm", 182, 257)
         case .idCard: return L10n.t("{0} × {1} mm", 85.6, 54)
+        case .a3: return L10n.t("{0} × {1} mm", 297, 420)
+        case .tabloid: return L10n.t("{0} × {1} in", 11, 17)
+        case .businessCard: return L10n.t("{0} × {1} mm", 90, 55)
+        case .photo4x6: return L10n.t("{0} × {1} in", 4, 6)
+        case .photo5x7: return L10n.t("{0} × {1} in", 5, 7)
         }
     }
 }
@@ -85,6 +105,11 @@ public enum PaperSizes {
         case .a6: return CGSize(width: 4.1339, height: 5.8268)
         case .b5Jis: return CGSize(width: 7.1654, height: 10.1181)
         case .idCard: return CGSize(width: 2.125, height: 3.370)
+        case .a3: return CGSize(width: 11.6929, height: 16.5354)
+        case .tabloid: return CGSize(width: 11, height: 17)
+        case .businessCard: return CGSize(width: 2.1654, height: 3.5433)
+        case .photo4x6: return CGSize(width: 4, height: 6)
+        case .photo5x7: return CGSize(width: 5, height: 7)
         }
     }
 

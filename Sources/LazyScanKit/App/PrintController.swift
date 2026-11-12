@@ -150,7 +150,11 @@ package enum PrinterPapers {
         case .a5: return ["A5", "iso-a5", "iso_a5_148x210mm"]
         case .a6: return ["A6", "iso-a6", "iso_a6_105x148mm"]
         case .b5Jis: return ["B5", "JISB5", "jis-b5", "jis_b5_182x257mm"]
-        case .auto, .idCard: return []
+        case .a3: return ["A3", "iso-a3", "iso_a3_297x420mm"]
+        case .tabloid: return ["Tabloid", "11x17", "na-ledger", "na_ledger_11x17in"]
+        case .photo4x6: return ["4x6", "na-index-4x6", "na_index-4x6_4x6in"]
+        case .photo5x7: return ["5x7", "na-5x7", "na_5x7_5x7in"]
+        case .auto, .idCard, .businessCard: return []
         }
     }
 

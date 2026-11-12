@@ -129,7 +129,8 @@ public class TwainScanRequestsTests
     {
         Assert.Equal(
             [TwainSizes.None, TwainSizes.UsLetter, TwainSizes.UsLegal, TwainSizes.UsExecutive, TwainSizes.A4,
-             TwainSizes.A5, TwainSizes.A6, TwainSizes.JisB5, TwainSizes.None],
+             TwainSizes.A5, TwainSizes.A6, TwainSizes.JisB5, TwainSizes.None, TwainSizes.A3, TwainSizes.UsLedger,
+             TwainSizes.BusinessCard, TwainSizes.None, TwainSizes.None],
             PaperSizes.All.Select(TwainSizes.FromPaperSize));
         foreach (var size in PaperSizes.All.Where(s => TwainSizes.FromPaperSize(s) != TwainSizes.None))
         {

@@ -148,9 +148,9 @@ final class PrintLayoutTests: XCTestCase {
         XCTAssertEqual(a4Paper.largestMargin, 0.3, accuracy: 1e-9)
         XCTAssertEqual(a4Paper.description, "A4 (210 \u{00D7} 297 mm)")
         XCTAssertEqual(PrinterPaper.make(paper: letter, printable: nil).description, "Letter (8.5 \u{00D7} 11 in)")
-        let photo = PrinterPaper.make(paper: CGSize(width: 5, height: 7), printable: nil)
+        let photo = PrinterPaper.make(paper: CGSize(width: 5, height: 8), printable: nil)
         XCTAssertNil(photo.size)
-        XCTAssertEqual(photo.description, "5 \u{00D7} 7 in")
+        XCTAssertEqual(photo.description, "5 \u{00D7} 8 in")
         XCTAssertEqual(photo.largestMargin, 0)
     }
 

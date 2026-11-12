@@ -134,8 +134,8 @@ public static class TwainSizes
     }
 
     /// <summary>
-    /// The TWSS value of an app paper size; <see cref="None"/> for Automatic and for the ID
-    /// card, which TWAIN has no size for (its business card is 90 × 55 mm).
+    /// The TWSS value of an app paper size; <see cref="None"/> for Automatic and for the sizes
+    /// TWAIN has none for (the ID card, the photo sizes).
     /// </summary>
     public static int FromPaperSize(PaperSize size) => size switch
     {
@@ -146,6 +146,9 @@ public static class TwainSizes
         PaperSize.A5 => A5,
         PaperSize.A6 => A6,
         PaperSize.B5Jis => JisB5,
+        PaperSize.A3 => A3,
+        PaperSize.Tabloid => UsLedger,
+        PaperSize.BusinessCard => BusinessCard,
         _ => None,
     };
 

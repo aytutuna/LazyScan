@@ -763,7 +763,8 @@ public class ModelsCompatTests
         static string Name<T>(T value) => JsonSerializer.Serialize(value, StoreFiles.JsonOptions).Trim('"');
         Assert.Equal(["off", "both", "manual"], Enum.GetValues<DuplexMode>().Select(Name));
         Assert.Equal(["longEdge", "shortEdge"], Enum.GetValues<DuplexBinding>().Select(Name));
-        Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard"],
+        Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
+                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"],
                      Enum.GetValues<PaperSize>().Select(Name));
         var settings = new ScanSettings();
         Assert.Equal((DuplexMode.Off, DuplexBinding.LongEdge, PaperSize.Auto),
@@ -783,7 +784,7 @@ public class ModelsCompatTests
     {
         foreach (string sides in new[]
                  {
-                     """ "duplex": "triple", "backBinding": "spiral", "paperSize": "tabloid" """,
+                     """ "duplex": "triple", "backBinding": "spiral", "paperSize": "foolscap" """,
                      """ "duplex": "Both", "backBinding": "LongEdge", "paperSize": "A4" """,
                      """ "duplex": 1, "backBinding": true, "paperSize": {"width": 8} """,
                      """ "duplex": null, "backBinding": null, "paperSize": null """,
@@ -1234,7 +1235,7 @@ public class ModelsCompatTests
     {
         foreach (string taskOptions in new[]
                  {
-                     """ "taskOptions": {"idCardPaper": "tabloid", "idCardSaveSidesAsImages": true} """,
+                     """ "taskOptions": {"idCardPaper": "foolscap", "idCardSaveSidesAsImages": true} """,
                      """ "taskOptions": {"idCardPaper": "A4", "idCardSaveSidesAsImages": true} """,
                      """ "taskOptions": {"idCardPaper": 1, "idCardSaveSidesAsImages": true} """,
                      """ "taskOptions": {"idCardPaper": null, "idCardSaveSidesAsImages": true} """,

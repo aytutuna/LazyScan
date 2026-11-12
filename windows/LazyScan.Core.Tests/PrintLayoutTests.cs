@@ -149,9 +149,9 @@ public class PrintLayoutTests
         Assert.Equal(0.3, a4.LargestMargin, 1e-9);
         Assert.Equal("A4 (210 × 297 mm)", a4.Description);
         Assert.Equal("Letter (8.5 × 11 in)", PrinterPaper.Make(Letter, null).Description);
-        var photo = PrinterPaper.Make(new SizeD(5, 7), null);
+        var photo = PrinterPaper.Make(new SizeD(5, 8), null);
         Assert.Null(photo.Size);
-        Assert.Equal("5 × 7 in", photo.Description);
+        Assert.Equal("5 × 8 in", photo.Description);
         Assert.Equal(0, photo.LargestMargin);
     }
 

@@ -399,6 +399,11 @@ public static class WindowsScanRequest
         PaperSize.A6 => "IsoA6",
         PaperSize.B5Jis => "JisB5",
         PaperSize.IdCard => "CreditCard",
+        PaperSize.A3 => "IsoA3",
+        PaperSize.Tabloid => "NorthAmericaTabloid",
+        PaperSize.BusinessCard => "BusinessCard",
+        PaperSize.Photo4x6 => "NorthAmerica4x6",
+        PaperSize.Photo5x7 => "NorthAmerica5x7",
         _ => null,
     };
 
