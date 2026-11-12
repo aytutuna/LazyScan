@@ -175,7 +175,7 @@ public static class PdfBuilder
                 WriteFile(pages, written, progress: null, CancellationToken.None,
                           options with { Title = writtenName });
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ScanException { Kind: ScanErrorKind.ExportFailed }) { }
         }
         return written;
     }
@@ -186,14 +186,15 @@ public static class PdfBuilder
     /// </summary>
     public static void CheckWritable(string path)
     {
-        string probe = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, $".{Guid.NewGuid()}.pdf.tmp");
+        string folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        string probe = Path.Combine(folder, $".{Guid.NewGuid()}.pdf.tmp");
         try
         {
             using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose)) { }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            throw ScanException.ExportFailed(Loc.T("Could not write to {0}.", path));
+            throw ScanException.ExportFailed(SaveErrors.Describe(e, folder));
         }
     }
 
@@ -218,9 +219,10 @@ public static class PdfBuilder
             SetHidden(written, false); // in case clearing the temp file's attribute failed
             return written;
         }
-        catch
+        catch (Exception e)
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
+            if (e is IOException or UnauthorizedAccessException) throw ScanException.ExportFailed(SaveErrors.Describe(e, directory));
             throw;
         }
     }

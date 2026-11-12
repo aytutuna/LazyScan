@@ -3170,9 +3170,14 @@ public struct SavePlan {
     public func savedMessage(_ format: OutputFormat, fileNames: [String], size: String? = nil,
                              textFileNames: [String] = [], noTextFound: [String] = []) -> String
     public static func notSavedMessage(_ reason: String) -> String      // "None of the documents was saved; the pages are still in the queue. …"
-    public static func failureReason(_ error: Error) -> String          // ScanError.exportFailed's own message (no second "Saving failed: "), else localizedDescription
+    public static func failureReason(_ error: Error) -> String          // ScanError.exportFailed's own message (no second "Saving failed: ", and without SaveFailure.pagesKept), else localizedDescription
     public static func writeAllOrNothing(_ files: WrittenFiles, _ write: () async throws -> Void) async throws
 }
+/// Why a file could not be written, in plain words: the destination folder's name (never the hidden temp file) for a full disk,
+/// a read-only or refused folder, a missing folder, else "Could not save in “Folder”.", then "The pages are still in the queue."
+/// Used by PDFWriter.writeFile, ImageExporter and the text writer; Windows: Core `SaveErrors.Describe(e, folder)` in PdfBuilder, TextExport,
+/// WpfImageCodec and AppViewModel.OutputPath.
+public enum SaveFailure { public static var pagesKept: String; public static func message(_ error: Error?, folder: URL) -> String }
 public final class WrittenFiles { public private(set) var urls: [URL]; public func add(_ url: URL); public func rollBack() }
 public struct NotSavedError: LocalizedError, Equatable { public let message: String }   // shown as it is; not a scanner failure
 ```

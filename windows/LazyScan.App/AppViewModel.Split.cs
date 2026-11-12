@@ -396,7 +396,7 @@ public sealed partial class AppViewModel
             LastPdfBytes = lastPdfBytes;
             LastPdfProtected = lastPdfProtected;
             if (IsCancellation(e)) throw;
-            throw new IOException(SavePlan.NotSavedMessage(e.Message), e);
+            throw new IOException(SavePlan.NotSavedMessage(SavePlan.FailureReason(e.Message)), e);
         }
         MarkSaved(saved);
         DeleteSpoolFiles(queued);

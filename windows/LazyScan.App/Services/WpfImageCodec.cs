@@ -84,9 +84,12 @@ public static class WpfImageCodec
         }
         catch (Exception e) when (e is not ScanException)
         {
-            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
+            throw ScanException.ExportFailed(Describe(e, path));
         }
     }
+
+    private static string Describe(Exception e, string path) =>
+        SaveErrors.Describe(e, Path.GetDirectoryName(Path.GetFullPath(path))!);
 
     private static BitmapEncoder CreateEncoder(RgbaImage image, OutputFormat format, int dpi, double jpegQuality)
     {
@@ -135,7 +138,7 @@ public static class WpfImageCodec
         catch (Exception e)
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
-            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
+            throw ScanException.ExportFailed(Describe(e, path));
         }
     }
 
@@ -176,7 +179,7 @@ public static class WpfImageCodec
                 }
             }
             try { File.Delete(tmp); } catch { /* best effort */ }
-            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
+            throw ScanException.ExportFailed(Describe(e, path));
         }
     }
 
@@ -205,7 +208,7 @@ public static class WpfImageCodec
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
             if (e is ScanException) throw;
-            throw ScanException.ExportFailed(Loc.T("Could not write {0}: {1}", Path.GetFileName(path), e.Message));
+            throw ScanException.ExportFailed(Describe(e, path));
         }
     }
 

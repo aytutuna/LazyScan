@@ -33,6 +33,7 @@ public enum ImageExporter {
                                colorMode: ColorMode, shownAs: URL? = nil) throws {
         let shown = shownAs ?? url
         let fileName = shown.lastPathComponent
+        let folder = shown.deletingLastPathComponent()
         let utType: UTType
         switch format {
         case .jpeg: utType = .jpeg
@@ -49,7 +50,7 @@ public enum ImageExporter {
             do {
                 try BilevelTIFF.make(pixels, dpi: dpi).write(to: url, options: .atomic)
             } catch {
-                throw ScanError.exportFailed(L10n.t("Could not write {0}.", fileName))
+                throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
             }
             return
         }
@@ -57,7 +58,7 @@ public enum ImageExporter {
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL,
                                                                 utType.identifier as CFString,
                                                                 1, nil) else {
-            throw ScanError.exportFailed(L10n.t("Could not create the {0} file at {1}.", format.label, shown.path))
+            throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
         }
 
         var properties: [CFString: Any] = [
@@ -76,7 +77,7 @@ public enum ImageExporter {
 
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else {
-            throw ScanError.exportFailed(L10n.t("Could not write {0}.", fileName))
+            throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
         }
     }
 }

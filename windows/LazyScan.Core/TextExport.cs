@@ -190,9 +190,10 @@ public static class TextExport
             PdfBuilder.SetHidden(written, false);
             return written;
         }
-        catch
+        catch (Exception e)
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
+            if (e is IOException or UnauthorizedAccessException) throw ScanException.ExportFailed(SaveErrors.Describe(e, directory));
             throw;
         }
     }

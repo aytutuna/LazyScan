@@ -1294,7 +1294,6 @@
   "Each page's picture, then its editable text": {},
   "Only the editable text, without page pictures": {},
   "Could not read the page to write {0}.": {},
-  "Could not write {0}.": {},
   "Date": {},
   "Scan date, e.g. 2026-08-13": {},
   "Time": {},
@@ -1365,10 +1364,6 @@
   "no recognizer could process the page.": {},
   "No text recognizer is installed, so a searchable PDF would have no text. Add a language in Settings → Time & Language → Language.": {},
   "The new version was kept as {0}.": {
-    "note": "{0} is a file name."
-  },
-  "Could not write {0}: {1}": {},
-  "Could not write to {0}.": {
     "note": "{0} is a file name."
   },
   "Writing page {0} of {1}…": {},
@@ -2617,7 +2612,6 @@
   "The task “{0}” saves its scans on its own, so a document's pages cannot be added here. Leave the task or pick Document to PDF to add them.": {},
   "Receiving from phones ({0}).": {},
   "Not receiving from phones ({0}).": {},
-  "Could not create the {0} file at {1}.": {},
   "The task “{0}” saves its scans on its own": {},
   "The task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.": {},
   "A Windows Firewall rule stops phones from reaching Lazy Scan on this network. This happens when the firewall's question was cancelled or the network type was not ticked. Someone with administrator rights can open Windows Defender Firewall with Advanced Security (wf.msc), select Inbound Rules and delete “{0}” that block it. Windows then asks again.": {},
@@ -2667,6 +2661,11 @@
   "{0}%": {},
   "Show the scanner's window": {},
   "Bring the scanner's window to the front": {},
+  "The pages are still in the queue.": {},
+  "There is not enough space to save in “{0}”.": {},
+  "Files cannot be saved in “{0}”. It may be read-only. Choose another folder.": {},
+  "The folder “{0}” was not found. Choose another folder.": {},
+  "Could not save in “{0}”.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

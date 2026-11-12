@@ -104,14 +104,15 @@ public enum PDFWriter {
     /// incomplete file, so callers write to a temporary file and move it into place.
     public static func writeFile(_ pages: [PDFPageInput], to url: URL, progress: ((String) -> Void)? = nil,
                                  shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
+        let folder = url.deletingLastPathComponent()
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
-            throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
+            throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
         }
         let handle: FileHandle
         do {
             handle = try FileHandle(forWritingTo: url)
         } catch {
-            throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
+            throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
         }
         do {
             try write(pages, progress: progress, shouldContinue: shouldContinue, options: options) { chunk in
@@ -124,7 +125,7 @@ public enum PDFWriter {
             throw error
         } catch {
             try? handle.close()
-            throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
+            throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
         }
     }
 

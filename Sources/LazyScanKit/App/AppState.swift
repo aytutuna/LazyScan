@@ -2864,7 +2864,7 @@ public final class AppState: ObservableObject {
         do {
             // Fail on a folder that cannot be written before any page is read or recognized.
             guard FileManager.default.createFile(atPath: tmp.path, contents: nil) else {
-                throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
+                throw ScanError.exportFailed(SaveFailure.message(nil, folder: url.deletingLastPathComponent()))
             }
             try PDFBuilder.writePDF(pages: pages, pdfSize: pdfSize, to: tmp, progress: progress,
                                     shouldContinue: shouldContinue, textLayer: textLayer, options: options)
@@ -2970,7 +2970,7 @@ public final class AppState: ObservableObject {
             saved = try NamingTemplate.moveToFreeURL(tmp, to: url)
         } catch {
             try? FileManager.default.removeItem(at: tmp)
-            throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
+            throw ScanError.exportFailed(SaveFailure.message(error, folder: url.deletingLastPathComponent()))
         }
         return (saved, TextExport.hasText(ocrPages))
     }

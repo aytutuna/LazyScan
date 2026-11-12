@@ -150,7 +150,10 @@ public struct SavePlan {
     /// Why a document could not be written, for `notSavedMessage`: the message of a saving error
     /// without its "Saving failed: " (the message says that already), else the error's description.
     public static func failureReason(_ error: Error) -> String {
-        if let scanError = error as? ScanError, case .exportFailed(let message) = scanError { return message }
+        if let scanError = error as? ScanError, case .exportFailed(let message) = scanError {
+            let kept = " " + SaveFailure.pagesKept
+            return message.hasSuffix(kept) ? String(message.dropLast(kept.count)) : message
+        }
         return error.localizedDescription
     }
 

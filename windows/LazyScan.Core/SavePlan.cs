@@ -129,6 +129,15 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
     public static string NotSavedMessage(string reason) =>
         Loc.T("None of the documents was saved; the pages are still in the queue. {0}", reason);
 
+    /// <summary>The message of a failed save without its "Saving failed: " lead and the "pages are still in the queue" sentence, which <see cref="NotSavedMessage"/> says already.</summary>
+    public static string FailureReason(string message)
+    {
+        string lead = Loc.T("Saving failed: {0}", "").TrimEnd();
+        if (message.StartsWith(lead)) message = message[lead.Length..].TrimStart();
+        string kept = " " + SaveErrors.PagesKept;
+        return message.EndsWith(kept) ? message[..^kept.Length] : message;
+    }
+
     /// <summary>
     /// Runs <paramref name="write"/>, which records every file it writes in <paramref name="files"/>;
     /// when it fails or is cancelled, every file recorded is removed again and the exception goes on.

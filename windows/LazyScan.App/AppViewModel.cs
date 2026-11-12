@@ -4044,9 +4044,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             byte[] bytes = TextExport.Encode(text.Pages);
             return await Task.Run(() => TextExport.WriteNewFile(bytes, Path.ChangeExtension(pdfPath, "txt")));
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ScanException { Kind: ScanErrorKind.ExportFailed })
         {
-            ErrorMessage = TextExport.SidecarFailed(e.Message);
+            ErrorMessage = TextExport.SidecarFailed(SavePlan.FailureReason(e.Message));
             return null;
         }
     }
@@ -4260,7 +4260,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         // On a network folder these calls can block for the network timeout.
         string dir = s.ResolveDestination();
-        Directory.CreateDirectory(dir);
+        try { Directory.CreateDirectory(dir); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw ScanException.ExportFailed(SaveErrors.Describe(e, dir));
+        }
         // A typed name is the whole file name: no template and no running number.
         string baseName = name is not null
             ? new NamingTemplate("{label}").BaseFilename(new NamingContext(0, DateTime.Now, s.Intent) { Label = name })
