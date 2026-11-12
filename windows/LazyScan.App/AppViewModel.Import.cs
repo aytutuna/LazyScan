@@ -201,7 +201,10 @@ public sealed partial class AppViewModel
                 }
                 var cleaned = page;
                 var (processed, preview) = await Task.Run(() =>
-                    (processor.Process([cleaned], token).Pages.ToList(), ScanHistory.MakePreview(cleaned.Image, CanvasPreviewMaxSide)), token);
+                {
+                    var pages = processor.Process([cleaned], token).Pages.ToList();
+                    return (pages, ScanHistory.MakePreview((pages.Count > 0 ? pages[^1] : cleaned).Image, CanvasPreviewMaxSide));
+                }, token);
                 // Spill the page and the photo it was taken from to disk; keep only previews, in the queue
                 // or until the pages are saved.
                 var spooled = await Task.Run(() => SpoolPages(processed, spoolDirectory).Select(p => new PageItem(p)).ToList());

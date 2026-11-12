@@ -1235,6 +1235,9 @@
                                                     AutomationProperties.Name="{loc:T Reset sliders}"
                                                     HorizontalAlignment="Left" Margin="-11,4,0,4"
                                                     Click="ResetSliders_Click" />
+                                            <TextBlock x:Name="SlidersNextScanNote" Style="{StaticResource SecondaryBodyText}"
+                                                       Text="{loc:T These sliders apply to the next scan.}"
+                                                       TextWrapping="Wrap" Margin="0,0,0,6" Visibility="Collapsed" />
                                             <CheckBox x:Name="DescreenBox" Style="{StaticResource ToggleSwitchStyle}"
                                                       Content="{loc:T Remove print dots}"
                                                       ToolTip="{loc:T Smooths the dot pattern of magazines and printed photos (descreen)}"

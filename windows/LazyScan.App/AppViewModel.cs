@@ -713,7 +713,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>Image shown in the preview canvas (before live adjustments): the overview until a page lands, then the last scan.</summary>
     public RgbaImage? CanvasImage => OverviewImage ?? LastScanImage;
-    /// <summary><see cref="CanvasImage"/> rendered through the current adjustments.</summary>
+    /// <summary>The canvas shows a scanned page as queued, so the sliders only change the next scan.</summary>
+    public bool CanvasShowsScannedPage => OverviewImage is null && LastScanImage is not null;
+    /// <summary><see cref="CanvasImage"/> as shown: the overview through the current adjustments, a scanned page as saved.</summary>
     public BitmapSource? CanvasBitmap { get; private set; }
     /// <summary>True while a live-preview render is scheduled or running.</summary>
     public bool IsCanvasRenderPending => _renderTimer.IsEnabled || _renderInFlight;
@@ -1794,11 +1796,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var processed = cleaned.Pages.ToList();
             // " 2 look blank and will be skipped. 3 straightened." after the pages added to the queue.
 
-            // The canvas shows the RAW scan through the live adjustments (only a downsampled
+            // The canvas shows the last page as it will be saved (only a downsampled
             // copy is retained), and every scanned page is recorded in the session history.
-            var (rawPreview, historyItems) = await Task.Run(() =>
+            var (pagePreview, historyItems) = await Task.Run(() =>
             {
-                var preview = ScanHistory.MakePreview(raw[^1].Image, CanvasPreviewMaxSide);
+                var preview = ScanHistory.MakePreview((processed.Count > 0 ? processed[^1] : raw[^1]).Image, CanvasPreviewMaxSide);
                 // ID cards are kept out of the history: nothing of them is left once saved or discarded.
                 if (idCard) return (preview, new List<HistoryItem>());
                 var entries = ScanHistory.MakeEntries(raw, s.Intent, DateTime.Now);
@@ -1818,12 +1820,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             switch (TaskCatalog.FlowOf(s))
             {
                 case TaskFlowKind.DocumentQueue:
-                    SetLastScan(rawPreview);
+                    SetLastScan(pagePreview);
                     await SaveImmediately(processed, s, token);
                     RecordCaptures(processed.Select(page => page.Id));
                     break;
                 case TaskFlowKind.PhotoSplit:
-                    SetLastScan(rawPreview);
+                    SetLastScan(pagePreview);
                     StatusMessage = Loc.T("Detecting photos…");
                     NotifyAll();
                     var found = await Task.Run(() =>
@@ -1855,16 +1857,16 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         DropIdCardScanOutsideTask();
                         break;
                     }
-                    SetLastScan(rawPreview);
+                    SetLastScan(pagePreview);
                     await CaptureIdCardSide(cardSide!.Value, processed[^1], selection, generation, token);
                     break;
                 case TaskFlowKind.Copy:
-                    SetLastScan(rawPreview);
+                    SetLastScan(pagePreview);
                     await PrintCopyPages(processed, s, copySetup!, areaSelected, token);
                     RecordCaptures(processed.Select(page => page.Id));
                     break;
                 case TaskFlowKind.ReceiptSplit:
-                    SetLastScan(rawPreview);
+                    SetLastScan(pagePreview);
                     await ShowReceipts(processed, s, generation, token);
                     break;
             }
@@ -1983,7 +1985,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 cleaned = new PageProcessor([], processor.Arrangement, processor.Binding).Process([page], firstTransfer: firstTransfer);
             }
-            var preview = ScanHistory.MakePreview(cleaned.Arranged[^1].Image, CanvasPreviewMaxSide);
+            var preview = ScanHistory.MakePreview((cleaned.Pages.Count > 0 ? cleaned.Pages[^1] : cleaned.Arranged[^1]).Image, CanvasPreviewMaxSide);
             var entries = ScanHistory.MakeEntries(cleaned.Arranged, s.Intent, DateTime.Now);
             // The cards only display the bitmap: keep metadata-only entries so each
             // preview's pixels are held once, not twice.
@@ -3657,11 +3659,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         RequestCanvasRender(debounce: false);
     }
 
-    private CanvasRenderKey CurrentRenderKey() =>
-        new(_canvasRevision, Settings.Adjustments.Clone(), Settings.ColorMode);
+    // A scanned page already carries the adjustments it was processed with; only the overview is adjusted live.
+    private CanvasRenderKey CurrentRenderKey() => CanvasShowsScannedPage
+        ? new(_canvasRevision, new AdjustmentSettings(), ColorMode.Color)
+        : new(_canvasRevision, Settings.Adjustments.Clone(), Settings.ColorMode);
 
     /// <summary>
-    /// Schedule a render of <see cref="CanvasImage"/> through the current adjustments. Slider
+    /// Schedule a render of <see cref="CanvasImage"/>: the overview through the current adjustments, a scanned page as it is. Slider
     /// edits are debounced; only one render runs at a time and a result that a newer edit
     /// has superseded is dropped.
     /// </summary>
@@ -3698,6 +3702,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (CanvasImage is not { } baseImage) return;
         var key = CurrentRenderKey();
         if (key == _renderedKey) return;
+        bool adjusts = !CanvasShowsScannedPage;
         _renderInFlight = true;
         BitmapSource? rendered = null;
         try
@@ -3705,8 +3710,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             rendered = await Task.Run(() =>
             {
                 var down = ScanHistory.MakePreview(baseImage, CanvasPreviewMaxSide);
-                var adjusted = ImagePipeline.Apply(key.Adjustments, down, key.ColorMode);
-                return WpfImageCodec.ToBitmapSource(adjusted);
+                return WpfImageCodec.ToBitmapSource(adjusts ? ImagePipeline.Apply(key.Adjustments, down, key.ColorMode) : down);
             });
         }
         catch

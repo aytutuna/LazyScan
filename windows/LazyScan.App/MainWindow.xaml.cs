@@ -379,6 +379,7 @@ public partial class MainWindow : Window
 
         BitmapSource? stageBitmap = ViewModel.ViewedPageBitmap ?? ViewModel.CanvasBitmap;
         CanvasImage.Source = stageBitmap;
+        SlidersNextScanNote.Visibility = ViewModel.CanvasShowsScannedPage ? Visibility.Visible : Visibility.Collapsed;
         CanvasHint.Visibility = stageBitmap is null && !ViewModel.ViewsPage ? Visibility.Visible : Visibility.Collapsed;
         // After a preview, until an area is selected: the preview can be dragged over. The area is
         // the flatbed's (a feeder scan ignores it), so choosing the feeder hides the chip and the marquee.
