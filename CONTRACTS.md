@@ -3899,8 +3899,8 @@ public final class LiveQuadTracker: @unchecked Sendable {
     public static func detect(_ image: RgbaImage, hint: Quad?) -> PhotoDocumentDetection
     public static func detection(_ page: QuadCandidate, width: Int, height: Int) -> PhotoDocumentDetection?   // the model's page, when accepted
     public func process(_ frame: IOSCameraFrame) -> LiveQuadUpdate?   // nil: passed over (too soon, or reset meanwhile)
-    public func reset()
-    public func markCaptured()                                     // I9: the page in view was taken
+    public func reset()                                            // also forgets the page taken
+    public func markCaptured()                                     // I9: the page in view was taken; its PageThumbnail is kept
     public func follow(_ source: FrameSource, onUpdate: @escaping @Sendable (LiveQuadUpdate) -> Void)
     public func pauseFollowing()                                   // I9: stops the source, keeps the page (taken stays taken);
                                                                    // the first frame after it resumes CaptureStability (resume(atMs:))
@@ -3909,6 +3909,13 @@ public final class LiveQuadTracker: @unchecked Sendable {
     public static func normalized(_ quad: Quad, width: Int, height: Int) -> Quad
     public static func photoOutline(_ outline: Quad, rotationDegrees: Int) -> Quad?   // into the upright photo; nil unless 0/90/180/270
 }
+public struct PageThumbnail: Equatable, Sendable {                // a small grayscale look at the page (24 x 24 cell means over its bounding box)
+    public static let side = 24; public static let minCorrelation = 0.9; public static let flatSpread = 4.0; public static let flatBrightness = 12.0
+    public init(_ frame: RgbaImage, page: Quad?)
+    public func matches(_ other: PageThumbnail) -> Bool            // cells correlate >= 0.9; two flat looks: mean luma within 12
+}
+// The tracker drops a shouldCapture whose steady page matches the look at the page last photographed, so a shake or a hand
+// over the page does not take it twice (iPhone only: the Core has no live camera).
 public struct LiveQuadFilter: Sendable {                          // the tracker's steadying, pure logic
     // smoothing 0.5, jitterShare 0.01, jumpShare 0.06 (of the frame's diagonal); holds LiveQuadTracker.holdMs
     public struct Output: Equatable, Sendable { public let page: Quad?; public let shown: Quad? }   // for CaptureStability; to draw

@@ -344,6 +344,35 @@ private func assertQuad(_ a: Quad?, _ b: Quad, accuracy: Double, file: StaticStr
     }
 }
 
+/// `image` with a dark band across the sheet, as another page's text would make.
+func barred(_ image: RgbaImage) -> RgbaImage {
+    var pixels: [UInt8] = image.pixels
+    var y: Int = 90
+    while y < 150 {
+        var x: Int = 80
+        while x < 240 {
+            let o: Int = (y * image.width + x) * 4
+            pixels[o] = 40
+            pixels[o + 1] = 40
+            pixels[o + 2] = 40
+            x += 1
+        }
+        y += 1
+    }
+    return RgbaImage(width: image.width, height: image.height, pixels: pixels)
+}
+
+/// A page search that finds the sheet (±1 px) except in frames `gone` (a hand over it), where it finds nothing.
+private func sheetDetector(missingIn gone: Range<Int>) -> LiveQuadTracker.Detector {
+    { (image: RgbaImage, _: Quad?) -> PhotoDocumentDetection in
+        let index: Int = Int(image.pixels[3])
+        if gone.contains(index) {
+            return detection(nil)
+        }
+        return detection(LiveFrames.sheetMoved(index % 2 == 0 ? 1 : -1))
+    }
+}
+
 final class LiveQuadTrackerTests: XCTestCase {
     func test_aPageSlidingThenHeldThenTakenAway_isFollowedAtTenFramesASecond() throws {
         let tracker = LiveQuadTracker()
@@ -805,6 +834,53 @@ final class LiveQuadTrackerTests: XCTestCase {
             index += 1
         }
         XCTAssertEqual(fired, [7, 17])
+    }
+
+    func test_aPageCoveredForASecond_isNotTakenAgain_butAnotherPageIs() {
+        let sharp: RgbaImage = LiveFrames.frame()
+        let other: RgbaImage = barred(sharp)
+        func run(from index: Int, laterPage: RgbaImage) -> [Int] {
+            let tracker = LiveQuadTracker(detector: sheetDetector(missingIn: 20..<30), quality: goodReadings)
+            var fired: [Int] = []
+            var i: Int = 0
+            while i < 70 {
+                let image: RgbaImage = i < index ? sharp : laterPage
+                let frame = IOSCameraFrame(image: tagged(image, i), timestampMs: Double(i) * 100.0)
+                if let update = tracker.process(frame), update.shouldCapture {
+                    fired.append(i)
+                    tracker.markCaptured()
+                }
+                i += 1
+            }
+            return fired
+        }
+        // The hand leaves and the same page holds still again: it looks like the page taken, so it waits.
+        XCTAssertEqual(run(from: 0, laterPage: sharp), [7])
+        // Another page laid in its place is taken.
+        let fired: [Int] = run(from: 30, laterPage: other)
+        XCTAssertEqual(fired.count, 2)
+        XCTAssertEqual(fired.first, 7)
+        XCTAssertGreaterThan(fired.last ?? 0, 29)
+    }
+
+    func test_resetForgetsThePageTaken_soItCanBeTakenAgain() {
+        let sharp: RgbaImage = LiveFrames.frame()
+        let tracker = LiveQuadTracker(detector: sheetDetector(missingIn: 20..<30), quality: goodReadings)
+        var fired: [Int] = []
+        var i: Int = 0
+        while i < 70 {
+            let frame = IOSCameraFrame(image: tagged(sharp, i), timestampMs: Double(i) * 100.0)
+            if let update = tracker.process(frame), update.shouldCapture {
+                fired.append(i)
+                tracker.markCaptured()
+            }
+            if i == 25 {
+                // Skipped in the corner editor: no page came of it.
+                tracker.reset()
+            }
+            i += 1
+        }
+        XCTAssertEqual(fired.count, 2)
     }
 
     func test_theModelsPage_isTakenWhenSure_andTheSearchWaitsWhileTheModelAnswers() {

@@ -94,9 +94,11 @@ public struct LiveQuadUpdate: Equatable, Sendable {
 /// or went (continuous capture); a pause (`pauseFollowing()`: the camera stopped for the corner editor, the
 /// background, heat) keeps that, and the time the camera was stopped counts neither as time the page was
 /// missing nor as time it held still (`CaptureStability.resume(atMs:)` on the first frame searched after
-/// it). Turning the automatic shutter on re-arms only a page taken without a photo (`rearm()`). Frames are
-/// searched on the source's own queue, one at a time, never on the main thread; `reset()` may be called
-/// from any thread and drops a frame being searched meanwhile.
+/// it). A page held still again after it went or was covered is not decided on when it looks like the page
+/// last photographed (`PageThumbnail`), so a shake or a hand over the page does not take it twice; `reset()`
+/// forgets that look. Turning the automatic shutter on re-arms only a page taken without a photo
+/// (`rearm()`). Frames are searched on the source's own queue, one at a time, never on the main thread;
+/// `reset()` may be called from any thread and drops a frame being searched meanwhile.
 public final class LiveQuadTracker: @unchecked Sendable {
     /// About ten searches a second.
     public static let frameIntervalMs: Double = 100
@@ -137,6 +139,10 @@ public final class LiveQuadTracker: @unchecked Sendable {
     /// A photo was taken of the page `stability` counts as taken (`markCaptured()`), not only decided on;
     /// false again once it is no longer taken.
     private var photographed: Bool = false
+    /// The latest frame searched, for the look at the page when a photo is taken (`markCaptured()`).
+    private var latestImage: RgbaImage?
+    /// The look at the page last photographed; a page held still that looks the same is not decided on again.
+    private var photographedLook: PageThumbnail?
 
     /// `detector` nil: the shared page search with `liveOptions`; `quality` nil: `FrameQuality.measure` (tests
     /// may pass their own).
@@ -241,7 +247,13 @@ public final class LiveQuadTracker: @unchecked Sendable {
         let observation = CaptureObservation(quad: steadied.page, confidence: detection.confidence, timestampMs: t,
                                              frameWidth: width, frameHeight: height,
                                              sharpness: reading.sharpness, brightness: reading.brightness)
-        let decision: CaptureDecision = stability.update(observation)
+        var decision: CaptureDecision = stability.update(observation)
+        latestImage = frame.image
+        // The page came back after a shake or a hand over it and held still: it is the page already taken.
+        if decision.shouldCapture, let look = photographedLook, let page = steadied.page,
+           PageThumbnail(frame.image, page: page).matches(look) {
+            decision.shouldCapture = false
+        }
         if decision.state != .captured {
             photographed = false
         }
@@ -324,6 +336,10 @@ public final class LiveQuadTracker: @unchecked Sendable {
         if stability.state == .captured {
             heldAt = lastFound
             photographed = true
+            photographedLook = nil
+            if let image = latestImage, let page = lastFound {
+                photographedLook = PageThumbnail(image, page: page)
+            }
         }
         lock.unlock()
     }
@@ -431,6 +447,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
         heldAt = nil
         resuming = false
         photographed = false
+        photographedLook = nil
     }
 }
 
