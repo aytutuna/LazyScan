@@ -27,12 +27,12 @@ public struct PageThumbnail: Equatable, Sendable {
         var means: [Double] = []
         var cy: Int = 0
         while cy < side {
-            let y0: Int = top + cy * boxHeight / side
-            let y1: Int = min(max(y0 + 1, top + (cy + 1) * boxHeight / side), bottom)
+            let y0: Int = box.y0 + cy * boxHeight / side
+            let y1: Int = min(max(y0 + 1, box.y0 + (cy + 1) * boxHeight / side), box.y1)
             var cx: Int = 0
             while cx < side {
-                let x0: Int = left + cx * boxWidth / side
-                let x1: Int = min(max(x0 + 1, left + (cx + 1) * boxWidth / side), right)
+                let x0: Int = box.x0 + cx * boxWidth / side
+                let x1: Int = min(max(x0 + 1, box.x0 + (cx + 1) * boxWidth / side), box.x1)
                 var sum: Int = 0
                 var y: Int = y0
                 while y < y1 {
