@@ -74,6 +74,7 @@ extension AppState {
             }
             let pages: [ScannedPage] = collected
             let count: Int = pages.count
+            let failures = PDFTextFailures()
             self.statusMessage = s.pdfSearchable ? L10n.t("Running OCR and adding pages…") : L10n.t("Adding pages…")
             let backup: URL? = self.keepsSavedForUndo ? self.spoolDirectory.appendingPathComponent("\(UUID().uuidString).pdf") : nil
             let (result, kept, stamp): (PDFAppendResult, Bool, FileStamp?) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendResult, Bool, FileStamp?) in
@@ -85,7 +86,7 @@ extension AppState {
                 }
                 let inputs: [PDFPageInput] = try PDFBuilder.pageInputs(
                     pages, pdfSize: s.output.pdfSize, progress: report, shouldContinue: { !flag.isCancelled },
-                    textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: nil, pages: pages))
+                    textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: nil, pages: pages, failures: failures))
                 reportAdding(L10n.plural(count, one: "Adding {0} page to {1}…", other: "Adding {0} pages to {1}…", name),
                              StatusDetail(head: .addingPages(count)))
                 return try Self.accessing(url, writing: true, through: access) { (file: URL) throws -> (PDFAppendResult, Bool, FileStamp?) in
@@ -118,6 +119,7 @@ extension AppState {
             var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: size)
             message += plan.leftOutNote()
             if s.output.protect { message = L10n.t("{0}. {1}", message, PDFAppender.noPasswordNote) }
+            if let note = failures.note { self.errorMessage = note }
             self.setStatus(message, StatusDetail(head: .pagesAdded(count, queue: nil, blank: 0, split: 0)))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }

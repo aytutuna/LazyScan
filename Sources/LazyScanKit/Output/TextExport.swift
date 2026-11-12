@@ -70,6 +70,14 @@ public enum TextExport {
         L10n.t("The PDF was saved, but not its text file: {0}", reason(message))
     }
 
+    /// What the user reads when the OCR of some pages of a searchable PDF failed and they were saved
+    /// without text: "The PDF was saved, but the text of 2 pages could not be read: …". `message` is
+    /// the first OCR error's.
+    public static func layerLost(pageCount: Int, _ message: String) -> String {
+        L10n.plural(pageCount, one: "The PDF was saved, but the text of {0} page could not be read: {1}",
+                    other: "The PDF was saved, but the text of {0} pages could not be read: {1}", reason(message))
+    }
+
     /// What the user reads when a scan to be saved at once as Word or text could not be (its text
     /// could not be read, its file could not be written, or the save was cancelled) and its pages
     /// went to the queue instead: "The 3 pages are kept in the queue: press Save Word once the text

@@ -209,6 +209,9 @@
   "Saved {0}-page text file: {1} — no text was found": {},
   "The text could not be read: {0}": {},
   "The PDF was saved, but not its text file: {0}": {},
+  "The PDF was saved, but the text of {0} page could not be read: {1}": {
+    "other": "The PDF was saved, but the text of {0} pages could not be read: {1}"
+  },
   "Copied the text of page {0}.": {},
   "No text was found on page {0}.": {},
   "the text recognition did not work": {},

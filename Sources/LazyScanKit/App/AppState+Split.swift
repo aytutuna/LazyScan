@@ -233,6 +233,7 @@ extension AppState {
         var textFiles: [String] = []
         var noText: [String] = []
         var textProblem: String?
+        let failures = PDFTextFailures()
         // The PDFs carry the save's password when the option is on, asked for before the first file is
         // named (which takes the running number).
         var protectedPDFs = false
@@ -265,7 +266,7 @@ extension AppState {
                 let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
                     try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
                                                 textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                          pages: pages),
+                                                                          pages: pages, failures: failures),
                                                 options: options,
                                                 shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                         Task { @MainActor in self?.statusMessage = msg }
@@ -298,6 +299,7 @@ extension AppState {
         dropSaved(queued, wrote: files.urls)
         resetFlow()
         if let textProblem { errorMessage = TextExport.sidecarFailed(textProblem) }
+        if let note = failures.note { errorMessage = note }
         // The PDFs' size together, and "password-protected" when they are, in the brackets after the page count.
         let size: String? = format == .pdf
             ? Self.pdfNote(size: Self.totalSizeText(of: saved), isProtected: protectedPDFs)

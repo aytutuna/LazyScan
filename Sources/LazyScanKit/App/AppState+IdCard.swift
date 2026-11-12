@@ -242,6 +242,7 @@ extension AppState {
             guard let composed else { throw ScanError.exportFailed(L10n.t("The page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             var saved: [URL] = []
+            let failures = PDFTextFailures()
             // The card is a picture: a PDF or an image, never a text format.
             let pageFormat = s.format.pageFormat
             do {
@@ -255,8 +256,8 @@ extension AppState {
                     try await Task.detached(priority: .userInitiated) {
                         try AppState.writePDFAtomically(pages: [page], searchable: s.pdfSearchable,
                                                         languages: s.ocrLanguages, pdfSize: s.output.pdfSize, to: url,
-                                                        options: options,
-                                                        shouldContinue: { !flag.isCancelled }) { [weak self] msg in
+                                                        options: options, shouldContinue: { !flag.isCancelled },
+                                                        failures: failures) { [weak self] msg in
                             Task { @MainActor in self?.statusMessage = msg }
                         }
                     }.value
@@ -316,6 +317,7 @@ extension AppState {
             case (nil, false):
                 message = L10n.t("Saved the ID card on one {0} page: {1}, and each side as an image", paper.label, name)
             }
+            if let note = failures.note { self.errorMessage = note }
             self.setStatus(message, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: saved)
         }

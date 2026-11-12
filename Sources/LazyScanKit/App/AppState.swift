@@ -83,6 +83,24 @@ final class PDFTextCollector: @unchecked Sendable {
     var problem: String?
 }
 
+/// The pages of a searchable PDF whose text could not be read, so they were saved without a text
+/// layer: how many, and the first reason. Filled by the task that writes the PDF, read after it.
+final class PDFTextFailures: @unchecked Sendable {
+    var count = 0
+    var reason: String?
+
+    func add(_ error: Error) {
+        count += 1
+        if reason == nil { reason = error.localizedDescription }
+    }
+
+    /// What the user reads after the save when some pages lost their text; nil when every page was read.
+    var note: String? {
+        guard count > 0, let reason else { return nil }
+        return TextExport.layerLost(pageCount: count, reason)
+    }
+}
+
 /// What comes with pages brought in through `AppState.ingest` besides the pages: the settings they
 /// were captured with, where they come from and, for a scan, how its sides were scanned and what part
 /// of the glass it covered.
@@ -1644,10 +1662,11 @@ public final class AppState: ObservableObject {
             let url = try self.outputURL(fileExtension: "pdf", label: document.label)
             let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
             self.statusMessage = s.pdfSearchable || text != nil ? L10n.t("Running OCR and building PDF…") : L10n.t("Building PDF…")
+            let failures = PDFTextFailures()
             let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
                 try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
                                             textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                      pages: pages),
+                                                                      pages: pages, failures: failures),
                                             options: options,
                                             shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                     Task { @MainActor in self?.statusMessage = msg }
@@ -1661,6 +1680,7 @@ public final class AppState: ObservableObject {
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
             let saved = TextExport.savedPDFMessage(pageCount: pages.count, fileName: url.lastPathComponent,
                                                    detail: self.pdfDetail, textFileName: textResult?.url?.lastPathComponent)
+            if let note = failures.note { self.errorMessage = note }
             self.setStatus(saved + left, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: [url])
         }
@@ -1674,6 +1694,7 @@ public final class AppState: ObservableObject {
         var saved: [URL] = []
         var detail: String?
         var textFileName: String?
+        var layerNote: String?
         if s.format.isTextFormat {
             let url: URL
             let hasText: Bool
@@ -1720,10 +1741,11 @@ public final class AppState: ObservableObject {
                 let url = try outputURL(fileExtension: "pdf")
                 let options: PDFWriteOptions = try await pdfOptions(s, for: url)
                 let text = s.output.savesTextBeside ? PDFTextCollector() : nil
+                let failures = PDFTextFailures()
                 let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
                     try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
                                                 textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                          pages: pages),
+                                                                          pages: pages, failures: failures),
                                                 options: options,
                                                 shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                         Task { @MainActor in self?.statusMessage = msg }
@@ -1735,6 +1757,7 @@ public final class AppState: ObservableObject {
                 if let problem = textResult?.problem { errorMessage = TextExport.sidecarFailed(problem) }
                 detail = pdfDetail
                 textFileName = textResult?.url?.lastPathComponent
+                layerNote = failures.note
             } catch {
                 let cancelled = await keepInQueue(pages, after: error)
                 statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: 0, cancelled: cancelled,
@@ -1766,9 +1789,10 @@ public final class AppState: ObservableObject {
             }
         }
         lastSavedURLs = saved
-        setStatus(TextExport.savedFilesMessage(fileNames: saved.map(\.lastPathComponent).joined(separator: ", "),
-                                               detail: detail, textFileName: textFileName),
-                  StatusDetail(head: .saved))
+        let savedMessage = TextExport.savedFilesMessage(fileNames: saved.map(\.lastPathComponent).joined(separator: ", "),
+                                                        detail: detail, textFileName: textFileName)
+        if let layerNote { errorMessage = layerNote }
+        setStatus(savedMessage, StatusDetail(head: .saved))
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -2528,9 +2552,17 @@ public final class AppState: ObservableObject {
                                                        languages: [String], pdfSize: PDFSizePreset,
                                                        to url: URL, options: PDFWriteOptions? = nil,
                                                        shouldContinue: (() -> Bool)? = nil,
+                                                       failures: PDFTextFailures? = nil,
                                                        progress: ((String) -> Void)?) throws {
         let layer: PDFTextLayer? = searchable
-            ? { _, page in try? OCRService.recognizeLines(in: page.image, languages: languages) }
+            ? { _, page in
+                do {
+                    return try OCRService.recognizeLines(in: page.image, languages: languages)
+                } catch {
+                    failures?.add(error)
+                    return nil
+                }
+            }
             : nil
         try writePDFAtomically(pages: pages, pdfSize: pdfSize, to: url, textLayer: layer, options: options,
                                shouldContinue: shouldContinue, progress: progress)
@@ -2556,9 +2588,10 @@ public final class AppState: ObservableObject {
 
     /// The text layer of a PDF being saved: OCR reads each page once, for the searchable text
     /// layer (when `searchable`) and for the text file beside the PDF (when `collecting`, which
-    /// keeps the lines, or the first OCR error, page by page).
+    /// keeps the lines, or the first OCR error, page by page). A searchable page whose OCR throws is
+    /// saved without text and counted in `failures`.
     nonisolated static func textLayer(searchable: Bool, collecting text: PDFTextCollector?,
-                                                  pages: [ScannedPage]) -> PDFTextLayer? {
+                                                  pages: [ScannedPage], failures: PDFTextFailures? = nil) -> PDFTextLayer? {
         guard searchable || text != nil else { return nil }
         return { index, prepared in
             // Once the text file is known to be lost, a PDF that is not searchable needs no more OCR.
@@ -2568,6 +2601,7 @@ public final class AppState: ObservableObject {
                 lines = try OCRService.recognizeLines(in: prepared.image)
             } catch {
                 lines = nil
+                if searchable { failures?.add(error) }
                 if let text, text.problem == nil { text.problem = error.localizedDescription }
             }
             if let lines, let text, text.problem == nil {

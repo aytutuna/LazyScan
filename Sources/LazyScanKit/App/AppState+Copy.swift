@@ -210,6 +210,7 @@ extension AppState {
         // After a copy went to the printer, a PDF that cannot be written is reported, not undone.
         let url: URL
         var protected = false
+        let failures = PDFTextFailures()
         do {
             let target = try outputURL(fileExtension: "pdf")
             let writeOptions: PDFWriteOptions = try await self.pdfOptions(s, for: target)
@@ -217,7 +218,7 @@ extension AppState {
             try await Task.detached(priority: .userInitiated) {
                 try AppState.writePDFAtomically(pages: pages, searchable: s.pdfSearchable, languages: s.ocrLanguages,
                                                 pdfSize: s.output.pdfSize, to: target, options: writeOptions,
-                                                shouldContinue: { !flag.isCancelled }, progress: nil)
+                                                shouldContinue: { !flag.isCancelled }, failures: failures, progress: nil)
             }.value
             url = target
         } catch {
@@ -243,6 +244,7 @@ extension AppState {
         let saved: String = pdfDetail.map { L10n.t("Saved {0} ({1}).", url.lastPathComponent, $0) }
             ?? L10n.t("Saved {0}.", url.lastPathComponent)
         setStatus("\(sent) \(saved)\(warningNote)", StatusDetail(head: .sentToPrinter))
+        if let note = failures.note { errorMessage = note }
         return true
     }
 

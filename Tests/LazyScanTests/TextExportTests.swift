@@ -84,6 +84,10 @@ final class TextExportTests: XCTestCase {
                        "The PDF was saved, but not its text file: no OCR language pack is installed.")
         XCTAssertEqual(TextExport.sidecarFailed("Access to the path is denied."),
                        "The PDF was saved, but not its text file: Access to the path is denied.")
+        XCTAssertEqual(TextExport.layerLost(pageCount: 2, "Scan failed: OCR failed: no OCR language pack is installed."),
+                       "The PDF was saved, but the text of 2 pages could not be read: no OCR language pack is installed.")
+        XCTAssertEqual(TextExport.layerLost(pageCount: 1, "  "),
+                       "The PDF was saved, but the text of 1 page could not be read: the text recognition did not work.")
         XCTAssertEqual(TextExport.keptInQueue(format: .word, pageCount: 3, cancelled: false),
                        "The 3 pages are kept in the queue: press Save Word once the text can be read, or choose PDF to save them as scanned.")
         XCTAssertEqual(TextExport.keptInQueue(format: .text, pageCount: 1, cancelled: false),
@@ -101,6 +105,16 @@ final class TextExportTests: XCTestCase {
                        "Cancelled \u{2014} the page is kept in the queue.")
         // The error the app shows says the same.
         XCTAssertEqual(TextOutputError("Copy did not work.").localizedDescription, "Copy did not work.")
+    }
+
+    func test_textFailures_noteIsNilUntilAPageFails_thenNamesTheCountAndFirstReason() {
+        struct Failure: LocalizedError { let errorDescription: String? }
+        let failures = PDFTextFailures()
+        XCTAssertNil(failures.note)
+        failures.add(Failure(errorDescription: "no OCR language pack is installed"))
+        XCTAssertEqual(failures.note, "The PDF was saved, but the text of 1 page could not be read: no OCR language pack is installed.")
+        failures.add(Failure(errorDescription: "another reason"))
+        XCTAssertEqual(failures.note, "The PDF was saved, but the text of 2 pages could not be read: no OCR language pack is installed.")
     }
 
     func test_pagesKeptInQueue_saysWhatWasSaved_andWhatWaits() {
