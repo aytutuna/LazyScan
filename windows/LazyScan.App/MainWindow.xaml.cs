@@ -2207,16 +2207,29 @@ public partial class MainWindow : Window
     {
         if (e.OriginalSource is not UIElement source
             || ItemsControl.ContainerFromElement(DeviceList, source) is not ListBoxItem { DataContext: DeviceRow row } item
-            || row.Id != ViewModel.SelectedDeviceId || ViewModel.IsConnected || ViewModel.IsConnecting)
+            || row.ConnectionState != DeviceConnectionState.Failed)
         {
             return;
         }
-        // Not from the row's "via" button, which opens the connection menu.
+        // Not from the row's buttons: "via" opens the connection menu, Retry retries on its own.
         for (DependencyObject? node = source; node != item; node = System.Windows.Media.VisualTreeHelper.GetParent(node))
         {
             if (node is null or ButtonBase) return;
         }
         ViewModel.UserSelectDevice(row.Id);
+    }
+
+    private void RetryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DeviceRow row }) ViewModel.UserSelectDevice(row.Id);
+    }
+
+    /// <summary>Enter on the selected scanner that is not connected retries it, like a click.</summary>
+    private void DeviceList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || e.OriginalSource is ButtonBase || DeviceList.SelectedItem is not DeviceRow { ConnectionState: DeviceConnectionState.Failed } row) return;
+        ViewModel.UserSelectDevice(row.Id);
+        e.Handled = true;
     }
 
     /// <summary>The "via WIA" button of a scanner reached several ways: choose the connection.</summary>

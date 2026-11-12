@@ -208,10 +208,13 @@
                          AutomationProperties.Name="{loc:T Scanners}" ToolTipService.ShowOnDisabled="True"
                          SelectionChanged="DeviceList_SelectionChanged"
                          PreviewMouseLeftButtonDown="DeviceList_PreviewMouseDown"
+                         PreviewKeyDown="DeviceList_PreviewKeyDown"
                          ContextMenuOpening="DeviceList_ContextMenuOpening">
                     <!-- One row per scanner (DeviceRow). A scanner reached several ways (WIA, TWAIN,
                          network) shows its connection as a "via WIA" menu button instead of a caption;
-                         the row's context menu offers the same choices (also in the folded rail). -->
+                         the row's context menu offers the same choices (also in the folded rail).
+                         The selected row also says whether it is connecting or failed (a state line,
+                         a warning glyph and a Retry button); the folded rail keeps the glyph and tooltip. -->
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel>
@@ -220,6 +223,12 @@
                                 <StackPanel x:Name="Texts">
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" TextWrapping="NoWrap"
                                                TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="StateLine" Text="{Binding StateLine}" Style="{StaticResource CaptionText}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Visibility="Collapsed"
+                                               ToolTip="{Binding StateLine}" AutomationProperties.LiveSetting="Polite" />
+                                    <ProgressBar x:Name="ConnectingBar" IsIndeterminate="True" Width="48" Height="3"
+                                                 HorizontalAlignment="Left" Margin="0,2,0,2" Visibility="Collapsed"
+                                                 AutomationProperties.Name="{loc:T Connecting…}" />
                                     <TextBlock x:Name="CaptionLine" Text="{Binding Caption}" Style="{StaticResource CaptionText}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                                     <Button x:Name="ConnectionButton" Style="{StaticResource ConnectionChooserButtonStyle}"
@@ -229,9 +238,27 @@
                                             AutomationProperties.Name="{Binding ConnectionChooserName}"
                                             AutomationProperties.HelpText="{loc:T Opens a menu: Automatic\, or one of the ways this scanner is connected}"
                                             Click="ConnectionButton_Click" />
+                                    <Button x:Name="RetryButton" Style="{StaticResource SubtleButtonStyle}" Content="{loc:T Retry}"
+                                            FontFamily="{StaticResource SmallFontFamily}" FontSize="12" Padding="4,0,4,1"
+                                            Margin="-5,2,0,0" HorizontalAlignment="Left" Visibility="Collapsed"
+                                            IsTabStop="{Binding IsTabStop, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                            ToolTip="{loc:T Try to connect to this scanner again}"
+                                            AutomationProperties.Name="{Binding RetryName}"
+                                            AutomationProperties.HelpText="{loc:T Try to connect to this scanner again}"
+                                            Click="RetryButton_Click" />
                                 </StackPanel>
                             </DockPanel>
                             <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding ConnectionState}" Value="Connecting">
+                                    <Setter TargetName="StateLine" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="ConnectingBar" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ConnectionState}" Value="Failed">
+                                    <Setter TargetName="StateLine" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="RetryButton" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="Glyph" Property="Text" Value="&#xE7BA;" />
+                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding HasConnectionChoice}" Value="True">
                                     <Setter TargetName="CaptionLine" Property="Visibility" Value="Collapsed" />
                                     <Setter TargetName="ConnectionButton" Property="Visibility" Value="Visible" />
@@ -240,7 +267,7 @@
                                     <Setter TargetName="Texts" Property="Visibility" Value="Collapsed" />
                                     <Setter TargetName="Glyph" Property="Margin" Value="0" />
                                     <!-- The icon rail shows no name: the scanner's name is its tooltip there. -->
-                                    <Setter TargetName="Glyph" Property="ToolTip" Value="{Binding Name}" />
+                                    <Setter TargetName="Glyph" Property="ToolTip" Value="{Binding StateName}" />
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>

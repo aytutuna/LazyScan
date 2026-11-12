@@ -447,6 +447,7 @@
          when it opens (Shift+F10, the Menu key or a right-click). -->
     <Style x:Key="DeviceListItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource NavListBoxItemStyle}">
         <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding StateName}" />
         <Setter Property="ContextMenu">
             <Setter.Value>
                 <ContextMenu />

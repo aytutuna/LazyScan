@@ -337,13 +337,17 @@ public sealed class PhotoItem : INotifyPropertyChanged
     public double RotationDegrees => Photo.RotationQuarterTurns * 90;
 }
 
+public enum DeviceConnectionState { None, Connecting, Failed }
+
 /// <summary>
 /// A scanner in the sidebar: one row per physical scanner, however many connections reach it
 /// (WIA, TWAIN, network). <see cref="Info"/> is the entry the row stands for: the connection
 /// in use while the scanner is selected, otherwise the one it would connect through.
 /// </summary>
-public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chosenConnection)
+public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chosenConnection) : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public ScannerInfo Info { get; } = info;
     public DeviceGroup Group { get; } = group;
     /// <summary>The connection the user chose for this scanner (<see cref="DeviceMerge.ConnectionId"/>); null = Automatic.</summary>
@@ -366,6 +370,30 @@ public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chose
         : AppViewModel.IsTwain(Info) ? Loc.T("TWAIN driver")
         : ConnectionLabel;
     public string ConnectionChooserName => Loc.T("Connection for {0}: {1}", Name, ConnectionLabel);
+
+    /// <summary>Set for the selected scanner's row only; every other row has nothing to report.</summary>
+    public DeviceConnectionState ConnectionState
+    {
+        get => _connectionState;
+        set
+        {
+            if (_connectionState == value) return;
+            _connectionState = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        }
+    }
+    private DeviceConnectionState _connectionState;
+
+    /// <summary>The row's state line; empty while connected or not selected.</summary>
+    public string StateLine => ConnectionState switch
+    {
+        DeviceConnectionState.Connecting => Loc.T("Connecting…"),
+        DeviceConnectionState.Failed => Loc.T("Not connected - Click to retry"),
+        _ => "",
+    };
+    /// <summary>The row's tooltip in the icon rail and its name for screen readers.</summary>
+    public string StateName => ConnectionState == DeviceConnectionState.None ? Name : Loc.T("{0}, {1}", Name, StateLine);
+    public string RetryName => Loc.T("Retry connecting to {0}", Name);
 
     /// <summary>Equal for rows that look and behave the same, so an unchanged list is not rebuilt.</summary>
     internal string Signature =>
@@ -920,6 +948,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             item.CanScanAgain = offered && !item.IsRescanTarget;
         }
         if (PageOptionsStale()) SyncPageOptions();
+        _dispatcher.BeginInvoke(SyncRowStates);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
 
@@ -1185,6 +1214,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (rows.Select(r => r.Signature).SequenceEqual(Devices.Select(r => r.Signature))) return;
         Devices.Clear();
         foreach (var row in rows) Devices.Add(row);
+        SyncRowStates();
+    }
+
+    private void SyncRowStates()
+    {
+        var state = IsConnecting ? DeviceConnectionState.Connecting
+            : IsConnected ? DeviceConnectionState.None : DeviceConnectionState.Failed;
+        foreach (var row in Devices)
+        {
+            row.ConnectionState = row.Id == SelectedDeviceId ? state : DeviceConnectionState.None;
+        }
     }
 
     /// <summary>
