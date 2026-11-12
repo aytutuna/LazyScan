@@ -132,6 +132,22 @@ extension AppState {
         }
     }
 
+    /// `setPageFilter(id:_:)` for each of the pages `ids`, in that order, as one run; `filterPagesLeft` counts it down, and a cut that fails is reported once, when the run ends.
+    public func setPagesFilter(ids: [UUID], _ filter: CaptureFilter) {
+        guard !isBusy, !readsQueue else { return }
+        var failed = false
+        for id in ids {
+            guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+                  PageRecut.canRecut(page) else { continue }
+            filterPagesLeft += 1
+            enqueuePageEdit { (state: AppState) async -> Void in
+                if await !state.recut(id: id, filter: filter, corners: nil, reportsFailure: false) { failed = true }
+                state.filterPagesLeft -= 1
+                if state.filterPagesLeft == 0, failed { state.errorMessage = PageRecut.failedMessage }
+            }
+        }
+    }
+
     /// Crop: the queued page `id` cut out of its photo again along `corners`, placed on the picture
     /// `pageCropStart(id:)` gave (the photo turned as the page is shown, while its rotation was `rotation`),
     /// keeping its filter; as `setPageFilter(id:_:)` does it. Nothing happens once the page was turned since.
@@ -186,10 +202,12 @@ extension AppState {
 
     /// Cuts the page again and puts it in the queue with a spool file of its own, if the page is still there
     /// as it was when the work started (not removed, turned or swapped meanwhile); the old file goes.
-    func recut(id: UUID, filter: CaptureFilter?, corners: Quad?) async {
+    /// False when the cut failed; `reportsFailure` false leaves the alert to the caller.
+    @discardableResult
+    func recut(id: UUID, filter: CaptureFilter?, corners: Quad?, reportsFailure: Bool = true) async -> Bool {
         guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
               PageRecut.canCrop(page), corners != nil || PageRecut.filter(of: page) != filter,
-              let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return }
+              let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return true }
         let spool: URL = spoolDirectory
         let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
         let threshold: Double = settings.adjustments.blackWhiteThreshold
@@ -206,11 +224,11 @@ extension AppState {
               scannedPages[index].rotationQuarterTurns == page.rotationQuarterTurns,
               scannedPages[index].showsOriginal == page.showsOriginal else {
             if let file = made?.fileURL { try? FileManager.default.removeItem(at: file) }
-            return
+            return true
         }
         guard let made else {
-            errorMessage = PageRecut.failedMessage
-            return
+            if reportsFailure { errorMessage = PageRecut.failedMessage }
+            return false
         }
         // What changed on the page meanwhile (kept or skipped, its document) stays.
         var updated: ScannedPage = made.copyMeta(from: scannedPages[index])
@@ -225,6 +243,7 @@ extension AppState {
         }
         // The record names the new file at once: the old one is gone.
         if keepsQueue { writeQueueRecord() }
+        return true
     }
 
     /// `page` (full pixels, no file) written to a spool file of its own in `directory` and queued as a preview

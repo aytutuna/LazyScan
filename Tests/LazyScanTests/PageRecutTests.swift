@@ -207,6 +207,28 @@ final class PageRecutTests: XCTestCase {
     }
 
     @MainActor
+    func testAFilterForSeveralPages_reachesEachOfThem_andCountsDown() async throws {
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecutScorer(),
+                             barcodeReader: RecutBarcodes(), files: AppStateFiles.all(in: folder))
+        XCTAssertTrue(state.startTask(.document))
+        state.settings.taskOptions.cameraFilter = .original
+        state.settings.destinationPath = folder.path
+        XCTAssertTrue(state.ingest([shot().page], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
+        XCTAssertTrue(state.ingest([shot().page], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let ids: [UUID] = state.scannedPages.map { (page: ScannedPage) -> UUID in page.id }
+
+        state.setPagesFilter(ids: ids, .grayscale)
+        XCTAssertEqual(state.filterPagesLeft, 2)
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        XCTAssertEqual(state.filterPagesLeft, 0)
+        XCTAssertEqual(state.scannedPages.map { (page: ScannedPage) -> CaptureFilter? in page.capture?.filter }, [.grayscale, .grayscale])
+        XCTAssertEqual(state.scannedPages.map { (page: ScannedPage) -> UUID in page.id }, ids)
+    }
+
+    @MainActor
     func testAQueuedPage_takesAnotherFilter_keepsItsPhoto_andTheRecordKeepsIt() async throws {
         var files = AppStateFiles.all(in: folder)
         files.keepsQueue = true

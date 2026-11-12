@@ -724,6 +724,8 @@ public final class AppState: ObservableObject {
     var receiptReading: Task<Void, Never>?
     /// The pages being cut out of their photos again (AppState+Recut.swift), for a spinner on each.
     @Published public internal(set) var recuttingPages: Set<UUID> = []
+    /// How many pages of a `setPagesFilter` run are still to be cut again, the one being cut included.
+    @Published public internal(set) var filterPagesLeft: Int = 0
 
     /// Image shown in the preview canvas: the overview until a page lands, then the last page.
     public var canvasImage: CGImage? { overviewImage ?? lastScanImage }

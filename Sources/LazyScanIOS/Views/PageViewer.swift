@@ -38,6 +38,8 @@ enum PageViewerText {
     static var moveLabel: String { String(localized: "Move") }
     static var moveToStartLabel: String { String(localized: "Move to Beginning") }
     static var moveToEndLabel: String { String(localized: "Move to End") }
+    static var filterLabel: String { String(localized: "Filter") }
+    static var applyToAllLabel: String { String(localized: "Apply to All") }
     /// The cards of the grid have a sheet's shape (between A4 and Letter); every page is fitted whole in one.
     static let cardAspect: CGFloat = 0.75
 
@@ -54,6 +56,11 @@ enum PageViewerText {
     /// "Page 3"
     static func pageName(_ number: Int) -> String {
         String(localized: "Page \(number)")
+    }
+
+    /// "Applying, 7 left" while the pages of a filter run are cut again.
+    static func applyingLeft(_ count: Int) -> String {
+        String(localized: "Applying, \(count) left")
     }
 
     /// The page grid's title while pages are picked: "Select Pages", "2 Selected".
@@ -588,19 +595,43 @@ struct PageViewer: View {
     private func filterRow(_ page: ScannedPage) -> some View {
         let working: Bool = state.recuttingPages.contains(page.id)
         let chosen: CaptureFilter? = (working ? requested[page.id] : nil) ?? PageRecut.filter(of: page)
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 14) {
-                ForEach(CaptureFilter.displayOrder, id: \.self) { (filter: CaptureFilter) in
-                    filterButton(filter, page: page.id, chosen: filter == chosen)
+        return VStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(CaptureFilter.displayOrder, id: \.self) { (filter: CaptureFilter) in
+                        filterButton(filter, page: page.id, chosen: filter == chosen)
+                    }
                 }
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity)
+            if state.scannedPages.count > 1, let chosen {
+                applyToAllButton(chosen)
+            }
         }
         .padding(.vertical, 10)
         .background(.bar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("viewer.filterRow")
+    }
+
+    private func applyToAllButton(_ filter: CaptureFilter) -> some View {
+        let left: Int = state.filterPagesLeft
+        let title: String = left > 0 ? PageViewerText.applyingLeft(left) : PageViewerText.applyToAllLabel
+        let off: Bool = state.isBusy || state.readsQueue || left > 0 || !state.recuttingPages.isEmpty
+        return Button(title) {
+            applyToAll(filter)
+        }
+        .disabled(off)
+        .accessibilityIdentifier("viewer.applyToAll")
+    }
+
+    private func applyToAll(_ filter: CaptureFilter) {
+        var ids: [UUID] = []
+        for page in state.scannedPages {
+            ids.append(page.id)
+        }
+        state.setPagesFilter(ids: ids, filter)
     }
 
     private func filterButton(_ filter: CaptureFilter, page: UUID, chosen: Bool) -> some View {

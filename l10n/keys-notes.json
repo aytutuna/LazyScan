@@ -1,4 +1,6 @@
 {
+  "Apply to All": "Button in the page viewer's filter row: give every page the filter this page has.",
+  "Applying, %lld left": "Button label and card text while a filter is applied to several pages; the number is how many pages are still to do.",
   "Auto": "Camera setting value: the camera decides. Short, shown in a small control.",
   "Auto shutter": "Camera mode that takes the photo itself when the page is steady.",
   "Auto-enhance": "Setting: improve contrast and brightness automatically.",
@@ -6,6 +8,7 @@
   "Camera photo": "Default name of a photo taken with the camera. A noun.",
   "Copy again": "Button: print another copy of the same pages.",
   "Crop": "Toolbar button in the page viewer: change the crop of this page. A verb.",
+  "Filter": "Menu in the page selection bar: apply one of the filters to the selected pages. A noun, short.",
   "Flash": "Camera control: the flash light, not Adobe Flash.",
   "Last scan": "Spoken label of the thumbnail that shows the most recent scan.",
   "Move": "Menu in the page selection bar, and the page viewer toolbar button: move the page to another place. A verb.",

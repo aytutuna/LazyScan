@@ -601,7 +601,16 @@ struct PageStripSheet: View {
     /// The pages taken out of the queue, with Undo, until the next scan or save.
     @ViewBuilder
     private var removedCard: some View {
-        if state.canUndoRemove {
+        if state.filterPagesLeft > 0 {
+            Text(PageViewerText.applyingLeft(state.filterPagesLeft))
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(12)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .accessibilityIdentifier("pages.applying")
+        } else if state.canUndoRemove {
             RemovedPagesRow(onUndo: undoRemoved)
                 .padding(12)
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
@@ -651,6 +660,18 @@ struct PageStripSheet: View {
         }
         .disabled(blocked)
         .accessibilityIdentifier("pages.rotateSelected")
+        Spacer()
+        Menu {
+            ForEach(CaptureFilter.displayOrder, id: \.self) { (filter: CaptureFilter) in
+                Button(filter.label) {
+                    state.setPagesFilter(ids: IOSPageSelection.ordered(selected, in: state.scannedPages), filter)
+                }
+            }
+        } label: {
+            Label(PageViewerText.filterLabel, systemImage: "camera.filters")
+        }
+        .disabled(blocked || state.readsQueue || state.filterPagesLeft > 0 || !state.recuttingPages.isEmpty || !recuttable)
+        .accessibilityIdentifier("pages.filterSelected")
         Spacer()
         Button(action: shareSelected) {
             Label(PageViewerText.shareLabel, systemImage: "square.and.arrow.up")
