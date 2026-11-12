@@ -57,10 +57,13 @@ extension AppState {
             // A scan may have started, or a review opened, while the pictures came over.
             guard !isBusy, canImportPhotos || !PhotoImport.isOffered(settings) else {
                 errorMessage = Self.deviceBusyMessage
+                try? FileManager.default.removeItem(at: folder)
                 return
             }
-            // TODO: the files stay until the system empties the temporary folder; importPhotos reads them later.
             importPhotos(files)
+            // importPhotos reads the files while it runs; the pages hold their own copies.
+            while isBusy { try? await Task.sleep(for: .milliseconds(200)) }
+            try? FileManager.default.removeItem(at: folder)
         }
         return true
     }

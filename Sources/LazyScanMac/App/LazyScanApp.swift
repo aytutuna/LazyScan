@@ -65,6 +65,8 @@ extension AppState {
                              keepsQueue: true, discardsQueueAtQuit: true)
         // The spool earlier builds kept in the temporary folder.
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("LazyScan-pages", isDirectory: true))
+        // Pictures from Continuity Camera that a crash or a quit left behind.
+        try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Continuity Camera", isDirectory: true))
         state.cornerModel = FastViTCornerModel.isAvailable ? FastViTCornerModel.shared : nil
         state.resolveDestinationBookmark = { MacBookmarkedFolder.saveFolder.resolve($0) }
         state.openBookmarkedFolder()
