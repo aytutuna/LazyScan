@@ -119,6 +119,12 @@ public enum IOSSettingsSections {
         savesChosenFormat(s)
     }
 
+    /// Word and Text are offered when the pages have text: read already, or read when the save runs because
+    /// Searchable PDF is on. The format chosen stays listed either way.
+    public static func offersTextFormats(_ s: ScanSettings, pagesHaveText: Bool) -> Bool {
+        pagesHaveText || s.pdfSearchable || s.format.isTextFormat
+    }
+
     /// The Scanner section's rows are a selected scanner's; with none (printer mode's scanner not found yet)
     /// a line says where to pick one instead.
     public static func scannerRowsReason(selected: String?) -> String? {

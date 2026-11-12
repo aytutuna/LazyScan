@@ -73,8 +73,17 @@ struct SaveAsPage: View {
                         .accessibilityIdentifier("options.eachPage")
                 }
                 PDFOptionsSection()
+            } footer: {
+                if hidesTextFormats {
+                    Text("Word and Text need pages with text. Choose PDF and turn on Searchable PDF to offer them.")
+                }
             }
         }
+    }
+
+    private var hidesTextFormats: Bool {
+        IOSSettingsSections.offersEveryFormat(state.settings)
+            && !IOSSettingsSections.offersTextFormats(state.settings, pagesHaveText: state.queueHasRecognizedText)
     }
 
     /// A name can be typed when Save writes one new file from the queue: not into a PDF picked, as pictures, or
@@ -100,7 +109,10 @@ struct SaveAsPage: View {
     private var formats: [OutputFormat] {
         if IOSSettingsSections.offersEveryFormat(state.settings) {
             let everyFormat: [OutputFormat] = OutputFormat.offered(for: ScanIntent.document)
-            return everyFormat.filter { (f: OutputFormat) -> Bool in f != OutputFormat.tiffPages }
+            let withText: Bool = IOSSettingsSections.offersTextFormats(state.settings, pagesHaveText: state.queueHasRecognizedText)
+            return everyFormat.filter { (f: OutputFormat) -> Bool in
+                f != OutputFormat.tiffPages && (withText || !f.isTextFormat)
+            }
         }
         if state.activeTask == ScanTask.quickScan && !state.settings.documentMultiPage {
             return OutputFormat.offered(for: ScanIntent.photo)

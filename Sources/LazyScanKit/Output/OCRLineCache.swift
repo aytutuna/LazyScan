@@ -26,6 +26,13 @@ final class OCRLineCache: @unchecked Sendable {
         return entry.lines
     }
 
+    /// Whether any of `pages` has kept lines with text in them.
+    func hasText(in pages: [ScannedPage]) -> Bool {
+        pages.contains { (page: ScannedPage) -> Bool in
+            (lines(for: page) ?? []).contains { (line: OCRLine) -> Bool in !line.text.isEmpty }
+        }
+    }
+
     func store(_ lines: [OCRLine], for page: ScannedPage) {
         lock.lock()
         defer { lock.unlock() }

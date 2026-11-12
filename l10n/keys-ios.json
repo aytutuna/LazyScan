@@ -538,6 +538,7 @@
  {"key": "Where the spread is cut", "comment": ""},
  {"key": "Whole glass", "comment": ""},
  {"key": "Why isn't my scanner listed?", "comment": ""},
+ {"key": "Word and Text need pages with text. Choose PDF and turn on Searchable PDF to offer them.", "comment": ""},
  {"key": "You choose the printer when printing", "comment": ""},
  {"key": "Your scans stay on this device unless you share them.", "comment": ""},
  {"key": "e.g. 192.168.1.50 or scanner.local", "comment": ""},

@@ -201,6 +201,19 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertEqual(IOSShell.settingRestore(false, in: photos).format, .pdf)
     }
 
+    func test_textFormats_areOfferedWhenThePagesHaveTextOrSearchableReadsThem_orOneIsChosen() {
+        var photos: ScanSettings = TaskCatalog.apply(.photos, to: ScanSettings())
+        photos.pdfSearchable = false
+        photos.format = .jpeg
+        XCTAssertFalse(IOSSettingsSections.offersTextFormats(photos, pagesHaveText: false))
+        XCTAssertTrue(IOSSettingsSections.offersTextFormats(photos, pagesHaveText: true))
+        photos.pdfSearchable = true
+        XCTAssertTrue(IOSSettingsSections.offersTextFormats(photos, pagesHaveText: false))
+        photos.pdfSearchable = false
+        photos.format = .word
+        XCTAssertTrue(IOSSettingsSections.offersTextFormats(photos, pagesHaveText: false))
+    }
+
     func test_output_showsTheFormatSaved_aPictureForText_aPDFForAnIdCardInWord() {
         // The Text kind's screen saves its page as a picture whatever format was picked before.
         var text: ScanSettings = TaskCatalog.apply(.quickScan, to: ScanSettings())

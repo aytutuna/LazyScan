@@ -8,6 +8,11 @@ import Foundation
 // the queue when it is saved (`savePDF()`), which reads it again.
 
 extension AppState {
+    /// OCR has already read some text on a queued page, so Word and Text have something to save.
+    public var queueHasRecognizedText: Bool {
+        OCRLineCache.shared.hasText(in: scannedPages)
+    }
+
     /// There are pages to add (some are not left out), in reading order, and nothing else is running.
     public var canAppendPages: Bool {
         !isBusy && !sidesNeedOrder && queuePlans.save.pageCount > 0
