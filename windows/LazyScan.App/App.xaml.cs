@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Markup;
 using LazyScan.App.Services;
@@ -16,15 +14,19 @@ public partial class App : Application
 
     public static MessageBoxOptions BoxOptions { get; private set; } = MessageBoxOptions.None;
 
+    private SingleInstance? _instance;
+
     protected override void OnStartup(StartupEventArgs e)
     {
-        // A bare lazyscan: address carries nothing to open, so a window already open is brought forward instead of a
-        // second copy. Returning before base.OnStartup keeps StartupUri from building a MainWindow.
-        if (e.Args.Length > 0 && FileAssociation.IsAddress(e.Args[0]) && ShowRunningWindow())
+        // A second copy hands its arguments to the first and ends; returning before base.OnStartup keeps
+        // StartupUri from building a MainWindow. When the first does not answer this one starts as usual.
+        _instance = SingleInstance.TryOwn(SingleInstance.DefaultName);
+        if (_instance is null && SingleInstance.Send(SingleInstance.DefaultName, e.Args))
         {
             Shutdown();
             return;
         }
+        _instance?.Listen(args => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.OpenFromOtherProcess(args)));
         // Apply the saved appearance before the first window is created.
         ThemeService.Initialize();
         // Texts come from the satellite folder of the nearest shipped language; the format culture stays.
@@ -49,32 +51,4 @@ public partial class App : Application
         }
         base.OnStartup(e);
     }
-
-    /// <summary>Brings the window of another Lazy Scan in this session forward; false when there is none.</summary>
-    private static bool ShowRunningWindow()
-    {
-        using var self = Process.GetCurrentProcess();
-        foreach (var other in Process.GetProcessesByName(self.ProcessName))
-        {
-            using (other)
-            {
-                if (other.Id == self.Id || other.SessionId != self.SessionId || other.MainWindowHandle == IntPtr.Zero) continue;
-                if (IsIconic(other.MainWindowHandle)) ShowWindow(other.MainWindowHandle, SwRestore);
-                SetForegroundWindow(other.MainWindowHandle);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private const int SwRestore = 9;
-
-    [DllImport("user32.dll")]
-    private static extern bool IsIconic(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int cmdShow);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }

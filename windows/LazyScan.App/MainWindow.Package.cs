@@ -23,6 +23,14 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Another Lazy Scan was started with <paramref name="args"/>: its <c>.lsdoc</c> is offered here and this window comes forward.</summary>
+    public void OpenFromOtherProcess(string[] args)
+    {
+        if (PendingPackage.PackageIn(args) is { } path) _ = ViewModel.OpenPackage(path);
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
+
     private void SyncPackageBar()
     {
         if (ViewModel.PendingPackage is not { } package)
