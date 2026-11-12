@@ -84,6 +84,23 @@ public class ZipStoreTests
         Assert.Equal(110L, ZipStore.PackageSize([new ZipStoreEntry("a.txt", "hi"u8.ToArray())]));
     }
 
+    [Fact]
+    public void Writer_WritesTheBytesMakeReturns()
+    {
+        ZipStoreEntry[] entries =
+        [
+            new("[Content_Types].xml", "<x/>"u8.ToArray()),
+            new("dir/empty.bin", []),
+            new("dir/big.bin", new byte[70_000]),
+            new("naïve.txt", "é"u8.ToArray()),
+        ];
+        using var output = new MemoryStream();
+        var writer = new ZipStore.Writer(output);
+        foreach (var entry in entries) writer.Add(entry);
+        writer.Finish();
+        Assert.Equal(ZipStore.Make(entries), output.ToArray());
+    }
+
     internal static byte[] Read(ZipArchive archive, string name)
     {
         using var stream = archive.GetEntry(name)!.Open();

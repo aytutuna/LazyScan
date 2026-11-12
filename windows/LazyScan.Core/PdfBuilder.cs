@@ -8,24 +8,64 @@ namespace LazyScan.Core;
 /// A page image as a PDF stores it: a JPEG (<see cref="PdfJpegImage"/>) or CCITT G4 data
 /// (<see cref="PdfCcittImage"/>). The image may be smaller than the page (a downsampled image,
 /// or a preview used when the full-resolution spool file is missing); it is stretched across it.
+/// The bytes are held in memory, or in a file that is read each time <see cref="Data"/> is asked
+/// for, so a long document is not held whole while it is written.
 /// </summary>
-/// <param name="Data">The stored bytes.</param>
-public abstract record PdfImageData(byte[] Data);
+public abstract record PdfImageData
+{
+    private readonly byte[]? _data;
+    private readonly string? _file;
+
+    private protected PdfImageData(byte[] data) => _data = data;
+
+    private protected PdfImageData(string file) => _file = file;
+
+    /// <summary>The stored bytes.</summary>
+    public byte[] Data => _data ?? File.ReadAllBytes(_file!);
+}
 
 /// <summary>
 /// A JPEG, embedded with /DCTDecode. Its dimensions and color space are read from the JPEG
 /// itself; a one-component JPEG is embedded as /DeviceGray, anything else as /DeviceRGB.
 /// </summary>
-public sealed record PdfJpegImage(byte[] Data) : PdfImageData(Data);
+public sealed record PdfJpegImage : PdfImageData
+{
+    public PdfJpegImage(byte[] data) : base(data)
+    {
+    }
+
+    /// <summary>A JPEG kept in <paramref name="file"/>, read when the page is written.</summary>
+    public PdfJpegImage(string file) : base(file)
+    {
+    }
+}
 
 /// <summary>
 /// A black &amp; white image as CCITT G4 data (<see cref="CcittG4Encoder"/>), embedded as a 1-bit
 /// /DeviceGray image with /CCITTFaxDecode (/K -1, /BlackIs1 false: black pixels decode to 0).
 /// </summary>
-/// <param name="Width">Image width in pixels (/Columns).</param>
-/// <param name="Height">Image height in pixels (/Rows).</param>
-public sealed record PdfCcittImage(byte[] Data, int Width, int Height) : PdfImageData(Data)
+public sealed record PdfCcittImage : PdfImageData
 {
+    /// <param name="data">The G4 data.</param>
+    /// <param name="width">Image width in pixels (/Columns).</param>
+    /// <param name="height">Image height in pixels (/Rows).</param>
+    public PdfCcittImage(byte[] data, int width, int height) : base(data)
+    {
+        Width = width;
+        Height = height;
+    }
+
+    /// <summary>G4 data kept in <paramref name="file"/>, read when the page is written.</summary>
+    public PdfCcittImage(string file, int width, int height) : base(file)
+    {
+        Width = width;
+        Height = height;
+    }
+
+    public int Width { get; }
+
+    public int Height { get; }
+
     /// <summary>
     /// The page encoded as G4, black where its luma is below <see cref="Bilevel.Threshold"/>
     /// (<see cref="Bilevel.Pack(RgbaImage)"/>).
@@ -374,7 +414,8 @@ public static class PdfBuilder
         // The XObject must declare the image's own dimensions, which differ from the page's
         // pixel size when only a preview was available or the image was downsampled; the
         // content stream's cm scales the unit-square image onto the full media box either way.
-        w.WriteStream(imageObject, ImageEntries(page), page.Image.Data);
+        byte[] data = page.Image.Data;
+        w.WriteStream(imageObject, ImageEntries(page, data), data);
 
         w.WriteStream(contentsObject, "", BuildContentStream(index, widthPts, heightPts, page.OcrLines, codes));
     }
@@ -384,7 +425,7 @@ public static class PdfBuilder
     /// size, and /DeviceGray when it has one component; one that cannot be read keeps the
     /// earlier assumption of an RGB image the size of the page. G4 data is a 1-bit gray image.
     /// </summary>
-    internal static string ImageEntries(PdfPageInput page)
+    internal static string ImageEntries(PdfPageInput page, byte[] data)
     {
         if (page.Image is PdfCcittImage g4)
         {
@@ -392,7 +433,7 @@ public static class PdfBuilder
                    "/ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /CCITTFaxDecode " +
                    $"/DecodeParms <</K -1 /Columns {g4.Width} /Rows {g4.Height} /BlackIs1 false>>";
         }
-        if (!TryReadJpegHeader(page.Image.Data, out int imageWidth, out int imageHeight, out int components))
+        if (!TryReadJpegHeader(data, out int imageWidth, out int imageHeight, out int components))
         {
             imageWidth = page.PixelWidth;
             imageHeight = page.PixelHeight;

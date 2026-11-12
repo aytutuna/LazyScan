@@ -132,10 +132,19 @@ public sealed partial class AppViewModel
             StatusMessage = s.PdfSearchable ? Loc.T("Running OCR and adding pages…") : Loc.T("Adding pages…");
             NotifyAll();
             var failures = new PdfTextFailures();
-            var inputs = await PdfPageInputs(pages, s, token, failures: failures);
-            SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
-            NotifyAll();
-            var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection), token);
+            PdfAppendResult result;
+            string encoded = NewEncodedFolder();
+            try
+            {
+                var inputs = await PdfPageInputs(pages, s, token, encoded, failures: failures);
+                SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
+                NotifyAll();
+                result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection), token);
+            }
+            finally
+            {
+                DeleteEncodedFolder(encoded);
+            }
             LastPdfBytes = result.Bytes;
             LastPdfProtected = protection is not null;
             MarkSaved([result.Path]);

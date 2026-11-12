@@ -21,8 +21,54 @@ public enum CompanionImageFormat
 /// <summary>One picture in a companion package: its encoded bytes and what they show.</summary>
 /// <param name="PixelWidth">Its width in pixels; 0 when a package did not say (decode the picture).</param>
 /// <param name="PixelHeight">Its height in pixels; 0 when a package did not say.</param>
-public sealed record CompanionImage(byte[] Data, CompanionImageFormat Format, int PixelWidth, int PixelHeight,
-                                    int Dpi, ColorMode ColorMode);
+public sealed record CompanionImage
+{
+    private readonly byte[]? _data;
+
+    public CompanionImage(byte[] data, CompanionImageFormat format, int pixelWidth, int pixelHeight, int dpi, ColorMode colorMode)
+    {
+        _data = data;
+        Format = format;
+        PixelWidth = pixelWidth;
+        PixelHeight = pixelHeight;
+        Dpi = dpi;
+        ColorMode = colorMode;
+    }
+
+    /// <summary>A picture kept in <paramref name="spoolFile"/>, read each time the package is written.</summary>
+    public CompanionImage(string spoolFile, CompanionImageFormat format, int pixelWidth, int pixelHeight, int dpi, ColorMode colorMode)
+    {
+        SpoolFile = spoolFile;
+        Format = format;
+        PixelWidth = pixelWidth;
+        PixelHeight = pixelHeight;
+        Dpi = dpi;
+        ColorMode = colorMode;
+    }
+
+    /// <summary>The encoded bytes; a picture kept in a file is read from it each time.</summary>
+    public byte[] Data
+    {
+        get => _data ?? File.ReadAllBytes(SpoolFile!);
+        init => _data = value;
+    }
+
+    /// <summary>The file holding the picture, or null when it is held in memory.</summary>
+    public string? SpoolFile { get; }
+
+    /// <summary>The size of <see cref="Data"/> in bytes, without reading a file.</summary>
+    public long Length => _data?.LongLength ?? new FileInfo(SpoolFile!).Length;
+
+    public CompanionImageFormat Format { get; init; }
+
+    public int PixelWidth { get; init; }
+
+    public int PixelHeight { get; init; }
+
+    public int Dpi { get; init; }
+
+    public ColorMode ColorMode { get; init; }
+}
 
 /// <summary>
 /// One page of a companion package: its picture as the app shows it and, optionally, what the
@@ -140,28 +186,63 @@ public static class CompanionPackage
     /// <summary>The package for <paramref name="document"/>; throws <see cref="CompanionPackageException"/> for a document it cannot hold.</summary>
     public static byte[] Make(CompanionDocument document) => ZipStore.Make(Entries(document));
 
+    /// <summary>
+    /// Writes the package for <paramref name="document"/> to <paramref name="path"/>, one entry at a
+    /// time, with the bytes <see cref="Make"/> returns; throws <see cref="CompanionPackageException"/> for
+    /// a document it cannot hold. Pictures kept in files stay out of memory, as the package is never
+    /// built whole.
+    /// </summary>
+    public static void Write(CompanionDocument document, string path)
+    {
+        var items = Items(document);
+        // In the temporary folder, not beside the target, so a part left by a killed app is cleared by the system.
+        string part = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".lsdoc.part");
+        try
+        {
+            using (var stream = new FileStream(part, FileMode.CreateNew, FileAccess.Write))
+            {
+                var writer = new ZipStore.Writer(stream);
+                foreach (var item in items) writer.Add(new ZipStoreEntry(item.Name, item.Read()));
+                writer.Finish();
+            }
+            File.Move(part, path);
+        }
+        catch
+        {
+            File.Delete(part);
+            throw;
+        }
+    }
+
     /// <summary>The entries of the package for <paramref name="document"/>, in package order.</summary>
-    public static IReadOnlyList<ZipStoreEntry> Entries(CompanionDocument document)
+    public static IReadOnlyList<ZipStoreEntry> Entries(CompanionDocument document) =>
+        Items(document).Select(item => new ZipStoreEntry(item.Name, item.Read())).ToList();
+
+    /// <summary>An entry whose bytes are read only when it is written.</summary>
+    private sealed record PackageItem(string Name, long Length, Func<byte[]> Read);
+
+    private static List<PackageItem> Items(CompanionDocument document)
     {
         Validate(document);
-        var entries = new List<ZipStoreEntry> { new(ManifestName, Encoding.UTF8.GetBytes(ManifestJson(document))) };
+        byte[] manifest = Encoding.UTF8.GetBytes(ManifestJson(document));
+        var items = new List<PackageItem> { new(ManifestName, manifest.Length, () => manifest) };
         for (int i = 0; i < document.Pages.Count; i++)
         {
             var page = document.Pages[i];
-            entries.Add(new ZipStoreEntry(ImageEntryName(i + 1, page.Image.Format, false), page.Image.Data));
+            items.Add(new PackageItem(ImageEntryName(i + 1, page.Image.Format, false), page.Image.Length, () => page.Image.Data));
             if (page.Original is { } original)
             {
-                entries.Add(new ZipStoreEntry(ImageEntryName(i + 1, original.Format, true), original.Data));
+                items.Add(new PackageItem(ImageEntryName(i + 1, original.Format, true), original.Length, () => original.Data));
             }
         }
         var limits = ZipReadLimits.Standard;
-        long total = entries.Sum(e => (long)e.Data.Length);
-        if (entries[0].Data.Length > MaxManifestBytes || total > limits.MaxTotalBytes
-            || entries.Any(e => e.Data.Length > limits.MaxEntryBytes))
+        long total = items.Sum(e => e.Length);
+        if (items[0].Length > MaxManifestBytes || total > limits.MaxTotalBytes
+            || items.Any(e => e.Length > limits.MaxEntryBytes))
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.TooLarge, TooLargeMessage);
         }
-        return entries;
+        return items;
     }
 
     /// <summary>"The document is larger than 512 MB, too large for one package."</summary>
@@ -366,7 +447,7 @@ public static class CompanionPackage
     {
         json.Append("{\"file\":").Append(Quote(file));
         json.Append(",\"format\":").Append(Quote(FormatValue(image.Format)));
-        json.Append(",\"byteCount\":").Append(image.Data.LongLength.ToString(CultureInfo.InvariantCulture));
+        json.Append(",\"byteCount\":").Append(image.Length.ToString(CultureInfo.InvariantCulture));
         json.Append(",\"sha256\":").Append(Quote(Sha256Hex(image.Data)));
         json.Append(",\"pixelWidth\":").Append(Integer(image.PixelWidth));
         json.Append(",\"pixelHeight\":").Append(Integer(image.PixelHeight));

@@ -214,28 +214,36 @@ public sealed partial class AppViewModel
                 Label = pages[0].DocumentLabel,
             });
         string path = NamingTemplate.UniquePath(folder, name, CompanionPackage.FileExtension);
-        await Task.Run(() =>
+        string encoded = NewEncodedFolder();
+        try
         {
-            var document = CompanionPages.ToDocument(pages, name, s.JpegQuality, page =>
+            await Task.Run(() =>
             {
-                var spooled = SpoolImage(page);
-                // A spooled page whose file went (the queue saved or cleared meanwhile) would be written
-                // from its preview: refused rather than written small.
-                if (spooled is null && page.FilePath is not null)
+                var document = CompanionPages.ToDocument(pages, name, s.JpegQuality, page =>
                 {
-                    throw new CompanionPackageException(CompanionPackageErrorKind.InvalidDocument,
-                        Loc.T("The picture of page {0} could not be written.", pages.IndexOf(page) + 1));
-                }
-                return PdfBuilder.PreparePage(page, spooled, pages.IndexOf(page) + 1).Image;
-            }) with
-            {
-                Writer = new CompanionWriterInfo("Lazy Scan", typeof(AppViewModel).Assembly.GetName().Version?.ToString(3) ?? "", "windows"),
-                Created = DateTimeOffset.Now,
-                TaskId = s.TaskId,
-                NamingTemplate = s.NamingTemplate,
-            };
-            File.WriteAllBytes(path, CompanionPackage.Make(document));
-        });
+                    var spooled = SpoolImage(page);
+                    // A spooled page whose file went (the queue saved or cleared meanwhile) would be written
+                    // from its preview: refused rather than written small.
+                    if (spooled is null && page.FilePath is not null)
+                    {
+                        throw new CompanionPackageException(CompanionPackageErrorKind.InvalidDocument,
+                            Loc.T("The picture of page {0} could not be written.", pages.IndexOf(page) + 1));
+                    }
+                    return PdfBuilder.PreparePage(page, spooled, pages.IndexOf(page) + 1).Image;
+                }, encoded) with
+                {
+                    Writer = new CompanionWriterInfo("Lazy Scan", typeof(AppViewModel).Assembly.GetName().Version?.ToString(3) ?? "", "windows"),
+                    Created = DateTimeOffset.Now,
+                    TaskId = s.TaskId,
+                    NamingTemplate = s.NamingTemplate,
+                };
+                CompanionPackage.Write(document, path);
+            });
+        }
+        finally
+        {
+            DeleteEncodedFolder(encoded);
+        }
         return path;
     }
 }

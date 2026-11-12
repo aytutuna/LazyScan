@@ -45,20 +45,34 @@ public static class ZipStore
     /// <summary>The zip package holding <paramref name="entries"/>, in that order.</summary>
     public static byte[] Make(IReadOnlyList<ZipStoreEntry> entries)
     {
-        if (entries.Count > ushort.MaxValue) throw new ArgumentException("Too many entries for a zip without zip64.", nameof(entries));
         using var output = new MemoryStream();
-        using var central = new MemoryStream();
-        foreach (var entry in entries)
+        var writer = new Writer(output);
+        foreach (var entry in entries) writer.Add(entry);
+        writer.Finish();
+        return output.ToArray();
+    }
+
+    /// <summary>
+    /// Writes a package to a stream one entry at a time: the same bytes <see cref="Make"/> returns
+    /// for the same entries, without a second copy of the whole package in memory.
+    /// </summary>
+    public sealed class Writer(Stream output)
+    {
+        private readonly MemoryStream _central = new();
+        private long _offset;
+        private int _count;
+
+        public void Add(ZipStoreEntry entry)
         {
+            if (_count == ushort.MaxValue) throw new ArgumentException("Too many entries for a zip without zip64.", nameof(entry));
+            if (_offset > uint.MaxValue || (long)entry.Data.Length > uint.MaxValue)
+            {
+                throw new ArgumentException("The package is too large for a zip without zip64.", nameof(entry));
+            }
             byte[] name = Encoding.UTF8.GetBytes(entry.Name);
             bool utf8Name = entry.Name.Any(c => c > 0x7F);
             ushort flags = (ushort)(utf8Name ? 0x0800 : 0);
             uint crc = Crc32(entry.Data);
-            long offset = output.Position;
-            if (offset > uint.MaxValue || (long)entry.Data.Length > uint.MaxValue)
-            {
-                throw new ArgumentException("The package is too large for a zip without zip64.", nameof(entries));
-            }
 
             // Local file header.
             WriteUInt32(output, 0x04034B50);
@@ -76,42 +90,49 @@ public static class ZipStore
             output.Write(entry.Data);
 
             // Its central directory record.
-            WriteUInt32(central, 0x02014B50);
-            WriteUInt16(central, VersionMadeBy);
-            WriteUInt16(central, VersionNeeded);
-            WriteUInt16(central, flags);
-            WriteUInt16(central, 0);
-            WriteUInt16(central, DosTime);
-            WriteUInt16(central, DosDate);
-            WriteUInt32(central, crc);
-            WriteUInt32(central, (uint)entry.Data.Length);
-            WriteUInt32(central, (uint)entry.Data.Length);
-            WriteUInt16(central, (ushort)name.Length);
-            WriteUInt16(central, 0); // extra field
-            WriteUInt16(central, 0); // comment
-            WriteUInt16(central, 0); // disk number
-            WriteUInt16(central, 0); // internal attributes
-            WriteUInt32(central, 0); // external attributes
-            WriteUInt32(central, (uint)offset);
-            central.Write(name);
+            WriteUInt32(_central, 0x02014B50);
+            WriteUInt16(_central, VersionMadeBy);
+            WriteUInt16(_central, VersionNeeded);
+            WriteUInt16(_central, flags);
+            WriteUInt16(_central, 0);
+            WriteUInt16(_central, DosTime);
+            WriteUInt16(_central, DosDate);
+            WriteUInt32(_central, crc);
+            WriteUInt32(_central, (uint)entry.Data.Length);
+            WriteUInt32(_central, (uint)entry.Data.Length);
+            WriteUInt16(_central, (ushort)name.Length);
+            WriteUInt16(_central, 0); // extra field
+            WriteUInt16(_central, 0); // comment
+            WriteUInt16(_central, 0); // disk number
+            WriteUInt16(_central, 0); // internal attributes
+            WriteUInt32(_central, 0); // external attributes
+            WriteUInt32(_central, (uint)_offset);
+            _central.Write(name);
+
+            _offset += LocalHeaderSize + name.Length + entry.Data.Length;
+            _count++;
         }
 
-        long centralOffset = output.Position;
-        central.Position = 0;
-        central.CopyTo(output);
-        long centralSize = output.Position - centralOffset;
-        if (output.Position > uint.MaxValue) throw new ArgumentException("The package is too large for a zip without zip64.", nameof(entries));
+        /// <summary>Writes the central directory and the end record. Call once, after the last entry.</summary>
+        public void Finish()
+        {
+            if (_offset + _central.Length > uint.MaxValue)
+            {
+                throw new InvalidOperationException("The package is too large for a zip without zip64.");
+            }
+            _central.Position = 0;
+            _central.CopyTo(output);
 
-        // End of central directory.
-        WriteUInt32(output, 0x06054B50);
-        WriteUInt16(output, 0); // this disk
-        WriteUInt16(output, 0); // the disk the directory starts on
-        WriteUInt16(output, (ushort)entries.Count);
-        WriteUInt16(output, (ushort)entries.Count);
-        WriteUInt32(output, (uint)centralSize);
-        WriteUInt32(output, (uint)centralOffset);
-        WriteUInt16(output, 0); // no comment
-        return output.ToArray();
+            // End of central directory.
+            WriteUInt32(output, 0x06054B50);
+            WriteUInt16(output, 0); // this disk
+            WriteUInt16(output, 0); // the disk the directory starts on
+            WriteUInt16(output, (ushort)_count);
+            WriteUInt16(output, (ushort)_count);
+            WriteUInt32(output, (uint)_central.Length);
+            WriteUInt32(output, (uint)_offset);
+            WriteUInt16(output, 0); // no comment
+        }
     }
 
     /// <summary>1.0: stored entries need nothing newer.</summary>

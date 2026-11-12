@@ -85,6 +85,37 @@ public class BilevelOutputTests
     }
 
     [Fact]
+    public void Pdf_PagesKeptInFiles_AreTheSameBytes()
+    {
+        var image = TextPage();
+        byte[] g4 = CcittG4Encoder.Encode(image);
+        string folder = Path.Combine(Path.GetTempPath(), "lazyscan-test-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(folder);
+        try
+        {
+            string jpegFile = Path.Combine(folder, "1"), g4File = Path.Combine(folder, "2");
+            File.WriteAllBytes(jpegFile, PdfBuilderTests.TinyJpeg);
+            File.WriteAllBytes(g4File, g4);
+            var inMemory = new[]
+            {
+                new PdfPageInput(PdfBuilderTests.TinyJpeg, 100, 150, 300, null),
+                new PdfPageInput(new PdfCcittImage(g4, image.Width, image.Height), image.Width, image.Height, 300, null),
+            };
+            var inFiles = new[]
+            {
+                new PdfPageInput(new PdfJpegImage(jpegFile), 100, 150, 300, null),
+                new PdfPageInput(new PdfCcittImage(g4File, image.Width, image.Height), image.Width, image.Height, 300, null),
+            };
+            var options = PdfWriteOptions.Standard;
+            Assert.Equal(PdfBuilder.Make(inMemory, options: options), PdfBuilder.Make(inFiles, options: options));
+        }
+        finally
+        {
+            System.IO.Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public void PdfA_WithAG4Page_KeepsItsStructure()
     {
         var image = TextPage();

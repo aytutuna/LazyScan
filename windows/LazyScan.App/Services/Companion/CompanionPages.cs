@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.IO;
 using LazyScan.App.Services;
 using LazyScan.Core;
 
@@ -67,20 +69,32 @@ public static class CompanionPages
     /// picture as shown, at full resolution (<paramref name="load"/>, turned as the page is), a black
     /// &amp; white page as a bilevel TIFF and the others as a JPEG at <paramref name="jpegQuality"/>
     /// (a gray one as a gray JPEG), with its side, sheet and what the camera recorded. Document breaks
-    /// and recognized text are not carried.
+    /// and recognized text are not carried. With <paramref name="encodedFolder"/>, each encoded picture
+    /// goes to a file there as soon as it is made and is read back when the package is written.
     /// </summary>
     public static CompanionDocument ToDocument(IReadOnlyList<ScannedPage> pages, string name, double jpegQuality,
-                                               Func<ScannedPage, RgbaImage> load)
+                                               Func<ScannedPage, RgbaImage> load, string? encodedFolder = null)
     {
         var packaged = new List<CompanionPage>(pages.Count);
         foreach (var page in pages)
         {
             var image = load(page);
-            var picture = page.ColorMode == ColorMode.BlackWhite
-                ? new CompanionImage(BilevelTiff.Make(image, page.Dpi), CompanionImageFormat.Tiff, image.Width, image.Height,
-                                     page.Dpi, page.ColorMode)
-                : new CompanionImage(WpfImageCodec.EncodeJpeg(image, page.Dpi, jpegQuality, page.ColorMode == ColorMode.Grayscale),
-                                     CompanionImageFormat.Jpeg, image.Width, image.Height, page.Dpi, page.ColorMode);
+            bool bilevel = page.ColorMode == ColorMode.BlackWhite;
+            byte[] encoded = bilevel
+                ? BilevelTiff.Make(image, page.Dpi)
+                : WpfImageCodec.EncodeJpeg(image, page.Dpi, jpegQuality, page.ColorMode == ColorMode.Grayscale);
+            var format = bilevel ? CompanionImageFormat.Tiff : CompanionImageFormat.Jpeg;
+            CompanionImage picture;
+            if (encodedFolder is null)
+            {
+                picture = new CompanionImage(encoded, format, image.Width, image.Height, page.Dpi, page.ColorMode);
+            }
+            else
+            {
+                string file = Path.Combine(encodedFolder, (packaged.Count + 1).ToString(CultureInfo.InvariantCulture));
+                File.WriteAllBytes(file, encoded);
+                picture = new CompanionImage(file, format, image.Width, image.Height, page.Dpi, page.ColorMode);
+            }
             packaged.Add(new CompanionPage(picture) { Side = page.Side, SheetIndex = page.SheetIndex, Capture = page.Capture });
         }
         return new CompanionDocument(name, packaged) { SuggestedName = DocumentSplitter.Cleaned(pages.FirstOrDefault()?.DocumentLabel) };

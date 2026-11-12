@@ -3946,15 +3946,25 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // A protected PDF's password is asked for before any page is read or written.
         var protection = ProtectionFor(s);
         await Task.Run(() => PdfBuilder.CheckWritable(path), token);
-        var inputs = await PdfPageInputs(pages, s, token, text, knownLines, failures);
+        string written;
+        PdfWriteOptions options;
+        string encoded = NewEncodedFolder();
+        try
+        {
+            var inputs = await PdfPageInputs(pages, s, token, encoded, text, knownLines, failures);
 
-        StatusMessage = Loc.T("Writing PDF…");
-        NotifyAll();
-        // Protected with the password when that option is on, else PDF/A when the archival option
-        // is; titled with the file's name (WriteNewFile retitles the file when it has to take
-        // another free name).
-        var options = PdfWriteOptions.For(s.Output, Path.GetFileNameWithoutExtension(path), protection);
-        string written = await Task.Run(() => PdfBuilder.WriteNewFile(inputs, path, progress: null, token, options), token);
+            StatusMessage = Loc.T("Writing PDF…");
+            NotifyAll();
+            // Protected with the password when that option is on, else PDF/A when the archival option
+            // is; titled with the file's name (WriteNewFile retitles the file when it has to take
+            // another free name).
+            options = PdfWriteOptions.For(s.Output, Path.GetFileNameWithoutExtension(path), protection);
+            written = await Task.Run(() => PdfBuilder.WriteNewFile(inputs, path, progress: null, token, options), token);
+        }
+        finally
+        {
+            DeleteEncodedFolder(encoded);
+        }
         LastPdfProtected = options.IsProtected;
         try { LastPdfBytes = new FileInfo(written).Length; }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { LastPdfBytes = null; }
@@ -3966,8 +3976,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// existing PDF): each one read at full resolution with its rotation, read by OCR when the
     /// text layer or <paramref name="text"/> asks for it (unless <paramref name="knownLines"/> were
     /// read beforehand), and encoded as the PDF size plans it (JPEG, or G4 for black &amp; white).
+    /// Each encoded page goes to a file in <paramref name="encodedFolder"/> and is read back when the
+    /// page is written, so only the recognized lines of the whole document are held in memory.
     /// </summary>
     private async Task<List<PdfPageInput>> PdfPageInputs(List<ScannedPage> pages, ScanSettings s, CancellationToken token,
+                                                         string encodedFolder,
                                                          PdfText? text = null,
                                                          IReadOnlyList<IReadOnlyList<OcrLine>?>? knownLines = null,
                                                          PdfTextFailures? failures = null)
@@ -4014,14 +4027,33 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 int imageDpi = PdfImageEncoding.EffectiveDpi(image.Width, prepared.PixelWidth, page.Dpi);
                 var plan = PdfImageEncoding.Plan(page.ColorMode, imageDpi, s.Output.PdfSize, image);
                 var pixels = PdfImageEncoding.Downsample(image, imageDpi, plan);
-                return plan.IsBilevel
-                    ? PdfCcittImage.Encode(pixels)
-                    : (PdfImageData)new PdfJpegImage(WpfImageCodec.EncodeJpeg(pixels, plan.TargetDpi, plan.Quality, plan.IsGray));
+                string file = Path.Combine(encodedFolder, (i + 1).ToString(CultureInfo.InvariantCulture));
+                if (plan.IsBilevel)
+                {
+                    File.WriteAllBytes(file, CcittG4Encoder.Encode(pixels));
+                    return (PdfImageData)new PdfCcittImage(file, pixels.Width, pixels.Height);
+                }
+                File.WriteAllBytes(file, WpfImageCodec.EncodeJpeg(pixels, plan.TargetDpi, plan.Quality, plan.IsGray));
+                return new PdfJpegImage(file);
             }, token);
             inputs.Add(new PdfPageInput(stored, prepared.PixelWidth, prepared.PixelHeight, page.Dpi,
                                         s.PdfSearchable ? lines : null));
         }
         return inputs;
+    }
+
+    /// <summary>A new folder under the spool for the encoded pages of one save (<see cref="PdfPageInputs"/>).</summary>
+    private string NewEncodedFolder()
+    {
+        string folder = Path.Combine(_spool.Directory, "encoded-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    private static void DeleteEncodedFolder(string folder)
+    {
+        try { Directory.Delete(folder, recursive: true); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* swept with the spool folder */ }
     }
 
     /// <summary>

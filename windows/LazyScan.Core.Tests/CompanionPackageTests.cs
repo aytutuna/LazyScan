@@ -209,6 +209,74 @@ public class CompanionPackageTests
     }
 
     [Fact]
+    public void Write_WritesTheBytesMakeReturns()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "lazyscan-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string spooled = Path.Combine(folder, "1");
+            File.WriteAllBytes(spooled, DocxFixtures.Jpeg);
+            var inMemory = new CompanionImage(DocxFixtures.Jpeg, CompanionImageFormat.Jpeg, 16, 12, 300, ColorMode.Color);
+            var inFile = new CompanionImage(spooled, CompanionImageFormat.Jpeg, 16, 12, 300, ColorMode.Color);
+            var document = new CompanionDocument("T", [new CompanionPage(inMemory), new CompanionPage(inMemory with { Dpi = 150 }) { RotationQuarterTurns = 1 }]);
+            var spooledDocument = new CompanionDocument("T", [new CompanionPage(inFile), new CompanionPage(inFile with { Dpi = 150 }) { RotationQuarterTurns = 1 }]);
+            string path = Path.Combine(folder, "out.lsdoc");
+            CompanionPackage.Write(spooledDocument, path);
+            Assert.Equal(CompanionPackage.Make(document), File.ReadAllBytes(path));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Write_RefusesAPictureOverTheCap_AndLeavesNoPart()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "lazyscan-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string big = Path.Combine(folder, "1");
+            using (var stream = new FileStream(big, FileMode.Create))
+            {
+                stream.Write([0xFF, 0xD8, 0xFF]);
+                stream.SetLength(ZipReadLimits.Standard.MaxEntryBytes + 1);
+            }
+            var document = new CompanionDocument("T", [new CompanionPage(new CompanionImage(big, CompanionImageFormat.Jpeg, 16, 12, 300, ColorMode.Color))]);
+            string path = Path.Combine(folder, "out.lsdoc");
+            var error = Assert.Throws<CompanionPackageException>(() => CompanionPackage.Write(document, path));
+            Assert.Equal(CompanionPackageErrorKind.TooLarge, error.Kind);
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Write_RemovesThePartWhenTheFileCannotBeMoved()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "lazyscan-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string path = Path.Combine(folder, "taken.lsdoc");
+            File.WriteAllText(path, "x");
+            var before = Directory.GetFiles(Path.GetTempPath(), "*.lsdoc.part");
+            Assert.ThrowsAny<IOException>(() => CompanionPackage.Write(CompanionFixtures.Minimal, path));
+            Assert.Equal(before, Directory.GetFiles(Path.GetTempPath(), "*.lsdoc.part"));
+            Assert.Equal("x", File.ReadAllText(path));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Read_IsLenient()
     {
         string m = CompanionFixtures.MinimalManifest;
