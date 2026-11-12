@@ -31,6 +31,13 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Escape && modifiers == ModifierKeys.None && ViewModel.RescanTarget is not null
+            && PageList.IsKeyboardFocusWithin)
+        {
+            ViewModel.CancelScanAgain();
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Delete && modifiers == ModifierKeys.None)
         {
             if (RemoveFocusedPage()) e.Handled = true;

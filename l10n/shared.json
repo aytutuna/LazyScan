@@ -2392,6 +2392,12 @@
   "Scan again": {
     "note": "Button: scan this page again to replace it."
   },
+  "Cancel scan again": {},
+  "Replacing": {},
+  "The next scan replaces this page": {},
+  "Next scan replaces page {0}": {},
+  "Ready to rescan page {0}. Press Scan.": {},
+  "Page {0} replaced.": {},
   "Scan the front again": {},
   "Fix the crop of the front": {},
   "Turn the front 90° clockwise": {},

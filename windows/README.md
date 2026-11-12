@@ -154,6 +154,8 @@ The main window has four tabs, like the macOS app:
   tooltips, that work exactly when the button does; Delete removes the page the keyboard is on.
   Removing a page or clearing the queue is held until the next scan, import, save or task change
   and put back by Undo in the status bar or Ctrl+Z (newest first; a text box keeps its own Ctrl+Z).
+  Scan again in a page's menu marks it: the next scan to the queue replaces it in place, keeping its document, and the
+  rest of that scan follows it (Esc or Cancel scan again clears the mark).
   **Cancel** works in every busy phase
   (scanning, processing, photo detection, OCR, PDF writing, exports) and never leaves a
   partial file behind.

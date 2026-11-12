@@ -103,6 +103,35 @@ public sealed class PageItem : INotifyPropertyChanged
         }
     }
 
+    private bool _isRescanTarget;
+
+    private bool _canScanAgain;
+
+    public bool CanScanAgain
+    {
+        get => _canScanAgain;
+        set
+        {
+            if (_canScanAgain == value) return;
+            _canScanAgain = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        }
+    }
+
+    public string? RescanHelp => _isRescanTarget ? Loc.T("The next scan replaces this page") : null;
+
+    /// <summary>The next scan replaces this page; the view model keeps it current.</summary>
+    public bool IsRescanTarget
+    {
+        get => _isRescanTarget;
+        set
+        {
+            if (_isRescanTarget == value) return;
+            _isRescanTarget = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        }
+    }
+
     /// <summary>
     /// "2 · back" for a page of a two-sided stack, "2 · left" for a page of a book, "Photo" for a page
     /// imported from a photo, "From phone" for one a paired phone sent; null for other pages.
@@ -847,6 +876,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // A page that joined the queue since the last refresh is a new scan or import.
         if (ScannedPages.Count > _queueLength) DiscardRemoved();
         _queueLength = ScannedPages.Count;
+        bool offered = RescanOffered;
+        if (!IsBusy && (!offered || (_rescanTarget is { } target && QueueIndexOf(target) < 0))) _rescanTarget = null;
+        foreach (var item in ScannedPages)
+        {
+            item.IsRescanTarget = item.Page.Id == _rescanTarget;
+            item.CanScanAgain = offered && !item.IsRescanTarget;
+        }
         SyncPageOptions();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
@@ -1700,9 +1736,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private async Task ScanIntoQueue(IScannerSession session, ScanSettings s, RectD? selection, DuplexMode sides,
                                      PageSide? manualSide, int generation, CancellationToken token)
     {
-        int before = ScannedPages.Count;
+        var before = ScannedPages.Select(item => item.Page.Id).ToHashSet();
         int received = 0;
         bool twoSided = false;
+        if (manualSide is not null) _rescanTarget = null;
+        _rescanAt = null;
+        _rescanned = null;
         PageProcessor? processor = null;
         Exception? failure = null;
         try
@@ -1747,8 +1786,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ScanException e => ScanStop.From(e),
             _ => new ScanStop(failure.Message),
         };
-        var added = ScannedPages.Skip(before).Select(item => item.Page).ToList();
+        var added = ScannedPages.Where(item => !before.Contains(item.Page.Id)).Select(item => item.Page).ToList();
         AnnounceQueued(added, s, sides, twoSided, manualSide, stopped: stop is not null);
+        if (_rescanned is { } replaced)
+        {
+            var detail = StatusDetail;
+            StatusMessage = Loc.T("Page {0} replaced.", replaced) + " " + StatusMessage;
+            StatusDetail = detail;
+        }
+        _rescanAt = null;
         if (stop is null) return;
         if (cancelled) StatusMessage = stop.Message(received);
         else ErrorMessage = stop.Message(received);
@@ -1791,7 +1837,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         RecordHistory(historyItems);
         foreach (var (spreadId, source) in spreadSources) _spreads[spreadId] = source;
-        foreach (var item in spooled) ScannedPages.Add(item);
+        PlaceScanned(spooled);
         // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
         if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
         RecordCaptures(spooled.Select(item => item.Page.Id));
@@ -2270,6 +2316,75 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     // MARK: Page queue
+
+    /// <summary>The page the next scan replaces, or null.</summary>
+    private Guid? _rescanTarget;
+
+    /// <summary>Where the pages of the scan under way go, once its first page took the target's place.</summary>
+    private int? _rescanAt;
+
+    /// <summary>The number of the page the scan under way replaced, for the status.</summary>
+    private int? _rescanned;
+
+    public Guid? RescanTarget => _rescanTarget;
+
+    private int QueueIndexOf(Guid id)
+    {
+        for (int i = 0; i < ScannedPages.Count; i++)
+        {
+            if (ScannedPages[i].Page.Id == id) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>Scan again is offered while the next scan goes to the queue and no stack is turned over by hand.</summary>
+    private bool RescanOffered =>
+        !IsBusy && TaskCatalog.FlowOf(Settings) == TaskFlowKind.DocumentQueue && Settings.DocumentMultiPage && !IsStackUnderWay;
+
+    /// <summary>Marks the page the next scan replaces; the scan itself is still the Scan button's.</summary>
+    public void ScanAgain(Guid id)
+    {
+        if (!RescanOffered) return;
+        int index = QueueIndexOf(id);
+        if (index < 0) return;
+        _rescanTarget = id;
+        StatusMessage = Loc.T("Ready to rescan page {0}. Press Scan.", index + 1);
+        NotifyAll();
+    }
+
+    public void CancelScanAgain()
+    {
+        if (_rescanTarget is null) return;
+        _rescanTarget = null;
+        NotifyAll();
+    }
+
+    /// <summary>
+    /// Queues the pages a scan delivered: at the end, or, after Scan again, where the marked page was. The
+    /// marked page goes to the removal hold, so Undo brings it back, and the first new page takes its
+    /// document break and name; the rest of the scan follows it.
+    /// </summary>
+    private void PlaceScanned(List<PageItem> items)
+    {
+        if (_rescanAt is null && _rescanTarget is { } target && QueueIndexOf(target) is >= 0 and var at)
+        {
+            var old = ScannedPages[at].Page;
+            DiscardRemoved();
+            HoldRemoved([target]);
+            items[0].Page = items[0].Page.WithDocumentBreak(old.DocumentBreak).WithDocumentLabel(old.DocumentLabel);
+            _rescanAt = at;
+            _rescanned = at + 1;
+            _rescanTarget = null;
+        }
+        if (_rescanAt is not { } position)
+        {
+            foreach (var item in items) ScannedPages.Add(item);
+            return;
+        }
+        foreach (var item in items) ScannedPages.Insert(position++, item);
+        _rescanAt = position;
+        _queueLength = ScannedPages.Count;
+    }
 
     public void RemovePage(Guid id)
     {

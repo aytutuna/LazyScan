@@ -555,8 +555,12 @@
                                              DragOver="PageList_DragOver" DragLeave="PageList_DragLeave" Drop="PageList_Drop"
                                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                             BorderThickness="0" Background="Transparent" Padding="0,0,0,16"
-                                             ItemContainerStyle="{StaticResource ThumbnailListItemStyle}">
+                                             BorderThickness="0" Background="Transparent" Padding="0,0,0,16">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource ThumbnailListItemStyle}">
+                                                <Setter Property="AutomationProperties.HelpText" Value="{Binding RescanHelp}" />
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <StackPanel Orientation="Horizontal" />
@@ -593,6 +597,11 @@
                                                             </Border>
                                                         </Grid>
                                                     </Button>
+                                                    <!-- Where the next scan goes, before the page it replaces. -->
+                                                    <Line x:Name="RescanMarker" DockPanel.Dock="Left" Visibility="Collapsed" IsHitTestVisible="False"
+                                                          X1="1.5" X2="1.5" Y1="0" Y2="1" Stretch="Fill" Width="3" Margin="0,0,3,0"
+                                                          StrokeThickness="3" StrokeDashArray="2 1"
+                                                          Stroke="{DynamicResource AccentFillColorDefaultBrush}" />
                                                 <Grid Width="116" Height="128">
                                                     <!-- The page's text, read with OCR, on the clipboard. -->
                                                     <!-- Split or join the documents at the page, and name its document. -->
@@ -600,6 +609,13 @@
                                                     <Grid.ContextMenu>
                                                         <ContextMenu>
                                                             <MenuItem Header="{loc:T Copy text}" Click="PageCopyText_Click" Tag="{Binding Page.Id}" />
+                                                            <Separator />
+                                                            <MenuItem Header="{loc:T Scan again}"
+                                                                      Visibility="{Binding CanScanAgain, Converter={StaticResource BoolToVisibility}}"
+                                                                      Click="PageScanAgain_Click" Tag="{Binding Page.Id}" />
+                                                            <MenuItem Header="{loc:T Cancel scan again}"
+                                                                      Visibility="{Binding IsRescanTarget, Converter={StaticResource BoolToVisibility}}"
+                                                                      Click="PageCancelScanAgain_Click" Tag="{Binding Page.Id}" />
                                                             <Separator Visibility="{Binding HasSplitMenu, Converter={StaticResource BoolToVisibility}}" />
                                                             <MenuItem Header="{Binding MenuBreakLabel}"
                                                                       Visibility="{Binding HasMenuBreak, Converter={StaticResource BoolToVisibility}}"
@@ -685,6 +701,15 @@
                                                         <StackPanel>
                                                             <!-- The first page of each document when the queue is split:
                                                                  "Document 2 · Lease" (the full name on hover). -->
+                                                            <!-- The next scan replaces this page. -->
+                                                            <Border x:Name="RescanBadge" Style="{StaticResource AccentTagStyle}" Visibility="Collapsed"
+                                                                    HorizontalAlignment="Left" Margin="0,0,0,2" IsHitTestVisible="False">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Style="{StaticResource GlyphText}" Text="&#xE72C;" FontSize="11"
+                                                                               Margin="0,1,4,0" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{loc:T Replacing}" Style="{StaticResource AccentTagText}" />
+                                                                </StackPanel>
+                                                            </Border>
                                                             <Border x:Name="DocumentBadge" Style="{StaticResource AccentTagStyle}"
                                                                     HorizontalAlignment="Left" Margin="0,0,0,2" ToolTip="{Binding DividerTitle}">
                                                                 <TextBlock Text="{Binding DividerTitle}" Style="{StaticResource AccentTagText}"
@@ -748,6 +773,12 @@
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                         <Setter TargetName="Actions" Property="Opacity" Value="1" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsRescanTarget}" Value="True">
+                                                        <Setter TargetName="RescanMarker" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="RescanBadge" Property="Visibility" Value="Visible" />
+                                                        <Setter TargetName="Card" Property="BorderThickness" Value="2" />
+                                                        <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding BadgeText}" Value="{x:Null}">
                                                         <Setter TargetName="SideBadge" Property="Visibility" Value="Collapsed" />

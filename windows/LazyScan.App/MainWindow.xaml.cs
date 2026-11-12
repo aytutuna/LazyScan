@@ -382,6 +382,11 @@ public partial class MainWindow : Window
         int saveCount = savePlan.PageCount;
         PageStrip.Visibility = pageCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         PageStripLabel.Text = DocumentSplitter.QueueSummary(queued, ViewModel.Settings.Document);
+        if (ViewModel.RescanTarget is { } rescan)
+        {
+            int number = queued.FindIndex(page => page.Id == rescan) + 1;
+            PageStripLabel.Text += " · " + Loc.T("Next scan replaces page {0}", number);
+        }
         SyncSaveButton(savePlan, pageCount);
         LastPdfSizeText.Text = ViewModel.LastPdfSizeText;
         LastPdfSizeText.Visibility = ViewModel.LastPdfSizeText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -2346,6 +2351,13 @@ public partial class MainWindow : Window
         await ViewModel.CopyPageText(id);
         RefreshFromViewModel();
     }
+
+    private void PageScanAgain_Click(object sender, RoutedEventArgs e)
+    {
+        if (PageIdOf(sender) is { } id) ViewModel.ScanAgain(id);
+    }
+
+    private void PageCancelScanAgain_Click(object sender, RoutedEventArgs e) => ViewModel.CancelScanAgain();
 
     private void PageLeft_Click(object sender, RoutedEventArgs e)
     {
