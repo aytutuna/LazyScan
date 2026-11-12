@@ -874,6 +874,18 @@ public static class BookPages
     public static string ReorderOfferText(int count) =>
         Loc.Plural(count, "Apply to the spread already scanned?", "Apply to the {0} spreads already scanned?");
 
+    /// <summary>The button of the offer: "Apply to the 5 spreads already scanned".</summary>
+    public static string ReorderButtonText(int count) =>
+        Loc.Plural(count, "Apply to the spread already scanned", "Apply to the {0} spreads already scanned");
+
+    /// <summary>Why the offer is there: "Pages already scanned keep the old order."</summary>
+    public static string ReorderHint(BookReorderChange changed) => changed switch
+    {
+        BookReorderChange.Order => Loc.T("Pages already scanned keep the old order."),
+        BookReorderChange.Rotation => Loc.T("Pages already scanned keep the old rotation."),
+        _ => Loc.T("Pages already scanned keep the old order and rotation."),
+    };
+
     /// <summary>The offer spoken: "Apply the new reading order to the 5 spreads already scanned?", naming what changed.</summary>
     public static string ReorderOfferLabel(int count, BookReorderChange changed) => changed switch
     {

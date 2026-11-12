@@ -805,6 +805,12 @@ public partial class MainWindow : Window
         string note = ViewModel.TaskChoicesNote;
         if (note.Length > 0) help = help.Length > 0 ? help + "\n\n" + note : note;
         string spoken = step?.FullPrompt ?? prompt;
+        if (task?.Task == ScanTask.Book && step is not null && BookPages.ScansOneSide(ViewModel.Settings) && ViewModel.Settings.Document.SplitFacingPages)
+        {
+            string order = BookPages.ReadingOrderLine(ViewModel.Settings.TaskOptions.BookRightToLeft);
+            prompt = Loc.T("{0}. {1}", order, prompt);
+            spoken = Loc.T("{0}. {1}", order, spoken);
+        }
         if (note.Length > 0) spoken += " " + note;
         bool promptChanged = TaskBannerPrompt.Text != prompt;
         TaskBannerPrompt.Text = prompt;

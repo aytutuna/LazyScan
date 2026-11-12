@@ -1157,6 +1157,9 @@
   "Apply the new settings to the spread already scanned?": {
     "other": "Apply the new settings to the {0} spreads already scanned?"
   },
+  "Pages already scanned keep the old order.": {},
+  "Pages already scanned keep the old rotation.": {},
+  "Pages already scanned keep the old order and rotation.": {},
   "Reordering the pages…": {},
   "Reordered {0} spread": {
     "other": "Reordered {0} spreads",
@@ -2489,7 +2492,6 @@
   "Book rotation": {
     "note": "Setting: how scanned book pages are turned upright. Not book as in reserve."
   },
-  "For a book lying sideways or upside down on the glass, from the next spread on.": {},
   "For a book lying sideways or upside down on the glass": {},
   "Middle": {
     "note": "Setting: where a book spread is cut, in the middle of the scan."

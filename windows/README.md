@@ -1373,7 +1373,13 @@ split…** moves the cut. While it is on, **Reads right to left**
 (Arabic, Hebrew, manga: the right page first), **Book rotation** (as scanned, 90° clockwise,
 180°, 90° counterclockwise, for a book lying sideways or upside down) and **Soften spine shadow**
 show beneath it; the first two are kept when a task is picked, and all three apply from the next
-spread on (and to a spread joined or split again).
+spread on (and to a spread joined or split again). Changing the reading order or the rotation with
+split spreads queued shows "Pages already scanned keep the old order." (rotation, or order and
+rotation) under the rotation and the button **Apply to the 5 spreads already scanned**
+(`AppViewModel.BookReorderOffer`, `ApplyBookReorder`). It cuts every queued split spread again where it
+is cut now, as **Change the split…** does, and holds the old pages in the removal hold, so one Undo
+(Ctrl+Z) brings them all back; setting the option back, a new scan, a save or another task removes
+the offer. The Book banner starts its prompt with the reading order ("Reads left to right.").
 
 The split runs in the page clean-up stage (`PageProcessor`), before the other steps, so each page is
 checked for being blank, straightened and turned upright on its own. The two pages are put in

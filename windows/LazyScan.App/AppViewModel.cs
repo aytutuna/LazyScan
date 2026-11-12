@@ -2717,6 +2717,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private int HoldRemoved(ICollection<Guid> ids, bool cleared = false, TaskFlow? flowBefore = null)
     {
+        // Pages removed after a reorder: the reorder can no longer be undone as a whole.
+        if (_reorderedTo.Count > 0)
+        {
+            var cutWith = _bookCutWith;
+            DiscardRemoved();
+            _bookCutWith = cutWith;
+        }
         var taken = new List<(PageItem Item, int Index)>();
         for (int i = 0; i < ScannedPages.Count; i++)
         {
@@ -2743,6 +2750,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || _removed.Count == 0) return null;
         var held = _removed.ToList();
         _removed.Clear();
+        DropReorderedPages();
         if (_flowBefore is { } before && Flow is { } flow && flow.Steps.SequenceEqual(before.Steps)) Flow = before;
         _flowBefore = null;
         var back = new HashSet<Guid>();
@@ -2770,6 +2778,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>Lets the held pages go: their spool files, and the spreads only they used.</summary>
     private void DiscardRemoved()
     {
+        _bookCutWith = null;
+        _reorderedTo.Clear();
         if (_removed.Count == 0) return;
         var pages = _removed.Select(r => r.Item.Page).ToList();
         _removed.Clear();

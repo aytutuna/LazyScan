@@ -1342,9 +1342,17 @@
                                                 <TextBlock Text="{loc:T Book rotation}" Style="{StaticResource FieldLabelText}" Margin="0,8,0,4" />
                                                 <ComboBox x:Name="BookRotationBox" HorizontalAlignment="Stretch"
                                                           AutomationProperties.Name="{loc:T Book rotation}"
-                                                          AutomationProperties.HelpText="{loc:T For a book lying sideways or upside down on the glass\, from the next spread on.}"
+                                                          AutomationProperties.HelpText="{loc:T For a book lying sideways or upside down on the glass}"
                                                           ToolTip="{loc:T For a book lying sideways or upside down on the glass}"
                                                           SelectionChanged="BookRotation_Changed" />
+                                                <!-- After the reading order or rotation changed with spreads queued: the spreads keep the old ones until Apply. -->
+                                                <DockPanel x:Name="BookReorderReason" Margin="0,8,0,4" Visibility="Collapsed">
+                                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
+                                                    <TextBlock x:Name="BookReorderHint" Style="{StaticResource ReasonText}" />
+                                                </DockPanel>
+                                                <Button x:Name="BookReorderButton" Style="{StaticResource IconTextButtonStyle}"
+                                                        local:Icon.Glyph="&#xE72C;" HorizontalAlignment="Stretch"
+                                                        Visibility="Collapsed" Click="BookReorder_Click" />
                                                 <!-- The spine's shadow lightened on each page; the page strip's arrow shows a page as scanned. -->
                                                 <CheckBox x:Name="SoftenSpineShadowBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
                                                           Content="{loc:T Soften spine shadow}"

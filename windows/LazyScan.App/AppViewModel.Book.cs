@@ -190,9 +190,15 @@ public sealed partial class AppViewModel
             }
             // The new pages take what the user decided about the old ones; a part the user removed stays out.
             var removed = indices.Select(i => ScannedPages[i].Page).ToList();
+            if (removed.Any(p => _reorderedTo.Contains(p.Id)))
+            {
+                var cutWith = _bookCutWith;
+                DiscardRemoved();
+                _bookCutWith = cutWith;
+            }
             var replacement = BookPages.ReplacementPages(removed, spooled.Select(item => item.Page).ToList());
             var thumbnails = spooled.ToDictionary(item => item.Page.Id, item => item.Thumbnail);
-            var items = replacement.Select(page => new PageItem(page, thumbnails[page.Id], Settings.Document)).ToList();
+            var items =replacement.Select(page => new PageItem(page, thumbnails[page.Id], Settings.Document)).ToList();
             var kept = replacement.Select(page => page.Id).ToHashSet();
             DeleteSpoolFiles(spooled.Select(item => item.Page).Where(page => !kept.Contains(page.Id)));
             for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
@@ -222,23 +228,191 @@ public sealed partial class AppViewModel
         NotifyAll();
     }
 
-    /// <summary>Right-to-left reading order, from the inspector: for the spreads scanned from now on.</summary>
+    /// <summary>Right-to-left reading order, from the inspector: for the next scans, and for the spreads queued once the offer is taken.</summary>
     public void SetBookRightToLeft(bool rightToLeft)
     {
-        if (Settings.TaskOptions.BookRightToLeft == rightToLeft) return;
+        bool before = Settings.TaskOptions.BookRightToLeft;
+        if (before == rightToLeft) return;
+        NoteBookOptionChange(before, Settings.TaskOptions.BookRotationQuarterTurns);
         Settings.TaskOptions.BookRightToLeft = rightToLeft;
+        EndBookOptionChange();
+    }
+
+    /// <summary>The book's rotation (quarter turns clockwise), from the inspector: for the next scans, and for the spreads queued once the offer is taken.</summary>
+    public void SetBookRotation(int quarterTurns)
+    {
+        int turns = BookSplitter.NormalizedTurns(quarterTurns);
+        int before = Settings.TaskOptions.BookRotationQuarterTurns;
+        if (before == turns) return;
+        NoteBookOptionChange(Settings.TaskOptions.BookRightToLeft, before);
+        Settings.TaskOptions.BookRotationQuarterTurns = turns;
+        EndBookOptionChange();
+    }
+
+    /// <summary>The reading order and rotation the spreads in the queue were cut with, while an option differs from them.</summary>
+    private (bool RightToLeft, int Turns)? _bookCutWith;
+
+    /// <summary>The first change of an option with split spreads queued remembers the values the spreads were cut with.</summary>
+    private void NoteBookOptionChange(bool rightToLeft, int quarterTurns)
+    {
+        if (_bookCutWith is null && SplitSpreadIds().Count > 0)
+        {
+            _bookCutWith = (rightToLeft, BookSplitter.NormalizedTurns(quarterTurns));
+        }
+    }
+
+    private void EndBookOptionChange()
+    {
+        // Set back to what the spreads were cut with, there is nothing to offer.
+        var options = Settings.TaskOptions;
+        if (_bookCutWith is { } cut && cut == (options.BookRightToLeft, BookSplitter.NormalizedTurns(options.BookRotationQuarterTurns)))
+        {
+            _bookCutWith = null;
+        }
         SettingsEdited();
         NotifyAll();
     }
 
-    /// <summary>The book's rotation (quarter turns clockwise), from the inspector: for the spreads scanned from now on.</summary>
-    public void SetBookRotation(int quarterTurns)
+    /// <summary>The spreads in the queue that are split and can be cut again, in queue order.</summary>
+    private List<Guid> SplitSpreadIds()
     {
-        int turns = BookSplitter.NormalizedTurns(quarterTurns);
-        if (Settings.TaskOptions.BookRotationQuarterTurns == turns) return;
-        Settings.TaskOptions.BookRotationQuarterTurns = turns;
-        SettingsEdited();
-        NotifyAll();
+        var ids = new List<Guid>();
+        foreach (var item in ScannedPages)
+        {
+            if (item.Page.Spread is { IsWhole: false } part && _spreads.ContainsKey(part.SpreadId) && !ids.Contains(part.SpreadId))
+            {
+                ids.Add(part.SpreadId);
+            }
+        }
+        return ids;
+    }
+
+    /// <summary>
+    /// The offer to cut the spreads in the queue again after the reading order or the rotation changed;
+    /// null when neither differs from what they were cut with, or no split spread is queued.
+    /// </summary>
+    public BookReorderOffer? BookReorderOffer
+    {
+        get
+        {
+            if (_bookCutWith is not { } cut) return null;
+            int count = SplitSpreadIds().Count;
+            if (count == 0) return null;
+            bool order = cut.RightToLeft != Settings.TaskOptions.BookRightToLeft;
+            bool turned = cut.Turns != BookSplitter.NormalizedTurns(Settings.TaskOptions.BookRotationQuarterTurns);
+            var changed = order && turned ? BookReorderChange.Both : order ? BookReorderChange.Order : BookReorderChange.Rotation;
+            return new BookReorderOffer(count, changed);
+        }
+    }
+
+    /// <summary>
+    /// The offer's Apply: every split spread in the queue is cut again where it is cut now, with the
+    /// current reading order and rotation (<see cref="PageProcessor.ProcessSpread"/>), each page keeping
+    /// its document break, name and keep or skip. The old pages wait in the removal hold, so one Undo
+    /// brings them all back. A spread that cannot be read keeps its pages.
+    /// </summary>
+    public Task ApplyBookReorder()
+    {
+        if (IsBusy || BookReorderOffer is null) return Task.CompletedTask;
+        var s = Settings.Clone();
+        return RunExclusive(async token =>
+        {
+            // Turns and swaps clicked before must not land on pages about to be replaced.
+            await Settled(_pageRotateChain);
+            StatusMessage = BookPages.ReorderingStatus;
+            NotifyAll();
+            string spoolDirectory = _spool.Directory;
+            var processor = PageProcessor.ForScan(s, ScanArrangement.AsScanned, _orientation, _barcodes);
+            var fresh = new Dictionary<Guid, List<PageItem>>();
+            string? unread = null;
+            try
+            {
+                foreach (var spreadId in SplitSpreadIds())
+                {
+                    var page = ScannedPages.First(item => item.Page.SpreadId == spreadId).Page;
+                    var source = _spreads[spreadId];
+                    try
+                    {
+                        var made = await Task.Run(() =>
+                        {
+                            var spread = new ScannedPage(LoadSpread(source), source.Dpi, s.ColorMode, spreadId, source.CreatedAt)
+                            {
+                                Side = page.Side,
+                                SheetIndex = page.SheetIndex,
+                            };
+                            var pages = processor.ProcessSpread(spread, page.Spread?.Gutter, BookSplitOptions.Of(s), token).ToList();
+                            return SpoolPages(pages, spoolDirectory).Select(p => new PageItem(p)).ToList();
+                        }, token);
+                        if (made.Count > 0) fresh[spreadId] = made;
+                    }
+                    catch (Exception e) when (!IsCancellation(e))
+                    {
+                        unread ??= e.Message;
+                    }
+                }
+            }
+            catch
+            {
+                foreach (var items in fresh.Values) DeleteSpoolFiles(items.Select(item => item.Page));
+                throw;
+            }
+            if (token.IsCancellationRequested || fresh.Count == 0)
+            {
+                foreach (var items in fresh.Values) DeleteSpoolFiles(items.Select(item => item.Page));
+                token.ThrowIfCancellationRequested();
+                if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
+                return;
+            }
+            // The old pages go to the hold, each with the place it had once the ones before it were gone.
+            DiscardRemoved();
+            var held = new List<(PageItem Item, int Index)>();
+            for (int i = 0; i < ScannedPages.Count; i++)
+            {
+                if (ScannedPages[i].Page.SpreadId is { } id && fresh.ContainsKey(id)) held.Add((ScannedPages[i], i - held.Count));
+            }
+            foreach (var (spreadId, spooled) in fresh)
+            {
+                var indices = Enumerable.Range(0, ScannedPages.Count).Where(i => ScannedPages[i].Page.SpreadId == spreadId).ToList();
+                var old = indices.Select(i => ScannedPages[i].Page).ToList();
+                var replacement = BookPages.ReplacementPages(old, spooled.Select(item => item.Page).ToList()).ToList();
+                // A break or a name marks a place in the queue, so it stays there when the halves swap.
+                if (replacement.Count == old.Count)
+                {
+                    for (int i = 0; i < replacement.Count; i++)
+                    {
+                        replacement[i] = replacement[i].WithDocumentBreak(old[i].DocumentBreak).WithDocumentLabel(old[i].DocumentLabel);
+                    }
+                }
+                var thumbnails = spooled.ToDictionary(item => item.Page.Id, item => item.Thumbnail);
+                var kept = replacement.Select(page => page.Id).ToHashSet();
+                DeleteSpoolFiles(spooled.Select(item => item.Page).Where(page => !kept.Contains(page.Id)));
+                for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
+                for (int k = 0; k < replacement.Count; k++)
+                {
+                    ScannedPages.Insert(indices[0] + k, new PageItem(replacement[k], thumbnails[replacement[k].Id], Settings.Document));
+                    _reorderedTo.Add(replacement[k].Id);
+                }
+            }
+            _removed.AddRange(held);
+            _removedByClear = false;
+            _flowBefore = null;
+            _queueLength = ScannedPages.Count;
+            if (unread is null) _bookCutWith = null;
+            StatusMessage = BookPages.ReorderedNote(fresh.Count);
+            if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
+        });
+    }
+
+    /// <summary>The pages that took the place of the held ones when the spreads were cut again; Undo takes them out.</summary>
+    private readonly List<Guid> _reorderedTo = [];
+
+    private void DropReorderedPages()
+    {
+        if (_reorderedTo.Count == 0) return;
+        var gone = ScannedPages.Where(item => _reorderedTo.Contains(item.Page.Id)).ToList();
+        _reorderedTo.Clear();
+        foreach (var item in gone) ScannedPages.Remove(item);
+        DeleteSpoolFiles(gone.Select(item => item.Page));
     }
 }
 

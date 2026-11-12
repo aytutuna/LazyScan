@@ -1040,6 +1040,7 @@ public enum BookPages {
     public static func reorderOfferLabel(count: Int, changed: BookReorderOffer.Changed) -> String   // spoken: "Apply the new reading order | rotation | settings to the 5 spreads already scanned?"; C# ReorderOfferLabel
     public static var reorderingStatus: String                                  // "Reordering the pages…"; C# ReorderingStatus
     public static func reorderedNote(_ count: Int) -> String                    // "Reordered 1 spread" / "Reordered 5 spreads"; C# ReorderedNote
+    // C# only (the Mac inspector words them itself): ReorderButtonText(count) "Apply to the 5 spreads already scanned", ReorderHint(changed) "Pages already scanned keep the old order." / "… old rotation." / "… old order and rotation."
     public static let rotationChoices: [Int]                                    // [0, 1, 2, 3]
     public static func rotationLabel(_ quarterTurns: Int) -> String             // "As scanned", "90° clockwise", "180°", "90° counterclockwise"
     public static func hint(_ settings: ScanSettings) -> String                 // "Each book scan becomes two pages, cut at the spine."; two-sided: "Only for one side of each sheet: …"

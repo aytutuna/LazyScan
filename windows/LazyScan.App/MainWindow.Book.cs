@@ -46,6 +46,9 @@ public partial class MainWindow
         }
         SplitFacingPagesBox.IsEnabled = collecting && !ViewModel.IsBusy;
         BookOptions.Visibility = collecting && s.Document.SplitFacingPages ? Visibility.Visible : Visibility.Collapsed;
+        BookRightToLeftBox.IsEnabled = !ViewModel.IsBusy;
+        BookRotationBox.IsEnabled = !ViewModel.IsBusy;
+        SyncBookReorderOffer();
         string hint = BookPages.Hint(s);
         bool twoSided = queue && !oneSide;
         SplitFacingPagesHint.Text = twoSided ? BookPages.NotWithTwoSidedReason : "";
@@ -55,6 +58,29 @@ public partial class MainWindow
         string shadowHint = SpineShadow.Hint(s.Document.SoftenSpineShadow);
         SoftenSpineShadowBox.ToolTip = shadowHint;
         AutomationProperties.SetHelpText(SoftenSpineShadowBox, shadowHint);
+    }
+
+    /// <summary>The hint and button under the rotation: shown while the spreads in the queue differ from the options.</summary>
+    private void SyncBookReorderOffer()
+    {
+        var offer = ViewModel.BookReorderOffer;
+        bool wasShown = BookReorderButton.Visibility == Visibility.Visible;
+        BookReorderReason.Visibility = offer is null ? Visibility.Collapsed : Visibility.Visible;
+        BookReorderButton.Visibility = offer is null ? Visibility.Collapsed : Visibility.Visible;
+        if (offer is not { } shown) return;
+        BookReorderHint.Text = BookPages.ReorderHint(shown.Changed);
+        string title = BookPages.ReorderButtonText(shown.Count);
+        BookReorderButton.Content = title;
+        BookReorderButton.IsEnabled = !ViewModel.IsBusy;
+        AutomationProperties.SetName(BookReorderButton, title);
+        AutomationProperties.SetHelpText(BookReorderButton, BookPages.ReorderOfferLabel(shown.Count, shown.Changed));
+        if (!wasShown) AnnounceWhenShown(BookReorderHint);
+    }
+
+    private async void BookReorder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.ApplyBookReorder();
+        RefreshFromViewModel();
     }
 
     private void SoftenSpineShadow_Changed(object sender, RoutedEventArgs e)

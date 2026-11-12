@@ -544,6 +544,11 @@ public class BookSplitterTests
                      BookPages.ReorderOfferLabel(1, BookReorderChange.Rotation));
         Assert.Equal("Apply the new settings to the 2 spreads already scanned?",
                      BookPages.ReorderOfferLabel(2, BookReorderChange.Both));
+        Assert.Equal("Apply to the spread already scanned", BookPages.ReorderButtonText(1));
+        Assert.Equal("Apply to the 5 spreads already scanned", BookPages.ReorderButtonText(5));
+        Assert.Equal("Pages already scanned keep the old order.", BookPages.ReorderHint(BookReorderChange.Order));
+        Assert.Equal("Pages already scanned keep the old rotation.", BookPages.ReorderHint(BookReorderChange.Rotation));
+        Assert.Equal("Pages already scanned keep the old order and rotation.", BookPages.ReorderHint(BookReorderChange.Both));
         Assert.Equal("Reordered 1 spread", BookPages.ReorderedNote(1));
         Assert.Equal("Reordered 5 spreads", BookPages.ReorderedNote(5));
         Assert.Equal("Reordering the pages…", BookPages.ReorderingStatus);
