@@ -4,6 +4,8 @@ using Xunit;
 
 namespace LazyScan.App.Tests;
 
+// AppInfo reads Packaging.IsPackaged once, so it must not run while a test here sets it
+[Collection("Packaging")]
 public sealed class PackagingTests : IDisposable
 {
     private readonly string _keyPath = @"Software\LazyScan.Tests-" + Guid.NewGuid().ToString("N");

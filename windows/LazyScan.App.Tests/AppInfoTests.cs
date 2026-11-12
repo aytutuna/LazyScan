@@ -2,6 +2,7 @@ using Xunit;
 
 namespace LazyScan.App.Tests;
 
+[Collection("Packaging")]
 public sealed class AppInfoTests
 {
     [Fact]
