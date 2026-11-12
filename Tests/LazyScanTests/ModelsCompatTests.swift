@@ -156,7 +156,8 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
                           with: "\"duplex\" : \"manual\",\n      \"format\" : \"tiff\"")
     .replacingOccurrences(of: "\"source\" : \"documentFeeder\"",
                           with: "\"source\" : \"documentFeeder\",\n      \"taskOptions\" : {\n"
-                              + "        \"bookCutAt\" : \"sameAsLast\",\n        \"bookLastCut\" : 0.3,\n"
+                              + "        \"bookCutAt\" : \"sameAsLast\",\n        \"bookFillFingers\" : false,\n"
+                              + "        \"bookFlattenCurves\" : false,\n        \"bookLastCut\" : 0.3,\n"
                               + "        \"bookRightToLeft\" : true,\n        \"bookRotationQuarterTurns\" : 1,\n"
                               + "        \"cameraFilter\" : \"original\",\n"
                               + "        \"cameraFrontsFirst\" : true,\n        \"cameraSpreads\" : true,\n"
@@ -1190,7 +1191,8 @@ final class ModelsCompatTests: XCTestCase {
                 XCTAssertEqual(Set(written.keys), ["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage",
                                                    "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine",
                                                    "bookRightToLeft", "bookRotationQuarterTurns", "bookCutAt",
-                                                   "cameraFrontsFirst", "cameraSpreads"])
+                                                   "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst",
+                                                   "cameraSpreads"])
                 XCTAssertEqual(written["idCardPaper"] as? String, paper.rawValue)
                 XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: data).taskOptions, settings.taskOptions)
             }
@@ -1464,6 +1466,25 @@ final class ModelsCompatTests: XCTestCase {
         copy.document.softenSpineShadow = false
         XCTAssertTrue(original.document.softenSpineShadow)
         XCTAssertNotEqual(original.document, copy.document)
+    }
+
+    func test_bookFlattenOptions_offByDefault_andInFilesWithoutThem() throws {
+        XCTAssertFalse(ScanSettings().taskOptions.bookFlattenCurves)
+        XCTAssertFalse(ScanSettings().taskOptions.bookFillFingers)
+        let older = try decode(ScanSettings.self, #"{"taskOptions": {"bookRightToLeft": true, "cameraSpreads": true}}"#)
+        XCTAssertTrue(older.taskOptions.bookRightToLeft)
+        XCTAssertFalse(older.taskOptions.bookFlattenCurves)
+        XCTAssertFalse(older.taskOptions.bookFillFingers)
+        let corrupt = try decode(ScanSettings.self,
+                                 #"{"taskOptions": {"bookFlattenCurves": "yes", "bookFillFingers": true, "cameraSpreads": true}}"#)
+        XCTAssertFalse(corrupt.taskOptions.bookFlattenCurves)
+        XCTAssertTrue(corrupt.taskOptions.bookFillFingers)
+        XCTAssertTrue(corrupt.taskOptions.cameraSpreads)
+        var chosen = ScanSettings()
+        chosen.taskOptions.bookFlattenCurves = true
+        let back = try JSONDecoder().decode(ScanSettings.self, from: encode(chosen))
+        XCTAssertTrue(back.taskOptions.bookFlattenCurves)
+        XCTAssertFalse(back.taskOptions.bookFillFingers)
     }
 
     func test_corruptReceiptOptions_fallBackOneByOne_restIntact() throws {

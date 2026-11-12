@@ -609,6 +609,12 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     /// The place of the last cut made by hand in the split sheet, as a share of the spread (0...1); nil
     /// before any. Left out of the file then.
     public var bookLastCut: Double?
+    /// The camera's book pages are drawn flat between their curved top and bottom edges
+    /// (`PageFlatten.flatten`). Off unless chosen.
+    public var bookFlattenCurves: Bool = false
+    /// The fingers holding a camera's book page at its margins are painted over with paper
+    /// (`PageFlatten.fillFingers`). Off unless chosen.
+    public var bookFillFingers: Bool = false
     /// The iPhone's camera takes both sides of each sheet for the two-sided task as all the fronts first,
     /// then all the backs. Off: "Flip & capture", each front followed by its back.
     public var cameraFrontsFirst: Bool = false
@@ -636,6 +642,8 @@ public struct TaskOptions: Codable, Equatable, Sendable {
         case bookRotationQuarterTurns
         case bookCutAt
         case bookLastCut
+        case bookFlattenCurves
+        case bookFillFingers
         case cameraFrontsFirst
         case cameraSpreads
         case cameraFilter
@@ -659,6 +667,8 @@ extension TaskOptions {
         bookRotationQuarterTurns = container.decodeLenient(forKey: .bookRotationQuarterTurns, default: bookRotationQuarterTurns)
         bookCutAt = container.decodeLenient(forKey: .bookCutAt, default: bookCutAt)
         bookLastCut = container.decodeLenient(forKey: .bookLastCut, default: bookLastCut)
+        bookFlattenCurves = container.decodeLenient(forKey: .bookFlattenCurves, default: bookFlattenCurves)
+        bookFillFingers = container.decodeLenient(forKey: .bookFillFingers, default: bookFillFingers)
         cameraFrontsFirst = container.decodeLenient(forKey: .cameraFrontsFirst, default: cameraFrontsFirst)
         cameraSpreads = container.decodeLenient(forKey: .cameraSpreads, default: cameraSpreads)
         cameraFilter = container.decodeLenient(forKey: .cameraFilter, default: cameraFilter)

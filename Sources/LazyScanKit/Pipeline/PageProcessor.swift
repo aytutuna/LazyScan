@@ -479,9 +479,11 @@ public struct PageProcessor {
                                   arrangement: ScanArrangement = .asScanned,
                                   straightens: Bool = false) -> PageProcessor {
         let spreads: Bool = splitsCameraSpreads(settings)
-        let cut: [any PageStep] = [PerspectiveStep(spread: spreads),
-                                   EnhanceStep(mode: DocumentEnhancer.mode(for: settings),
-                                               threshold: settings.adjustments.blackWhiteThreshold)]
+        var cut: [any PageStep] = [PerspectiveStep(spread: spreads)]
+        if flattensCurvedPages(settings) { cut.append(FlattenStep()) }
+        if fillsFingers(settings) { cut.append(FingerFillStep()) }
+        cut.append(EnhanceStep(mode: DocumentEnhancer.mode(for: settings),
+                               threshold: settings.adjustments.blackWhiteThreshold))
         var steps: [any PageStep] = []
         if TaskCatalog.flow(of: settings) == .documentQueue {
             steps = forPhotoImport(settings, scorer: scorer, barcodes: barcodes).steps
@@ -501,6 +503,19 @@ public struct PageProcessor {
                                         adjustsAlternate: false))
         }
         return PageProcessor(steps: steps, arrangement: arrangement, prepare: cut)
+    }
+
+    /// Whether a camera's book pages are drawn flat after they are cut out of their photos (`FlattenStep`):
+    /// asked for (`TaskOptions.bookFlattenCurves`) while facing pages are split (`splitsFacingPages`), which
+    /// is the book task's.
+    public static func flattensCurvedPages(_ settings: ScanSettings) -> Bool {
+        splitsFacingPages(settings) && settings.taskOptions.bookFlattenCurves
+    }
+
+    /// Whether the fingers at the margins of a camera's book pages are painted over (`FingerFillStep`):
+    /// asked for (`TaskOptions.bookFillFingers`) for the book task, as `flattensCurvedPages`.
+    public static func fillsFingers(_ settings: ScanSettings) -> Bool {
+        splitsFacingPages(settings) && settings.taskOptions.bookFillFingers
     }
 
     /// Whether a camera's shot of a book is a whole spread, cut at its spine (the iPhone's "Whole spread"):

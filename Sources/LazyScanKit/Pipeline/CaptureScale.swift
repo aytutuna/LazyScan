@@ -116,6 +116,11 @@ public struct CaptureFacts: Equatable, Codable, Sendable {
     /// Whether `ShotStraightenStep` turned the page, so a cut again turns it the same way. Nil for pages that
     /// were not (and for queues recorded before it); kept with the queue, not in companion packages.
     public var straightened: Bool? = nil
+    /// Whether `FlattenStep` drew the page flat, and whether `FingerFillStep` painted over fingers at its
+    /// margins, so a cut again does the same. Nil for pages where they did not (and for queues recorded before
+    /// them); kept with the queue, not in companion packages.
+    public var flattened: Bool? = nil
+    public var fingersFilled: Bool? = nil
     /// The adjustments and color mode a photo of Photos was given when it was cut out, so a cut again gives it
     /// the same whatever the settings are by then; nil for other pages and when they changed nothing. Kept with
     /// the queue, not in companion packages.

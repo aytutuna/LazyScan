@@ -55,11 +55,18 @@ public enum PageRecut {
         let straightens: Bool = facts.straightened == true
         facts.scale = nil
         facts.straightened = nil
+        let flattens: Bool = facts.flattened == true
+        let fillsFingers: Bool = facts.fingersFilled == true
+        facts.flattened = nil
+        facts.fingersFilled = nil
         facts.enhancement = nil
         facts.filter = nil
         let source = ScannedPage(image: taken, dpi: page.dpi, colorMode: .color, id: page.id, createdAt: page.createdAt)
             .withCapture(facts)
-        var cut: ScannedPage = EnhanceStep(mode: filter?.mode, threshold: threshold).apply(PerspectiveStep().apply(source))
+        var cut: ScannedPage = PerspectiveStep().apply(source)
+        if flattens { cut = FlattenStep().apply(cut) }
+        if fillsFingers { cut = FingerFillStep().apply(cut) }
+        cut = EnhanceStep(mode: filter?.mode, threshold: threshold).apply(cut)
         if straightens { cut = ShotStraightenStep().apply(cut) }
         if let adjusting { cut = adjusting.apply(cut) }
         if facts.kind == .receipt { cut = enhancedAsReceipt(cut) }

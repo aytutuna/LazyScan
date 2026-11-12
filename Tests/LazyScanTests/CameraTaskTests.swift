@@ -199,6 +199,21 @@ final class CameraTaskTests: XCTestCase {
         XCTAssertLessThanOrEqual(wordCount(CameraTaskCatalog.spreadsWithScannerNote), 25)
     }
 
+    func test_catalog_bookSaysWhetherCurvedPagesAreFlattened() {
+        for spreads in [false, true] {
+            var options = TaskOptions()
+            options.cameraSpreads = spreads
+            let off: CameraStepText = CameraTaskCatalog.text(.book, options: options)
+            XCTAssertTrue(off.help.contains("not flattened"), off.help)
+            options.bookFlattenCurves = true
+            let on: CameraStepText = CameraTaskCatalog.text(.book, options: options)
+            XCTAssertTrue(on.help.contains("are flattened"), on.help)
+            XCTAssertFalse(on.help.contains("not flattened"), on.help)
+            XCTAssertEqual(on.prompt, off.prompt)
+            XCTAssertLessThanOrEqual(wordCount(on.help), 25, on.help)
+        }
+    }
+
     func test_catalog_currentLine_followsTheSidesAndNewDocument() {
         let options = TaskOptions()
         XCTAssertNil(CameraTaskCatalog.current(nil, options: options, sides: nil, newDocument: false))
