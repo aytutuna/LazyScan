@@ -168,22 +168,41 @@ final class AppStateCompanionHostTests: XCTestCase {
     }
 
     @MainActor
-    func test_phoneDocument_waitsWhileTheSettingsDoNotCollectPages() async throws {
+    func test_phoneDocument_isAddedWhateverTheTask() async throws {
         let state = try await makeState(pages: 0)
         state.settings.intent = .photo
         state.queuePhoneDocument(try received(), phoneName: "Aytu's iPhone")
-        let waiting = "2 pages from Aytu's iPhone are waiting: choose Document mode, or a document task, "
-            + "with Collect pages before saving on, to add them to the queue."
-        XCTAssertEqual(state.phoneDocumentsWaitingMessage, waiting)
-        XCTAssertEqual(state.phoneBarMessage, waiting)
-        XCTAssertTrue(state.scannedPages.isEmpty)
-        // Document mode again: the document is added within a second or so.
-        state.settings.intent = .document
         try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        XCTAssertNil(state.phoneDocumentsWaitingMessage)
+        XCTAssertEqual(state.scannedPages.map(\.source), [.phone, .phone])
         XCTAssertEqual(state.scannedPages.map(\.documentLabel), ["Lunch 2026-10-20", nil])
         // The queue was empty: no split before the first page.
         XCTAssertEqual(state.scannedPages.map(\.documentBreak), [.automatic, .automatic])
         XCTAssertEqual(state.phoneBarMessage, "2 pages from Aytu's iPhone added to the queue.")
+        // The task stays as it was.
+        XCTAssertEqual(state.settings.intent, .photo)
+    }
+
+    @MainActor
+    func test_phoneDocument_isAddedWithCollectPagesOff() async throws {
+        let state = try await makeState(pages: 0)
+        state.settings.documentMultiPage = false
+        state.queuePhoneDocument(try received(), phoneName: "Aytu's iPhone")
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        XCTAssertFalse(state.settings.documentMultiPage)
+        XCTAssertEqual(state.phoneBarMessage, "2 pages from Aytu's iPhone added to the queue.")
+    }
+
+    @MainActor
+    func test_phoneDocument_waitsWhileAReviewIsOpen() async throws {
+        let state = try await makeState(pages: 0)
+        state.showPhotoReview = true
+        state.queuePhoneDocument(try received(), phoneName: "Aytu's iPhone")
+        XCTAssertNotNil(state.phoneDocumentsWaitingMessage)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+        state.showPhotoReview = false
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        XCTAssertNil(state.phoneDocumentsWaitingMessage)
     }
 
     func test_waitingMessage_countsAndNames() {

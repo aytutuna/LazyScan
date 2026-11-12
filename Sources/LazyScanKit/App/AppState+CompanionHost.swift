@@ -135,9 +135,10 @@ extension AppState {
         phoneBarMessage = nil
     }
 
-    /// The queue can take a phone's pages now: it collects pages (`PhotoImport.isOffered` with Collect
-    /// pages before saving on, as for a `.lsdoc` opened by hand) and nothing else is going on
-    /// (`canIngest`). Twin of C# `CanTakePhonePages`.
+    /// The queue can take the pages of a `.lsdoc` opened by hand now: it collects pages
+    /// (`PhotoImport.isOffered` with Collect pages before saving on) and nothing else is going on
+    /// (`canIngest`). A phone's documents do not need the first part (`addWaitingPhoneDocuments`).
+    /// Twin of C# `CanTakePhonePages`.
     public var canTakePhonePages: Bool {
         PhotoImport.isOffered(settings) && settings.documentMultiPage && canIngest
     }
@@ -161,8 +162,9 @@ extension AppState {
         addWaitingPhoneDocuments()
     }
 
-    /// Adds the oldest waiting document when the queue can take it; otherwise says what waits and tries
-    /// again shortly (and when the work running now ends, `endOfWork`).
+    /// Adds the oldest waiting document when pages can be brought in (`canIngest`), whatever the task or
+    /// Collect pages setting; otherwise says what waits and tries again shortly (and when the work
+    /// running now ends, `endOfWork`).
     func addWaitingPhoneDocuments() {
         guard !phoneDocuments.isEmpty else {
             phoneRetry?.cancel()
@@ -170,21 +172,19 @@ extension AppState {
             if phoneDocumentsWaitingMessage != nil { phoneDocumentsWaitingMessage = nil }
             return
         }
-        guard canTakePhonePages else {
+        guard canIngest else {
             var pages = 0
             var names: [String] = []
             for document in phoneDocuments {
                 pages += document.package.pageCount
                 if !names.contains(document.phoneName) { names.append(document.phoneName) }
             }
-            let collects = PhotoImport.isOffered(settings) && settings.documentMultiPage
             let waiting = CompanionHostText.waitingMessage(pageCount: pages, from: names.count == 1 ? names[0] : L10n.t("your phones"),
-                                                           collectsPages: collects, stackUnderWay: isStackUnderWay,
-                                                           taskReason: PhotoImport.ownSaveTaskReason(settings))
+                                                           collectsPages: true, stackUnderWay: isStackUnderWay)
             if waiting != phoneDocumentsWaitingMessage {
                 phoneDocumentsWaitingMessage = waiting
                 // Only the reason the user can act on is shown on the bar; being busy passes on its own.
-                if !isBusy || !collects { phoneBarMessage = waiting }
+                if !isBusy { phoneBarMessage = waiting }
             }
             if phoneRetry == nil {
                 phoneRetry = Task { @MainActor [weak self] in
@@ -208,7 +208,16 @@ extension AppState {
     /// that cannot be read is released too (it never will be); one that could not be read now, or
     /// whose adding was cancelled, stays in the inbox and is added the next time the app starts.
     private func addPhoneDocument(_ package: ReceivedPackage, phoneName: String) {
-        let s = settings
+        // The pages go to the page list whatever the task: the task and Collect pages stay as they are.
+        let s: ScanSettings = {
+            var queued = settings
+            if !(PhotoImport.isOffered(queued) && queued.documentMultiPage) {
+                queued.intent = .document
+                queued.taskId = nil
+                queued.documentMultiPage = true
+            }
+            return queued
+        }()
         let queueHasPages = !scannedPages.isEmpty
         runExclusive(stopsInBackground: false) { flag in
             self.statusMessage = CompanionHostText.addingMessage(phoneName)
