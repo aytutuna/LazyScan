@@ -487,6 +487,8 @@ public final class AppState: ObservableObject {
     var copyAreaSelected = false
     /// The save under way sends its files by email once written (`saveAndEmail`).
     var emailsAfterSave = false
+    /// The save under way opens the share sheet with its files once written (`saveAndShare`).
+    var sharesAfterSave = false
     /// A `.lsdoc` opened by hand, offered on a banner until its pages are added, opened as a new queue
     /// or dismissed (AppState+Package.swift); nil otherwise.
     @Published public internal(set) var pendingPackage: PendingPackage?
@@ -2534,6 +2536,11 @@ public final class AppState: ObservableObject {
             runFileAction(.email, urls: saved)
             return
         }
+        if sharesAfterSave {
+            sharesAfterSave = false
+            runFileAction(.share, urls: saved)
+            return
+        }
         guard let step = SaveActions.plan(action, saved: saved) else { return }
         runFileAction(Self.afterSaveFileAction(step.fileAction, task: settings.task, platform: platform), urls: step.urls)
     }
@@ -2552,6 +2559,19 @@ public final class AppState: ObservableObject {
         }
         // Nothing started (no save to run after): the next save must not email.
         if !isBusy { emailsAfterSave = false }
+    }
+
+    /// Saves the collected pages as Save does, then opens the share sheet with the saved files, whatever
+    /// these settings do after a save. For this save only: the iPhone's Share… in Options.
+    public func saveAndShare(images: Bool) {
+        guard !isBusy, !scannedPages.isEmpty else { return }
+        sharesAfterSave = true
+        if images {
+            saveImages()
+        } else {
+            savePDF()
+        }
+        if !isBusy { sharesAfterSave = false }
     }
 
     /// The file action an after-save step runs: the iPhone's Email task sends what it shares by email (a
@@ -3006,9 +3026,10 @@ public final class AppState: ObservableObject {
                     self.recordFailure(deviceName: session.info.name, error: error)
                 }
             }
-            // The save's password is wiped however the operation ended, and so is an Email… not used.
+            // The save's password is wiped however the operation ended, and so is an Email… or Share… not used.
             forgetPDFPassword()
             emailsAfterSave = false
+            sharesAfterSave = false
             currentCancelFlag = nil
             saveDirectory = nil
             progress = nil

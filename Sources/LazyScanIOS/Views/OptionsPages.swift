@@ -202,8 +202,8 @@ struct AfterSavingPage: View {
 }
 
 /// Share now: the actions on the pages queued now. Adding them to a PDF picked in Files (or going back to
-/// saving new files), Email, Print, sharing them as a Lazy Scan document and, with a computer paired, sending
-/// them to it. Each action closes the sheet first (`onAction`), since what it opens cannot show over it; they
+/// saving new files), Share, Email, Print, with a computer paired sending them to it, and last sharing them
+/// as a Lazy Scan file. Each action closes the sheet first (`onAction`), since what it opens cannot show over it; they
 /// are dimmed while nothing is queued or a share or a send reads the queue (`blocked`). What runs on every
 /// save is After saving's.
 struct ShareNowPage: View {
@@ -233,6 +233,13 @@ struct ShareNowPage: View {
             appendRows(canSave: canSave && idle)
         }
         Button {
+            onAction(.share)
+        } label: {
+            Label("Share\u{2026}", systemImage: "square.and.arrow.up")
+        }
+        .disabled(!canSave || !idle)
+        .accessibilityIdentifier("save.share")
+        Button {
             onAction(.email)
         } label: {
             Label("Email\u{2026}", systemImage: "envelope")
@@ -246,13 +253,6 @@ struct ShareNowPage: View {
         }
         .disabled(!canSave || !idle)
         .accessibilityIdentifier("save.print")
-        Button {
-            onAction(.share)
-        } label: {
-            Label(IOSShell.sharePackageLabel, systemImage: "square.and.arrow.up")
-        }
-        .disabled(state.scannedPages.isEmpty || !idle)
-        .accessibilityIdentifier("share.package")
         if IOSShell.offersSendToComputer(state.settings, status: state.companionStatus) {
             Button {
                 onAction(.send)
@@ -267,6 +267,13 @@ struct ShareNowPage: View {
                     .accessibilityIdentifier("send.waiting")
             }
         }
+        Button {
+            onAction(.sharePackage)
+        } label: {
+            Label(IOSShell.sharePackageLabel, systemImage: "shippingbox")
+        }
+        .disabled(state.scannedPages.isEmpty || !idle)
+        .accessibilityIdentifier("share.package")
     }
 
     /// Add to an existing PDF, as a new PDF again while one is picked (After saving's steps included, as Save

@@ -41,7 +41,7 @@ final class IOSPackageTests: XCTestCase {
         XCTAssertFalse(IOSShell.isPackage(URL(fileURLWithPath: "/tmp/photo.jpg")))
         XCTAssertFalse(IOSShell.isPackage(URL(fileURLWithPath: "/tmp/lsdoc")))
         XCTAssertEqual(IOSShell.packageType.identifier, "com.lazyscan.package")
-        XCTAssertEqual(IOSShell.sharePackageLabel, "Share as Lazy Scan document")
+        XCTAssertEqual(IOSShell.sharePackageLabel, "Share as Lazy Scan file")
     }
 
     @MainActor

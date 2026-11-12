@@ -757,6 +757,42 @@ final class IOSShellTests: XCTestCase {
     }
 
     @MainActor
+    func test_shareFromSave_opensTheShareSheetWithThatSave_andTheNextSaveAsTheSettingsSay() async throws {
+        let actions = IOSFileActions(pasteboard: nil, openSystemURL: { (_: URL) -> Void in },
+                                     mailAvailable: { () -> Bool in true })
+        let options = IOSLaunchOptions(arguments: ["LazyScan", IOSLaunchOptions.demoScannerArgument])
+        let state = AppState(backends: IOSShell.backends(options: options),
+                             presetStore: PresetStore(directory: folder), fileActions: actions,
+                             orientationScorer: ShellScorer(), barcodeReader: ShellBarcodes(),
+                             files: AppStateFiles.all(in: folder))
+        state.platform = .ios
+        state.start()
+        try await waitFor(timeout: 30) { state.capabilities != nil }
+        XCTAssertTrue(state.startTask(.document))
+        state.settings.destinationPath = folder.appendingPathComponent("Saved", isDirectory: true).path
+        state.settings.resolution = 75
+        state.settings.pdfSearchable = false
+
+        state.performScan()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        state.saveAndShare(images: false)
+        try await waitFor(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let pdf: URL = try XCTUnwrap(state.lastSavedURLs.first)
+        XCTAssertEqual(actions.shareRequest?.urls, [pdf])
+        XCTAssertNil(actions.mailRequest)
+
+        actions.shareRequest = nil
+        state.performScan()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        state.savePDF()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertNil(actions.shareRequest)
+        state.clearPages()
+    }
+
+    @MainActor
     func test_optionSwitches_changeTheTaskUnderTheHood_andKeepThePages() async throws {
         let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
                              fileActions: IOSFileActions(pasteboard: nil, openSystemURL: { (_: URL) -> Void in }),

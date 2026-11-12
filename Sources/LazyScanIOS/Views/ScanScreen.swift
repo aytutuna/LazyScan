@@ -866,6 +866,8 @@ struct ScanScreen: View {
                     state.printQueueAsCopy()
                 }
             case .share:
+                saveAndShare()
+            case .sharePackage:
                 sharePackage()
             case .send:
                 asksSendTarget = true
@@ -1287,6 +1289,12 @@ struct ScanScreen: View {
     private func saveAndEmail() {
         guard !state.holdForSidesOrder(saveAndEmail) else { return }
         state.saveAndEmail(images: savesImages)
+    }
+
+    /// Share… in Options: this save only is opened in the share sheet once written.
+    private func saveAndShare() {
+        guard !state.holdForSidesOrder(saveAndShare) else { return }
+        state.saveAndShare(images: savesImages)
     }
 
     private var savesImages: Bool {

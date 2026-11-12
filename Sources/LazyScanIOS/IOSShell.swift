@@ -680,7 +680,7 @@ public enum IOSShell {
     public static let packageType: UTType = UTType(exportedAs: "com.lazyscan.package", conformingTo: .data)
 
     /// The Save row's button that shares the queue as one `.lsdoc` (`sharePackage`).
-    public static var sharePackageLabel: String { String(localized: "Share as Lazy Scan document") }
+    public static var sharePackageLabel: String { String(localized: "Share as Lazy Scan file") }
     /// The package banner's Open as new in a kind that keeps no pages: it switches to Document first.
     public static var openPackageInDocumentLabel: String { String(localized: "Open in Document") }
 
@@ -744,7 +744,7 @@ public enum IOSShell {
         FileManager.default.temporaryDirectory.appendingPathComponent("Shared documents", isDirectory: true)
     }
 
-    /// Share as Lazy Scan document: the queue written as one `.lsdoc` in `packageShareFolder`
+    /// Share as Lazy Scan file: the queue written as one `.lsdoc` in `packageShareFolder`
     /// (`AppState.exportPackage(to:)`, named as the next saved file would be), then the share sheet with
     /// it. Returns the file; nil when it could not be written, which the error alert says.
     @MainActor

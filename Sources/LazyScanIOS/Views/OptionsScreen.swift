@@ -256,5 +256,6 @@ enum OptionsAction {
     case print
     case share
     case send
+    case sharePackage
 }
 #endif
