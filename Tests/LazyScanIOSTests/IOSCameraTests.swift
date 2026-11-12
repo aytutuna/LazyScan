@@ -1065,6 +1065,44 @@ final class IOSCameraTests: XCTestCase {
     }
 
     @MainActor
+    func test_shotsTakenWhileOneIsInHand_waitInOrder_uptoTheBound() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let defaults: UserDefaults = try itemsInFrame(.one)
+        let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .unsure), defaults: defaults)
+        let shot = IOSCameraShot(data: cameraStill(), liveOutline: nil)
+        XCTAssertTrue(importer.canQueueShot)
+        let first: Task<IOSImportOutcome, Never> = Task { @MainActor in
+            await importer.importShot(shot)
+        }
+        try await ImportTestSupport.waitUntil(timeout: 60) { importer.cornerRequest != nil }
+        XCTAssertTrue(importer.canQueueShot)
+        let second: IOSImportOutcome = await importer.importShot(shot)
+        let third: IOSImportOutcome = await importer.importShot(shot)
+        XCTAssertEqual(second, IOSImportOutcome())
+        XCTAssertEqual(third, IOSImportOutcome())
+        XCTAssertEqual(importer.waitingCount, 2)
+        XCTAssertFalse(importer.canQueueShot)
+        // A fourth is turned away, not queued.
+        let fourth: IOSImportOutcome = await importer.importShot(shot)
+        XCTAssertEqual(fourth.added, 0)
+        XCTAssertEqual(fourth.skipped, 1)
+        XCTAssertEqual(importer.waitingCount, 2)
+        // Save and Options wait: the session is importing until the last one is in.
+        for _ in 0..<3 {
+            try await ImportTestSupport.waitUntil(timeout: 60) { importer.cornerRequest != nil }
+            XCTAssertTrue(importer.isImporting)
+            let request: PhotoCornersRequest = try XCTUnwrap(importer.cornerRequest)
+            importer.answer(PhotoCornersAnswer(choice: .useCorners, corners: request.plan.corners))
+        }
+        let outcome: IOSImportOutcome = await first.value
+        try await ImportTestSupport.waitUntil(timeout: 60) { !importer.isImporting }
+        XCTAssertEqual(outcome.added, 3)
+        XCTAssertEqual(state.scannedPages.count, 3)
+        XCTAssertTrue(importer.canQueueShot)
+        state.deleteSpoolFiles(of: state.scannedPages)
+    }
+
+    @MainActor
     func test_aShotThatCannotBeRead_saysSo_withoutAFileName() async throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let defaults: UserDefaults = try itemsInFrame(.one)

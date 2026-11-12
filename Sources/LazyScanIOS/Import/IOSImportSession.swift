@@ -297,6 +297,16 @@ public final class IOSImportSession: ObservableObject {
     /// How many items wait for their turn.
     public var waitingCount: Int { pending.count }
 
+    /// Camera shots that may wait behind the one in hand, so three are in the session at most.
+    public static let maxWaitingShots: Int = 2
+
+    /// Another camera shot can be handed to `importShot`: while an import runs, fewer than `maxWaitingShots`
+    /// shots wait; otherwise as `canImport`.
+    public var canQueueShot: Bool {
+        guard isImporting else { return canImport }
+        return waitingShots < IOSImportSession.maxWaitingShots && IOSShell.takesPhotos(state.settings)
+    }
+
     /// Imports `sources` in order (see the type). Refused, with the reason shown, when the settings do
     /// not collect pages. While another import runs they wait and are imported after it: that import's
     /// outcome counts them, and this call returns an empty outcome at once.
@@ -381,7 +391,13 @@ public final class IOSImportSession: ObservableObject {
     /// the Mac's and Windows' photo import cut a page found surely at once).
     @discardableResult
     public func importShot(_ shot: IOSCameraShot, asksOnlyWhenUnsure: Bool = false) async -> IOSImportOutcome {
-        await importSources([IOSImportSource.shot(shot, asksOnlyWhenUnsure: asksOnlyWhenUnsure)])
+        // The camera does not fire past `canQueueShot`; a shot that still arrives is turned away as skipped.
+        guard !isImporting || canQueueShot else {
+            var outcome = IOSImportOutcome()
+            outcome.skipped = 1
+            return outcome
+        }
+        return await importSources([IOSImportSource.shot(shot, asksOnlyWhenUnsure: asksOnlyWhenUnsure)])
     }
 
     /// The corner editor's answer: the import waiting for it goes on. A second answer changes nothing.
@@ -418,6 +434,15 @@ public final class IOSImportSession: ObservableObject {
     private var waitingPhotos: Int {
         var count: Int = 0
         for source in pending where source.expectedKind == .image {
+            count += 1
+        }
+        return count
+    }
+
+    /// The camera shots waiting for their turn.
+    private var waitingShots: Int {
+        var count: Int = 0
+        for source in pending where source.isShot {
             count += 1
         }
         return count
