@@ -23,6 +23,14 @@ public partial class MainWindow
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         var modifiers = Keyboard.Modifiers;
+        if (e.Key == Key.Escape && modifiers == ModifierKeys.None && ViewModel.ViewsPage
+            && (PageList.IsKeyboardFocusWithin || PageSwitch.IsKeyboardFocusWithin))
+        {
+            ViewModel.ShowPreview();
+            RefreshFromViewModel();
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Delete && modifiers == ModifierKeys.None)
         {
             if (RemoveFocusedPage()) e.Handled = true;
@@ -74,8 +82,7 @@ public partial class MainWindow
         int count = ViewModel.ScannedPages.Count;
         if (count > 0)
         {
-            PageList.SelectedIndex = Math.Min(index, count - 1);
-            (PageList.ItemContainerGenerator.ContainerFromIndex(PageList.SelectedIndex) as ListBoxItem)?.Focus();
+            (PageList.ItemContainerGenerator.ContainerFromIndex(Math.Min(index, count - 1)) as ListBoxItem)?.Focus();
         }
         return true;
     }

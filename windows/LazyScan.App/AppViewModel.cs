@@ -2530,6 +2530,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         Settings = adapted.Settings;
         // Fresh steps, even for the same task: nothing of an ID card is kept, on the stage either.
         if (IsIdCardFlow || HasIdCardCaptures || ShowIdCardReview) ClearIdCard(clearCanvas: true);
+        ShowPreview();
         Flow = null;
         SettingsEdited();
         SetStatus(Loc.T("Ready for “{0}”.", TaskCatalog.Definition(task).Title), adapted.Notes, new StatusHead.ReadyForTask());
@@ -2551,6 +2552,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || Settings.TaskId is null) return;
         if (IsTurningOverByHand && !IsStackUnderWay) Settings.Duplex = DuplexMode.Off;
         Settings.TaskId = null;
+        ShowPreview();
         SettingsEdited();
         NotifyAll();
     }
@@ -3947,6 +3949,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private async Task RunExclusiveCore(Func<CancellationToken, Task> operation)
     {
         IsBusy = true;
+        ShowPreview();
         using var cts = new CancellationTokenSource();
         _operationCts = cts;
         NotifyAll();

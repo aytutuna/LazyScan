@@ -459,6 +459,28 @@
                                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Border>
+                                    <!-- With pages queued: the live canvas, or one queued page large (picked in the strip). -->
+                                    <Border x:Name="PageSwitch" Visibility="Collapsed" Style="{StaticResource SegmentedTrackStyle}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,32,0,0"
+                                            CornerRadius="12" Background="{DynamicResource SolidBackgroundFillColorQuarternaryBrush}"
+                                            AutomationProperties.Name="{loc:T Canvas view}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <RadioButton x:Name="ShowPreviewButton" Style="{StaticResource SegmentedTextItemStyle}"
+                                                         Content="{loc:T Preview}" GroupName="CanvasView" IsChecked="True"
+                                                         Padding="12,4" Checked="PageSwitch_Changed" />
+                                            <RadioButton x:Name="ShowPageButton" Style="{StaticResource SegmentedTextItemStyle}"
+                                                         Content="{loc:T Page}" GroupName="CanvasView"
+                                                         Padding="12,4" Checked="PageSwitch_Changed" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border x:Name="PageProblem" Visibility="Collapsed" IsHitTestVisible="False"
+                                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24,72,24,0"
+                                            Padding="10,4,12,5" CornerRadius="12" BorderThickness="1"
+                                            Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}">
+                                        <TextBlock x:Name="PageProblemText" Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                    </Border>
                                     <StackPanel x:Name="CanvasHint" Style="{StaticResource EmptyStatePanelStyle}">
                                         <Border x:Name="CanvasHintGlyph" Style="{StaticResource EmptyStateCircleStyle}">
                                             <TextBlock Style="{StaticResource EmptyStateGlyphStyle}" Text="&#xE8FE;" />
@@ -491,6 +513,7 @@
                                     <ListBox x:Name="PageList" Height="158"
                                              AutomationProperties.Name="{loc:T Pages in queue}"
                                              KeyboardNavigation.TabNavigation="Continue"
+                                             SelectionChanged="PageList_SelectionChanged"
                                              AllowDrop="True" PreviewMouseLeftButtonDown="PageList_PreviewMouseDown"
                                              PreviewMouseMove="PageList_PreviewMouseMove" PreviewMouseLeftButtonUp="PageList_PreviewMouseUp"
                                              DragOver="PageList_DragOver" DragLeave="PageList_DragLeave" Drop="PageList_Drop"

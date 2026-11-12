@@ -36,6 +36,7 @@ public sealed partial class AppViewModel
             item.PropertyChanged -= QueuedPageChanged;
             item.PropertyChanged += QueuedPageChanged;
         }
+        KeepViewedPage(e);
         ScheduleQueueRecord();
     }
 

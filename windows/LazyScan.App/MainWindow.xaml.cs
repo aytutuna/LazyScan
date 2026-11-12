@@ -7,6 +7,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using LazyScan.Core;
 using Microsoft.Win32;
 
@@ -361,12 +362,13 @@ public partial class MainWindow : Window
             BusyBar.IsIndeterminate = ViewModel.IsBusy;
         }
 
-        CanvasImage.Source = ViewModel.CanvasBitmap;
-        CanvasHint.Visibility = ViewModel.CanvasBitmap is null ? Visibility.Visible : Visibility.Collapsed;
+        BitmapSource? stageBitmap = ViewModel.ViewedPageBitmap ?? ViewModel.CanvasBitmap;
+        CanvasImage.Source = stageBitmap;
+        CanvasHint.Visibility = stageBitmap is null && !ViewModel.ViewsPage ? Visibility.Visible : Visibility.Collapsed;
         // After a preview, until an area is selected: the preview can be dragged over. The area is
         // the flatbed's (a feeder scan ignores it), so choosing the feeder hides the chip and the marquee.
         DragChip.Visibility = ViewModel.OverviewImage is not null && ViewModel.SelectionRect is null && !ViewModel.IsBusy
-                              && ViewModel.CanvasBitmap is not null && ViewModel.Settings.Source == ScanSource.Flatbed
+                              && !ViewModel.ViewsPage && ViewModel.CanvasBitmap is not null && ViewModel.Settings.Source == ScanSource.Flatbed
             ? Visibility.Visible : Visibility.Collapsed;
 
         int pageCount = ViewModel.ScannedPages.Count;
@@ -389,6 +391,7 @@ public partial class MainWindow : Window
         // The target row belongs to Save: it goes when the queue's buttons do.
         AppendTargetRow.Visibility = ViewModel.AppendTarget is not null ? QueueButtons.Visibility : Visibility.Collapsed;
         PageList.IsEnabled = !ViewModel.IsBusy;
+        SyncPageView(pageCount);
 
         // As on macOS, the preview is of the flatbed: not offered while the feeder is the source.
         string? previewReason = ViewModel.PreviewUnavailableReason;
@@ -987,6 +990,52 @@ public partial class MainWindow : Window
     {
         if (_updatingUi || !IsLoaded) return;
         ViewModel.SetIdCardSaveSidesAsImages(IdCardSidesBox.IsChecked == true);
+    }
+
+    private bool _syncingPageView;
+
+    /// <summary>The switch, the strip's selected page and the stage's label follow the page the canvas shows.</summary>
+    private void SyncPageView(int pageCount)
+    {
+        bool switchShown = pageCount > 0;
+        PageSwitch.Visibility = switchShown ? Visibility.Visible : Visibility.Collapsed;
+        PageSwitch.IsEnabled = !ViewModel.IsBusy;
+        // The drag chip keeps its place under the switch.
+        DragChip.Margin = new Thickness(0, switchShown ? 72 : 32, 0, 0);
+        PageProblem.Visibility = ViewModel.ViewedPageProblem is null ? Visibility.Collapsed : Visibility.Visible;
+        PageProblemText.Text = ViewModel.ViewedPageProblem;
+
+        int number = ViewModel.ViewedPageNumber;
+        PageItem? viewed = number > 0 ? ViewModel.ScannedPages[number - 1] : null;
+        _syncingPageView = true;
+        try
+        {
+            if (!ReferenceEquals(PageList.SelectedItem, viewed)) PageList.SelectedItem = viewed;
+            ShowPreviewButton.IsChecked = !ViewModel.ViewsPage;
+            ShowPageButton.IsChecked = ViewModel.ViewsPage;
+        }
+        finally
+        {
+            _syncingPageView = false;
+        }
+        ShowPageButton.Content = number > 0 ? Loc.T("Page {0}", number) : Loc.T("Page");
+        if (number > 0) AutomationProperties.SetName(CanvasImage, Loc.T("Page {0}", number));
+        else CanvasImage.ClearValue(AutomationProperties.NameProperty);
+    }
+
+    private void PageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingPageView || PageList.SelectedItem is not PageItem item) return;
+        ViewModel.ViewPage(item.Page.Id);
+        RefreshFromViewModel();
+    }
+
+    private void PageSwitch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingPageView) return;
+        if (ShowPageButton.IsChecked == true) ViewModel.ShowPage();
+        else ViewModel.ShowPreview();
+        RefreshFromViewModel();
     }
 
     /// <summary>
@@ -2382,7 +2431,7 @@ public partial class MainWindow : Window
     private void UpdateMarquee()
     {
         if (_marqueeStart is not null) return;
-        if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null
+        if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null || ViewModel.ViewsPage
             || ViewModel.Settings.Source != ScanSource.Flatbed || DisplayedImageRect() is not { } imageRect)
         {
             SelectionMarquee.Visibility = Visibility.Collapsed;
@@ -2411,7 +2460,7 @@ public partial class MainWindow : Window
         // The selection is a region of the flatbed, so it can only be drawn over the overview
         // (the bed) while the flatbed is the source — never over a last scan, which may be a
         // feeder page or an earlier crop.
-        if (ViewModel.OverviewImage is null || ViewModel.Settings.Source != ScanSource.Flatbed) return;
+        if (ViewModel.ViewsPage || ViewModel.OverviewImage is null || ViewModel.Settings.Source != ScanSource.Flatbed) return;
         if (DisplayedImageRect() is not { } imageRect) return;
         var p = e.GetPosition(SelectionOverlay);
         if (!imageRect.Contains(p)) return;
