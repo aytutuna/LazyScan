@@ -302,43 +302,11 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
 .scan-notes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;margin-top:36px}
 @media (max-width:860px){.scan-notes{grid-template-columns:minmax(0,1fr)}}
 
-/* code blocks */
-.code{background:var(--code-bg);color:var(--code-ink);border-radius:8px;overflow:hidden;margin:0 0 18px}
-.code-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 8px 6px 14px;border-bottom:1px solid rgba(255,255,255,.08);font:500 11px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--code-dim)}
-.copy{min-height:32px;padding:4px 12px;border:1px solid rgba(255,255,255,.22);border-radius:4px;background:transparent;color:var(--code-ink);font:500 12px/1 var(--f-mono);cursor:pointer}
-.copy:hover{border-color:rgba(255,255,255,.5)}
-.code pre{margin:0;padding:14px 16px 16px;overflow-x:auto;font-size:.84rem;line-height:1.6;white-space:pre}
-.code .c{color:var(--code-dim)}
-.code-intro{margin:0 0 8px;font-size:var(--s-n1);color:var(--ink-2)}
-
-/* roadmap */
-.road-top{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:start}
-.road-next{margin-top:clamp(40px,5vw,64px)}
-.road h3{font:500 var(--s-n2)/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:16px;display:flex;align-items:center;gap:10px}
-.road h3 i{display:inline-block;width:10px;height:10px;border-radius:50%}
-.road-done h3 i{background:var(--ok)}
-.road-now h3 i{background:var(--busy)}
-.road-next h3 i{border:1px solid var(--ink-3)}
-.road ol{list-style:none;margin:0;padding:0}
-.road li{display:grid;grid-template-columns:3.2em 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--rule);font-size:var(--s-n1);color:var(--ink-2)}
-.road li strong{color:var(--ink);font-weight:600}
-.ms{font:500 .8rem/1.6 var(--f-mono);color:var(--ink-3)}
-.road-done .ms{color:var(--ok)}
-.road-aside{margin:0;padding-top:12px;border-top:1px solid var(--rule);font-size:var(--s-n2);line-height:1.5;color:var(--ink-3)}
-.road-now{position:relative}
-.road-now li{position:relative;border-top:0;padding:16px 0 18px}
-.road-now .ms{color:var(--busy)}
-.road-now li::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(120,240,225,.9) 20%,#fff 50%,rgba(120,240,225,.9) 80%,transparent);box-shadow:0 0 14px 3px rgba(120,240,225,.55)}
-.road-next ol{columns:3 250px;column-gap:36px}
-.road-next li{break-inside:avoid}
-@media (max-width:900px){.road-top{grid-template-columns:minmax(0,1fr)}}
-
 /* get it */
-.get{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,4vw,56px)}
+.get{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(28px,4vw,56px)}
 .get h3{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .req{margin:0 0 18px;padding:0;list-style:none;font-size:var(--s-n1);color:var(--ink-2)}
 .req li{padding:7px 0;border-bottom:1px dashed var(--rule)}
-.clone{margin-bottom:clamp(28px,4vw,44px);max-width:720px}
 .limits{margin-top:clamp(40px,5vw,64px);padding-top:28px;border-top:1px solid var(--rule)}
 .limits h3{margin-bottom:16px}
 .limits ul{columns:2 320px;column-gap:48px;margin:0;padding:0;list-style:none}
@@ -395,8 +363,8 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
         <li><a href="#demo">See it work</a></li>
         <li><a href="#adjust">Adjust</a></li>
         <li><a href="#needs">What it does</a></li>
+        <li><a href="#iphone">On iPhone</a></li>
         <li><a href="#scanners">Scanners</a></li>
-        <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#get">Get it</a></li>
         <li><a href="#support">Support</a></li>
       </ul>
@@ -426,7 +394,7 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
         <a class="btn btn-primary" href="#demo">See it work</a>
         <a class="btn btn-ghost" href="https://github.com/aytutuna/LazyScan">Source on GitHub</a>
       </div>
-      <p class="fine">Lazy Scan is coming to the App Store, the Mac App Store and the Microsoft Store, free. It is not in any of them yet; developers can <a href="#get">build it from source</a>.</p>
+      <p class="fine">Lazy Scan is free, with no account, ads or analytics. It is on the App Store, the Mac App Store and the Microsoft Store (<a href="#get">Get it</a>).</p>
     </div>
   </div>
   <div class="wrap hero-figure">
@@ -532,7 +500,7 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>What it does</p>
       <h2 id="needs-title">Start from what you're holding.</h2>
-      <p class="lede">A stack of bills, a shoebox of prints, one faded wedding photo, a newspaper clipping. Each has its own way through the app. Everything below works on the Mac and Windows unless it's marked otherwise.</p>
+      <p class="lede">A stack of bills, a shoebox of prints, one faded wedding photo, a newspaper clipping. Each has its own way through the app. Everything below works on the Mac and Windows unless it's marked otherwise; the iPhone app is described under <a href="#iphone">On iPhone</a>.</p>
       <p class="fine">The screenshots show the Windows app with public-domain scans from museum and archive collections loaded in place of a scanner's output (<a href="#credits">image credits</a>). The &ldquo;Flatbed scanner, Sample scans&rdquo; entry in the sidebar is the stand-in that hands those scans to the app, not a physical scanner, and the photo layouts are separate print scans laid on a simulated scanner bed.</p>
     </header>
     <div class="needs">
@@ -743,12 +711,36 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
   </div>
 </section>
 
+<section class="section" id="iphone" aria-labelledby="iphone-title">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>On iPhone</p>
+      <h2 id="iphone-title">The camera is the scanner.</h2>
+      <p class="lede">The iPhone app opens on the camera. Point it at a page and it finds the edges, holds them steady and takes the picture once the page is still. You can also scan from a network scanner on your Wi-Fi, or send pages to the Mac or Windows app.</p>
+    </header>
+    <div class="limits" style="margin-top:0;padding-top:0;border-top:0">
+      <ul>
+        <li>Choose what you are scanning: Document, Photo, Receipts, ID card or Book. The app sets itself up for it.</li>
+        <li>Pages are found and straightened as you shoot, one after another. If the corners are off, drag them yourself.</li>
+        <li>Several receipts or prints laid on the table in one shot are split into separate pages.</li>
+        <li>Open a page to rotate, crop or filter it. Enhanced evens out the light and turns the paper white; Grayscale and B&amp;W are there too.</li>
+        <li>Import photos and PDFs from Photos, Files or other apps, and add scanned pages to the end of a PDF you already have.</li>
+        <li>Save as a PDF, searchable if you like, with a password or as PDF/A, or as JPEG or TIFF files, and share them anywhere.</li>
+        <li>Two-sided documents, stacks split at separator sheets, books split at the spine, photocopies over AirPrint and email with the pages attached.</li>
+        <li>An ID card is kept in memory only until you save it: never written before Save, never put in Photos.</li>
+        <li>Network scanners (AirScan, also called eSCL) are found on the Wi-Fi or added by address, with a preview to choose the scan area. The Demo Scanner lets you try the app without one.</li>
+        <li>Pair the phone once with the Mac or Windows app and send pages to it over your own network, encrypted, with no account and no server.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section class="section" id="scanners" aria-labelledby="scanners-title">
   <div class="wrap">
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Scanners</p>
       <h2 id="scanners-title">Which scanners work</h2>
-      <p class="lede">Lazy Scan uses the scanner support built into each system, so it needs no extra software from the scanner maker beyond the usual driver. Network scanners that speak AirScan (also called eSCL) need no driver at all.</p>
+      <p class="lede">Lazy Scan uses the scanner support built into each system, so it needs no extra software from the scanner maker beyond the usual driver. Network scanners that speak AirScan (also called eSCL) need no driver at all, and the iPhone app uses them too.</p>
     </header>
     <table class="spec">
       <caption class="sr">Scanner support on macOS and Windows</caption>
@@ -762,12 +754,12 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
         <tr>
           <th scope="row">Network scanner (AirScan / eSCL)</th>
           <td data-label="macOS">Found automatically over Bonjour, along with scanners shared from other Macs.</td>
-          <td data-label="Windows">Added by IP address or host name in a small settings file (see below). A busy scanner is retried for up to a minute, black &amp; white works, and a cancelled job is removed from the scanner.<em class="flag">Experimental: not yet tried on a physical scanner</em></td>
+          <td data-label="Windows">Found automatically, or added by address (see below). A busy scanner is retried for up to a minute, black &amp; white works, and a cancelled job is removed from the scanner.<em class="flag">Experimental: not yet tried on a physical scanner</em></td>
         </tr>
         <tr>
           <th scope="row">Scanners with only a TWAIN driver</th>
           <td data-label="macOS" class="no">Not needed: the Mac uses its own scanner drivers.</td>
-          <td data-label="Windows">Yes, with 64-bit TWAIN drivers. The scanner maker's driver installs what TWAIN needs. You can also use the scanner's own settings window if you prefer it.<em class="flag">Experimental: not yet tried on a physical scanner</em></td>
+          <td data-label="Windows">Yes. 64-bit TWAIN drivers are used directly, and older drivers that exist only as 32-bit are reached through a small helper the app starts. The scanner maker's driver installs what TWAIN needs. You can also use the scanner's own settings window if you prefer it.<em class="flag">Experimental: not yet tried on a physical scanner</em></td>
         </tr>
         <tr>
           <th scope="row">Flatbed and document feeder</th>
@@ -783,69 +775,12 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
     </table>
     <div class="scan-notes">
       <div>
-        <h3 style="font-size:var(--s-1);margin-bottom:10px">Adding a network scanner on Windows</h3>
-        <p class="fine" style="color:var(--ink-2)">Until automatic discovery arrives, list your scanner's address in <code>%APPDATA%\Lazy Scan\escl-hosts.json</code>:</p>
-        <div class="code">
-          <div class="code-bar"><span>escl-hosts.json</span><button class="copy" type="button" data-copy="c-escl">Copy</button></div>
-          <pre id="c-escl"><code>["192.168.1.50"]</code></pre>
-        </div>
+        <h3 style="font-size:var(--s-1);margin-bottom:10px">Adding a network scanner</h3>
+        <p class="fine" style="color:var(--ink-2)">Windows and the iPhone find AirScan scanners on their own. If yours does not appear, use <strong>Add scanner by address</strong> (the + next to Scanners on Windows) and type its IP address, host name or web address. The app checks that a scanner answers there before adding it, and tells you what is wrong when none does. The first time the app connects to a scanner over HTTPS it remembers the scanner's certificate, and it warns you if that certificate later changes.</p>
       </div>
       <div>
         <h3 style="font-size:var(--s-1);margin-bottom:10px">One entry per scanner</h3>
-        <p class="fine" style="color:var(--ink-2)">A scanner you can reach two ways, say over USB and over the network, shows up once. On Windows, a &ldquo;via&rdquo; menu in the sidebar offers Automatic or each connection, and your choice is remembered for that scanner. The Mac picks by itself: USB first, then the network, then a scanner shared from another Mac.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section band" id="roadmap" aria-labelledby="roadmap-title">
-  <div class="wrap">
-    <header class="sec-head">
-      <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Roadmap</p>
-      <h2 id="roadmap-title">What&rsquo;s done, what&rsquo;s next</h2>
-      <p class="lede">The work is planned as numbered milestones, built in order. Nothing in the planned list is in the app yet.</p>
-    </header>
-    <div class="road">
-      <div class="road-top">
-        <div class="road-done">
-          <h3><i aria-hidden="true"></i>Done</h3>
-          <ol>
-            <li><span class="ms">M0</span><span><strong>Settings that survive updates.</strong> Presets and settings stay readable from one version to the next, and a damaged file is kept instead of overwritten. Both apps now have an automatic build and test run.</span></li>
-            <li><span class="ms">M1</span><span><strong>More reliable feeder and network scanning.</strong> Each scanner shows only its real sources, feeder scans use the feeder's paper size, black &amp; white works over the network, busy scanners are retried, an empty feeder gets a clear message, and pages are kept when a batch stops partway. The Demo Scanner gained a feeder.</span></li>
-            <li><span class="ms">M2</span><span><strong>One entry per scanner.</strong> A scanner reachable several ways shows once. Windows lets you choose the connection; on the Mac the duplicates are merged automatically.</span></li>
-            <li><span class="ms">M3</span><span><strong>TWAIN scanners on Windows</strong>, 64-bit drivers first, so scanners whose Windows driver offers only TWAIN show up too.</span></li>
-          </ol>
-          <p class="road-aside">Built and tested on Windows. The Mac side of these waits for its first automatic build, and the scanner connections still need a run on real hardware.</p>
-        </div>
-        <div class="road-now">
-          <h3><i aria-hidden="true"></i>In progress</h3>
-          <ol>
-            <li><span class="ms">M4</span><span><strong>Network scanners found automatically</strong>, an &ldquo;Add scanner by address&rdquo; option and secure connections.</span></li>
-          </ol>
-        </div>
-      </div>
-      <div class="road-next">
-        <h3><i aria-hidden="true"></i>Planned, in build order</h3>
-        <ol>
-          <li><span class="ms">M5</span><span><strong>A start screen</strong>: pick the job and the app sets itself up.</span></li>
-          <li><span class="ms">M6</span><span><strong>Smaller PDFs</strong>, from Best to Smallest.</span></li>
-          <li><span class="ms">M7</span><span><strong>Share, email, open with, copy</strong>, and an automatic step after saving.</span></li>
-          <li><span class="ms">M8</span><span><strong>Two-sided scanning and paper size</strong>, including two-sided on single-sided feeders.</span></li>
-          <li><span class="ms">M9</span><span><strong>&ldquo;Why isn't my scanner listed?&rdquo;</strong> troubleshooter.</span></li>
-          <li><span class="ms">M10</span><span><strong>Page clean-up and blank-page removal.</strong></span></li>
-          <li><span class="ms">M11</span><span><strong>Automatic crop and straighten for documents.</strong></span></li>
-          <li><span class="ms">M12</span><span><strong>ID cards</strong>, front and back on one page.</span></li>
-          <li><span class="ms">M13</span><span><strong>Copy to a printer</strong>: scanner and printer as a copier.</span></li>
-          <li><span class="ms">M14</span><span><strong>Text export</strong> as .txt or Word (.docx).</span></li>
-          <li><span class="ms">M15</span><span><strong>Receipts</strong>: one clean file each, named by its date.</span></li>
-          <li><span class="ms">M16</span><span><strong>Split a stack into documents</strong> by separator sheets, blank sheets or every few pages.</span></li>
-          <li><span class="ms">M17</span><span><strong>Pages turned upright automatically.</strong></span></li>
-          <li><span class="ms">M18</span><span><strong>Books and magazines</strong> split into single pages.</span></li>
-          <li><span class="ms">M19</span><span><strong>Archival PDF (PDF/A)</strong> with searchable text in any script.</span></li>
-          <li><span class="ms">M20</span><span><strong>Password-protected PDFs.</strong></span></li>
-          <li><span class="ms">M21</span><span><strong>Add pages to an existing PDF.</strong></span></li>
-          <li><span class="ms">M22</span><span><strong>Later</strong>: very compact black &amp; white PDFs, older 32-bit TWAIN drivers, barcode separator sheets, Word files with page images, softer spine shadows in book scans.</span></li>
-        </ol>
+        <p class="fine" style="color:var(--ink-2)">A scanner you can reach two ways, say over USB and over the network, shows up once. On Windows, a &ldquo;via&rdquo; menu in the sidebar offers Automatic or each connection, and your choice is remembered for that scanner. The Mac picks by itself: USB first, then the network, then a scanner shared from another Mac. If a scanner is missing, the <strong>?</strong> next to Scanners explains why.</p>
       </div>
     </div>
   </div>
@@ -855,64 +790,43 @@ input[type=range].plain::-moz-range-track{background:var(--rule-strong)}
   <div class="wrap">
     <header class="sec-head">
       <p class="kicker"><svg aria-hidden="true"><use href="#reg"/></svg>Get it</p>
-      <h2 id="get-title">Build it from source</h2>
-      <p class="lede">Lazy Scan is coming to the App Store, the Mac App Store and the Microsoft Store. Until then, developers can build the Mac and Windows apps from the code on <a href="https://github.com/aytutuna/LazyScan">GitHub</a>. Start by getting the code, then follow the steps for your system.</p>
+      <h2 id="get-title">Free on every system</h2>
+      <p class="lede">Lazy Scan is free. It has no account, no ads and no analytics, and your scans stay on your device unless you share them. Get it from the store for your system.</p>
     </header>
-    <div class="clone">
-      <div class="code">
-        <div class="code-bar"><span>Get the code</span><button class="copy" type="button" data-copy="c-clone">Copy</button></div>
-        <pre id="c-clone"><code>git clone https://github.com/aytutuna/LazyScan.git
-cd LazyScan</code></pre>
-      </div>
-    </div>
     <div class="get">
       <div>
-        <h3>macOS</h3>
+        <h3>iPhone</h3>
+        <p>On the App Store.</p>
+        <ul class="req">
+          <li>iOS 18 or later</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Mac</h3>
+        <p>On the Mac App Store.</p>
         <ul class="req">
           <li>macOS 14 Sonoma or later</li>
-          <li>Xcode, or its command-line tools</li>
         </ul>
-        <p class="code-intro">Run it straight from the source folder:</p>
-        <div class="code">
-          <div class="code-bar"><span>Terminal &middot; run directly</span><button class="copy" type="button" data-copy="c-mac-run" aria-label="Copy the command to run directly">Copy</button></div>
-          <pre id="c-mac-run"><code>swift run LazyScan</code></pre>
-        </div>
-        <p class="code-intro">Or build a double-clickable app, <code>dist/Lazy Scan.app</code>, and open it:</p>
-        <div class="code">
-          <div class="code-bar"><span>Terminal &middot; build an app</span><button class="copy" type="button" data-copy="c-mac-app" aria-label="Copy the commands to build an app">Copy</button></div>
-          <pre id="c-mac-app"><code>./scripts/make_app.sh
-open "dist/Lazy Scan.app"</code></pre>
-        </div>
-        <p class="fine">Run the tests with <code>swift test</code>. All commands run in the <code>LazyScan</code> folder.</p>
       </div>
       <div>
         <h3>Windows</h3>
+        <p>On the Microsoft Store.</p>
         <ul class="req">
           <li>Windows 10 version 2004 (build 19041) or later, or Windows 11</li>
-          <li>The .NET 10 SDK, or Visual Studio 2026 (18.0 or later)</li>
         </ul>
-        <p class="code-intro">Build and launch the app:</p>
-        <div class="code">
-          <div class="code-bar"><span>PowerShell &middot; run the app</span><button class="copy" type="button" data-copy="c-win-run" aria-label="Copy the command to run the app">Copy</button></div>
-          <pre id="c-win-run"><code>dotnet run --project windows\LazyScan.App</code></pre>
-        </div>
-        <p class="code-intro">Run the test suite, if you like:</p>
-        <div class="code">
-          <div class="code-bar"><span>PowerShell &middot; run the tests</span><button class="copy" type="button" data-copy="c-win-test" aria-label="Copy the command to run the tests">Copy</button></div>
-          <pre id="c-win-test"><code>dotnet test windows\LazyScan.sln</code></pre>
-        </div>
-        <p class="fine">Both commands run in the <code>LazyScan</code> folder. No scanner handy? Pick <strong>Demo Scanner</strong> in the sidebar.</p>
       </div>
     </div>
     <div class="limits">
-      <h3>Good to know before you build</h3>
+      <h3>Good to know</h3>
       <ul>
-        <li>There is no installer or signed app yet, on either system.</li>
-        <li>On Windows, the WIA and network scanner support follows the published standards and passes its tests, but hasn't been tried with a physical scanner yet. The Demo Scanner is fully checked.</li>
-        <li>The newest macOS changes were written without a Mac at hand. The project's automatic Mac build compiles and tests them once they are published.</li>
-        <li>Searchable PDFs on Windows need a Windows OCR language pack. The hidden text covers Western European letters only; others turn into &ldquo;?&rdquo; in the text layer, while the page image is unaffected.</li>
-        <li>The Windows Demo Scanner draws text-like bars instead of real letters, so trying text recognition on Windows needs a real scan.</li>
-        <li>Not in the app yet: two-sided scanning, paper-size choice, blank-page removal, document crop and straighten, sharing, printing and password-protected PDFs. All are on the roadmap.</li>
+        <li>The scanner connections on Windows (WIA, network and TWAIN) follow the published standards and pass their tests, but have not been tried with a physical scanner yet. The Demo Scanner is fully checked.</li>
+        <li>Much of the testing so far used the Demo Scanner and stand-ins, not real scanners, printers and phones. If something does not work with yours, write to support.</li>
+        <li>Searchable PDFs, Word and text files on Windows need a Windows OCR language pack for the language of the pages.</li>
+        <li>HEIC photos on Windows need Microsoft's free HEIF Image Extensions.</li>
+        <li>Older TWAIN drivers that exist only as 32-bit need the 32-bit .NET 10 Desktop Runtime on Windows; the troubleshooter says when it is missing.</li>
+        <li>On the iPhone, network scanners need Local Network access, which the app asks for the first time the scanner list opens. The camera works without it.</li>
+        <li>A PDF protected with a password cannot also be PDF/A, so the two switches exclude each other.</li>
+        <li>The source is on <a href="https://github.com/aytutuna/LazyScan">GitHub</a> under PolyForm Noncommercial 1.0.0: free to read and use for non-commercial purposes.</li>
       </ul>
     </div>
   </div>
@@ -1519,25 +1433,6 @@ tpl.addEventListener("input",renderNames);
     var sep=before.length&&!/\s$/.test(before)?" ":"";
     tpl.value=before+sep+tok+after;var pos=(before+sep+tok).length;tpl.focus();try{tpl.setSelectionRange(pos,pos);}catch(x){}
     renderNames();
-  });
-});
-
-/* ---------- copy buttons ---------- */
-function copyText(text){
-  if(navigator.clipboard&&window.isSecureContext){return navigator.clipboard.writeText(text).then(function(){return true;},function(){return legacyCopy(text);});}
-  return Promise.resolve(legacyCopy(text));
-}
-function legacyCopy(text){
-  try{var ta=document.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.top="-1000px";ta.style.opacity="0";document.body.appendChild(ta);ta.select();var ok=document.execCommand("copy");document.body.removeChild(ta);return !!ok;}catch(e){return false;}
-}
-[].slice.call(document.querySelectorAll(".copy")).forEach(function(btn){
-  btn.addEventListener("click",function(){
-    var pre=document.getElementById(btn.getAttribute("data-copy")),text=pre.textContent.replace(/\s+$/,"");
-    copyText(text).then(function(ok){
-      if(ok){btn.textContent="Copied";announce("Copied to the clipboard.");}
-      else{var r=document.createRange();r.selectNodeContents(pre);var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);btn.textContent="Press Ctrl+C";announce("Copy was blocked. The text is selected; press Ctrl+C or Command+C.");}
-      setTimeout(function(){btn.textContent="Copy";},2200);
-    });
   });
 });
 
