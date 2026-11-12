@@ -158,6 +158,7 @@ struct IdCardReviewView: View {
             PhotoCropEditorView(photo: photo)
                 .environmentObject(state)
         }
+        .errorNoticeAlert()
         // Asked here: ContentView's alert for leaving the card is under this sheet.
         .alert("Discard the ID card?", isPresented: $asksDiscard) {
             Button("Discard", role: .destructive) { state.discardIdCard() }

@@ -106,20 +106,8 @@ struct ContentView: View {
             PhotoReviewView()
                 .environmentObject(state)
         }
-        // An error titled by the scanner's problem ("Paper jam"), with what to do (`ScannerProblems.notice`),
-        // or a refusal by what was not done ("Not imported", `AppState.errorTitle`).
-        .alert(errorNotice.title, isPresented: Binding(
-            get: { state.errorMessage != nil },
-            set: { if !$0 { state.errorMessage = nil; state.errorSuggestsTroubleshooter = false } }
-        )) {
-            // A scanner that would not connect or scan: the alert offers the troubleshooter.
-            if state.errorSuggestsTroubleshooter {
-                Button("Troubleshoot\u{2026}") { state.showTroubleshooter = true }
-            }
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorNotice.message)
-        }
+        // The error alert, held back while a review sheet is up: the sheet shows it itself.
+        .errorNoticeAlert(enabled: !state.showPhotoReview && !state.showIdCardReview)
         // Below this the layout cannot stay usable; the inspector adds its own
         // width requirement only while shown.
         .frame(minWidth: 700, minHeight: 560)
@@ -147,13 +135,6 @@ struct ContentView: View {
     private var settingsBinding: Binding<Bool>? {
         guard detailTab == .scanner else { return nil }
         return $showInspector
-    }
-
-    /// The error the alert shows, as its title and message; a refusal under its own title.
-    private var errorNotice: ProblemNotice {
-        let message: String = state.errorMessage ?? ""
-        guard let title: String = state.errorTitle else { return ScannerProblems.notice(message) }
-        return ProblemNotice(title: title, message: message.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private var scannerDetail: some View {

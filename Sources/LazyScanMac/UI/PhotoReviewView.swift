@@ -103,6 +103,7 @@ struct PhotoReviewView: View {
             PhotoCropEditorView(photo: photo)
                 .environmentObject(state)
         }
+        .errorNoticeAlert()
         .alert(discardTitle, isPresented: $asksDiscard) {
             Button("Discard", role: .destructive) { state.cancelPhotoReview() }
             Button("Cancel", role: .cancel) {}
