@@ -143,4 +143,31 @@ public sealed class QueuePage
     public UprightTurn? Upright { get; set; }
     public PageSource Source { get; set; }
     public CaptureFacts? Capture { get; set; }
+
+    /// <summary>The page this was recorded from, with <paramref name="preview"/> (read from its file) as its picture.</summary>
+    public ScannedPage ToPage(RgbaImage preview, string spool)
+    {
+        var page = new ScannedPage(preview, Dpi, ColorMode, Id, CreatedAt, Path.Combine(spool, File), FullPixelSize)
+        {
+            RotationQuarterTurns = RotationQuarterTurns,
+            Side = Side,
+            SheetIndex = SheetIndex,
+            Blank = Blank,
+            Inclusion = Inclusion,
+            Geometry = Geometry,
+            ShowsOriginal = ShowsOriginal,
+            Patch = Patch,
+            Barcodes = Barcodes,
+            DocumentBreak = DocumentBreak,
+            DocumentLabel = DocumentLabel,
+            Upright = Upright,
+            Source = Source,
+            Capture = Capture,
+        };
+        if (AlternateFile is not null && System.IO.File.Exists(Path.Combine(spool, AlternateFile)))
+        {
+            page = page.WithAlternate(new PageVersion(null, Path.Combine(spool, AlternateFile), AlternatePixelSize));
+        }
+        return page;
+    }
 }

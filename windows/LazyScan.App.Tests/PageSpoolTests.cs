@@ -42,11 +42,47 @@ public sealed class PageSpoolTests : IDisposable
         string plain = Abandoned(withQueue: false);
         string kept = Abandoned(withQueue: true);
 
-        PageSpool.SweepAbandoned(_root);
+        var left = PageSpool.SweepAbandoned(_root);
 
         Assert.False(Directory.Exists(plain));
         Assert.True(File.Exists(Path.Combine(kept, "page.png")));
         Assert.True(File.Exists(Path.Combine(kept, QueueRecord.FileName)));
+        Assert.Equal([kept], left);
+    }
+
+    [Fact]
+    public void Sweep_LeavesAFolderAliveInstanceHoldsOutOfTheLeftBehind()
+    {
+        var running = new PageSpool(_root);
+        File.WriteAllText(Path.Combine(running.Directory, QueueRecord.FileName), "{}");
+
+        var left = PageSpool.SweepAbandoned(_root);
+
+        Assert.Empty(left);
+        Assert.True(Directory.Exists(running.Directory));
+        running.Dispose();
+    }
+
+    [Fact]
+    public void ANewSpool_ListsTheFolderOfAnInstanceThatDidNotClose()
+    {
+        string kept = Abandoned(withQueue: true);
+
+        using var spool = new PageSpool(_root);
+
+        Assert.Equal([kept], spool.LeftBehind);
+    }
+
+    [Fact]
+    public void ASecondSpool_SkipsAFolderTheFirstOneListed()
+    {
+        string kept = Abandoned(withQueue: true);
+
+        using var first = new PageSpool(_root);
+        using var second = new PageSpool(_root);
+
+        Assert.Equal([kept], first.LeftBehind);
+        Assert.Empty(second.LeftBehind);
     }
 
     [Fact]

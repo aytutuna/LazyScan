@@ -1949,8 +1949,9 @@ The queued pages are spooled under `%LOCALAPPDATA%\Lazy Scan\pages`, a folder fo
 copy of the app, and the queue is recorded beside them (`queue.json`: each page's spool files,
 rotation, side, sheet, kept or skipped and the other facts the queue holds, written half a second
 after it changes; a page that does not decode is left out and the rest are kept). A normal exit
-deletes the folder. The start-up sweep leaves a folder that has a record, so after a crash the
-pages are still on disk.
+deletes the folder. The start-up sweep leaves the folder of a copy that is gone and has a record,
+and the window asks once whether to restore those pages (Yes moves their files into this copy's
+folder and brings them back with their rotation, side and inclusion) or delete them (No).
 
 ## Porting workflow
 

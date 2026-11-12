@@ -75,6 +75,30 @@ public sealed class QueueRecordTests : IDisposable
     }
 
     [Fact]
+    public void ToPage_BringsBackWhatTheQueueKnewAboutThePage()
+    {
+        var first = Spooled(alternate: "first-other.png").WithSide(PageSide.Back, 2)
+            .WithInclusion(PageInclusion.Skip).WithDocumentLabel("Taxes");
+        first.RotationQuarterTurns = 3;
+
+        QueueRecord.Write([first], _spool);
+        var preview = RgbaImage.Filled(2, 2, 10, 10, 10);
+        var page = QueueRecord.Read(_spool)!.Pages[0].ToPage(preview, _spool);
+
+        Assert.Same(preview, page.Image);
+        Assert.Equal(first.Id, page.Id);
+        Assert.Equal(first.FilePath, page.FilePath);
+        Assert.Equal(first.FullPixelSize, page.FullPixelSize);
+        Assert.Equal(3, page.RotationQuarterTurns);
+        Assert.Equal(PageSide.Back, page.Side);
+        Assert.Equal(2, page.SheetIndex);
+        Assert.Equal(PageInclusion.Skip, page.Inclusion);
+        Assert.Equal("Taxes", page.DocumentLabel);
+        Assert.Equal(Path.Combine(_spool, "first-other.png"), page.Alternate?.FilePath);
+        Assert.Equal(new SizeD(50, 60), page.Alternate?.FullPixelSize);
+    }
+
+    [Fact]
     public void Of_LeavesOutAPageWithoutAFileInTheSpool()
     {
         var inMemory = new ScannedPage(RgbaImage.Filled(4, 4, 0, 0, 0), 300, ColorMode.Color);

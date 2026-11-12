@@ -91,6 +91,7 @@ public partial class MainWindow : Window
         {
             PushSettingsToUi();
             ViewModel.Start();
+            OfferLeftBehindPages();
             // Receives from paired phones on trusted networks; nothing listens while no phone is paired.
             ViewModel.StartCompanionIfPaired();
             // Opened from File Explorer: the .lsdoc is offered on its bar.
@@ -109,6 +110,20 @@ public partial class MainWindow : Window
         // Done here rather than in App.OnExit: Application.MainWindow is already null by then.
         Closed += (_, _) => ViewModel.Shutdown();
         SizeChanged += (_, _) => UpdatePane();
+    }
+
+    /// <summary>Asks what to do with the pages a session that did not close properly left in the spool.</summary>
+    private void OfferLeftBehindPages()
+    {
+        int count = ViewModel.FindLeftBehind();
+        if (count == 0) return;
+        string question = Loc.Plural(count,
+            "Lazy Scan found {0} page from a session that did not close properly. Restore it? If you choose No, it is deleted.",
+            "Lazy Scan found {0} pages from a session that did not close properly. Restore them? If you choose No, they are deleted.");
+        var answer = MessageBox.Show(this, question, "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Question,
+                                     MessageBoxResult.Yes, App.BoxOptions);
+        if (answer == MessageBoxResult.Yes) _ = ViewModel.RestoreLeftBehind();
+        else ViewModel.DiscardLeftBehind();
     }
 
     // MARK: - Side pane (full width, or an icon rail in narrow windows)

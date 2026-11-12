@@ -1446,6 +1446,9 @@
   "Page {0} will be left out when you save. {1}.": {},
   "Page {0} will be saved. {1}.": {},
   "Page queue cleared.": {},
+  "Lazy Scan found {0} page from a session that did not close properly. Restore it? If you choose No, it is deleted.": {
+    "other": "Lazy Scan found {0} pages from a session that did not close properly. Restore them? If you choose No, they are deleted."
+  },
   "{0}. Scan the rest of the back sides, scan them again, or combine the pages as they are.": {},
   "Load the turned-over stack in the feeder again and scan the back sides.": {},
   "Scanning one side of each sheet.": {},
