@@ -172,6 +172,7 @@ final class AppStateSeamTests: XCTestCase {
     override func tearDown() async throws {
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
         try await Task.sleep(nanoseconds: 600_000_000)
+        UserDefaults.standard.removePersistentDomain(forName: folder.lastPathComponent)
         try? FileManager.default.removeItem(at: folder)
     }
 
@@ -194,6 +195,7 @@ final class AppStateSeamTests: XCTestCase {
         settings.resolution = 75
         settings.destinationPath = folder.path
         state.settings = settings
+        state.counterDefaults = UserDefaults(suiteName: folder.lastPathComponent)!
         return state
     }
 
