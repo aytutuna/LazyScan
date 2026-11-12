@@ -12,7 +12,7 @@ Point the camera at a page: it finds the edges, straightens it and queues it. Sa
 Description:
 Lazy Scan is a document scanner. Point the camera at a page and it finds the edges, straightens the page and adds it to your queue. If the corners are off, drag them yourself.
 
-Choose what you are scanning: Photo, Document, ID card or Book. The app sets itself up for it. Lay several receipts or prints on the table and they are split automatically.
+Choose what you are scanning: Photo, Document, ID card, Receipts, Book or Text. The app sets itself up for it. Lay several receipts or prints on the table and they are split automatically.
 
 Your pages sit in a grid. Open one to rotate, crop or filter it, delete the ones you don't want, add more. Save them as a PDF, with a password if you like, or as JPEG or TIFF images, and share them anywhere.
 
@@ -40,7 +40,8 @@ packages via CryptoKit, TLS), so exempt, nothing to upload.
 App Review notes:
 Nothing to sign in to; there are no accounts.
 Camera mode (the first screen) works on its own: photograph any sheet of paper, then Save.
-Printer mode (printer icon, top right) needs an AirScan (eSCL) printer-scanner on the same Wi-Fi. We have no way to supply one, so the reviewer will see an empty scanner list; the Local Network prompt appears the first time the list opens.
+Printer mode (printer icon, top right) scans from an AirScan (eSCL) printer-scanner on the same Wi-Fi. We cannot supply one, so to try it without hardware, tap "Try scanning without a scanner" in the scanner list and press Scan; it makes sample pages for each kind. The Local Network prompt appears the first time the list opens.
+Print opens Lazy Print when it is installed, and AirPrint otherwise.
 Options > My computer pairs with the Lazy Scan desktop app on a Mac or Windows PC. It is optional and needs that PC.
 
 macOS version (same record, its own listing)
