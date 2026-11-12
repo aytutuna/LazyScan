@@ -75,7 +75,7 @@ function New-Package([string] $arch, [string] $helper, [string] $helper64) {
     $publish = Join-Path $work "publish-$arch"
     Publish 'windows\LazyScan.App\LazyScan.App.csproj' "win-$arch" $publish @('-p:SkipTwainHelper=true')
     if (-not (Test-Path (Join-Path $publish 'LazyScan.exe'))) { throw "LazyScan.exe is not in $publish" }
-    foreach ($file in 'Models\fastvit_t8_h_e_bifpn_256_fp32.onnx', 'Models\DocAligner-LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'ONNXRuntime-THIRD-PARTY-NOTICES.txt') {
+    foreach ($file in 'Models\fastvit_t8_h_e_bifpn_256_fp32.onnx', 'Models\DocAligner-LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'LICENSE.txt', 'ONNXRuntime-THIRD-PARTY-NOTICES.txt') {
         if (-not (Test-Path (Join-Path $publish $file))) { throw "$file is not in $publish" }
     }
 

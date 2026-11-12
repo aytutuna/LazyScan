@@ -1337,7 +1337,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// each connection reports, then the troubleshooter's checks for <paramref name="snapshot"/>.
     /// </summary>
     public string DiagnosticsText(DiscoverySnapshot snapshot) =>
-        DeviceMerge.DiagnosticsReport(DeviceGroups)
+        AppInfo.DiagnosticsLine + "\n"
+        + DeviceMerge.DiagnosticsReport(DeviceGroups)
         + string.Concat(_backends.OfType<Scanning.IBackendDiagnostics>()
                                  .Select(b => b.DiagnosticsReport)
                                  .Where(text => !string.IsNullOrEmpty(text)))

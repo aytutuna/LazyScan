@@ -320,8 +320,15 @@
                     <Button x:Name="AppearanceButton" Style="{StaticResource SubtleButtonStyle}"
                             local:Icon.Glyph="&#xE793;" Content="{loc:T Appearance}"
                             ToolTip="{loc:T Light\, dark\, or follow Windows}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="4,4,4,8"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="4,4,4,0"
                             Click="AppearanceButton_Click" />
+                    <Button x:Name="AboutButton" Style="{StaticResource SubtleButtonStyle}"
+                            local:Icon.Glyph="&#xE946;" Content="{loc:T About}"
+                            ToolTip="{loc:T About Lazy Scan}"
+                            AutomationProperties.Name="{loc:T About Lazy Scan}"
+                            AutomationProperties.HelpText="{loc:T Shows the version\, support address and licenses}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="4,4,4,8"
+                            Click="AboutButton_Click" />
                 </StackPanel>
             </Grid>
 

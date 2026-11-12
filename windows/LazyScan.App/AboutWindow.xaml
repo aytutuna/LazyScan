@@ -1,0 +1,61 @@
+<Window x:Class="LazyScan.App.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:LazyScan.App"
+        xmlns:ui="clr-namespace:LazyScan.App"
+        Title="{loc:T About Lazy Scan}"
+        Width="420" MinWidth="380" SizeToContent="Height" ResizeMode="NoResize"
+        FontFamily="{StaticResource TextFontFamily}"
+        Icon="{x:Static ui:AppIcon.Image}"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FocusManager.FocusedElement="{Binding ElementName=CloseButton}">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource DialogFooterStyle}" Padding="24,14,24,18">
+            <DockPanel>
+                <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="{loc:T Close}" IsCancel="True" IsDefault="True"
+                        MinWidth="96" Style="{StaticResource AccentButtonStyle}" />
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Content="{loc:T License}" Style="{StaticResource SubtleButtonStyle}" Click="License_Click" />
+                    <Button Content="{loc:T Third-party notices}" Style="{StaticResource SubtleButtonStyle}" Margin="4,0,0,0"
+                            Click="Notices_Click" />
+                </StackPanel>
+                <TextBlock x:Name="FooterStatus" Style="{StaticResource CaptionText}" VerticalAlignment="Center"
+                           Margin="8,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+            </DockPanel>
+        </Border>
+
+        <StackPanel Margin="24">
+            <StackPanel Orientation="Horizontal">
+                <Image Source="{x:Static ui:AppIcon.Image}" Width="48" Height="48" Margin="0,0,16,0"
+                       RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="" />
+                <StackPanel x:Name="VersionBlock" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T Lazy Scan}" Style="{StaticResource SubtitleText}" />
+                    <TextBlock x:Name="VersionText" Style="{StaticResource BodyText}" />
+                    <TextBlock x:Name="PackageText" Style="{StaticResource CaptionText}"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="{loc:T Support}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,2" />
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink NavigateUri="mailto:support@alazy.app" RequestNavigate="Link_RequestNavigate"
+                           AutomationProperties.Name="{loc:T Email support}">support@alazy.app</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Text="{loc:T Website}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,2" />
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink NavigateUri="https://alazy.app/scan/" RequestNavigate="Link_RequestNavigate"
+                           AutomationProperties.Name="{loc:T Open the Lazy Scan website}">alazy.app/scan</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Text="{loc:T Privacy policy}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,2" />
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink NavigateUri="https://alazy.app/scan/privacy.html" RequestNavigate="Link_RequestNavigate"
+                           AutomationProperties.Name="{loc:T Open the privacy policy}">alazy.app/scan/privacy.html</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Text="{loc:T Lazy Scan is source available under the PolyForm Noncommercial License 1.0.0.}"
+                       Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,16,0,0" />
+        </StackPanel>
+    </DockPanel>
+</Window>

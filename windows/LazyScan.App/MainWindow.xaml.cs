@@ -198,6 +198,8 @@ public partial class MainWindow : Window
             PhoneButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Center;
             PhoneButton.ToolTip = Loc.T("Phone: send documents from your phone to this PC");
+            AboutButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
+            AboutButton.HorizontalContentAlignment = HorizontalAlignment.Center;
         }
         else
         {
@@ -207,6 +209,8 @@ public partial class MainWindow : Window
             PhoneButton.ClearValue(ContentControl.ContentTemplateProperty);
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Left;
             PhoneButton.ToolTip = Loc.T("Send documents from your phone to this PC");
+            AboutButton.ClearValue(ContentControl.ContentTemplateProperty);
+            AboutButton.HorizontalContentAlignment = HorizontalAlignment.Left;
         }
     }
 
@@ -1225,6 +1229,11 @@ public partial class MainWindow : Window
         PushSettingsToUi();
         RefreshFromViewModel();
         FocusMainAction();
+    }
+
+    private void AboutButton_Click(object sender, RoutedEventArgs e)
+    {
+        new AboutWindow { Owner = this }.ShowDialog();
     }
 
     // MARK: - Appearance
