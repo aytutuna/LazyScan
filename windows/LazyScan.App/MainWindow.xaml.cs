@@ -1496,7 +1496,7 @@ public partial class MainWindow : Window
             PushAdjustmentSliders();
             DescreenBox.IsChecked = s.Adjustments.Descreen;
             RestoreBox.IsChecked = s.Adjustments.RestoreFadedColors;
-            ShowDestination(s.DestinationPath);
+            ShowDestination(s.ResolveDestination());
             TemplateBox.Text = s.NamingTemplate;
             DocumentOptions.Visibility = s.Intent == ScanIntent.Document ? Visibility.Visible : Visibility.Collapsed;
             PhotoOptions.Visibility = s.Intent == ScanIntent.Photo ? Visibility.Visible : Visibility.Collapsed;
@@ -1567,7 +1567,7 @@ public partial class MainWindow : Window
         // -100...100 scale (and clamp out-of-range preset values) on unrelated edits.
         s.Adjustments.Descreen = DescreenBox.IsChecked == true;
         s.Adjustments.RestoreFadedColors = RestoreBox.IsChecked == true;
-        if (!string.IsNullOrWhiteSpace(DestinationBox.Text) && DestinationBox.Text != s.DestinationPath)
+        if (!string.IsNullOrWhiteSpace(DestinationBox.Text) && DestinationBox.Text != s.ResolveDestination())
         {
             s.DestinationPath = DestinationBox.Text;
             _savedTabStale = true;

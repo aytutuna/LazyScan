@@ -669,8 +669,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>True while a live-preview render is scheduled or running.</summary>
     public bool IsCanvasRenderPending => _renderTimer.IsEnabled || _renderInFlight;
 
-    /// <summary>The destination folder with environment variables expanded.</summary>
-    public string DestinationFolder => Environment.ExpandEnvironmentVariables(Settings.DestinationPath);
+    /// <summary>The save folder: the picked one with environment variables expanded, else Documents\Lazy Scan.</summary>
+    public string DestinationFolder => Settings.ResolveDestination();
 
     public static readonly int[] FallbackResolutions = [75, 150, 200, 300, 600, 1200];
 
@@ -2219,7 +2219,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ShowPhotoReview = false;
             _photoSourceImages = [];
             ResetFlow();
-            SetStatus(Loc.Plural(saved.Count, "Saved {0} photo to {1}", "Saved {0} photos to {1}", s.DestinationPath),
+            SetStatus(Loc.Plural(saved.Count, "Saved {0} photo to {1}", "Saved {0} photos to {1}", s.ResolveDestination()),
                       new(new StatusHead.SavedFiles(saved.Count, FileKind.Photo)));
             RunAfterSave(s.Output.AfterSave, saved);
         });
@@ -4201,7 +4201,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                                     string? label = null, string? name = null) => Task.Run(() =>
     {
         // On a network folder these calls can block for the network timeout.
-        string dir = Environment.ExpandEnvironmentVariables(s.DestinationPath);
+        string dir = s.ResolveDestination();
         Directory.CreateDirectory(dir);
         // A typed name is the whole file name: no template and no running number.
         string baseName = name is not null

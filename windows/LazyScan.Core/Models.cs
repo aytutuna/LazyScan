@@ -775,7 +775,29 @@ public sealed class ScanSettings
     public OutputFormat Format { get; set; } = OutputFormat.Pdf;
     /// <summary>0 ... 1</summary>
     public double JpegQuality { get; set; } = 0.9;
-    public string DestinationPath { get; set; } = DefaultDestinationPath;
+    /// <summary>
+    /// The save folder the user picked. Empty means the default, resolved from the Documents folder
+    /// when it is used (<see cref="ResolveDestination()"/>), so a redirected Documents is followed. The
+    /// default folder of earlier versions, stored as a path, reads back as empty.
+    /// </summary>
+    public string DestinationPath
+    {
+        get => _destinationPath;
+        set => _destinationPath = IsDefaultFolder(value) ? "" : value;
+    }
+    private string _destinationPath = "";
+
+    public string ResolveDestination() =>
+        DestinationPath.Length == 0 ? DefaultDestinationPath : Environment.ExpandEnvironmentVariables(DestinationPath);
+
+    private static bool IsDefaultFolder(string path)
+    {
+        string trimmed = path.TrimEnd('\\', '/');
+        // Earlier versions stored the default as a path; if Documents moved to OneDrive since, it no longer equals the current default.
+        string profileDocuments =Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "Lazy Scan");
+        return string.Equals(trimmed, DefaultDestinationPath, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, profileDocuments, StringComparison.OrdinalIgnoreCase);
+    }
     /// <summary>
     /// The save folder picked outside the app on the iPhone (iCloud Drive, a USB drive), as a
     /// bookmark: iOS lets the app back into such a folder only through one. Not used here; kept so

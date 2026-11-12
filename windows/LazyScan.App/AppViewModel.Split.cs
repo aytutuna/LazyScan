@@ -451,7 +451,7 @@ public sealed partial class AppViewModel
             NotifyAll();
             var paper = SeparatorSheet.Paper(RegionCode);
             var inches = PaperSizes.Inches(paper) ?? new SizeD(8.5, 11);
-            string dir = Environment.ExpandEnvironmentVariables(s.DestinationPath);
+            string dir = s.ResolveDestination();
             Directory.CreateDirectory(dir);
             string baseName = qr ? QrSeparatorSheet.FileBaseName(name, paper) : SeparatorSheet.FileBaseName(paper);
             string path = NamingTemplate.UniquePath(dir, baseName, "pdf");
