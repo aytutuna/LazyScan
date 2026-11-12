@@ -283,8 +283,7 @@ tests run on the iOS Simulator with Xcode 26 or later, as CI's `ios` job runs th
 xcodebuild test -scheme LazyScan-Package   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
 ```
 
-The app itself (iPhone only for now, which an iPad runs in iPhone compatibility mode, so the iPad
-layouts described below wait for a later version; on the iPhone it opens straight on the camera,
+The app itself (iPhone and iPad; on the iPhone it opens straight on the camera,
 whose viewfinder is the scan screen, with the last task used set up; what you scan (Document, Photo,
 Receipts, ID card or Book; several receipts or prints laid on the table are split into pages
 automatically) is the Type under Options, which also holds the format, the PDF's choices and the actions

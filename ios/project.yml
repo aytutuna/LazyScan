@@ -51,9 +51,8 @@ targets:
         INFOPLIST_FILE: LazyScaniOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: LazyScaniOS/LazyScan.entitlements
         GENERATE_INFOPLIST_FILE: NO
-        # iPhone only for now: iPads run it in iPhone compatibility mode. Vision Pro has no camera
-        # for camera mode, the root screen.
-        TARGETED_DEVICE_FAMILY: "1"
+        # iPhone and iPad. Vision Pro has no camera for camera mode, the root screen.
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
@@ -86,7 +85,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lazyscan.lazyscan.uitests
         GENERATE_INFOPLIST_FILE: YES
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         TEST_TARGET_NAME: LazyScaniOS
 
 schemes:
