@@ -123,6 +123,28 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertEqual(grayAuto.image.pixels, DocumentEnhancer.enhance(plain, mode: .gray).image.pixels)
     }
 
+    func testBlackAndWhiteKeepsPencilAndFadedThermalPrint() {
+        let cases: [(paper: Int, ink: Int, thin: Bool)] = [(226, 158, false), (245, 176, true)]
+        for c in cases {
+            let page: RgbaImage = EnhancerPages.faint(paper: c.paper, ink: c.ink, thin: c.thin)
+            let bw: DocumentEnhancement = DocumentEnhancer.enhance(page, mode: .blackAndWhite)
+            XCTAssertEqual(bw.mode, .blackAndWhite)
+            var y: Int = 0
+            while y < page.height {
+                var x: Int = 0
+                while x < page.width {
+                    let print: Bool = c.thin
+                        ? EnhancerPages.isLightPrint(x, y, width: page.width, height: page.height)
+                        : EnhancerPages.isInk(x, y, width: page.width, height: page.height)
+                    let expected: UInt8 = print ? 0 : 255
+                    XCTAssertEqual(bw.image.pixels[(y * page.width + x) * 4], expected, "\(c.ink): \(x), \(y)")
+                    x += 1
+                }
+                y += 1
+            }
+        }
+    }
+
     func testBlackAndWhiteIsPrintOnPaper() {
         let result: DocumentEnhancement = DocumentEnhancer.enhance(EnhancerPages.shadowed(), mode: .blackAndWhite)
         XCTAssertEqual(result.mode, .blackAndWhite)
@@ -292,7 +314,7 @@ final class DocumentEnhancerTests: XCTestCase {
             y += 1
         }
         XCTAssertEqual(PhotoScenes.checksum(result.image), 0x2E7F_EF38)
-        XCTAssertEqual(PhotoScenes.checksum(bw.image), 0x1EDF_C6F4)
+        XCTAssertEqual(PhotoScenes.checksum(bw.image), 0x7428_3C44)
         XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(page, mode: .color).image), 0x2C52_0A1D)
         let auto: DocumentEnhancement = DocumentEnhancer.enhance(page, mode: .auto)
         XCTAssertEqual(auto.mode, .gray)
@@ -397,9 +419,9 @@ final class DocumentEnhancerTests: XCTestCase {
         let noteAuto: DocumentEnhancement = DocumentEnhancer.enhance(note, mode: .auto)
         XCTAssertEqual(noteAuto.mode, .gray)
         XCTAssertEqual(noteAuto.image.pixels, noteGray.pixels)
-        XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(note, mode: .blackAndWhite).image), 0xF843_23D5)
+        XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(note, mode: .blackAndWhite).image), 0x5BFD_1FE5)
         let blank: RgbaImage = EnhancerPages.hardShadow(print: .blank)
-        XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(blank, mode: .blackAndWhite).image), 0x55EE_99C5)
+        XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(blank, mode: .blackAndWhite).image), 0xF2CE_FDC5)
     }
 
     func testABigDarkPictureWithACaptionKeepsItsPaperAndItsPicture() {

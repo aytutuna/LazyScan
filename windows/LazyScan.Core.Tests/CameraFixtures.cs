@@ -85,6 +85,30 @@ public static class EnhancerPages
         return new RgbaImage(width, height, pixels);
     }
 
+    /// <summary>
+    /// A gray page in even light: paper of luma <paramref name="paper"/> with the lines of <see cref="IsInk"/>
+    /// (or the 1 px lines of <see cref="IsLightPrint"/> when <paramref name="thin"/>) at luma <paramref name="ink"/>,
+    /// as pencil or faded thermal print.
+    /// </summary>
+    public static RgbaImage Faint(int paper, int ink, bool thin, int width = 240, int height = 320)
+    {
+        var pixels = new byte[width * height * 4];
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                bool print = thin ? IsLightPrint(x, y, width, height) : IsInk(x, y, width, height);
+                byte v = (byte)(print ? ink : paper);
+                int o = (y * width + x) * 4;
+                pixels[o] = v;
+                pixels[o + 1] = v;
+                pixels[o + 2] = v;
+                pixels[o + 3] = 255;
+            }
+        }
+        return new RgbaImage(width, height, pixels);
+    }
+
     /// <summary>Where the hard shadow of <see cref="HardShadow"/> starts: everything right of it is in shadow (mid-tile, not on a tile's edge).</summary>
     public const int ShadowEdge = 130;
     /// <summary>The light in the hard shadow, out of 255 (45 %).</summary>

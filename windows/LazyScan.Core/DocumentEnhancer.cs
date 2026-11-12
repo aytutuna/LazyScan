@@ -89,7 +89,8 @@ public readonly record struct PaperWhiteBalance(double R, double G, double B)
 /// <see cref="MinGain"/>...<see cref="MaxGain"/>) for color, at most 1. The levels are stretched linearly:
 /// <see cref="WhitePoint"/> and above becomes white, the black point (the <see cref="BlackPercentile"/>
 /// of the sampled luma levels, at most <see cref="MaxBlackPoint"/>) and below black. Black and white
-/// thresholds the gray result at <see cref="Bilevel.Threshold"/>; since the levels are against the paper
+/// makes a pixel black when its level is below <see cref="BilevelShare"/> (not when its stretched value is
+/// below <see cref="Bilevel.Threshold"/>, which would drop pale print); since the levels are against the paper
 /// where each pixel is, the threshold follows the lighting, and print in a shadow stays black. Photos are only stretched as a whole
 /// (<see cref="DocumentEnhanceMode.Photo"/>). A page whose ground is dark with light print on it (a
 /// chalkboard, a dark flyer, a slide: <see cref="IsLightOnDark"/>) has no paper to even out against, so it
@@ -120,6 +121,8 @@ public static class DocumentEnhancer
     public const double WhitePoint = 0.9;
     /// <summary>The share of the sampled levels taken as the darkest print.</summary>
     public const double BlackPercentile = 0.005;
+    /// <summary>Black and white makes a pixel black when it is darker than this share of the paper there.</summary>
+    public const double BilevelShare = 0.78;
     /// <summary>The black point is at most this level, so a page with little print is not stretched into noise.</summary>
     public const double MaxBlackPoint = 0.5;
     /// <summary>The steps a level is counted in.</summary>
@@ -269,6 +272,7 @@ public static class DocumentEnhancer
         bool color = mode is DocumentEnhanceMode.Auto or DocumentEnhanceMode.Color;
         var balance = color ? WhiteBalance(image, gray, paper) : PaperWhiteBalance.Neutral;
         var src = image.Pixels;
+        int blackBelow = (int)Math.Floor(BilevelShare * Levels + 0.5);
         var output = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
         {
@@ -284,8 +288,9 @@ public static class DocumentEnhancer
                 }
                 else
                 {
-                    byte v = lut[Level(gray.Pixels[p], background)];
-                    if (mode == DocumentEnhanceMode.BlackAndWhite) v = v < Bilevel.Threshold ? (byte)0 : (byte)255;
+                    int share = Level(gray.Pixels[p], background);
+                    byte v = lut[share];
+                    if (mode == DocumentEnhanceMode.BlackAndWhite) v = share < blackBelow ? (byte)0 : (byte)255;
                     output[i] = v;
                     output[i + 1] = v;
                     output[i + 2] = v;

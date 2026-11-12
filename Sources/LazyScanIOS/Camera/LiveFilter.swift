@@ -147,8 +147,8 @@ struct LiveStats: Sendable {
 
 /// `DocumentEnhancer` and `ImagePipeline` as Core Image, for the camera's frames. The paper is not
 /// estimated here: `LiveStats` brings it from a small copy of a recent frame, and this divides the frame by
-/// it, white balances it, stretches the levels (black and white thresholds them at the middle, as the saved
-/// page is at 128 of 255) and then runs the adjustments through the same chain as the saved page. The frame
+/// it, white balances it, stretches the levels (black and white thresholds them where the saved page does, at
+/// `bilevelShare` of the paper) and then runs the adjustments through the same chain as the saved page. The frame
 /// is read as plain numbers (no colour management, so the maths is the saved page's, on the same values).
 /// Not run per frame: straightening, the cut along the page's corners, the receipt clean-up, auto-enhance.
 enum LiveFilter {
@@ -159,7 +159,13 @@ enum LiveFilter {
             let gray: Bool = mode == .gray || mode == .blackAndWhite || (mode == .auto && measured.isGray == true)
             image = stretched(image, with: measured, gray: gray)
             if mode == .blackAndWhite {
-                image = image.applyingFilter("CIColorThreshold", parameters: ["inputThreshold": 0.5])
+                // The saved page is black below `bilevelShare` of the paper, which is this value once stretched;
+                // a light-on-dark page is stretched as a photo and cut at the middle.
+                var level: Double = 0.5
+                if measured.photoRange == nil {
+                    level = (DocumentEnhancer.bilevelShare - measured.blackPoint) / (DocumentEnhancer.whitePoint - measured.blackPoint)
+                }
+                image = image.applyingFilter("CIColorThreshold", parameters: ["inputThreshold": level])
             }
             // A page the clean-up left gray is adjusted as a gray one (`AdjustmentStep.mode(for:)`).
             if gray && colorMode == .color {

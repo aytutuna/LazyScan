@@ -114,6 +114,25 @@ public class DocumentEnhancerTests
     }
 
     [Fact]
+    public void BlackAndWhiteKeepsPencilAndFadedThermalPrint()
+    {
+        foreach (var (paper, ink, thin) in new[] { (226, 158, false), (245, 176, true) })
+        {
+            var page = EnhancerPages.Faint(paper, ink, thin);
+            var bw = DocumentEnhancer.Enhance(page, DocumentEnhanceMode.BlackAndWhite);
+            Assert.Equal(DocumentEnhanceMode.BlackAndWhite, bw.Mode);
+            for (int y = 0; y < page.Height; y++)
+            {
+                for (int x = 0; x < page.Width; x++)
+                {
+                    bool print = thin ? EnhancerPages.IsLightPrint(x, y, page.Width, page.Height) : EnhancerPages.IsInk(x, y, page.Width, page.Height);
+                    Assert.True(bw.Image.Pixels[(y * page.Width + x) * 4] == (print ? 0 : 255), $"{ink}: {x}, {y}");
+                }
+            }
+        }
+    }
+
+    [Fact]
     public void BlackAndWhiteIsPrintOnPaper()
     {
         var result = DocumentEnhancer.Enhance(EnhancerPages.Shadowed(), DocumentEnhanceMode.BlackAndWhite);
@@ -288,7 +307,7 @@ public class DocumentEnhancerTests
             }
         }
         Assert.Equal(0x2E7FEF38u, PhotoScenes.Checksum(result.Image));
-        Assert.Equal(0x1EDFC6F4u, PhotoScenes.Checksum(bw.Image));
+        Assert.Equal(0x74283C44u, PhotoScenes.Checksum(bw.Image));
         Assert.Equal(0x2C520A1Du, PhotoScenes.Checksum(DocumentEnhancer.Enhance(page, DocumentEnhanceMode.Color).Image));
         var auto = DocumentEnhancer.Enhance(page, DocumentEnhanceMode.Auto);
         Assert.Equal(DocumentEnhanceMode.Gray, auto.Mode);
@@ -392,9 +411,9 @@ public class DocumentEnhancerTests
         var noteAuto = DocumentEnhancer.Enhance(note, DocumentEnhanceMode.Auto);
         Assert.Equal(DocumentEnhanceMode.Gray, noteAuto.Mode);
         Assert.Equal(noteGray.Pixels, noteAuto.Image.Pixels);
-        Assert.Equal(0xF84323D5u, PhotoScenes.Checksum(DocumentEnhancer.Enhance(note, DocumentEnhanceMode.BlackAndWhite).Image));
+        Assert.Equal(0x5BFD1FE5u, PhotoScenes.Checksum(DocumentEnhancer.Enhance(note, DocumentEnhanceMode.BlackAndWhite).Image));
         var blank = EnhancerPages.HardShadow(print: EnhancerPages.ShadowPrint.Blank);
-        Assert.Equal(0x55EE99C5u, PhotoScenes.Checksum(DocumentEnhancer.Enhance(blank, DocumentEnhanceMode.BlackAndWhite).Image));
+        Assert.Equal(0xF2CEFDC5u, PhotoScenes.Checksum(DocumentEnhancer.Enhance(blank, DocumentEnhanceMode.BlackAndWhite).Image));
     }
 
     [Fact]

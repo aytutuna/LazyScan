@@ -99,7 +99,8 @@ public struct PaperWhiteBalance: Equatable, Sendable {
 /// the pixels at least `paperShare` of the paper there, within `minGain`...`maxGain`) for color, at most 1.
 /// The levels are stretched linearly: `whitePoint` and above becomes white, the black point (the
 /// `blackPercentile` of the sampled luma levels, at most `maxBlackPoint`) and below black. Black and white
-/// thresholds the gray result at `Bilevel.threshold`; since the levels are against the paper where each
+/// makes a pixel black when its level is below `bilevelShare` (not when its stretched value is below
+/// `Bilevel.threshold`, which would drop pale print); since the levels are against the paper where each
 /// pixel is, the threshold follows the lighting, and print in a shadow stays black. Photos are only
 /// stretched as a whole (`.photo`). A page whose ground is dark with light print on it (a chalkboard, a
 /// dark flyer, a slide: `isLightOnDark`) has no paper to even out against, so it is stretched as a whole
@@ -128,6 +129,8 @@ public enum DocumentEnhancer {
     public static let whitePoint: Double = 0.9
     /// The share of the sampled levels taken as the darkest print.
     public static let blackPercentile: Double = 0.005
+    /// Black and white makes a pixel black when it is darker than this share of the paper there.
+    public static let bilevelShare: Double = 0.78
     /// The black point is at most this level, so a page with little print is not stretched into noise.
     public static let maxBlackPoint: Double = 0.5
     /// The steps a level is counted in.
@@ -307,7 +310,7 @@ public enum DocumentEnhancer {
         }
         let src: [UInt8] = image.pixels
         let lumas: [UInt8] = gray.pixels
-        let threshold: Int = Bilevel.threshold
+        let blackBelow: Int = Int(floor(bilevelShare * Double(levels) + 0.5))
         var output: [UInt8] = [UInt8](repeating: 0, count: w * h * 4)
         var y: Int = 0
         while y < h {
@@ -321,9 +324,10 @@ public enum DocumentEnhancer {
                     output[i + 1] = lut[level(Double(src[i + 1]) * balance.g, background)]
                     output[i + 2] = lut[level(Double(src[i + 2]) * balance.b, background)]
                 } else {
-                    var v: UInt8 = lut[level(Double(lumas[p]), background)]
+                    let share: Int = level(Double(lumas[p]), background)
+                    var v: UInt8 = lut[share]
                     if mode == .blackAndWhite {
-                        v = Int(v) < threshold ? 0 : 255
+                        v = share < blackBelow ? 0 : 255
                     }
                     output[i] = v
                     output[i + 1] = v

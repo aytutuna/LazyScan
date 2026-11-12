@@ -103,6 +103,28 @@ enum EnhancerPages {
         return RgbaImage(width: width, height: height, pixels: pixels)
     }
 
+    /// A gray page in even light: paper of luma `paper` with the lines of `isInk` (or the 1 px lines of
+    /// `isLightPrint` when `thin`) at luma `ink`, as pencil or faded thermal print.
+    static func faint(paper: Int, ink: Int, thin: Bool, width: Int = 240, height: Int = 320) -> RgbaImage {
+        var pixels: [UInt8] = [UInt8](repeating: 0, count: width * height * 4)
+        var y: Int = 0
+        while y < height {
+            var x: Int = 0
+            while x < width {
+                let print: Bool = thin ? isLightPrint(x, y, width: width, height: height) : isInk(x, y, width: width, height: height)
+                let v: UInt8 = UInt8(print ? ink : paper)
+                let o: Int = (y * width + x) * 4
+                pixels[o] = v
+                pixels[o + 1] = v
+                pixels[o + 2] = v
+                pixels[o + 3] = 255
+                x += 1
+            }
+            y += 1
+        }
+        return RgbaImage(width: width, height: height, pixels: pixels)
+    }
+
     /// Where the hard shadow of `hardShadow` starts: everything right of it is in shadow (mid-tile, not on a
     /// tile's edge).
     static let shadowEdge: Int = 130
