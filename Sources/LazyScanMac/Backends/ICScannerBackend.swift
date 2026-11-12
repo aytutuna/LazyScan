@@ -217,6 +217,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
 
     private var scannedURLs: [URL] = []
     private var cancelRequested = false
+    private var cancelGeneration = 0
     private var isClosing = false
 
     init(device: ICScannerDevice, info: ScannerInfo) {
@@ -262,7 +263,17 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
 
     func cancelScan() {
         cancelRequested = true
+        cancelGeneration += 1
+        let generation = cancelGeneration
         device.cancelScan()
+        // A scanner that stays listed but stops answering never calls back, so
+        // the pending scan or overview would keep the app busy forever.
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard let self, self.cancelGeneration == generation else { return }
+            self.resumeOverview(.failure(ScanError.cancelled))
+            self.endScan(with: .cancelled)
+        }
     }
 
     // MARK: Capabilities
@@ -340,6 +351,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     func performOverviewScan(settings: ScanSettings) async throws -> CGImage {
         try ensureIdle()
         cancelRequested = false
+        cancelGeneration += 1
         try await selectFunctionalUnit(.flatbed)
 
         let unit = device.selectedFunctionalUnit
@@ -361,6 +373,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     func performScan(settings: ScanSettings, selection: CGRect?) async throws -> [ScannedPage] {
         try ensureIdle()
         cancelRequested = false
+        cancelGeneration += 1
         scannedURLs = []
         lastScanStop = nil
         lastScanDuplex = nil
