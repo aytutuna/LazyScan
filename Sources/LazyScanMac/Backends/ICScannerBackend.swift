@@ -216,6 +216,11 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     private var scanContinuation: CheckedContinuation<[URL], Error>?
 
     private var scannedURLs: [URL] = []
+    /// Set while a scan hands its pages over as they transfer (`performScan(settings:selection:onPage:)`):
+    /// called with each file ImageCaptureCore delivers. `deliveryTail` is the last page handed over.
+    private var onTransfer: (@MainActor (URL) -> Void)?
+    private var deliveryTail: Task<Void, Never>?
+    private var deliveredCount = 0
     private var cancelRequested = false
     private var cancelGeneration = 0
     private var isClosing = false
@@ -371,6 +376,23 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     // MARK: Scan
 
     func performScan(settings: ScanSettings, selection: CGRect?) async throws -> [ScannedPage] {
+        try await scan(settings: settings, selection: selection, onPage: nil)
+    }
+
+    /// Each sheet is handed over as soon as the scanner has transferred it, and its file is read and removed
+    /// then, so a long stack never sits in memory. A feeder that delivers the last sheet first needs the
+    /// whole stack to put it in reading order, and hands the pages over at the end.
+    func performScan(settings: ScanSettings, selection: CGRect?,
+                     onPage: @escaping @MainActor (ScannedPage) async -> Void) async throws {
+        let pages = try await scan(settings: settings, selection: selection, onPage: onPage)
+        for page in pages {
+            await onPage(page)
+        }
+    }
+
+    /// The pages of the scan, or none when `onPage` took them as they came.
+    private func scan(settings: ScanSettings, selection: CGRect?,
+                      onPage: (@MainActor (ScannedPage) async -> Void)?) async throws -> [ScannedPage] {
         try ensureIdle()
         cancelRequested = false
         cancelGeneration += 1
@@ -455,9 +477,43 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         // kick off the full scan anyway.
         guard !cancelRequested else { throw ScanError.cancelled }
         progressHandler?(ScanProgress(message: L10n.t("Scanning…")))
-        let urls = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[URL], Error>) in
-            scanContinuation = continuation
-            device.requestScan()
+        let streams = onPage != nil && !reverseOrder
+        if let onPage, streams {
+            deliveredCount = 0
+            deliveryTail = nil
+            let colorMode = settings.colorMode
+            onTransfer = { [weak self] url in
+                guard let self else { return }
+                let previous = self.deliveryTail
+                self.deliveryTail = Task { @MainActor [weak self] in
+                    await previous?.value
+                    let image = await Task.detached(priority: .userInitiated) { Self.loadImage(at: url) }.value
+                    try? FileManager.default.removeItem(at: url)
+                    guard let self, let image else { return }
+                    self.deliveredCount += 1
+                    await onPage(ScannedPage(image: image, dpi: dpi, colorMode: colorMode))
+                }
+            }
+        }
+        let urls: [URL]
+        do {
+            urls = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[URL], Error>) in
+                scanContinuation = continuation
+                device.requestScan()
+            }
+        } catch {
+            onTransfer = nil
+            await deliveryTail?.value
+            throw error
+        }
+        onTransfer = nil
+        if streams {
+            await deliveryTail?.value
+            guard deliveredCount > 0 else {
+                if unitType == .documentFeeder { throw ScanError.scannerProblem(.feederEmpty) }
+                throw ScanError.scanFailed(reason: { L10n.t("The scanner did not return any image data.") })
+            }
+            return []
         }
 
         var pages: [ScannedPage] = []
@@ -729,6 +785,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     nonisolated func scannerDevice(_ scanner: ICScannerDevice, didScanTo url: URL) {
         performOnMainActor {
             self.scannedURLs.append(url)
+            self.onTransfer?(url)
             self.progressHandler?(ScanProgress(message: L10n.t("Transferring…")))
         }
     }

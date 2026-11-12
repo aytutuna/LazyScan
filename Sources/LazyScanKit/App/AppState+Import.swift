@@ -300,13 +300,13 @@ extension AppState {
                             continue
                         }
                         // The clean-up stage, then spill the page and the photo it was taken from to disk; keep
-                        // only previews in the queue. A page to be saved at once is held as it is.
+                        // only previews, in the queue or until the pages are saved.
                         let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
                             let processor: PageProcessor = savesAtOnce
                                 ? PageProcessor.forScan(s)
                                 : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
                             let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
-                            let pages: [ScannedPage] = savesAtOnce ? processed : Self.spoolPages(processed, to: spool)
+                            let pages: [ScannedPage] = Self.spoolPages(processed, to: spool)
                             return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
                         }.value
                         if savesAtOnce {
@@ -333,12 +333,8 @@ extension AppState {
                 // as a save at once that was cancelled leaves them.
                 if let lastPreview { self.setLastScan(preview: lastPreview, pixelSize: lastSize) }
                 if savesAtOnce && !added.isEmpty {
-                    let held = added
-                    let spooled = await Task.detached(priority: .userInitiated) {
-                        Self.spoolPages(held, to: spool)
-                    }.value
-                    self.scannedPages.append(contentsOf: spooled)
-                    self.statusMessage = TextExport.pagesKeptInQueue(pageCount: held.count, written: 0, cancelled: true,
+                    self.scannedPages.append(contentsOf: added)
+                    self.statusMessage = TextExport.pagesKeptInQueue(pageCount: added.count, written: 0, cancelled: true,
                                                                      saveTitle: s.format.saveTitle)
                 } else {
                     self.statusMessage = PhotoImport.cancelledMessage(added: added.count, queueCount: self.scannedPages.count)

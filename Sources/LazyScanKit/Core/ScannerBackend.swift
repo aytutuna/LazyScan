@@ -40,6 +40,14 @@ public protocol ScannerSession: AnyObject {
     /// - Returns: one ScannedPage per sheet (the ADF may produce several).
     func performScan(settings: ScanSettings, selection: CGRect?) async throws -> [ScannedPage]
 
+    /// The same, handing each page to `onPage` as it arrives, so the app can process and store it while
+    /// the feeder goes on instead of holding the whole stack. It returns once the scan is over and every
+    /// page has been handed over; the pages are not returned again. Throws as `performScan` does, also
+    /// when it ends with nothing handed over. Default: the pages are handed over together once the scan
+    /// is done.
+    func performScan(settings: ScanSettings, selection: CGRect?,
+                     onPage: @escaping @MainActor (ScannedPage) async -> Void) async throws
+
     /// Why the last `performScan` ended early while still returning the pages that
     /// transferred; nil when it ran to the end (or failed outright). Reset by every scan.
     /// Sessions that never stop a batch early can leave the default.
@@ -67,6 +75,12 @@ public protocol ScannerSession: AnyObject {
 }
 
 extension ScannerSession {
+    public func performScan(settings: ScanSettings, selection: CGRect?,
+                            onPage: @escaping @MainActor (ScannedPage) async -> Void) async throws {
+        for page in try await performScan(settings: settings, selection: selection) {
+            await onPage(page)
+        }
+    }
     public var lastScanStop: ScanStop? { nil }
     public var lastScanDuplex: Bool? { nil }
     public var feederDuplexNeedsSelection: Bool { false }

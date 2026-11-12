@@ -554,12 +554,15 @@ public struct PageProcessor {
     /// Arranges the pages, splits each spread when facing pages are split (where its gutter is found,
     /// `BookSplitter.findGutter`; whole otherwise), then runs every step on every page. `shouldContinue`
     /// is asked before each page and each step, and handed to the steps that can stop part way
-    /// (`CancellablePageStep`); when it says no, `ScanError.cancelled` is thrown.
-    public func process(_ scanned: [ScannedPage], shouldContinue: () -> Bool = { true }) throws -> ProcessedScan {
+    /// (`CancellablePageStep`); when it says no, `ScanError.cancelled` is thrown. `firstTransfer`: how many
+    /// pages of a two-sided scan came before `scanned`, which is a later part of it (a scan processed as
+    /// its pages arrive), so each page keeps its sheet and side.
+    public func process(_ scanned: [ScannedPage], firstTransfer: Int = 0,
+                        shouldContinue: () -> Bool = { true }) throws -> ProcessedScan {
         guard shouldContinue() else { throw ScanError.cancelled }
         var arranged: [ScannedPage]
         switch arrangement {
-        case .twoSided: arranged = DocumentSides.arrangeTwoSided(scanned, binding: binding)
+        case .twoSided: arranged = DocumentSides.arrangeTwoSided(scanned, binding: binding, firstTransfer: firstTransfer)
         case .turnedOverFronts: arranged = DocumentSides.markManual(scanned, side: .front, binding: binding)
         case .turnedOverBacks: arranged = DocumentSides.markManual(scanned, side: .back, binding: binding)
         case .cameraFront: arranged = DocumentSides.markCamera(scanned, side: .front)

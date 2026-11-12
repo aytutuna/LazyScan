@@ -326,6 +326,15 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertTrue(result.pages.allSatisfy { $0.blank != nil })
     }
 
+    func test_process_twoSided_aLaterPartContinuesTheSheets() throws {
+        let scanned = (0..<4).map { _ in page(solid(4, 6, 255)) }
+        let processor = PageProcessor(steps: [], arrangement: .twoSided)
+        let first = try processor.process(Array(scanned[..<3]))
+        let rest = try processor.process([scanned[3]], firstTransfer: 3)
+        XCTAssertEqual((first.pages + rest.pages).map(\.side), [.front, .back, .front, .back])
+        XCTAssertEqual((first.pages + rest.pages).map(\.sheetIndex), [0, 0, 1, 1])
+    }
+
     func test_process_turnedOver_marksTheSide() throws {
         let scanned = [page(blankImage), page(textImage)]
         let fronts = try PageProcessor(steps: [], arrangement: .turnedOverFronts).process(scanned)

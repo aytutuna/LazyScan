@@ -225,12 +225,16 @@ public enum DocumentSides {
 
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in reading
     /// order, each marked with its sheet and side; the backs are turned upright for `binding`.
+    /// `firstTransfer`: how many pages were delivered before `pages`, which are a later part of the same scan.
     public static func arrangeTwoSided(_ pages: [ScannedPage], binding: DuplexBinding,
-                                       reverseOrder: Bool = false) -> [ScannedPage] {
+                                       reverseOrder: Bool = false, firstTransfer: Int = 0) -> [ScannedPage] {
         let turns = backQuarterTurns(binding)
-        return assignSides(transferCount: pages.count, duplex: true, reverseOrder: reverseOrder).map { transfer in
-            mark(pages[transfer.transferIndex], side: transfer.side, sheet: transfer.sheetIndex, turns: turns)
-        }
+        return assignSides(transferCount: firstTransfer + pages.count, duplex: true, reverseOrder: reverseOrder)
+            .filter { $0.transferIndex >= firstTransfer }
+            .map { transfer in
+                mark(pages[transfer.transferIndex - firstTransfer], side: transfer.side, sheet: transfer.sheetIndex,
+                     turns: turns)
+            }
     }
 
     /// The pages of one scan of a stack turned over by hand, marked as fronts or backs; backs are

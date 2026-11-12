@@ -782,6 +782,31 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(try savedPDFs(), [])
     }
 
+    @MainActor
+    func test_pagesHeldOnTheirSpoolFiles_areSavedAtFullSize_andTheFilesGo() async throws {
+        let state = makeState()
+        state.settings.format = .jpeg
+        state.settings.documentMultiPage = false
+        let spool = state.spoolDirectory
+        let spooled = AppState.spoolPages([seamPage(width: 1800, height: 1700, dpi: 50)], to: spool)
+        let file = try XCTUnwrap(spooled[0].fileURL)
+        // Spooling a page that has its file already changes nothing.
+        XCTAssertEqual(AppState.spoolPages(spooled, to: spool)[0].fileURL, file)
+        XCTAssertLessThan(spooled[0].image.width, 1800)
+        let s = state.settings
+        state.runExclusive { flag in
+            try await state.saveImmediately(spooled, settings: s, flag: flag)
+        }
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let saved = try XCTUnwrap(state.lastSavedURLs.first)
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(saved as CFURL, nil))
+        let properties = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        XCTAssertEqual(properties[kCGImagePropertyPixelWidth] as? Int, 1800)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
     /// A save folder that cannot be made: it would be inside a file.
     private func folderInsideAFile() throws -> String {
         let file: URL = folder.appendingPathComponent("Not a folder")

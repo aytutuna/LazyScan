@@ -137,6 +137,10 @@ struct PageIntake {
     var stopped = false
     /// The pages are a camera's, straightened whatever the settings say (`PageProcessor.forCapture`).
     var straightens = false
+    /// The pages are some of a scan's, queued as they arrive: `firstTransfer` came before them, and the
+    /// status is left to `announceQueued` once the scan is over.
+    var streaming = false
+    var firstTransfer = 0
 }
 
 /// Central controller: owns backends, the open scanner session, settings, scan results,
@@ -1197,6 +1201,36 @@ public final class AppState: ObservableObject {
             }
             if let copySetup, let area = self.copyScanArea(s, setup: copySetup) { paperArea = area }
             let selection: CGRect? = s.source == .flatbed ? (self.selectionRect ?? paperArea) : nil
+            let setup = copySetup
+            func makeIntake(stopped: Bool) -> PageIntake {
+                // A scanner that fell back to one side (its feeder could not scan both, or was never
+                // asked) delivered one side of each sheet.
+                let twoSided = sides == .both && session.lastScanDuplex != false
+                // Two-sided pages are put in reading order with their sides marked and the backs turned
+                // upright; a stack turned over by hand gets its side.
+                let arrangement: ScanArrangement = twoSided ? .twoSided
+                    : manualSide == .back ? .turnedOverBacks
+                    : manualSide == .front ? .turnedOverFronts
+                    : .asScanned
+                var intake = PageIntake(settings: s, source: .scanner, generation: generation)
+                intake.arrangement = arrangement
+                intake.askedBothSides = sides == .both
+                intake.manualSide = manualSide
+                intake.cardSide = cardSide
+                intake.selection = selection
+                intake.copySetup = setup
+                intake.areaSelected = areaSelected
+                intake.stopped = stopped
+                return intake
+            }
+            // Pages that go to the queue are processed and stored one by one as the feeder delivers them,
+            // so a long stack is never held whole in memory.
+            if TaskCatalog.flow(of: s) == .documentQueue && s.documentMultiPage && cardSide == nil {
+                try await self.scanIntoQueue(session, settings: s, selection: selection, generation: generation,
+                                             flag: flag, makeIntake: makeIntake)
+                if self.capabilities == nil { await self.readCapabilitiesAfterScan(session, generation: generation) }
+                return
+            }
             let scanned = try await session.performScan(settings: s, selection: selection)
             // Discard results that arrive after the user switched devices.
             guard self.switchGeneration == generation else { return }
@@ -1206,29 +1240,62 @@ public final class AppState: ObservableObject {
             // A feeder batch cut short (a jam, a dropped connection) still returns its pages;
             // once they are handled the user is told the stack was not finished.
             let stop = session.lastScanStop
-            // A scanner that fell back to one side (its feeder could not scan both, or was never
-            // asked) delivered one side of each sheet.
-            let twoSided = sides == .both && session.lastScanDuplex != false
-            // Two-sided pages are put in reading order with their sides marked and the backs turned
-            // upright; a stack turned over by hand gets its side.
-            let arrangement: ScanArrangement = twoSided ? .twoSided
-                : manualSide == .back ? .turnedOverBacks
-                : manualSide == .front ? .turnedOverFronts
-                : .asScanned
-            var intake = PageIntake(settings: s, source: .scanner, generation: generation)
-            intake.arrangement = arrangement
-            intake.askedBothSides = sides == .both
-            intake.manualSide = manualSide
-            intake.cardSide = cardSide
-            intake.selection = selection
-            intake.copySetup = copySetup
-            intake.areaSelected = areaSelected
-            intake.stopped = stop != nil
+            let intake = makeIntake(stopped: stop != nil)
             guard let kept = try await self.ingestPages(scanned, intake: intake, flag: flag) else { return }
             if let stop {
                 self.errorMessage = stop.message(pagesKept: kept)
             }
             if self.capabilities == nil { await self.readCapabilitiesAfterScan(session, generation: generation) }
+        }
+    }
+
+    /// A scan whose pages go to the queue: each page is processed, stored and queued as the scanner delivers it,
+    /// so the page strip fills while the feeder goes on and only the page in hand is held in full. The pages
+    /// queued before a Cancel or an error stay in the queue. `makeIntake` gives the intake of the pages
+    /// (its argument: the scan was cut short).
+    private func scanIntoQueue(_ session: any ScannerSession, settings s: ScanSettings, selection: CGRect?,
+                               generation: Int, flag: CancelFlag,
+                               makeIntake: @escaping @MainActor (Bool) -> PageIntake) async throws {
+        let before = scannedPages.count
+        var received = 0
+        var failure: Error?
+        do {
+            try await session.performScan(settings: s, selection: selection) { page in
+                if failure != nil { return }
+                do {
+                    var intake = makeIntake(false)
+                    intake.streaming = true
+                    intake.firstTransfer = received
+                    guard let kept = try await self.ingestPages([page], intake: intake, flag: flag) else {
+                        failure = ScanError.cancelled
+                        session.cancelScan()
+                        return
+                    }
+                    received += kept
+                } catch {
+                    failure = error
+                    session.cancelScan()
+                }
+            }
+        } catch {
+            if failure == nil { failure = error }
+        }
+        // Discard results that arrive after the user switched devices.
+        guard switchGeneration == generation else { return }
+        if failure == nil && flag.isCancelled { failure = ScanError.cancelled }
+        if let failure, received == 0 { throw failure }
+        guard received > 0 else { throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no pages.") }) }
+        clearFailure()
+        // Pages queued before a Cancel or an error are kept, so the stack is finished like a stopped batch.
+        let stop = failure.map { ScanStop.from($0) } ?? session.lastScanStop
+        announceQueued(Array(scannedPages.dropFirst(before)), intake: makeIntake(stop != nil), scorer: orientationScorer)
+        guard let stop else { return }
+        let message = stop.message(pagesKept: received)
+        switch failure {
+        case ScanError.cancelled?, is CancellationError:
+            statusMessage = message
+        default:
+            errorMessage = message
         }
     }
 
@@ -1338,11 +1405,9 @@ public final class AppState: ObservableObject {
         let s = intake.settings
         let source = intake.source
         let generation = intake.generation
-        let manualSide = intake.manualSide
         let cardSide = intake.cardSide
         let selection = intake.selection
         let arrangement = intake.arrangement
-        let twoSided = arrangement == .twoSided
         let scanned: [ScannedPage] = incoming.map { (page: ScannedPage) -> ScannedPage in
             var marked = page
             marked.source = source
@@ -1356,10 +1421,11 @@ public final class AppState: ObservableObject {
         let scorer = self.orientationScorer
         let barcodes = self.barcodeReader
         let straightens = intake.straightens
+        let firstTransfer = intake.firstTransfer
         let cleaned: ProcessedScan = try await Task.detached(priority: .userInitiated) {
             try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes,
                                   straightens: straightens)
-                .process(scanned, shouldContinue: { !flag.isCancelled })
+                .process(scanned, firstTransfer: firstTransfer, shouldContinue: { !flag.isCancelled })
         }.value
         guard self.isCurrent(generation) else { return nil }
         if flag.isCancelled { throw ScanError.cancelled }
@@ -1424,37 +1490,7 @@ public final class AppState: ObservableObject {
                 // come in between stacks.
                 if source == .scanner || !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
                 self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
-                let n = processed.count
-                if let manualSide {
-                    self.afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
-                } else if twoSided {
-                    self.statusMessage = L10n.plural(n, one: "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
-                                                     other: "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
-                                                     self.scannedPages.count, self.settings.format.saveTitle)
-                } else if intake.askedBothSides {
-                    self.statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
-                                                     other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
-                                                     self.scannedPages.count, self.settings.format.saveTitle)
-                } else {
-                    self.statusMessage = L10n.plural(n, one: "Added {0} page — {1} in queue. Scan more or {2}.",
-                                                     other: "Added {0} pages — {1} in queue. Scan more or {2}.",
-                                                     self.scannedPages.count, self.settings.format.saveTitle)
-                }
-                // " 2 look blank and will be skipped.", " Found 2 separator pages: 3 documents to save."
-                self.statusMessage += self.queueScanNote(processed, options: s.document)
-                if PageProcessor.turnsPagesUpright(s) && !scorer.isAvailable {
-                    self.statusMessage += PageTurns.unavailableNote
-                }
-                if manualSide == nil {
-                    self.statusDetail = StatusDetail(head: self.pagesAdded(processed, options: s.document),
-                                                     warnings: !twoSided && intake.askedBothSides ? [.oneSideOnly] : [])
-                }
-                // The camera's two-sided steps and New document (AppState+CameraTasks.swift).
-                let added: [UUID] = spooled.map(\.id)
-                if let side = intake.cameraSide {
-                    self.afterCameraSide(side, ids: added)
-                }
-                self.applyNewDocument(to: added)
+                if !intake.streaming { self.announceQueued(spooled, intake: intake, scorer: scorer) }
             } else if Self.holdsQuickScan(s, source: source, platform: self.platform) {
                 self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
                 self.holdQuickScan(processed)
@@ -1542,6 +1578,44 @@ public final class AppState: ObservableObject {
             try await self.showReceipts(processed, settings: s, flag: flag, generation: generation)
         }
         return raw.count
+    }
+
+    /// The status once pages were queued (`ingestPages`, or `scanIntoQueue` when the scan is over): what was
+    /// added, the notes about the pages, the short status line, the camera's two-sided steps and New
+    /// document (AppState+CameraTasks.swift). `added` are the queued pages.
+    func announceQueued(_ added: [ScannedPage], intake: PageIntake, scorer: any OrientationScorer) {
+        let s = intake.settings
+        let twoSided = intake.arrangement == .twoSided
+        let n = added.count
+        if let manualSide = intake.manualSide {
+            afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
+        } else if twoSided {
+            statusMessage = L10n.plural(n, one: "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                        other: "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                                        scannedPages.count, settings.format.saveTitle)
+        } else if intake.askedBothSides {
+            statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                        other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                                        scannedPages.count, settings.format.saveTitle)
+        } else {
+            statusMessage = L10n.plural(n, one: "Added {0} page — {1} in queue. Scan more or {2}.",
+                                        other: "Added {0} pages — {1} in queue. Scan more or {2}.",
+                                        scannedPages.count, settings.format.saveTitle)
+        }
+        // " 2 look blank and will be skipped.", " Found 2 separator pages: 3 documents to save."
+        statusMessage += queueScanNote(added, options: s.document)
+        if PageProcessor.turnsPagesUpright(s) && !scorer.isAvailable {
+            statusMessage += PageTurns.unavailableNote
+        }
+        if intake.manualSide == nil {
+            statusDetail = StatusDetail(head: pagesAdded(added, options: s.document),
+                                        warnings: !twoSided && intake.askedBothSides ? [.oneSideOnly] : [])
+        }
+        let ids: [UUID] = added.map(\.id)
+        if let side = intake.cameraSide {
+            afterCameraSide(side, ids: ids)
+        }
+        applyNewDocument(to: ids)
     }
 
     /// Puts small previews of `pages` at the top of the session history, keeping the 50 newest. False,
@@ -1742,6 +1816,7 @@ public final class AppState: ObservableObject {
             setStatus(TextExport.savedMessage(format: s.format, pageCount: pages.count,
                                               fileName: url.lastPathComponent, hasText: hasText),
                       StatusDetail(head: .saved))
+            deleteSpoolFiles(of: pages)
             runAfterSave(s.output.afterSave, saved: [url])
             return
         }
@@ -1790,13 +1865,16 @@ public final class AppState: ObservableObject {
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
                     let planned = try outputURL(fileExtension: s.format.fileExtension)
-                    let url = try await Task.detached(priority: .userInitiated) {
-                        try ImageExporter.write(page.image, to: planned, format: s.format, dpi: page.dpi,
-                                                jpegQuality: s.jpegQuality, colorMode: page.colorMode, keepingExisting: true)
+                    let number = saved.count + 1
+                    let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
+                        let full: CGImage = try Self.fullImage(of: page, number: number)
+                        return try ImageExporter.write(full, to: planned, format: s.format, dpi: page.dpi,
+                                                       jpegQuality: s.jpegQuality, colorMode: page.colorMode, keepingExisting: true)
                     }.value
                     saved.append(url)
                 }
             } catch {
+                deleteSpoolFiles(of: Array(pages.prefix(saved.count)))
                 let rest = Array(pages.dropFirst(saved.count))
                 let cancelled = await keepInQueue(rest, after: error)
                 if !saved.isEmpty { lastSavedURLs = saved }
@@ -1814,6 +1892,7 @@ public final class AppState: ObservableObject {
                                                         detail: detail, textFileName: textFileName)
         if let layerNote { errorMessage = layerNote }
         setStatus(savedMessage, StatusDetail(head: .saved))
+        deleteSpoolFiles(of: pages)
         runAfterSave(s.output.afterSave, saved: saved)
     }
 
@@ -2520,10 +2599,11 @@ public final class AppState: ObservableObject {
     /// that carry only a preview in memory. A page whose spill fails is kept
     /// fully in memory instead. The page as scanned, kept by crop and straighten, gets a spool
     /// file of its own (and keeps its pixels in memory when that fails), so one click can show it.
-    /// The files go in `directory` (the app's `spoolDirectory`).
+    /// The files go in `directory` (the app's `spoolDirectory`). A page that has its file already is kept as it is.
     nonisolated static func spoolPages(_ pages: [ScannedPage], to directory: URL) -> [ScannedPage] {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return pages.map { page in
+            if page.fileURL != nil { return page }
             let url = directory.appendingPathComponent("\(page.id.uuidString).tiff")
             do {
                 try ImageExporter.write(page.image, to: url, format: .tiff,

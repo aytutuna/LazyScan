@@ -262,6 +262,19 @@ final class DocumentSidesTests: XCTestCase {
         XCTAssertEqual(arranged.map(\.sheetIndex), [0, 0, 1, 1])
     }
 
+    func test_arrangeTwoSided_aLaterPartKeepsItsSheetsAndSides() {
+        let pages = (0..<5).map { _ in twoPixelPage() }
+        let whole = DocumentSides.arrangeTwoSided(pages, binding: .shortEdge)
+        var parts: [ScannedPage] = []
+        for (index, page) in pages.enumerated() {
+            parts += DocumentSides.arrangeTwoSided([page], binding: .shortEdge, firstTransfer: index)
+        }
+        XCTAssertEqual(parts.map(\.id), whole.map(\.id))
+        XCTAssertEqual(parts.map(\.side), [.front, .back, .front, .back, .front])
+        XCTAssertEqual(parts.map(\.sheetIndex), [0, 0, 1, 1, 2])
+        XCTAssertEqual(parts.map(redOnTheLeft), whole.map(redOnTheLeft))
+    }
+
     func test_markManual_backsAreTurnedUpright_theirSheetsComeLater() {
         let pages = [twoPixelPage(), twoPixelPage()]
         let backs = DocumentSides.markManual(pages, side: .back, binding: .shortEdge)
