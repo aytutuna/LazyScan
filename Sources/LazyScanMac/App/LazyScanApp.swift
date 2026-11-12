@@ -68,7 +68,7 @@ extension AppState {
         // Pictures from Continuity Camera that a crash or a quit left behind.
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Continuity Camera", isDirectory: true))
         state.cornerModel = FastViTCornerModel.isAvailable ? FastViTCornerModel.shared : nil
-        state.resolveDestinationBookmark = { MacBookmarkedFolder.saveFolder.resolve($0) }
+        state.resolveDestinationBookmark = { MacBookmarkedFolder.saveFolder.resolve($0, mounting: false) }
         state.openBookmarkedFolder()
         state.askPDFPassword = { PDFPasswordWindow.ask() }
         state.confirmAppend = { AppState.confirmAppendAlert($0) }

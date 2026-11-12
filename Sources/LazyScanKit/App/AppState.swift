@@ -361,6 +361,8 @@ public final class AppState: ObservableObject {
     /// The Mac said once this launch that a save went to the default folder because the picked one did not
     /// open; the next saves do not say it again until the folder has opened.
     private var saveFolderFallbackSaid = false
+    /// The save folder as resolved for the save under way, so its files share one resolution of the bookmark.
+    private var saveDirectory: URL?
     /// This install's Documents folder, which a save folder kept as a path into an earlier install's is
     /// moved into (`ScanSettings.rebasedDestinationPath`); nil on the Mac. Set by `makeForIOS`.
     public package(set) var documentsFolder: URL?
@@ -2788,6 +2790,7 @@ public final class AppState: ObservableObject {
     }
 
     func destinationDirectory() throws -> URL {
+        if let saveDirectory { return saveDirectory }
         let url: URL
         if let folder = openBookmarkedFolder() {
             url = folder
@@ -2810,6 +2813,7 @@ public final class AppState: ObservableObject {
             url = URL(fileURLWithPath: path, isDirectory: true)
         }
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        if currentCancelFlag != nil { saveDirectory = (url, settings.destinationBookmark, settings.destinationPath) }
         return url
     }
 
@@ -2890,6 +2894,7 @@ public final class AppState: ObservableObject {
         isBusy = true
         let flag = CancelFlag()
         currentCancelFlag = flag
+        saveDirectory = nil
         // When the system's time is nearly up a save is cancelled, so a PDF being written removes its
         // temporary file and the queue stays.
         let activity: Int? = background?.beginActivity("Lazy Scan work", expired: {
@@ -2916,6 +2921,7 @@ public final class AppState: ObservableObject {
             forgetPDFPassword()
             emailsAfterSave = false
             currentCancelFlag = nil
+            saveDirectory = nil
             progress = nil
             isBusy = false
             // Pages just queued are recorded before the system's time is given back, not half a second later.

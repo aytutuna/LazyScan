@@ -746,6 +746,28 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_splitSave_resolvesTheSaveFolderBookmarkOnce() async throws {
+        let state = makeState()
+        state.settings.format = .pdf
+        state.settings.pdfSearchable = false
+        state.settings.document.splitMode = .sheetCount
+        state.settings.destinationBookmark = Data("a bookmark".utf8)
+        let target: URL = folder
+        var resolved = 0
+        state.resolveDestinationBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
+            resolved += 1
+            return (folder: target, bookmark: bookmark)
+        }
+        try await collect(state, pages: 2)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        resolved = 0
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertEqual(try savedPDFs().count, 2)
+        XCTAssertEqual(resolved, 1)
+    }
+
+    @MainActor
     func test_pagesSavedAsTheyAreScanned_withoutAPassword_waitInTheQueue() async throws {
         let state = makeState()
         state.settings.format = .pdf
