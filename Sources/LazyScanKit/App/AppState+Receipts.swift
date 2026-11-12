@@ -34,8 +34,12 @@ extension AppState {
     }
 
     /// The receipts on one scanned page, cut out, upright and cleaned up: several on the glass, the
-    /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt.
-    nonisolated static func splitReceipts(from page: ScannedPage, settings s: ScanSettings) -> [DetectedPhoto] {
+    /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt. With a `scorer`
+    /// each one cut from the scan is given the quarter turns that read upright (`Receipts.uprightTurns`) as
+    /// its rotation in the review.
+    nonisolated static func splitReceipts(from page: ScannedPage, settings s: ScanSettings,
+                                          scorer: (any OrientationScorer)? = nil,
+                                          shouldContinue: () -> Bool = { true }) -> [DetectedPhoto] {
         guard let scan = RgbaImage(cgImage: page.image) else { return [] }
         // One receipt of a camera's shot, cut out already at its roll's width: the whole page, made easy
         // to read as a receipt found on the glass is.
@@ -54,9 +58,13 @@ extension AppState {
         }
         var receipts: [DetectedPhoto] = []
         for region in regions {
+            guard shouldContinue() else { break }
             guard let cut = ReceiptDetector.extractEnhanced(scan, region: region, dpi: page.dpi),
                   let image = cut.makeCGImage() else { continue }
-            receipts.append(DetectedPhoto(region: region, image: image, dpi: page.dpi, sourcePageID: page.id))
+            var receipt = DetectedPhoto(region: region, image: image, dpi: page.dpi, sourcePageID: page.id)
+            if let scorer { receipt.rotationQuarterTurns = Receipts.uprightTurns(cut, dpi: page.dpi, scorer: scorer,
+                                                                           shouldContinue: shouldContinue) }
+            receipts.append(receipt)
         }
         return receipts
     }
@@ -67,11 +75,14 @@ extension AppState {
     func showReceipts(_ processed: [ScannedPage], settings s: ScanSettings, flag: CancelFlag,
                       generation: Int?) async throws {
         statusMessage = L10n.t("Finding receipts…")
+        let scorer = orientationScorer
         let found: [DetectedPhoto] = try await Task.detached(priority: .userInitiated) {
             var all: [DetectedPhoto] = []
             for page in processed {
                 if flag.isCancelled { throw ScanError.cancelled }
-                all.append(contentsOf: Self.splitReceipts(from: page, settings: s))
+                all.append(contentsOf: Self.splitReceipts(from: page, settings: s, scorer: scorer,
+                                                           shouldContinue: { !flag.isCancelled }))
+                if flag.isCancelled { throw ScanError.cancelled }
             }
             return all
         }.value

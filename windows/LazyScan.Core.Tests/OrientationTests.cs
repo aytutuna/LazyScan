@@ -391,6 +391,20 @@ public class OrientationTests
     }
 
     [Fact]
+    public void Receipts_UprightTurns_TurnsACutReceiptTheWayAPageIsTurned()
+    {
+        Assert.Equal(0, Receipts.UprightTurns(TextImage, 100, LikeALetter()));
+        Assert.Equal(2, Receipts.UprightTurns(TextImage.RotatedQuarterTurns(2), 100, LikeALetter()));
+        Assert.Equal(3, Receipts.UprightTurns(TextImage.RotatedQuarterTurns(1), 100, LikeALetter()));
+        Assert.Equal(1, Receipts.UprightTurns(TextImage.RotatedQuarterTurns(3), 100, LikeALetter()));
+        // Nothing to read, or nothing to read with: left as cut.
+        Assert.Equal(0, Receipts.UprightTurns(BlankImage, 100, LikeALetter()));
+        var unavailable = new FakeScorer(ReadsWell, UpsideDown, Sideways) { IsAvailable = false };
+        Assert.Equal(0, Receipts.UprightTurns(TextImage.RotatedQuarterTurns(2), 100, unavailable));
+        Assert.Empty(unavailable.Seen);
+    }
+
+    [Fact]
     public void Process_TurnsAPageScannedUpsideDown_Upright()
     {
         var s = new ScanSettings();

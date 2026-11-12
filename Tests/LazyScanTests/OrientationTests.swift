@@ -404,6 +404,19 @@ final class OrientationTests: XCTestCase {
         XCTAssertEqual(asked, 7)
     }
 
+    func test_receipts_uprightTurns_turnsACutReceiptTheWayAPageIsTurned() {
+        XCTAssertEqual(Receipts.uprightTurns(textRgba, dpi: 100, scorer: likeALetter()), 0)
+        XCTAssertEqual(Receipts.uprightTurns(textRgba.rotatedQuarterTurns(2), dpi: 100, scorer: likeALetter()), 2)
+        XCTAssertEqual(Receipts.uprightTurns(textRgba.rotatedQuarterTurns(1), dpi: 100, scorer: likeALetter()), 3)
+        XCTAssertEqual(Receipts.uprightTurns(textRgba.rotatedQuarterTurns(3), dpi: 100, scorer: likeALetter()), 1)
+        // Nothing to read, or nothing to read with: left as cut.
+        XCTAssertEqual(Receipts.uprightTurns(blankRgba, dpi: 100, scorer: likeALetter()), 0)
+        let unavailable = likeALetter()
+        unavailable.isAvailable = false
+        XCTAssertEqual(Receipts.uprightTurns(textRgba.rotatedQuarterTurns(2), dpi: 100, scorer: unavailable), 0)
+        XCTAssertEqual(unavailable.seen, [])
+    }
+
     func test_process_turnsAPageScannedUpsideDown_upright() throws {
         var s = ScanSettings()
         s.document.autoRotate = true

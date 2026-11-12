@@ -55,9 +55,11 @@ public sealed partial class AppViewModel
 
     /// <summary>
     /// The receipts on one scanned page, cut out, upright and cleaned up: several on the glass, the
-    /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt.
+    /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt. Each one is
+    /// given the quarter turns that read upright (<see cref="Receipts.UprightTurns"/>) as its rotation in
+    /// the review.
     /// </summary>
-    private static List<DetectedPhoto> SplitReceipts(ScannedPage page, ScanSettings s, CancellationToken token)
+    private List<DetectedPhoto> SplitReceipts(ScannedPage page, ScanSettings s, CancellationToken token)
     {
         var options = new ReceiptDetectorOptions { SingleReceipt = s.Source == ScanSource.DocumentFeeder };
         var regions = ReceiptDetector.DetectRegions(page.Image, page.Dpi, options);
@@ -72,7 +74,10 @@ public sealed partial class AppViewModel
             token.ThrowIfCancellationRequested();
             if (ReceiptDetector.ExtractEnhanced(page.Image, region, page.Dpi) is { } image)
             {
-                receipts.Add(new DetectedPhoto(region, image, page.Dpi, sourcePageId: page.Id));
+                receipts.Add(new DetectedPhoto(region, image, page.Dpi, sourcePageId: page.Id)
+                {
+                    RotationQuarterTurns = Receipts.UprightTurns(image, page.Dpi, _orientation, token),
+                });
             }
         }
         return receipts;

@@ -722,6 +722,18 @@ public enum Receipts {
         combine && format.pageFormat == .pdf && count > 1
     }
 
+    /// The quarter turns clockwise that make a receipt cut from the glass read upright, found as a page is
+    /// (`OrientationDecision.check`): 0 when it already reads upright, when no way up reads clearly better,
+    /// or when `scorer` cannot read text. The review presets them (`DetectedPhoto.rotationQuarterTurns`),
+    /// so Rotate can undo a wrong guess. Twin of C# `Receipts.UprightTurns`.
+    public static func uprightTurns(_ cut: RgbaImage, dpi: Int, scorer: any OrientationScorer,
+                                    shouldContinue: () -> Bool = { true }) -> Int {
+        guard scorer.isAvailable,
+              let check = try? OrientationDecision.check(cut, dpi: dpi, scorer: scorer, shouldContinue: shouldContinue),
+              check.verdict == .turned else { return 0 }
+        return check.quarterTurns
+    }
+
     /// Whether the files are named by the date printed on each receipt: asked for
     /// (`TaskOptions.receiptNameByDate`) and the naming template has {docdate}, the only place the date goes.
     public static func namesByDate(_ settings: ScanSettings) -> Bool {

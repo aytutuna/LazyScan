@@ -47,7 +47,8 @@ UI per platform** architecture:
   ruler test page), text output (`OcrText.cs`: OCR lines in reading order and paragraphs;
   `TextExport.cs`, `DocxWriter.cs` and `ZipStore.cs`: the text file, the Word document (with its page pictures) and its
   zip package, written by hand so both platforms write the same bytes), receipts
-  (`ReceiptProcessing.cs`: finding several receipts on the glass, cleaning up faded thermal
+  (`ReceiptProcessing.cs`: finding several receipts on the glass, turning each upright by
+  reading its text with the review's Rotate undoing it, cleaning up faded thermal
   print, and reading the receipt's date from its text for the `{docdate}` file name), splitting a
   stack into documents (`DocumentSplitter.cs`; `PatchCode.cs`: separator sheets with patch codes,
   read and drawn for printing; `Barcodes.cs`: barcode and QR separator sheets, the name a code gives

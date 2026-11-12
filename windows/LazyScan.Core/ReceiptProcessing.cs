@@ -821,6 +821,20 @@ public static class Receipts
         combine && OutputFormats.PageFormat(format) == OutputFormat.Pdf && count > 1;
 
     /// <summary>
+    /// The quarter turns clockwise that make a receipt cut from the glass read upright, found as a page is
+    /// (<see cref="OrientationDecision.Check"/>): 0 when it already reads upright, when no way up reads
+    /// clearly better, or when <paramref name="scorer"/> cannot read text. The review presets them
+    /// (<see cref="DetectedPhoto.RotationQuarterTurns"/>), so Rotate can undo a wrong guess. Twin of
+    /// Swift <c>Receipts.uprightTurns</c>.
+    /// </summary>
+    public static int UprightTurns(RgbaImage cut, int dpi, IOrientationScorer scorer, CancellationToken token = default)
+    {
+        if (!scorer.IsAvailable) return 0;
+        var check = OrientationDecision.Check(cut, dpi, scorer, token);
+        return check.Verdict == OrientationVerdict.Turned ? check.QuarterTurns : 0;
+    }
+
+    /// <summary>
     /// Whether the files are named by the date printed on each receipt: asked for
     /// (<see cref="TaskOptions.ReceiptNameByDate"/>) and the naming template has {docdate}, the only
     /// place the date goes.
