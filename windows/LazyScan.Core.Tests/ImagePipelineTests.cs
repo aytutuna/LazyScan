@@ -243,4 +243,76 @@ public class ImagePipelineTests
         var output = Soften(input, -1e-170);
         Assert.Equal(input.Pixels, output.Pixels);
     }
+
+    // MARK: - Restore faded colors
+
+    /// <summary>A ramp from black to white seen through a yellow cast: blue falls short, red runs high.</summary>
+    private static RgbaImage MakeYellowedRamp(int width = 64, int height = 64)
+    {
+        var pixels = new byte[width * height * 4];
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int i = (y * width + x) * 4;
+                double ramp = x * 255.0 / (width - 1);
+                pixels[i] = (byte)(30 + ramp * 0.85);
+                pixels[i + 1] = (byte)(20 + ramp * 0.8);
+                pixels[i + 2] = (byte)(ramp * 0.45);
+                pixels[i + 3] = 255;
+            }
+        }
+        return new RgbaImage(width, height, pixels);
+    }
+
+    private static int Spread((int R, int G, int B) p) =>
+        Math.Max(p.R, Math.Max(p.G, p.B)) - Math.Min(p.R, Math.Min(p.G, p.B));
+
+    [Fact]
+    public void RestoreFadedColorsNeutralizesWhitesAndBlacks()
+    {
+        var input = MakeYellowedRamp();
+        Assert.True(Spread(Pixel(input, 63, 10)) > 100);
+        Assert.True(Spread(Pixel(input, 0, 10)) > 20);
+        var output = ImagePipeline.Apply(new AdjustmentSettings { RestoreFadedColors = true }, input, ColorMode.Color);
+        var white = Pixel(output, 63, 10);
+        var black = Pixel(output, 0, 10);
+        Assert.True(Spread(white) <= 12, $"white end must be near neutral, got {white}");
+        Assert.True(Spread(black) <= 12, $"black end must be near neutral, got {black}");
+        Assert.True(white.R > 240 && black.R < 15, $"expected the full range, got {black} to {white}");
+    }
+
+    [Fact]
+    public void RestoreFadedColorsLeavesGrayscaleToTheModeOnly()
+    {
+        var input = MakeYellowedRamp();
+        var restored = ImagePipeline.Apply(new AdjustmentSettings { RestoreFadedColors = true }, input, ColorMode.Grayscale);
+        var plain = ImagePipeline.Apply(new AdjustmentSettings(), input, ColorMode.Grayscale);
+        Assert.True(Pixel(restored, 63, 10).R < Pixel(plain, 63, 10).R + 20,
+                    "grayscale keeps the original white level");
+    }
+
+    [Fact]
+    public void FadedColorTablesStretchBetweenPercentiles()
+    {
+        var uniform = Enumerable.Repeat(100, 256).ToArray();
+        var tables = ImagePipeline.FadedColorTables([uniform, uniform, uniform]);
+        foreach (var table in tables)
+        {
+            Assert.Equal(0, table[0]);
+            Assert.Equal(0, table[1]);
+            Assert.Equal(128, table[128]);
+            Assert.Equal(255, table[254]);
+            Assert.Equal(255, table[255]);
+        }
+    }
+
+    [Fact]
+    public void FadedColorTablesLeaveNarrowChannelsAlone()
+    {
+        var narrow = new int[256];
+        for (int v = 100; v <= 140; v++) narrow[v] = 50;
+        var tables = ImagePipeline.FadedColorTables([narrow, narrow, narrow]);
+        for (int v = 0; v < 256; v++) Assert.Equal(v, tables[0][v]);
+    }
 }

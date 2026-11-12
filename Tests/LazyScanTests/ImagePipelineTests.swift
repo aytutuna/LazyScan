@@ -187,4 +187,73 @@ final class ImagePipelineTests: XCTestCase {
         XCTAssertEqual(output.width, 64)
         XCTAssertEqual(output.height, 32)
     }
+
+    // MARK: - Restore faded colors
+
+    /// A ramp from black to white seen through a yellow cast: blue falls short, red runs high.
+    private func makeYellowedRamp(width: Int = 64, height: Int = 64) -> CGImage {
+        let ctx = makeContext(width: width, height: height)
+        let ptr = ctx.data!.assumingMemoryBound(to: UInt8.self)
+        let rowBytes = ctx.bytesPerRow
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = y * rowBytes + x * 4
+                let ramp = Double(x) * 255.0 / Double(width - 1)
+                ptr[i] = UInt8(30 + ramp * 0.85)
+                ptr[i + 1] = UInt8(20 + ramp * 0.8)
+                ptr[i + 2] = UInt8(ramp * 0.45)
+                ptr[i + 3] = 255
+            }
+        }
+        return ctx.makeImage()!
+    }
+
+    private func spread(_ p: (r: Int, g: Int, b: Int)) -> Int {
+        max(p.r, p.g, p.b) - min(p.r, p.g, p.b)
+    }
+
+    func test_restoreFadedColorsNeutralizesWhitesAndBlacks() {
+        let input = makeYellowedRamp()
+        let rgba = renderRGBA(input)
+        XCTAssertGreaterThan(spread(pixel(rgba, width: 64, x: 63, y: 10)), 100)
+        XCTAssertGreaterThan(spread(pixel(rgba, width: 64, x: 0, y: 10)), 20)
+        var settings = AdjustmentSettings()
+        settings.restoreFadedColors = true
+        let output = renderRGBA(ImagePipeline.apply(settings, to: input, colorMode: .color))
+        let white = pixel(output, width: 64, x: 63, y: 10)
+        let black = pixel(output, width: 64, x: 0, y: 10)
+        XCTAssertLessThanOrEqual(spread(white), 12, "white end must be near neutral, got \(white)")
+        XCTAssertLessThanOrEqual(spread(black), 12, "black end must be near neutral, got \(black)")
+        XCTAssertGreaterThan(white.r, 240)
+        XCTAssertLessThan(black.r, 15)
+    }
+
+    func test_restoreFadedColorsLeavesGrayscaleToTheModeOnly() {
+        let input = makeYellowedRamp()
+        var settings = AdjustmentSettings()
+        settings.restoreFadedColors = true
+        let restored = renderRGBA(ImagePipeline.apply(settings, to: input, colorMode: .grayscale))
+        let plain = renderRGBA(ImagePipeline.apply(AdjustmentSettings(), to: input, colorMode: .grayscale))
+        XCTAssertLessThan(pixel(restored, width: 64, x: 63, y: 10).r, pixel(plain, width: 64, x: 63, y: 10).r + 20,
+                          "grayscale keeps the original white level")
+    }
+
+    func test_fadedColorTablesStretchBetweenPercentiles() {
+        let uniform = [Int](repeating: 100, count: 256)
+        let tables = ImagePipeline.fadedColorTables([uniform, uniform, uniform])
+        for table in tables {
+            XCTAssertEqual(table[0], 0)
+            XCTAssertEqual(table[1], 0)
+            XCTAssertEqual(table[128], 128)
+            XCTAssertEqual(table[254], 255)
+            XCTAssertEqual(table[255], 255)
+        }
+    }
+
+    func test_fadedColorTablesLeaveNarrowChannelsAlone() {
+        var narrow = [Int](repeating: 0, count: 256)
+        for v in 100...140 { narrow[v] = 50 }
+        let tables = ImagePipeline.fadedColorTables([narrow, narrow, narrow])
+        for v in 0..<256 { XCTAssertEqual(Int(tables[0][v]), v) }
+    }
 }

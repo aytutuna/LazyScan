@@ -76,9 +76,11 @@ public static class ImagePipeline
             Sharpen(r, g, b, image.Width, image.Height, 0.4);
         }
 
-        // 5. Restore faded colors: vibrance boost + slight contrast.
+        // 5. Restore faded colors: each channel stretched between its own percentiles with the
+        //    midtone cast neutralized (color scans only), then a vibrance boost and slight contrast.
         if (settings.RestoreFadedColors)
         {
+            if (colorMode == ColorMode.Color) LevelChannels(r, g, b);
             Vibrance(r, g, b, 0.5);
             ColorControls(r, g, b, 0, 1.05, 1);
         }
@@ -369,6 +371,87 @@ public static class ImagePipeline
             r[i] = y + (r[i] - y) * boost;
             g[i] = y + (g[i] - y) * boost;
             b[i] = y + (b[i] - y) * boost;
+        }
+    }
+
+    private const int FadedClip = 5;      // per mille cut off at each end
+    private const int FadedMinSpan = 64;  // narrower channels are left as they are
+
+    /// <summary>
+    /// One 256-entry table per channel from its byte histogram: the channel is stretched between
+    /// the values that leave 0.5% of the pixels outside, then a gamma moves its stretched median to
+    /// the mean of the three medians, which removes the cast of the midtones.
+    /// </summary>
+    internal static byte[][] FadedColorTables(int[][] histograms)
+    {
+        var lows = new int[3];
+        var highs = new[] { 255, 255, 255 };
+        var medians = new double[3];
+        for (int c = 0; c < 3; c++)
+        {
+            var h = histograms[c];
+            int total = h.Sum();
+            int skip = total * FadedClip / 1000;
+            int low = 0, high = 255, median = 0;
+            int sum = 0;
+            for (int v = 0; v < 256; v++)
+            {
+                sum += h[v];
+                if (sum > skip) { low = v; break; }
+            }
+            sum = 0;
+            for (int v = 255; v >= 0; v--)
+            {
+                sum += h[v];
+                if (sum > skip) { high = v; break; }
+            }
+            sum = 0;
+            for (int v = 0; v < 256; v++)
+            {
+                sum += h[v];
+                if (sum * 2 >= total) { median = v; break; }
+            }
+            if (high - low >= FadedMinSpan)
+            {
+                lows[c] = low;
+                highs[c] = high;
+            }
+            double span = highs[c] - lows[c];
+            medians[c] = Math.Clamp((median - lows[c]) / span, 0, 1);
+        }
+        double target = (medians[0] + medians[1] + medians[2]) / 3;
+        var tables = new byte[3][];
+        for (int c = 0; c < 3; c++)
+        {
+            double gamma = 1;
+            if (medians[c] > 0.02 && medians[c] < 0.98 && target > 0.02 && target < 0.98)
+                gamma = Math.Clamp(Math.Log(target) / Math.Log(medians[c]), 0.7, 1.4);
+            double span = highs[c] - lows[c];
+            tables[c] = new byte[256];
+            for (int v = 0; v < 256; v++)
+            {
+                double t = Math.Clamp((v - lows[c]) / span, 0, 1);
+                tables[c][v] = (byte)Math.Clamp(Math.Round(Math.Pow(t, gamma) * 255, MidpointRounding.AwayFromZero), 0, 255);
+            }
+        }
+        return tables;
+    }
+
+    /// <summary>Applies <see cref="FadedColorTables"/> to the pixels, as bytes.</summary>
+    private static void LevelChannels(double[] r, double[] g, double[] b)
+    {
+        var channels = new[] { r, g, b };
+        var histograms = new int[3][];
+        for (int c = 0; c < 3; c++)
+        {
+            histograms[c] = new int[256];
+            foreach (double v in channels[c]) histograms[c][ToByte(v)]++;
+        }
+        var tables = FadedColorTables(histograms);
+        for (int c = 0; c < 3; c++)
+        {
+            var values = channels[c];
+            for (int i = 0; i < values.Length; i++) values[i] = tables[c][ToByte(values[i])] / 255.0;
         }
     }
 
