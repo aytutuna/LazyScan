@@ -634,6 +634,10 @@ public final class AppState: ObservableObject {
     /// does joining or splitting a spread (AppState+Book.swift).
     public internal(set) var pageEditChain: Task<Void, Never>?
     private var pageEditCount = 0
+    /// The last crop correction queued (`enqueueRecrop`); nil when none is under way. Corrections land
+    /// in the order they were made, and a save waits for them.
+    var recropChain: Task<Void, Never>?
+    private var recropCount = 0
     /// The pages being cut out of their photos again (AppState+Recut.swift), for a spinner on each.
     @Published public internal(set) var recuttingPages: Set<UUID> = []
 
@@ -1947,13 +1951,16 @@ public final class AppState: ObservableObject {
     }
 
     public func saveReviewedPhotos() {
-        let photos = detectedPhotos.filter(\.included)
-        guard !photos.isEmpty else { return cancelPhotoReview() }
+        guard detectedPhotos.contains(where: \.included) else { return cancelPhotoReview() }
         // Receipts are named by their date and saved as PDFs or images (AppState+Receipts.swift).
         if isReceiptReview { return saveReceipts() }
         let s = settings
         let format = s.format.imageFormatOrJPEG
         runExclusive { flag in
+            // Let crop corrections made before the save land first.
+            await self.recropChain?.value
+            let photos = self.detectedPhotos.filter(\.included)
+            guard !photos.isEmpty else { return }
             var saved: [URL] = []
             let counter: Int = self.counterDefaults.integer(forKey: Self.counterKey)
             do {
@@ -2015,21 +2022,34 @@ public final class AppState: ObservableObject {
         let deskew = settings.photoAutoDeskew
         let receipt = isReceiptReview
         let dpi = photo.dpi
-        Task { @MainActor [weak self] in
+        enqueueRecrop { state in
             let image = await Task.detached(priority: .userInitiated) {
                 // A receipt is cut out upright and cleaned up again, as it was found.
                 receipt
                     ? Self.recutReceipt(source, region: region, dpi: dpi)
                     : PhotoDetector.extractPhoto(from: source, region: region, deskew: deskew)
             }.value
-            guard let self, let image, !self.isBusy,
-                  let idx = self.detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
-            let old = self.detectedPhotos[idx]
+            guard let image,
+                  let idx = state.detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
+            let old = state.detectedPhotos[idx]
             var updated = DetectedPhoto(region: region, image: image, dpi: old.dpi,
                                         id: old.id, sourcePageID: old.sourcePageID, colorMode: old.colorMode)
             updated.included = old.included
             updated.rotationQuarterTurns = old.rotationQuarterTurns
-            self.detectedPhotos[idx] = updated
+            state.detectedPhotos[idx] = updated
+        }
+    }
+
+    /// Runs a crop correction after every one queued before it, so the last one made is the one kept.
+    func enqueueRecrop(_ recrop: @escaping @MainActor (AppState) async -> Void) {
+        let previous = recropChain
+        recropCount += 1
+        let ticket = recropCount
+        recropChain = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self else { return }
+            await recrop(self)
+            if self.recropCount == ticket { self.recropChain = nil }
         }
     }
 

@@ -46,13 +46,15 @@ extension AppState {
 
     /// Opens the ID card's page, both sides at real size on the paper chosen, as a PDF in Lazy Print.
     public func printIdCardWithLazyPrint() {
-        guard let front = idCardFront else { return }
-        let back = idCardBack
+        guard idCardFront != nil else { return }
         let s: ScanSettings = settings
         guard let paperInches = PaperSizes.inches(idCardPaperSize) else { return }
-        let pageDPI = IdCardComposer.pageDPI(front.dpi)
-        let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
         runExclusive { flag in
+            await self.recropChain?.value
+            guard let front = self.idCardFront else { return }
+            let back = self.idCardBack
+            let pageDPI = IdCardComposer.pageDPI(front.dpi)
+            let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
             let composed: CGImage? = await Task.detached(priority: .userInitiated) { () -> CGImage? in
                 guard let f = AppState.idCardSide(of: front) else { return nil }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }

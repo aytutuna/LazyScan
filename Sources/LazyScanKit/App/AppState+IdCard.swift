@@ -193,18 +193,18 @@ extension AppState {
     func recropIdCardSide(_ side: PageSide, region: DetectedPhotoRegion) {
         guard let photo = side == .front ? idCardFront : idCardBack,
               let source = photoSource(for: photo) else { return }
-        Task { @MainActor [weak self] in
+        enqueueRecrop { state in
             let image = await Task.detached(priority: .userInitiated) {
                 PhotoDetector.extractPhoto(from: source, region: region, deskew: true)
             }.value
-            guard let self, !self.isBusy, let image else { return }
-            guard (side == .front ? self.idCardFront?.id : self.idCardBack?.id) == photo.id else { return }
+            guard let image else { return }
+            guard (side == .front ? state.idCardFront?.id : state.idCardBack?.id) == photo.id else { return }
             var updated = DetectedPhoto(region: region, image: image, dpi: photo.dpi,
                                         id: photo.id, sourcePageID: photo.sourcePageID, colorMode: photo.colorMode)
-            updated.rotationQuarterTurns = (side == .front ? self.idCardFront : self.idCardBack)?.rotationQuarterTurns ?? 0
-            self.setIdCardSide(side, photo: updated, note: nil)
-            self.statusMessage = L10n.t("Crop updated.")
-            self.refreshIdCardPreview()
+            updated.rotationQuarterTurns = (side == .front ? state.idCardFront : state.idCardBack)?.rotationQuarterTurns ?? 0
+            state.setIdCardSide(side, photo: updated, note: nil)
+            state.statusMessage = L10n.t("Crop updated.")
+            state.refreshIdCardPreview()
         }
     }
 
@@ -221,16 +221,19 @@ extension AppState {
     /// saved, the sides and their scans are dropped from memory, the stage is cleared, and the steps
     /// start again.
     public func saveIdCard() {
-        guard let front = idCardFront else { return }
-        let back = idCardBack
+        guard idCardFront != nil else { return }
         let s = settings
         let paper = idCardPaperSize
         guard let paperInches = PaperSizes.inches(paper) else { return }
-        // The page at the scan's resolution, at most 600 dpi; each side's own image keeps the scan's.
-        let pageDPI = IdCardComposer.pageDPI(front.dpi)
-        // The sides are what they were scanned as, whatever the color mode is now.
-        let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
         runExclusive { flag in
+            // Let crop corrections made before the save land first.
+            await self.recropChain?.value
+            guard let front = self.idCardFront else { return }
+            let back = self.idCardBack
+            // The page at the scan's resolution, at most 600 dpi; each side's own image keeps the scan's.
+            let pageDPI = IdCardComposer.pageDPI(front.dpi)
+            // The sides are what they were scanned as, whatever the color mode is now.
+            let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
             self.statusMessage = L10n.t("Saving the ID card…")
             let composed: (page: CGImage, front: IdCardSide, back: IdCardSide?)? = await Task.detached(priority: .userInitiated) { () -> (page: CGImage, front: IdCardSide, back: IdCardSide?)? in
                 guard let f = AppState.idCardSide(of: front) else { return nil }

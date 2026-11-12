@@ -134,31 +134,31 @@ extension AppState {
         let kind: CaptureKind = start.kind
         let source: CGImage = start.source
         let s: ScanSettings = settings
-        Task { @MainActor [weak self] in
+        enqueueRecrop { state in
             let cut: CapturedCut? = await Task.detached(priority: .userInitiated) { () -> CapturedCut? in
                 AppState.cutAlong(source, corners: corners, kind: kind, focalLength: focalLength, settings: s)
             }.value
-            guard let self, let cut, !self.isBusy else { return }
+            guard let cut else { return }
             if let side {
-                let current: DetectedPhoto? = side == .front ? self.idCardFront : self.idCardBack
+                let current: DetectedPhoto? = side == .front ? state.idCardFront : state.idCardBack
                 guard let held = current, held.id == photo.id else { return }
                 var updated = DetectedPhoto(region: cut.region, image: cut.image, dpi: cut.dpi, id: held.id,
                                             sourcePageID: held.sourcePageID, colorMode: cut.colorMode)
                 updated.rotationQuarterTurns = held.rotationQuarterTurns
-                self.idCardCaptureFacts[sourceID] = cut.facts
+                state.idCardCaptureFacts[sourceID] = cut.facts
                 let note: String? = CaptureObjects.cardNote(realSize: cut.facts.scale?.isRealSize == true, glare: cut.glare)
-                self.setIdCardSide(side, photo: updated, note: note)
-                self.statusMessage = L10n.t("Crop updated.")
-                self.refreshIdCardPreview()
+                state.setIdCardSide(side, photo: updated, note: note)
+                state.statusMessage = L10n.t("Crop updated.")
+                state.refreshIdCardPreview()
             } else {
-                guard let index = self.detectedPhotos.firstIndex(where: { (item: DetectedPhoto) -> Bool in item.id == id }) else { return }
-                let old: DetectedPhoto = self.detectedPhotos[index]
+                guard let index = state.detectedPhotos.firstIndex(where: { (item: DetectedPhoto) -> Bool in item.id == id }) else { return }
+                let old: DetectedPhoto = state.detectedPhotos[index]
                 var updated = DetectedPhoto(region: cut.region, image: cut.image, dpi: cut.dpi, id: old.id,
                                             sourcePageID: old.sourcePageID, colorMode: cut.colorMode)
                 updated.included = old.included
                 updated.rotationQuarterTurns = old.rotationQuarterTurns
-                self.photoCaptureFacts[sourceID] = cut.facts
-                self.detectedPhotos[index] = updated
+                state.photoCaptureFacts[sourceID] = cut.facts
+                state.detectedPhotos[index] = updated
             }
         }
     }

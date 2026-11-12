@@ -369,11 +369,13 @@ extension AppState {
     /// paper chosen in the print panel's printer), one copy, on the printer chosen for copies. The
     /// review stays open: the card is still saved or discarded there.
     public func printIdCard() {
-        guard let front = idCardFront else { return }
-        let back = idCardBack
+        guard idCardFront != nil else { return }
         let s = settings
         let paper = idCardPaperSize
         runExclusive { flag in
+            await self.recropChain?.value
+            guard let front = self.idCardFront else { return }
+            let back = self.idCardBack
             guard let setup = self.setupForPrinting(s, requestedPaper: paper) else { throw PrintError.noPrinter }
             let paperInches = setup.paper.paper
             let pageDPI = IdCardComposer.pageDPI(front.dpi)

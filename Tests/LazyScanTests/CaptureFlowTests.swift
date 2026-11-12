@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import XCTest
 @testable import LazyScanKit
 
@@ -167,6 +168,32 @@ final class CaptureFlowTests: XCTestCase {
         // The review's pictures and corners are gone with it.
         XCTAssertTrue(state.photoSourceImages.isEmpty)
         XCTAssertTrue(state.photoCaptureFacts.isEmpty)
+    }
+
+    @MainActor
+    func test_twoQuickCrops_endWithTheSecond_andASaveRightAfterWritesIt() async throws {
+        let state: AppState = makeState(.photos)
+        let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())
+        let pages: [ScannedPage] = CaptureObjects.pages(photo, quads: [ObjectShots.printA, ObjectShots.printB], kind: .photo)
+        XCTAssertTrue(state.ingest(pages, source: .photo))
+        try await waitFor(timeout: 60) { !state.isBusy }
+        let first: DetectedPhoto = try XCTUnwrap(state.detectedPhotos.first)
+
+        state.recropPhoto(id: first.id, corners: ObjectShots.rect(90, 100, 330, 260))
+        state.recropPhoto(id: first.id, corners: ObjectShots.rect(90, 100, 210, 180))
+        try await waitFor(timeout: 60) { state.recropChain == nil }
+        XCTAssertEqual(state.detectedPhotos.first?.image.width, 120)
+
+        // A save started while a crop is still being cut writes that crop.
+        state.recropPhoto(id: first.id, corners: ObjectShots.rect(90, 100, 270, 220))
+        state.detectedPhotos[1].included = false
+        state.saveReviewedPhotos()
+        try await waitFor(timeout: 60) { !state.isBusy && !state.showPhotoReview }
+        XCTAssertNil(state.errorMessage)
+        let url: URL = try XCTUnwrap(state.lastSavedURLs.first)
+        let source: CGImageSource = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let written: CGImage = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        XCTAssertEqual(written.width, 180)
     }
 
     @MainActor

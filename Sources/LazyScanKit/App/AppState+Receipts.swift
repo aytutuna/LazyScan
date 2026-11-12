@@ -110,6 +110,7 @@ extension AppState {
         let readsText = Receipts.readsText(s)
         let dayFirst = ReceiptDateExtractor.prefersDayFirst()
         runExclusive { flag in
+            await self.recropChain?.value
             let receipts = self.detectedPhotos.filter(\.included)
             guard !receipts.isEmpty else { return }
             // A protected PDF's password is asked for before the receipts are read.
