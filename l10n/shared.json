@@ -804,11 +804,9 @@
   "Take a document's pages, then tap Split here.": {},
   "Separator sheets work too, once a page matches a paper size. Check the splits in the pages, then save.": {},
   "Take the open book, both pages at once.": {},
-  "Each spread is cut at the spine into two pages. Curved pages are not flattened.": {},
-  "Each spread is cut at the spine into two pages. Curved pages are flattened near the spine.": {},
+  "Each spread is cut at the spine into two pages.": {},
   "Take one page at a time, in order.": {},
-  "Hold the book open and flat. Curved pages are not flattened.": {},
-  "Hold the book open. Curved pages are flattened near the spine.": {},
+  "Hold the book open and flat.": {},
   "Saved as a PDF/A, made to be kept for years.": {},
   "Copy diagnostics did not work: {0}": {},
   "{0} did not work: {1}": {

@@ -946,6 +946,15 @@ struct InspectorView: View {
         case .rotation: return String(localized: "Pages already scanned keep the old rotation.")
         case .both: return String(localized: "Pages already scanned keep the old order and rotation.")
         }
+        Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
+            .disabled(!collecting)
+            .help("Evens out text lines that bend toward the spine. Works on photographed pages.")
+        Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
+            .disabled(!collecting)
+            .help("Paints over fingers and thumbs holding the book at the page edges.")
+        if collecting {
+            reasonLine(String(localized: "Straightens pages that curve at the spine and fills thumbs at the edges with paper."))
+        }
     }
 
     // MARK: Split into documents

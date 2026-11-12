@@ -93,15 +93,11 @@ public enum CameraTaskCatalog {
                                   help: L10n.t("Separator sheets work too, once a page matches a paper size. Check the splits in the pages, then save."))
         case .book:
             if options.cameraSpreads {
-                let help: String = options.bookFlattenCurves
-                    ? L10n.t("Each spread is cut at the spine into two pages. Curved pages are flattened near the spine.")
-                    : L10n.t("Each spread is cut at the spine into two pages. Curved pages are not flattened.")
-                return CameraStepText(prompt: L10n.t("Take the open book, both pages at once."), help: help)
+                return CameraStepText(prompt: L10n.t("Take the open book, both pages at once."),
+                                      help: L10n.t("Each spread is cut at the spine into two pages."))
             }
-            let help: String = options.bookFlattenCurves
-                ? L10n.t("Hold the book open. Curved pages are flattened near the spine.")
-                : L10n.t("Hold the book open and flat. Curved pages are not flattened.")
-            return CameraStepText(prompt: L10n.t("Take one page at a time, in order."), help: help)
+            return CameraStepText(prompt: L10n.t("Take one page at a time, in order."),
+                                  help: L10n.t("Hold the book open and flat."))
         case .archive:
             return CameraStepText(prompt: L10n.t("Hold the phone over each page."),
                                   help: L10n.t("Saved as a PDF/A, made to be kept for years."))
