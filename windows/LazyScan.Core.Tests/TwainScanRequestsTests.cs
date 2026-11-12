@@ -143,7 +143,6 @@ public class TwainScanRequestsTests
     [Theory]
     [InlineData(ColorMode.Color, TwainPixelTypes.Rgb, 8)]
     [InlineData(ColorMode.Grayscale, TwainPixelTypes.Gray, 8)]
-    [InlineData(ColorMode.BlackWhite, TwainPixelTypes.BlackWhite, 1)]
     public void ForScan_PicksThePixelTypeAndDepth(ColorMode mode, int pixelType, int bitDepth)
     {
         var request = TwainScanRequests.ForScan(Settings(mode: mode), null, FlatbedAndFeeder());
@@ -159,6 +158,19 @@ public class TwainScanRequestsTests
         Assert.Equal(TwainPixelTypes.Rgb, TwainScanRequests.ForScan(Settings(mode: ColorMode.BlackWhite), null, colorOnly).PixelType);
         var grayOnly = new TwainDeviceCaps { PixelTypes = [TwainPixelTypes.Gray, TwainPixelTypes.BlackWhite] };
         Assert.Equal(TwainPixelTypes.Gray, TwainScanRequests.ForScan(Settings(mode: ColorMode.Color), null, grayOnly).PixelType);
+    }
+
+    [Fact]
+    public void ForScan_BlackAndWhite_AsksForGrayAndLeavesTheThresholdToTheApp()
+    {
+        var request = TwainScanRequests.ForScan(Settings(mode: ColorMode.BlackWhite), null, FlatbedAndFeeder());
+        Assert.Equal(TwainPixelTypes.Gray, request.PixelType);
+        Assert.Equal(8, request.BitDepth);
+
+        var oneBitOnly = new TwainDeviceCaps { PixelTypes = [TwainPixelTypes.BlackWhite] };
+        var bilevel = TwainScanRequests.ForScan(Settings(mode: ColorMode.BlackWhite), null, oneBitOnly);
+        Assert.Equal(TwainPixelTypes.BlackWhite, bilevel.PixelType);
+        Assert.Equal(1, bilevel.BitDepth);
     }
 
     [Fact]

@@ -1836,7 +1836,8 @@ same scanners through ImageCaptureCore.
 - **Transfers.** Pages arrive as memory strips (1-bit black & white, 8-bit gray, 24-bit
   color) that the app assembles; when a source does not offer memory transfers, or sends a
   format the app cannot read, the session switches to native (bitmap) transfers. Black & white
-  is scanned as 1-bit by the scanner, unlike eSCL.
+  is scanned as 8-bit gray, as with eSCL, and thresholded by the app (a source that lists only
+  1-bit is asked for that); WIA scans it with the gray intent.
 - **Feeder.** A feeder batch scans until the feeder is empty. An empty feeder before the
   first sheet says "Load paper in the feeder"; a jam or double feed later keeps the sheets
   already scanned and says why. Two-sided scanning (`CAP_DUPLEXENABLED`) is switched on only

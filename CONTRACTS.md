@@ -2675,7 +2675,7 @@ public enum BilevelTIFF {                      // Output/BilevelTIFF.swift
 ```
 
 The threshold is the app's, not the scanner driver's: in Black & White the Mac's ImageCaptureCore backend asks
-the scanner for `.gray` at 8 bits and eSCL for Grayscale8, never 1-bit (Windows' WIA and TWAIN still ask for 1 bit), and the page is thresholded by
+the scanner for `.gray` at 8 bits and eSCL for Grayscale8, never 1-bit (so do Windows' WIA, with the gray intent, and TWAIN, at 8-bit gray, unless a source lists only 1-bit), and the page is thresholded by
 `blackWhiteThreshold` in the pipeline, so the slider changes the saved page; the packing to 1 bit happens
 only when the PDF or TIFF is written.
 - **The coding:** the reference row above the first is white. Each row's changing elements are

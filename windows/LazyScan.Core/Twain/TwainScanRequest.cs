@@ -65,9 +65,10 @@ public static class TwainScanRequests
     /// The request for a scan.
     /// <list type="bullet">
     /// <item>The feeder is used when asked for, or when the device has no flatbed.</item>
-    /// <item>Color is 24-bit RGB, grayscale 8-bit gray, black &amp; white 1-bit (scanners
-    /// threshold documents well and feeder batches stay small); a pixel type the source does
-    /// not list falls back to the next richer one.</item>
+    /// <item>Color is 24-bit RGB, grayscale and black &amp; white 8-bit gray; the app thresholds
+    /// black &amp; white itself, so the threshold setting changes the page (a source that lists
+    /// only 1-bit is asked for that); a pixel type the source does not list falls back to the
+    /// next richer one.</item>
     /// <item>The resolution snaps to the nearest one the source lists.</item>
     /// <item>Flatbed: the whole bed or <paramref name="selection"/> (normalized 0...1,
     /// top-left origin) of it. Feeder: the paper size, clamped to its largest sheet (as a
@@ -164,7 +165,7 @@ public static class TwainScanRequests
     {
         int[] preference = mode switch
         {
-            ColorMode.BlackWhite => [TwainPixelTypes.BlackWhite, TwainPixelTypes.Gray, TwainPixelTypes.Rgb],
+            ColorMode.BlackWhite => [TwainPixelTypes.Gray, TwainPixelTypes.BlackWhite, TwainPixelTypes.Rgb],
             ColorMode.Grayscale => [TwainPixelTypes.Gray, TwainPixelTypes.Rgb, TwainPixelTypes.BlackWhite],
             _ => [TwainPixelTypes.Rgb, TwainPixelTypes.Gray, TwainPixelTypes.BlackWhite],
         };

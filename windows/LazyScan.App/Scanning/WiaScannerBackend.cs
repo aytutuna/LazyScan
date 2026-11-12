@@ -686,8 +686,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.CurrentIntent, colorMode switch
         {
             ColorMode.Color => 1,
-            ColorMode.Grayscale => 2,
-            _ => 4, // text/threshold
+            _ => 2, // gray also for black & white: the app applies the threshold
         });
         // The nearest value the source accepts, then what the driver took: the extents and
         // the pages' resolution follow that, not the request.
