@@ -38,6 +38,13 @@ public class RgbaImageTests
     }
 
     [Fact]
+    public void Constructor_RejectsSizesThatOverflowInt()
+    {
+        // 32768 x 32768 x 4 wraps to 0 in 32-bit math.
+        Assert.Throws<ArgumentException>(() => new RgbaImage(32768, 32768, []));
+    }
+
+    [Fact]
     public void Resized_Minifying_AveragesTheCoveredPixels_RoundingDown()
     {
         // 4 × 2 → 2 × 1: each output pixel is the mean of a 2 × 2 block.

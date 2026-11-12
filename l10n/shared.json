@@ -2103,6 +2103,7 @@
   "The scanner sent an image format this app cannot read (pixel type {0}, {1} bits per pixel, compression {2}).": {},
   "The scanner sent a compressed strip this app cannot read.": {},
   "The scanner sent an image of an impossible size ({0} × {1}).": {},
+  "This scan would be too large at {0} dpi. Choose {1} dpi or lower.": {},
   "The bitmap is too short.": {},
   "Unsupported bitmap header ({0} bytes).": {},
   "The bitmap has an impossible height.": {},

@@ -683,4 +683,27 @@ public class WindowsScanTests
                      WindowsScanDiagnostics.Report(WindowsScanStatus.Unavailable,
                                                    WindowsScanErrors.UnavailableNote(unchecked((int)0x80073D54), null), [], facts));
     }
+
+    [Fact]
+    public void ScanSizeAcceptsA4At600Dpi()
+    {
+        ScanSize.Check(new SizeD(8.27, 11.69), 600);
+    }
+
+    [Fact]
+    public void ScanSizeRefusesA4At2400DpiAndNamesAResolutionThatFits()
+    {
+        var a4 = new SizeD(8.27, 11.69);
+        var ex = Assert.Throws<ScanException>(() => ScanSize.Check(a4, 2400));
+        int fits = ScanSize.MaxDpi(a4);
+        Assert.Contains($"{fits:#,##0} dpi", ex.Message);
+        ScanSize.Check(a4, fits);
+        Assert.Throws<ScanException>(() => ScanSize.Check(a4, fits + 1));
+    }
+
+    [Fact]
+    public void ScanSizeIgnoresAnUnknownArea()
+    {
+        ScanSize.Check(SizeD.Zero, 4800);
+    }
 }

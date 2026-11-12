@@ -434,6 +434,7 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
                 throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed; scan from its document feeder."));
             }
             var plan = WindowsScanRequest.Plan(settings, feeder ? null : selection, feeder ? _feeder : _flatbed);
+            if (plan.RegionInches is { } area) ScanSize.Check(new SizeD(area.Width, area.Height), plan.Dpi);
             int reportedDpi = Apply(plan);
             // Whether the driver took two-sided feeding, so the app knows what the pages are.
             if (feeder && settings.Duplex == DuplexMode.Both)

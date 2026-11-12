@@ -508,6 +508,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             _cancelRequested = false;
             ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
             var pages = new List<ScannedPage>();
+            ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
             // One connection for the whole batch: every sheet of a feeder scan comes from the
             // same prepared item.
             dynamic device = Connect();
@@ -585,6 +586,29 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     public Task CloseAsync() => Task.CompletedTask; // connections are per operation in WIA automation
 
     // MARK: - Transfers
+
+    /// <summary>The area a scan covers, in inches; zero when the feeder's size is unknown.</summary>
+    private SizeD ScanAreaInches(ScanSettings settings, RectD? selection)
+    {
+        if (settings.Source == ScanSource.DocumentFeeder)
+        {
+            if (_feederInches is not { } feederMax) return SizeD.Zero;
+            var region = PaperSizes.FeederRegionInches(settings.PaperSize, feederMax);
+            double height = settings.PaperSize == PaperSize.Auto
+                ? Math.Min(region.Height, EsclScanRequest.MaxFeederHeightInches)
+                : region.Height;
+            return new SizeD(region.Width, height);
+        }
+        if (selection is { } sel)
+        {
+            var clamped = sel.Standardized.Intersection(new RectD(0, 0, 1, 1));
+            if (clamped.Width > 0.001 && clamped.Height > 0.001)
+            {
+                return new SizeD(clamped.Width * _bedInches.Width, clamped.Height * _bedInches.Height);
+            }
+        }
+        return _bedInches;
+    }
 
     /// <summary>
     /// Select the source and set resolution, color and area on the item to scan. WIA errors

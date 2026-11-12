@@ -10,6 +10,23 @@ namespace LazyScan.Core;
 // tests. The enums mirror the WinRT ones by name and value, so Core stays free of WinRT.
 // Windows only, so there is no Swift twin.
 
+/// <summary>Refuses a scan whose pixels would not fit an <see cref="RgbaImage"/>, before the scanner starts.</summary>
+public static class ScanSize
+{
+    /// <summary>The highest resolution at which an area of <paramref name="inches"/> still fits <see cref="RgbaImage.MaxPixels"/>.</summary>
+    public static int MaxDpi(SizeD inches) =>
+        (int)Math.Floor(Math.Sqrt(RgbaImage.MaxPixels / (inches.Width * inches.Height)));
+
+    /// <summary>Throws when <paramref name="inches"/> scanned at <paramref name="dpi"/> is too large; does nothing for an unknown area.</summary>
+    public static void Check(SizeD inches, int dpi)
+    {
+        if (inches.Width <= 0 || inches.Height <= 0) return;
+        if (inches.Width * dpi * (inches.Height * dpi) <= RgbaImage.MaxPixels) return;
+        int fits = MaxDpi(inches);
+        throw ScanException.Unsupported(() => Loc.T("This scan would be too large at {0} dpi. Choose {1} dpi or lower.", dpi, fits));
+    }
+}
+
 /// <summary>How entries of the Windows Scan connection appear in the device list.</summary>
 public static class WindowsScanConnection
 {

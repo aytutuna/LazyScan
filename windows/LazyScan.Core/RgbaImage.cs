@@ -8,6 +8,9 @@ namespace LazyScan.Core;
 /// </summary>
 public sealed class RgbaImage
 {
+    /// <summary>Most pixels an image may have: keeps Width * Height * 4 inside an int.</summary>
+    public const long MaxPixels = int.MaxValue / 4;
+
     public int Width { get; }
     public int Height { get; }
     /// <summary>Length = Width * Height * 4. Mutable by design: the pipeline edits in place on copies.</summary>
@@ -17,8 +20,9 @@ public sealed class RgbaImage
     {
         if (width <= 0 || height <= 0)
             throw new ArgumentOutOfRangeException(nameof(width), "Image dimensions must be positive.");
-        if (pixels.Length != width * height * 4)
-            throw new ArgumentException($"Pixel buffer must be {width * height * 4} bytes, got {pixels.Length}.", nameof(pixels));
+        long expected = (long)width * height * 4;
+        if (pixels.Length != expected)
+            throw new ArgumentException($"Pixel buffer must be {expected} bytes, got {pixels.Length}.", nameof(pixels));
         Width = width;
         Height = height;
         Pixels = pixels;
@@ -27,7 +31,7 @@ public sealed class RgbaImage
     /// <summary>A width x height image filled with an opaque color.</summary>
     public static RgbaImage Filled(int width, int height, byte r, byte g, byte b)
     {
-        var pixels = new byte[width * height * 4];
+        var pixels = new byte[checked(width * height * 4)];
         for (int i = 0; i < pixels.Length; i += 4)
         {
             pixels[i] = r;

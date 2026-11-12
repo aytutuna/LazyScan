@@ -166,7 +166,7 @@ public sealed class TwainImageAssembler
 public static class TwainRaster
 {
     /// <summary>Largest page accepted, in pixels (about 23 000 × 23 000): keeps a corrupt header from allocating gigabytes.</summary>
-    public const long MaxPixels = int.MaxValue / 4;
+    public const long MaxPixels = RgbaImage.MaxPixels;
 
     /// <summary>Whether <see cref="TwainImageAssembler"/> reads strips of this format.</summary>
     public static bool CanAssemble(TwainImageInfo info) =>
