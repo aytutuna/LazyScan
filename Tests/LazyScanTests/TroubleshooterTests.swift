@@ -242,8 +242,9 @@ final class TroubleshooterTests: XCTestCase {
             XCTAssertFalse(!found.more.isEmpty && found.more.contains(found.detail), found.id)
         }
         let actions: [TroubleshootAction] = [.refresh, .addByAddress, .openScannerSettings, .openNetworkSettings,
-                                             .openImageCapture, .copyDiagnostics, .openAppSettings]
-        XCTAssertEqual(actions, TroubleshootAction.allCases)
+                                             .openImageCapture, .copyDiagnostics, .openAppSettings,
+                                             .removeAddress]
+        XCTAssertEqual(actions,TroubleshootAction.allCases)
         for action in actions {
             XCTAssertTrue((1...3).contains(StatusLine.words(Troubleshooter.label(action, platform: .windows))))
             XCTAssertTrue((1...3).contains(StatusLine.words(Troubleshooter.label(action, platform: .mac))))
@@ -448,6 +449,12 @@ final class TroubleshooterTests: XCTestCase {
         let notChecked = check(Troubleshooter.diagnose(DiscoverySnapshot(manualHosts: [ManualHostStatus(address: "scanner.local", listed: false)])),
                                "manualHost:scanner.local")
         XCTAssertTrue(notChecked.more.hasPrefix("Its network settings page"))
+    }
+
+    func test_onThePhone_anAddressNotAnswering_offersRemoveAddress() {
+        let snapshot = DiscoverySnapshot(platform: .ios, manualHosts: [ManualHostStatus(address: "192.168.1.50", listed: false)])
+        XCTAssertEqual(check(Troubleshooter.diagnose(snapshot), "manualHost:192.168.1.50").actions, [.removeAddress, .refresh])
+        XCTAssertEqual(Troubleshooter.label(.removeAddress, platform: .ios), "Remove address")
     }
 
     func test_windowsTips() {

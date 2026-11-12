@@ -487,6 +487,15 @@ public class TroubleshooterTests
     }
 
     [Fact]
+    public void OnThePhone_AnAddressNotAnswering_OffersRemoveAddress()
+    {
+        var snapshot = new DiscoverySnapshot { Platform = TroubleshootPlatform.Ios, ManualHosts = [new("192.168.1.50", false)] };
+        Assert.Equal([TroubleshootAction.RemoveAddress, TroubleshootAction.Refresh],
+                     Check(Troubleshooter.Diagnose(snapshot), "manualHost:192.168.1.50").Actions);
+        Assert.Equal("Remove address", Troubleshooter.Label(TroubleshootAction.RemoveAddress, TroubleshootPlatform.Ios));
+    }
+
+    [Fact]
     public void Windows_Tips()
     {
         var checks = Troubleshooter.Diagnose(HealthyWindows());

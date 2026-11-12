@@ -38,7 +38,7 @@ public final class SystemTroubleshooterService: TroubleshooterService {
             }
             NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration(),
                                                completionHandler: nil)
-        case .refresh, .addByAddress, .copyDiagnostics:
+        case .refresh, .addByAddress, .removeAddress, .copyDiagnostics:
             throw ScanError.unsupported("\(action.rawValue) does not open anything.")
         }
     }

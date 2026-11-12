@@ -439,6 +439,12 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         rebuild()
     }
 
+    /// Removes the address the troubleshooter lists by its text (`ManualHostStatus.address`).
+    public func removeAddress(named text: String) {
+        guard let host = manual.first(where: { (host: ManualHost) -> Bool in host.address.description == text }) else { return }
+        removeAddress(host.address)
+    }
+
     /// Trusts the certificate a check or connection was refused for.
     public func trustCertificate(_ certificate: EsclCertificateError, deviceUuid: String?, name: String) {
         try? trust.trust(certificate.fingerprint, deviceUuid: deviceUuid ?? certificate.deviceUuid,

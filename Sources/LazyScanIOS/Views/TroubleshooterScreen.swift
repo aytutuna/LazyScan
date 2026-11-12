@@ -42,7 +42,9 @@ struct TroubleshooterScreen: View {
                 }
                 Section {
                     ForEach(checks, id: \.id) { (check: TroubleshootCheck) in
-                        TroubleshootCheckRow(check: check, perform: perform)
+                        TroubleshootCheckRow(check: check) { (action: TroubleshootAction) -> Void in
+                            perform(action, for: check)
+                        }
                     }
                 }
                 if let footer {
@@ -93,7 +95,7 @@ struct TroubleshooterScreen: View {
         snapshot = state.troubleshootSnapshot()
     }
 
-    private func perform(_ action: TroubleshootAction) {
+    private func perform(_ action: TroubleshootAction, for check: TroubleshootCheck? = nil) {
         switch action {
         case .refresh:
             state.refreshScanners()
@@ -107,10 +109,22 @@ struct TroubleshooterScreen: View {
             }
         case .openAppSettings:
             footer = state.openTroubleshootLink(.openAppSettings)
+        case .removeAddress:
+            if let check {
+                removeAddress(of: check)
+            }
         case .openScannerSettings, .openNetworkSettings, .openImageCapture:
             // The computers' settings; never offered here.
             break
         }
+    }
+
+    /// Removes the address a "manualHost:<address>" check is about.
+    private func removeAddress(of check: TroubleshootCheck) {
+        let prefix: String = "manualHost:"
+        guard check.id.hasPrefix(prefix) else { return }
+        network?.backend.removeAddress(named: String(check.id.dropFirst(prefix.count)))
+        reload()
     }
 
     private func added(_ deviceID: String) {

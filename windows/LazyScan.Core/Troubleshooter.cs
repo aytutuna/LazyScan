@@ -106,6 +106,8 @@ public enum TroubleshootAction
     CopyDiagnostics,
     /// <summary>The app's own page in the Settings app (iPhone and iPad), where Local Network access is turned on.</summary>
     OpenAppSettings,
+    /// <summary>Takes an address added by hand out of the list (iPhone and iPad); the check's id names the address.</summary>
+    RemoveAddress,
 }
 
 /// <summary>An address added by hand (Windows: escl-hosts.json) and whether a scanner answers there.</summary>
@@ -237,13 +239,14 @@ public static class Troubleshooter
         if (DiscoveryCheck(snapshot) is { } discovery) checks.Add(discovery);
         if (addsByAddress)
         {
+            bool removable = snapshot.Platform == TroubleshootPlatform.Ios;
             foreach (var host in snapshot.ManualHosts.Where(host => !host.Listed))
             {
                 checks.Add(new TroubleshootCheck(
                     $"manualHost:{host.Address}", CheckStatus.Warning,
                     Loc.T("No scanner answers at {0}", host.Address),
                     Loc.T("Check that it is on and its address hasn't changed."),
-                    [TroubleshootAction.Refresh],
+                    removable ? [TroubleshootAction.RemoveAddress, TroubleshootAction.Refresh] : [TroubleshootAction.Refresh],
                     JoinSentences(host.Problem,
                                   Loc.T("Its network settings page or control panel shows the current address. The app tries the address again every minute."))));
             }
@@ -306,6 +309,7 @@ public static class Troubleshooter
         TroubleshootAction.OpenImageCapture => Loc.T("Image Capture"),
         TroubleshootAction.CopyDiagnostics => Loc.T("Copy diagnostics"),
         TroubleshootAction.OpenAppSettings => Loc.T("Open Settings"),
+        TroubleshootAction.RemoveAddress => Loc.T("Remove address"),
         _ => action.ToString(),
     };
 

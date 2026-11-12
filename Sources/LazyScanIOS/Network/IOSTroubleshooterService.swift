@@ -79,7 +79,7 @@ public final class IOSTroubleshooterService: TroubleshooterService {
                 throw ScanError.exportFailed(L10n.t("Settings did not open."))
             }
             openURL(url)
-        case .refresh, .addByAddress, .openScannerSettings, .openNetworkSettings, .openImageCapture, .copyDiagnostics:
+        case .refresh, .addByAddress, .removeAddress, .openScannerSettings, .openNetworkSettings, .openImageCapture, .copyDiagnostics:
             throw ScanError.unsupported("\(action.rawValue) does not open anything here.")
         }
     }

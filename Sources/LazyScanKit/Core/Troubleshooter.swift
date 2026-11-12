@@ -94,6 +94,8 @@ public enum TroubleshootAction: String, CaseIterable, Sendable {
     case copyDiagnostics
     /// The app's own page in the Settings app (iPhone and iPad), where Local Network access is turned on.
     case openAppSettings
+    /// Takes an address added by hand out of the list (iPhone and iPad); the check's id names the address.
+    case removeAddress
 }
 
 /// An address added by hand (Windows: escl-hosts.json) and whether a scanner answers there.
@@ -272,13 +274,14 @@ public enum Troubleshooter {
         }
         if let discovery = discoveryCheck(snapshot) { checks.append(discovery) }
         if addsByAddress {
+            let removable: Bool = snapshot.platform == .ios
             for host in snapshot.manualHosts where !host.listed {
                 checks.append(TroubleshootCheck(
                     id: "manualHost:\(host.address)", status: .warning,
                     title: L10n.t("No scanner answers at {0}", host.address),
                     detail: L10n.t("Check that it is on and its address hasn't changed."),
                     more: joinSentences(host.problem, L10n.t("Its network settings page or control panel shows the current address. The app tries the address again every minute.")),
-                    actions: [.refresh]))
+                    actions: removable ? [.removeAddress, .refresh] : [.refresh]))
             }
         }
         checks.append(contentsOf: tips(snapshot.platform))
@@ -337,6 +340,7 @@ public enum Troubleshooter {
         case .openImageCapture: return L10n.t("Image Capture")
         case .copyDiagnostics: return L10n.t("Copy diagnostics")
         case .openAppSettings: return platform == .mac ? L10n.t("Local Network settings") : L10n.t("Open Settings")
+        case .removeAddress: return L10n.t("Remove address")
         }
     }
 

@@ -283,6 +283,23 @@ final class EsclScannerBackendTests: XCTestCase {
     }
 
     @MainActor
+    func test_anAddressThatDoesNotAnswer_canBeRemovedByItsText() async throws {
+        prepare()
+        let host: String = stubHost()
+        BackendStubScanners.shared.play("http://" + host, [BackendStubAnswer.failure(URLError.Code.cannotConnectToHost)])
+        let hosts: EsclHostList = EsclHostList(directory: folder)
+        hosts.add(try ScannerAddress.parse(host))
+        let backend: EsclScannerBackend = makeBackend(hosts: hosts)
+        backend.startBrowsing()
+        try await waitFor(10) { backend.addStatus(to: DiscoverySnapshot(platform: .ios)).manualHosts.count == 1 }
+
+        backend.removeAddress(named: host)
+        XCTAssertTrue(backend.addStatus(to: DiscoverySnapshot(platform: .ios)).manualHosts.isEmpty)
+        XCTAssertEqual(EsclHostList(directory: folder).loadEntries(), [])
+        backend.stopBrowsing()
+    }
+
+    @MainActor
     func test_checkingAnAddress_saysWhyNothingAnswered_asWindowsDoes() async throws {
         prepare()
         let backend: EsclScannerBackend = makeBackend(hosts: nil)

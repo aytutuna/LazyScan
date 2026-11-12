@@ -90,6 +90,9 @@ struct TroubleshooterView: View {
         case .addByAddress:
             // Windows only: macOS has no way to add a network scanner by its address.
             break
+        case .removeAddress:
+            // iPhone and iPad only.
+            break
         }
     }
 
