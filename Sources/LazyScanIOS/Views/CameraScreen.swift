@@ -824,7 +824,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             if retakenNote == note { retakenNote = nil }
-            state.retakenNumber = nil
+            state.clearRetaken()
         }
     }
 

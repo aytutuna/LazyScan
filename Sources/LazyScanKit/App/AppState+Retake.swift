@@ -23,6 +23,11 @@ extension AppState {
         retakingID = nil
     }
 
+    /// The camera has said the page was retaken.
+    public func clearRetaken() {
+        retakenNumber = nil
+    }
+
     /// The place of the page being retaken in the queue, from 1; nil when none is.
     public var retakingNumber: Int? {
         guard let id = retakingID, let index = scannedPages.firstIndex(where: { $0.id == id }) else { return nil }
