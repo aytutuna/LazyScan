@@ -29,4 +29,9 @@
     <None Include="..\..\Tests\Fixtures\Pages\**\*" LinkBase="Fixtures\Pages" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The eSCL capabilities the backend tests serve (Tests/Fixtures/Escl at the repository root). -->
+  <ItemGroup>
+    <None Include="..\..\Tests\Fixtures\Escl\capabilities-platen-duplex-adf.xml" LinkBase="Fixtures\Escl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

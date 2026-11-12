@@ -114,6 +114,20 @@ final class EsclTrustTests: XCTestCase {
         }
     }
 
+    func testAScannerIsPinnedByUuidOrByAddress() throws {
+        let store: EsclTrustStore = makeStore()
+        XCTAssertFalse(store.isPinned(deviceUuid: uuid, authority: "192.168.1.20:443"))
+        try store.trust(fingerprint(0), deviceUuid: uuid, authority: "192.168.1.20:443", name: "HP M479")
+        try store.trust(fingerprint(1), deviceUuid: nil, authority: "10.0.0.7:443", name: "X")
+
+        XCTAssertTrue(store.isPinned(deviceUuid: uuid.uppercased(), authority: "10.0.0.5:443"))
+        XCTAssertFalse(store.isPinned(deviceUuid: otherUuid, authority: "192.168.1.20:443"))
+        XCTAssertTrue(store.isPinned(deviceUuid: nil, authority: "192.168.1.20:443"))
+        XCTAssertTrue(store.isPinned(deviceUuid: otherUuid, authority: "10.0.0.7:443"))
+        XCTAssertFalse(store.isPinned(deviceUuid: nil, authority: "10.0.0.8:443"))
+        XCTAssertTrue(makeStore().isPinned(deviceUuid: uuid, authority: "10.0.0.5:443"))
+    }
+
     func testLearningAnAddressKeepsWhatAnotherWindowTrusted() throws {
         let scannerS: String = "192.168.1.20:443"
         let scannerY: String = "192.168.1.30:443"

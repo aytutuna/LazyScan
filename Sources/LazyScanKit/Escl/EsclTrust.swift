@@ -233,6 +233,17 @@ public final class EsclTrustStore: @unchecked Sendable {
         entry.fingerprint == fingerprint || sameScanner(entry, uuid: uuid, address: address)
     }
 
+    /// Whether a certificate is pinned for the scanner with `deviceUuid` (nil when unknown) at `authority`:
+    /// by UUID when both sides have one, else by address.
+    public func isPinned(deviceUuid: String?, authority: String) -> Bool {
+        let uuid: String = EsclTxtRecord.uuidKey(deviceUuid) ?? ""
+        let address: String = authority.lowercased()
+        lock.lock()
+        defer { lock.unlock() }
+        reload()
+        return file.certificates.contains(where: { EsclTrustStore.sameScanner($0, uuid: uuid, address: address) })
+    }
+
     private static func sameScanner(_ entry: EsclTrustedCertificate, uuid: String, address: String) -> Bool {
         if !uuid.isEmpty && !entry.deviceUuid.isEmpty {
             return entry.deviceUuid == uuid

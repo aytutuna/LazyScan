@@ -180,6 +180,22 @@ public sealed class EsclTrustStore
     private static bool Replaces(EsclTrustedCertificate entry, string fingerprint, string uuid, string address) =>
         entry.Fingerprint == fingerprint || SameScanner(entry, uuid, address);
 
+    /// <summary>
+    /// Whether a certificate is pinned for the scanner with <paramref name="deviceUuid"/> (null
+    /// when unknown) at <paramref name="authority"/>: by UUID when both sides have one, else by
+    /// address.
+    /// </summary>
+    public bool IsPinned(string? deviceUuid, string authority)
+    {
+        string uuid = EsclTxtRecord.UuidKey(deviceUuid) ?? "";
+        string address = authority.ToLowerInvariant();
+        lock (_gate)
+        {
+            Reload();
+            return _file.Certificates.Any(c => SameScanner(c, uuid, address));
+        }
+    }
+
     /// <summary>The trusted certificates (copies).</summary>
     public IReadOnlyList<EsclTrustedCertificate> Certificates
     {

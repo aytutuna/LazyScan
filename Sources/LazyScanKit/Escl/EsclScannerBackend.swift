@@ -2,12 +2,14 @@ import Foundation
 
 // The Swift side of windows/LazyScan.App/Scanning/EsclScannerBackend.cs: the same device list,
 // the same way of connecting (addresses in order, trust on first use, a changed certificate refused
-// unless the user trusts it, never plain HTTP after a refused certificate), the same addresses added by
+// unless the user trusts it, never plain HTTP after a refused certificate or for a scanner with a pinned
+// certificate), the same addresses added by
 // hand (escl-hosts.json, checked and re-checked every minute while they do not answer) and the same
 // troubleshooter view. Scanners are found by `EsclDiscovery` (DNS-SD) where the app passes one (the
 // iPhone and iPad), and by the endpoints it was made with. A connection made over plain HTTP although the
 // scanner also has an HTTPS address (its TLS handshake failed or it did not answer there) is marked "Not
-// encrypted" (`isNotEncrypted`); a refused certificate never leads to plain HTTP.
+// encrypted" (`isNotEncrypted`); a refused certificate never
+// leads to plain HTTP, and neither does a pinned one.
 
 /// The outcome of checking an address for an eSCL scanner; exactly one of the three is set. Twin of the
 /// Windows app's `EsclAddressCheck`.
@@ -540,7 +542,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     /// certificate fails the connection: it never falls back to a plain HTTP address, since anyone
     /// between the app and the scanner could cause that. An HTTPS address that does not answer, or whose
     /// TLS handshake fails (an old TLS version), is passed over for the next one, which may be the
-    /// scanner's own plain HTTP address: the connection is then "Not encrypted" (`isNotEncrypted`).
+    /// scanner's own plain HTTP address: the connection is then "Not encrypted" (`isNotEncrypted`). Not for
+    /// a scanner that has a pinned certificate (`EsclTrustStore.isPinned`): dropping its HTTPS port would do
+    /// the same as a refused certificate, so its plain addresses are never tried and the connection fails.
     /// Throws `ScanError`, or the `EsclCertificateError`.
     public func openSession(deviceID: String, interactive: Bool) async throws -> any ScannerSession {
         guard let record: EsclDevice = records.first(where: { (device: EsclDevice) -> Bool in device.info.id == deviceID }) else {
@@ -548,7 +552,15 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         }
         var failures: [String] = []
         var reportFailures: [String] = []
+        let pinned: Bool = record.addresses.contains(where: { (candidate: ScannerAddress) -> Bool in
+            candidate.secure && trust.isPinned(deviceUuid: record.uuid, authority: candidate.authority)
+        })
+        var skippedPlain: Bool = false
         for address in record.addresses {
+            if pinned && !address.secure {
+                skippedPlain = true
+                continue
+            }
             var firstUse: String?
             var trustedHere: Bool = false
             while true {
@@ -593,6 +605,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     break
                 }
             }
+        }
+        if skippedPlain {
+            throw ScanError.sessionFailed(reason: { L10n.t("{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.", record.info.name) })
         }
         throw ScanError.sessionFailed(
             L10n.t("{0} did not answer ({1}).", record.info.name, failures.joined(separator: "; ")),

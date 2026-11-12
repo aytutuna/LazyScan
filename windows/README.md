@@ -1902,7 +1902,9 @@ row's **via** menu chooses between them.
   that scanner (the default answer is Cancel; trusting replaces the pin). When the app picked
   the scanner on its own, it shows the warning without asking, does not pick that scanner on
   its own again until the app restarts, and moves on to another one. A refused certificate
-  never falls back to plain HTTP. A certificate Windows itself accepts (valid chain and name)
+  never falls back to plain HTTP. Neither does a scanner with a pinned certificate whose HTTPS
+  addresses do not answer: the connection fails with a message to check that the scanner is on and
+  reachable, and its plain address is not tried; scanners never trusted keep the fallback. A certificate Windows itself accepts (valid chain and name)
   is used without asking.
 - **Shared with the iPhone.** The protocol logic above has Swift twins in
   `Sources/LazyScanKit/Escl/` that behave the same way and pass the same tests:
@@ -1914,7 +1916,7 @@ row's **via** menu chooses between them.
   while a job runs, and a job the system suspends keeping its pages with the `AppSuspended`
   stop, which Windows never produces) and the way a scanner is connected to (the iPhone's
   `EsclScannerBackend`: addresses in order, trust on first use, a changed certificate refused,
-  never plain HTTP after a refused certificate). Since I12 the iPhone also finds scanners on the
+  never plain HTTP after a refused certificate or for a scanner with a pinned one). Since I12 the iPhone also finds scanners on the
   network, keeps the addresses added by hand (the same `escl-hosts.json` format, the same messages
   as the Add scanner dialog) and shows the same troubleshooter checks for them. Two choices differ
   there: adding by address trusts a new certificate without asking (it is still pinned, and a

@@ -1632,6 +1632,7 @@
   },
   "The selected scanner is not connected.": {},
   "{0} did not answer ({1}).": {},
+  "{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.": {},
   "Not encrypted": {},
   "no answer in time": {},
   "no secure connection ({0})": {},

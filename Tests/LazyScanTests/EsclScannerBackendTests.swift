@@ -5,9 +5,9 @@ import XCTest
 // EsclScannerBackend with its search and the addresses added by hand (I12), as the Windows app's
 // Scanning/EsclScannerBackend.cs does it: a URLProtocol stub plays the scanners (no request leaves the
 // process), the search is made of stand-ins (EsclDiscoveryFakes.swift: no browsing), and escl-hosts.json and
-// escl-trust.json are kept in a folder of the test's own. Swift only: the Windows backend is the Windows
-// app's own (it has no Core twin); the rules it shares (EsclEndpoint, EsclHostList, ScannerAddress, the
-// troubleshooter) are checked on both platforms.
+// escl-trust.json are kept in a folder of the test's own. The pinned and unpinned connection cases are
+// mirrored in windows/LazyScan.App.Tests/EsclScannerBackendTests.cs; the rest is Swift only. The rules the
+// backends share (EsclEndpoint, EsclHostList, ScannerAddress, the troubleshooter) are checked on both platforms.
 
 /// What a stub scanner answers a request with.
 private enum BackendStubAnswer {
@@ -421,6 +421,33 @@ final class EsclScannerBackendTests: XCTestCase {
         XCTAssertTrue(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.secureConnectionFailed)))
         XCTAssertFalse(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.timedOut)))
         XCTAssertFalse(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.cancelled)))
+        backend.stopBrowsing()
+    }
+
+    @MainActor
+    func test_aPinnedScannerWhoseHttpsDoesNotAnswer_isNeverReachedOverPlainHttp() async throws {
+        prepare()
+        let host: String = stubHost()
+        BackendStubScanners.shared.play("https://" + host, [BackendStubAnswer.failure(URLError.Code.secureConnectionFailed)])
+        BackendStubScanners.shared.play("http://" + host, [BackendStubAnswer.xml(try hpCapabilities())])
+        let secure: ScannerAddress = try ScannerAddress.parse("https://" + host)
+        let plain: ScannerAddress = try ScannerAddress.parse(host)
+        let both: EsclEndpoint = EsclEndpoint(key: "uuid:hp", name: hpName, txt: EsclTxtRecord.parse(nil), addresses: [secure, plain])
+        try EsclTrustStore(directory: folder).trust(String(repeating: "a", count: 64), deviceUuid: nil,
+                                                    authority: secure.authority, name: hpName)
+        let backend: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [both])
+        backend.startBrowsing()
+
+        do {
+            _ = try await backend.openSession(deviceID: "escl:uuid:hp")
+            XCTFail("a pinned scanner was opened without its HTTPS address")
+        } catch let error as ScanError {
+            XCTAssertEqual(error.errorDescription, "Could not open a session with the scanner: \(hpName) did not answer securely, so Lazy Scan did not use its unencrypted address. "
+                           + "Check that the scanner is on and reachable, then try again.")
+        }
+        XCTAssertEqual(BackendStubScanners.shared.requestCount("https://" + host), 1)
+        XCTAssertEqual(BackendStubScanners.shared.requestCount("http://" + host), 0)
+        XCTAssertFalse(backend.isNotEncrypted("escl:uuid:hp"))
         backend.stopBrowsing()
     }
 

@@ -100,6 +100,22 @@ public sealed class EsclTrustTests : IDisposable
     }
 
     [Fact]
+    public void AScannerIsPinnedByUuidOrByAddress()
+    {
+        var store = new EsclTrustStore(_directory);
+        Assert.False(store.IsPinned(Uuid, "192.168.1.20:443"));
+        store.Trust(Fingerprint(0), Uuid, "192.168.1.20:443", "HP M479");
+        store.Trust(Fingerprint(1), null, "10.0.0.7:443", "X");
+
+        Assert.True(store.IsPinned(Uuid.ToUpperInvariant(), "10.0.0.5:443"));
+        Assert.False(store.IsPinned(OtherUuid, "192.168.1.20:443"));
+        Assert.True(store.IsPinned(null, "192.168.1.20:443"));
+        Assert.True(store.IsPinned(OtherUuid, "10.0.0.7:443"));
+        Assert.False(store.IsPinned(null, "10.0.0.8:443"));
+        Assert.True(new EsclTrustStore(_directory).IsPinned(Uuid, "10.0.0.5:443"));
+    }
+
+    [Fact]
     public void LearningAnAddressKeepsWhatAnotherWindowTrusted()
     {
         const string scannerS = "192.168.1.20:443", scannerY = "192.168.1.30:443";

@@ -370,7 +370,7 @@ in one line with Open Settings, and so does the troubleshooter. Adding a scanner
 Windows rules and messages; its certificate is trusted on first use, and a certificate that changed
 since is asked about. When a scanner's HTTPS connection cannot be made (an old TLS version), the
 app may use the scanner's own plain HTTP address and marks the connection "Not encrypted"; it never
-does so after a refused certificate. The addresses and the trusted certificates are kept in
+does so after a refused certificate, or for a scanner whose certificate is already pinned. The addresses and the trusted certificates are kept in
 Application Support/Lazy Scan/Network, out of backups. Launched with `-demoScanner` (the UI
 tests), the app has the Demo Scanner alone and never searches the network; otherwise the Demo
 Scanner is a row of its own below the scanners found ("Try scanning without a scanner"), never

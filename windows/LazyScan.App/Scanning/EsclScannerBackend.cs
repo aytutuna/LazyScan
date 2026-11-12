@@ -84,12 +84,14 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// <param name="trust">The trusted certificates.</param>
     /// <param name="discover">Browse DNS-SD for scanners.</param>
     /// <param name="clientOptions">Timeouts and retry timing; null = defaults.</param>
+    /// <param name="endpoints">Scanners to list as they are (tests).</param>
     internal EsclScannerBackend(EsclHostList hosts, EsclTrustStore trust, bool discover,
-                                EsclClientOptions? clientOptions = null)
+                                EsclClientOptions? clientOptions = null, IReadOnlyList<EsclEndpoint>? endpoints = null)
     {
         _hosts = hosts;
         _trust = trust;
         _clientOptions = clientOptions;
+        _discovered = endpoints ?? [];
         _decode = WpfImageCodec.Decode;
         if (discover)
         {
@@ -344,7 +346,10 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// <paramref name="interactive"/>, i.e. the user just chose this scanner; the app never asks
     /// unprompted. Once trusted, the same address is tried again. A refused certificate fails
     /// the connection: it never falls back to a plain HTTP address, since anyone between the
-    /// app and the scanner could cause that. Throws <see cref="ScanException"/>, or the
+    /// app and the scanner could cause that. Nor does a scanner with a pinned certificate
+    /// (<see cref="EsclTrustStore.IsPinned"/>) whose HTTPS addresses do not answer, since
+    /// dropping their port would do the same; scanners never trusted keep the fallback.
+    /// Throws <see cref="ScanException"/>, or the
     /// <see cref="EsclCertificateException"/>.
     /// </summary>
     public async Task<IScannerSession> OpenSessionAsync(string deviceId, bool interactive)
@@ -352,8 +357,15 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         var record = _records.FirstOrDefault(r => r.Info.Id == deviceId)
             ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         var failures = new List<Func<string>>();
+        bool pinned = record.Addresses.Any(a => a.Secure && _trust.IsPinned(record.Uuid, a.Authority));
+        bool skippedPlain = false;
         foreach (var address in record.Addresses)
         {
+            if (pinned && !address.Secure)
+            {
+                skippedPlain = true;
+                continue;
+            }
             string? firstUse = null;
             bool trustedHere = false;
             while (true)
@@ -391,6 +403,10 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                     break;
                 }
             }
+        }
+        if (skippedPlain)
+        {
+            throw ScanException.SessionFailed(() => Loc.T("{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.", record.Info.Name));
         }
         throw ScanException.SessionFailed(() => Loc.T("{0} did not answer ({1}).", record.Info.Name, string.Join("; ", failures.Select(failure => failure()))));
     }
