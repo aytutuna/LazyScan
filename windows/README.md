@@ -176,8 +176,8 @@ problem, a few words of help per choice, the page strip's labels and badges, the
 texts); the Mac mirrors the layout (see the main README).
 
 - **Inspector sections.** Scanner (Source, Sides, Flip on, Paper size, Resolution, Color), Output
-  (Format, PDF size, the last PDF's size, Searchable PDF, Collect pages before saving, Save to; in
-  Photos mode it is **Photos**: Find each photo, Straighten photos, Format, Save to), Adjustments,
+  (Format, JPEG quality (for JPEG), PDF size, the last PDF's size, Searchable PDF, Collect pages before saving, Save to; in
+  Photos mode it is **Photos**: Find each photo, Min photo side and Edge trim (while it is on), Straighten photos, Format, JPEG quality, Save to), Adjustments (with B&W threshold in Black & White),
   Pages (Skip blank pages, Crop to page, Straighten pages, Rotate pages upright, Split facing
   pages), Split into documents, Archive & password (PDF/A and the password) and More options (Also
   save text, After saving, File name), after the Photocopy or Receipts section of those tasks. The
@@ -779,8 +779,7 @@ higher limit. A
 color page counts as having no color when fewer than 0.1 % of its sampled pixels (every 4th
 pixel of every 4th row) differ by more than 32 between their strongest and weakest channel,
 so a stamp or a highlighter mark keeps the page in color. The size alone sets the JPEG
-quality of PDF pages; the JPEG quality setting (stored in the settings file, no control on
-Windows) applies to JPEG files only, as before. The **Email a document** task scans at 300 dpi,
+quality of PDF pages; the JPEG quality setting (the JPEG quality slider under Format) applies to JPEG files only, as before. The **Email a document** task scans at 300 dpi,
 saves Compact and then opens the share window. Picking any task keeps the file name template,
 the PDF size and the action after saving the user chose, except where the task needs its own
 (Email: Compact and Share; Receipts: Compact and its file name; ID card: its file name; Archive

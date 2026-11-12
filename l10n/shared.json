@@ -2675,6 +2675,24 @@
   "Files cannot be saved in “{0}”. It may be read-only. Choose another folder.": {},
   "The folder “{0}” was not found. Choose another folder.": {},
   "Could not save in “{0}”.": {},
+  "JPEG quality": {},
+  "B&W threshold": {},
+  "Min photo side": {},
+  "Edge trim": {},
+  "Decrease Min photo side": {},
+  "Increase Min photo side": {},
+  "Decrease Edge trim": {},
+  "Increase Edge trim": {},
+  "Lower is a smaller file, higher keeps more detail": {},
+  "Pixels lighter than this turn white, darker turn black": {},
+  "Smaller pictures on the glass are ignored": {},
+  "Cuts this many pixels off each photo edge": {},
+  "{0} in": {
+    "note": "{0} is a number of inches."
+  },
+  "{0} px": {
+    "note": "{0} is a number of pixels."
+  },
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

@@ -1021,6 +1021,48 @@
                                                           Content="{loc:T Find each photo}" IsChecked="True"
                                                           ToolTip="{loc:T Finds each photo on the glass and saves it on its own}"
                                                           Checked="Setting_Changed" Unchecked="Setting_Changed" />
+                                                <StackPanel x:Name="PhotoSteppers" Margin="12,0,0,0">
+                                                    <Grid Margin="0,2,0,2" ToolTip="{loc:T Smaller pictures on the glass are ignored}"
+                                                          PreviewKeyDown="PhotoStepper_KeyDown">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{loc:T Min photo side}" Style="{StaticResource SliderLabelText}" />
+                                                        <TextBlock Grid.Column="1" x:Name="MinSideValue" MinWidth="52" Margin="0,0,8,0"
+                                                                   Style="{StaticResource ReadoutText}"
+                                                                   AutomationProperties.Name="{loc:T Min photo side}"
+                                                                   AutomationProperties.LiveSetting="Off" />
+                                                        <Button Grid.Column="2" x:Name="MinSideDown" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE738;"
+                                                                AutomationProperties.Name="{loc:T Decrease Min photo side}"
+                                                                Click="PhotoStepper_Click" />
+                                                        <Button Grid.Column="3" x:Name="MinSideUp" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE710;"
+                                                                AutomationProperties.Name="{loc:T Increase Min photo side}"
+                                                                Click="PhotoStepper_Click" />
+                                                    </Grid>
+                                                    <Grid Margin="0,2,0,2" ToolTip="{loc:T Cuts this many pixels off each photo edge}"
+                                                          PreviewKeyDown="PhotoStepper_KeyDown">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{loc:T Edge trim}" Style="{StaticResource SliderLabelText}" />
+                                                        <TextBlock Grid.Column="1" x:Name="EdgeTrimValue" MinWidth="52" Margin="0,0,8,0"
+                                                                   Style="{StaticResource ReadoutText}"
+                                                                   AutomationProperties.Name="{loc:T Edge trim}"
+                                                                   AutomationProperties.LiveSetting="Off" />
+                                                        <Button Grid.Column="2" x:Name="EdgeTrimDown" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE738;"
+                                                                AutomationProperties.Name="{loc:T Decrease Edge trim}"
+                                                                Click="PhotoStepper_Click" />
+                                                        <Button Grid.Column="3" x:Name="EdgeTrimUp" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE710;"
+                                                                AutomationProperties.Name="{loc:T Increase Edge trim}"
+                                                                Click="PhotoStepper_Click" />
+                                                    </Grid>
+                                                </StackPanel>
                                                 <CheckBox x:Name="DeskewBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Straighten photos}" IsChecked="True"
                                                           AutomationProperties.HelpText="{loc:T Turns each photo found on the glass straight (deskew)}"
@@ -1030,6 +1072,19 @@
                                                 <TextBlock Text="{loc:T Format}" Style="{StaticResource FieldLabelText}" />
                                                 <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch"
                                                           AutomationProperties.Name="{loc:T Format}" SelectionChanged="Format_Changed" />
+                                                <Grid x:Name="JpegQualityRow" Margin="0,4,0,0" ToolTip="{loc:T Lower is a smaller file\, higher keeps more detail}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="110" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="40" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{loc:T JPEG quality}" Style="{StaticResource SliderLabelText}" />
+                                                    <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0.5" Maximum="1"
+                                                            SmallChange="0.01" LargeChange="0.05"
+                                                            AutomationProperties.Name="{loc:T JPEG quality}"
+                                                            ValueChanged="Output_SliderChanged" />
+                                                    <TextBlock Grid.Column="2" x:Name="JpegQualityReadout" Style="{StaticResource ReadoutText}" />
+                                                </Grid>
                                             </StackPanel>
                                             <!-- Word output only: each page's picture before its text; label and
                                                  hint (as the tooltip) from DocxWriter in Core. -->
@@ -1151,6 +1206,19 @@
                                                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
                                                 <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static local:ShortText.NeedsColor}" />
                                             </DockPanel>
+                                            <Grid x:Name="ThresholdRow" Margin="0,4,0,0" ToolTip="{loc:T Pixels lighter than this turn white\, darker turn black}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="40" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{loc:T B&amp;W threshold}" Style="{StaticResource SliderLabelText}" />
+                                                <Slider Grid.Column="1" x:Name="ThresholdSlider" Minimum="0" Maximum="1"
+                                                        SmallChange="0.01" LargeChange="0.05"
+                                                        AutomationProperties.Name="{loc:T B&amp;W threshold}"
+                                                        ValueChanged="Output_SliderChanged" />
+                                                <TextBlock Grid.Column="2" x:Name="ThresholdReadout" Style="{StaticResource ReadoutText}" />
+                                            </Grid>
                                         </StackPanel>
                                     </Expander>
 

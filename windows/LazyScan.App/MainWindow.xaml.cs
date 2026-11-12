@@ -1501,6 +1501,7 @@ public partial class MainWindow : Window
             PushAdjustmentSliders();
             DescreenBox.IsChecked = s.Adjustments.Descreen;
             RestoreBox.IsChecked = s.Adjustments.RestoreFadedColors;
+            PushOutputControls();
             ShowDestination(s.ResolveDestination());
             TemplateBox.Text = s.NamingTemplate;
             DocumentOptions.Visibility = s.Intent == ScanIntent.Document ? Visibility.Visible : Visibility.Collapsed;
@@ -1839,6 +1840,8 @@ public partial class MainWindow : Window
         string pageImagesHint = DocxWriter.PageImagesHint(s.Output.WordPageImages);
         WordPageImagesBox.ToolTip = pageImagesHint;
         AutomationProperties.SetHelpText(WordPageImagesBox, pageImagesHint);
+        JpegQualityRow.Visibility = shownFormat == OutputFormat.Jpeg ? Visibility.Visible : Visibility.Collapsed;
+        PhotoSteppers.Visibility = s.PhotoAutoSplit ? Visibility.Visible : Visibility.Collapsed;
         PdfSizeOptions.Visibility = pdf || (word && s.Output.WordPageImages) ? Visibility.Visible : Visibility.Collapsed;
         PdfSizeLabel.Text = pdf ? Loc.T("PDF size") : Loc.T("Page image size");
         AutomationProperties.SetName(PdfSizeTrack, PdfSizeLabel.Text);
@@ -1975,6 +1978,72 @@ public partial class MainWindow : Window
         Setting_Changed(sender, e);
     }
 
+    // MARK: - JPEG quality, threshold and the photo steppers
+
+    private const double MinSideStep = 0.1;
+    private const int EdgeTrimMax = 20;
+
+    /// <summary>Shows the saved values; one outside its range (a hand-edited settings file) is pulled in.</summary>
+    private void PushOutputControls()
+    {
+        var s = ViewModel.Settings;
+        s.JpegQuality = Math.Clamp(s.JpegQuality, JpegQualitySlider.Minimum, JpegQualitySlider.Maximum);
+        s.Adjustments.BlackWhiteThreshold = Math.Clamp(s.Adjustments.BlackWhiteThreshold, ThresholdSlider.Minimum, ThresholdSlider.Maximum);
+        s.PhotoMinSideInches = Math.Clamp(s.PhotoMinSideInches, 0.5, 4);
+        s.PhotoCropInsetPixels = Math.Clamp(s.PhotoCropInsetPixels, 0, EdgeTrimMax);
+        JpegQualitySlider.Value = s.JpegQuality;
+        ThresholdSlider.Value = s.Adjustments.BlackWhiteThreshold;
+        UpdateOutputReadouts();
+    }
+
+    private void UpdateOutputReadouts()
+    {
+        var s = ViewModel.Settings;
+        JpegQualityReadout.Text = Loc.T("{0}%", (int)Math.Round(s.JpegQuality * 100));
+        ThresholdReadout.Text = ((int)Math.Round(s.Adjustments.BlackWhiteThreshold * 100)).ToString(CultureInfo.CurrentCulture);
+        MinSideValue.Text = Loc.T("{0} in", s.PhotoMinSideInches.ToString("0.0", CultureInfo.CurrentCulture));
+        EdgeTrimValue.Text = Loc.T("{0} px", s.PhotoCropInsetPixels);
+        MinSideDown.IsEnabled = s.PhotoMinSideInches > 0.5;
+        MinSideUp.IsEnabled = s.PhotoMinSideInches < 4;
+        EdgeTrimDown.IsEnabled = s.PhotoCropInsetPixels > 0;
+        EdgeTrimUp.IsEnabled = s.PhotoCropInsetPixels < EdgeTrimMax;
+    }
+
+    private void Output_SliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        var s = ViewModel.Settings;
+        if (sender == JpegQualitySlider) s.JpegQuality = e.NewValue;
+        else if (sender == ThresholdSlider) s.Adjustments.BlackWhiteThreshold = e.NewValue;
+        UpdateOutputReadouts();
+        ViewModel.SettingsEdited();
+    }
+
+    private void PhotoStepper_Click(object sender, RoutedEventArgs e)
+    {
+        var s = ViewModel.Settings;
+        if (sender == MinSideDown) s.PhotoMinSideInches = Math.Round(Math.Max(0.5, s.PhotoMinSideInches - MinSideStep), 1);
+        else if (sender == MinSideUp) s.PhotoMinSideInches = Math.Round(Math.Min(4, s.PhotoMinSideInches + MinSideStep), 1);
+        else if (sender == EdgeTrimDown) s.PhotoCropInsetPixels = Math.Max(0, s.PhotoCropInsetPixels - 1);
+        else if (sender == EdgeTrimUp) s.PhotoCropInsetPixels = Math.Min(EdgeTrimMax, s.PhotoCropInsetPixels + 1);
+        UpdateOutputReadouts();
+        if (sender is Button b && !b.IsEnabled)
+            (b == MinSideUp ? MinSideDown : b == MinSideDown ? MinSideUp : b == EdgeTrimUp ? EdgeTrimDown : EdgeTrimUp).Focus();
+        ViewModel.SettingsEdited();
+    }
+
+    private void PhotoStepper_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Up && e.Key != Key.Down) return;
+        if (Keyboard.FocusedElement is not Button b) return;
+        bool up = e.Key == Key.Up;
+        Button? target = b == MinSideUp || b == MinSideDown ? (up ? MinSideUp : MinSideDown)
+            : b == EdgeTrimUp || b == EdgeTrimDown ? (up ? EdgeTrimUp : EdgeTrimDown) : null;
+        if (target is null) return;
+        e.Handled = true;
+        if (target.IsEnabled) PhotoStepper_Click(target, e);
+    }
+
     // MARK: - Adjustment sliders (centered -100...100 scale, see AdjustmentScale)
 
     private void PushAdjustmentSliders()
@@ -2041,6 +2110,7 @@ public partial class MainWindow : Window
     {
         bool color = ViewModel.Settings.ColorMode == ColorMode.Color;
         SaturationSlider.IsEnabled = color;
+        ThresholdRow.Visibility = ViewModel.Settings.ColorMode == ColorMode.BlackWhite ? Visibility.Visible : Visibility.Collapsed;
         RestoreBox.IsEnabled = color;
         ColorReason.Visibility = color ? Visibility.Collapsed : Visibility.Visible;
         string? tip = color ? null
