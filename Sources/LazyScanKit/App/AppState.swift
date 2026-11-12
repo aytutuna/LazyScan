@@ -3022,6 +3022,8 @@ public final class AppState: ObservableObject {
     /// The files go in `directory` (the app's `spoolDirectory`). A page that has its file already is kept as it is.
     nonisolated static func spoolPages(_ pages: [ScannedPage], to directory: URL, previewSide: Int = QueuePreview.side) -> [ScannedPage] {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Pages cut from one shot have the same photo as their other version: it is written once.
+        var writtenOthers: [(image: CGImage, version: PageVersion)] = []
         return pages.map { page in
             if page.fileURL != nil { return page }
             let url = directory.appendingPathComponent("\(page.id.uuidString).tiff")
@@ -3035,11 +3037,17 @@ public final class AppState: ObservableObject {
             var spooled = page.withImage(preview, fileURL: url,
                                          fullPixelSize: CGSize(width: page.image.width, height: page.image.height))
             if let other = page.alternate?.image {
+                if let shared = writtenOthers.first(where: { $0.image === other }) {
+                    spooled = spooled.withAlternate(shared.version)
+                    return spooled
+                }
                 let otherURL = directory.appendingPathComponent("\(page.id.uuidString)-other.tiff")
                 do {
                     try ImageExporter.write(other, to: otherURL, format: .tiff, dpi: page.dpi, jpegQuality: 1.0)
-                    spooled = spooled.withAlternate(PageVersion(image: nil, fileURL: otherURL,
-                                                                fullPixelSize: CGSize(width: other.width, height: other.height)))
+                    let version = PageVersion(image: nil, fileURL: otherURL,
+                                              fullPixelSize: CGSize(width: other.width, height: other.height))
+                    writtenOthers.append((other, version))
+                    spooled = spooled.withAlternate(version)
                 } catch {
                     // Kept in memory: the page can still be shown as scanned.
                 }
@@ -3298,8 +3306,14 @@ public final class AppState: ObservableObject {
     }
 
     func deleteSpoolFiles(of pages: [ScannedPage]) {
+        // The pages cut from one shot share one file for the photo, as their other version or, after a swap,
+        // as the page itself: it goes with the last of them, counting the pages the queue and the held saves
+        // and removals still have.
+        let going = Set(pages.map(\.id))
+        let staying = scannedPages + (savedUndo?.pages ?? []) + (removedUndo?.pages.map { $0.page } ?? [])
+        let shared = Set(staying.filter { !going.contains($0.id) }.flatMap { [$0.fileURL, $0.alternate?.fileURL].compactMap { $0 } })
         for page in pages {
-            for url in [page.fileURL, page.alternate?.fileURL].compactMap({ $0 }) {
+            for url in [page.fileURL, page.alternate?.fileURL].compactMap({ $0 }) where !shared.contains(url) {
                 try? FileManager.default.removeItem(at: url)
             }
         }

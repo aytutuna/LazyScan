@@ -79,4 +79,55 @@ final class QueuePreviewTests: XCTestCase {
         state.platform = .ios
         XCTAssertEqual(state.queuePreviewSide, QueuePreview.thumbnailSide)
     }
+
+    private func objects(of photo: ScannedPage, count: Int) -> [ScannedPage] {
+        (0..<count).map { _ in
+            ScannedPage(image: photo.image, dpi: 100, colorMode: .color)
+                .withGeometry(photo.image, geometry: PageGeometry(cropped: true, angleDegrees: 0, basis: .perspective))
+        }
+    }
+
+    func test_pagesCutFromOneShot_shareOneFileForTheOriginal() throws {
+        let shot = objects(of: page(width: 400, height: 600), count: 3)
+        let spooled = AppState.spoolPages(shot, to: folder)
+        let others = Set(spooled.compactMap { $0.alternate?.fileURL })
+        XCTAssertEqual(others.count, 1)
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+        XCTAssertEqual(names.filter { $0.hasSuffix("-other.tiff") }.count, 1)
+        XCTAssertEqual(names.count, 4)
+    }
+
+    @MainActor
+    func test_theSharedOriginal_goesWithTheLastPageThatUsesIt() throws {
+        let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
+                             files: AppStateFiles.all(in: folder))
+        let spooled = AppState.spoolPages(objects(of: page(width: 400, height: 600), count: 2), to: folder)
+        let original = try XCTUnwrap(spooled[0].alternate?.fileURL)
+        state.scannedPages = spooled
+        state.deleteSpoolFiles(of: [spooled[0]])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: spooled[0].fileURL!.path))
+        state.scannedPages = [spooled[1]]
+        state.deleteSpoolFiles(of: [spooled[1]])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+    }
+
+    @MainActor
+    func test_aSwappedPage_keepsTheSharedFileForTheOthers() throws {
+        let state = AppState(backends: [], presetStore: PresetStore(directory: folder),
+                             files: AppStateFiles.all(in: folder))
+        let spooled = AppState.spoolPages(objects(of: page(width: 400, height: 600), count: 2), to: folder)
+        let original = try XCTUnwrap(spooled[0].alternate?.fileURL)
+        let swapped = spooled[0].withVersionsSwapped(spooled[0].image)
+        XCTAssertEqual(swapped.fileURL, original)
+        state.scannedPages = [swapped, spooled[1]]
+        state.deleteSpoolFiles(of: [spooled[1]])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        state.scannedPages = [spooled[1]]
+        state.deleteSpoolFiles(of: [swapped])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        state.scannedPages = []
+        state.deleteSpoolFiles(of: [spooled[1]])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+    }
 }
