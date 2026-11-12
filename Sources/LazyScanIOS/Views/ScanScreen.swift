@@ -1837,7 +1837,7 @@ private struct SavedFilesRow: View {
                     .font(.subheadline)
                 }
                 .accessibilityLabel(Text("Undo"))
-                .accessibilityHint(Text("Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went."))
+                .accessibilityHint(Text("Puts the pages back, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went."))
                 .accessibilityIdentifier("save.undo")
             }
             if SaveActions.canPrintWithLazyPrint(urls) {

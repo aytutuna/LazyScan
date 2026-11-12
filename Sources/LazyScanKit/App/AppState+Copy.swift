@@ -390,9 +390,10 @@ extension AppState {
         guard !isBusy, !copyPages.isEmpty else { return }
         let ofQueue = copyIsOfQueue
         copyPages = []
-        statusMessage = ofQueue
-            ? L10n.plural(scannedPages.count, one: "{0} page in the queue.", other: "{0} pages in the queue.")
-            : L10n.t("Copy discarded.")
+        let ofQueueText: String = PhoneWording.isPhone
+            ? L10n.plural(scannedPages.count, one: "{0} page so far.", other: "{0} pages so far.")
+            : L10n.plural(scannedPages.count, one: "{0} page in the queue.", other: "{0} pages in the queue.")
+        statusMessage = ofQueue ? ofQueueText : L10n.t("Copy discarded.")
     }
 
     /// Prints the ID card's page: both sides at real size, laid out on the paper of the review (or the

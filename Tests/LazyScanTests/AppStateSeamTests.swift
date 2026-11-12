@@ -400,6 +400,19 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_ingest_onThePhone_countsPagesSoFarAndPointsAtSave() async throws {
+        let state = makeState()
+        let pages: [ScannedPage] = [seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 400, height: 520, dpi: 50)]
+        PhoneWording.choosing(phone: true) {
+            XCTAssertTrue(state.ingest(pages, source: .photo))
+        }
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertTrue(state.statusMessage.hasPrefix("Added 2 pages — 2 so far. Scan more or tap Save."), state.statusMessage)
+        XCTAssertEqual(StatusLine.short(state.statusMessage, state.statusDetail), "2 pages added")
+    }
+
+    @MainActor
     func test_printQueueWithLazyPrint_opensAPDFOutsideTheSpool_leavesTheQueueAndTheStatus() async throws {
         let files = SeamFileActions()
         let state = makeState(files: files)

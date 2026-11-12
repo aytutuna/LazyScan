@@ -165,7 +165,9 @@ extension AppState {
         let reader = barcodeReader
         let total = unread.count
         runExclusive { flag in
-            self.statusMessage = L10n.plural(total, one: "Reading barcodes on {0} queued page…", other: "Reading barcodes on {0} queued pages…")
+            self.statusMessage = PhoneWording.isPhone
+                ? L10n.plural(total, one: "Reading barcodes on {0} page…", other: "Reading barcodes on {0} pages…")
+                : L10n.plural(total, one: "Reading barcodes on {0} queued page…", other: "Reading barcodes on {0} queued pages…")
             let found: [(UUID, [BarcodeReading]?)] = await Task.detached(priority: .userInitiated) { () async -> [(UUID, [BarcodeReading]?)] in
                 var results: [(UUID, [BarcodeReading]?)] = []
                 for page in unread {
@@ -177,7 +179,9 @@ extension AppState {
                     let done = results.count
                     await MainActor.run {
                         if !flag.isCancelled {
-                            self.statusMessage = L10n.t("Reading barcodes on queued pages: {0} of {1}…", done, total)
+                            self.statusMessage = PhoneWording.isPhone
+                                ? L10n.t("Reading barcodes on the pages: {0} of {1}…", done, total)
+                                : L10n.t("Reading barcodes on queued pages: {0} of {1}…", done, total)
                         }
                     }
                 }
@@ -195,7 +199,11 @@ extension AppState {
             self.carryDocumentLabels(from: before)
             let summary = L10n.t("{0}.", DocumentSplitter.queueSummary(self.scannedPages, options: self.settings.document))
             let left = total - found.count
-            if flag.isCancelled && left > 0 {
+            if flag.isCancelled && left > 0 && PhoneWording.isPhone {
+                self.statusMessage = L10n.plural(left, one: "Stopped reading barcodes: {0} page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                                                 other: "Stopped reading barcodes: {0} pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+                                                 summary)
+            } else if flag.isCancelled && left > 0 {
                 self.statusMessage = L10n.plural(left, one: "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
                                                  other: "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
                                                  summary)

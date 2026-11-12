@@ -23,6 +23,7 @@ public struct LazyScanIOSApp: App {
     public init() {
         let process: ProcessInfo = ProcessInfo.processInfo
         let options: IOSLaunchOptions = IOSLaunchOptions(arguments: process.arguments, environment: process.environment)
+        PhoneWording.useOnPhone()
         let actions: IOSFileActions = IOSFileActions()
         actions.clearHandoffs()
         IOSPageSelection.clearShareFolders()

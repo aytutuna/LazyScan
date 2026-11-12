@@ -92,6 +92,15 @@ public enum TextExport {
     public static func keptInQueue(format: OutputFormat, pageCount: Int, cancelled: Bool,
                                    textUnreadable: Bool = true) -> String {
         if cancelled { return cancelledInQueue(pageCount) }
+        if PhoneWording.isPhone {
+            return textUnreadable
+                ? L10n.plural(pageCount,
+                              one: "The page was not saved: tap Save once the text can be read, or choose PDF to save it as scanned.",
+                              other: "The {0} pages were not saved: tap Save once the text can be read, or choose PDF to save them as scanned.")
+                : L10n.plural(pageCount,
+                              one: "The page was not saved: tap Save to try again, or choose PDF to save it as scanned.",
+                              other: "The {0} pages were not saved: tap Save to try again, or choose PDF to save them as scanned.")
+        }
         if textUnreadable {
             return L10n.plural(pageCount,
                                one: "The page is kept in the queue: press {1} once the text can be read, or choose PDF to save it as scanned.",
@@ -111,6 +120,7 @@ public enum TextExport {
     /// queue: press Save JPEG (3 pages) to try again." or "Cancelled. Pages saved: 2 of 5. The other 3 are kept
     /// in the queue.". `saveTitle` is the button that saves them.
     public static func pagesKeptInQueue(pageCount: Int, written: Int, cancelled: Bool, saveTitle: String) -> String {
+        if PhoneWording.isPhone { return pagesNotSaved(pageCount: pageCount, written: written, cancelled: cancelled) }
         if written == 0 {
             if cancelled { return cancelledInQueue(pageCount) }
             return L10n.plural(pageCount,
@@ -131,8 +141,33 @@ public enum TextExport {
                            written, pageCount, saveTitle)
     }
 
+    private static func pagesNotSaved(pageCount: Int, written: Int, cancelled: Bool) -> String {
+        if written == 0 {
+            if cancelled { return cancelledInQueue(pageCount) }
+            return L10n.plural(pageCount,
+                               one: "Not saved — the page is still here: tap Save to try again.",
+                               other: "Not saved — the {0} pages are still here: tap Save to try again.")
+        }
+        let rest = pageCount - written
+        if cancelled {
+            return L10n.plural(rest,
+                               one: "Cancelled. Pages saved: {1} of {2}. The other one is still here.",
+                               other: "Cancelled. Pages saved: {1} of {2}. The other {0} are still here.",
+                               written, pageCount)
+        }
+        return L10n.plural(rest,
+                           one: "Pages saved: {1} of {2}. The other one is still here: tap Save to try again.",
+                           other: "Pages saved: {1} of {2}. The other {0} are still here: tap Save to try again.",
+                           written, pageCount)
+    }
+
     private static func cancelledInQueue(_ pageCount: Int) -> String {
-        L10n.plural(pageCount,
+        if PhoneWording.isPhone {
+            return L10n.plural(pageCount,
+                               one: "Cancelled — the page is still here.",
+                               other: "Cancelled — the {0} pages are still here.")
+        }
+        return L10n.plural(pageCount,
                     one: "Cancelled — the page is kept in the queue.",
                     other: "Cancelled — the {0} pages are kept in the queue.")
     }

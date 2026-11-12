@@ -59,11 +59,15 @@ extension AppState {
     public var canUndoSave: Bool { savedUndo != nil }
 
     /// "Save undone: the pages are in the queue again."
-    static var undoneMessage: String { L10n.t("Save undone: the pages are in the queue again.") }
+    static var undoneMessage: String {
+        PhoneWording.isPhone ? L10n.t("Save undone: the pages are back.") : L10n.t("Save undone: the pages are in the queue again.")
+    }
 
     /// "Save undone: Contract.pdf is as it was, and the pages are in the queue again."
     static func undoneAppendMessage(_ fileName: String) -> String {
-        L10n.t("Save undone: {0} is as it was, and the pages are in the queue again.", fileName)
+        PhoneWording.isPhone
+            ? L10n.t("Save undone: {0} is as it was, and the pages are back.", fileName)
+            : L10n.t("Save undone: {0} is as it was, and the pages are in the queue again.", fileName)
     }
 
     /// Takes the last save back: deletes every file it wrote (one already gone is no error), puts the PDF it

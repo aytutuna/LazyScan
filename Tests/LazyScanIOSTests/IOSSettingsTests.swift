@@ -261,6 +261,7 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertEqual(IOSSettingsSections.offeredSources(both, chosen: .documentFeeder), [.flatbed, .documentFeeder])
         // The lock's reason speaks of the phone, which has no Document mode.
         XCTAssertFalse(IOSSettingsText.idCardHeldReason.contains("Document mode"))
+        XCTAssertFalse(IOSSettingsText.idCardHeldReason.contains("task"))
     }
 
     func test_scannerRows_lockTheSource_underIdCardBookAndText_andWhileACardIsHeld() {
@@ -369,6 +370,11 @@ final class IOSSettingsTests: XCTestCase {
         // The phone has no page strip to name a document in: its name comes from a QR sheet.
         let documentName: NamingToken? = model.parts.first(where: { (part: NamingToken) -> Bool in part.token == "{label}" })
         XCTAssertEqual(documentName?.help, "The document's name from its QR sheet")
+        // And its Type is what the desktop calls the mode and the task.
+        let labels: [String] = model.parts.map(\.label)
+        XCTAssertFalse(labels.contains("Mode"))
+        XCTAssertFalse(labels.contains("Task"))
+        XCTAssertTrue(labels.contains("Type"))
         XCTAssertNil(model.problem)
 
         model.setText("Invoice {date}")

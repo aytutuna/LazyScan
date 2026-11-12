@@ -102,8 +102,11 @@ extension AppState {
         cameraSides = sides
         sidesMismatch = nil
         let sheets: Int = max(counts.fronts, counts.backs)
-        statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order — {1} in queue.", other: "Put {0} sheets in order — {1} in queue.",
-                                    scannedPages.count)
+        statusMessage = PhoneWording.isPhone
+            ? L10n.plural(sheets, one: "Put {0} sheet in order — {1} so far.", other: "Put {0} sheets in order — {1} so far.",
+                          scannedPages.count)
+            : L10n.plural(sheets, one: "Put {0} sheet in order — {1} in queue.", other: "Put {0} sheets in order — {1} in queue.",
+                          scannedPages.count)
     }
 
     // MARK: Separate documents

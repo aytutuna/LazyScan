@@ -71,7 +71,9 @@ extension AppState {
     /// Twin of the Windows `AppViewModel.DropIdCardScanOutsideTask`.
     func dropIdCardScanOutsideTask() {
         clearIdCard(clearCanvas: true)
-        statusMessage = L10n.t("The ID card task ended during the scan. Nothing of the card was kept.")
+        statusMessage = PhoneWording.isPhone
+            ? L10n.t("The ID card was left during the scan. Nothing of the card was kept.")
+            : L10n.t("The ID card task ended during the scan. Nothing of the card was kept.")
     }
 
     /// Puts a side in place (nil: none), dropping the scan the one it replaces came from.

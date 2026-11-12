@@ -63,9 +63,14 @@ public final class PDFProtection: @unchecked Sendable {
 
     /// The status when pages saved as they were scanned got no password: they wait in the queue.
     public static func keptInQueueMessage(_ pages: Int) -> String {
-        L10n.plural(pages,
-                    one: "Not saved: no password was given for the protected PDF. The page is in the queue: save with a password, or turn the password off.",
-                    other: "Not saved: no password was given for the protected PDF. The {0} pages are in the queue: save with a password, or turn the password off.")
+        if PhoneWording.isPhone {
+            return L10n.plural(pages,
+                               one: "Not saved: no password was given for the protected PDF. The page is still here: save with a password, or turn the password off.",
+                               other: "Not saved: no password was given for the protected PDF. The {0} pages are still here: save with a password, or turn the password off.")
+        }
+        return L10n.plural(pages,
+                           one: "Not saved: no password was given for the protected PDF. The page is in the queue: save with a password, or turn the password off.",
+                           other: "Not saved: no password was given for the protected PDF. The {0} pages are in the queue: save with a password, or turn the password off.")
     }
 
     private var prepared: [UInt8]

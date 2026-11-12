@@ -717,7 +717,11 @@ public struct PageProcessor {
 /// `PageFilter`.
 public enum PageFilter {
     /// The message when every queued page is left out, so there is nothing to save.
-    public static var nothingToSaveMessage: String { L10n.t("Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.") }
+    public static var nothingToSaveMessage: String {
+        PhoneWording.isPhone
+            ? L10n.t("Every page is skipped. Keep a page, or turn off Skip blank pages, to save.")
+            : L10n.t("Every page in the queue is skipped. Keep a page, or turn off Skip blank pages, to save.")
+    }
     /// The title `nothingToSaveMessage` is shown under: nothing failed.
     public static var nothingSavedTitle: String { L10n.t("Nothing saved") }
 

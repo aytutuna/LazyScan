@@ -751,7 +751,9 @@
     "note": "Menu command followed by a choice of apps."
   },
   "Email…": {},
-  "Lazy Print": {"same": true},
+  "Lazy Print": {
+    "same": true
+  },
   "Copy": {
     "note": "Copy to the clipboard: the file menu, the pairing text and the recognised text of a page. A verb. Not the photocopy mode."
   },
@@ -2637,10 +2639,18 @@
   "{0} (32-bit driver)": {},
   "The scanner sent an image too large to read.": {},
   "Demo Scanner": {},
-  "Letter": {"same": true},
-  "Legal": {"same": true},
-  "Executive": {"same": true},
-  "Tabloid": {"same": true},
+  "Letter": {
+    "same": true
+  },
+  "Legal": {
+    "same": true
+  },
+  "Executive": {
+    "same": true
+  },
+  "Tabloid": {
+    "same": true
+  },
   "Business card": {},
   "4x6 photo": {},
   "5x7 photo": {},
@@ -2815,6 +2825,65 @@
   "{0} px": {
     "note": "{0} is a number of pixels."
   },
+  "Put {0} sheet in order — {1} so far.": {
+    "other": "Put {0} sheets in order — {1} so far."
+  },
+  "Save undone: the pages are back.": {},
+  "Save undone: {0} is as it was, and the pages are back.": {},
+  "Pages cleared.": {},
+  "Added {0} page, both sides of each sheet — {1} so far. Scan more or tap Save.": {
+    "other": "Added {0} pages, both sides of each sheet — {1} so far. Scan more or tap Save."
+  },
+  "Added {0} page — {1} so far. Scan more or tap Save.": {
+    "other": "Added {0} pages — {1} so far. Scan more or tap Save."
+  },
+  "Put {0} sheet in order — {1} so far. Scan another stack or tap Save.": {
+    "other": "Put {0} sheets in order — {1} so far. Scan another stack or tap Save."
+  },
+  "Kept {0} front side — {1} so far. Scan another stack or tap Save.": {
+    "other": "Kept {0} front sides — {1} so far. Scan another stack or tap Save."
+  },
+  "None of the documents was saved; the pages are still here. {0}": {},
+  "Pages cleared": {},
+  "Not saved: no password was given for the protected PDF. The page is still here: save with a password, or turn the password off.": {
+    "other": "Not saved: no password was given for the protected PDF. The {0} pages are still here: save with a password, or turn the password off."
+  },
+  "The pages are still here.": {},
+  "The page was not saved: tap Save once the text can be read, or choose PDF to save it as scanned.": {
+    "other": "The {0} pages were not saved: tap Save once the text can be read, or choose PDF to save them as scanned."
+  },
+  "The page was not saved: tap Save to try again, or choose PDF to save it as scanned.": {
+    "other": "The {0} pages were not saved: tap Save to try again, or choose PDF to save them as scanned."
+  },
+  "Not saved — the page is still here: tap Save to try again.": {
+    "other": "Not saved — the {0} pages are still here: tap Save to try again."
+  },
+  "Pages saved: {1} of {2}. The other one is still here: tap Save to try again.": {
+    "other": "Pages saved: {1} of {2}. The other {0} are still here: tap Save to try again."
+  },
+  "Every page is skipped. Keep a page, or turn off Skip blank pages, to save.": {},
+  "{0} page so far.": {
+    "other": "{0} pages so far."
+  },
+  "The ID card was left during the scan. Nothing of the card was kept.": {},
+  "Reading barcodes on the pages: {0} of {1}…": {},
+  "Reading barcodes on {0} page…": {
+    "other": "Reading barcodes on {0} pages…"
+  },
+  "Stopped reading barcodes: {0} page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}": {
+    "other": "Stopped reading barcodes: {0} pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}"
+  },
+  "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} so far. Scan more or tap Save.": {
+    "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} so far. Scan more or tap Save."
+  },
+  "Cancelled. Pages saved: {1} of {2}. The other one is still here.": {
+    "other": "Cancelled. Pages saved: {1} of {2}. The other {0} are still here."
+  },
+  "Cancelled — the page is still here.": {
+    "other": "Cancelled — the {0} pages are still here."
+  },
+  "“{0}” saves its scans on its own, so photos cannot be added as pages here. Pick another type to import them.": {},
+  "Photos of documents are added as pages: pick a document type, with Collect pages before saving on, to import them.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

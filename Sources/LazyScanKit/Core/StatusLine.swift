@@ -206,7 +206,7 @@ public enum StatusLine {
             if kind == .receipt { return piece { L10n.plural(count, one: "Found {0} receipt", other: "Found {0} receipts") } }
             return piece { L10n.plural(count, one: "Found {0} photo", other: "Found {0} photos") }
         case .queueCleared(let count)?:
-            if count == 0 { return piece { L10n.t("Queue cleared") } }
+            if count == 0 { return piece { PhoneWording.isPhone ? L10n.t("Pages cleared") : L10n.t("Queue cleared") } }
             return piece { L10n.plural(count, one: "Cleared {0} page", other: "Cleared {0} pages") }
         case .pagesRemoved(let count)?:
             return piece { L10n.plural(count, one: "Page removed", other: "{0} pages removed") }

@@ -38,7 +38,7 @@ public enum IOSSettingsText {
     public static var busyReason: String { String(localized: "Can be changed once the scan or save has finished") }
     /// Why Source is locked while a side of an ID card is held (from the camera or the scanner alike).
     public static var idCardHeldReason: String {
-        String(localized: "Source is locked while a side of the ID card is held. Save or discard the card, or leave the task, to change it.")
+        String(localized: "Source is locked while a side of the ID card is held. Save or discard the card, or pick another type, to change it.")
     }
     /// In place of the Scanner section's rows while no scanner is selected: printer mode until the scanner
     /// picked is found (camera mode has no Scanner section).

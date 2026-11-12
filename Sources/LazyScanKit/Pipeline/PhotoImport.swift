@@ -201,6 +201,12 @@ public enum PhotoImport {
 
     /// Why photos are not imported with these settings, and what to change to import them.
     public static func notOfferedMessage(for settings: ScanSettings) -> String {
+        if PhoneWording.isPhone {
+            if ownSaveTaskReason(settings) != nil, let task = settings.task {
+                return L10n.t("“{0}” saves its scans on its own, so photos cannot be added as pages here. Pick another type to import them.", TaskCatalog.definition(task).title)
+            }
+            return L10n.t("Photos of documents are added as pages: pick a document type, with Collect pages before saving on, to import them.")
+        }
         if ownSaveTaskReason(settings) != nil, let task = settings.task {
             return L10n.t("The task “{0}” saves its scans on its own, so photos cannot be added as pages here. Leave the task or pick Document to PDF to import them.", TaskCatalog.definition(task).title)
         }

@@ -5,7 +5,9 @@ import Foundation
 /// Plain sentences for a file that could not be written: they name the folder it was going to, never
 /// the hidden temp file, and say the pages are kept.
 public enum SaveFailure {
-    public static var pagesKept: String { L10n.t("The pages are still in the queue.") }
+    public static var pagesKept: String {
+        PhoneWording.isPhone ? L10n.t("The pages are still here.") : L10n.t("The pages are still in the queue.")
+    }
 
     /// `error` is nil when the system gave none (a file that could not be created).
     public static func message(_ error: Error?, folder: URL) -> String {

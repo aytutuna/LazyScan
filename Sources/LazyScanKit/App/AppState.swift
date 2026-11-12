@@ -1796,14 +1796,26 @@ public final class AppState: ObservableObject {
         let n = added.count
         if let manualSide = intake.manualSide {
             afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
+        } else if twoSided && PhoneWording.isPhone {
+            statusMessage = L10n.plural(n, one: "Added {0} page, both sides of each sheet — {1} so far. Scan more or tap Save.",
+                                        other: "Added {0} pages, both sides of each sheet — {1} so far. Scan more or tap Save.",
+                                        scannedPages.count)
         } else if twoSided {
             statusMessage = L10n.plural(n, one: "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
                                         other: "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
                                         scannedPages.count, settings.format.saveTitle)
+        } else if intake.askedBothSides && PhoneWording.isPhone {
+            statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} so far. Scan more or tap Save.",
+                                        other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} so far. Scan more or tap Save.",
+                                        scannedPages.count)
         } else if intake.askedBothSides {
             statusMessage = L10n.plural(n, one: "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
                                         other: "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
                                         scannedPages.count, settings.format.saveTitle)
+        } else if PhoneWording.isPhone {
+            statusMessage = L10n.plural(n, one: "Added {0} page — {1} so far. Scan more or tap Save.",
+                                        other: "Added {0} pages — {1} so far. Scan more or tap Save.",
+                                        scannedPages.count)
         } else {
             statusMessage = L10n.plural(n, one: "Added {0} page — {1} in queue. Scan more or {2}.",
                                         other: "Added {0} pages — {1} in queue. Scan more or {2}.",
@@ -2517,7 +2529,8 @@ public final class AppState: ObservableObject {
             let title = removedUndo == nil ? Self.clearedMessage(cleared) : removedTitle
             setStatus(title, StatusDetail(head: .queueCleared(removedUndo?.pages.count ?? cleared)))
         } else {
-            setStatus(L10n.t("Page queue cleared."), StatusDetail(head: .queueCleared(0)))
+            let message: String = PhoneWording.isPhone ? L10n.t("Pages cleared.") : L10n.t("Page queue cleared.")
+            setStatus(message, StatusDetail(head: .queueCleared(0)))
         }
     }
 
@@ -2651,6 +2664,12 @@ public final class AppState: ObservableObject {
         }
         resetFlow()
         let sheets = max(counts.fronts, counts.backs)
+        if PhoneWording.isPhone {
+            statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order — {1} so far. Scan another stack or tap Save.",
+                                        other: "Put {0} sheets in order — {1} so far. Scan another stack or tap Save.",
+                                        scannedPages.count)
+            return
+        }
         statusMessage = L10n.plural(sheets, one: "Put {0} sheet in order — {1} in queue. Scan another stack or {2}.",
                                     other: "Put {0} sheets in order — {1} in queue. Scan another stack or {2}.",
                                     scannedPages.count, settings.format.saveTitle)
@@ -2739,6 +2758,12 @@ public final class AppState: ObservableObject {
         let queued = Set(scannedPages.map(\.id))
         let fronts = flow.captures(for: DocumentSides.frontsStepID).filter { queued.contains($0) }.count
         resetFlow()
+        if PhoneWording.isPhone {
+            statusMessage = L10n.plural(fronts, one: "Kept {0} front side — {1} so far. Scan another stack or tap Save.",
+                                        other: "Kept {0} front sides — {1} so far. Scan another stack or tap Save.",
+                                        scannedPages.count)
+            return
+        }
         statusMessage = L10n.plural(fronts, one: "Kept {0} front side — {1} in queue. Scan another stack or {2}.",
                                     other: "Kept {0} front sides — {1} in queue. Scan another stack or {2}.",
                                     scannedPages.count, settings.format.saveTitle)

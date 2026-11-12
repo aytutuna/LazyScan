@@ -3,7 +3,7 @@ import LazyScanKit
 import SwiftUI
 
 /// File name and folder: where files are saved (`SaveFolderRow`), then the file name: the template as typed, a button for each part it can be built from (Date, Time, Number,
-/// Mode, Task, Document name, Day saved: `IOSNamingModel.parts`, each put at the end with its token), the
+/// Document or photos, Type, Document name, Day saved: `IOSNamingModel.parts`, each put at the end with its token), the
 /// name the next file gets, and what is wrong with the template (a blank one keeps the last name in use).
 struct NamingEditorScreen: View {
     @StateObject private var model: IOSNamingModel

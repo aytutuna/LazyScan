@@ -21,13 +21,18 @@ public final class IOSNamingModel: ObservableObject {
         self.text = state.settings.namingTemplate
     }
 
-    /// `NamingTokens.all`, but on the phone a document's name comes from its QR sheet, not the page strip, and
-    /// {docdate} is the day the file is saved: receipts are not read for the date printed on them.
+    /// `NamingTokens.all`, but on the phone a document's name comes from its QR sheet, not the page strip,
+    /// {docdate} is the day the file is saved (receipts are not read for the date printed on them), and the
+    /// task is the Type.
     public var parts: [NamingToken] {
         NamingTokens.all.map { (part: NamingToken) -> NamingToken in
             switch part.token {
             case "{label}":
                 return NamingToken(label: part.label, token: part.token, help: String(localized: "The document's name from its QR sheet"))
+            case "{intent}":
+                return NamingToken(label: String(localized: "Document or photos"), token: part.token, help: part.help)
+            case "{task}":
+                return NamingToken(label: String(localized: "Type"), token: part.token, help: String(localized: "The type, e.g. “Receipt”"))
             case "{docdate}":
                 return NamingToken(label: String(localized: "Day saved"), token: part.token, help: String(localized: "The day the file is saved"))
             default:
