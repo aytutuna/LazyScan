@@ -136,6 +136,9 @@ final class IOSImportSessionTests: XCTestCase {
         XCTAssertEqual(capture.sourceWidth, 600)
         XCTAssertEqual(capture.sourceHeight, 450)
         XCTAssertEqual(page.geometry?.basis, .perspective)
+        let scale: CaptureScaleResult = try XCTUnwrap(capture.scale)
+        XCTAssertEqual(page.dpi, scale.dpi)
+        XCTAssertEqual(page.fullPixelSize, CGSize(width: scale.pixelWidth, height: scale.pixelHeight))
         XCTAssertTrue(PageRecut.canCrop(page))
     }
 
