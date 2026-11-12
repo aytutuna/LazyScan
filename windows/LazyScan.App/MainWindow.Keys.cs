@@ -63,7 +63,7 @@ public partial class MainWindow
             (Key.Enter, ModifierKeys.Control | ModifierKeys.Shift) => [PreviewButton],
             (Key.S, ModifierKeys.Control) => [SavePdfButton, ReviewSaveButton, IdCardSaveButton],
             (Key.O, ModifierKeys.Control) => [ImportPhotosButton],
-            (Key.Z, ModifierKeys.Control) => [UndoButton],
+            (Key.Z, ModifierKeys.Control) => [SavedUndoButton, UndoButton],
             (Key.Escape, ModifierKeys.None) => [CancelButton],
             _ => [],
         };

@@ -399,8 +399,7 @@ public sealed partial class AppViewModel
             throw new IOException(SavePlan.NotSavedMessage(SavePlan.FailureReason(e.Message)), e);
         }
         MarkSaved(saved);
-        DeleteSpoolFiles(queued);
-        ScannedPages.Clear();
+        DropSaved(queued, files.Paths, undoable: !(format == OutputFormat.Pdf && s.Output.Protect));
         ResetFlow();
         SaveName = "";
         if (failures.Note is { } layerNote) ErrorMessage = layerNote;

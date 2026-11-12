@@ -155,6 +155,11 @@ The main window has four tabs, like the macOS app:
   tooltips, that work exactly when the button does; Delete removes the page the keyboard is on. With the stage focused over the flatbed preview, the arrow keys move the scan area, Shift and the arrow keys resize it, and Delete clears it.
   Removing a page or clearing the queue is held until the next scan, import, save or task change
   and put back by Undo in the status bar or Ctrl+Z (newest first; a text box keeps its own Ctrl+Z).
+  A save is held the same way: its pages stay, with their spool files, until the next scan, import or save (or a task that
+  keeps no queue), and Undo, the first button of the Saved bar (the status bar's once the bar is closed) or Ctrl+Z, deletes
+  the files written and puts the pages back, or puts back the PDF they were added to from the copy taken first. A file
+  changed since the save is left as it is and the undo refused; a password-protected PDF is not held, and nothing is held
+  after a relaunch.
   Scan again in a page's menu marks it: the next scan to the queue replaces it in place, keeping its document, and the
   rest of that scan follows it (Esc or Cancel scan again clears the mark).
   **Cancel** works in every busy phase
@@ -1300,9 +1305,9 @@ sheet's code, read on either side, and the document the plan starts after it ("S
 code “LS-SEP Lease”): a new document named “Lease” starts after it. It is not saved."; when two
 code sheets are in a row, both name the document the last one names; when the page after a
 separator is joined to the document before, the tooltip says so instead). Separator pages are not
-saved, and a successful save clears the queue and deletes the spool files of every page in it,
-separator pages included: a page wrongly taken for a separator has to be kept in the strip (Keep
-this page) before saving.
+saved, and a successful save clears the queue (Undo on the Saved bar brings it back until the next scan,
+import or save), separator pages included: a page wrongly taken for a separator has to be kept in
+the strip (Keep this page) before saving, or the save undone.
 
 **Save sheet** and **Print sheet** (shown with this split while codes are on separator sheets)
 make the sheet to print, with the name typed in **Name on sheet** (optional):

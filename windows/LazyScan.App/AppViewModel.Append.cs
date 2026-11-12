@@ -133,13 +133,28 @@ public sealed partial class AppViewModel
             NotifyAll();
             var failures = new PdfTextFailures();
             PdfAppendResult result;
+            string? backup = Path.Combine(_spool.Directory, Guid.NewGuid().ToString("N") + ".pdf");
             string encoded = NewEncodedFolder();
             try
             {
                 var inputs = await PdfPageInputs(pages, s, token, encoded, failures: failures);
                 SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
                 NotifyAll();
-                result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection), token);
+                result = await Task.Run(() =>
+                {
+                    // A copy from before, for Undo; without one the save cannot be undone.
+                    try { File.Copy(targetPath, backup); }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException) { backup = null; }
+                    try
+                    {
+                        return PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection);
+                    }
+                    catch
+                    {
+                        if (backup is not null) File.Delete(backup);
+                        throw;
+                    }
+                }, token);
             }
             finally
             {
@@ -148,10 +163,11 @@ public sealed partial class AppViewModel
             LastPdfBytes = result.Bytes;
             LastPdfProtected = protection is not null;
             MarkSaved([result.Path]);
+            string? earlierTarget = AppendTarget;
             AppendTarget = null;
             _confirmedAppend = null;
-            DeleteSpoolFiles(queued);
-            ScannedPages.Clear();
+            DropSaved(queued, [], undoable: backup is not null,
+                      appended: backup is null ? null : new AppendedPdf(targetPath, backup, StampIfThere(targetPath), earlierTarget));
             ResetFlow();
             SaveName = "";
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;

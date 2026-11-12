@@ -99,6 +99,11 @@
                             Margin="4,0,0,0" Click="SavedBarClose_Click" />
                     <StackPanel DockPanel.Dock="Right" x:Name="SavedBarButtons" Orientation="Horizontal"
                                 VerticalAlignment="Center" Margin="8,0,0,0">
+                        <Button x:Name="SavedUndoButton" Style="{StaticResource SubtleButtonStyle}"
+                                local:Icon.Glyph="&#xE7A7;" Content="{loc:T Undo}" Visibility="Collapsed"
+                                AutomationProperties.AcceleratorKey="Ctrl+Z"
+                                AutomationProperties.HelpText="{loc:T Puts the pages back\, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.}"
+                                Click="Undo_Click" />
                         <Button x:Name="SavedOpenButton" Style="{StaticResource SubtleButtonStyle}"
                                 local:Icon.Glyph="&#xE8A7;" Content="{loc:T Open}" Tag="Open"
                                 ToolTip="{loc:T Open with the default app}" Click="SavedBarAction_Click" />

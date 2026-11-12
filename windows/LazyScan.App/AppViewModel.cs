@@ -906,7 +906,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private void NotifyAll()
     {
         // A page that joined the queue since the last refresh is a new scan or import.
-        if (ScannedPages.Count > _queueLength) DiscardRemoved();
+        if (ScannedPages.Count > _queueLength)
+        {
+            DiscardRemoved();
+            DiscardSaved();
+        }
         _queueLength = ScannedPages.Count;
         bool offered = RescanOffered;
         if (!IsBusy && (!offered || (_rescanTarget is { } target && QueueIndexOf(target) < 0))) _rescanTarget = null;
@@ -2122,8 +2126,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 NotifyAll();
                 var (written, hasText) = await WriteTextDocument(pages, format, await OutputPath(s, format.FileExtension(), label: document.Label, name: TypedName(format.FileExtension())), s, token);
                 MarkSaved([written]);
-                DeleteSpoolFiles(queued);
-                ScannedPages.Clear();
+                DropSaved(queued, [written]);
                 ResetFlow();
                 SaveName = "";
                 SetStatus(TextExport.SavedMessage(format, pages.Count, Path.GetFileName(written), hasText) + left, new(new StatusHead.Saved()));
@@ -2141,8 +2144,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             string? textPath = text is null ? null : await WriteTextBeside(path, text);
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             MarkSaved([path]);
-            DeleteSpoolFiles(queued);
-            ScannedPages.Clear();
+            DropSaved(queued, textPath is null ? [path] : [path, textPath], undoable: !s.Output.Protect);
             ResetFlow();
             SaveName = "";
             string savedText = TextExport.SavedPdfMessage(pages.Count, Path.GetFileName(path), PdfDetail(),
@@ -2893,6 +2895,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return false;
         }
         DiscardRemoved();
+        // A task that keeps no queue would leave the held pages with nowhere to come back to.
+        if (!TaskCatalog.CarriesPages(task)) DiscardSaved();
         var current = Settings;
         if (current.Task is { } leaving)
             current = TaskCatalog.Restoring(_keptChoices ?? new KeptChoices(new ScanSettings()), leaving, current);
@@ -3706,6 +3710,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private void MarkSaved(List<string> paths)
     {
         DiscardRemoved();
+        DiscardSaved();
         LastSavedPaths = paths;
         SavedRevision++;
         SavedBarPaths = paths.Count > 0 ? [.. paths] : null;

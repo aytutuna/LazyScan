@@ -361,8 +361,12 @@ public partial class MainWindow : Window
         CancelButton.Visibility = ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = ViewModel.IsBusy;
         ShowScannerButton.Visibility = ViewModel.CanShowScannerWindow ? Visibility.Visible : Visibility.Collapsed;
-        UndoButton.Visibility = ViewModel.CanUndoRemove && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
-        UndoButton.ToolTip = WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
+        // A held save is undone from the saved bar; this button takes over once the bar is closed.
+        bool saveUndoHere = ViewModel.CanUndoSave && ViewModel.SavedBarPaths is null;
+        UndoButton.Visibility = (ViewModel.CanUndoRemove || saveUndoHere) && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+        UndoButton.ToolTip = ViewModel.CanUndoSave
+            ? UndoSaveTooltip()
+            : WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
         if (ViewModel.Progress?.Fraction is { } fraction)
         {
             BusyBar.IsIndeterminate = false;
@@ -597,8 +601,19 @@ public partial class MainWindow : Window
             button.Visibility = offered.Contains(action) ? Visibility.Visible : Visibility.Collapsed;
             button.ToolTip = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, paths.Count);
         }
+        SavedUndoButton.Visibility = ViewModel.CanUndoSave ? Visibility.Visible : Visibility.Collapsed;
+        SavedUndoButton.IsEnabled = !ViewModel.IsBusy;
+        SavedUndoButton.ToolTip = ViewModel.CanUndoSave ? UndoSaveTooltip() : null;
         SavedBar.Visibility = Visibility.Visible;
         if (isNew) AnnounceWhenShown(SavedBarText);
+    }
+
+    private string UndoSaveTooltip()
+    {
+        string text = ViewModel.UndoSaveRestoresPdf ? Loc.T("Put the pages back and restore the PDF as it was")
+            : ViewModel.UndoSaveWroteOneFile ? Loc.T("Put the pages back and delete the saved file")
+            : Loc.T("Put the pages back and delete the saved files");
+        return WithKeys(text, Loc.T("Ctrl+Z"));
     }
 
     private void SavedBarAction_Click(object sender, RoutedEventArgs e)
@@ -656,7 +671,7 @@ public partial class MainWindow : Window
     {
         if (!e.WidthChanged) return;
         bool compact = e.NewSize.Width < SavedBarCompactBelowWidth;
-        foreach (var button in SavedBarButtons.Children.OfType<Button>().Where(b => b.Tag is string))
+        foreach (var button in SavedBarButtons.Children.OfType<Button>().Where(b => b.Tag is string || b == SavedUndoButton))
         {
             if (compact)
             {
@@ -2155,13 +2170,14 @@ public partial class MainWindow : Window
 
     private void ShowScanner_Click(object sender, RoutedEventArgs e) => ViewModel.ShowScannerWindow();
 
-    private void Undo_Click(object sender, RoutedEventArgs e)
+    private async void Undo_Click(object sender, RoutedEventArgs e)
     {
         // The button goes once the pages are back, so a keyboard user's focus moves to the first of them.
         bool byKeyboard = InputManager.Current.MostRecentInputDevice is KeyboardDevice;
-        if (ViewModel.UndoRemoval() is not { } id || !byKeyboard) return;
+        Guid? back = ViewModel.CanUndoSave ? await ViewModel.UndoSave() : ViewModel.UndoRemoval();
+        if (back is not { } id || !byKeyboard) return;
         int index = ViewModel.ScannedPages.ToList().FindIndex(item => item.Page.Id == id);
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+        _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
             () => (PageList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus());
     }
 

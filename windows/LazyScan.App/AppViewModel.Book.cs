@@ -60,7 +60,7 @@ public sealed partial class AppViewModel
     private void PruneSpreads()
     {
         if (_spreads.Count == 0) return;
-        var used = ScannedPages.Concat(_removed.Select(r => r.Item)).Select(item => item.Page.SpreadId).OfType<Guid>().ToHashSet();
+        var used = ScannedPages.Concat(_removed.Select(r => r.Item)).Concat(_saved?.Items ?? []).Select(item => item.Page.SpreadId).OfType<Guid>().ToHashSet();
         var unused = _spreads.Where(pair => !used.Contains(pair.Key)).ToList();
         foreach (var (id, source) in unused)
         {

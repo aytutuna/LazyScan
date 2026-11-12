@@ -3726,7 +3726,7 @@ extension AppState {
     public nonisolated static func imagesSavedMessage(_ urls: [URL], format: OutputFormat) -> String     // "Saved 3 JPEG files: ..."
 }
 
-// App/AppState+Undo.swift (LazyScanKit, Swift only): Undo after a save, the saved bar of the iPhone and the Mac. AppState.keepsSavedForUndo
+// App/AppState+Undo.swift (LazyScanKit, Swift only): Undo after a save, the saved bar of the iPhone, the Mac and Windows. AppState.keepsSavedForUndo
 // (default false; makeForIOS and makeForMac turn it on) makes dropSaved hold the saved pages with their spool files instead of deleting
 // them, with the files the save wrote (and their size and date) and, for pages added to a picked PDF, a copy of it taken
 // first (in the spool) and the PDF's size and date after the pages went in. A file that differs on Undo is kept and the undo
@@ -3738,6 +3738,12 @@ extension AppState {
 // Undo after "Saved" (one button for this hold and the removed pages' hold; help from undoSaveRestoresPDF) and Edit > Undo
 // reads "Undo Save" while a save is held; quitting discards the hold and clears the queue record, so no saved page comes
 // back after a relaunch. The bar shows "Save undone" afterwards (the short form of the message).
+// On Windows AppViewModel.UndoSave.cs holds the same (DropSaved after a queue save, CanUndoSave, UndoSave): the copy of a PDF
+// that pages are added to is made in the spool just before they go in, and a password-protected PDF is not held. Undo is the
+// first button of the saved bar; once the bar is closed the status bar's Undo button takes over, and Ctrl+Z presses whichever
+// is shown (one button for this hold and the removed pages' hold). The hold is let go in NotifyAll once the queue has grown,
+// in MarkSaved and in StartTask for a task that keeps no queue; the spool goes at exit and the queue record is empty, so
+// nothing comes back after a relaunch. A refusal is shown in the error bar and the save stays held.
 // The same file holds Undo for pages taken out of the queue (all platforms): removePage, clearPages, scanBacksAgain and
 // keepFrontsOnly (and the camera's fronts-only) put the pages in AppState.removedUndo with their spool files, each with the
 // place it had once the pages before it in the hold were gone, and the task's steps and the camera's sides as they were
