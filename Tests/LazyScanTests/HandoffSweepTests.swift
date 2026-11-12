@@ -4,6 +4,7 @@ import XCTest
 
 // The launch sweep of the Lazy Print hand-off files: a day-old file goes, a fresh one stays.
 
+@MainActor
 final class HandoffSweepTests: XCTestCase {
     func testSweepDeletesDayOldFilesOnly() throws {
         let manager: FileManager = FileManager.default
