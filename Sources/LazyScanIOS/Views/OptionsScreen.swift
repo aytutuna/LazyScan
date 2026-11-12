@@ -7,7 +7,8 @@ import SwiftUI
 /// on the camera; picking one goes to `onType`, which asks what a kind's pick does) comes first, then a row
 /// for each page that applies to what is being scanned (`IOSOptionsPage.listed`: Save as, Look, Pages, Separate
 /// documents, File name and folder, After saving, and the tab's own, Scanner or Camera), each with its current
-/// value, and last Share now, Presets, My computer and Help and about. A page opens from its row, and the
+/// value, then Presets, My computer and Help and about, and last the Start screen. Share now has a row of its
+/// own right after the Type. A page opens from its row, and the
 /// value on the row follows the setting when the page is left. The sheet opens at half height, so the picture
 /// stays in view while a setting is changed. While an import, a scan or a save runs the settings pages say so
 /// and stay as they are.
@@ -86,8 +87,20 @@ struct OptionsScreen: View {
                 }
             }
             Section {
+                row(.shareNow)
+            }
+            Section {
                 ForEach(pages) { (page: IOSOptionsPage) in
                     row(page)
+                }
+            }
+            Section {
+                ForEach(IOSOptionsPage.more) { (page: IOSOptionsPage) in
+                    row(page)
+                }
+            } footer: {
+                if state.isBusy {
+                    Text(IOSSettingsText.busyReason)
                 }
             }
             Section {
@@ -100,15 +113,6 @@ struct OptionsScreen: View {
                 .accessibilityIdentifier("options.startScreen")
             } footer: {
                 Text(String(localized: "The screen Lazy Scan opens on."))
-            }
-            Section {
-                ForEach(IOSOptionsPage.more) { (page: IOSOptionsPage) in
-                    row(page)
-                }
-            } footer: {
-                if state.isBusy {
-                    Text(IOSSettingsText.busyReason)
-                }
             }
         }
     }

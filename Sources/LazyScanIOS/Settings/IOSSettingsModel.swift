@@ -186,8 +186,8 @@ public enum IOSOptionsPage: String, Hashable, Identifiable {
 
     public var id: String { rawValue }
 
-    /// The pages in the list's second group.
-    public static let more: [IOSOptionsPage] = [.shareNow, .presets, .computer, .help]
+    /// The pages after the settings group.
+    public static let more: [IOSOptionsPage] = [.presets, .computer, .help]
 
     public var identifier: String { "options.page.\(rawValue)" }
 

@@ -61,7 +61,7 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertTrue(bookPages.contains(.pages))
         XCTAssertTrue(bookPages.contains(.separate), "The queue can be split")
 
-        XCTAssertEqual(IOSOptionsPage.more, [.shareNow, .presets, .computer, .help])
+        XCTAssertEqual(IOSOptionsPage.more, [.presets, .computer, .help])
     }
 
     func test_optionsPages_haveTheirOwnIdentifiersAndTitles() {
