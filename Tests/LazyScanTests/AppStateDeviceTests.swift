@@ -281,6 +281,7 @@ final class AppStateDeviceTests: XCTestCase {
         try await waitFor(10) { state.isConnected }
         XCTAssertFalse(state.isConnecting)
         XCTAssertEqual(backend.opened, [office.id, office.id])
+        XCTAssertEqual(state.connectionNotes, "")
         XCTAssertNotNil(state.capabilities)
         XCTAssertNil(state.previewUnavailableReason)
     }

@@ -24,6 +24,8 @@ public enum IOSNetworkText {
     public static var demoLine: String { String(localized: "Try scanning without a scanner") }
     public static var removeAddress: String { String(localized: "Remove address") }
     public static var searching: String { String(localized: "Looking for scanners…") }
+    /// The sidebar row's note while its scanner is being opened; the name is already in the row.
+    public static var connecting: String { String(localized: "Connecting…") }
     /// Opens the scanner picked again after connecting to it failed.
     public static var retry: String { String(localized: "Try again") }
     /// Adding a scanner by address (the Windows dialog's wording).

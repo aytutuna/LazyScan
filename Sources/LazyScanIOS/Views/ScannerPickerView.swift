@@ -144,7 +144,8 @@ private struct ScannerPickerContent: View {
                                                       devices: state.devices)?.id
         Section {
             ForEach(picker.rows) { (row: IOSScannerRow) in
-                ScannerRowView(row: row, checked: row.id == picked, enabled: !state.isBusy, onPick: { pick(row) },
+                ScannerRowView(row: row, checked: row.id == picked, connecting: row.id == picked && state.isConnecting && state.capabilities == nil,
+                               enabled: !state.isBusy, onPick: { pick(row) },
                                onRemove: { remove(row) })
             }
             if picker.showsSearching {
@@ -186,7 +187,8 @@ private struct ScannerPickerContent: View {
         }
         if let demo = picker.demoRow {
             Section {
-                ScannerRowView(row: demo, checked: demo.id == picked, enabled: !state.isBusy, onPick: { pick(demo) },
+                ScannerRowView(row: demo, checked: demo.id == picked, connecting: demo.id == picked && state.isConnecting && state.capabilities == nil,
+                               enabled: !state.isBusy, onPick: { pick(demo) },
                                onRemove: {})
             }
         }
@@ -261,9 +263,18 @@ struct NetworkObserving<Content: View>: View {
 private struct ScannerRowView: View {
     let row: IOSScannerRow
     let checked: Bool
+    let connecting: Bool
     let enabled: Bool
     let onPick: () -> Void
     let onRemove: () -> Void
+
+    private var detail: String {
+        connecting ? L10n.t("Connecting to {0}…", row.name) : row.detail
+    }
+
+    private var detailColor: Color {
+        row.note == nil || connecting ? Color.secondary : Color.orange
+    }
 
     var body: some View {
         Button(action: onPick) {
@@ -276,12 +287,16 @@ private struct ScannerRowView: View {
                     Text(row.name)
                         .foregroundStyle(Color.primary)
                         .lineLimit(2)
-                    Text(row.detail)
+                    Text(detail)
                         .font(.caption)
-                        .foregroundStyle(row.note == nil ? Color.secondary : Color.orange)
+                        .foregroundStyle(detailColor)
                 }
                 Spacer(minLength: 0)
-                if checked {
+                if connecting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityHidden(true)
+                } else if checked {
                     Image(systemName: "checkmark")
                         .foregroundStyle(Color.accentColor)
                         .accessibilityHidden(true)

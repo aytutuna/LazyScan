@@ -97,6 +97,7 @@
  {"key": "Confirm|password field", "comment": ""},
  {"key": "Connected", "comment": ""},
  {"key": "Connecting to %@…", "comment": ""},
+ {"key": "Connecting…", "comment": ""},
  {"key": "Continue", "comment": ""},
  {"key": "Contrast", "comment": ""},
  {"key": "Copied.", "comment": ""},

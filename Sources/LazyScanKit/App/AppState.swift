@@ -157,11 +157,13 @@ public final class AppState: ObservableObject {
     public private(set) var deviceGroups: [DeviceGroup] = []
     @Published public private(set) var selectedDeviceID: String?
     /// The selected scanner is open and no switch is under way, so Scan and Preview can run. Neither this nor
-    /// `isConnecting` is published: they only change along with the selection or the status. Twins of the
-    /// Windows view model's `IsConnected` and `IsConnecting`.
+    /// `isConnecting` is published itself: they change along with the selection, the status or `switchTask`, which
+    /// is. Twins of the Windows view model's `IsConnected` and `IsConnecting`.
     public var isConnected: Bool { session != nil && switchTask == nil }
     /// A switch of scanner is under way: the one selected is still connecting.
     public var isConnecting: Bool { switchTask != nil }
+    /// What the scanner changed in the settings when it connected, as sentences; empty when nothing changed.
+    public private(set) var connectionNotes = ""
     @Published public private(set) var capabilities: ScannerCapabilities?
     @Published public var settings: ScanSettings {
         didSet {
@@ -630,7 +632,7 @@ public final class AppState: ObservableObject {
     private var lastDeviceReport = ""
     /// Device switches are serialized through this chain; concurrent clicks
     /// must never interleave open/close on hardware sessions.
-    private var switchTask: Task<Void, Never>?
+    @Published private var switchTask: Task<Void, Never>?
     var switchGeneration = 0
     private var settingsSaveTask: Task<Void, Never>?
     /// The queue is recorded beside its spool files and brought back at launch (`AppStateFiles.keepsQueue`).
@@ -1119,6 +1121,7 @@ public final class AppState: ObservableObject {
         session = nil
         sessionDeviceID = nil
         capabilities = nil
+        connectionNotes = ""
         feederDuplexChecked = false
         feederDuplexCheck = nil
         // The preview, marquee and detections belong to the previous device's bed.
@@ -1174,6 +1177,7 @@ public final class AppState: ObservableObject {
             let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
             settings = adapted.settings
             setStatus(L10n.t("Ready — {0}", s.info.name), notes: adapted.notes)
+            connectionNotes = adapted.notes.map(\.message).joined(separator: " ")
         } catch let certificate as EsclCertificateError where certificate.canTrust {
             // The certificate changed and was not trusted. Not chosen on its own again this session;
             // when the app had chosen it, it moves on to another scanner, and choosing this one in the

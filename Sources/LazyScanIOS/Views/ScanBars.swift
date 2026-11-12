@@ -209,6 +209,7 @@ struct ShutterRing: View {
     let label: String
     let hint: String
     let identifier: String
+    var value: String = ""
     let action: () -> Void
 
     var body: some View {
@@ -234,6 +235,7 @@ struct ShutterRing: View {
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(value))
         .accessibilityHint(Text(hint))
         .accessibilityIdentifier(identifier)
     }

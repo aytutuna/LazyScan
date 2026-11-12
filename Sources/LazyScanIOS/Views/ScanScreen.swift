@@ -110,6 +110,8 @@ struct ScanScreen: View {
     /// The status a busy spell left in camera mode ("3 pages sent to Office PC."), or one the companion said
     /// while idle (`companionNoticed`), on a card for a few seconds.
     @State private var statusAfterBusy: String?
+    /// What a scanner changed in the settings while the Scanner sheet was still open, shown once it closes.
+    @State private var pendingConnectionNotes: String?
     /// The status, the files saved last and whether the queue had pages as the busy spell began, to tell what
     /// it changed, and whether it is a send, whose "3 pages sent to Office PC." is the same each time.
     @State private var statusBeforeBusy: String = ""
@@ -266,6 +268,11 @@ struct ScanScreen: View {
             .onChange(of: state.companionNotice) { (_: CompanionNotice?, notice: CompanionNotice?) in
                 companionNoticed(notice)
             }
+            .onChange(of: state.isConnecting) { (_: Bool, connecting: Bool) in
+                if !connecting {
+                    connectionEnded()
+                }
+            }
             .onChange(of: state.pendingPackage != nil) { (_: Bool, offered: Bool) in
                 // The package banner is at the picture's foot, behind the half sheet.
                 if offered {
@@ -333,6 +340,17 @@ struct ScanScreen: View {
             }
             CaptureRow(onPages: openPages, onPresenting: nil) {
                 scanRing
+            }
+            .overlay(alignment: .bottom) {
+                if let connecting = connectingText {
+                    Text(connecting)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 24)
+                        .alignmentGuide(.bottom) { (d: ViewDimensions) -> CGFloat in d[.top] }
+                        .accessibilityHidden(true)
+                }
             }
         }
     }
@@ -413,23 +431,23 @@ struct ScanScreen: View {
         }
     }
 
-    /// The status a busy spell or the companion left, spoken when it shows. It is gone after about four
-    /// seconds; with VoiceOver on it stays whole until it is tapped or the next action starts.
+    /// The status a busy spell or the companion left, spoken when it shows. It is gone after about eight
+    /// seconds or a tap; with VoiceOver on it stays whole until it is tapped or the next action starts.
     private func statusCard(_ message: String) -> some View {
         let spoken: Bool = UIAccessibility.isVoiceOverRunning
-        let lines: Int? = spoken ? nil : 3
+        let lines: Int? = spoken ? nil : 4
         return Text(message)
             .font(.footnote)
             .lineLimit(lines)
             .modifier(NoticeCard())
             .accessibilityIdentifier("camera.notice")
             .onTapGesture {
-                if spoken { statusAfterBusy = nil }
+                statusAfterBusy = nil
             }
             .task(id: message) {
                 AccessibilityNotification.Announcement(message).post()
                 if spoken { return }
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
                 if statusAfterBusy == message {
                     statusAfterBusy = nil
                 }
@@ -482,6 +500,18 @@ struct ScanScreen: View {
         guard !message.isEmpty, message != statusBeforeBusy || busySends, state.errorMessage == nil,
               !importer.isImporting, state.lastSavedURLs == savedBeforeBusy || state.lastSavedURLs.isEmpty else { return }
         statusAfterBusy = message
+    }
+
+    /// A scanner finished connecting: what it changed in the settings is shown on a card in printer mode, the
+    /// only one with the Scanner row, since the status line says it nowhere on this screen.
+    private func connectionEnded() {
+        let notes: String = state.connectionNotes
+        guard !cameraMode, state.isConnected, !notes.isEmpty else { return }
+        if openGroup != nil {
+            pendingConnectionNotes = notes
+        } else {
+            statusAfterBusy = notes
+        }
     }
 
     /// The companion said a document was sent, put in the cloud folder or received, which happens while nothing
@@ -780,9 +810,19 @@ struct ScanScreen: View {
                 Text(ScanOptionGroup.scanner.title)
                     .foregroundStyle(Color.primary)
                 Spacer(minLength: 8)
-                Text(scannerValue)
-                    .foregroundStyle(Color.secondary)
-                    .lineLimit(1)
+                if let connecting = connectingText {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityHidden(true)
+                    Text(connecting)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                } else {
+                    Text(scannerValue)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
                 Image(systemName: "chevron.forward")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(uiColor: .tertiaryLabel))
@@ -797,6 +837,13 @@ struct ScanScreen: View {
         // An import's corner editor needs the screen; the sheet closes as one starts.
         .disabled(importer.isImporting)
         .accessibilityIdentifier("options.row.scanner")
+    }
+
+    /// "Connecting to Epson…" while the scanner in use is being opened; the Scanner row, the caption under Scan and
+    /// Scan's spoken value say it.
+    private var connectingText: String? {
+        guard state.isConnecting, state.capabilities == nil, let device = sourceDevice else { return nil }
+        return L10n.t("Connecting to {0}…", device.name)
     }
 
     /// What the Scanner row says: the scanner and its source ("No scanner" until one is picked or found).
@@ -927,6 +974,10 @@ struct ScanScreen: View {
 
     private func optionsClosed() {
         pairing = false
+        if let notes = pendingConnectionNotes {
+            pendingConnectionNotes = nil
+            statusAfterBusy = notes
+        }
         let action: (() -> Void)? = afterOptionsClosed
         afterOptionsClosed = nil
         action?()
@@ -1142,6 +1193,7 @@ struct ScanScreen: View {
     /// The scanner named, with how it is reached, where the list beside the screen picks it.
     private var sourceRow: some View {
         let name: String = sourceDevice?.name ?? IOSNetworkText.noScannerPicked
+        let value: String = connectingText == nil ? "" : IOSNetworkText.connecting
         return HStack(spacing: 8) {
             Image(systemName: "scanner")
                 .foregroundStyle(Color.accentColor)
@@ -1149,7 +1201,15 @@ struct ScanScreen: View {
             Text(name)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            if sourceDevice != nil, let note = deviceNote {
+            if connectingText != nil {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
+                Text(IOSNetworkText.connecting)
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityIdentifier("scanner.note")
+            } else if sourceDevice != nil, let note = deviceNote {
                 Text(note)
                     .font(.caption)
                     .foregroundStyle(Color.orange)
@@ -1158,6 +1218,7 @@ struct ScanScreen: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("Scanner: \(name)"))
+        .accessibilityValue(Text(value))
         .accessibilityIdentifier("scanner.menu")
     }
 
@@ -1414,7 +1475,7 @@ struct ScanScreen: View {
     /// named for the step as the scanner tab says it ("Scan page", "Scan stack").
     private var scanRing: some View {
         ShutterRing(progress: 0, enabled: canScan, label: scanLabel, hint: IOSShell.scanHint,
-                    identifier: "scan.button", action: scan)
+                    identifier: "scan.button", value: connectingText ?? "", action: scan)
     }
 
     private var scanLabel: String {
