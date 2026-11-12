@@ -405,6 +405,7 @@
     "other": "Opened {1}: {0} pages"
   },
   "The pages kept from last time could not be read.": {},
+  "Storage is full: these pages are lost if the app closes.": {},
   "Bringing back {0} page…": {
     "other": "Bringing back {0} pages…"
   },

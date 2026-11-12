@@ -159,6 +159,25 @@ final class AppStateQueueRecordTests: XCTestCase {
     }
 
     @MainActor
+    func test_pagesThatCannotBeSpooled_warnOfFullStorage_once() async throws {
+        let state = makeState()
+        XCTAssertTrue(state.startTask(.document))
+        state.settings.destinationPath = folder.path
+        // A file where the spool folder should be: nothing can be written there.
+        try FileManager.default.removeItem(at: spool)
+        try Data().write(to: spool)
+        XCTAssertTrue(state.ingest([recordPage()], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
+        XCTAssertNil(state.scannedPages[0].fileURL)
+        let warning = L10n.t("Storage is full: these pages are lost if the app closes.")
+        state.writeQueueRecord()
+        XCTAssertEqual(state.statusMessage, warning)
+        state.statusMessage = "Something else"
+        state.writeQueueRecord()
+        XCTAssertEqual(state.statusMessage, "Something else")
+    }
+
+    @MainActor
     func test_aSavesEnd_dropsOnlyThePagesItSaved() async throws {
         let state = try await makeQueue()
         let saved: ScannedPage = state.scannedPages[0]

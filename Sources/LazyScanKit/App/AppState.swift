@@ -548,6 +548,8 @@ public final class AppState: ObservableObject {
     let keepsQueue: Bool
     /// The queue's record written shortly after the queue last changed (`scheduleQueueRecord`).
     var queueRecordTask: Task<Void, Never>?
+    /// The warning that pages are not kept has been shown since the queue was last whole (`warnIfNotKept`).
+    var warnedNotKept = false
     /// The pages of the queue kept last time are being read back; the record waits for them, and the screens
     /// show no Cancel, which would not stop it.
     @Published public internal(set) var restoringQueue = false

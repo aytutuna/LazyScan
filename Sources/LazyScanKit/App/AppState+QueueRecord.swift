@@ -165,9 +165,23 @@ extension AppState {
         let record = QueueRecord(scannedPages, spool: spoolDirectory)
         guard !record.pages.isEmpty, let data = try? JSONEncoder().encode(record) else {
             try? FileManager.default.removeItem(at: url)
+            warnIfNotKept(!scannedPages.isEmpty)
             return
         }
-        try? data.write(to: url, options: .atomic)
+        let written: Bool = (try? data.write(to: url, options: .atomic)) != nil
+        warnIfNotKept(!written || record.pages.count < scannedPages.count)
+    }
+
+    /// Says once that pages held in memory only are lost when the app ends, and again only after the queue
+    /// has been whole in between.
+    private func warnIfNotKept(_ notKept: Bool) {
+        guard notKept else {
+            warnedNotKept = false
+            return
+        }
+        guard !warnedNotKept else { return }
+        warnedNotKept = true
+        statusMessage = L10n.t("Storage is full: these pages are lost if the app closes.")
     }
 
     /// Records a queue kept a moment after it last changed (`queueRecordDelay`), so a batch of changes
