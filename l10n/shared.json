@@ -1946,6 +1946,8 @@
   "Last PDF: {0}": {},
   "Place the original face down, then select Scan.": {},
   "Load the pages in the feeder, then select Scan.": {},
+  "This is the demo scanner: it scans sample pages. Your own scanner appears in the sidebar once it is found.": {},
+  "This is the demo scanner: it scans sample pages. Select {0} in the list to use it.": {},
   "Drag to select an area": {},
   "Needs Color": {},
   "Needs Collect pages": {},

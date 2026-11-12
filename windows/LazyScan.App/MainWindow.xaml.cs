@@ -725,7 +725,8 @@ public partial class MainWindow : Window
         {
             TaskBanner.Visibility = Visibility.Collapsed;
             CanvasHintTitle.Visibility = Visibility.Visible;
-            CanvasHintBody.Text = ViewModel.Settings.Source == ScanSource.DocumentFeeder ? ShortText.LoadFeeder : ShortText.PlaceOriginal;
+            string startLine = ViewModel.Settings.Source == ScanSource.DocumentFeeder ? ShortText.LoadFeeder : ShortText.PlaceOriginal;
+            CanvasHintBody.Text = ViewModel.DemoSelected ? startLine + "\n" + ShortText.DemoNote(ViewModel.ListedRealScannerName) : startLine;
             CanvasHintBody.Visibility = Visibility.Visible;
             return;
         }

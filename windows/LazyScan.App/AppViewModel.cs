@@ -1253,6 +1253,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>A scanner other than the demo scanner is listed; without one the sidebar offers the troubleshooter.</summary>
     public bool HasRealDevices => DeviceGroups.Any(group => !group.Primary.IsDemo);
 
+    /// <summary>The Demo Scanner is the selected device.</summary>
+    public bool DemoSelected => SelectedDeviceId is { } id && DeviceGroups.Any(g => g.Primary.IsDemo && g.Members.Any(m => m.Id == id));
+
+    /// <summary>The first scanner listed other than the demo scanner, for the stage's hint to select it.</summary>
+    public string? ListedRealScannerName => DeviceGroups.FirstOrDefault(g => !g.Primary.IsDemo)?.Primary.Name;
+
     /// <summary>The last failed connection or scan (null after one that worked).</summary>
     public ScannerFailure? LastFailure => _lastFailure;
 

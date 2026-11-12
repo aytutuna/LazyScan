@@ -15,6 +15,10 @@ internal static class ShortText
     public static string PlaceOriginal => Loc.T("Place the original face down, then select Scan.");
     /// <summary>The same line while the feeder is the source.</summary>
     public static string LoadFeeder => Loc.T("Load the pages in the feeder, then select Scan.");
+    /// <summary>The empty stage's note while the Demo Scanner is selected; with a real scanner listed it says to select that one.</summary>
+    public static string DemoNote(string? listedScanner) => listedScanner is null
+        ? Loc.T("This is the demo scanner: it scans sample pages. Your own scanner appears in the sidebar once it is found.")
+        : Loc.T("This is the demo scanner: it scans sample pages. Select {0} in the list to use it.", listedScanner);
     /// <summary>The chip on a preview until an area is selected.</summary>
     public static string DragToSelect => Loc.T("Drag to select an area");
     /// <summary>Saturation and Restore faded colors while the scan is grayscale or black and white.</summary>
