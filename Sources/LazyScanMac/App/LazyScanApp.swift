@@ -38,6 +38,15 @@ public struct LazyScanApp: App {
             CommandGroup(replacing: .newItem) {}
             // File > Import from iPhone or iPad: Continuity Camera, taken by ContentView's importsItemProviders.
             ImportFromDevicesCommands()
+            // View > Show Preview and Show Page switch the canvas between the overview and a queued page.
+            CommandGroup(after: .toolbar) {
+                Button("Show Preview") { state.showPreview() }
+                    .keyboardShortcut("1")
+                    .disabled(!state.viewsPage)
+                Button("Show Page") { state.showPage() }
+                    .keyboardShortcut("2")
+                    .disabled(state.viewedPageID == nil)
+            }
             // Help > Lazy Scan Help: no help book is registered, so the default item only says help isn't available.
             CommandGroup(replacing: .help) {
                 Link("Lazy Scan Help", destination: URL(string: "https://alazy.app/scan/#support")!)

@@ -348,6 +348,7 @@ extension AppState {
         idCardLayoutCaption = ""
         idCardSizeWarning = nil
         idCardPreviewRevision += 1
+        if clearCanvas { resetPageView() }
         if clearCanvas && (overviewImage != nil || lastScanImage != nil) {
             overviewImage = nil
             lastScanImage = nil

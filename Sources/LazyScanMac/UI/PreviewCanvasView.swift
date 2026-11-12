@@ -6,7 +6,8 @@ import SwiftUI
 
 /// Central preview area: shows the overview / last scan, hosts the marquee selection
 /// (only meaningful over an overview image, which maps 1:1 to the flatbed), and draws
-/// informational outlines for detected photos.
+/// informational outlines for detected photos. Once the queue has pages a bar above it switches
+/// the canvas to one queued page, read from its spool file and shown as it will be saved.
 struct PreviewCanvasView: View {
     @EnvironmentObject var state: AppState
     /// The language's direction, read outside the left-to-right wrap around the image.
@@ -16,11 +17,30 @@ struct PreviewCanvasView: View {
     @State private var displayImage: CGImage?
     /// In-flight marquee drag, captured on the first `onChanged`.
     @State private var dragState: CanvasDragState?
+    /// The viewed page at the size the canvas draws it, and its true pixel size.
+    @State private var pageImage: CGImage?
+    @State private var pageSize: CGSize?
+    @State private var pageLoading = false
+    @State private var pageFailed = false
+    @FocusState private var canvasFocused: Bool
 
     var body: some View {
+        VStack(spacing: 0) {
+            if !state.scannedPages.isEmpty {
+                modeBar
+                Divider()
+            }
+            canvas
+        }
+        .task(id: pageKey) { await loadPage() }
+    }
+
+    private var canvas: some View {
         ZStack {
             Color(nsColor: .underPageBackgroundColor)
-            if let image = state.canvasImage {
+            if state.viewsPage {
+                pageLayer
+            } else if let image = state.canvasImage {
                 GeometryReader { geo in
                     let frame = fittedImageFrame(imageSize: CGSize(width: image.width, height: image.height),
                                                  in: canvasBounds(for: geo.size))
@@ -65,6 +85,160 @@ struct PreviewCanvasView: View {
                 displayImage = rendered
             }
         }
+    }
+
+    // MARK: Page view
+
+    private var modeBar: some View {
+        HStack {
+            Picker("Canvas view", selection: showsPage) {
+                Text("Preview").tag(false)
+                Text("Page").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            Spacer()
+            if let caption = pageCaption {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .background(.bar)
+    }
+
+    private var showsPage: Binding<Bool> {
+        Binding(get: { state.viewsPage },
+                set: { if $0 { state.showPage() } else { state.showPreview() } })
+    }
+
+    /// "Page 3 of 8, 1654 by 2339 px" with the size once the page is read.
+    private var pageCaption: String? {
+        guard let viewed = state.viewedPage else { return nil }
+        let total = state.scannedPages.count
+        guard let size = pageSize else { return String(localized: "Page \(viewed.number) of \(total)") }
+        return String(localized: "Page \(viewed.number) of \(total) \u{00B7} \(Int(size.width)) \u{00D7} \(Int(size.height)) px")
+    }
+
+    /// Everything the viewed picture depends on; nil while the canvas is on the preview.
+    private var pageKey: PageViewKey? {
+        guard let page = state.viewedPage?.page else { return nil }
+        return PageViewKey(id: page.id, file: page.fileURL, turns: page.rotationQuarterTurns,
+                           original: page.showsOriginal, undone: page.upright?.undone == true)
+    }
+
+    private var viewedSkipped: Bool {
+        guard let viewed = state.viewedPage else { return false }
+        let plan = DocumentSplitter.plan(state.scannedPages, options: state.settings.document)
+        return plan.pages[viewed.number - 1].role != .content
+    }
+
+    private func loadPage() async {
+        guard let viewed = state.viewedPage else {
+            pageImage = nil
+            pageSize = nil
+            pageLoading = false
+            pageFailed = false
+            return
+        }
+        pageLoading = true
+        pageFailed = false
+        pageSize = nil
+        let page = viewed.page
+        let number = viewed.number
+        let read: (image: CGImage, size: CGSize)? = await Task.detached(priority: .userInitiated) { () -> (image: CGImage, size: CGSize)? in
+            guard let full = try? AppState.fullImage(of: page, number: number) else { return nil }
+            return (canvasDownsample(full, maxDimension: 2600), CGSize(width: full.width, height: full.height))
+        }.value
+        if Task.isCancelled { return }
+        pageLoading = false
+        guard let read else {
+            pageImage = nil
+            pageFailed = true
+            return
+        }
+        pageImage = read.image
+        pageSize = read.size
+    }
+
+    private var pageLayer: some View {
+        ZStack {
+            GeometryReader { geo in
+                if let image = pageImage, !pageFailed {
+                    let frame = fittedImageFrame(imageSize: CGSize(width: image.width, height: image.height),
+                                                 in: canvasBounds(for: geo.size))
+                    Image(image, scale: 1, label: Text(pageLabel))
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: frame.width, height: frame.height)
+                        .overlay(alignment: .topLeading) { skippedPill }
+                        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
+                        .position(x: frame.midX, y: frame.midY)
+                }
+            }
+            .environment(\.layoutDirection, .leftToRight)
+            if pageFailed {
+                pageError
+            } else if pageLoading {
+                pageSpinner
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { canvasFocused = true }
+        .focusable()
+        .focused($canvasFocused)
+        .focusEffectDisabled()
+        .onKeyPress(.escape) {
+            state.showPreview()
+            return .handled
+        }
+    }
+
+    private var pageLabel: String {
+        guard let viewed = state.viewedPage else { return "" }
+        let label = String(localized: "Page \(viewed.number) of \(state.scannedPages.count), as it will be saved")
+        return viewedSkipped ? label + String(localized: ", skipped") : label
+    }
+
+    @ViewBuilder
+    private var skippedPill: some View {
+        if viewedSkipped {
+            Text("Skipped")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.regularMaterial, in: Capsule())
+                .padding(8)
+        }
+    }
+
+    private var pageSpinner: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Loading page \(state.viewedPage?.number ?? 0)")
+                .font(.callout)
+        }
+        .padding(18)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var pageError: some View {
+        VStack(spacing: 10) {
+            Text("Page \(state.viewedPage?.number ?? 0) can't be opened")
+                .font(.headline)
+            Text("Its saved scan is missing or unreadable. Scan the page again.")
+                .foregroundStyle(.secondary)
+            Button("Show Preview") { state.showPreview() }
+        }
+        .multilineTextAlignment(.center)
+        .padding(30)
+        .frame(maxWidth: 480)
     }
 
     // MARK: Empty state
@@ -315,6 +489,15 @@ struct PreviewCanvasView: View {
 }
 
 // MARK: - File-private render key
+
+/// What the viewed page's picture is read from and turned by; a new value reads it again.
+fileprivate struct PageViewKey: Hashable {
+    var id: UUID
+    var file: URL?
+    var turns: Int
+    var original: Bool
+    var undone: Bool
+}
 
 /// Identity of one live-preview render: the canvas image revision plus everything the
 /// pipeline consumes. `.task(id:)` keyed on this re-renders exactly when needed.

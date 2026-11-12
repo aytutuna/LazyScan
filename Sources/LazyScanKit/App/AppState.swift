@@ -211,6 +211,11 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var lastScanPixelSize: CGSize?
     /// Normalized (0...1) crop rect within the flatbed, origin top-left. nil = full bed.
     @Published public var selectionRect: CGRect?
+    /// The queued page last shown large on the canvas (`viewPage(id:)`); kept while the canvas is back on
+    /// the preview, so Show Page returns to it. Nil until a page was picked, and after the queue empties.
+    @Published public internal(set) var viewedPageID: UUID?
+    /// The canvas shows `viewedPageID` as it will be saved, not the overview or the last scan.
+    @Published public internal(set) var viewsPage = false
 
     /// The page queue. Spreads no page is cut from any more are dropped whenever it changes
     /// (`pruneSpreads`, AppState+Book.swift), and a queue kept is recorded again (`QueueRecord`).
@@ -218,6 +223,7 @@ public final class AppState: ObservableObject {
         didSet {
             if savedUndo != nil && !scannedPages.isEmpty { discardSavedUndo() }
             pruneSpreads()
+            keepViewedPage(after: oldValue)
             companionService?.queuedPages = scannedPages.count
             scheduleQueueRecord()
         }
@@ -1044,6 +1050,7 @@ public final class AppState: ObservableObject {
         lastScanImage = nil
         lastScanPixelSize = nil
         selectionRect = nil
+        resetPageView()
         detectedPhotos = []
         showPhotoReview = false
         isReceiptReview = false
@@ -2020,8 +2027,10 @@ public final class AppState: ObservableObject {
         guard !isBusy else { return }
         guard let idx = scannedPages.firstIndex(where: { $0.id == id }),
               index >= 0 && index < scannedPages.count, index != idx else { return }
-        let page = scannedPages.remove(at: idx)
-        scannedPages.insert(page, at: index)
+        var pages = scannedPages
+        let page = pages.remove(at: idx)
+        pages.insert(page, at: index)
+        scannedPages = pages
     }
 
     func setLastScan(preview: CGImage?, pixelSize: CGSize?) {

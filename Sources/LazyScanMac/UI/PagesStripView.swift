@@ -53,6 +53,8 @@ struct PagesStripView: View {
                             PageThumbnailCell(
                                 page: page,
                                 pageNumber: index + 1,
+                                isViewed: state.viewsPage && state.viewedPageID == page.id,
+                                onView: { state.viewPage(id: page.id) },
                                 options: options,
                                 split: PageSplitInfo(plan: plan, index: index, page: page, options: options),
                                 book: PageBookInfo(page: page, label: bookLabels[index],
@@ -301,6 +303,10 @@ fileprivate struct BreakGap: View {
 fileprivate struct PageThumbnailCell: View {
     let page: ScannedPage
     let pageNumber: Int
+    /// The canvas shows this page large.
+    let isViewed: Bool
+    /// Show the page large on the canvas (`AppState.viewPage`).
+    let onView: () -> Void
     /// The blank-page settings the page is shown with.
     let options: DocumentOptions
     /// Its place in the split plan: badge, separator, document title.
@@ -340,7 +346,7 @@ fileprivate struct PageThumbnailCell: View {
                 .frame(height: 58)
                 // Left out when saving: the page is dimmed.
                 .opacity(split.isExcluded ? 0.35 : 1)
-                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(borderColor, lineWidth: isViewed ? 2 : 1))
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .overlay { if hovering { hoverControls } }
                 // Above the hover controls, so the pointer that shows them can still reach Keep
@@ -348,6 +354,7 @@ fileprivate struct PageThumbnailCell: View {
                 .overlay(alignment: .topLeading) { blankBadge }
                 .overlay(alignment: .bottom) { blankToggle }
                 .onHover { hovering = $0 }
+                .help(String(localized: "Show page \(pageNumber) large"))
 
             // Below the page, clear of the hover controls on it.
             HStack(spacing: 3) {
@@ -363,6 +370,7 @@ fileprivate struct PageThumbnailCell: View {
                 } else {
                     Text(caption)
                         .font(.caption2)
+                        .bold(isViewed)
                         .foregroundStyle(.secondary)
                         .help(DocumentSides.sideName(side: page.side, sheetIndex: page.sheetIndex) ?? book.help
                               ?? (PhotoImport.sourceHelp(page) ?? ""))
@@ -378,13 +386,23 @@ fileprivate struct PageThumbnailCell: View {
                 uprightToggle
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onView)
         .draggable(page.id.uuidString)
         .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
             guard let text = items.first, let moving = UUID(uuidString: text) else { return false }
             return onDropPage(moving)
         }
+        .focusable()
+        .onKeyPress(keys: [.return, .space]) { _ in
+            onView()
+            return .handled
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(Text("Shows this page large"))
+        .accessibilityValue(viewedValue)
         // The hover controls exist only while the pointer is over the page; VoiceOver never hovers.
         .accessibilityActions {
             Button("Remove page", action: onRemove)
@@ -432,6 +450,14 @@ fileprivate struct PageThumbnailCell: View {
         .task(id: thumbnailKey) {
             thumbnail = stripThumbnail(page.image, maxDimension: 200)
         }
+    }
+
+    private var viewedValue: LocalizedStringKey {
+        isViewed ? "Selected" : ""
+    }
+
+    private var borderColor: Color {
+        isViewed ? Color.accentColor : Color.secondary.opacity(0.4)
     }
 
     /// What the thumbnail shows: the page's turn, the version shown and whether a turn upright was undone.
