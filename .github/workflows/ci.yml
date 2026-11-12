@@ -561,8 +561,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       # The view keys the compiler found (SWIFT_EMIT_LOC_STRINGS above), against l10n/keys-ios.json.
       # A difference goes to the step summary and the list is uploaded; it fails the job only on the
-      # ci/testflight ref, which flags a release carrying an unlisted key; it does not stop the upload
-      # in testflight.yml.
+      # ci/testflight ref, which flags a release carrying an unlisted key and holds back the upload.
       - name: Extract the view keys
         run: |
           status=0
@@ -825,3 +824,9 @@ jobs:
           name: ios18-tests-xcresult
           path: ${{ runner.temp }}/ios18-tests.xcresult
           if-no-files-found: ignore
+
+  testflight:
+    if: github.ref == 'refs/heads/ci/testflight'
+    needs: [macos, ios, ios18]
+    uses: ./.github/workflows/testflight.yml
+    secrets: inherit
