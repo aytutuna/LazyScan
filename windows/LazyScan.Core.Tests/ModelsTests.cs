@@ -58,6 +58,20 @@ public class ModelsTests
         Assert.NotEqual(entries[0].Id, entries[1].Id);
     }
 
+    [Fact]
+    public void HistoryEntriesKeepTheColorModeAndTheirPageFile()
+    {
+        var page = new ScannedPage(Gray(40, 50), 200, ColorMode.Grayscale);
+        var made = ScanHistory.MakeEntries([page], ScanIntent.Document, DateTime.Now)[0];
+        Assert.Equal(ColorMode.Grayscale, made.ColorMode);
+        Assert.Null(made.PageFile);
+
+        var kept = new ScanHistoryEntry(made.Date, made.Intent, made.Dpi, made.Thumbnail, made.PixelSize,
+                                        made.Id, made.ColorMode, "page.png");
+        Assert.Equal("page.png", kept.PageFile);
+        Assert.Equal(ColorMode.Color, Entry(1).ColorMode);
+    }
+
     // MARK: - Detected photos
 
     [Fact]

@@ -1668,11 +1668,20 @@ public sealed class ScanHistoryEntry
     public RgbaImage Thumbnail { get; }
     /// <summary>True pixel dimensions of the original scan.</summary>
     public SizeD PixelSize { get; }
+    public ColorMode ColorMode { get; }
+    /// <summary>
+    /// The page as scanned, full resolution, in a temp file of this session; null when it could not
+    /// be written. Gone when the entry drops out of the history and at quit.
+    /// </summary>
+    public string? PageFile { get; }
 
     public ScanHistoryEntry(DateTime date, ScanIntent intent, int dpi, RgbaImage thumbnail,
-                            SizeD pixelSize, Guid? id = null)
+                            SizeD pixelSize, Guid? id = null, ColorMode colorMode = ColorMode.Color,
+                            string? pageFile = null)
     {
         Id = id ?? Guid.NewGuid();
+        ColorMode = colorMode;
+        PageFile = pageFile;
         Date = date;
         Intent = intent;
         Dpi = dpi;
@@ -1697,7 +1706,7 @@ public static class ScanHistory
                                                      ScanIntent intent, DateTime date) =>
         rawPages.Select(page => new ScanHistoryEntry(
             date, intent, page.Dpi, MakePreview(page.Image, ThumbnailMaxSide),
-            new SizeD(page.Image.Width, page.Image.Height))).ToList();
+            new SizeD(page.Image.Width, page.Image.Height), colorMode: page.ColorMode)).ToList();
 
     /// <summary>
     /// Insert a batch at the front of <paramref name="history"/> (newest first, so the last

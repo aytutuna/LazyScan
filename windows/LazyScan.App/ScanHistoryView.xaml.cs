@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LazyScan.Core;
@@ -11,8 +12,8 @@ namespace LazyScan.App;
 
 /// <summary>
 /// The Scans tab: every scan of this session, newest first, as preview cards; click a card
-/// to enlarge it. History holds small previews only — full pixels live in the page queue,
-/// the photo review or the saved files. Port of UI/ScanHistoryView.swift.
+/// to enlarge it. History holds small previews in memory; each page is also kept in a file for the
+/// session, so a card can put it back in the queue or save it. Port of UI/ScanHistoryView.swift.
 /// </summary>
 public partial class ScanHistoryView : UserControl
 {
@@ -100,6 +101,16 @@ public partial class ScanHistoryView : UserControl
         if (sender is FrameworkElement { DataContext: HistoryItem item } card) card.ToolTip = item.ToolTipText(DateTime.Now);
     }
 
+    private void AddToQueue_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: HistoryItem item }) _ = _viewModel?.AddToQueue(item);
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: HistoryItem item }) _ = _viewModel?.SaveHistoryPage(item);
+    }
+
     private void Thumbnail_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: HistoryItem item }) return;
@@ -108,7 +119,8 @@ public partial class ScanHistoryView : UserControl
             item.Thumbnail,
             entry.Intent.Label(),
             entry.Intent == ScanIntent.Photo ? "\uEB9F" : "\uE8A5",
-            Loc.T("{0} dpi · {1} · {2} {3}", entry.Dpi.ToString(), item.PixelSizeText, entry.Date.ToString("d"), entry.Date.ToString("t")))
+            Loc.T("{0} dpi · {1} · {2} {3}", entry.Dpi.ToString(), item.PixelSizeText, entry.Date.ToString("d"), entry.Date.ToString("t")),
+            _viewModel is { } viewModel ? new PreviewActions(item, () => viewModel.AddToQueue(item), () => viewModel.SaveHistoryPage(item)) : null)
         {
             Owner = Window.GetWindow(this),
         };
@@ -168,10 +180,14 @@ public sealed class ScanTimeConverter : IMultiValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>What the enlarged view of a scan can do besides look: the card it shows and the two actions on it.</summary>
+public sealed record PreviewActions(HistoryItem Item, Action AddToQueue, Action Save);
+
 /// <summary>
 /// Modal enlarged view of one image: a title and metadata header, the image on a neutral
 /// stage, Fit / Zoom in (button or double-click; zoomed, the preview shows at its own pixel
-/// size and scrolls) and Close (Esc or Enter).
+/// size and scrolls), Add to queue and Save (Alt+A, Alt+S; the view stays open after either) when
+/// the image is a scan of the session, and Close (Esc or Enter).
 /// </summary>
 public sealed class ImagePreviewWindow : Window
 {
@@ -180,7 +196,7 @@ public sealed class ImagePreviewWindow : Window
     private readonly Button _zoomButton;
     private bool _zoomed;
 
-    public ImagePreviewWindow(ImageSource image, string title, string? glyph, string details)
+    public ImagePreviewWindow(ImageSource image, string title, string? glyph, string details, PreviewActions? actions = null)
     {
         FlowDirection = App.Flow;
         Title = Loc.T("Scan|noun");
@@ -238,6 +254,28 @@ public sealed class ImagePreviewWindow : Window
 
         var footer = new DockPanel { Margin = new Thickness(12, 4, 12, 12), LastChildFill = true };
         footer.Children.Add(close);
+        if (actions is not null)
+        {
+            var add = ActionButton("\uE710", Loc.T("Add to queue"), nameof(HistoryItem.CanAdd), nameof(HistoryItem.AddToolTip), actions);
+            add.Click += (_, _) => actions.AddToQueue();
+            var save = ActionButton("\uE74E", Loc.T("Save"), nameof(HistoryItem.CanSave), nameof(HistoryItem.SaveToolTip), actions);
+            save.Click += (_, _) => actions.Save();
+            AutomationProperties.SetAccessKey(add, "Alt+A");
+            AutomationProperties.SetAccessKey(save, "Alt+S");
+            // Alt+key reaches the window as a system key.
+            PreviewKeyDown += (_, e) =>
+            {
+                if (Keyboard.Modifiers != ModifierKeys.Alt) return;
+                var target = e.SystemKey == Key.A ? add : e.SystemKey == Key.S ? save : null;
+                if (target is null || !target.IsEnabled) return;
+                target.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                e.Handled = true;
+            };
+            DockPanel.SetDock(save, Dock.Right);
+            DockPanel.SetDock(add, Dock.Right);
+            footer.Children.Add(save);
+            footer.Children.Add(add);
+        }
         footer.Children.Add(_zoomButton);
         DockPanel.SetDock(footer, Dock.Bottom);
 
@@ -270,6 +308,18 @@ public sealed class ImagePreviewWindow : Window
         Content = root;
 
         SetZoomed(false);
+    }
+
+    /// <summary>A footer button for an action on the scan, on while the card says so and with the card's tooltip.</summary>
+    private static Button ActionButton(string glyph, string label, string enabledPath, string toolTipPath, PreviewActions actions)
+    {
+        var button = new Button { Content = label, MinWidth = 96, Margin = new Thickness(0, 0, 8, 0) };
+        button.SetResourceReference(StyleProperty, "IconTextButtonStyle");
+        global::LazyScan.App.Icon.SetGlyph(button, glyph);
+        button.SetBinding(IsEnabledProperty, new Binding(enabledPath) { Source = actions.Item });
+        button.SetBinding(ToolTipProperty, new Binding(toolTipPath) { Source = actions.Item });
+        ToolTipService.SetShowOnDisabled(button, true);
+        return button;
     }
 
     private void SetZoomed(bool zoomed)

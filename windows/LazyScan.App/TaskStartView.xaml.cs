@@ -34,7 +34,7 @@ public partial class TaskStartView : UserControl
     public event Action<ScanTask>? TaskChosen;
     /// <summary>A preset tile was picked.</summary>
     public event Action<Preset>? PresetChosen;
-    /// <summary>"Go to Scan": open the scan screen without changing anything.</summary>
+    /// <summary>"Go to Scanner": open the scan screen without changing anything.</summary>
     public event Action? GoToScanRequested;
     /// <summary>"Add pages to a PDF": the window picks the PDF and starts Document to PDF.</summary>
     public event Action? AddToPdfRequested;

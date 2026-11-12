@@ -505,8 +505,10 @@ public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chose
 }
 
 /// <summary>One card in the Scans tab: a history entry plus its display bitmap.</summary>
-public sealed class HistoryItem(ScanHistoryEntry entry, BitmapSource thumbnail)
+public sealed class HistoryItem(ScanHistoryEntry entry, BitmapSource thumbnail) : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     /// <summary>
     /// Stand-in thumbnail for the metadata-only entries the app keeps: the preview pixels
     /// live once, in <see cref="Thumbnail"/>.
@@ -516,6 +518,32 @@ public sealed class HistoryItem(ScanHistoryEntry entry, BitmapSource thumbnail)
     /// <summary>Metadata of the scan; its <see cref="ScanHistoryEntry.Thumbnail"/> is <see cref="NoPixels"/>.</summary>
     public ScanHistoryEntry Entry { get; } = entry;
     public BitmapSource Thumbnail { get; } = thumbnail;
+
+    private bool _pageGone = entry.PageFile is null;
+    private bool _saving;
+
+    /// <summary>The page file is missing once it is known to be (never written, or gone at a click).</summary>
+    public bool CanAdd => !_pageGone;
+    public bool CanSave => !_pageGone && !_saving;
+
+    /// <summary>Why the buttons are off, for the tooltip and the screen reader; empty while the page is there.</summary>
+    public string UnavailableText => _pageGone ? Loc.T("The full scan is no longer available") : "";
+    public string AddToolTip => _pageGone ? UnavailableText : Loc.T("Add to queue");
+    public string SaveToolTip => _pageGone ? UnavailableText : Loc.T("Save");
+
+    internal void MarkPageGone()
+    {
+        _pageGone = true;
+        Changed();
+    }
+
+    internal void SetSaving(bool saving)
+    {
+        _saving = saving;
+        Changed();
+    }
+
+    private void Changed() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 
     public string Summary => Loc.T("{0} · {1} dpi", Entry.Intent.Label(), Entry.Dpi.ToString());
     public string PixelSizeText => Loc.T("{0} × {1} px", ((int)Entry.PixelSize.Width).ToString(), ((int)Entry.PixelSize.Height).ToString());
@@ -1250,6 +1278,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         // Queued pages a scan or a busy moment left unread (AppViewModel.Split.cs).
         ReadQueuedBarcodesAfterWork();
+        RunHistoryActionAfterWork();
     }
 
     /// <summary>
@@ -1908,23 +1937,20 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
             // The canvas shows the last page as it will be saved (only a downsampled
             // copy is retained), and every scanned page is recorded in the session history.
+            string historyFolder = HistoryFolder;
             var (pagePreview, historyItems) = await Task.Run(() =>
             {
                 var preview = ScanHistory.MakePreview((processed.Count > 0 ? processed[^1] : raw[^1]).Image, CanvasPreviewMaxSide);
                 // ID cards are kept out of the history: nothing of them is left once saved or discarded.
                 if (idCard) return (preview, new List<HistoryItem>());
-                var entries = ScanHistory.MakeEntries(raw, s.Intent, DateTime.Now);
-                // The cards only display the bitmap: keep metadata-only entries so each
-                // preview's pixels are held once, not twice.
-                var items = entries
-                    .Select(e => new HistoryItem(
-                        new ScanHistoryEntry(e.Date, e.Intent, e.Dpi, HistoryItem.NoPixels, e.PixelSize, e.Id),
-                        WpfImageCodec.ToBitmapSource(e.Thumbnail)))
-                    .ToList();
-                return (preview, items);
+                return (preview, MakeHistoryItems(raw, s.Intent, historyFolder));
             }, token);
-            if (_switchGeneration != generation) return;
-            token.ThrowIfCancellationRequested();
+            if (_switchGeneration != generation || token.IsCancellationRequested)
+            {
+                foreach (var item in historyItems) DeleteHistoryFile(item);
+                if (_switchGeneration != generation) return;
+                token.ThrowIfCancellationRequested();
+            }
             if (!idCard) RecordHistory(historyItems);
 
             switch (TaskCatalog.FlowOf(s))
@@ -2083,6 +2109,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         StatusMessage = Loc.T("Processing page {0}…", firstTransfer + 1);
         NotifyAll();
         string spoolDirectory = _spool.Directory;
+        string historyFolder = HistoryFolder;
         var (raw, preview, historyItems, spooled, spreadSources) = await Task.Run(() =>
         {
             // Cancel stops the clean-up of this page, not the page: it is queued as scanned.
@@ -2096,14 +2123,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 cleaned = new PageProcessor([], processor.Arrangement, processor.Binding).Process([page], firstTransfer: firstTransfer);
             }
             var preview = ScanHistory.MakePreview((cleaned.Pages.Count > 0 ? cleaned.Pages[^1] : cleaned.Arranged[^1]).Image, CanvasPreviewMaxSide);
-            var entries = ScanHistory.MakeEntries(cleaned.Arranged, s.Intent, DateTime.Now);
-            // The cards only display the bitmap: keep metadata-only entries so each
-            // preview's pixels are held once, not twice.
-            var items = entries
-                .Select(e => new HistoryItem(
-                    new ScanHistoryEntry(e.Date, e.Intent, e.Dpi, HistoryItem.NoPixels, e.PixelSize, e.Id),
-                    WpfImageCodec.ToBitmapSource(e.Thumbnail)))
-                .ToList();
+            var items = MakeHistoryItems(cleaned.Arranged, s.Intent, historyFolder);
             // Spill full-resolution pages to disk; keep only previews in the queue. The spreads book
             // pages were cut from are kept too, to join or split them again.
             var pages = SpoolPages(cleaned.Pages.ToList(), spoolDirectory).Select(p => new PageItem(p)).ToList();
@@ -2112,6 +2132,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (_switchGeneration != generation)
         {
             DeleteSpoolFiles(spooled.Select(p => p.Page));
+            foreach (var item in historyItems) DeleteHistoryFile(item);
             DeleteSpreadFiles(spreadSources.Values);
             throw new OperationCanceledException();
         }
@@ -3877,6 +3898,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         var keep = _history.Select(e => e.Id).ToHashSet();
         foreach (var stale in _historyItems.Keys.Where(k => !keep.Contains(k)).ToList())
         {
+            DeleteHistoryFile(_historyItems[stale]);
             _historyItems.Remove(stale);
         }
         History.Clear();

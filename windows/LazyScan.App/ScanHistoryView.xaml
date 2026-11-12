@@ -43,10 +43,11 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <!-- Exactly one Button per card, so the card is a single Tab stop opened with
-                                     Enter/Space; the zoom badge below is decoration only. -->
+                                <!-- The card is one Button, a single Tab stop opened with Enter/Space; the action bar
+                                     is its sibling, not inside it, and shows on hover and on keyboard focus. -->
+                                <Grid x:Name="CardRoot" Width="200" Margin="6">
                                 <!-- The tooltip (made as it opens: "Just now" ages) holds what the card does not show. -->
-                                <Button x:Name="Card" Style="{StaticResource CardButtonStyle}" Width="200" Margin="6"
+                                <Button x:Name="Card" Style="{StaticResource CardButtonStyle}"
                                         Click="Thumbnail_Click" Cursor="Hand" ToolTip=""
                                         ToolTipOpening="Card_ToolTipOpening"
                                         AutomationProperties.Name="{Binding AccessibleName}"
@@ -56,11 +57,6 @@
                                             <Border Style="{StaticResource ImageWellStyle}">
                                                 <Image Source="{Binding Thumbnail}" Stretch="Uniform" FlowDirection="LeftToRight" Margin="8"
                                                        RenderOptions.BitmapScalingMode="HighQuality" />
-                                            </Border>
-                                            <Border x:Name="ZoomBadge" Style="{StaticResource HoverActionBarStyle}"
-                                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6"
-                                                    Padding="6" IsHitTestVisible="False">
-                                                <TextBlock Text="&#xE740;" Style="{StaticResource GlyphText}" FontSize="12" />
                                             </Border>
                                         </Grid>
     
@@ -81,15 +77,31 @@
                                         </DockPanel>
                                     </StackPanel>
                                 </Button>
+                                <Border x:Name="Actions" Style="{StaticResource HoverActionBarStyle}"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE710;"
+                                                Click="AddToQueue_Click" IsEnabled="{Binding CanAdd}"
+                                                ToolTip="{Binding AddToolTip}" ToolTipService.ShowOnDisabled="True"
+                                                AutomationProperties.Name="{loc:T Add this scan to the queue}"
+                                                AutomationProperties.HelpText="{Binding UnavailableText}" />
+                                        <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE74E;"
+                                                Click="Save_Click" IsEnabled="{Binding CanSave}"
+                                                ToolTip="{Binding SaveToolTip}" ToolTipService.ShowOnDisabled="True"
+                                                AutomationProperties.Name="{loc:T Save this scan}"
+                                                AutomationProperties.HelpText="{Binding UnavailableText}" />
+                                    </StackPanel>
+                                </Border>
+                                </Grid>
                                 <DataTemplate.Triggers>
                                     <DataTrigger Binding="{Binding Entry.Intent}" Value="Photo">
                                         <Setter TargetName="IntentGlyph" Property="Text" Value="&#xEB9F;" />
                                     </DataTrigger>
-                                    <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="ZoomBadge" Property="Opacity" Value="1" />
+                                    <Trigger SourceName="CardRoot" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
                                     </Trigger>
-                                    <Trigger SourceName="Card" Property="IsKeyboardFocused" Value="True">
-                                        <Setter TargetName="ZoomBadge" Property="Opacity" Value="1" />
+                                    <Trigger SourceName="CardRoot" Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
                                     </Trigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>

@@ -54,8 +54,8 @@
         <StackPanel Margin="0,0,0,16">
             <DockPanel x:Name="Header" Margin="16,20,16,4">
                 <Button DockPanel.Dock="Right" x:Name="GoToScanButton" Style="{StaticResource IconTextButtonStyle}"
-                        local:Icon.Glyph="&#xE8FE;" Content="{loc:T Go to Scan}" VerticalAlignment="Center" Margin="16,0,0,0"
-                        ToolTip="{loc:T Open the Scan tab without changing your settings}"
+                        local:Icon.Glyph="&#xE8FE;" Content="{loc:T Go to Scanner}" VerticalAlignment="Center" Margin="16,0,0,0"
+                        ToolTip="{loc:T Open the Scanner tab without changing your settings}"
                         Click="GoToScan_Click" />
                 <TextBlock Text="{loc:T What are you scanning?}" Style="{StaticResource TitleText}" TextWrapping="Wrap"
                            VerticalAlignment="Center" />

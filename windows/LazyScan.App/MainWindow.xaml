@@ -386,7 +386,7 @@
                 </TabItem>
 
                 <!-- Scan: preview canvas + page strip, with the inspector on the right -->
-                <TabItem Header="{loc:T Scan}" x:Name="ScanTab" local:Icon.Glyph="&#xE8FE;">
+                <TabItem Header="{loc:T Scanner}" x:Name="ScanTab" local:Icon.Glyph="&#xE8FE;">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" MinWidth="160" />
