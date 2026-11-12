@@ -75,7 +75,7 @@ private final class FakeScorer: OrientationScorer {
 
     func score(_ image: RgbaImage) throws -> OrientationScore {
         onScore?()
-        if fails { throw ScanError.scanFailed("OCR failed: the recognizer stopped.") }
+        if fails { throw ScanError.scanFailed("the recognizer stopped.") }
         guard let turns = turnsFromUpright(image) else { return OrientationScore.none }
         seen.append(turns)
         return turns == 0 ? upright : turns == 2 ? upsideDown : sideways

@@ -569,7 +569,7 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(PageViewerText.noText, "No text found on this page")
         XCTAssertEqual(PageViewerText.textFailed, "The text could not be read")
         // The sheet drops this title from the Kit's message and shows the reason alone.
-        XCTAssertTrue(TextExport.recognitionFailed("OCR failed: x").hasPrefix(PageViewerText.textFailed + ": "))
+        XCTAssertTrue(TextExport.recognitionFailed("Scan failed: x").hasPrefix(PageViewerText.textFailed + ": "))
         var names: [String] = []
         for filter in CaptureFilter.displayOrder {
             names.append(PageViewerText.filterName(filter))

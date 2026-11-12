@@ -80,7 +80,7 @@ public class OrientationTests
         public OrientationScore Score(RgbaImage image, CancellationToken token)
         {
             OnScore?.Invoke();
-            if (Fails) throw ScanException.ScanFailed("OCR failed: the recognizer stopped.");
+            if (Fails) throw ScanException.ScanFailed("the recognizer stopped.");
             if (TurnsFromUpright(image) is not { } turns) return OrientationScore.None;
             Seen.Add(turns);
             return turns == 0 ? upright : turns == 2 ? upsideDown : sideways;

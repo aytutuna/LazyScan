@@ -347,7 +347,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     }
 
     private static func unusable(_ address: ScannerAddress) -> String {
-        address.needsResolving ? L10n.t("its name could not be found") : L10n.t("it is not a usable address")
+        address.needsResolving
+            ? L10n.t("The name {0} could not be found. Check the address on the scanner's screen.", address)
+            : L10n.t("{0} is not a usable address. Check the address on the scanner's screen.", address)
     }
 
     private static func manualHost(_ address: ScannerAddress, _ result: EsclAddressCheck) -> ManualHost {
@@ -385,7 +387,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let validator: EsclCertificateValidator = EsclCertificateValidator(store: trust, deviceUuid: nil, deviceName: name,
                                                                            firstUse: firstUse)
         guard let base: URL = await connectURL(address) else {
-            let unusable: () -> String = { L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.unusable(address)) }
+            let unusable: () -> String = { EsclScannerBackend.unusable(address) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
                                     error: unusable(), reportError: L10n.english(unusable))
         }
@@ -400,9 +402,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             if Task.isCancelled || error is CancellationError {
                 throw CancellationError()
             }
-            let unanswered: () -> String = {
-                L10n.t("No scanner answered at {0} ({1}).", address, EsclScannerBackend.checkFailure(error))
-            }
+            let unanswered: () -> String = { EsclScannerBackend.checkFailure(error, address) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
                                     error: unanswered(), reportError: L10n.english(unanswered))
         }
@@ -550,8 +550,6 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         guard let record: EsclDevice = records.first(where: { (device: EsclDevice) -> Bool in device.info.id == deviceID }) else {
             throw ScanError.deviceUnavailable(reason: { L10n.t("The selected scanner is not connected.") })
         }
-        var failures: [String] = []
-        var reportFailures: [String] = []
         let pinned: Bool = record.addresses.contains(where: { (candidate: ScannerAddress) -> Bool in
             candidate.secure && trust.isPinned(deviceUuid: record.uuid, authority: candidate.authority)
         })
@@ -567,9 +565,6 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                 let validator: EsclCertificateValidator = EsclCertificateValidator(
                     store: trust, deviceUuid: record.uuid, deviceName: record.info.name, firstUse: firstUse)
                 guard let base: URL = await connectURL(address) else {
-                    let unusable: () -> String = { L10n.t("{0}: {1}", address, EsclScannerBackend.unusable(address)) }
-                    failures.append(unusable())
-                    reportFailures.append(L10n.english(unusable))
                     break
                 }
                 let client: EsclClient = EsclClient(baseURL: base, deviceName: record.info.name, validator: validator,
@@ -595,13 +590,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     }
                     throw error
                 } catch {
-                    guard let reason: String = EsclScannerBackend.connectionFailure(error) else {
+                    guard EsclScannerBackend.isConnectionFailure(error) else {
                         throw error
                     }
-                    let englishReason: String = (error as? EsclFormatError)?.reportMessage
-                        ?? L10n.english { EsclScannerBackend.connectionFailure(error) } ?? reason
-                    failures.append(L10n.t("{0}: {1}", address, reason))
-                    reportFailures.append(L10n.english { L10n.t("{0}: {1}", address, englishReason) })
                     break
                 }
             }
@@ -609,9 +600,7 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         if skippedPlain {
             throw ScanError.sessionFailed(reason: { L10n.t("{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.", record.info.name) })
         }
-        throw ScanError.sessionFailed(
-            L10n.t("{0} did not answer ({1}).", record.info.name, failures.joined(separator: "; ")),
-            english: L10n.english { L10n.t("{0} did not answer ({1}).", record.info.name, reportFailures.joined(separator: "; ")) })
+        throw ScanError.sessionFailed(reason: { L10n.t("{0} did not answer. Check that the scanner is on and reachable, then try again.", record.info.name) })
     }
 
     /// The scanner listed as `deviceID` is connected over plain HTTP although it also has an HTTPS address
@@ -635,57 +624,26 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         }
     }
 
-    /// Why an address did not answer, for the message; nil for an error that is not about the address
-    /// (a cancel), which is passed on. A TLS failure that is not about trust (an old TLS version, a
-    /// handshake error) counts as an address that did not answer.
-    private static func connectionFailure(_ error: Error) -> String? {
+    /// Whether an error is about the address not answering; false for an error that is not (a cancel),
+    /// which is passed on. A TLS failure that is not about trust (an old TLS version, a handshake error)
+    /// counts as an address that did not answer.
+    private static func isConnectionFailure(_ error: Error) -> Bool {
         if let transport = error as? URLError {
-            if transport.code == .cancelled {
-                return nil
-            }
-            if transport.code == .timedOut {
-                return L10n.t("no answer in time")
-            }
-            if isTLSFailure(transport) {
-                return L10n.t("no secure connection ({0})", transport.localizedDescription)
-            }
-            return transport.localizedDescription
+            return transport.code != .cancelled
         }
-        if let status = error as? EsclHttpError {
-            return status.localizedDescription
-        }
-        if let format = error as? EsclFormatError {
-            return format.message
-        }
-        return nil
+        return error is EsclHttpError || error is EsclFormatError
     }
 
-    /// The TLS handshake failed for a reason other than the certificate's trust, which the trust delegate
-    /// decides (its refusals are `EsclCertificateError`s and never pass over to another address).
-    static func isTLSFailure(_ error: URLError) -> Bool {
-        switch error.code {
-        case .secureConnectionFailed, .clientCertificateRejected, .clientCertificateRequired:
-            return true
-        default:
-            return false
+    /// What to tell the user when an address checked by hand did not give a scanner's capabilities, as
+    /// the Windows dialog says it.
+    private static func checkFailure(_ error: Error, _ address: ScannerAddress) -> String {
+        if error is EsclFormatError || error is EsclHttpError {
+            return L10n.t("Something answered at {0}, but it is not a scanner Lazy Scan can use. Check the address on the scanner's screen.", address)
         }
-    }
-
-    /// Why an address checked by hand did not answer, as the Windows dialog says it.
-    private static func checkFailure(_ error: Error) -> String {
-        if error is EsclFormatError {
-            return L10n.t("it answered, but not like an eSCL scanner")
+        if let transport = error as? URLError, transport.code == .timedOut || transport.code == .cancelled {
+            return L10n.t("Nothing answered at {0} in time. Check that the scanner is on and on the same network, then try again.", address)
         }
-        if let status = error as? EsclHttpError {
-            return L10n.t("it answered HTTP {0}", status.statusCode)
-        }
-        if let transport = error as? URLError {
-            if transport.code == .timedOut || transport.code == .cancelled {
-                return L10n.t("it did not answer in time")
-            }
-            return transport.localizedDescription
-        }
-        return error.localizedDescription
+        return L10n.t("Lazy Scan could not connect to {0}. Check the address and that the scanner is on and on the same network, then try again.", address)
     }
 
     // MARK: Diagnostics

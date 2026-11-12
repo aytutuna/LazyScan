@@ -1,5 +1,4 @@
 using System.Net.Http;
-using System.Security.Authentication;
 using System.Text;
 using LazyScan.App.Services;
 using LazyScan.Core;
@@ -229,13 +228,14 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
         {
-            string Unanswered() => Loc.T("No scanner answered at {0} ({1}).", address, e switch
+            string Unanswered() => e switch
             {
-                FormatException => Loc.T("it answered, but not like an eSCL scanner"),
-                OperationCanceledException => Loc.T("it did not answer in time"),
-                HttpRequestException { StatusCode: { } status } => Loc.T("it answered HTTP {0}", (int)status),
-                _ => e.Message,
-            });
+                FormatException or HttpRequestException { StatusCode: not null } =>
+                    Loc.T("Something answered at {0}, but it is not a scanner Lazy Scan can use. Check the address on the scanner's screen.", address),
+                OperationCanceledException =>
+                    Loc.T("Nothing answered at {0} in time. Check that the scanner is on and on the same network, then try again.", address),
+                _ => Loc.T("Lazy Scan could not connect to {0}. Check the address and that the scanner is on and on the same network, then try again.", address),
+            };
             return new EsclAddressCheck(address, null, null, Unanswered(), Loc.English(Unanswered));
         }
     }
@@ -356,7 +356,6 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     {
         var record = _records.FirstOrDefault(r => r.Info.Id == deviceId)
             ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
-        var failures = new List<Func<string>>();
         bool pinned = record.Addresses.Any(a => a.Secure && _trust.IsPinned(record.Uuid, a.Authority));
         bool skippedPlain = false;
         foreach (var address in record.Addresses)
@@ -399,7 +398,6 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 catch (Exception e) when (e is HttpRequestException or OperationCanceledException or FormatException)
                 {
                     client.Dispose();
-                    failures.Add(() => Loc.T("{0}: {1}", address, ConnectionFailure(e)));
                     break;
                 }
             }
@@ -408,22 +406,8 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         {
             throw ScanException.SessionFailed(() => Loc.T("{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.", record.Info.Name));
         }
-        throw ScanException.SessionFailed(() => Loc.T("{0} did not answer ({1}).", record.Info.Name, string.Join("; ", failures.Select(failure => failure()))));
+        throw ScanException.SessionFailed(() => Loc.T("{0} did not answer. Check that the scanner is on and reachable, then try again.", record.Info.Name));
     }
-
-    /// <summary>
-    /// Why an address did not answer, for the message. A TLS handshake failure that is not about
-    /// trust (the certificate's trust is decided by the validator) is named as such. Twin of
-    /// <c>connectionFailure</c> in the Swift backend.
-    /// </summary>
-    internal static string ConnectionFailure(Exception e) => e switch
-    {
-        OperationCanceledException => Loc.T("no answer in time"),
-        HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError }
-            or HttpRequestException { InnerException: AuthenticationException }
-            => Loc.T("no secure connection (the scanner's encryption is not accepted by Windows)"),
-        _ => e.Message,
-    };
 
     private EsclClient NewClient(ScannerAddress address, EsclCertificateValidator validator, string name) =>
         new(address.BaseUri, validator.CreateHandler(), _decode, name, validator, _clientOptions);

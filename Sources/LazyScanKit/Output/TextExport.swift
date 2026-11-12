@@ -59,7 +59,7 @@ public enum TextExport {
     }
 
     /// What the user reads when the text could not be read: "The text could not be read: no OCR
-    /// language … ." from the OCR error's message ("Scan failed: OCR failed: …").
+    /// language … ." from the OCR error's message ("Scan failed: no OCR language …").
     public static func recognitionFailed(_ ocrMessage: String) -> String {
         L10n.t("The text could not be read: {0}", reason(ocrMessage))
     }
@@ -138,11 +138,11 @@ public enum TextExport {
         hasText ? L10n.t("Copied the text of page {0}.", pageNumber) : L10n.t("No text was found on page {0}.", pageNumber)
     }
 
-    /// An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a
-    /// full stop.
+    /// An error's message without the "Scan failed: " it starts with, ending in a full stop.
     private static func reason(_ message: String) -> String {
         var reason = L10n.bare(message).trimmingCharacters(in: .whitespacesAndNewlines)
-        for prefix in [L10n.bare(L10n.t("Scan failed: {0}", "")), L10n.bare(L10n.t("OCR failed: {0}", ""))] where reason.hasPrefix(prefix) {
+        let prefix: String = L10n.bare(L10n.t("Scan failed: {0}", ""))
+        if reason.hasPrefix(prefix) {
             reason = String(reason.dropFirst(prefix.count))
         }
         if reason.isEmpty { reason = L10n.t("the text recognition did not work") }

@@ -66,25 +66,25 @@ final class TextExportTests: XCTestCase {
         XCTAssertEqual(TextExport.copiedMessage(pageNumber: 1, hasText: false), "No text was found on page 1.")
         XCTAssertEqual(
             TextExport.recognitionFailed(
-                "Scan failed: OCR failed: no OCR language pack is installed (Settings \u{2192} Time & Language \u{2192} Language)."),
+                "Scan failed: no OCR language pack is installed (Settings \u{2192} Time & Language \u{2192} Language)."),
             "The text could not be read: no OCR language pack is installed (Settings \u{2192} Time & Language \u{2192} Language).")
-        L10n.withTable(["Scan failed: {0}": "Tarama başarısız: {0}", "OCR failed: {0}": "OCR başarısız: {0}"], language: "tr") {
-            XCTAssertEqual(TextExport.recognitionFailed("Tarama başarısız: OCR başarısız: the request failed"),
+        L10n.withTable(["Scan failed: {0}": "Tarama başarısız: {0}"], language: "tr") {
+            XCTAssertEqual(TextExport.recognitionFailed("Tarama başarısız: the request failed"),
                            "The text could not be read: the request failed.")
         }
-        L10n.withTable(["Scan failed: {0}": "Scan failed: {0}", "OCR failed: {0}": "OCR failed: {0}"], language: "ar") {
-            XCTAssertEqual(TextExport.recognitionFailed("Scan failed: \u{2068}OCR failed: \u{2068}x\u{2069}\u{2069}"),
+        L10n.withTable(["Scan failed: {0}": "Scan failed: {0}"], language: "ar") {
+            XCTAssertEqual(TextExport.recognitionFailed("Scan failed: \u{2068}x\u{2069}"),
                            "The text could not be read: \u{2068}x.\u{2069}")
         }
-        XCTAssertEqual(TextExport.recognitionFailed("OCR failed: the request failed"),
+        XCTAssertEqual(TextExport.recognitionFailed("Scan failed: the request failed"),
                        "The text could not be read: the request failed.")
         XCTAssertEqual(TextExport.recognitionFailed("  "),
                        "The text could not be read: the text recognition did not work.")
-        XCTAssertEqual(TextExport.sidecarFailed("Scan failed: OCR failed: no OCR language pack is installed."),
+        XCTAssertEqual(TextExport.sidecarFailed("Scan failed: no OCR language pack is installed."),
                        "The PDF was saved, but not its text file: no OCR language pack is installed.")
         XCTAssertEqual(TextExport.sidecarFailed("Access to the path is denied."),
                        "The PDF was saved, but not its text file: Access to the path is denied.")
-        XCTAssertEqual(TextExport.layerLost(pageCount: 2, "Scan failed: OCR failed: no OCR language pack is installed."),
+        XCTAssertEqual(TextExport.layerLost(pageCount: 2, "Scan failed: no OCR language pack is installed."),
                        "The PDF was saved, but the text of 2 pages could not be read: no OCR language pack is installed.")
         XCTAssertEqual(TextExport.layerLost(pageCount: 1, "  "),
                        "The PDF was saved, but the text of 1 page could not be read: the text recognition did not work.")

@@ -96,6 +96,32 @@ public sealed class EsclScannerBackendTests : IDisposable
     }
 
     [Fact]
+    public async Task AScannerThatDoesNotAnswerFailsTheSessionWithAWholeSentence()
+    {
+        var (backend, _) = Scanner(new EsclTrustStore(_directory));
+        _plain.Stop();
+
+        var error = await Assert.ThrowsAsync<ScanException>(() => backend.OpenSessionAsync("escl:uuid:hp"));
+
+        Assert.Equal("Could not open a session with the scanner: HP M479 did not answer. "
+                     + "Check that the scanner is on and reachable, then try again.", error.Message);
+        backend.StopBrowsing();
+    }
+
+    [Fact]
+    public async Task AnAddressNothingListensAtIsReportedAsASentenceWithANextStep()
+    {
+        var backend = new EsclScannerBackend(new EsclHostList(_directory), new EsclTrustStore(_directory), discover: false,
+                                             new EsclClientOptions { RequestTimeout = TimeSpan.FromSeconds(5) }, []);
+        var address = ScannerAddress.Create(secure: false, "127.0.0.1", ClosedPort(), "eSCL")!;
+
+        var check = await backend.CheckAddressAsync(address, CancellationToken.None);
+
+        Assert.Equal($"Lazy Scan could not connect to {address}. "
+                     + "Check the address and that the scanner is on and on the same network, then try again.", check.Error);
+    }
+
+    [Fact]
     public async Task AScannerNeverTrustedFallsBackToPlainHttp()
     {
         var (backend, _) = Scanner(new EsclTrustStore(_directory));

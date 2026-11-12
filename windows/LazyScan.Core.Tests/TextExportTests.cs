@@ -29,7 +29,7 @@ public class TextExportTests
         try
         {
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("ar");
-            Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Scan failed: {0}", ["OCR failed: {0}"] = "OCR failed: {0}" };
+            Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Scan failed: {0}" };
             check();
         }
         finally
@@ -82,24 +82,24 @@ public class TextExportTests
         Assert.Equal("No text was found on page 1.", TextExport.CopiedMessage(1, false));
         Assert.Equal("The text could not be read: no OCR language pack is installed (Settings → Time & Language → Language).",
                      TextExport.RecognitionFailed(
-                         "Scan failed: OCR failed: no OCR language pack is installed (Settings → Time & Language → Language)."));
+                         "Scan failed: no OCR language pack is installed (Settings → Time & Language → Language)."));
         InRightToLeft(() => Assert.Equal("The text could not be read: \u2068x.\u2069",
-            TextExport.RecognitionFailed("Scan failed: \u2068OCR failed: \u2068x\u2069\u2069")));
-        Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Tarama başarısız: {0}", ["OCR failed: {0}"] = "OCR başarısız: {0}" };
+            TextExport.RecognitionFailed("Scan failed: \u2068x\u2069")));
+        Loc.Table = new Dictionary<string, string> { ["Scan failed: {0}"] = "Tarama başarısız: {0}" };
         try
         {
             Assert.Equal("The text could not be read: the request failed.",
-                         TextExport.RecognitionFailed("Tarama başarısız: OCR başarısız: the request failed"));
+                         TextExport.RecognitionFailed("Tarama başarısız: the request failed"));
         }
         finally { Loc.Table = null; }
-        Assert.Equal("The text could not be read: the request failed.", TextExport.RecognitionFailed("OCR failed: the request failed"));
+        Assert.Equal("The text could not be read: the request failed.", TextExport.RecognitionFailed("Scan failed: the request failed"));
         Assert.Equal("The text could not be read: the text recognition did not work.", TextExport.RecognitionFailed("  "));
         Assert.Equal("The PDF was saved, but not its text file: no OCR language pack is installed.",
-                     TextExport.SidecarFailed("Scan failed: OCR failed: no OCR language pack is installed."));
+                     TextExport.SidecarFailed("Scan failed: no OCR language pack is installed."));
         Assert.Equal("The PDF was saved, but not its text file: Access to the path is denied.",
                      TextExport.SidecarFailed("Access to the path is denied."));
         Assert.Equal("The PDF was saved, but the text of 2 pages could not be read: no OCR language pack is installed.",
-                     TextExport.LayerLost(2, "Scan failed: OCR failed: no OCR language pack is installed."));
+                     TextExport.LayerLost(2, "Scan failed: no OCR language pack is installed."));
         Assert.Equal("The PDF was saved, but the text of 1 page could not be read: the text recognition did not work.",
                      TextExport.LayerLost(1, "  "));
         Assert.Equal("The 3 pages are kept in the queue: press Save Word once the text can be read, or choose PDF to save them as scanned.",

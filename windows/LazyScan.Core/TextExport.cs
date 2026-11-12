@@ -67,7 +67,7 @@ public static class TextExport
 
     /// <summary>
     /// What the user reads when the text could not be read: "The text could not be read: no OCR
-    /// language pack is installed (…)." from the OCR error's message ("Scan failed: OCR failed: …").
+    /// language pack is installed (…)." from the OCR error's message ("Scan failed: no OCR language …").
     /// </summary>
     public static string RecognitionFailed(string ocrMessage) => Loc.T("The text could not be read: {0}", Reason(ocrMessage));
 
@@ -149,14 +149,12 @@ public static class TextExport
             "Cancelled — the page is kept in the queue.",
             "Cancelled — the {0} pages are kept in the queue.");
 
-    /// <summary>An error's message without the "Scan failed: " and "OCR failed: " it starts with, ending in a full stop.</summary>
+    /// <summary>An error's message without the "Scan failed: " it starts with, ending in a full stop.</summary>
     private static string Reason(string message)
     {
         string reason = Loc.Bare(message).Trim();
-        foreach (string prefix in new[] { Loc.Bare(Loc.T("Scan failed: {0}", "")), Loc.Bare(Loc.T("OCR failed: {0}", "")) })
-        {
-            if (reason.StartsWith(prefix, StringComparison.Ordinal)) reason = reason[prefix.Length..];
-        }
+        string prefix = Loc.Bare(Loc.T("Scan failed: {0}", ""));
+        if (reason.StartsWith(prefix, StringComparison.Ordinal)) reason = reason[prefix.Length..];
         if (reason.Length == 0) reason = Loc.T("the text recognition did not work");
         if (!reason.EndsWith('.')) reason += ".";
         return reason;

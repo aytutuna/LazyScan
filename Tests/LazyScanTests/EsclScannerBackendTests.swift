@@ -269,7 +269,7 @@ final class EsclScannerBackendTests: XCTestCase {
         let snapshot: DiscoverySnapshot = backend.addStatus(to: DiscoverySnapshot(platform: .ios))
         XCTAssertEqual(snapshot.manualHosts.first?.address, host)
         XCTAssertEqual(snapshot.manualHosts.first?.listed, false)
-        XCTAssertTrue(snapshot.manualHosts.first?.problem?.hasPrefix("No scanner answered at \(host) (") == true)
+        XCTAssertTrue(snapshot.manualHosts.first?.problem?.hasPrefix("Lazy Scan could not connect to \(host).") == true)
         XCTAssertTrue(Troubleshooter.diagnose(snapshot).contains { $0.id == "manualHost:" + host })
         XCTAssertTrue(backend.devices.isEmpty)
         XCTAssertTrue(backend.diagnosticsReport?.contains("eSCL addresses added by hand:\n  \(host): not listed (") == true)
@@ -294,12 +294,12 @@ final class EsclScannerBackendTests: XCTestCase {
         BackendStubScanners.shared.play("http://" + slow, [BackendStubAnswer.failure(URLError.Code.timedOut)])
 
         let notScanner: EsclAddressCheck = try await backend.checkAddress(try ScannerAddress.parse(garbage))
-        XCTAssertEqual(notScanner.error, "No scanner answered at \(garbage) (it answered, but not like an eSCL scanner).")
+        XCTAssertEqual(notScanner.error, "Something answered at \(garbage), but it is not a scanner Lazy Scan can use. Check the address on the scanner's screen.")
         XCTAssertTrue(notScanner.noAnswer)
         let notFound: EsclAddressCheck = try await backend.checkAddress(try ScannerAddress.parse(missing))
-        XCTAssertEqual(notFound.error, "No scanner answered at \(missing) (it answered HTTP 404).")
+        XCTAssertEqual(notFound.error, "Something answered at \(missing), but it is not a scanner Lazy Scan can use. Check the address on the scanner's screen.")
         let timedOut: EsclAddressCheck = try await backend.checkAddress(try ScannerAddress.parse(slow))
-        XCTAssertEqual(timedOut.error, "No scanner answered at \(slow) (it did not answer in time).")
+        XCTAssertEqual(timedOut.error, "Nothing answered at \(slow) in time. Check that the scanner is on and on the same network, then try again.")
         XCTAssertNil(timedOut.capabilities)
         XCTAssertNil(timedOut.certificate)
     }
@@ -418,9 +418,6 @@ final class EsclScannerBackendTests: XCTestCase {
         XCTAssertFalse(backend.isNotEncrypted("escl:" + plainHost))
         await other.close()
 
-        XCTAssertTrue(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.secureConnectionFailed)))
-        XCTAssertFalse(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.timedOut)))
-        XCTAssertFalse(EsclScannerBackend.isTLSFailure(URLError(URLError.Code.cancelled)))
         backend.stopBrowsing()
     }
 
@@ -448,6 +445,26 @@ final class EsclScannerBackendTests: XCTestCase {
         XCTAssertEqual(BackendStubScanners.shared.requestCount("https://" + host), 1)
         XCTAssertEqual(BackendStubScanners.shared.requestCount("http://" + host), 0)
         XCTAssertFalse(backend.isNotEncrypted("escl:uuid:hp"))
+        backend.stopBrowsing()
+    }
+
+    @MainActor
+    func test_aScannerThatDoesNotAnswer_failsTheSessionWithAWholeSentence() async throws {
+        prepare()
+        let host: String = stubHost()
+        BackendStubScanners.shared.play("http://" + host, [BackendStubAnswer.failure(URLError.Code.cannotConnectToHost)])
+        let plain: ScannerAddress = try ScannerAddress.parse(host)
+        let endpoint: EsclEndpoint = EsclEndpoint(key: "uuid:hp", name: hpName, txt: EsclTxtRecord.parse(nil), addresses: [plain])
+        let backend: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [endpoint])
+        backend.startBrowsing()
+
+        do {
+            _ = try await backend.openSession(deviceID: "escl:uuid:hp")
+            XCTFail("a scanner that does not answer was opened")
+        } catch let error as ScanError {
+            XCTAssertEqual(error.errorDescription, "Could not open a session with the scanner: \(hpName) did not answer. "
+                           + "Check that the scanner is on and reachable, then try again.")
+        }
         backend.stopBrowsing()
     }
 
