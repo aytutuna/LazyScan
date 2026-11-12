@@ -588,15 +588,11 @@ final class IOSScannerPickerTests: XCTestCase {
         XCTAssertNil(picker.demoRow)
     }
 
-    @MainActor
-    func test_theScreenStaysAwake_onlyWhileANetworkScannerWorks() {
-        prepare()
-        let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
-        let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")
-        XCTAssertTrue(IOSShell.keepsScreenAwake(isBusy: true, device: network))
-        XCTAssertFalse(IOSShell.keepsScreenAwake(isBusy: false, device: network))
-        XCTAssertFalse(IOSShell.keepsScreenAwake(isBusy: true, device: demo))
-        XCTAssertFalse(IOSShell.keepsScreenAwake(isBusy: true, device: nil))
+    func test_theScreenStaysAwake_whileBusyOrWhileTheCameraIsLive() {
+        XCTAssertTrue(IOSShell.keepsScreenAwake(isBusy: true, cameraLive: false))
+        XCTAssertTrue(IOSShell.keepsScreenAwake(isBusy: false, cameraLive: true))
+        XCTAssertTrue(IOSShell.keepsScreenAwake(isBusy: true, cameraLive: true))
+        XCTAssertFalse(IOSShell.keepsScreenAwake(isBusy: false, cameraLive: false))
     }
 
     // MARK: The troubleshooter's system side

@@ -95,8 +95,11 @@ public struct IOSRootView: View {
                 showsLibrary = false
             }
         }
-        .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
-            keepAwake(busy)
+        .onChange(of: state.isBusy) { (_: Bool, _: Bool) in
+            keepAwake()
+        }
+        .onChange(of: cameraRests) { (_: Bool, _: Bool) in
+            keepAwake()
         }
         .onChange(of: state.devices) { (_: [ScannerInfo], _: [ScannerInfo]) in
             followMode()
@@ -113,6 +116,7 @@ public struct IOSRootView: View {
             if new == .camera {
                 IOSShell.adoptCameraKind(state, defaults: UserDefaults.standard)
             }
+            keepAwake()
             followMode()
         }
     }
@@ -125,6 +129,7 @@ public struct IOSRootView: View {
         }
         .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
             PrivacyCover.show(phase != .active && showsPrivateContent)
+            keepAwake()
         }
         .onOpenURL { (url: URL) in
             if url.isFileURL {
@@ -304,13 +309,14 @@ public struct IOSRootView: View {
         state.showTroubleshooter = false
     }
 
-    /// While a network scanner's job runs, the screen stays on: iOS would suspend the app soon after it
-    /// locked, cutting a feeder batch short. Set here, not by the scan screen: a change of layout builds that
-    /// screen anew, and the old copy's onDisappear may run after the new copy's onAppear.
-    private func keepAwake(_ busy: Bool) {
-        let selected: String? = state.selectedDeviceID
-        let device: ScannerInfo? = state.devices.first(where: { (info: ScannerInfo) -> Bool in info.id == selected })
-        UIApplication.shared.isIdleTimerDisabled = IOSShell.keepsScreenAwake(isBusy: busy, device: device)
+    /// The screen stays on while the app works or the camera is live: iOS would suspend the app soon after it
+    /// locked, cutting a feeder batch short, and Auto capture takes pages without a touch. Set here, not by
+    /// the scan screen: a change of layout builds that screen anew, and the old copy's onDisappear may run
+    /// after the new copy's onAppear.
+    private func keepAwake() {
+        let cameraLive: Bool = mode == .camera && IOSShell.offersOwnCamera(state.settings) && !cameraRests
+            && scenePhase == .active
+        UIApplication.shared.isIdleTimerDisabled = IOSShell.keepsScreenAwake(isBusy: state.isBusy, cameraLive: cameraLive)
     }
 
     /// The selection follows the mode: in printer mode the remembered scanner once it is listed (at launch,

@@ -124,11 +124,11 @@ public enum IOSShell {
                            background: UIKitBackgroundActivity())
     }
 
-    /// The screen stays on while `isBusy` with a network scanner (`device`): iOS would suspend the app soon
-    /// after the screen locked, cutting a feeder batch short. Other work (the demo scanner, saving) lets it
-    /// sleep as usual.
-    public static func keepsScreenAwake(isBusy: Bool, device: ScannerInfo?) -> Bool {
-        isBusy && usesNetworkScanner(device)
+    /// The screen stays on while `isBusy` (a scan, a save, text recognition) and while the camera is live
+    /// (`cameraLive`): iOS would suspend the app soon after the screen locked, cutting a feeder batch short,
+    /// and Auto capture takes pages without a touch, so Auto-Lock would fire mid-document.
+    public static func keepsScreenAwake(isBusy: Bool, cameraLive: Bool) -> Bool {
+        isBusy || cameraLive
     }
 
     /// Whether `device` is a network scanner (eSCL), not the demo scanner; nil, with no scanner selected,
