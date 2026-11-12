@@ -26,6 +26,18 @@ struct PageStripCell: Identifiable {
     let toggle: String?
     /// Saving leaves the page out: a separator, a blank page skipped, a page skipped by hand.
     let excluded: Bool
+    /// "Start a new document here" or "Join with document 1" where the queue shows breaks and the page can take
+    /// one (`DocumentSplitter.breakLabel`); nil otherwise.
+    let breakAction: String?
+    /// The page is in a document of a queue that shows breaks, so the document can be named.
+    let canName: Bool
+    /// The page starts a document after the first, in a queue saved as several.
+    let startsDocument: Bool
+
+    /// The Document menu has something to offer.
+    var hasDocumentMenu: Bool {
+        breakAction != nil || canName
+    }
 
     /// The symbol beside `toggle`: a tick to keep the page, a slash to skip it.
     var toggleSymbol: String {
@@ -45,6 +57,7 @@ struct PageStripCell: Identifiable {
     static func cells(_ pages: [ScannedPage], options: DocumentOptions = DocumentOptions()) -> [PageStripCell] {
         let plan: SplitPlan = DocumentSplitter.plan(pages, options: options)
         let book: [BookPageLabel?] = BookPages.labels(pages)
+        let showsBreaks: Bool = DocumentSplitter.showsBreaks(plan, options: options)
         var cells: [PageStripCell] = []
         var index: Int = 0
         for page in pages {
@@ -54,11 +67,15 @@ struct PageStripCell: Identifiable {
                 badge = bookLabel.label
                 spoken = bookLabel.help
             }
+            let divider: String? = DocumentSplitter.dividerTitle(plan, index)
             cells.append(PageStripCell(id: page.id, number: index + 1, image: page.image, badge: badge,
-                                       spokenBadge: spoken, divider: DocumentSplitter.dividerTitle(plan, index),
+                                       spokenBadge: spoken, divider: divider,
                                        note: DocumentSplitter.badge(plan, index, page: page, options: options),
                                        toggle: DocumentSplitter.toggleLabel(plan, index, page: page, options: options),
-                                       excluded: plan.pages[index].role != .content))
+                                       excluded: plan.pages[index].role != .content,
+                                       breakAction: showsBreaks ? DocumentSplitter.breakLabel(plan, index) : nil,
+                                       canName: showsBreaks && plan.pages[index].document != nil,
+                                       startsDocument: divider != nil && plan.pages[index].document != 1))
             index += 1
         }
         return cells
@@ -69,7 +86,8 @@ struct PageStripCell: Identifiable {
 /// screen until a pinch changes it (one to six across an iPhone, up to ten on an iPad; kept in the defaults
 /// under `columnsKey`), with the queue's summary: each page with its number, its side or book badge, the
 /// title of the document it starts and its note (blank, separator) on a badge over it. A tap opens the page
-/// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted. A
+/// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted; a
+/// press and hold starts a new document at the page or joins it to the one before, and names its document. A
 /// page pressed and dragged onto another, or into the gap beside it, takes its place, and one dropped past the
 /// last goes to the end (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the same.
 /// While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it is not dragged.
@@ -85,6 +103,8 @@ struct PageStripView: View {
     @State private var pinched: Bool = false
     /// A pinch is under way; back to false when it ends or the system cancels it.
     @GestureState private var pinching: Bool = false
+    /// The page whose document is being named.
+    @State private var namingPage: UUID?
 
     static let columnsKey = "pages.columns"
 
@@ -119,6 +139,7 @@ struct PageStripView: View {
         GeometryReader { (geometry: GeometryProxy) in
             grid(width: geometry.size.width)
         }
+        .modifier(DocumentNameAlert(state: state, page: $namingPage))
     }
 
     private func grid(width: CGFloat) -> some View {
@@ -206,6 +227,9 @@ struct PageStripView: View {
                 onOpen(pageID)
             }
             .draggable(pageID.uuidString)
+            .contextMenu {
+                DocumentMenuItems(state: state, cell: cell, onName: { namingPage = pageID })
+            }
             .padding(.horizontal, spacing / 2)
             .padding(.vertical, (spacing + 4) / 2)
             .contentShape(Rectangle())
@@ -223,6 +247,18 @@ struct PageStripView: View {
             }
             .accessibilityAction(named: Text("Move page later")) {
                 state.movePage(id: pageID, by: 1)
+            }
+            .accessibilityActions {
+                if let breakAction = cell.breakAction {
+                    Button(breakAction) {
+                        state.toggleDocumentBreak(id: pageID)
+                    }
+                }
+                if cell.canName {
+                    Button(PageViewerText.nameDocumentLabel) {
+                        namingPage = pageID
+                    }
+                }
             }
             .accessibilityIdentifier("page.\(cell.number)")
     }
@@ -278,10 +314,15 @@ private struct PageTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: gap) {
             if let divider = cell.divider {
-                Text(divider)
-                    .font(compact ? Font.caption2.weight(.semibold) : Font.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .lineLimit(1)
+                HStack(spacing: gap) {
+                    if cell.startsDocument {
+                        Image(systemName: "scissors")
+                    }
+                    Text(divider)
+                        .lineLimit(1)
+                }
+                .font(compact ? Font.caption2.weight(.semibold) : Font.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
             }
             card
             HStack(spacing: gap) {
@@ -312,6 +353,14 @@ private struct PageTile: View {
                 if selected {
                     RoundedRectangle(cornerRadius: radius)
                         .fill(Color.black.opacity(0.15))
+                }
+            }
+            .overlay(alignment: .leading) {
+                if cell.startsDocument {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color.accentColor)
+                        .frame(width: 3)
+                        .padding(.vertical, radius / 2)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -349,6 +398,72 @@ private struct PageTile: View {
                 if working {
                     ProgressView()
                 }
+            }
+    }
+}
+
+/// Start a new document at the page or join it to the one before, and name its document: the items of the
+/// page viewer's Document menu and of a grid tile's menu. Off while the app is busy.
+struct DocumentMenuItems: View {
+    let state: AppState
+    let cell: PageStripCell
+    let onName: () -> Void
+
+    var body: some View {
+        if let breakAction = cell.breakAction {
+            Button {
+                state.toggleDocumentBreak(id: cell.id)
+            } label: {
+                Label(breakAction, systemImage: "scissors")
+            }
+            .disabled(state.isBusy)
+            .accessibilityIdentifier("tile.document.break")
+        }
+        if cell.canName {
+            Button(action: onName) {
+                Label(PageViewerText.nameDocumentLabel, systemImage: "textformat")
+            }
+            .disabled(state.isBusy)
+            .accessibilityIdentifier("tile.document.name")
+        }
+    }
+}
+
+/// The alert that names the document of the page in `page` (`AppState.setDocumentLabel`); the field starts with
+/// the name it has, and an empty name removes it.
+struct DocumentNameAlert: ViewModifier {
+    @ObservedObject var state: AppState
+    @Binding var page: UUID?
+    @State private var draft: String = ""
+
+    private var asking: Binding<Bool> {
+        Binding<Bool>(get: { page != nil }, set: { (shown: Bool) in
+            if !shown { page = nil }
+        })
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: page) { (_: UUID?, id: UUID?) in
+                if let id {
+                    draft = state.documentLabel(of: id)
+                }
+            }
+            .alert(PageViewerText.nameDocumentTitle, isPresented: asking) {
+                TextField("Name", text: $draft)
+                    .keyboardType(.default)
+                    .textInputAutocapitalization(.sentences)
+                Button("Save") {
+                    if let id = page {
+                        state.setDocumentLabel(id: id, label: draft)
+                    }
+                    page = nil
+                }
+                Button(PageViewerText.cancelLabel, role: .cancel) {
+                    page = nil
+                }
+            } message: {
+                Text("Goes into the file name.")
             }
     }
 }

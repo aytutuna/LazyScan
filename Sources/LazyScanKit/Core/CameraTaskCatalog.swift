@@ -28,6 +28,7 @@ public enum CameraTaskCatalog {
     public static var backsHelp: String { L10n.t("Turn the sheets over. The fronts and backs are put in order when the last back is in.") }
     /// The batch's next page starts a new document.
     public static var newDocumentPrompt: String { L10n.t("The next page starts a new document.") }
+    public static var newDocumentCancelled: String { L10n.t("No new document will start.") }
 
     public static var noBackLabel: String { L10n.t("No back side") }
     public static var startBacksLabel: String { L10n.t("Now the backs") }

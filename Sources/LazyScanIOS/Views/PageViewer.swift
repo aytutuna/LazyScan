@@ -16,6 +16,9 @@ enum PageViewerText {
     static var rotateLabel: String { String(localized: "Rotate") }
     static var filtersLabel: String { String(localized: "Filters") }
     static var cropLabel: String { String(localized: "Crop") }
+    static var documentLabel: String { String(localized: "Document") }
+    static var nameDocumentLabel: String { String(localized: "Name document\u{2026}") }
+    static var nameDocumentTitle: String { String(localized: "Name this document") }
     static var textLabel: String { String(localized: "Text") }
     static var textTitle: String { String(localized: "Text on this page") }
     static var readingText: String { String(localized: "Reading the text\u{2026}") }
@@ -75,7 +78,8 @@ enum PageViewerText {
 /// of this page with each, `AppState.filterPreviews`), turns it a quarter, opens the corner editor on its
 /// photo for Crop (`AppState.pageCropStart`, `recropPage`), shows the text on it (`PageTextSheet`), keeps or
 /// skips it (`PageStripCell.toggle`), for a book's page splits its spread again (`onEditSpread`) or joins its
-/// two pages, and deletes it once asked; the edits are off
+/// two pages, starts a new document at it, joins it to the one before and names its document (the Document
+/// menu, `DocumentMenuItems`), and deletes it once asked; the edits are off
 /// while the app is busy, and the filters, Crop and Delete also while a share or a send reads the pages
 /// (`AppState.readsQueue`).
 /// Filters (`PageRecut.canRecut`; not for a photo) and Crop (`PageRecut.canCrop`) are left out for pages that
@@ -93,6 +97,8 @@ struct PageViewer: View {
     /// The previews are being made; once they are in, a filter without one shows a plain tile.
     @State private var loadingPreviews: Bool = false
     @State private var asksDelete: Bool = false
+    /// The page whose document is being named.
+    @State private var namingPage: UUID?
     /// The page whose text is shown.
     @State private var textOf: PageViewerStart?
     @State private var crop: IOSCropRequest?
@@ -309,6 +315,7 @@ struct PageViewer: View {
         } message: {
             Text(PageViewerText.deleteMessage)
         }
+        .modifier(DocumentNameAlert(state: state, page: $namingPage))
         .sheet(item: $textOf) { (shown: PageViewerStart) in
             PageTextSheet(pageID: shown.id)
                 .environmentObject(state)
@@ -506,6 +513,16 @@ struct PageViewer: View {
                 Spacer()
             }
         }
+        if let cell = currentCell, cell.hasDocumentMenu {
+            Menu {
+                DocumentMenuItems(state: state, cell: cell, onName: nameCurrentDocument)
+            } label: {
+                Label(PageViewerText.documentLabel, systemImage: "scissors")
+            }
+            .disabled(state.isBusy)
+            .accessibilityIdentifier("viewer.document")
+            Spacer()
+        }
         Button(role: .destructive, action: askDelete) {
             Label(PageViewerText.deleteLabel, systemImage: "trash")
         }
@@ -531,6 +548,10 @@ struct PageViewer: View {
     private func rotateCurrent() {
         guard let id = selection else { return }
         state.rotatePage(id: id)
+    }
+
+    private func nameCurrentDocument() {
+        namingPage = selection
     }
 
     private func toggleInclusion() {

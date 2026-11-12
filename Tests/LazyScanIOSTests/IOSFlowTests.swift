@@ -607,6 +607,21 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(cells[1].toggleSymbol, "rectangle.slash")
     }
 
+    func test_pageGrid_offersSplitJoinAndNameOnlyWhereTheQueueShowsBreaks() {
+        let plain: [ScannedPage] = [flowPage(), flowPage(), flowPage()]
+        let unsplit: [PageStripCell] = PageStripCell.cells(plain, options: DocumentOptions())
+        XCTAssertEqual(unsplit.map(\.breakAction), [nil, nil, nil])
+        XCTAssertEqual(unsplit.map(\.canName), [false, false, false])
+        XCTAssertEqual(unsplit.map(\.hasDocumentMenu), [false, false, false])
+
+        let split: [ScannedPage] = [plain[0], plain[1].withDocumentBreak(.split), plain[2]]
+        let cells: [PageStripCell] = PageStripCell.cells(split, options: DocumentOptions())
+        XCTAssertEqual(cells.map(\.breakAction), [nil, "Join with document 1", "Start a new document here"])
+        XCTAssertEqual(cells.map(\.canName), [true, true, true])
+        XCTAssertEqual(cells.map(\.startsDocument), [false, true, false])
+        XCTAssertEqual(cells.map(\.divider), ["Document 1", "Document 2", nil])
+    }
+
     func test_deletingAPageInTheViewer_showsTheNextOne_orTheOneBeforeTheLast() {
         let a = UUID(), b = UUID(), c = UUID()
         XCTAssertEqual(PageViewer.pageAfterRemoving(a, from: [a, b, c]), b)

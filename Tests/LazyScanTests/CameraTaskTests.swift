@@ -570,6 +570,21 @@ final class CameraTaskTests: XCTestCase {
     }
 
     @MainActor
+    func test_batch_newDocument_aSecondTapCancelsIt() async throws {
+        let state: AppState = makeState(.batch)
+        try await bringIn(state, try printedPage())
+        state.startNewDocument()
+        XCTAssertTrue(state.newDocumentPending)
+        XCTAssertTrue(state.canToggleNewDocument)
+        state.startNewDocument()
+        XCTAssertFalse(state.newDocumentPending)
+        XCTAssertEqual(state.statusMessage, CameraTaskCatalog.newDocumentCancelled)
+        XCTAssertTrue(state.canStartNewDocument)
+        try await bringIn(state, try printedPage())
+        XCTAssertNotEqual(state.scannedPages[1].documentBreak, .split)
+    }
+
+    @MainActor
     func test_batch_newDocument_goesWithTheTask() async throws {
         let state: AppState = makeState(.batch)
         let page: ScannedPage = try printedPage()

@@ -95,34 +95,41 @@ struct CameraTaskButtons: View {
     }
 }
 
-/// Separate documents' page break: the next page starts a new document (Command-N). It sits between Options
-/// and Save on the picture, dark like Options, so it does not read as a second Save.
+/// Separate documents' page break: the next page starts a new document (Command-N); tapped again while that is
+/// pending, it cancels. It sits between Options and Save on the picture, dark like Options (filled in the accent
+/// color while pending), so it does not read as a second Save.
 struct SplitHereButton: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
 
     static var label: String { String(localized: "Split here") }
+    static var cancelLabel: String { String(localized: "Cancel split") }
 
     var body: some View {
-        Button {
+        let pending: Bool = state.newDocumentPending
+        let fill: Color = pending ? Color.accentColor : Color(white: 0.15)
+        let enabled: Bool = state.canToggleNewDocument && !importer.isImporting
+        let title: String = pending ? Self.cancelLabel : Self.label
+        let hint: String = pending ? String(localized: "Cancels the pending split.") : CameraTaskCatalog.newDocumentPrompt
+        return Button {
             state.startNewDocument()
         } label: {
-            Label(Self.label, systemImage: "scissors")
+            Label(title, systemImage: "scissors")
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .foregroundStyle(Color.white)
                 .padding(.horizontal, 16)
                 .frame(height: 44)
-                .background(Capsule().fill(Color(white: 0.15)))
+                .background(Capsule().fill(fill))
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(state.isBusy || importer.isImporting || !state.canStartNewDocument)
-        .opacity(state.canStartNewDocument && !importer.isImporting ? 1 : 0.4)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
         .keyboardShortcut(IOSShortcuts.newDocument.keyboardShortcut)
-        .accessibilityHint(Text(CameraTaskCatalog.newDocumentPrompt))
+        .accessibilityHint(Text(hint))
         .accessibilityIdentifier("task.newDocument")
     }
 }

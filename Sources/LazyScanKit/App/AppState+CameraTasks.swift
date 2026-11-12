@@ -118,11 +118,17 @@ extension AppState {
         offersNewDocument && !isBusy && !scannedPages.isEmpty && !newDocumentPending
     }
 
-    /// New document: the next page taken starts a new document, as a click on the gap before it would.
+    /// Split here can be tapped: it starts a new document, or cancels the one pending.
+    public var canToggleNewDocument: Bool {
+        newDocumentPending ? offersNewDocument && !isBusy : canStartNewDocument
+    }
+
+    /// New document: the next page taken starts a new document, as a click on the gap before it would; a
+    /// second tap while it is pending cancels it.
     public func startNewDocument() {
-        guard canStartNewDocument else { return }
-        newDocumentPending = true
-        statusMessage = CameraTaskCatalog.newDocumentPrompt
+        guard canToggleNewDocument else { return }
+        newDocumentPending.toggle()
+        statusMessage = newDocumentPending ? CameraTaskCatalog.newDocumentPrompt : CameraTaskCatalog.newDocumentCancelled
     }
 
     /// After pages came in (from the camera or a scanner): the first of `ids` that is saved (not a separator
