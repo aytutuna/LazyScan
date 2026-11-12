@@ -924,6 +924,7 @@ struct ScanScreen: View {
     // MARK: The page strip
 
     private func openPages() {
+        guard !importer.isImporting else { return }
         afterOptions {
             pagesShown = true
         }

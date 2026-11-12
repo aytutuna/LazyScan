@@ -244,6 +244,7 @@ struct ShutterRing: View {
 /// tap is felt as a page comes in.
 struct PagesStack: View {
     @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var importer: IOSImportSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
     let onPages: () -> Void
     @State private var bumped: Bool = false
@@ -264,7 +265,9 @@ struct PagesStack: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(count == 0 && !state.canUndoRemove)
+        // The strip's sheet would sit over an import's corner editor.
+        .disabled((count == 0 && !state.canUndoRemove) || importer.isImporting)
+        .opacity(importer.isImporting ? 0.4 : 1)
         .onChange(of: count) { (old: Int, new: Int) in
             guard new > old, !reduceMotion else { return }
             withAnimation(.spring(duration: 0.15)) {
