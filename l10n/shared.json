@@ -2597,6 +2597,11 @@
   "{0} could not be deleted: {1}": {
     "note": "{0} is the name of a saved file, {1} the reason."
   },
+  "Ctrl+Enter or F5": {},
+  "Ctrl+Shift+Enter": {},
+  "Ctrl+S": {},
+  "Ctrl+O": {},
+  "Esc": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
