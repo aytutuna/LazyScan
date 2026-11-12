@@ -1231,7 +1231,8 @@ public final class AppState: ObservableObject {
             func makeIntake(stopped: Bool) -> PageIntake {
                 // A scanner that fell back to one side (its feeder could not scan both, or was never
                 // asked) delivered one side of each sheet.
-                let twoSided = sides == .both && session.lastScanDuplex != false
+                let fellBackToOneSide = session.lastScanDuplex == false
+                let twoSided = sides == .both && !fellBackToOneSide
                 // Two-sided pages are put in reading order with their sides marked and the backs turned
                 // upright; a stack turned over by hand gets its side.
                 let arrangement: ScanArrangement = twoSided ? .twoSided
@@ -2958,7 +2959,7 @@ public final class AppState: ObservableObject {
             url = URL(fileURLWithPath: path, isDirectory: true)
         }
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        if currentCancelFlag != nil { saveDirectory = (url, settings.destinationBookmark, settings.destinationPath) }
+        if currentCancelFlag != nil { saveDirectory = url }
         return url
     }
 
