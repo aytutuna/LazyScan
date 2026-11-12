@@ -591,6 +591,9 @@ public final class AppState: ObservableObject {
     var emailsAfterSave = false
     /// The save under way opens the share sheet with its files once written (`saveAndShare`).
     var sharesAfterSave = false
+    /// A step the iPhone adds to the save under way (its Photos), run with the files once written; for that
+    /// save only.
+    public var afterSaveStep: (@MainActor ([URL]) -> Void)?
     /// A `.lsdoc` opened by hand, offered on a banner until its pages are added, opened as a new queue
     /// or dismissed (AppState+Package.swift); nil otherwise.
     @Published public internal(set) var pendingPackage: PendingPackage?
@@ -2858,6 +2861,10 @@ public final class AppState: ObservableObject {
     /// The after-save action of the settings the files were saved with, once a save has finished
     /// (never after a cancelled or failed one). A refusal is reported; the save stands.
     func runAfterSave(_ action: AfterSaveAction, saved: [URL]) {
+        if let step = afterSaveStep {
+            afterSaveStep = nil
+            step(saved)
+        }
         if emailsAfterSave {
             emailsAfterSave = false
             runFileAction(.email, urls: saved)
@@ -3386,6 +3393,7 @@ public final class AppState: ObservableObject {
             forgetPDFPassword()
             emailsAfterSave = false
             sharesAfterSave = false
+            afterSaveStep = nil
             currentCancelFlag = nil
             saveDirectory = nil
             progress = nil

@@ -292,7 +292,7 @@ on the pages, a chevron opens a drawer of camera options (color, flash, camera) 
 bottom bar; the pages taken stay when you change the Type, and only the ID card asks first
 whether to save them or discard them; a printer button switches to printer mode, where one scanner is picked in the Scanner sheet and
 Scan sits beside Save, and a camera button switches back, the scanner kept for next time; Print… and
-Email… in Options, and what runs after each save (Email, Print, Send to computer) under After saving;
+Email… in Options, and what runs after each save (Email, Print, Send to computer, Photos) under After saving;
 so far the Demo Scanner,
 our own camera as the default way to take pages, with the page's outline found by the page corner
 model (FastViT-T8) and held

@@ -128,6 +128,7 @@ public struct IOSRootView: View {
     public var body: some View {
         layout
         .environmentObject(importer)
+        .environmentObject(fileActions)
         .task {
             startOnce()
         }
@@ -628,8 +629,29 @@ private struct FileActionPresenters: ViewModifier {
                 MailSheet(fileActions: fileActions)
             }
             .quickLookPreview($fileActions.previewURL)
+            .alert(PhotosProblem.title, isPresented: photosProblemShown, presenting: fileActions.photosProblem) { (problem: PhotosProblem) in
+                if problem == .denied {
+                    Button("Settings") {
+                        fileActions.openSettings()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } else {
+                    Button("OK", role: .cancel) {}
+                }
+            } message: { (problem: PhotosProblem) in
+                Text(problem.message)
+            }
             .modifier(ErrorAlert(state: state))
             .modifier(SidesOrderQuestion(state: state))
+    }
+
+    private var photosProblemShown: Binding<Bool> {
+        let actions: IOSFileActions = fileActions
+        return Binding<Bool>(
+            get: { actions.photosProblem != nil },
+            set: { (isShown: Bool) in
+                if !isShown { actions.photosProblem = nil }
+            })
     }
 
     private func closeShareSheet() {

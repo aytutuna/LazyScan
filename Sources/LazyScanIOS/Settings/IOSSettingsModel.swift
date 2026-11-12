@@ -329,22 +329,31 @@ public enum IOSAdjustment: String, CaseIterable, Identifiable {
 /// written (the save follows once the copy screen has closed); Email goes out with the saved file. Under the
 /// checks, Then is the settings' own action after a save (`OutputOptions.afterSave`, kept in presets), the
 /// phone's only control for it. A save that is emailed runs the email in its place (`AppState.runAfterSave`):
-/// a preview, Files or the share sheet cannot show over Mail's composer.
+/// a preview, Files or the share sheet cannot show over Mail's composer. Photos adds the saved JPEG or PNG
+/// pictures to the photo library once they are written; the files stay in the save folder.
 public enum IOSAfterSave: String, CaseIterable, Identifiable {
     case send
     case print
     case email
+    case photos
 
     public var id: String { rawValue }
 
     /// The rows' order under After saving.
-    public static let rows: [IOSAfterSave] = [.email, .print, .send]
+    public static let rows: [IOSAfterSave] = [.email, .print, .send, .photos]
 
     public static var title: String { String(localized: "After saving") }
     public static var footer: String { String(localized: "Runs each time a document is saved. Change it any time.") }
     public static var thenTitle: String { String(localized: "Then") }
     /// Under Then while Email is checked.
     public static var emailInsteadReason: String { String(localized: "Email is sent instead") }
+    /// Under Photos while the save is not JPEG or PNG pictures.
+    public static var photosNeedsPicturesReason: String { String(localized: "Only for JPEG and PNG saves") }
+    public static var photosRowHint: String { String(localized: "Adds saved pictures to your photo library") }
+    public static var photosButtonHint: String {
+        String(localized: "Adds the saved pictures to your photo library. The files stay in the save folder.")
+    }
+    public static var photosSavedLabel: String { String(localized: "Saved to Photos") }
 
     /// After saving's value on the Options list: the checked actions, else what Then does.
     public static func summary(checked: Set<IOSAfterSave>, then: AfterSaveAction, lazyPrintInstalled: Bool) -> String {
@@ -373,6 +382,7 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         case .send: return IOSCompanionText.sendButton
         case .print: return String(localized: "Print")
         case .email: return String(localized: "Email")
+        case .photos: return String(localized: "Photos")
         }
     }
 
@@ -384,11 +394,13 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     /// The user's defaults key the row's check is kept under.
     public var key: String { "afterSave.\(rawValue)" }
 
-    /// The checked actions in the order they run; Send to computer only while a computer is paired.
-    public static func steps(_ defaults: UserDefaults, paired: Bool) -> [IOSAfterSave] {
+    /// The checked actions in the order they run; Send to computer only while a computer is paired, Photos
+    /// only while the save is JPEG or PNG pictures (`pictures`).
+    public static func steps(_ defaults: UserDefaults, paired: Bool, pictures: Bool) -> [IOSAfterSave] {
         var steps: [IOSAfterSave] = []
         for action in allCases where defaults.bool(forKey: action.key) {
             if action == .send && !paired { continue }
+            if action == .photos && !pictures { continue }
             steps.append(action)
         }
         return steps

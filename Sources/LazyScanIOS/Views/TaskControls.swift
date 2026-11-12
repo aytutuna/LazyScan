@@ -326,8 +326,8 @@ struct SeparateToggle: View {
 
 /// After saving (`IOSAfterSave`): what Save also does, each a check, and under them Then, the settings' own
 /// action after a save (`OutputOptions.afterSave`) in the phone's words. The After saving page's content. Send
-/// to computer is dimmed, with its reason under it, while nothing can send; its
-/// check stays as it was. Then is dimmed while Email is checked: the email goes in its place.
+/// to computer is dimmed, with its reason under it, while nothing can send, and so is Photos while the save is
+/// not JPEG or PNG pictures; their checks stay as they were. Then is dimmed while Email is checked: the email goes in its place.
 struct AfterSaveSection: View {
     @EnvironmentObject private var state: AppState
     @AppStorage(IOSAfterSave.email.key) private var emails: Bool = false
@@ -363,10 +363,15 @@ struct AfterSaveSection: View {
         }
     }
 
-    /// Why `action` cannot run now, nil while it can. Only Send to computer can be out of reach: Options
-    /// shows it under the same test (`IOSShell.offersSendToComputer`).
+    /// Why `action` cannot run now, nil while it can. Send to computer can be out of reach: Options
+    /// shows it under the same test (`IOSShell.offersSendToComputer`). So can Photos, which takes JPEG and PNG
+    /// pictures only.
     private func unavailableReason(of action: IOSAfterSave) -> String? {
         let s: ScanSettings = state.settings
+        if action == .photos {
+            let pictures: Bool = state.appendTarget == nil && IOSShell.savesImages(s) && IOSShell.savesPhotosPictures(s)
+            return pictures ? nil : IOSAfterSave.photosNeedsPicturesReason
+        }
         guard action == .send, !IOSShell.offersSendToComputer(s, status: state.companionStatus) else { return nil }
         return IOSShell.collectsPages(s) ? IOSCompanionText.sendNeedsPairingReason : IOSCompanionText.sendNeedsPagesReason
     }
@@ -403,8 +408,13 @@ private struct AfterSaveRow: View {
         }
         // The label sets its own colours, so a disabled button does not dim it.
         .opacity(isEnabled ? 1 : 0.4)
+        .accessibilityHint(Text(hint))
         .accessibilityAddTraits(checked ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier("options.afterSave.\(action.rawValue)")
+    }
+
+    private var hint: String {
+        action == .photos ? IOSAfterSave.photosRowHint : ""
     }
 }
 

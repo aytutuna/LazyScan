@@ -308,16 +308,19 @@ final class IOSSettingsTests: XCTestCase {
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
-        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true), [], "Nothing checked at first")
+        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true, pictures: true), [], "Nothing checked at first")
         for action in IOSAfterSave.rows {
             defaults.set(true, forKey: action.key)
         }
-        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true), [.send, .print, .email])
-        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: false), [.print, .email], "No computer: skipped")
+        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true, pictures: true), [.send, .print, .email, .photos])
+        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: false, pictures: true), [.print, .email, .photos],
+                       "No computer: skipped")
+        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true, pictures: false), [.send, .print, .email],
+                       "Not pictures: Photos is skipped")
         defaults.set(false, forKey: IOSAfterSave.print.key)
-        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true), [.send, .email])
+        XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true, pictures: true), [.send, .email, .photos])
         XCTAssertEqual(IOSAfterSave.rows.map { (action: IOSAfterSave) -> String in action.label },
-                       ["Email", "Print", "Send to computer"])
+                       ["Email", "Print", "Send to computer", "Photos"])
         XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: true), "Lazy Print")
         XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: false), "Print")
         XCTAssertEqual(IOSAfterSave.email.label(lazyPrintInstalled: true), "Email")

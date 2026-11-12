@@ -50,6 +50,7 @@ enum ScanCover: String, Identifiable {
 struct ScanScreen: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
+    @EnvironmentObject private var fileActions: IOSFileActions
     @Environment(\.horizontalSizeClass) private var sizeClass: UserInterfaceSizeClass?
     /// The scanners to pick from.
     let picker: IOSScannerPickerModel
@@ -104,6 +105,7 @@ struct ScanScreen: View {
     /// Save waits for the copy screen After saving's Print opened, then emails when `emailsAfterPrint`.
     @State private var savesAfterPrint: Bool = false
     @State private var emailsAfterPrint: Bool = false
+    @State private var photosAfterPrint: Bool = false
     /// Save waits for the hand-off to Lazy Print After saving's Print started, then emails when `emailsAfterPrint`.
     @State private var savesAfterHandoff: Bool = false
     /// After saving's steps left once Send to computer's alert closes: the copy screen and Mail cannot show over it.
@@ -173,6 +175,7 @@ struct ScanScreen: View {
             }
             .onChange(of: state.lastSavedURLs) { (_: [URL], _: [URL]) in
                 savedRowStale = false
+                fileActions.forgetAddedToPhotos()
             }
             .onChange(of: state.removedTitle) { (_: String, _: String) in
                 removedCardExpired = false
@@ -255,7 +258,7 @@ struct ScanScreen: View {
             .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
                 if !busy && savesAfterHandoff {
                     savesAfterHandoff = false
-                    saveNow(emails: emailsAfterPrint)
+                    saveNow(emails: emailsAfterPrint, photos: photosAfterPrint)
                     return
                 }
                 // Print… held nothing (nothing to print, or cancelled), so no copy screen will close.
@@ -1358,7 +1361,8 @@ struct ScanScreen: View {
     private func saveWithActions() {
         guard !state.holdForSidesOrder(saveWithActions) else { return }
         let paired: Bool = IOSShell.offersSendToComputer(state.settings, status: state.companionStatus)
-        let steps: [IOSAfterSave] = IOSAfterSave.steps(UserDefaults.standard, paired: paired)
+        let pictures: Bool = savesImages && IOSShell.savesPhotosPictures(state.settings)
+        let steps: [IOSAfterSave] = IOSAfterSave.steps(UserDefaults.standard, paired: paired, pictures: pictures)
         guard steps.contains(.send) else {
             printThenSave(steps)
             return
@@ -1388,14 +1392,16 @@ struct ScanScreen: View {
     }
 
     /// After saving's Print, handed to Lazy Print where it is installed, else on the copy screen the save waits
-    /// for, then the save, emailing when checked.
+    /// for, then the save, emailing and adding to Photos when checked.
     private func printThenSave(_ steps: [IOSAfterSave]) {
         let emails: Bool = steps.contains(.email)
+        let photos: Bool = steps.contains(.photos)
         guard steps.contains(.print) else {
-            saveNow(emails: emails)
+            saveNow(emails: emails, photos: photos)
             return
         }
         emailsAfterPrint = emails
+        photosAfterPrint = photos
         // Lazy Print takes the pages as a PDF, so there is no copy screen: the save follows once it has them.
         if state.canPrintQueueWithLazyPrint {
             savesAfterHandoff = true
@@ -1425,13 +1431,24 @@ struct ScanScreen: View {
     /// The copy cover is closing: a password sheet presented over it would be dropped, so the save waits.
     private func saveAfterCoverCloses() {
         let emails: Bool = emailsAfterPrint
+        let photos: Bool = photosAfterPrint
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
-            saveNow(emails: emails)
+            saveNow(emails: emails, photos: photos)
         }
     }
 
-    private func saveNow(emails: Bool) {
+    private func saveNow(emails: Bool, photos: Bool) {
+        if photos {
+            let actions: IOSFileActions = fileActions
+            state.afterSaveStep = { (urls: [URL]) -> Void in
+                Task { @MainActor in await actions.addToPhotos(urls) }
+            }
+        }
+        defer {
+            // Nothing started (no save to run after): the next save must not add to Photos.
+            if !state.isBusy { state.afterSaveStep = nil }
+        }
         if emails {
             saveAndEmail()
         } else {
@@ -1797,6 +1814,7 @@ struct TurnedOverButtons: View {
 /// Show in Files. Print hands the files to Lazy Print when it is installed, else shows the AirPrint sheet.
 private struct SavedFilesRow: View {
     @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var fileActions: IOSFileActions
 
     var body: some View {
         let urls: [URL] = state.lastSavedURLs
@@ -1836,6 +1854,9 @@ private struct SavedFilesRow: View {
                 .accessibilityLabel(Text(printName))
                 .accessibilityIdentifier("saved.print")
             }
+            if IOSShell.canAddToPhotos(urls) {
+                photosButton(urls)
+            }
             Button {
                 state.runFileAction(.share, urls: urls)
             } label: {
@@ -1853,6 +1874,31 @@ private struct SavedFilesRow: View {
             .accessibilityLabel(Text("Show in Files"))
             .accessibilityIdentifier("reveal.button")
         }
+    }
+
+    /// Adds the saved pictures to Photos; a check once they are in, a progress view while they go.
+    private func photosButton(_ urls: [URL]) -> some View {
+        let added: Bool = fileActions.addedToPhotos == urls
+        let adding: Bool = fileActions.addingToPhotos
+        let icon: String = added ? "checkmark.circle" : "photo.on.rectangle"
+        let name: String = added ? IOSAfterSave.photosSavedLabel : IOSAfterSave.photos.label
+        let actions: IOSFileActions = fileActions
+        return Button {
+            Task { @MainActor in await actions.addToPhotos(urls) }
+        } label: {
+            if adding {
+                ProgressView()
+            } else {
+                Label(name, systemImage: icon)
+                    .labelStyle(.iconOnly)
+            }
+        }
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
+        .disabled(added || adding)
+        .accessibilityLabel(Text(name))
+        .accessibilityHint(Text(IOSAfterSave.photosButtonHint))
+        .accessibilityIdentifier("saved.photos")
     }
 
     private func printSaved(_ urls: [URL]) {

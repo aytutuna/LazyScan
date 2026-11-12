@@ -487,6 +487,18 @@ public enum IOSShell {
         settings.format.isImageFormat
     }
 
+    /// The collected pages are saved as JPEG or PNG pictures, which Photos takes (`IOSAfterSave.photos`).
+    public static func savesPhotosPictures(_ settings: ScanSettings) -> Bool {
+        settings.format == .jpeg || settings.format == .png
+    }
+
+    /// Every saved file is a JPEG or PNG picture, so the saved row offers Photos.
+    public static func canAddToPhotos(_ urls: [URL]) -> Bool {
+        !urls.isEmpty && urls.allSatisfy { (url: URL) -> Bool in
+            ["jpg", "jpeg", "png"].contains(url.pathExtension.lowercased())
+        }
+    }
+
     /// Saves the queue as Save does, without After saving's steps: into the PDF picked, as pictures, or as the
     /// format's document.
     @MainActor

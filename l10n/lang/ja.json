@@ -2340,7 +2340,6 @@
     "ios": {
       "NSCameraUsageDescription": "Lazy Scanは、書類や写真のスキャンと、コンピュータに表示されるペアリングコードの読み取りにカメラを使用します。スキャンした内容は、共有しない限りこのデバイスから外部に送信されません。",
       "NSLocalNetworkUsageDescription": "Lazy Scanは、ローカルネットワーク上のスキャナ（スキャン機能付きプリンタなど）と、ペアリングしたコンピュータを探します。見つかったスキャナでスキャンしたり、スキャンしたデータをコンピュータに送信したりできます。",
-      "NSPhotoLibraryAddUsageDescription": "Lazy Scanは、共有シートで“画像を保存”を選択したときだけ、スキャンを写真ライブラリに追加します。",
       "Lazy Scan document": "Lazy Scan書類",
       "PDF document": "PDF書類",
       "Image": "画像"

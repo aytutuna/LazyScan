@@ -90,7 +90,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and for the computer you pair it with, so you can send it your scans.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Lazy Scan adds a scan to your photo library only when you choose Save Image in the share sheet.</string>
+	<string>Lazy Scan adds a scan to your photo library only when you choose Photos after saving or in the saved row.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

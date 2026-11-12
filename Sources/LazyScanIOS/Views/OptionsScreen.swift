@@ -18,6 +18,7 @@ struct OptionsScreen: View {
     @AppStorage(IOSAfterSave.email.key) private var emails: Bool = false
     @AppStorage(IOSAfterSave.print.key) private var prints: Bool = false
     @AppStorage(IOSAfterSave.send.key) private var sends: Bool = false
+    @AppStorage(IOSAfterSave.photos.key) private var photos: Bool = false
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
     @AppStorage(IOSShell.startModeKey) private var startMode: IOSScanMode = .camera
     let blocked: Bool
@@ -152,7 +153,8 @@ struct OptionsScreen: View {
             return IOSOptionsPage.separateValue(s)
         case .afterSaving:
             var checked: Set<IOSAfterSave> = []
-            for (action, on) in [(IOSAfterSave.email, emails), (IOSAfterSave.print, prints), (IOSAfterSave.send, sends)] where on {
+            for (action, on) in [(IOSAfterSave.email, emails), (IOSAfterSave.print, prints), (IOSAfterSave.send, sends),
+                                   (IOSAfterSave.photos, photos)] where on {
                 checked.insert(action)
             }
             return IOSAfterSave.summary(checked: checked, then: s.output.afterSave,

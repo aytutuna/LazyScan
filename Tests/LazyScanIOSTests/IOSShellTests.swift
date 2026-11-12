@@ -28,6 +28,10 @@ private struct ShellBarcodes: BarcodeReader {
     }
 }
 
+private final class TakenSaves {
+    var saves: [[URL]] = []
+}
+
 /// The addresses the file actions asked the system to open.
 @MainActor
 private final class ShellOpened {
@@ -776,6 +780,54 @@ final class IOSShellTests: XCTestCase {
         XCTAssertNil(actions.mailRequest)
         XCTAssertNil(actions.shareRequest)
         state.clearPages()
+    }
+
+    @MainActor
+    func test_photosStep_runsWithThatSavesPictures_andNotWithTheNextSave() async throws {
+        let actions = IOSFileActions(pasteboard: nil, openSystemURL: { (_: URL) -> Void in })
+        let options = IOSLaunchOptions(arguments: ["LazyScan", IOSLaunchOptions.demoScannerArgument])
+        let state = AppState(backends: IOSShell.backends(options: options),
+                             presetStore: PresetStore(directory: folder), fileActions: actions,
+                             orientationScorer: ShellScorer(), barcodeReader: ShellBarcodes(),
+                             files: AppStateFiles.all(in: folder))
+        state.platform = .ios
+        state.start()
+        try await waitFor(timeout: 30) { state.capabilities != nil }
+        XCTAssertTrue(state.startTask(.document))
+        state.settings.destinationPath = folder.appendingPathComponent("Saved", isDirectory: true).path
+        state.settings.resolution = 75
+        state.settings.format = .jpeg
+
+        let taken = TakenSaves()
+        state.performScan()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        state.afterSaveStep = { (urls: [URL]) -> Void in taken.saves.append(urls) }
+        IOSShell.saveQueue(state)
+        try await waitFor(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(taken.saves, [state.lastSavedURLs])
+        XCTAssertTrue(IOSShell.canAddToPhotos(state.lastSavedURLs))
+
+        state.performScan()
+        try await waitFor(timeout: 120) { !state.isBusy }
+        IOSShell.saveQueue(state)
+        try await waitFor(timeout: 120) { !state.isBusy }
+        XCTAssertEqual(taken.saves.count, 1)
+        state.clearPages()
+    }
+
+    func test_photos_takesJPEGAndPNGPicturesOnly() {
+        var settings = ScanSettings()
+        for (format, takes) in [(OutputFormat.jpeg, true), (.png, true), (.tiff, false), (.pdf, false), (.word, false)] {
+            settings.format = format
+            XCTAssertEqual(IOSShell.savesPhotosPictures(settings), takes, "\(format)")
+        }
+        let saved = URL(fileURLWithPath: "/tmp/Saved", isDirectory: true)
+        XCTAssertTrue(IOSShell.canAddToPhotos([saved.appendingPathComponent("Scan 1.jpg"),
+                                               saved.appendingPathComponent("Scan 2.PNG")]))
+        XCTAssertFalse(IOSShell.canAddToPhotos([saved.appendingPathComponent("Scan 1.jpg"),
+                                                saved.appendingPathComponent("Scan.pdf")]))
+        XCTAssertFalse(IOSShell.canAddToPhotos([]))
     }
 
     @MainActor

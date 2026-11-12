@@ -4,6 +4,7 @@ import Foundation
 #if canImport(MessageUI)
 import MessageUI
 #endif
+import Photos
 import UIKit
 import UniformTypeIdentifiers
 
@@ -33,6 +34,25 @@ public struct MailRequest: Identifiable, Equatable {
     }
 }
 
+/// Why pictures did not reach the photo library: the user (or a restriction) refused access, or the add failed.
+public enum PhotosProblem: Identifiable, Equatable {
+    case denied
+    case failed
+
+    public var id: Self { self }
+
+    public static var title: String { String(localized: "Couldn't save to Photos") }
+
+    public var message: String {
+        switch self {
+        case .denied:
+            return String(localized: "Lazy Scan isn't allowed to add to your photo library. Turn on Add Photos Only for Lazy Scan in Settings.")
+        case .failed:
+            return String(localized: "The pictures are saved in your folder, but they could not be added to Photos.")
+        }
+    }
+}
+
 /// The iPhone's and iPad's `FileActionService`. iOS has no Finder and no "Open With" menu, so: Open
 /// previews the file (Quick Look), Open With and Share open the share sheet (`UIActivityViewController`,
 /// where the user picks Mail, Files or another app), Email opens a Mail message with the files attached
@@ -52,6 +72,12 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     @Published public var previewURL: URL?
     /// The Mail message to compose; the root view sets it back to nil when the composer closes.
     @Published public var mailRequest: MailRequest?
+    /// Why the last add to Photos failed; the root view's alert sets it back to nil when it closes.
+    @Published public var photosProblem: PhotosProblem?
+    /// An add to Photos is under way.
+    @Published public private(set) var addingToPhotos: Bool = false
+    /// The files the last add to Photos took, so the saved row shows them as added.
+    @Published public private(set) var addedToPhotos: [URL] = []
 
     private let pasteboard: UIPasteboard
     /// Opens an address and says whether the system did, once it knows.
@@ -123,6 +149,42 @@ public final class IOSFileActions: ObservableObject, FileActionService {
 
     public func openWith(_ url: URL) throws {
         shareRequest = ShareRequest(urls: [url], title: url.lastPathComponent)
+    }
+
+    public func forgetAddedToPhotos() {
+        addedToPhotos = []
+    }
+
+    /// Adds the pictures to the photo library through add-only access, asking for it the first time. The files
+    /// stay where they are. A refusal or a failure is left in `photosProblem`.
+    public func addToPhotos(_ urls: [URL]) async {
+        guard !addingToPhotos, !urls.isEmpty else { return }
+        addingToPhotos = true
+        defer { addingToPhotos = false }
+        let status: PHAuthorizationStatus = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard status == .authorized || status == .limited else {
+            photosProblem = status == .denied ? .denied : .failed
+            return
+        }
+        do {
+            let pictures: [Data] = try await Task.detached(priority: .userInitiated) { () throws -> [Data] in
+                try urls.map { (url: URL) -> Data in try Data(contentsOf: url) }
+            }.value
+            try await PHPhotoLibrary.shared().performChanges {
+                for data in pictures {
+                    PHAssetCreationRequest.forAsset().addResource(with: .photo, data: data, options: nil)
+                }
+            }
+            addedToPhotos = urls
+        } catch {
+            photosProblem = .failed
+        }
+    }
+
+    /// Opens this app's page in Settings, where the Photos access is turned on.
+    public func openSettings() {
+        guard let address = URL(string: UIApplication.openSettingsURLString) else { return }
+        openSystemURL(address) { (_: Bool) -> Void in }
     }
 
     public func reveal(_ urls: [URL]) {
