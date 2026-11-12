@@ -388,6 +388,13 @@ final class PageProcessorTests: XCTestCase {
         }
     }
 
+    func test_process_tellsTheNumberOfEachPageBeforeItIsWorkedOn() throws {
+        var numbers: [Int] = []
+        let pages = [page(blankImage), page(blankImage), page(blankImage)]
+        _ = try PageProcessor.forScan(ScanSettings()).process(pages, onPage: { numbers.append($0) })
+        XCTAssertEqual(numbers, [1, 2, 3])
+    }
+
     // MARK: Which pages are saved
 
     func test_process_cropsAndStraightens_keepingThePageAsScanned() throws {

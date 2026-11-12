@@ -1352,6 +1352,10 @@ public final class AppState: ObservableObject {
                         return
                     }
                     received += kept
+                    if flag.isCancelled {
+                        failure = ScanError.cancelled
+                        session.cancelScan()
+                    }
                 } catch {
                     failure = error
                     session.cancelScan()
@@ -1493,7 +1497,6 @@ public final class AppState: ObservableObject {
             marked.source = source
             return marked
         }
-        self.statusMessage = L10n.t("Processing…")
         // The clean-up stage: two-sided pages in reading order with their sides marked and the
         // backs turned upright, then the blank-page check and the adjustments. Pixel-heavy work
         // runs off the main actor so the UI stays live; the cancel flag is polled between
@@ -1502,13 +1505,29 @@ public final class AppState: ObservableObject {
         let barcodes = self.barcodeReader
         let straightens = intake.straightens
         let firstTransfer = intake.firstTransfer
-        let cleaned: ProcessedScan = try await Task.detached(priority: .userInitiated) {
-            try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes,
-                                  straightens: straightens)
-                .process(scanned, firstTransfer: firstTransfer, shouldContinue: { !flag.isCancelled })
-        }.value
+        let total: Int? = intake.streaming ? nil : scanned.count
+        self.showProcessing(page: firstTransfer + 1, of: total)
+        // Pages that go to the queue are kept when Cancel stops their clean-up: they are queued as scanned.
+        let keepsOnCancel = source == .scanner && cardSide == nil && s.documentMultiPage && TaskCatalog.flow(of: s) == .documentQueue
+        let cleaned: ProcessedScan
+        do {
+            cleaned = try await Task.detached(priority: .userInitiated) {
+                try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes,
+                                      straightens: straightens)
+                    .process(scanned, firstTransfer: firstTransfer, shouldContinue: { !flag.isCancelled },
+                             onPage: { [weak self] number in
+                        Task { @MainActor in self?.showProcessing(page: firstTransfer + number, of: total) }
+                    })
+            }.value
+        } catch ScanError.cancelled where keepsOnCancel {
+            let binding = s.backBinding
+            cleaned = try await Task.detached(priority: .userInitiated) {
+                try PageProcessor(steps: [], arrangement: arrangement, binding: binding)
+                    .process(scanned, firstTransfer: firstTransfer)
+            }.value
+        }
         guard self.isCurrent(generation) else { return nil }
-        if flag.isCancelled { throw ScanError.cancelled }
+        if flag.isCancelled && !keepsOnCancel { throw ScanError.cancelled }
         let raw = cleaned.arranged
         let ownFlow: TaskFlowKind = TaskCatalog.flow(of: s)
         let listsObjects: Bool = listsFoundObjects && (ownFlow == .photoSplit || ownFlow == .receiptSplit)
@@ -1658,6 +1677,15 @@ public final class AppState: ObservableObject {
             try await self.showReceipts(processed, settings: s, flag: flag, generation: generation)
         }
         return raw.count
+    }
+
+    /// The status while page `number` is cleaned up: of `total` when the scan's page count is known.
+    private func showProcessing(page number: Int, of total: Int?) {
+        guard let total, total > 1 else {
+            statusMessage = total == nil ? L10n.t("Processing page {0}…", number) : L10n.t("Processing…")
+            return
+        }
+        statusMessage = L10n.t("Processing page {0} of {1}…", number, total)
     }
 
     /// The status once pages were queued (`ingestPages`, or `scanIntoQueue` when the scan is over): what was

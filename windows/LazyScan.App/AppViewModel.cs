@@ -1684,7 +1684,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // work runs off the UI thread so the window stays live; the token is checked between
             // pages and steps.
             var processor = PageProcessor.ForScan(s, ArrangementOf(twoSided, manualSide), _orientation, _barcodes);
-            var cleaned = await Task.Run(() => processor.Process(scanned, token), token);
+            var cleaned = await Task.Run(() => processor.Process(scanned, token, onPage: number =>
+                _dispatcher.BeginInvoke(() =>
+                {
+                    if (!IsBusy) return;
+                    StatusMessage = ProcessingStatus(number, scanned.Count);
+                    NotifyAll();
+                })), token);
             if (_switchGeneration != generation) return;
             token.ThrowIfCancellationRequested();
             var raw = cleaned.Arranged;
@@ -1770,6 +1776,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         });
     }
 
+    private static string ProcessingStatus(int number, int total) =>
+        total > 1 ? Loc.T("Processing page {0} of {1}…", number, total) : Loc.T("Processing…");
+
     private static ScanArrangement ArrangementOf(bool twoSided, PageSide? manualSide) =>
         twoSided ? ScanArrangement.TwoSided
         : manualSide == PageSide.Back ? ScanArrangement.TurnedOverBacks
@@ -1807,6 +1816,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         processor = PageProcessor.ForScan(s, ArrangementOf(twoSided, manualSide), _orientation, _barcodes);
                     }
                     received += await QueueScannedPage(page, processor, received, s, generation, token);
+                    if (token.IsCancellationRequested)
+                    {
+                        failure = new OperationCanceledException(token);
+                        session.CancelScan();
+                    }
                 }
                 catch (Exception e)
                 {
@@ -1856,12 +1870,21 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private async Task<int> QueueScannedPage(ScannedPage page, PageProcessor processor, int firstTransfer, ScanSettings s,
                                              int generation, CancellationToken token)
     {
-        StatusMessage = Loc.T("Processing…");
+        StatusMessage = Loc.T("Processing page {0}…", firstTransfer + 1);
         NotifyAll();
         string spoolDirectory = _spool.Directory;
         var (raw, preview, historyItems, spooled, spreadSources) = await Task.Run(() =>
         {
-            var cleaned = processor.Process([page], token, firstTransfer);
+            // Cancel stops the clean-up of this page, not the page: it is queued as scanned.
+            ProcessedScan cleaned;
+            try
+            {
+                cleaned = processor.Process([page], token, firstTransfer);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested && _switchGeneration == generation)
+            {
+                cleaned = new PageProcessor([], processor.Arrangement, processor.Binding).Process([page], firstTransfer: firstTransfer);
+            }
             var preview = ScanHistory.MakePreview(cleaned.Arranged[^1].Image, CanvasPreviewMaxSide);
             var entries = ScanHistory.MakeEntries(cleaned.Arranged, s.Intent, DateTime.Now);
             // The cards only display the bitmap: keep metadata-only entries so each
@@ -1875,13 +1898,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // pages were cut from are kept too, to join or split them again.
             var pages = SpoolPages(cleaned.Pages.ToList(), spoolDirectory).Select(p => new PageItem(p)).ToList();
             return (cleaned.Arranged, preview, items, pages, SpoolSpreads(cleaned.Spreads, spoolDirectory));
-        }, token);
-        if (_switchGeneration != generation || token.IsCancellationRequested)
+        });
+        if (_switchGeneration != generation)
         {
             DeleteSpoolFiles(spooled.Select(p => p.Page));
             DeleteSpreadFiles(spreadSources.Values);
-            if (_switchGeneration != generation) throw new OperationCanceledException();
-            token.ThrowIfCancellationRequested();
+            throw new OperationCanceledException();
         }
         RecordHistory(historyItems);
         foreach (var (spreadId, source) in spreadSources) _spreads[spreadId] = source;

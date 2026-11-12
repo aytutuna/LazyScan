@@ -1468,6 +1468,8 @@
   "Scanning…": {},
   "The scanner returned no pages.": {},
   "Processing…": {},
+  "Processing page {0}…": {},
+  "Processing page {0} of {1}…": {},
   "Detecting photos…": {},
   "Finding the card…": {},
   "Reading the text of the pages…": {},

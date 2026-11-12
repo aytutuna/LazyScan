@@ -156,6 +156,14 @@ public class PageProcessorTests
     }
 
     [Fact]
+    public void Process_TellsTheNumberOfEachPageBeforeItIsWorkedOn()
+    {
+        var numbers = new List<int>();
+        PageProcessor.ForScan(new ScanSettings()).Process([Page(BlankImage), Page(BlankImage), Page(BlankImage)], onPage: numbers.Add);
+        Assert.Equal([1, 2, 3], numbers);
+    }
+
+    [Fact]
     public void ForScan_SeparatorSheets_AreLookedForOnCollectedDocumentPages_WhetherOrNotTheStackIsSplit()
     {
         foreach (var mode in SplitModes.DisplayOrder)

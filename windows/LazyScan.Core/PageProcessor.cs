@@ -540,9 +540,11 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// every page. <paramref name="token"/> is checked before each page and each step, and handed to the
     /// steps that can stop part way (<see cref="ICancellablePageStep"/>). <paramref name="firstTransfer"/>: how
     /// many pages of a two-sided scan came before <paramref name="scanned"/>, which is a later part of it (a scan
-    /// processed as its pages arrive), so each page keeps its sheet and side.
+    /// processed as its pages arrive), so each page keeps its sheet and side. <paramref name="onPage"/> hears
+    /// the number of each page (from 1, among <paramref name="scanned"/>) before it is worked on.
     /// </summary>
-    public ProcessedScan Process(IReadOnlyList<ScannedPage> scanned, CancellationToken token = default, int firstTransfer = 0)
+    public ProcessedScan Process(IReadOnlyList<ScannedPage> scanned, CancellationToken token = default, int firstTransfer = 0,
+                                 Action<int>? onPage = null)
     {
         token.ThrowIfCancellationRequested();
         IReadOnlyList<ScannedPage> arranged = Arrangement switch
@@ -568,9 +570,11 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         // so a cut placed by hand lies on the image it is shown on.
         var spreads = new List<ScannedPage>(arranged.Count);
         var pages = new List<ScannedPage>(arranged.Count);
-        foreach (var scannedSpread in arranged)
+        for (int number = 1; number <= arranged.Count; number++)
         {
             token.ThrowIfCancellationRequested();
+            onPage?.Invoke(number);
+            var scannedSpread = arranged[number - 1];
             var page = Book is { Straightens: true } ? StraightenedSpread(scannedSpread) : scannedSpread;
             spreads.Add(page);
             if (Book is { } book)

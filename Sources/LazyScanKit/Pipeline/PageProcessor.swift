@@ -556,9 +556,11 @@ public struct PageProcessor {
     /// is asked before each page and each step, and handed to the steps that can stop part way
     /// (`CancellablePageStep`); when it says no, `ScanError.cancelled` is thrown. `firstTransfer`: how many
     /// pages of a two-sided scan came before `scanned`, which is a later part of it (a scan processed as
-    /// its pages arrive), so each page keeps its sheet and side.
+    /// its pages arrive), so each page keeps its sheet and side. `onPage` hears the number of each
+    /// page (from 1, among `scanned`) before it is worked on.
     public func process(_ scanned: [ScannedPage], firstTransfer: Int = 0,
-                        shouldContinue: () -> Bool = { true }) throws -> ProcessedScan {
+                        shouldContinue: () -> Bool = { true },
+                        onPage: ((Int) -> Void)? = nil) throws -> ProcessedScan {
         guard shouldContinue() else { throw ScanError.cancelled }
         var arranged: [ScannedPage]
         switch arrangement {
@@ -583,8 +585,9 @@ public struct PageProcessor {
         spreads.reserveCapacity(arranged.count)
         var pages: [ScannedPage] = []
         pages.reserveCapacity(arranged.count)
-        for scannedSpread in arranged {
+        for (index, scannedSpread) in arranged.enumerated() {
             guard shouldContinue() else { throw ScanError.cancelled }
+            onPage?(index + 1)
             var page = scannedSpread
             if let book, book.straightens { page = Self.straightenedSpread(page) }
             spreads.append(page)
