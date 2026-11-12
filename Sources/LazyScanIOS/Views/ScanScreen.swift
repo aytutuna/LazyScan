@@ -249,7 +249,10 @@ struct ScanScreen: View {
                 showReview(shown, as: .quickScan)
             }
             .onChange(of: state.copyPages.isEmpty) { (_: Bool, empty: Bool) in
-                showReview(!empty, as: .copy)
+                // An import still running needs the root's corner editor, which cannot show over the copy screen.
+                if empty || !importer.isImporting {
+                    showReview(!empty, as: .copy)
+                }
                 if empty && savesAfterPrint {
                     savesAfterPrint = false
                     saveAfterCoverCloses()
@@ -257,7 +260,7 @@ struct ScanScreen: View {
             }
             .onChange(of: state.copyPages.count) { (old: Int, count: Int) in
                 // A page added to a held copy brings the copy screen back.
-                if old > 0 && count > old {
+                if old > 0 && count > old && !importer.isImporting {
                     showReview(true, as: .copy)
                 }
             }
@@ -302,6 +305,8 @@ struct ScanScreen: View {
                     pagesShown = false
                     picksPDF = false
                     spreadEditor = nil
+                } else if !state.copyPages.isEmpty {
+                    showReview(true, as: .copy)
                 }
             }
     }
@@ -646,7 +651,7 @@ struct ScanScreen: View {
     /// nothing, so a stray tap keeps Both sides, the steps and the PDF picked. Nothing changes while a share
     /// or a send reads the spooled pages, which Discard would delete.
     private func pickKind(_ kind: IOSScanKind) {
-        guard !saveBlocked else { return }
+        guard !saveBlocked, state.copyPages.isEmpty else { return }
         guard kind != IOSShell.shownKind(state.settings) || state.activeTask == nil else { return }
         if state.pagesLeftBehind(by: kind.task) > 0 {
             afterOptions {
@@ -1976,7 +1981,7 @@ private struct PackageBanner: View {
                 }
             }
             .buttonStyle(.bordered)
-            .disabled(!state.canIngest)
+            .disabled(!state.canIngest || !state.copyPages.isEmpty)
         }
     }
 
