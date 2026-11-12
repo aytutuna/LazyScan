@@ -110,7 +110,8 @@ extension AppState {
     }
 
     /// What the split sheet shows for the spread a queued page was cut from: a preview of the spread as
-    /// scanned, where it is cut now (a spread kept whole: up and down its middle), and its number. nil
+    /// scanned, where it is cut now (a spread kept whole: across its longer side, in the middle), and its
+    /// number. With Cut at "Same as last" the cut starts where the last one made by hand was. nil
     /// when the page is no book page or its spread can no longer be read.
     public func spreadEditor(for pageID: UUID) async -> SpreadEditorSource? {
         guard let page = scannedPages.first(where: { $0.id == pageID }), let part = page.spread,
@@ -122,8 +123,11 @@ extension AppState {
             errorMessage = L10n.t("The spread could not be read.")
             return nil
         }
-        let fraction = part.gutter?.fraction(width: source.width, height: source.height) ?? 0.5
-        return SpreadEditorSource(pageID: pageID, preview: preview, axis: part.gutter?.axis ?? .vertical,
+        let options = BookSplitOptions.of(settings)
+        var fraction = part.gutter?.fraction(width: source.width, height: source.height) ?? 0.5
+        if options.cutAt == .sameAsLast, let last = options.lastCut { fraction = last }
+        let axis = part.gutter?.axis ?? BookSplitter.defaultAxis(width: source.width, height: source.height)
+        return SpreadEditorSource(pageID: pageID, preview: preview, axis: axis,
                                   fraction: fraction, isSplit: !part.isWhole, spreadNumber: spreadNumber(part.spreadID))
     }
 
@@ -132,13 +136,61 @@ extension AppState {
     /// and turned as a scan is (`PageProcessor.processSpread`); a page the user removed stays out, and
     /// each page keeps its document break, name and keep or skip (`BookPages.replacementPages`).
     public func splitSpread(id: UUID, axis: GutterAxis, fraction: Double) {
-        replaceSpread(id: id, cut: (axis, fraction))
+        guard !isBusy, canEditSpread(id: id) else { return }
+        settings.taskOptions.bookLastCut = fraction
+        runExclusive { flag in
+            try await self.recutSpread(id: id, cut: (axis, fraction), flag: flag)
+        }
+    }
+
+    /// How many spreads in the queue are kept whole and can be cut by hand: what the split sheet's
+    /// "Split all unsplit spreads here" would cut.
+    public var unsplitSpreadCount: Int {
+        Set(scannedPages.filter { ($0.spread?.isWhole ?? false) && canEditSpread(of: $0) }.compactMap(\.spreadID)).count
+    }
+
+    /// The split sheet's "Split all unsplit spreads here": the spread the sheet is open on is cut along
+    /// `axis` at `fraction`, and so is every other spread of the queue kept whole, along its own longer
+    /// side. The fraction is kept as the last cut. A spread that cannot be cut stays as it is; the first
+    /// error is reported once the others are done.
+    public func splitUnsplitSpreads(including id: UUID, axis: GutterAxis, fraction: Double) {
+        guard !isBusy, canEditSpread(id: id) else { return }
+        settings.taskOptions.bookLastCut = fraction
+        runExclusive { flag in
+            await self.pageEditChain?.value
+            var ids: [UUID] = [id]
+            for page in self.scannedPages where page.id != id && (page.spread?.isWhole ?? false) && self.canEditSpread(of: page) {
+                ids.append(page.id)
+            }
+            var firstError: Error?
+            var done = 0
+            for pageID in ids {
+                guard let spreadID = self.scannedPages.first(where: { $0.id == pageID })?.spreadID,
+                      let source = self.spreadSources[spreadID] else { continue }
+                let cutAxis = pageID == id ? axis : BookSplitter.defaultAxis(width: source.width, height: source.height)
+                do {
+                    try await self.recutSpread(id: pageID, cut: (cutAxis, fraction), flag: flag)
+                    done += 1
+                } catch ScanError.cancelled {
+                    throw ScanError.cancelled
+                } catch {
+                    if firstError == nil { firstError = error }
+                }
+            }
+            if done > 1 {
+                self.statusMessage = L10n.plural(done, one: "{0} spread split into pages.", other: "{0} spreads split into pages.")
+            }
+            if let firstError { throw firstError }
+        }
     }
 
     /// "Join the Two Pages" (and the sheet's "Keep as One Page"): the pages cut from the spread are
     /// replaced by the whole spread, as one page.
     public func joinSpread(id: UUID) {
-        replaceSpread(id: id, cut: nil)
+        guard !isBusy, canEditSpread(id: id) else { return }
+        runExclusive { flag in
+            try await self.recutSpread(id: id, cut: nil, flag: flag)
+        }
     }
 
     /// The spreads in the queue that are split and can be cut again, in queue order.
@@ -272,57 +324,55 @@ extension AppState {
         }
     }
 
-    private func replaceSpread(id: UUID, cut: (axis: GutterAxis, fraction: Double)?) {
-        guard !isBusy, canEditSpread(id: id) else { return }
+    /// Replaces the pages of the spread `id` is one of with the spread cut at `cut`, or whole.
+    private func recutSpread(id: UUID, cut: (axis: GutterAxis, fraction: Double)?, flag: CancelFlag) async throws {
         let s = settings
         let scorer = orientationScorer
         let barcodes = barcodeReader
         let spool = spoolDirectory
-        runExclusive { flag in
-            // Turns and swaps clicked before must not land on pages about to be replaced.
-            await self.pageEditChain?.value
-            guard let page = self.scannedPages.first(where: { $0.id == id }), let spreadID = page.spreadID,
-                  let source = self.spreadSources[spreadID] else { return }
-            self.statusMessage = cut == nil ? L10n.t("Joining the pages…") : L10n.t("Splitting the spread…")
-            // The spread keeps the sheet and side its pages were given. Its pages are made with the
-            // current settings, color mode included: the adjustment step makes the pixels that mode
-            // says (black & white thresholded at the user's level); when it does not run (color, no
-            // adjustments) the pages are the spread as scanned, labelled color.
-            let side = page.side
-            let sheetIndex = page.sheetIndex
-            let pages: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
-                guard let image = Self.loadSpread(source) else {
-                    throw ScanError.scanFailed(reason: { L10n.t("The spread could not be read.") })
-                }
-                var spread = ScannedPage(image: image, dpi: source.dpi, colorMode: s.colorMode, id: spreadID,
-                                         createdAt: source.createdAt)
-                spread.side = side
-                spread.sheetIndex = sheetIndex
-                let gutter = cut.map { BookSplitter.manual($0.axis, fraction: $0.fraction, width: image.width, height: image.height) }
-                let processed = try PageProcessor.forScan(s, arrangement: .asScanned, scorer: scorer, barcodes: barcodes)
-                    .processSpread(spread, cut: gutter, options: BookSplitOptions.of(s), shouldContinue: { !flag.isCancelled })
-                return Self.spoolPages(processed, to: spool)
-            }.value
-            let indices = self.scannedPages.indices.filter { self.scannedPages[$0].spreadID == spreadID }
-            guard !flag.isCancelled, let firstIndex = indices.first, !pages.isEmpty else {
-                self.deleteSpoolFiles(of: pages)
-                if flag.isCancelled { throw ScanError.cancelled }
-                return
+        // Turns and swaps clicked before must not land on pages about to be replaced.
+        await self.pageEditChain?.value
+        guard let page = self.scannedPages.first(where: { $0.id == id }), let spreadID = page.spreadID,
+              let source = self.spreadSources[spreadID] else { return }
+        self.statusMessage = cut == nil ? L10n.t("Joining the pages…") : L10n.t("Splitting the spread…")
+        // The spread keeps the sheet and side its pages were given. Its pages are made with the
+        // current settings, color mode included: the adjustment step makes the pixels that mode
+        // says (black & white thresholded at the user's level); when it does not run (color, no
+        // adjustments) the pages are the spread as scanned, labelled color.
+        let side = page.side
+        let sheetIndex = page.sheetIndex
+        let pages: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
+            guard let image = Self.loadSpread(source) else {
+                throw ScanError.scanFailed(reason: { L10n.t("The spread could not be read.") })
             }
-            // The new pages take what the user decided about the old ones; a part the user removed stays out.
-            let removed = indices.map { self.scannedPages[$0] }
-            let replacement = BookPages.replacementPages(removed, fresh: pages)
-            let kept = Set(replacement.map(\.id))
-            self.deleteSpoolFiles(of: pages.filter { !kept.contains($0.id) })
-            // One change to the queue, so the spread is never without a page (`pruneSpreads`).
-            var queue = self.scannedPages
-            for index in indices.reversed() { queue.remove(at: index) }
-            queue.insert(contentsOf: replacement, at: firstIndex)
-            self.scannedPages = queue
-            self.deleteSpoolFiles(of: removed)
-            self.statusMessage = BookPages.splitNote(spreadNumber: self.spreadNumber(spreadID), split: cut != nil)
-                + PageFilter.scanNote(replacement, options: s.document) + PageCorrections.scanNote(replacement)
-                + PageTurns.scanNote(replacement)
+            var spread = ScannedPage(image: image, dpi: source.dpi, colorMode: s.colorMode, id: spreadID,
+                                     createdAt: source.createdAt)
+            spread.side = side
+            spread.sheetIndex = sheetIndex
+            let gutter = cut.map { BookSplitter.manual($0.axis, fraction: $0.fraction, width: image.width, height: image.height) }
+            let processed = try PageProcessor.forScan(s, arrangement: .asScanned, scorer: scorer, barcodes: barcodes)
+                .processSpread(spread, cut: gutter, options: BookSplitOptions.of(s), shouldContinue: { !flag.isCancelled })
+            return Self.spoolPages(processed, to: spool)
+        }.value
+        let indices = self.scannedPages.indices.filter { self.scannedPages[$0].spreadID == spreadID }
+        guard !flag.isCancelled, let firstIndex = indices.first, !pages.isEmpty else {
+            self.deleteSpoolFiles(of: pages)
+            if flag.isCancelled { throw ScanError.cancelled }
+            return
         }
+        // The new pages take what the user decided about the old ones; a part the user removed stays out.
+        let removed = indices.map { self.scannedPages[$0] }
+        let replacement = BookPages.replacementPages(removed, fresh: pages)
+        let kept = Set(replacement.map(\.id))
+        self.deleteSpoolFiles(of: pages.filter { !kept.contains($0.id) })
+        // One change to the queue, so the spread is never without a page (`pruneSpreads`).
+        var queue = self.scannedPages
+        for index in indices.reversed() { queue.remove(at: index) }
+        queue.insert(contentsOf: replacement, at: firstIndex)
+        self.scannedPages = queue
+        self.deleteSpoolFiles(of: removed)
+        self.statusMessage = BookPages.splitNote(spreadNumber: self.spreadNumber(spreadID), split: cut != nil)
+            + PageFilter.scanNote(replacement, options: s.document) + PageCorrections.scanNote(replacement)
+            + PageTurns.scanNote(replacement)
     }
 }

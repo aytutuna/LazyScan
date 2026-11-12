@@ -754,13 +754,13 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertEqual(result.pages.map { $0.spread?.isWhole }, [false, false, false, false])
         XCTAssertEqual(result.pages.map(\.side), [.front, .front, .back, .back])
         XCTAssertEqual(result.pages.map(\.sheetIndex), [0, 0, 0, 0])
-        // A spread kept whole too.
+        // A spread with no gutter is cut in the middle too.
         let single = TestPages.singlePageAcross().toRgba().makeCGImage()!
-        let whole = try PageProcessor(steps: [], arrangement: .twoSided, book: book)
+        let middle = try PageProcessor(steps: [], arrangement: .twoSided, book: book)
             .process([page(single), page(single)]).pages
-        XCTAssertEqual(whole.map { $0.spread?.isWhole }, [true, true])
-        XCTAssertEqual(whole.map(\.side), [.front, .back])
-        XCTAssertEqual(whole.map(\.sheetIndex), [0, 0])
+        XCTAssertEqual(middle.map { $0.spread?.isWhole }, [false, false, false, false])
+        XCTAssertEqual(middle.map(\.side), [.front, .front, .back, .back])
+        XCTAssertEqual(middle.map(\.sheetIndex), [0, 0, 0, 0])
         // Turned over by hand, and a spread split again by hand.
         let backs = try PageProcessor(steps: [], arrangement: .turnedOverBacks, book: book).process([page(spreadImage)]).pages
         XCTAssertFalse(backs.isEmpty)
@@ -834,17 +834,19 @@ final class PageProcessorTests: XCTestCase {
         XCTAssertEqual(rtl.map { $0.spread?.part }, [1, 0])
     }
 
-    func test_process_aSpreadWithoutAClearSpine_staysWhole() throws {
+    func test_process_aSpreadWithoutAClearSpine_isCutInTheMiddle() throws {
         let single = page(TestPages.singlePageAcross().toRgba().makeCGImage()!)
         let result = try PageProcessor(steps: [], book: BookSplitOptions()).process([single])
-        XCTAssertEqual(result.pages.count, 1)
-        let whole = result.pages[0]
-        XCTAssertEqual(whole.spread?.isWhole, true)
-        XCTAssertEqual(whole.spreadID, single.id)
-        XCTAssertNil(whole.spread?.gutter)
-        XCTAssertNotEqual(whole.id, single.id)
-        XCTAssertEqual(whole.image.width, 850)
-        XCTAssertEqual(whole.image.height, 1100)
+        XCTAssertEqual(result.pages.count, 2)
+        for cut in result.pages {
+            XCTAssertEqual(cut.spreadID, single.id)
+            XCTAssertEqual(cut.spread?.isWhole, false)
+            XCTAssertEqual(cut.spread?.gutter?.axis, .horizontal)
+            XCTAssertEqual(cut.spread?.gutter?.kind, .manual)
+            XCTAssertNotEqual(cut.id, single.id)
+            XCTAssertEqual(cut.image.width, 850)
+        }
+        XCTAssertEqual(result.pages.map { $0.image.height }, [550, 550])
         XCTAssertEqual(result.spreads.map(\.id), [single.id])
         // Without the split, the page goes through as it is.
         let plain = try PageProcessor(steps: []).process([single])
@@ -865,6 +867,22 @@ final class PageProcessorTests: XCTestCase {
         let blankFacing = try PageProcessor.forScan(TaskCatalog.apply(.book, to: ScanSettings()))
             .process([page(TestPages.blankFacingSpread().toRgba().makeCGImage()!)]).pages
         XCTAssertEqual(blankFacing.map { $0.blank?.isBlank == true }, [true, false])
+    }
+
+    func test_process_cutsWhereCutAtSays() throws {
+        let landscape = twoTone(200, 100).makeCGImage()!
+        func widths(_ options: BookSplitOptions) throws -> [Int] {
+            try PageProcessor(steps: [], book: options).process([page(landscape)]).pages.map(\.image.width)
+        }
+        XCTAssertEqual(try widths(BookSplitOptions()), [100, 100])
+        XCTAssertEqual(try widths(BookSplitOptions(cutAt: .middle, lastCut: 0.3)), [100, 100])
+        XCTAssertEqual(try widths(BookSplitOptions(cutAt: .sameAsLast, lastCut: 0.3)), [60, 140])
+        XCTAssertEqual(try widths(BookSplitOptions(cutAt: .sameAsLast)), [100, 100])
+        // A spread lying sideways is cut across its longer side.
+        let portrait = twoTone(100, 200).makeCGImage()!
+        let heights = try PageProcessor(steps: [], book: BookSplitOptions(cutAt: .sameAsLast, lastCut: 0.25))
+            .process([page(portrait)]).pages.map(\.image.height)
+        XCTAssertEqual(heights, [50, 150])
     }
 
     func test_processSpread_cutsWhereAsked_orKeepsTheSpreadWhole() throws {

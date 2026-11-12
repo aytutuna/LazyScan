@@ -316,6 +316,29 @@ final class BookSplitterTests: XCTestCase {
         XCTAssertEqual(BookSplitter.manual(.vertical, fraction: .nan, width: 1000, height: 700).position, 500)
     }
 
+    func test_cut_followsCutAt_andFallsBackToTheMiddle() throws {
+        let book = try XCTUnwrap(TestPages.shadowSpread().toRgba().makeCGImage())
+        let found = try XCTUnwrap(BookSplitter.findGutter(book, dpi: 100))
+        XCTAssertEqual(BookSplitter.cut(book, dpi: 100, options: BookSplitOptions()), found)
+        let middle = BookSplitter.manual(.vertical, fraction: 0.5, width: book.width, height: book.height)
+        XCTAssertEqual(BookSplitter.cut(book, dpi: 100, options: BookSplitOptions(cutAt: .middle)), middle)
+        XCTAssertEqual(BookSplitter.cut(book, dpi: 100, options: BookSplitOptions(cutAt: .sameAsLast)), middle)
+        let last = BookSplitter.manual(.vertical, fraction: 0.3, width: book.width, height: book.height)
+        XCTAssertEqual(BookSplitter.cut(book, dpi: 100, options: BookSplitOptions(cutAt: .sameAsLast, lastCut: 0.3)), last)
+        // Automatic with no gutter to find: across the longer side, in the middle.
+        let single = try XCTUnwrap(TestPages.singlePageAcross().toRgba().makeCGImage())
+        XCTAssertNil(BookSplitter.findGutter(single, dpi: 100))
+        let across = BookSplitter.cut(single, dpi: 100, options: BookSplitOptions())
+        XCTAssertEqual(across, BookSplitter.manual(.horizontal, fraction: 0.5, width: single.width, height: single.height))
+        XCTAssertEqual(BookSplitter.defaultAxis(width: 200, height: 100), .vertical)
+        XCTAssertEqual(BookSplitter.defaultAxis(width: 100, height: 100), .vertical)
+        XCTAssertEqual(BookSplitter.defaultAxis(width: 100, height: 200), .horizontal)
+    }
+
+    func test_cutAtLabels() {
+        XCTAssertEqual(BookCutAt.allCases.map(BookPages.cutAtLabel), ["Automatic", "Middle", "Same as last"])
+    }
+
     func test_atScale_mapsTheAnalysisCentreBackToTheScan() {
         let candidate = GutterCandidate(axis: .vertical, center: 300.5, confidence: 0.2, kind: .shadow)
         // An analysis image a third the size of the scan.

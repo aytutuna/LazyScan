@@ -517,7 +517,7 @@ public struct DocumentOptions: Codable, Equatable, Sendable {
     /// (`OrientationDecision`). One click in the page strip undoes the turn.
     public var autoRotate: Bool = false
     /// Each scan of an open book or magazine is cut at the spine into its two facing pages, put in
-    /// reading order (`BookSplitter`); a spread whose spine is not clear stays whole. The page strip
+    /// reading order (`BookSplitter`); a spread whose spine is not clear is cut as Cut at says. The page strip
     /// joins the pages again or moves the cut. Off unless chosen (the Book or magazine task turns it on).
     public var splitFacingPages: Bool = false
     /// On each page cut from a spread, the shadow along the spine is lightened towards the paper's white,
@@ -603,6 +603,12 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     /// Quarter turns clockwise every page of a book is turned, for a book lying sideways or upside down
     /// on the glass; read through `BookSplitter.normalizedTurns` (0 to 3). None unless chosen.
     public var bookRotationQuarterTurns: Int = 0
+    /// Where a book's spread is cut (`BookCutAt`): at the gutter found, at the middle, or where the last cut
+    /// made by hand was.
+    public var bookCutAt: BookCutAt = .automatic
+    /// The place of the last cut made by hand in the split sheet, as a share of the spread (0...1); nil
+    /// before any. Left out of the file then.
+    public var bookLastCut: Double?
     /// The iPhone's camera takes both sides of each sheet for the two-sided task as all the fronts first,
     /// then all the backs. Off: "Flip & capture", each front followed by its back.
     public var cameraFrontsFirst: Bool = false
@@ -628,6 +634,8 @@ public struct TaskOptions: Codable, Equatable, Sendable {
         case receiptCombine
         case bookRightToLeft
         case bookRotationQuarterTurns
+        case bookCutAt
+        case bookLastCut
         case cameraFrontsFirst
         case cameraSpreads
         case cameraFilter
@@ -649,6 +657,8 @@ extension TaskOptions {
         receiptCombine = container.decodeLenient(forKey: .receiptCombine, default: receiptCombine)
         bookRightToLeft = container.decodeLenient(forKey: .bookRightToLeft, default: bookRightToLeft)
         bookRotationQuarterTurns = container.decodeLenient(forKey: .bookRotationQuarterTurns, default: bookRotationQuarterTurns)
+        bookCutAt = container.decodeLenient(forKey: .bookCutAt, default: bookCutAt)
+        bookLastCut = container.decodeLenient(forKey: .bookLastCut, default: bookLastCut)
         cameraFrontsFirst = container.decodeLenient(forKey: .cameraFrontsFirst, default: cameraFrontsFirst)
         cameraSpreads = container.decodeLenient(forKey: .cameraSpreads, default: cameraSpreads)
         cameraFilter = container.decodeLenient(forKey: .cameraFilter, default: cameraFilter)
@@ -1403,12 +1413,14 @@ public struct Preset: Codable, Identifiable, Equatable {
     static let fallbackName = "Untitled preset"
 
     /// The preset's settings put in use over `current`: a preset saved before the camera's filter existed
-    /// (none in its file) keeps the filter in use; one that has it brings it. Twin of C# `Preset.SettingsOver`.
+    /// (none in its file) keeps the filter in use; one that has it brings it. The last manual book cut is
+    /// never the preset's: it stays as it is. Twin of C# `Preset.SettingsOver`.
     public func settings(over current: ScanSettings) -> ScanSettings {
         var chosen: ScanSettings = settings
         if chosen.taskOptions.cameraFilter == nil {
             chosen.taskOptions.cameraFilter = current.taskOptions.cameraFilter
         }
+        chosen.taskOptions.bookLastCut = current.taskOptions.bookLastCut
         return chosen
     }
 

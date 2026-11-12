@@ -1357,8 +1357,8 @@ because the Standard PDF size already stores pages that are really gray in gray,
 their color. The switch works for any collected document scan of one side of each sheet; with each
 scan saved at once and for two-sided feeder scans (whose pages are paired by sheet and side) it is
 greyed out with the reason ("Needs Collect pages", "Not with two-sided"); for copies and receipts
-the Pages section is hidden. A spread whose spine was not found is badged **Not split** in the page
-strip, with **Split…** to place the cut by hand. While it is on, **Reads right to left**
+the Pages section is hidden. A spread whose spine was not found is cut in the middle, and **Change the
+split…** moves the cut. While it is on, **Reads right to left**
 (Arabic, Hebrew, manga: the right page first), **Book rotation** (as scanned, 90° clockwise,
 180°, 90° counterclockwise, for a book lying sideways or upside down) and **Soften spine shadow**
 show beneath it; the first two are kept when a task is picked, and all three apply from the next
@@ -1371,9 +1371,7 @@ gave them when the two pages agree (or when only one was read): left before righ
 reading right to left, top before bottom. Each page in the strip is labelled with its spread and
 side ("2 · left", read out "Spread 2, left page"), the side worked out when the spread was cut, so a
 page keeps it when moved, when its partner is removed, and when the reading order is changed for
-later spreads; a spread whose spine was not found stays one page, "2 · not split", and the status
-after the scan says so ("The spine of 1 spread was not found: it was added as one page (Split… on it
-splits it)."). A page's right-click menu has **Split this spread…** (for a
+later spreads; only a spread joined by hand stays one page, "2 · not split". A page's right-click menu has **Split this spread…** (for a
 spread kept whole) or **Change the split…**, which opens a dialog with the spread as scanned and the
 cut drawn across it: click or drag on the spread, or use the slider or the arrow keys, choose
 **Side by side** or **Stacked**, then **Split**; **Keep as one page** and the menu's

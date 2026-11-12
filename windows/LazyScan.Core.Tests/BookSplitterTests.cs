@@ -298,6 +298,34 @@ public class BookSplitterTests
     }
 
     [Fact]
+    public void Cut_FollowsCutAt_AndFallsBackToTheMiddle()
+    {
+        var book = TestPages.ShadowSpread().ToRgba();
+        var found = BookSplitter.FindGutter(book, 100);
+        Assert.NotNull(found);
+        Assert.Equal(found, BookSplitter.Cut(book, 100, new BookSplitOptions()));
+        var middle = BookSplitter.Manual(GutterAxis.Vertical, 0.5, book.Width, book.Height);
+        Assert.Equal(middle, BookSplitter.Cut(book, 100, new BookSplitOptions(CutAt: BookCutAt.Middle)));
+        Assert.Equal(middle, BookSplitter.Cut(book, 100, new BookSplitOptions(CutAt: BookCutAt.SameAsLast)));
+        var last = BookSplitter.Manual(GutterAxis.Vertical, 0.3, book.Width, book.Height);
+        Assert.Equal(last, BookSplitter.Cut(book, 100, new BookSplitOptions(CutAt: BookCutAt.SameAsLast, LastCut: 0.3)));
+        // Automatic with no gutter to find: across the longer side, in the middle.
+        var single = TestPages.SinglePageAcross().ToRgba();
+        Assert.Null(BookSplitter.FindGutter(single, 100));
+        Assert.Equal(BookSplitter.Manual(GutterAxis.Horizontal, 0.5, single.Width, single.Height),
+                     BookSplitter.Cut(single, 100, new BookSplitOptions()));
+        Assert.Equal(GutterAxis.Vertical, BookSplitter.DefaultAxis(200, 100));
+        Assert.Equal(GutterAxis.Vertical, BookSplitter.DefaultAxis(100, 100));
+        Assert.Equal(GutterAxis.Horizontal, BookSplitter.DefaultAxis(100, 200));
+    }
+
+    [Fact]
+    public void CutAtLabels()
+    {
+        Assert.Equal(["Automatic", "Middle", "Same as last"], Enum.GetValues<BookCutAt>().Select(BookPages.CutAtLabel));
+    }
+
+    [Fact]
     public void Manual_PlacesTheCutAtAShareOfTheAxis_KeptOffTheEdges()
     {
         var cut = BookSplitter.Manual(GutterAxis.Vertical, 0.52, 1000, 700);

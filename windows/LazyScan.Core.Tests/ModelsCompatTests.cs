@@ -87,6 +87,8 @@ internal static class CompatFixtures
         settings.TaskOptions.ReceiptCombine = true;
         settings.TaskOptions.BookRightToLeft = true;
         settings.TaskOptions.BookRotationQuarterTurns = 1;
+        settings.TaskOptions.BookCutAt = BookCutAt.SameAsLast;
+        settings.TaskOptions.BookLastCut = 0.3;
         settings.TaskOptions.CameraFrontsFirst = true;
         settings.TaskOptions.CameraSpreads = true;
         settings.TaskOptions.CameraFilter = CaptureFilter.Original;
@@ -157,6 +159,7 @@ internal static class CompatFixtures
         + "        \"copyCount\": 3,\n        \"copyFitToPage\": true,\n        \"copyPrinterName\": \"Office printer\",\n"
         + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n"
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
+        + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
         + "        \"cameraFrontsFirst\": true,\n        \"cameraSpreads\": true,\n        \"cameraFilter\": \"original\"\n      }\n");
 
     /// <summary>Field-by-field equality, including the legacy OCR languages.</summary>
@@ -1294,7 +1297,7 @@ public class ModelsCompatTests
                 // No printer chosen: the key is left out, as Swift leaves out a nil.
                 Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage", "copyAlsoSavePdf",
                               "receiptNameByDate", "receiptCombine", "bookRightToLeft", "bookRotationQuarterTurns",
-                              "cameraFrontsFirst", "cameraSpreads"],
+                              "bookCutAt", "cameraFrontsFirst", "cameraSpreads"],
                              written.RootElement.GetProperty("taskOptions").EnumerateObject().Select(p => p.Name));
                 Assert.Equal(settings.TaskOptions, Decode<ScanSettings>(json).TaskOptions);
             }
@@ -1390,6 +1393,8 @@ public class ModelsCompatTests
             """);
         Assert.Equal((false, true, 0), (nulls.Document.SplitFacingPages, nulls.TaskOptions.BookRightToLeft,
                                         nulls.TaskOptions.BookRotationQuarterTurns));
+        var cut = Decode<ScanSettings>("""{"taskOptions": {"bookCutAt": "left", "bookLastCut": "x"}}""").TaskOptions;
+        Assert.Equal((BookCutAt.Automatic, (double?)null), (cut.BookCutAt, cut.BookLastCut));
         // A turn out of range is kept as written and read through BookSplitter.NormalizedTurns.
         var turns = Decode<ScanSettings>("""{"taskOptions": {"bookRotationQuarterTurns": 7}}""").TaskOptions;
         Assert.Equal((7, 3), (turns.BookRotationQuarterTurns, BookSplitOptions.Of(new ScanSettings { TaskOptions = turns }).RotationQuarterTurns));
@@ -1406,6 +1411,8 @@ public class ModelsCompatTests
                 settings.Document.SplitFacingPages = split;
                 settings.TaskOptions.BookRightToLeft = !split;
                 settings.TaskOptions.BookRotationQuarterTurns = turns;
+                settings.TaskOptions.BookCutAt = Enum.GetValues<BookCutAt>()[turns % 3];
+                settings.TaskOptions.BookLastCut = split ? 0.4 : null;
                 var back = Decode<ScanSettings>(CompatFixtures.Encode(settings));
                 Assert.Equal(settings.Document, back.Document);
                 Assert.Equal(settings.TaskOptions, back.TaskOptions);
@@ -1416,6 +1423,8 @@ public class ModelsCompatTests
         clone.Document.SplitFacingPages = false;
         clone.TaskOptions.BookRightToLeft = false;
         clone.TaskOptions.BookRotationQuarterTurns = 0;
+        clone.TaskOptions.BookCutAt = BookCutAt.Automatic;
+        Assert.Equal(BookCutAt.SameAsLast, original.TaskOptions.BookCutAt);
         Assert.Equal((true, true, 1), (original.Document.SplitFacingPages, original.TaskOptions.BookRightToLeft,
                                        original.TaskOptions.BookRotationQuarterTurns));
         Assert.NotEqual(original.Document, clone.Document);
@@ -1504,6 +1513,17 @@ public class ModelsCompatTests
         var enhanced = new ScanSettings();
         enhanced.TaskOptions.CameraFilter = CaptureFilter.Enhanced;
         Assert.Equal(CaptureFilter.Enhanced, new Preset("Enhanced", enhanced).SettingsOver(current).TaskOptions.CameraFilter);
+    }
+
+    [Fact]
+    public void APreset_KeepsTheLastBookCutInUse()
+    {
+        var current = new ScanSettings();
+        current.TaskOptions.BookLastCut = 0.4;
+        var saved = new ScanSettings();
+        saved.TaskOptions.BookLastCut = 0.7;
+        Assert.Equal(0.4, new Preset("Book", saved).SettingsOver(current).TaskOptions.BookLastCut);
+        Assert.Null(new Preset("Book", saved).SettingsOver(new ScanSettings()).TaskOptions.BookLastCut);
     }
 
     // MARK: - Softening the spine's shadow (CONTRACTS.md, rule 6)

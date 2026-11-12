@@ -697,11 +697,12 @@ public class PageProcessorTests
         Assert.All(result.Pages, p => Assert.False(p.Spread!.IsWhole));
         Assert.Equal(new[] { (PageSide.Front, 0), (PageSide.Front, 0), (PageSide.Back, 0), (PageSide.Back, 0) },
                      result.Pages.Select(p => (p.Side!.Value, p.SheetIndex!.Value)));
-        // A spread kept whole too.
+        // A spread with no gutter is cut in the middle too.
         var single = TestPages.SinglePageAcross().ToRgba();
-        var whole = new PageProcessor([], ScanArrangement.TwoSided, book: book).Process([Page(single), Page(single)]).Pages;
-        Assert.All(whole, p => Assert.True(p.Spread!.IsWhole));
-        Assert.Equal(new[] { (PageSide.Front, 0), (PageSide.Back, 0) }, whole.Select(p => (p.Side!.Value, p.SheetIndex!.Value)));
+        var middle = new PageProcessor([], ScanArrangement.TwoSided, book: book).Process([Page(single), Page(single)]).Pages;
+        Assert.All(middle, p => Assert.False(p.Spread!.IsWhole));
+        Assert.Equal(new[] { (PageSide.Front, 0), (PageSide.Front, 0), (PageSide.Back, 0), (PageSide.Back, 0) },
+                     middle.Select(p => (p.Side!.Value, p.SheetIndex!.Value)));
         // Turned over by hand, and a spread split again by hand.
         var backs = new PageProcessor([], ScanArrangement.TurnedOverBacks, book: book).Process([Page(SpreadImage)]).Pages;
         Assert.All(backs, p => Assert.Equal(PageSide.Back, p.Side));
@@ -767,15 +768,20 @@ public class PageProcessorTests
     }
 
     [Fact]
-    public void Process_ASpreadWithoutAClearSpine_StaysWhole()
+    public void Process_ASpreadWithoutAClearSpine_IsCutInTheMiddle()
     {
         var single = Page(TestPages.SinglePageAcross().ToRgba());
         var result = new PageProcessor([], book: new BookSplitOptions()).Process([single]);
-        var page = Assert.Single(result.Pages);
-        Assert.True(page.Spread!.IsWhole);
-        Assert.Equal((single.Id, (GutterResult?)null), (page.SpreadId, page.Spread.Gutter));
-        Assert.NotEqual(single.Id, page.Id);
-        Assert.Equal((850, 1100), (page.Image.Width, page.Image.Height));
+        Assert.Equal(2, result.Pages.Count);
+        Assert.All(result.Pages, p =>
+        {
+            Assert.Equal(single.Id, p.SpreadId);
+            Assert.False(p.Spread!.IsWhole);
+            Assert.Equal((GutterAxis.Horizontal, GutterKind.Manual), (p.Spread.Gutter!.Axis, p.Spread.Gutter.Kind));
+            Assert.NotEqual(single.Id, p.Id);
+            Assert.Equal(850, p.Image.Width);
+        });
+        Assert.Equal([550, 550], result.Pages.Select(p => p.Image.Height));
         Assert.Equal([single.Id], result.Spreads.Select(p => p.Id));
         // Without the split, the page goes through as it is.
         var plain = new PageProcessor([]).Process([single]);
@@ -797,6 +803,23 @@ public class PageProcessorTests
         var blankFacing = PageProcessor.ForScan(TaskCatalog.Apply(ScanTask.Book, new ScanSettings()))
             .Process([Page(TestPages.BlankFacingSpread().ToRgba())]).Pages;
         Assert.Equal([true, false], blankFacing.Select(p => p.Blank?.IsBlank == true));
+    }
+
+    [Fact]
+    public void Process_CutsWhereCutAtSays()
+    {
+        var landscape = Page(TwoTone(200, 100));
+        IEnumerable<int> Widths(BookSplitOptions options) =>
+            new PageProcessor([], book: options).Process([landscape]).Pages.Select(p => p.Image.Width);
+        Assert.Equal([100, 100], Widths(new BookSplitOptions()));
+        Assert.Equal([100, 100], Widths(new BookSplitOptions(CutAt: BookCutAt.Middle, LastCut: 0.3)));
+        Assert.Equal([60, 140], Widths(new BookSplitOptions(CutAt: BookCutAt.SameAsLast, LastCut: 0.3)));
+        Assert.Equal([100, 100], Widths(new BookSplitOptions(CutAt: BookCutAt.SameAsLast)));
+        // A spread lying sideways is cut across its longer side.
+        var portrait = Page(TwoTone(100, 200));
+        var heights = new PageProcessor([], book: new BookSplitOptions(CutAt: BookCutAt.SameAsLast, LastCut: 0.25))
+            .Process([portrait]).Pages.Select(p => p.Image.Height);
+        Assert.Equal([50, 150], heights);
     }
 
     [Fact]

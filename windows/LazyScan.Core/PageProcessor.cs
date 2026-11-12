@@ -536,8 +536,8 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         SplitsFacingPages(settings) && settings.Document.SoftenSpineShadow;
 
     /// <summary>
-    /// Arranges the pages, splits each spread when facing pages are split (where its gutter is found,
-    /// <see cref="BookSplitter.FindGutter(RgbaImage, int)"/>; whole otherwise), then runs every step on
+    /// Arranges the pages, splits each spread when facing pages are split (cut as the book's Cut at says,
+    /// <see cref="BookSplitter.Cut"/>), then runs every step on
     /// every page. <paramref name="token"/> is checked before each page and each step, and handed to the
     /// steps that can stop part way (<see cref="ICancellablePageStep"/>). <paramref name="firstTransfer"/>: how
     /// many pages of a two-sided scan came before <paramref name="scanned"/>, which is a later part of it (a scan
@@ -580,7 +580,7 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
             spreads.Add(page);
             if (Book is { } book)
             {
-                pages.AddRange(ProcessSpread(page, BookSplitter.FindGutter(page.Image, page.Dpi), book, token));
+                pages.AddRange(ProcessSpread(page, BookSplitter.Cut(page.Image, page.Dpi, book), book, token));
                 continue;
             }
             pages.Add(RunSteps(page, token));

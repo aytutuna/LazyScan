@@ -593,7 +593,7 @@ public sealed class DocumentOptions : IEquatable<DocumentOptions>
 
     /// <summary>
     /// Each scan of an open book or magazine is cut at the spine into its two facing pages, put in
-    /// reading order (<see cref="BookSplitter"/>); a spread whose spine is not clear stays whole. The
+    /// reading order (<see cref="BookSplitter"/>); a spread whose spine is not clear is cut as Cut at says. The
     /// page strip joins the pages again or moves the cut. Off unless chosen (the Book or magazine task
     /// turns it on). Written after the earlier keys.
     /// </summary>
@@ -690,6 +690,19 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     public int BookRotationQuarterTurns { get; set; } = 0;
 
     /// <summary>
+    /// Where a book's spread is cut (<see cref="BookCutAt"/>): at the gutter found, at the middle, or where
+    /// the last cut made by hand was.
+    /// </summary>
+    public BookCutAt BookCutAt { get; set; } = BookCutAt.Automatic;
+
+    /// <summary>
+    /// The place of the last cut made by hand in the split window, as a share of the spread (0...1); null
+    /// before any. Left out of the file then.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? BookLastCut { get; set; }
+
+    /// <summary>
     /// The iPhone's camera takes both sides of each sheet for the two-sided task as all the fronts
     /// first, then all the backs. Off: "Flip &amp; capture", each front followed by its back. The
     /// Windows app keeps it as it is.
@@ -720,6 +733,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         && CopyPrinterName == other.CopyPrinterName && CopyAlsoSavePdf == other.CopyAlsoSavePdf
         && ReceiptNameByDate == other.ReceiptNameByDate && ReceiptCombine == other.ReceiptCombine
         && BookRightToLeft == other.BookRightToLeft && BookRotationQuarterTurns == other.BookRotationQuarterTurns
+        && BookCutAt == other.BookCutAt && BookLastCut == other.BookLastCut
         && CameraFrontsFirst == other.CameraFrontsFirst && CameraSpreads == other.CameraSpreads
         && CameraFilter == other.CameraFilter;
     public override bool Equals(object? obj) => Equals(obj as TaskOptions);
@@ -736,6 +750,8 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(ReceiptCombine);
         hash.Add(BookRightToLeft);
         hash.Add(BookRotationQuarterTurns);
+        hash.Add(BookCutAt);
+        hash.Add(BookLastCut);
         hash.Add(CameraFrontsFirst);
         hash.Add(CameraSpreads);
         hash.Add(CameraFilter);
@@ -1737,12 +1753,14 @@ public sealed class Preset
 
     /// <summary>
     /// The preset's settings put in use over <paramref name="current"/>: a preset saved before the camera's
-    /// filter existed (none in its file) keeps the filter in use; one that has it brings it.
+    /// filter existed (none in its file) keeps the filter in use; one that has it brings it. The last manual
+    /// book cut is never the preset's: it stays as it is.
     /// </summary>
     public ScanSettings SettingsOver(ScanSettings current)
     {
         var chosen = Settings.Clone();
         chosen.TaskOptions.CameraFilter ??= current.TaskOptions.CameraFilter;
+        chosen.TaskOptions.BookLastCut = current.TaskOptions.BookLastCut;
         return chosen;
     }
 }

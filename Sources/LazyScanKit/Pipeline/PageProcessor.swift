@@ -554,8 +554,8 @@ public struct PageProcessor {
         splitsFacingPages(settings) && settings.document.softenSpineShadow
     }
 
-    /// Arranges the pages, splits each spread when facing pages are split (where its gutter is found,
-    /// `BookSplitter.findGutter`; whole otherwise), then runs every step on every page. `shouldContinue`
+    /// Arranges the pages, splits each spread when facing pages are split (cut as the book's Cut at says,
+    /// `BookSplitter.cut`), then runs every step on every page. `shouldContinue`
     /// is asked before each page and each step, and handed to the steps that can stop part way
     /// (`CancellablePageStep`); when it says no, `ScanError.cancelled` is thrown. `firstTransfer`: how many
     /// pages of a two-sided scan came before `scanned`, which is a later part of it (a scan processed as
@@ -595,7 +595,7 @@ public struct PageProcessor {
             if let book, book.straightens { page = Self.straightenedSpread(page) }
             spreads.append(page)
             if let book {
-                let gutter = BookSplitter.findGutter(page.image, dpi: page.dpi)
+                let gutter = BookSplitter.cut(page.image, dpi: page.dpi, options: book)
                 let spreadPages = try processSpread(page, cut: gutter, options: book, shouldContinue: shouldContinue)
                 pages.append(contentsOf: spreadPages)
                 continue

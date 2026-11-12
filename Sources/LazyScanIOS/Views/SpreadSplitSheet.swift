@@ -5,7 +5,9 @@ import SwiftUI
 
 /// Splitting a book's spread again by hand, as on the Mac (`AppState.spreadEditor(for:)`): the spread as
 /// taken with the cut drawn across it, a slider that moves the cut, and Split (Split here for a spread cut in
-/// two already, which also has Keep as one page). Split and Keep as one page are off while the app is busy.
+/// two already, which also has Keep as one page). Under the slider, Split all unsplit spreads here cuts every
+/// spread kept whole at the same place (`AppState.splitUnsplitSpreads`), and is not there when none is.
+/// Split, Split all and Keep as one page are off while the app is busy.
 /// The pages in the strip are replaced by the new ones (`AppState.splitSpread`, `joinSpread`).
 struct SpreadSplitSheet: View {
     @EnvironmentObject private var state: AppState
@@ -52,6 +54,16 @@ struct SpreadSplitSheet: View {
                     .accessibilityLabel(Text("Where the spread is cut"))
                     .accessibilityValue(Text("\(Int((fraction * 100).rounded())) percent"))
                     .accessibilityIdentifier("spread.cut")
+                if unsplitCount > 0 {
+                    Button("Split all unsplit spreads here") {
+                        state.splitUnsplitSpreads(including: source.pageID, axis: source.axis, fraction: fraction)
+                        onClose()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(state.isBusy)
+                    .accessibilityValue(Text(unsplitValue))
+                    .accessibilityIdentifier("spread.splitAll")
+                }
                 if source.isSplit {
                     Button("Keep as one page") {
                         state.joinSpread(id: source.pageID)
@@ -81,6 +93,12 @@ struct SpreadSplitSheet: View {
                 }
             }
         }
+    }
+
+    private var unsplitCount: Int { state.unsplitSpreadCount }
+
+    private var unsplitValue: String {
+        L10n.plural(unsplitCount, one: "{0} spread", other: "{0} spreads")
     }
 
     private var splitLabel: String {

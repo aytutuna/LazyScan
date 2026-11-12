@@ -69,16 +69,30 @@ public sealed record SpreadPart(Guid SpreadId, int? Part, GutterResult? Gutter, 
     public bool IsLeft => Left ?? Part == 0;
 }
 
+/// <summary>Where a spread is cut when it is scanned (<see cref="TaskOptions.BookCutAt"/>). Stored by its camelCase name.</summary>
+public enum BookCutAt
+{
+    /// <summary>At the gutter found (<see cref="BookSplitter.FindGutter(RgbaImage, int)"/>); at the middle when none is clear.</summary>
+    Automatic,
+    /// <summary>At the middle, without looking for a gutter.</summary>
+    Middle,
+    /// <summary>At the place of the cut made by hand last (<see cref="TaskOptions.BookLastCut"/>); at the middle before any.</summary>
+    SameAsLast,
+}
+
 /// <summary>How the pages of a spread are turned and put in order (<see cref="BookSplitter.Split"/>).</summary>
 /// <param name="RotationQuarterTurns">Quarter turns clockwise every page of the book is turned (the book lay sideways or upside down on the glass).</param>
 /// <param name="RightToLeft">The book reads from right to left (Arabic, Hebrew, manga): the right page comes first.</param>
 /// <param name="Straightens">A scanned spread is turned level (<see cref="DocumentGeometry"/>, as the Straighten setting) before its gutter is found.</param>
-public sealed record BookSplitOptions(int RotationQuarterTurns = 0, bool RightToLeft = false, bool Straightens = false)
+/// <param name="CutAt">Where a spread is cut.</param>
+/// <param name="LastCut">The place of the last cut made by hand, 0...1 along the spread; null before any.</param>
+public sealed record BookSplitOptions(int RotationQuarterTurns = 0, bool RightToLeft = false, bool Straightens = false,
+                                      BookCutAt CutAt = BookCutAt.Automatic, double? LastCut = null)
 {
     /// <summary>The options of <paramref name="settings"/> (<see cref="TaskOptions.BookRotationQuarterTurns"/>, <see cref="TaskOptions.BookRightToLeft"/>).</summary>
     public static BookSplitOptions Of(ScanSettings settings) =>
         new(BookSplitter.NormalizedTurns(settings.TaskOptions.BookRotationQuarterTurns), settings.TaskOptions.BookRightToLeft,
-            settings.Document.AutoStraighten);
+            settings.Document.AutoStraighten, settings.TaskOptions.BookCutAt, settings.TaskOptions.BookLastCut);
 }
 
 /// <summary>What the search for the gutter found along one axis, in the analysis image's pixels.</summary>
@@ -180,9 +194,28 @@ public static class BookSplitter
     // MARK: - Finding the gutter
 
     /// <summary>
+    /// The cut of a scanned spread as <see cref="BookSplitOptions.CutAt"/> says: the gutter found, else the
+    /// middle (<see cref="BookCutAt.Automatic"/>); the middle (<see cref="BookCutAt.Middle"/>); or the last
+    /// cut made by hand (<see cref="BookCutAt.SameAsLast"/>).
+    /// </summary>
+    public static GutterResult Cut(RgbaImage image, int dpi, BookSplitOptions options)
+    {
+        var axis = DefaultAxis(image.Width, image.Height);
+        return options.CutAt switch
+        {
+            BookCutAt.Middle => Manual(axis, 0.5, image.Width, image.Height),
+            BookCutAt.SameAsLast => Manual(axis, options.LastCut ?? 0.5, image.Width, image.Height),
+            _ => FindGutter(image, dpi) ?? Manual(axis, 0.5, image.Width, image.Height),
+        };
+    }
+
+    /// <summary>The axis a spread <paramref name="width"/> × <paramref name="height"/> is cut along when no gutter says: across its longer side.</summary>
+    public static GutterAxis DefaultAxis(int width, int height) => width >= height ? GutterAxis.Vertical : GutterAxis.Horizontal;
+
+    /// <summary>
     /// Where <paramref name="image"/>, scanned at <paramref name="dpi"/>, holds the gutter of an open
     /// book, in its pixels; null when it is not clear (a single page, a picture across the middle, a
-    /// dark background): the spread then stays whole.
+    /// dark background): the caller then cuts it as the book's Cut at says.
     /// </summary>
     public static GutterResult? FindGutter(RgbaImage image, int dpi)
     {
@@ -857,6 +890,14 @@ public static class BookPages
 
     /// <summary>"Reordered 1 spread" or "Reordered 5 spreads": what the hold for Undo is called.</summary>
     public static string ReorderedNote(int count) => Loc.Plural(count, "Reordered {0} spread", "Reordered {0} spreads");
+
+    /// <summary>"Automatic", "Middle", "Same as last".</summary>
+    public static string CutAtLabel(BookCutAt cutAt) => cutAt switch
+    {
+        BookCutAt.Middle => Loc.T("Middle"),
+        BookCutAt.SameAsLast => Loc.T("Same as last"),
+        _ => Loc.T("Automatic"),
+    };
 
     /// <summary>The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.</summary>
     public static IReadOnlyList<int> RotationChoices { get; } = [0, 1, 2, 3];

@@ -79,6 +79,16 @@ public struct SpreadPart: Equatable, Sendable {
     public var isLeft: Bool { left ?? (part == 0) }
 }
 
+/// Where a spread is cut when it is scanned (`TaskOptions.bookCutAt`). Twin of C# `BookCutAt`.
+public enum BookCutAt: String, Codable, CaseIterable, Sendable {
+    /// At the gutter found (`BookSplitter.findGutter`); at the middle when none is clear.
+    case automatic
+    /// At the middle, without looking for a gutter.
+    case middle
+    /// At the place of the cut made by hand last (`TaskOptions.bookLastCut`); at the middle before any.
+    case sameAsLast
+}
+
 /// How the pages of a spread are turned and put in order (`BookSplitter.split`). Twin of C#
 /// `BookSplitOptions`.
 public struct BookSplitOptions: Equatable, Sendable {
@@ -89,18 +99,27 @@ public struct BookSplitOptions: Equatable, Sendable {
     public var rightToLeft: Bool
     /// A scanned spread is turned level (`DocumentGeometry`, as the Straighten setting) before its gutter is found.
     public var straightens: Bool
+    /// Where a spread is cut.
+    public var cutAt: BookCutAt
+    /// The place of the last cut made by hand, 0...1 along the spread; nil before any.
+    public var lastCut: Double?
 
-    public init(rotationQuarterTurns: Int = 0, rightToLeft: Bool = false, straightens: Bool = false) {
+    public init(rotationQuarterTurns: Int = 0, rightToLeft: Bool = false, straightens: Bool = false,
+                cutAt: BookCutAt = .automatic, lastCut: Double? = nil) {
         self.rotationQuarterTurns = rotationQuarterTurns
         self.rightToLeft = rightToLeft
         self.straightens = straightens
+        self.cutAt = cutAt
+        self.lastCut = lastCut
     }
 
     /// The options of `settings` (`TaskOptions.bookRotationQuarterTurns`, `TaskOptions.bookRightToLeft`).
     public static func of(_ settings: ScanSettings) -> BookSplitOptions {
         BookSplitOptions(rotationQuarterTurns: BookSplitter.normalizedTurns(settings.taskOptions.bookRotationQuarterTurns),
                          rightToLeft: settings.taskOptions.bookRightToLeft,
-                         straightens: settings.document.autoStraighten)
+                         straightens: settings.document.autoStraighten,
+                         cutAt: settings.taskOptions.bookCutAt,
+                         lastCut: settings.taskOptions.bookLastCut)
     }
 }
 
@@ -207,9 +226,28 @@ public enum BookSplitter {
 
     // MARK: Finding the gutter
 
+    /// The cut of a scanned spread as `options.cutAt` says: the gutter found, else the middle
+    /// (`.automatic`); the middle (`.middle`); or the last cut made by hand (`.sameAsLast`).
+    public static func cut(_ image: CGImage, dpi: Int, options: BookSplitOptions) -> GutterResult {
+        let axis = defaultAxis(width: image.width, height: image.height)
+        switch options.cutAt {
+        case .automatic:
+            return findGutter(image, dpi: dpi) ?? manual(axis, fraction: 0.5, width: image.width, height: image.height)
+        case .middle:
+            return manual(axis, fraction: 0.5, width: image.width, height: image.height)
+        case .sameAsLast:
+            return manual(axis, fraction: options.lastCut ?? 0.5, width: image.width, height: image.height)
+        }
+    }
+
+    /// The axis a spread `width` × `height` is cut along when no gutter says: across its longer side.
+    public static func defaultAxis(width: Int, height: Int) -> GutterAxis {
+        width >= height ? .vertical : .horizontal
+    }
+
     /// Where `image`, scanned at `dpi`, holds the gutter of an open book, in its pixels; nil when it is
-    /// not clear (a single page, a picture across the middle, a dark background): the spread then stays
-    /// whole.
+    /// not clear (a single page, a picture across the middle, a dark background): the caller then cuts it
+    /// as the book's cut at says.
     public static func findGutter(_ image: RgbaImage, dpi: Int) -> GutterResult? {
         let gray = analysisImage(image, dpi: dpi)
         guard let found = findGutter(gray) else { return nil }
@@ -869,6 +907,15 @@ public enum BookPages {
     /// "Reordered 1 spread" or "Reordered 5 spreads": what the hold for Undo is called.
     public static func reorderedNote(_ count: Int) -> String {
         L10n.plural(count, one: "Reordered {0} spread", other: "Reordered {0} spreads")
+    }
+
+    /// "Automatic", "Middle", "Same as last".
+    public static func cutAtLabel(_ cutAt: BookCutAt) -> String {
+        switch cutAt {
+        case .automatic: return L10n.t("Automatic")
+        case .middle: return L10n.t("Middle")
+        case .sameAsLast: return L10n.t("Same as last")
+        }
     }
 
     /// The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.

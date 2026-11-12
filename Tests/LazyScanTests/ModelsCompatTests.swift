@@ -79,6 +79,8 @@ private func nonDefaultSettings() -> ScanSettings {
     settings.taskOptions.receiptCombine = true
     settings.taskOptions.bookRightToLeft = true
     settings.taskOptions.bookRotationQuarterTurns = 1
+    settings.taskOptions.bookCutAt = .sameAsLast
+    settings.taskOptions.bookLastCut = 0.3
     settings.taskOptions.cameraFrontsFirst = true
     settings.taskOptions.cameraSpreads = true
     settings.taskOptions.cameraFilter = .original
@@ -154,6 +156,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
                           with: "\"duplex\" : \"manual\",\n      \"format\" : \"tiff\"")
     .replacingOccurrences(of: "\"source\" : \"documentFeeder\"",
                           with: "\"source\" : \"documentFeeder\",\n      \"taskOptions\" : {\n"
+                              + "        \"bookCutAt\" : \"sameAsLast\",\n        \"bookLastCut\" : 0.3,\n"
                               + "        \"bookRightToLeft\" : true,\n        \"bookRotationQuarterTurns\" : 1,\n"
                               + "        \"cameraFilter\" : \"original\",\n"
                               + "        \"cameraFrontsFirst\" : true,\n        \"cameraSpreads\" : true,\n"
@@ -1186,8 +1189,8 @@ final class ModelsCompatTests: XCTestCase {
                 // No printer chosen: the key is left out (C# leaves out a null too).
                 XCTAssertEqual(Set(written.keys), ["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage",
                                                    "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine",
-                                                   "bookRightToLeft", "bookRotationQuarterTurns", "cameraFrontsFirst",
-                                                   "cameraSpreads"])
+                                                   "bookRightToLeft", "bookRotationQuarterTurns", "bookCutAt",
+                                                   "cameraFrontsFirst", "cameraSpreads"])
                 XCTAssertEqual(written["idCardPaper"] as? String, paper.rawValue)
                 XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: data).taskOptions, settings.taskOptions)
             }
@@ -1293,6 +1296,9 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertFalse(nulls.document.splitFacingPages)
         XCTAssertTrue(nulls.taskOptions.bookRightToLeft)
         XCTAssertEqual(nulls.taskOptions.bookRotationQuarterTurns, 0)
+        let cut = try decode(ScanSettings.self, #"{"taskOptions": {"bookCutAt": "left", "bookLastCut": "x"}}"#)
+        XCTAssertEqual(cut.taskOptions.bookCutAt, .automatic)
+        XCTAssertNil(cut.taskOptions.bookLastCut)
         // A turn out of range is kept as written and read through BookSplitter.normalizedTurns.
         let turns = try decode(ScanSettings.self, #"{"taskOptions": {"bookRotationQuarterTurns": 7}}"#)
         XCTAssertEqual(turns.taskOptions.bookRotationQuarterTurns, 7)
@@ -1306,6 +1312,8 @@ final class ModelsCompatTests: XCTestCase {
                 settings.document.splitFacingPages = split
                 settings.taskOptions.bookRightToLeft = !split
                 settings.taskOptions.bookRotationQuarterTurns = turns
+                settings.taskOptions.bookCutAt = BookCutAt.allCases[turns % 3]
+                settings.taskOptions.bookLastCut = split ? 0.4 : nil
                 let back = try JSONDecoder().decode(ScanSettings.self, from: encode(settings))
                 XCTAssertEqual(back.document, settings.document)
                 XCTAssertEqual(back.taskOptions, settings.taskOptions)
@@ -1316,6 +1324,8 @@ final class ModelsCompatTests: XCTestCase {
         copy.document.splitFacingPages = false
         copy.taskOptions.bookRightToLeft = false
         copy.taskOptions.bookRotationQuarterTurns = 0
+        copy.taskOptions.bookCutAt = .automatic
+        XCTAssertEqual(original.taskOptions.bookCutAt, .sameAsLast)
         XCTAssertTrue(original.document.splitFacingPages)
         XCTAssertTrue(original.taskOptions.bookRightToLeft)
         XCTAssertEqual(original.taskOptions.bookRotationQuarterTurns, 1)
@@ -1406,6 +1416,16 @@ final class ModelsCompatTests: XCTestCase {
         var enhanced = ScanSettings()
         enhanced.taskOptions.cameraFilter = .enhanced
         XCTAssertEqual(Preset(name: "Enhanced", settings: enhanced).settings(over: current).taskOptions.cameraFilter, .enhanced)
+    }
+
+    /// Twin of `APreset_KeepsTheLastBookCutInUse`.
+    func test_aPreset_keepsTheLastBookCutInUse() {
+        var current = ScanSettings()
+        current.taskOptions.bookLastCut = 0.4
+        var saved = ScanSettings()
+        saved.taskOptions.bookLastCut = 0.7
+        XCTAssertEqual(Preset(name: "Book", settings: saved).settings(over: current).taskOptions.bookLastCut, 0.4)
+        XCTAssertNil(Preset(name: "Book", settings: saved).settings(over: ScanSettings()).taskOptions.bookLastCut)
     }
 
     // MARK: Softening the spine's shadow (CONTRACTS.md, rule 6)

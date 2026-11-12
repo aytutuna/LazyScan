@@ -2433,6 +2433,16 @@
   },
   "For a book lying sideways or upside down on the glass, from the next spread on.": {},
   "For a book lying sideways or upside down on the glass": {},
+  "Middle": {
+    "note": "Setting: where a book spread is cut, in the middle of the scan."
+  },
+  "Same as last": {
+    "note": "Setting: where a book spread is cut, at the place of the last cut made by hand."
+  },
+  "{0} spread": {
+    "other": "{0} spreads",
+    "note": "A spread is two facing pages of a book scanned together."
+  },
   "Soften spine shadow": {},
   "How it works": {},
   "Split|section": {

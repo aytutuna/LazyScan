@@ -485,6 +485,13 @@ struct PageSettingsRows: View {
                 }
             }
             BookReorderRow()
+            Picker("Cut at", selection: $state.settings.taskOptions.bookCutAt) {
+                ForEach(BookCutAt.allCases, id: \.self) { (choice: BookCutAt) in
+                    Text(BookPages.cutAtLabel(choice)).tag(choice)
+                }
+            }
+            .accessibilityHint(Text("Where a spread is cut when no gutter is found. Same as last uses the cut you set by hand last."))
+            .accessibilityIdentifier("options.cutAt")
             Toggle("Soften spine shadow", isOn: $state.settings.document.softenSpineShadow)
                 .accessibilityHint(Text(SpineShadow.hint(s.document.softenSpineShadow)))
         }
