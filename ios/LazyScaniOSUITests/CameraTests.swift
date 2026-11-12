@@ -146,4 +146,30 @@ final class CameraTests: XCTestCase {
         XCTAssertTrue(app.buttons["camera.shutter"].waitForExistence(timeout: 30), "The shutter again")
         XCTAssertFalse(app.buttons["scan.button"].exists, "No Scan in camera mode")
     }
+
+    @MainActor
+    func test_landscape_givesTheViewfinderTheHeight_andKeepsTheControlsAtTheSides() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner"]
+        app.launch()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        addTeardownBlock {
+            XCUIDevice.shared.orientation = .portrait
+        }
+
+        app.switchToCamera()
+        let picture: XCUIElement = app.descendants(matching: .any)["camera.screen"].firstMatch
+        XCTAssertTrue(picture.waitForExistence(timeout: 30), "The viewfinder")
+        let window: CGRect = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(picture.frame.height, window.height * 0.9, "The viewfinder fills the height")
+        let shutter: CGRect = app.buttons["camera.shutter"].frame
+        XCTAssertGreaterThanOrEqual(shutter.minX, picture.frame.maxX, "The shutter is in the column beside the picture")
+        XCTAssertTrue(app.buttons["camera.autoQuick"].exists, "Auto beside the picture")
+        XCTAssertTrue(app.buttons["import.photos"].exists, "Photos")
+        XCTAssertTrue(app.descendants(matching: .any)["camera.pages"].firstMatch.exists, "The pages")
+
+        app.openDrawer("camera")
+        XCTAssertTrue(app.descendants(matching: .any)["camera.auto"].firstMatch.exists, "The Auto switch in the panel")
+        app.closeDrawer()
+    }
 }

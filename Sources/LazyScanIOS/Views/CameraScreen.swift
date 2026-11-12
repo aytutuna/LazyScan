@@ -30,10 +30,14 @@ import UIKit
 /// otherwise the root view's corner editor opens. The camera rests while anything covers it (`resting`: a
 /// sheet, a cover, the corner editor; Photos or Files), so Auto takes nothing meanwhile, and waits for the
 /// card saying why it is asked for (`waitsForIntro`) before iOS asks. With a keyboard, Space takes a photo.
+/// In landscape (a compact height) the viewfinder fills the height between a column of the top bar's buttons and
+/// Photos and Files, and a column with the arrow, Auto, Flash, the shutter and the pages; the drawer opens as a
+/// panel over the viewfinder's trailing edge.
 struct CameraScreen<Notices: View, Buttons: View>: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @StateObject private var model: IOSCameraModel
     @State private var waitAnnouncer: IOSWaitAnnouncer = IOSWaitAnnouncer()
     /// The count of prints or receipts found, waiting to be spoken once it has stayed the same for a second.
@@ -80,90 +84,238 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            viewfinder
-            lowerRow
-            CaptureRow(onPages: onPages, onPresenting: setPicking) {
-                shutter
-            }
-        }
-        .background(Color(uiColor: .systemBackground))
-        .onAppear {
-            if !waitsForIntro {
-                start()
-            }
-        }
-        .onDisappear {
-            model.disappear()
-        }
-        .onChange(of: waitsForIntro) { (_: Bool, waits: Bool) in
-            if !waits {
-                start()
-            }
-        }
-        .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
-            if phase == .background {
-                model.apply(IOSCameraEvent.background)
-            } else if phase == .active {
-                model.apply(IOSCameraEvent.foreground)
-            }
-        }
-        .onChange(of: covered) { (_: Bool, rests: Bool) in
-            model.apply(rests ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
-        }
-        .onChange(of: holdsAuto) { (_: Bool, holds: Bool) in
-            allowPages()
-            if !holds {
-                model.rearm()
-            }
-        }
-        .onChange(of: canShoot) { (_: Bool, can: Bool) in
-            // A page Auto decided on while no photo could be taken (the shot queue full, a save) is judged again now.
-            if can {
-                model.rearm()
-            }
-        }
-        .onChange(of: kind) { (_: CaptureKind, next: CaptureKind) in
-            announcedCount = nil
-            model.setKind(next, singleItem: singleItem)
-        }
-        .onChange(of: singleItem) { (_: Bool, single: Bool) in
-            model.setKind(kind, singleItem: single)
-        }
-        .onChange(of: countLine) { (_: String?, line: String?) in
-            announceCount(line)
-        }
-        .onChange(of: model.tapToTake) { (_: Bool, on: Bool) in
-            if on {
-                AccessibilityNotification.Announcement(IOSCameraText.tapToTake).post()
-            }
-        }
-        .onChange(of: waitCue) { (_: IOSWaitCue, cue: IOSWaitCue) in
-            // Spoken once per wait, when the line is first shown, so a VoiceOver user knows why nothing is
-            // taken yet without hearing it again each time a frame flips it.
-            if let reason = waitAnnouncer.next(cue) {
-                AccessibilityNotification.Announcement(reason).post()
-            }
-        }
-        .onChange(of: chosenMegapixels) { (_: Int, megapixels: Int) in
-            if let controller = model.driver as? IOSCameraController {
-                controller.usePhotoSize(megapixels: megapixels)
-            }
-        }
-        .alert(IOSCameraText.memoryTitle, isPresented: memoryAlertShown, presenting: memoryWarned) { (size: IOSPhotoSize) in
-            Button(IOSCameraText.useLabel(size)) {}
-            if let safer = IOSCameraLens.saferSize(among: IOSCameraLens.choices(IOSCameraLens.offered),
-                                                   physicalMemory: ProcessInfo.processInfo.physicalMemory) {
-                Button(IOSCameraText.useLabel(safer)) {
-                    chosenMegapixels = IOSCameraLens.megapixels(safer)
+        layout
+            .background(Color(uiColor: .systemBackground))
+            .onAppear {
+                if !waitsForIntro {
+                    start()
                 }
             }
-        } message: { (size: IOSPhotoSize) in
-            Text(IOSCameraText.memoryWarning(size, among: IOSCameraLens.choices(IOSCameraLens.offered),
-                                             physicalMemory: ProcessInfo.processInfo.physicalMemory) ?? "")
+            .onDisappear {
+                model.disappear()
+            }
+            .onChange(of: waitsForIntro) { (_: Bool, waits: Bool) in
+                if !waits {
+                    start()
+                }
+            }
+            .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
+                if phase == .background {
+                    model.apply(IOSCameraEvent.background)
+                } else if phase == .active {
+                    model.apply(IOSCameraEvent.foreground)
+                }
+            }
+            .onChange(of: covered) { (_: Bool, rests: Bool) in
+                model.apply(rests ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
+            }
+            .onChange(of: holdsAuto) { (_: Bool, holds: Bool) in
+                allowPages()
+                if !holds {
+                    model.rearm()
+                }
+            }
+            .onChange(of: canShoot) { (_: Bool, can: Bool) in
+                // A page Auto decided on while no photo could be taken (the shot queue full, a save) is judged again now.
+                if can {
+                    model.rearm()
+                }
+            }
+            .onChange(of: kind) { (_: CaptureKind, next: CaptureKind) in
+                announcedCount = nil
+                model.setKind(next, singleItem: singleItem)
+            }
+            .onChange(of: singleItem) { (_: Bool, single: Bool) in
+                model.setKind(kind, singleItem: single)
+            }
+            .onChange(of: countLine) { (_: String?, line: String?) in
+                announceCount(line)
+            }
+            .onChange(of: model.tapToTake) { (_: Bool, on: Bool) in
+                if on {
+                    AccessibilityNotification.Announcement(IOSCameraText.tapToTake).post()
+                }
+            }
+            .onChange(of: waitCue) { (_: IOSWaitCue, cue: IOSWaitCue) in
+                // Spoken once per wait, when the line is first shown, so a VoiceOver user knows why nothing is
+                // taken yet without hearing it again each time a frame flips it.
+                if let reason = waitAnnouncer.next(cue) {
+                    AccessibilityNotification.Announcement(reason).post()
+                }
+            }
+            .onChange(of: chosenMegapixels) { (_: Int, megapixels: Int) in
+                if let controller = model.driver as? IOSCameraController {
+                    controller.usePhotoSize(megapixels: megapixels)
+                }
+            }
+            .alert(IOSCameraText.memoryTitle, isPresented: memoryAlertShown, presenting: memoryWarned) { (size: IOSPhotoSize) in
+                Button(IOSCameraText.useLabel(size)) {}
+                if let safer = IOSCameraLens.saferSize(among: IOSCameraLens.choices(IOSCameraLens.offered),
+                                                       physicalMemory: ProcessInfo.processInfo.physicalMemory) {
+                    Button(IOSCameraText.useLabel(safer)) {
+                        chosenMegapixels = IOSCameraLens.megapixels(safer)
+                    }
+                }
+            } message: { (size: IOSPhotoSize) in
+                Text(IOSCameraText.memoryWarning(size, among: IOSCameraLens.choices(IOSCameraLens.offered),
+                                                 physicalMemory: ProcessInfo.processInfo.physicalMemory) ?? "")
+            }
+            .sensoryFeedback(SensoryFeedback.impact(weight: SensoryFeedback.Weight.medium), trigger: model.shotCount)
+    }
+
+    private var layout: some View {
+        let compact: Bool = verticalSizeClass == .compact
+        let stack: AnyLayout = compact ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+        return stack {
+            if compact {
+                leadingColumn
+            } else {
+                topBar
+            }
+            viewfinder
+                .overlay(alignment: .trailing) {
+                    sidePanel
+                }
+            if compact {
+                trailingColumn
+            } else {
+                lowerRow
+                CaptureRow(onPages: onPages, onPresenting: setPicking) {
+                    shutter
+                }
+            }
         }
-        .sensoryFeedback(SensoryFeedback.impact(weight: SensoryFeedback.Weight.medium), trigger: model.shotCount)
+    }
+
+    // MARK: The landscape layout
+
+    private var leadingColumn: some View {
+        VStack(spacing: 8) {
+            libraryButton
+            printerButton
+            Spacer(minLength: 0)
+            ImportButtons(round: true, stacked: true, onPresenting: setPicking)
+        }
+        .frame(width: 56)
+        .padding(.vertical, 4)
+    }
+
+    private var trailingColumn: some View {
+        VStack(spacing: 8) {
+            sideToggle
+            autoQuickButton
+            torchQuickButton
+            Spacer(minLength: 0)
+            shutter
+            Spacer(minLength: 0)
+            PagesStack(onPages: onPages)
+        }
+        .frame(width: 96)
+        .padding(.vertical, 4)
+    }
+
+    /// The options drawer in landscape: a panel over the viewfinder's trailing edge, since there is no
+    /// height under the picture.
+    @ViewBuilder
+    private var sidePanel: some View {
+        if showsDrawer && verticalSizeClass == .compact {
+            ScrollView {
+                ScanDrawer(model: model, torch: model.hasTorch, group: $drawerGroup)
+                    .padding(.top, 8)
+            }
+            .frame(width: 300)
+            .background(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, style: .continuous)
+                .fill(Color(uiColor: .systemBackground).opacity(0.95)))
+            .transition(.move(edge: .trailing))
+        }
+    }
+
+    @ViewBuilder
+    private var libraryButton: some View {
+        if let open = onLibrary {
+            Button {
+                open()
+            } label: {
+                Image(systemName: "books.vertical")
+                    .font(.title3)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(Text(IOSSettingsText.libraryLabel))
+            .accessibilityIdentifier("open.library")
+        }
+    }
+
+    private var sideToggle: some View {
+        let open: Bool = showsDrawer
+        let symbol: String = open ? "chevron.forward" : "chevron.backward"
+        let label: String = open ? IOSCameraText.hideOptions : IOSCameraText.showOptions
+        return Button {
+            withAnimation(Animation.snappy) {
+                showsDrawer.toggle()
+            }
+        } label: {
+            Image(systemName: symbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(open ? Color.white : Color.primary)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(open ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
+        .accessibilityIdentifier("drawer.toggle")
+    }
+
+    /// The drawer's Auto shutter switch as a round button, for landscape where the drawer is not in sight.
+    private var autoQuickButton: some View {
+        let on: Bool = model.autoShutter
+        let value: String = on ? IOSCameraText.onValue : IOSCameraText.offValue
+        let shown: IOSCameraModel = model
+        return Button {
+            shown.setAutoShutter(!on)
+        } label: {
+            quickLabel("a.circle", on: on)
+        }
+        .buttonStyle(.plain)
+        .disabled(state.isBusy || importer.isImporting)
+        .accessibilityLabel(Text(IOSCameraText.autoShutterLabel))
+        .accessibilityValue(Text(value))
+        .accessibilityHint(Text(IOSCameraText.autoHint))
+        .accessibilityIdentifier("camera.autoQuick")
+    }
+
+    /// The drawer's Flash group as a round button, where the camera has a light.
+    @ViewBuilder
+    private var torchQuickButton: some View {
+        if model.hasTorch {
+            let on: Bool = model.torchOn
+            let symbol: String = on ? "bolt" : "bolt.slash"
+            let value: String = on ? IOSCameraText.onValue : IOSCameraText.offValue
+            let shown: IOSCameraModel = model
+            Button {
+                Task { @MainActor in
+                    await shown.toggleTorch()
+                }
+            } label: {
+                quickLabel(symbol, on: on)
+            }
+            .buttonStyle(.plain)
+            .disabled(!model.lifecycle.isLive || state.isBusy || importer.isImporting)
+            .accessibilityLabel(Text(IOSCameraText.flashLabel))
+            .accessibilityValue(Text(value))
+            .accessibilityIdentifier("camera.torchQuick")
+        }
+    }
+
+    private func quickLabel(_ symbol: String, on: Bool) -> some View {
+        Image(systemName: symbol)
+            .font(.title3)
+            .foregroundStyle(on ? Color.white : Color.primary)
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(on ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
+            .contentShape(Circle())
     }
 
     // MARK: The top bar

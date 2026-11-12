@@ -79,6 +79,8 @@ struct ImportButtons: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
     var round: Bool = false
+    /// One above the other, for a side column.
+    var stacked: Bool = false
     /// Photos or Files opened (true) or closed.
     var onPresenting: (@MainActor (Bool) -> Void)?
 
@@ -87,7 +89,8 @@ struct ImportButtons: View {
     @State private var showsFiles: Bool = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        let layout: AnyLayout = stacked ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+        layout {
             Button {
                 showsPhotos = true
             } label: {

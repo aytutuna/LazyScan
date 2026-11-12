@@ -39,7 +39,7 @@ enum DrawerGroup: String, Identifiable, CaseIterable {
     }
 }
 
-/// The options drawer both tabs open with the arrow, above the bottom bar so it never covers the picture: a
+/// The options drawer both tabs open with the arrow, above the bottom bar, or in landscape as a panel over the picture's trailing edge (`CameraScreen`): a
 /// row of icons, one per group (`DrawerGroup.shown`), and the chosen group's controls under it. Colour: the
 /// filter new pages get, or the colour mode for the kinds that collect no pages and on the scanner tab (and
 /// Restore faded colours for Photos). Flash: the camera's light (its torch), where it has one. Camera: the
