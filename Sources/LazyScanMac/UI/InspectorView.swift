@@ -377,9 +377,11 @@ struct InspectorView: View {
 
     /// What the paper size does: for a copy, Automatic on the glass is the printer's paper.
     private var paperSizeHint: String {
-        state.isCopyFlow
-            ? PrintText.copyPaperHint(state.settings.paperSize, source: state.settings.source)
-            : PaperSizes.hint(state.settings.paperSize, source: state.settings.source)
+        if state.isCopyFlow {
+            return PrintText.copyPaperHint(state.settings.paperSize, source: state.settings.source)
+        }
+        let wholeGlass = state.settings.source == .flatbed && TaskCatalog.scansWholeGlass(state.settings)
+        return PaperSizes.hint(wholeGlass ? .auto : state.settings.paperSize, source: state.settings.source)
     }
 
     /// An area of the preview is selected: the scan takes it, whatever the paper size says.

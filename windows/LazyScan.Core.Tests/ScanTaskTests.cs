@@ -739,6 +739,22 @@ public class ScanTaskTests
     }
 
     [Fact]
+    public void ScansWholeGlass_ForTasksThatFindItemsAnywhere()
+    {
+        ScanTask[] whole = [ScanTask.Photos, ScanTask.PhotoRestore, ScanTask.Receipt, ScanTask.Book, ScanTask.IdCard];
+        var baseSettings = new ScanSettings { PaperSize = PaperSize.A5 };
+        foreach (var task in ScanTasks.All)
+        {
+            var s = TaskCatalog.Apply(task, baseSettings);
+            Assert.Equal(PaperSize.A5, s.PaperSize);
+            Assert.True(TaskCatalog.ScansWholeGlass(s) == whole.Contains(task), task.ToString());
+        }
+        var edited = TaskCatalog.Apply(ScanTask.Book, baseSettings);
+        edited.Document.SplitFacingPages = false;
+        Assert.False(TaskCatalog.ScansWholeGlass(edited));
+    }
+
+    [Fact]
     public void Summary_OneLine()
     {
         Assert.Equal("300 dpi · Color · PDF", TaskCatalog.Summary(new ScanSettings()));

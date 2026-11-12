@@ -525,6 +525,17 @@ public enum TaskCatalog {
         return settings.intent == .photo ? .photoSplit : .documentQueue
     }
 
+    /// Whether the flatbed scans the whole glass for these settings, whatever the paper size: the
+    /// tasks that find items anywhere on it (ID card, photos, restored photos, receipts) and a book, whose spread
+    /// is wider than a page. A preview selection still replaces it.
+    public static func scansWholeGlass(_ settings: ScanSettings) -> Bool {
+        guard let task = settings.task, fits(task, settings) else { return false }
+        switch task {
+        case .idCard, .photos, .photoRestore, .receipt, .book: return true
+        default: return false
+        }
+    }
+
     /// Whether pages queued under another task can still be saved once `task` is started: its pages go to
     /// the queue and are saved together. Photos and receipts are saved from their review, the ID card as a
     /// card, a copy is printed and Quick scan saves each scan at once (or holds it, on the iPhone), so none

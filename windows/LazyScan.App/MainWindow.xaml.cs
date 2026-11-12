@@ -1424,7 +1424,8 @@ public partial class MainWindow : Window
         var caps = ViewModel.Capabilities;
         SizeD? area = caps is null ? null
             : s.Source == ScanSource.DocumentFeeder ? caps.FeederSizeInches : caps.FlatbedSizeInches;
-        string signature = $"{s.Source}\u001f{area}\u001f{ViewModel.IsCopyFlow}";
+        bool wholeGlass = s.Source == ScanSource.Flatbed && TaskCatalog.ScansWholeGlass(s);
+        string signature = $"{s.Source}\u001f{area}\u001f{ViewModel.IsCopyFlow}\u001f{wholeGlass}";
         if (signature != _paperSignature)
         {
             _paperSignature = signature;
@@ -1434,7 +1435,7 @@ public partial class MainWindow : Window
                 bool fits = PaperSizes.Fits(size, area);
                 string tip = !fits ? PaperSizes.DoesNotFitReason(s.Source)
                     : size == PaperSize.Auto && ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(size, s.Source)
-                    : PaperSizes.Hint(size, s.Source);
+                    : PaperSizes.Hint(wholeGlass ? PaperSize.Auto : size, s.Source);
                 // A size larger than the glass or the feeder stays listed, greyed out with why after its name.
                 string content = size == PaperSize.Auto ? size.Label() : Loc.T("{0}  ({1})", size.Label(), size.Detail());
                 var item = new ComboBoxItem
@@ -1451,7 +1452,7 @@ public partial class MainWindow : Window
         }
         PaperSizeBox.SelectedItem = PaperSizeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (PaperSize)i.Tag == s.PaperSize);
         AutomationProperties.SetHelpText(PaperSizeBox,
-            ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(s.PaperSize, s.Source) : PaperSizes.Hint(s.PaperSize, s.Source));
+            ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(s.PaperSize, s.Source) : PaperSizes.Hint(wholeGlass ? PaperSize.Auto : s.PaperSize, s.Source));
     }
 
     private void Sides_Changed(object sender, SelectionChangedEventArgs e)

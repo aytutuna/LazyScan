@@ -1633,11 +1633,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         PageSide? manualSide = sides == DuplexMode.Manual && IsTurningOverByHand && Flow?.Current is { } step
             ? step.Id == DocumentSides.BacksStepId ? PageSide.Back : PageSide.Front
             : null;
-        // The flatbed scans the selection, else the paper size's part of the glass; an ID card
-        // may lie anywhere on it, so its scans take the whole glass. A copy with Automatic paper
-        // scans the part the printer's paper covers (PrepareCopyAsync).
+        // The flatbed scans the selection, else the paper size's part of the glass; ID cards,
+        // photos, receipts and books may lie anywhere on it, so their scans take the whole glass.
+        // A copy with Automatic paper scans the part the printer's paper covers (PrepareCopyAsync).
         var selection = s.Source == ScanSource.Flatbed
-            ? SelectionRect ?? (!idCard && Capabilities is { } caps ? PaperSizes.FlatbedSelection(s.PaperSize, caps.FlatbedSizeInches) : null)
+            ? SelectionRect ?? (!TaskCatalog.ScansWholeGlass(s) && Capabilities is { } caps ? PaperSizes.FlatbedSelection(s.PaperSize, caps.FlatbedSizeInches) : null)
             : null;
         bool copy = TaskCatalog.FlowOf(s) == TaskFlowKind.Copy;
         // A copy of an area selected on the preview is centred on the paper; of a page, it lies in the corner.

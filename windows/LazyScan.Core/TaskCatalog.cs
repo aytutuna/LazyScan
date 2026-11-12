@@ -536,6 +536,15 @@ public static class TaskCatalog
             : settings.Intent == ScanIntent.Photo ? TaskFlowKind.PhotoSplit : TaskFlowKind.DocumentQueue;
 
     /// <summary>
+    /// Whether the flatbed scans the whole glass for these settings, whatever the paper size: the tasks that
+    /// find items anywhere on it (ID card, photos, restored photos, receipts) and a book, whose spread is wider than a page.
+    /// A preview selection still replaces it.
+    /// </summary>
+    public static bool ScansWholeGlass(ScanSettings settings) =>
+        settings.Task is { } task && Fits(task, settings)
+        && task is ScanTask.IdCard or ScanTask.Photos or ScanTask.PhotoRestore or ScanTask.Receipt or ScanTask.Book;
+
+    /// <summary>
     /// Whether pages queued under another task can still be saved once <paramref name="task"/> is
     /// started: its pages go to the queue and are saved together. Photos and receipts are saved from
     /// their review, the ID card as a card, a copy is printed and Quick scan saves each scan at once,

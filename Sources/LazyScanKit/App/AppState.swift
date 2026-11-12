@@ -1223,10 +1223,11 @@ public final class AppState: ObservableObject {
                 }
                 copySetup = setup
             }
-            // The flatbed scans the selection, else the paper size's part of the glass; an ID card
-            // may lie anywhere on it, so its scans take the whole glass. A copy with Automatic paper
-            // scans the part the printer's paper covers.
-            var paperArea: CGRect? = idCard ? nil : self.capabilities.flatMap {
+            // The flatbed scans the selection, else the paper size's part of the glass; ID cards,
+            // photos, receipts and books may lie anywhere on it, so their scans take the whole glass.
+            // A copy with Automatic paper scans the part the printer's paper covers.
+            let wholeGlass = TaskCatalog.scansWholeGlass(s)
+            var paperArea: CGRect? = wholeGlass ? nil : self.capabilities.flatMap {
                 PaperSizes.flatbedSelection(s.paperSize, bed: $0.flatbedSizeInches)
             }
             if let copySetup, let area = self.copyScanArea(s, setup: copySetup) { paperArea = area }

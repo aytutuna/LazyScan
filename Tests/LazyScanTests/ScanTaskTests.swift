@@ -687,6 +687,20 @@ final class ScanTaskTests: XCTestCase {
         }
     }
 
+    func test_scansWholeGlass_forTasksThatFindItemsAnywhere() {
+        let whole: Set<ScanTask> = [.photos, .photoRestore, .receipt, .book, .idCard]
+        var base = ScanSettings()
+        base.paperSize = .a5
+        for task in ScanTask.allCases {
+            let s = TaskCatalog.apply(task, to: base)
+            XCTAssertEqual(s.paperSize, .a5, task.rawValue)
+            XCTAssertEqual(TaskCatalog.scansWholeGlass(s), whole.contains(task), task.rawValue)
+        }
+        var edited = TaskCatalog.apply(.book, to: base)
+        edited.document.splitFacingPages = false
+        XCTAssertFalse(TaskCatalog.scansWholeGlass(edited))
+    }
+
     func test_summary_oneLine() {
         XCTAssertEqual(TaskCatalog.summary(ScanSettings()), "300 dpi \u{00B7} Color \u{00B7} PDF")
         XCTAssertEqual(TaskCatalog.summary(TaskCatalog.apply(.photoRestore, to: ScanSettings())),
