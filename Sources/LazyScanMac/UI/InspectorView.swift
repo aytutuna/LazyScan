@@ -384,7 +384,7 @@ struct InspectorView: View {
 
     /// An area of the preview is selected: the scan takes it, whatever the paper size says.
     private var areaSelected: Bool {
-        state.selectionRect != nil && state.overviewImage != nil && state.settings.source == .flatbed
+        state.selectionRect != nil && state.settings.source == .flatbed
     }
 
     private var paperSizeRow: some View {

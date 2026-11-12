@@ -602,7 +602,7 @@ public final class AppState: ObservableObject {
     /// The pages being cut out of their photos again (AppState+Recut.swift), for a spinner on each.
     @Published public internal(set) var recuttingPages: Set<UUID> = []
 
-    /// Image shown in the preview canvas.
+    /// Image shown in the preview canvas: the overview until a page lands, then the last page.
     public var canvasImage: CGImage? { overviewImage ?? lastScanImage }
 
     public static let fallbackResolutions = [75, 150, 200, 300, 600, 1200]
@@ -1365,18 +1365,17 @@ public final class AppState: ObservableObject {
             processed = cleanedPages
         }
 
-        // The canvas shows the RAW scan: PreviewCanvasView applies the current
-        // adjustment settings to it live, so slider changes are visible
-        // immediately without rescanning. A camera's page is already cut out of its
-        // photo and cleaned up here (`PageProcessor.prepare`), so the page shows, not
-        // the scene around it. Only a downsampled preview is retained —
-        // a full-resolution raw at high dpi would pin hundreds of MB in memory.
+        // The canvas shows the last page as it will be saved (cropped, straightened, adjusted), so
+        // a setting changed now applies to the next scan. A page the clean-up dropped (a blank one)
+        // shows as scanned. Only a downsampled preview is retained: a full-resolution page at high
+        // dpi would pin hundreds of MB in memory.
         let rawLast = raw.last?.image
-        let rawPreview: CGImage? = await Task.detached(priority: .userInitiated) {
-            rawLast.map { Self.makePreview($0, maxSide: 2600) ?? $0 }
+        let shownLast = cleanedPages.last?.image ?? rawLast
+        let pagePreview: CGImage? = await Task.detached(priority: .userInitiated) {
+            shownLast.map { Self.makePreview($0, maxSide: 2600) ?? $0 }
         }.value
         guard self.isCurrent(generation) else { return nil }
-        let rawPixelSize = rawLast.map { CGSize(width: $0.width, height: $0.height) }
+        let shownPixelSize = shownLast.map { CGSize(width: $0.width, height: $0.height) }
 
         // Record every scanned page in the session history (small previews only). ID cards are
         // kept out of it: nothing of them is left once saved or discarded. A copy held on the phone
@@ -1412,7 +1411,7 @@ public final class AppState: ObservableObject {
                 // Only the scanner's pages are sides of a stack turned over by hand; a phone's or a photo's
                 // come in between stacks.
                 if source == .scanner || !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
-                self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+                self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
                 let n = processed.count
                 if let manualSide {
                     self.afterTurnedOverScan(manualSide, count: n, stopped: intake.stopped)
@@ -1445,17 +1444,17 @@ public final class AppState: ObservableObject {
                 }
                 self.applyNewDocument(to: added)
             } else if Self.holdsQuickScan(s, source: source, platform: self.platform) {
-                self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+                self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
                 self.holdQuickScan(processed)
             } else {
-                self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+                self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
                 try await self.saveImmediately(processed, settings: s, flag: flag)
                 self.recordCaptures(processed.map(\.id))
             }
         case .photoSplit:
             // Full resolution here: the detection overlay maps source-pixel
-            // coordinates onto this image (raw and processed share dimensions).
-            self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+            // coordinates onto this image.
+            self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             self.statusMessage = L10n.t("Detecting photos…")
             let found: [DetectedPhoto] = try await Task.detached(priority: .userInitiated) {
                 var all: [DetectedPhoto] = []
@@ -1484,7 +1483,7 @@ public final class AppState: ObservableObject {
                 self.dropIdCardScanOutsideTask()
                 break
             }
-            self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+            self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             guard let side = cardSide, let page = processed.last else { break }
             if CaptureObjects.isCutOut(page) {
                 // A camera's shot, cut out along the card's corners at its real size (the ID-1 snap): the
@@ -1517,7 +1516,7 @@ public final class AppState: ObservableObject {
             if flag.isCancelled { throw ScanError.cancelled }
             self.recordIdCardSide(side, photo: found.0, note: found.1, source: page.image, area: area)
         case .copy:
-            self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+            self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             if copyHeld {
                 self.holdCopy(processed, areaSelected: intake.areaSelected)
                 break
@@ -1527,7 +1526,7 @@ public final class AppState: ObservableObject {
                                           flag: flag)
             self.recordCaptures(processed.map(\.id))
         case .receiptSplit:
-            self.setLastScan(preview: rawPreview, pixelSize: rawPixelSize)
+            self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             try await self.showReceipts(processed, settings: s, flag: flag, generation: generation)
         }
         return raw.count
@@ -1923,6 +1922,9 @@ public final class AppState: ObservableObject {
     }
 
     func setLastScan(preview: CGImage?, pixelSize: CGSize?) {
+        // On the Mac a page that lands replaces the overview on the canvas; the phone keeps it for
+        // the scan area screen. The selected area stays until cleared.
+        if platform != .ios { overviewImage = nil }
         lastScanImage = preview
         lastScanPixelSize = pixelSize
     }

@@ -40,9 +40,9 @@ struct PreviewCanvasView: View {
             }
         }
         .clipped()
-        // Live preview: re-render whenever the canvas image OR the adjustment settings
-        // change, applying the current pipeline to the (raw) downsampled scan so slider
-        // edits are visible immediately without rescanning.
+        // Live preview of the overview: re-render whenever it OR the adjustment settings
+        // change, so slider edits are visible without a new preview. A scanned page is
+        // shown as saved, adjustments already applied.
         .task(id: PreviewRenderKey(revision: state.canvasRevision,
                                    adjustments: state.settings.adjustments,
                                    colorMode: state.settings.colorMode)) {
@@ -55,9 +55,10 @@ struct PreviewCanvasView: View {
             guard (try? await Task.sleep(nanoseconds: 80_000_000)) != nil else { return }
             let adjustments = state.settings.adjustments
             let colorMode = state.settings.colorMode
+            let adjusts = state.overviewImage != nil
             let rendered = await Task.detached(priority: .userInitiated) {
                 let down = canvasDownsample(base, maxDimension: 2600)
-                return ImagePipeline.apply(adjustments, to: down, colorMode: colorMode)
+                return adjusts ? ImagePipeline.apply(adjustments, to: down, colorMode: colorMode) : down
             }.value
             // A newer settings change may have superseded this render.
             if !Task.isCancelled {

@@ -307,12 +307,12 @@ extension AppState {
                                 : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
                             let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
                             let pages: [ScannedPage] = savesAtOnce ? processed : Self.spoolPages(processed, to: spool)
-                            return (pages, Self.makePreview(cleaned.image, maxSide: 2600))
+                            return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
                         }.value
                         if savesAtOnce {
                             added.append(contentsOf: done.0)
                             lastPreview = done.1
-                            lastSize = CGSize(width: cleaned.image.width, height: cleaned.image.height)
+                            lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
                             continue
                         }
                         let spooled = done.0
@@ -325,7 +325,7 @@ extension AppState {
                         // Photos come in between stacks turned over by hand, never as one of their sides.
                         if !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
                         lastPreview = done.1
-                        lastSize = CGSize(width: cleaned.image.width, height: cleaned.image.height)
+                        lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
                     }
                 }
             } catch ScanError.cancelled {

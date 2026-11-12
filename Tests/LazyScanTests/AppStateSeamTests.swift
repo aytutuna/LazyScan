@@ -854,4 +854,26 @@ final class AppStateSeamTests: XCTestCase {
         state.settings.source = .flatbed
         XCTAssertNil(state.previewUnavailableReason)
     }
+
+    @MainActor
+    func test_scanAfterPreview_replacesTheOverviewWithThePage_andKeepsTheSelectedArea() async throws {
+        let state = makeState(backends: [MockScannerBackend()])
+        state.start()
+        try await waitUntil(timeout: 30) { state.capabilities != nil && state.statusMessage.hasPrefix("Ready") }
+        state.performOverview()
+        try await waitUntil(timeout: 60) { state.overviewImage != nil }
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.lastScanImage)
+        XCTAssertTrue(state.canvasImage === state.overviewImage)
+
+        let area = CGRect(x: 0.1, y: 0.1, width: 0.5, height: 0.5)
+        state.selectionRect = area
+        state.performScan()
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertNil(state.overviewImage)
+        XCTAssertNotNil(state.lastScanImage)
+        XCTAssertTrue(state.canvasImage === state.lastScanImage)
+        XCTAssertEqual(state.selectionRect, area)
+    }
 }
