@@ -1049,7 +1049,7 @@ public final class AppState: ObservableObject {
     public func userSelectDevice(_ id: String?) {
         userPickedDevice = true
         keepsNoDevice = false
-        awaitedDeviceID = nil
+        if awaitedDeviceID != id { awaitedDeviceID = nil }
         resetsManualSides = false
         if platform == .mac, let id { deviceDefaults.set(id, forKey: AppState.lastDeviceKey) }
         selectDevice(id, interactive: true)
