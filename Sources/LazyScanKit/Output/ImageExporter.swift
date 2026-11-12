@@ -31,7 +31,8 @@ public enum ImageExporter {
 
     private static func encode(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
                                colorMode: ColorMode, shownAs: URL? = nil) throws {
-        let fileName = name ?? url.lastPathComponent
+        let shown = shownAs ?? url
+        let fileName = shown.lastPathComponent
         let utType: UTType
         switch format {
         case .jpeg: utType = .jpeg

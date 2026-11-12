@@ -106,11 +106,13 @@ public struct NamingTemplate {
     public static func moveToFreeURL(_ source: URL, to url: URL) throws -> URL {
         let fileManager = FileManager.default
         var candidate = url
+        var attempt = 0
         while true {
             do {
                 try fileManager.moveItem(at: source, to: candidate)
                 return candidate
             } catch {
+                attempt += 1
                 guard attempt < maxMoveAttempts, fileManager.fileExists(atPath: candidate.path) else { throw error }
                 candidate = uniqueURL(in: url.deletingLastPathComponent(),
                                       base: url.deletingPathExtension().lastPathComponent,
