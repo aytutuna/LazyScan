@@ -113,13 +113,13 @@ final class IOSCameraTasksTests: XCTestCase {
     @MainActor
     func test_leavingSeparatorSheets_withBothSidesOn_keepsTheTaskAndTheFrontsTaken() async throws {
         let state: AppState = makeState(.twoSided)
-        IOSShell.setSplit(.separatorSheet, in: state)
-        let page = ScannedPage(image: try printedLetterPage(blocks: 2), dpi: 60, colorMode: .color)
+        let page =ScannedPage(image: try printedLetterPage(blocks: 2), dpi: 60, colorMode: .color)
         XCTAssertTrue(state.ingest([page], source: .photo))
         try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
         let sides: CameraSides? = state.cameraSides
         XCTAssertEqual(sides?.next, .back)
 
+        IOSShell.setSplit(.separatorSheet, in: state)
         IOSShell.setSplit(.none, in: state)
         XCTAssertEqual(state.settings.document.splitMode, SplitMode.none)
         XCTAssertEqual(state.settings.task, .twoSided)
