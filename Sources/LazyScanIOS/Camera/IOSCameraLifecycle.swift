@@ -211,12 +211,16 @@ public enum IOSCameraText {
     /// A toggle's spoken value (Auto, the flash).
     public static var onValue: String { String(localized: "On") }
     public static var offValue: String { String(localized: "Off") }
-    /// Why a page held still is not taken yet (`CaptureQuality`).
-    public static var holdStill: String { String(localized: "Hold still") }
+    /// Why a page held still is not taken yet (`CaptureQuality`), and what may help (`LiveQuadUpdate`).
+    public static var notSharp: String { String(localized: "Not sharp yet") }
     public static var tooDark: String { String(localized: "Too dark") }
     /// The same line when the light is off and can be turned on by tapping it.
     public static var tooDarkTapForLight: String { String(localized: "Too dark. Tap for light") }
     public static var tooDarkHint: String { String(localized: "Turns the light on") }
+    public static var tapShutter: String { String(localized: "Tap the shutter") }
+    public static var moveCloser: String { String(localized: "Move closer") }
+    public static var fitWholePage: String { String(localized: "Fit the whole page") }
+    public static var fitWholeCard: String { String(localized: "Fit the whole card") }
     /// The camera's light, a torch, by the name people know it by (the drawer's group and its switch).
     public static var flashLabel: String { String(localized: "Flash") }
     public static var settingsLabel: String { String(localized: "Settings") }
@@ -316,16 +320,29 @@ public enum IOSCameraText {
         }
     }
 
-    /// The line under the outline while a page held still waits (`CaptureQuality`): "Hold still" or "Too
-    /// dark"; nil for a good frame.
-    public static func waitReason(_ quality: CaptureQuality) -> String? {
+    /// The line under the outline while a page held still waits (`CaptureQuality`): "Not sharp yet" (once it
+    /// has lasted, "Tap the shutter") or "Too dark"; nil for a good frame.
+    public static func waitReason(_ quality: CaptureQuality, suggestsShutter: Bool = false) -> String? {
         switch quality {
         case .good:
             return nil
         case .blurry:
-            return holdStill
+            return suggestsShutter ? tapShutter : notSharp
         case .dark:
             return tooDark
+        }
+    }
+
+    /// The line while the page found sits badly in the frame: "Move closer" or "Fit the whole page" (the
+    /// card, under the ID card's guide); nil for a page that sits well.
+    public static func placementHint(_ placement: CapturePlacement, kind: CaptureKind) -> String? {
+        switch placement {
+        case .fine:
+            return nil
+        case .far:
+            return moveCloser
+        case .cutOff:
+            return kind == .idCard ? fitWholeCard : fitWholePage
         }
     }
 }

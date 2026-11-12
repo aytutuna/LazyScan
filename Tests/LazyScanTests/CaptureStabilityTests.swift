@@ -259,6 +259,34 @@ final class CaptureStabilityTests: XCTestCase {
         XCTAssertEqual(decision.state, .moving)
     }
 
+    func testASteadyBlurredPageSuggestsTheShutterAfterTwoSeconds() {
+        var stability = CaptureStability()
+        var log: [CaptureDecision] = []
+        XCTAssertEqual(feedWithReadings(&stability, 0, held(page, 100), sharpness: 10, brightness: 180, &log), [])
+        // Blocked from frame 20 (660 ms); 2 s later is frame 81 (2673 ms).
+        for i in 20..<81 { XCTAssertFalse(log[i].suggestsShutter, "frame \(i)") }
+        for i in 81..<100 { XCTAssertTrue(log[i].suggestsShutter, "frame \(i)") }
+        // Darkness is another wait: no suggestion, and the time starts over.
+        XCTAssertEqual(feedWithReadings(&stability, 100, held(page, 5), sharpness: 400, brightness: 20, &log), [])
+        XCTAssertFalse(log[104].suggestsShutter)
+        XCTAssertEqual(feedWithReadings(&stability, 105, held(page, 5), sharpness: 10, brightness: 180, &log), [])
+        XCTAssertFalse(log[109].suggestsShutter)
+        // The first sharp frame is taken as before.
+        XCTAssertEqual(feedWithReadings(&stability, 110, held(page, 5), sharpness: 400, brightness: 180, &log), [110])
+        XCTAssertFalse(log[110].suggestsShutter)
+    }
+
+    func testThePlacementNamesAFarOrCutOffPage() {
+        XCTAssertEqual(CaptureStability.placement(of: page, frameWidth: frameWidth, frameHeight: frameHeight), .fine)
+        let small = Quad(topLeft: CGPoint(x: 350, y: 275), topRight: CGPoint(x: 650, y: 275),
+                         bottomRight: CGPoint(x: 650, y: 475), bottomLeft: CGPoint(x: 350, y: 475))
+        XCTAssertEqual(CaptureStability.placement(of: small, frameWidth: frameWidth, frameHeight: frameHeight), .far)
+        // 12.5 px is 1 % of the diagonal: a corner at 10 px is on the edge, one at 20 px is not.
+        XCTAssertEqual(CaptureStability.placement(of: shifted(page, -170, 0), frameWidth: frameWidth, frameHeight: frameHeight), .cutOff)
+        XCTAssertEqual(CaptureStability.placement(of: shifted(page, -160, 0), frameWidth: frameWidth, frameHeight: frameHeight), .fine)
+        XCTAssertEqual(CaptureStability.placement(of: shifted(page, 0, 100), frameWidth: frameWidth, frameHeight: frameHeight), .cutOff)
+    }
+
     func testTheReadingsAreJudgedDarkFirst() {
         XCTAssertEqual(CaptureStability.minSharpness, 40)
         XCTAssertEqual(CaptureStability.minBrightness, 50)

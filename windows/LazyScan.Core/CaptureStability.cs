@@ -40,6 +40,17 @@ public enum CaptureQuality
     Dark,
 }
 
+/// <summary>Whether the page found fits the frame well (<see cref="CaptureStability.Placement"/>).</summary>
+public enum CapturePlacement
+{
+    /// <summary>Large enough and whole in the frame.</summary>
+    Fine,
+    /// <summary>Covers too little of the frame to be read well.</summary>
+    Far,
+    /// <summary>A corner lies on the frame's edge: part of the page is probably outside.</summary>
+    CutOff,
+}
+
 /// <summary>What the shutter should do after a frame.</summary>
 /// <param name="State">The state after the frame.</param>
 /// <param name="ShouldCapture">Take the photo now (true on exactly one frame per steady page).</param>
@@ -48,6 +59,8 @@ public readonly record struct CaptureDecision(CaptureState State, bool ShouldCap
 {
     /// <summary>The frame's quality (<see cref="CaptureStability.Judge"/>); a page held still long enough waits while it is not good.</summary>
     public CaptureQuality Quality { get; init; }
+    /// <summary>A page held still has waited <see cref="CaptureStability.SoftHintMs"/> for a sharp frame: tapping the shutter may do better.</summary>
+    public bool SuggestsShutter { get; init; }
 }
 
 /// <summary>The thresholds of <see cref="CaptureStability"/>; the defaults are its constants.</summary>
@@ -111,6 +124,12 @@ public sealed class CaptureStability
     public const double MinSharpness = 40;
     /// <summary>The least brightness a frame is taken at: its mean luma, 0...255 (<see cref="FrameQuality"/>).</summary>
     public const double MinBrightness = 50;
+    /// <summary>A page covering less than this share of the frame's area is too far away.</summary>
+    public const double MinAreaShare = 0.2;
+    /// <summary>A corner closer than this share of the frame's diagonal to the frame's edge counts as on it.</summary>
+    public const double EdgeMargin = 0.01;
+    /// <summary>A page held still and blurred for this long suggests tapping the shutter.</summary>
+    public const double SoftHintMs = 2000;
 
     private readonly CaptureStabilityOptions _options;
     private Quad? _previous;
@@ -120,6 +139,7 @@ public sealed class CaptureStability
     private double _lastSeen = double.NegativeInfinity;
     private double _lastFrame = double.NegativeInfinity;
     private bool _missing;
+    private double? _softSince;
 
     public CaptureStability(CaptureStabilityOptions? options = null)
     {
@@ -139,6 +159,7 @@ public sealed class CaptureStability
         _lastSeen = double.NegativeInfinity;
         _lastFrame = double.NegativeInfinity;
         _missing = false;
+        _softSince = null;
     }
 
     /// <summary>
@@ -155,6 +176,7 @@ public sealed class CaptureStability
         _lastFrame = timestampMs;
         _lastSeen += paused;
         _steadySince += paused;
+        _softSince += paused;
     }
 
     /// <summary>
@@ -182,6 +204,20 @@ public sealed class CaptureStability
         return CaptureQuality.Good;
     }
 
+    /// <summary>
+    /// How <paramref name="quad"/> sits in a frame of this size: <see cref="CapturePlacement.CutOff"/> when a corner is
+    /// within <see cref="EdgeMargin"/> of the diagonal from the frame's edge, else <see cref="CapturePlacement.Far"/>
+    /// below <see cref="MinAreaShare"/> of the frame's area, else <see cref="CapturePlacement.Fine"/>.
+    /// </summary>
+    public static CapturePlacement Placement(Quad quad, int frameWidth, int frameHeight)
+    {
+        double w = frameWidth, h = frameHeight;
+        double margin = EdgeMargin * Math.Sqrt(w * w + h * h);
+        if (!quad.IsInside(w, h, margin)) return CapturePlacement.CutOff;
+        if (quad.Area < MinAreaShare * w * h) return CapturePlacement.Far;
+        return CapturePlacement.Fine;
+    }
+
     /// <summary>The decision after one more frame.</summary>
     public CaptureDecision Update(CaptureObservation frame)
     {
@@ -195,11 +231,15 @@ public sealed class CaptureStability
         var o = _options;
         double diagonal = Math.Sqrt((double)frame.FrameWidth * frame.FrameWidth + (double)frame.FrameHeight * frame.FrameHeight);
         double t = frame.TimestampMs;
+        // Only a held, blurred page keeps the time; a short gap in the frames does not break it.
+        double? blurredSince = _softSince;
+        _softSince = null;
 
         if (frame.Quad is not { } quad)
         {
             if (t - _lastSeen <= o.MaxGapMs)
             {
+                _softSince = blurredSince;
                 // Waiting for the page to come back; the steady time stands still meanwhile.
                 _missing = true;
                 return new CaptureDecision(State, false, State == CaptureState.Steadying ? Progress(_lastSeen) : 0);
@@ -245,7 +285,17 @@ public sealed class CaptureStability
                 if (t - _steadySince >= o.SteadyMs)
                 {
                     // Held still long enough: taken from the first frame that is sharp and lit.
-                    if (quality != CaptureQuality.Good) return new CaptureDecision(State, false, 1);
+                    if (quality != CaptureQuality.Good)
+                    {
+                        var waiting = new CaptureDecision(State, false, 1);
+                        if (quality == CaptureQuality.Blurry)
+                        {
+                            double since = blurredSince ?? t;
+                            _softSince = since;
+                            waiting = waiting with { SuggestsShutter = t - since >= SoftHintMs };
+                        }
+                        return waiting;
+                    }
                     State = CaptureState.Captured;
                     _captured = quad;
                     _anchor = null;

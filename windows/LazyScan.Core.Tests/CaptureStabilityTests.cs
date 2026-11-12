@@ -243,6 +243,37 @@ public class CaptureStabilityTests
     }
 
     [Fact]
+    public void ASteadyBlurredPageSuggestsTheShutterAfterTwoSeconds()
+    {
+        var stability = new CaptureStability();
+        var log = new List<CaptureDecision>();
+        Assert.Empty(RunWithReadings(stability, 0, Held(Page, 100), 10, 180, log));
+        // Blocked from frame 20 (660 ms); 2 s later is frame 81 (2673 ms).
+        for (int i = 20; i < 81; i++) Assert.False(log[i].SuggestsShutter, $"frame {i}");
+        for (int i = 81; i < 100; i++) Assert.True(log[i].SuggestsShutter, $"frame {i}");
+        // Darkness is another wait: no suggestion, and the time starts over.
+        Assert.Empty(RunWithReadings(stability, 100, Held(Page, 5), 400, 20, log));
+        Assert.False(log[104].SuggestsShutter);
+        Assert.Empty(RunWithReadings(stability, 105, Held(Page, 5), 10, 180, log));
+        Assert.False(log[109].SuggestsShutter);
+        // The first sharp frame is taken as before.
+        Assert.Equal(new[] { 110 }, RunWithReadings(stability, 110, Held(Page, 5), 400, 180, log));
+        Assert.False(log[110].SuggestsShutter);
+    }
+
+    [Fact]
+    public void ThePlacementNamesAFarOrCutOffPage()
+    {
+        Assert.Equal(CapturePlacement.Fine, CaptureStability.Placement(Page, FrameWidth, FrameHeight));
+        var small = new Quad(new PointD(350, 275), new PointD(650, 275), new PointD(650, 475), new PointD(350, 475));
+        Assert.Equal(CapturePlacement.Far, CaptureStability.Placement(small, FrameWidth, FrameHeight));
+        // 12.5 px is 1 % of the diagonal: a corner at 10 px is on the edge, one at 20 px is not.
+        Assert.Equal(CapturePlacement.CutOff, CaptureStability.Placement(Shifted(Page, -170, 0), FrameWidth, FrameHeight));
+        Assert.Equal(CapturePlacement.Fine, CaptureStability.Placement(Shifted(Page, -160, 0), FrameWidth, FrameHeight));
+        Assert.Equal(CapturePlacement.CutOff, CaptureStability.Placement(Shifted(Page, 0, 100), FrameWidth, FrameHeight));
+    }
+
+    [Fact]
     public void AHeldPageWaitsForASharpFrame()
     {
         var stability = new CaptureStability();

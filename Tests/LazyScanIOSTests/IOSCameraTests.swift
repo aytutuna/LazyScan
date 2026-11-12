@@ -536,11 +536,16 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertEqual(IOSCameraText.offValue, "Off")
         // While a page held still waits: two words.
         XCTAssertNil(IOSCameraText.waitReason(.good))
-        XCTAssertEqual(IOSCameraText.waitReason(.blurry), "Hold still")
+        XCTAssertEqual(IOSCameraText.waitReason(.blurry), "Not sharp yet")
+        XCTAssertEqual(IOSCameraText.waitReason(.blurry, suggestsShutter: true), "Tap the shutter")
         XCTAssertEqual(IOSCameraText.waitReason(.dark), "Too dark")
         XCTAssertEqual(IOSCameraText.tooDarkTapForLight, "Too dark. Tap for light")
         XCTAssertTrue(IOSCameraText.tooDarkTapForLight.hasPrefix(IOSCameraText.tooDark))
         XCTAssertEqual(IOSCameraText.tooDarkHint, "Turns the light on")
+        XCTAssertNil(IOSCameraText.placementHint(.fine, kind: .document))
+        XCTAssertEqual(IOSCameraText.placementHint(.far, kind: .document), "Move closer")
+        XCTAssertEqual(IOSCameraText.placementHint(.cutOff, kind: .document), "Fit the whole page")
+        XCTAssertEqual(IOSCameraText.placementHint(.cutOff, kind: .idCard), "Fit the whole card")
         XCTAssertEqual(IOSCameraText.pageCount(1), "1 page")
         XCTAssertEqual(IOSCameraText.pageCount(0), "0 pages")
         XCTAssertEqual(IOSCameraText.pageCount(3), "3 pages")
@@ -549,8 +554,8 @@ final class IOSCameraTests: XCTestCase {
     func test_theWaitLine_isSaidOncePerWait_andOnlyWhenShown() {
         var announcer: IOSWaitAnnouncer = IOSWaitAnnouncer()
         // A dim room: the light hovers at the limit, so frame after frame the line comes and goes (and turns
-        // to "Hold still") while the page holds still. It is said once, when it first shows.
-        let flicker: [String?] = [nil, IOSCameraText.tooDark, nil, IOSCameraText.tooDark, IOSCameraText.holdStill,
+        // to "Not sharp yet") while the page holds still. It is said once, when it first shows.
+        let flicker: [String?] = [nil, IOSCameraText.tooDark, nil, IOSCameraText.tooDark, IOSCameraText.notSharp,
                                   nil, IOSCameraText.tooDark, nil]
         var said: [String] = []
         for line in flicker {
@@ -564,9 +569,9 @@ final class IOSCameraTests: XCTestCase {
         let left: String? = announcer.next(IOSWaitCue(steadying: false, line: nil))
         XCTAssertNil(left)
         XCTAssertFalse(announcer.hasAnnounced)
-        let nextWait: String? = announcer.next(IOSWaitCue(steadying: true, line: IOSCameraText.holdStill))
-        let sameWait: String? = announcer.next(IOSWaitCue(steadying: true, line: IOSCameraText.holdStill))
-        XCTAssertEqual(nextWait, IOSCameraText.holdStill)
+        let nextWait: String? = announcer.next(IOSWaitCue(steadying: true, line: IOSCameraText.notSharp))
+        let sameWait: String? = announcer.next(IOSWaitCue(steadying: true, line: IOSCameraText.notSharp))
+        XCTAssertEqual(nextWait, IOSCameraText.notSharp)
         XCTAssertNil(sameWait)
         // While the import's progress is shown in its place the line is not said (the screen passes none);
         // it is said once it shows, in the same wait.

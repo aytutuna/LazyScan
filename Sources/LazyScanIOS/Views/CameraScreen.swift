@@ -380,12 +380,16 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// The one line at the viewfinder's top: the glare hint for the ID card's back, why a page held still
-    /// is not taken yet, that it is about to be (these two only while a photo can be taken), else the task's
+    /// The one line at the viewfinder's top: the glare hint for the ID card's back, how the page sits in the
+    /// frame, why a page held still is not taken yet, that it is about to be (these three only while a photo
+    /// can be taken), else the task's
     /// camera line (none under the ID card's guide, which says the side itself).
     private var statusLine: CameraStatus? {
         if let glare = glareLine {
             return CameraStatus(text: glare, hint: nil, identifier: "camera.glare")
+        }
+        if let placed = placementLine {
+            return CameraStatus(text: placed, hint: nil, identifier: "camera.placement")
         }
         if let reason = waitLine {
             if offersLight {
@@ -425,7 +429,19 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var waitLine: String? {
         guard model.autoShutter, canShoot, let update = model.live,
               update.state == CaptureState.steadying else { return nil }
-        return IOSCameraText.waitReason(update.quality)
+        return IOSCameraText.waitReason(update.quality, suggestsShutter: update.suggestsShutter)
+    }
+
+    /// Move closer or fit the whole page, while a page is seen moving or held still, or seen cut off by the
+    /// frame, and a photo can be taken; not for the kinds that take several objects, which the tracker's one
+    /// page does not describe.
+    private var placementLine: String? {
+        let kind: CaptureKind = CaptureObjects.kind(for: state.settings)
+        guard canShoot, let update = model.live, !CaptureObjects.findsSeveral(kind) else { return nil }
+        let followed: Bool = update.outline != nil
+            && (update.state == CaptureState.moving || update.state == CaptureState.steadying)
+        guard followed || update.placement == CapturePlacement.cutOff else { return nil }
+        return IOSCameraText.placementHint(update.placement, kind: kind)
     }
 
     /// The frame is dark and the camera has a light that is off: the wait line can turn it on.
@@ -437,7 +453,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// is shown in its place), for VoiceOver (`IOSWaitAnnouncer`).
     private var waitCue: IOSWaitCue {
         let steadying: Bool = model.autoShutter && model.live?.state == CaptureState.steadying
-        let hidden: Bool = shownMessage != nil || glareLine != nil
+        let hidden: Bool = shownMessage != nil || glareLine != nil || placementLine != nil
         return IOSWaitCue(steadying: steadying, line: hidden ? nil : waitLine)
     }
 

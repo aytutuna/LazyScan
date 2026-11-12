@@ -572,6 +572,30 @@ final class LiveQuadTrackerTests: XCTestCase {
         XCTAssertEqual(after?.outline, LiveQuadTracker.normalized(stubQuad, width: 64, height: 48))
     }
 
+    func test_placement_isFarForASmallPage_andCutOffForAPageTheFrameCutsOff() {
+        let small = Quad(topLeft: CGPoint(x: 10, y: 8), topRight: CGPoint(x: 30, y: 8),
+                         bottomRight: CGPoint(x: 30, y: 24), bottomLeft: CGPoint(x: 10, y: 24))
+        let far = LiveQuadTracker(detector: { (_: RgbaImage, _: Quad?) -> PhotoDocumentDetection in detection(small) })
+        _ = far.process(plainFrame(0))
+        XCTAssertEqual(far.process(plainFrame(100))?.placement, CapturePlacement.far)
+
+        let whole = LiveQuadTracker(detector: { (_: RgbaImage, _: Quad?) -> PhotoDocumentDetection in detection(stubQuad) })
+        _ = whole.process(plainFrame(0))
+        XCTAssertEqual(whole.process(plainFrame(100))?.placement, CapturePlacement.fine)
+
+        // The page search drops a page the frame cuts off and returns it as the candidate only.
+        let cut = LiveQuadTracker(detector: { (_: RgbaImage, _: Quad?) -> PhotoDocumentDetection in
+            var result: PhotoDocumentDetection = PhotoDocumentDetection.nothing
+            result.rejection = PhotoDocumentRejection.cutOff
+            result.candidate = stubQuad
+            return result
+        })
+        _ = cut.process(plainFrame(0))
+        let update: LiveQuadUpdate? = cut.process(plainFrame(100))
+        XCTAssertEqual(update?.placement, CapturePlacement.cutOff)
+        XCTAssertNil(update?.outline)
+    }
+
     func test_theShutter_firesOnlyForAPageHeldStillOnASharpLitFrame_throughAFrameSource() {
         // The sheet held still (±1 px) at 10 frames a second: blurred while the camera focuses (frames
         // 0–14), then too dark (15–24), then sharp and lit (25–40). Each frame is measured for real

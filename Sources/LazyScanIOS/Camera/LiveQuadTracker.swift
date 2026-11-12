@@ -33,7 +33,8 @@ public protocol FrameSource: AnyObject {
 /// right and y down, named by `Quad.fromCorners`), nil when no page is in view; how steady it is
 /// (`CaptureStability`); whether it holds still now; the frame's time; and the shutter's decision: take
 /// the photo now (`shouldCapture`, once per page held still on a sharp, lit frame) and how the frame was
-/// judged (`quality`).
+/// judged (`quality`), how the page sits in the frame (`placement`) and whether a blurred page has waited long
+/// enough to suggest the shutter (`suggestsShutter`).
 public struct LiveQuadUpdate: Equatable, Sendable {
     public let outline: Quad?
     public let state: CaptureState
@@ -47,10 +48,15 @@ public struct LiveQuadUpdate: Equatable, Sendable {
     public let shouldCapture: Bool
     /// How the frame was judged (`CaptureDecision.quality`): why a page held still is not taken yet.
     public let quality: CaptureQuality
+    /// How the page sits in the frame (`CaptureStability.placement`); `.fine` while no page is seen.
+    public let placement: CapturePlacement
+    /// A page held still has waited long for a sharp frame (`CaptureDecision.suggestsShutter`).
+    public let suggestsShutter: Bool
 
     /// `isSteady` nil: the page holds still while `state` is `.steadying`.
     public init(outline: Quad?, state: CaptureState, progress: Double, timestampMs: Double, isSteady: Bool? = nil,
-                shouldCapture: Bool = false, quality: CaptureQuality = .good) {
+                shouldCapture: Bool = false, quality: CaptureQuality = .good, placement: CapturePlacement = .fine,
+                suggestsShutter: Bool = false) {
         self.outline = outline
         self.state = state
         self.progress = progress
@@ -62,6 +68,8 @@ public struct LiveQuadUpdate: Equatable, Sendable {
         }
         self.shouldCapture = shouldCapture
         self.quality = quality
+        self.placement = placement
+        self.suggestsShutter = suggestsShutter
     }
 }
 
@@ -252,8 +260,15 @@ public final class LiveQuadTracker: @unchecked Sendable {
         if let quad = steadied.shown {
             outline = LiveQuadTracker.normalized(quad, width: width, height: height)
         }
+        var placement: CapturePlacement = .fine
+        if let page = steadied.page {
+            placement = CaptureStability.placement(of: page, frameWidth: width, frameHeight: height)
+        } else if detection.rejection == .cutOff, detection.candidate != nil {
+            placement = .cutOff
+        }
         return LiveQuadUpdate(outline: outline, state: decision.state, progress: decision.progress, timestampMs: t,
-                              isSteady: steady, shouldCapture: decision.shouldCapture, quality: decision.quality)
+                              isSteady: steady, shouldCapture: decision.shouldCapture, quality: decision.quality,
+                              placement: placement, suggestsShutter: decision.suggestsShutter)
     }
 
     /// Whether the page holds still after `decision` (called with the lock held): while `.steadying`, yes;

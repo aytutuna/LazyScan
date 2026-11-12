@@ -51,6 +51,16 @@ public enum CaptureQuality: Sendable {
     case dark
 }
 
+/// Whether the page found fits the frame well (`CaptureStability.placement`). Twin of C# `CapturePlacement`.
+public enum CapturePlacement: Sendable {
+    /// Large enough and whole in the frame.
+    case fine
+    /// Covers too little of the frame to be read well.
+    case far
+    /// A corner lies on the frame's edge: part of the page is probably outside.
+    case cutOff
+}
+
 /// What the shutter should do after a frame.
 public struct CaptureDecision: Equatable, Sendable {
     /// The state after the frame.
@@ -61,6 +71,8 @@ public struct CaptureDecision: Equatable, Sendable {
     public var progress: Double
     /// The frame's quality (`CaptureStability.judge`); a page held still long enough waits while it is not good.
     public var quality: CaptureQuality = .good
+    /// A page held still has waited `CaptureStability.softHintMs` for a sharp frame: tapping the shutter may do better.
+    public var suggestsShutter = false
 }
 
 /// The thresholds of `CaptureStability`; the defaults are its constants.
@@ -119,6 +131,12 @@ public struct CaptureStability: Sendable {
     public static let minSharpness = 40.0
     /// The least brightness a frame is taken at: its mean luma, 0...255 (`FrameQuality`).
     public static let minBrightness = 50.0
+    /// A page covering less than this share of the frame's area is too far away.
+    public static let minAreaShare = 0.2
+    /// A corner closer than this share of the frame's diagonal to the frame's edge counts as on it.
+    public static let edgeMargin = 0.01
+    /// A page held still and blurred for this long suggests tapping the shutter.
+    public static let softHintMs = 2000.0
 
     private let options: CaptureStabilityOptions
     private var previous: Quad?
@@ -128,6 +146,7 @@ public struct CaptureStability: Sendable {
     private var lastSeen = -Double.infinity
     private var lastFrame = -Double.infinity
     private var missing = false
+    private var softSince: Double?
 
     /// The state after the last frame.
     public private(set) var state: CaptureState = .noPage
@@ -145,6 +164,7 @@ public struct CaptureStability: Sendable {
         lastSeen = -Double.infinity
         lastFrame = -Double.infinity
         missing = false
+        softSince = nil
     }
 
     /// Frames come again after a pause (the camera stopped for a while and started again), the first of them
@@ -159,6 +179,7 @@ public struct CaptureStability: Sendable {
         lastFrame = timestampMs
         lastSeen += paused
         steadySince += paused
+        softSince = softSince.map { $0 + paused }
     }
 
     /// The page in view was taken another way (the shutter pressed by hand): it counts as captured, so the
@@ -179,6 +200,16 @@ public struct CaptureStability: Sendable {
         return .good
     }
 
+    /// How `quad` sits in a frame of this size: `.cutOff` when a corner is within `edgeMargin` of the diagonal
+    /// from the frame's edge, else `.far` below `minAreaShare` of the frame's area, else `.fine`.
+    public static func placement(of quad: Quad, frameWidth: Int, frameHeight: Int) -> CapturePlacement {
+        let w = Double(frameWidth), h = Double(frameHeight)
+        let margin: Double = edgeMargin * (w * w + h * h).squareRoot()
+        if !quad.isInside(width: w, height: h, margin: margin) { return .cutOff }
+        if quad.area < minAreaShare * w * h { return .far }
+        return .fine
+    }
+
     /// The decision after one more frame.
     public mutating func update(_ frame: CaptureObservation) -> CaptureDecision {
         let quality: CaptureQuality = CaptureStability.judge(sharpness: frame.sharpness, brightness: frame.brightness,
@@ -194,9 +225,13 @@ public struct CaptureStability: Sendable {
         let fw = Double(frame.frameWidth), fh = Double(frame.frameHeight)
         let diagonal = (fw * fw + fh * fh).squareRoot()
         let t = frame.timestampMs
+        // Only a held, blurred page keeps the time; a short gap in the frames does not break it.
+        let blurredSince = softSince
+        softSince = nil
 
         guard let quad = frame.quad else {
             if t - lastSeen <= o.maxGapMs {
+                softSince = blurredSince
                 // Waiting for the page to come back; the steady time stands still meanwhile.
                 missing = true
                 return CaptureDecision(state: state, shouldCapture: false,
@@ -238,7 +273,13 @@ public struct CaptureStability: Sendable {
                 if t - steadySince >= o.steadyMs {
                     // Held still long enough: taken from the first frame that is sharp and lit.
                     if quality != .good {
-                        return CaptureDecision(state: state, shouldCapture: false, progress: 1)
+                        var waiting = CaptureDecision(state: state, shouldCapture: false, progress: 1)
+                        if quality == .blurry {
+                            let since: Double = blurredSince ?? t
+                            softSince = since
+                            waiting.suggestsShutter = t - since >= CaptureStability.softHintMs
+                        }
+                        return waiting
                     }
                     state = .captured
                     captured = quad
