@@ -1,5 +1,6 @@
 #if os(iOS)
 import AVFoundation
+import AVKit
 import LazyScanKit
 import QuartzCore
 import SwiftUI
@@ -259,7 +260,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 let zoomText: String = IOSCameraText.zoomLabel(controller.zoom)
                 CameraPreview(controller: controller, outline: model.live?.outline,
                               steady: model.live?.isSteady ?? false, look: filterLook, active: model.canShoot,
-                              onZoom: showZoom)
+                              onZoom: showZoom, onShutter: shootFromButton)
                     .environment(\.layoutDirection, .leftToRight)
                     .accessibilityElement(children: .ignore)
                     .accessibilityHidden(!model.canShoot)
@@ -509,6 +510,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         model.canShoot && importer.canQueueShot && (!importer.isImporting || importer.importsShot)
     }
 
+    /// A volume button or the Camera Control; nothing happens while a sheet or the drawer is over the camera.
+    private func shootFromButton() {
+        guard !covered, !showsDrawer else { return }
+        shoot()
+    }
+
     private func shoot() {
         guard canShoot else { return }
         let shown: IOSCameraModel = model
@@ -659,6 +666,7 @@ struct CameraPreview: UIViewRepresentable {
     let active: Bool
     /// Told the zoom (1 at the wide lens's view) while pinching, and once more, shown false, a second after the fingers lift.
     let onZoom: (Double, Bool) -> Void
+    let onShutter: () -> Void
 
     func makeUIView(context: Context) -> CameraPreviewView {
         let view = CameraPreviewView()
@@ -670,6 +678,7 @@ struct CameraPreview: UIViewRepresentable {
     func updateUIView(_ uiView: CameraPreviewView, context: Context) {
         uiView.onZoom = onZoom
         uiView.active = active
+        uiView.onShutter = onShutter
         uiView.show(outline: outline, steady: steady)
         uiView.viewfinder?.show(look)
     }
@@ -705,6 +714,7 @@ final class CameraPreviewView: UIView {
     let viewfinder: LiveViewfinder? = LiveViewfinder()
     private var outline: Quad?
     private var steady: Bool = false
+    var onShutter: (() -> Void)?
 
     override class var layerClass: AnyClass {
         AVCaptureVideoPreviewLayer.self
@@ -725,6 +735,11 @@ final class CameraPreviewView: UIView {
         }
         layer.addSublayer(outlineLayer)
         addTouchHandling()
+        addInteraction(AVCaptureEventInteraction { [weak self] (event: AVCaptureEvent) in
+            if event.phase == .began {
+                self?.onShutter?()
+            }
+        })
     }
 
     required init?(coder: NSCoder) {
