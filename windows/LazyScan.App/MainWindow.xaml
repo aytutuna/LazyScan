@@ -1354,6 +1354,23 @@
                                                 AutomationProperties.AcceleratorKey="Ctrl+Enter"
                                                 Click="Scan_Click" />
                                     </Grid>
+                                    <!-- A name for the next save only; empty, the file name template names it. -->
+                                    <Grid x:Name="SaveNameRow" Margin="0,8,0,0">
+                                        <TextBox x:Name="SaveNameBox" MinHeight="32" MaxLength="100" Padding="6,5,28,5"
+                                                 VerticalContentAlignment="Center"
+                                                 ToolTipService.ShowOnDisabled="True"
+                                                 AutomationProperties.Name="{loc:T Name for this save}"
+                                                 TextChanged="SaveName_TextChanged"
+                                                 PreviewKeyDown="SaveName_PreviewKeyDown" />
+                                        <TextBlock x:Name="SaveNameHint" Style="{StaticResource CaptionText}" IsHitTestVisible="False"
+                                                   VerticalAlignment="Center" Margin="8,0,30,0" TextTrimming="CharacterEllipsis"
+                                                   Typography.NumeralAlignment="Tabular" />
+                                        <Button x:Name="ClearSaveNameButton" Style="{StaticResource SmallIconButtonStyle}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
+                                                Content="&#xE711;" Width="22" Height="22" FontSize="10" Visibility="Collapsed"
+                                                AutomationProperties.Name="{loc:T Clear the name}"
+                                                Click="ClearSaveName_Click" />
+                                    </Grid>
                                     <!-- Save (with the page count and, for a protected PDF, a lock) and its menu;
                                          importing photos of documents; clearing the queue. -->
                                     <Grid x:Name="QueueButtons" Margin="0,8,0,0">

@@ -480,6 +480,30 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return null;
         }
     }
+    /// <summary>The name typed beside Save for the next save only; empty leaves the file name template in charge.</summary>
+    public string SaveName { get; set; } = "";
+
+    /// <summary>The name the next file would get, without its extension: what the name field hints at.</summary>
+    public string? SuggestedName(string template)
+    {
+        string? example = FileNamePreview(template);
+        int dot = example?.LastIndexOf('.') ?? -1;
+        return dot > 0 ? example![..dot] : example;
+    }
+
+    /// <summary>
+    /// The typed name for a file of <paramref name="extension"/>, cut as a document name is and without
+    /// that extension; null when none is typed or it is the name the template would give anyway.
+    /// </summary>
+    private string? TypedName(string extension)
+    {
+        string? typed = DocumentSplitter.Cleaned(SaveName);
+        string suffix = "." + extension;
+        if (typed is not null && typed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            typed = DocumentSplitter.Cleaned(typed[..^suffix.Length]);
+        return typed is null || typed == SuggestedName(Settings.NamingTemplate) ? null : typed;
+    }
+
     /// <summary>Bumped whenever files are written to the destination folder (drives the Saved tab).</summary>
     public int SavedRevision { get; private set; }
 
@@ -1919,11 +1943,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 StatusMessage = Loc.T("Reading the text of the pages…");
                 NotifyAll();
-                var (written, hasText) = await WriteTextDocument(pages, format, await OutputPath(s, format.FileExtension(), label: document.Label), s, token);
+                var (written, hasText) = await WriteTextDocument(pages, format, await OutputPath(s, format.FileExtension(), label: document.Label, name: TypedName(format.FileExtension())), s, token);
                 MarkSaved([written]);
                 DeleteSpoolFiles(queued);
                 ScannedPages.Clear();
                 ResetFlow();
+                SaveName = "";
                 SetStatus(TextExport.SavedMessage(format, pages.Count, Path.GetFileName(written), hasText) + left, new(new StatusHead.Saved()));
                 RunAfterSave(s.Output.AfterSave, [written]);
                 return;
@@ -1935,13 +1960,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             StatusMessage = s.PdfSearchable || text is not null ? Loc.T("Running OCR and building PDF…") : Loc.T("Building PDF…");
             NotifyAll();
             var failures = new PdfTextFailures();
-            string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", label: document.Label), token, text, failures: failures);
+            string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", label: document.Label, name: TypedName("pdf")), token, text, failures: failures);
             string? textPath = text is null ? null : await WriteTextBeside(path, text);
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             MarkSaved([path]);
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
+            SaveName = "";
             string savedText = TextExport.SavedPdfMessage(pages.Count, Path.GetFileName(path), PdfDetail(),
                                                           textPath is null ? null : Path.GetFileName(textPath));
             SetStatus(savedText + left, new(new StatusHead.Saved()));
@@ -2481,6 +2507,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
         ScannedPages.Clear();
         ResetFlow();
+        SaveName = "";
         SetStatus(Loc.T("Page queue cleared."), new(new StatusHead.QueueCleared()));
         NotifyAll();
     }
@@ -3915,19 +3942,22 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// file took this one meanwhile.
     /// </summary>
     private Task<string> OutputPath(ScanSettings s, string fileExtension, int? index = null, DocumentDate? documentDate = null,
-                                    string? label = null) => Task.Run(() =>
+                                    string? label = null, string? name = null) => Task.Run(() =>
     {
         // On a network folder these calls can block for the network timeout.
         string dir = Environment.ExpandEnvironmentVariables(s.DestinationPath);
         Directory.CreateDirectory(dir);
-        string baseName = new NamingTemplate(s.NamingTemplate)
-            .BaseFilename(new NamingContext(NextCounter(), DateTime.Now, s.Intent)
-            {
-                Index = index,
-                Task = TaskCatalog.Infer(s),
-                DocumentDate = documentDate,
-                Label = label,
-            });
+        // A typed name is the whole file name: no template and no running number.
+        string baseName = name is not null
+            ? new NamingTemplate("{label}").BaseFilename(new NamingContext(0, DateTime.Now, s.Intent) { Label = name })
+            : new NamingTemplate(s.NamingTemplate)
+                .BaseFilename(new NamingContext(NextCounter(), DateTime.Now, s.Intent)
+                {
+                    Index = index,
+                    Task = TaskCatalog.Infer(s),
+                    DocumentDate = documentDate,
+                    Label = label,
+                });
         return NamingTemplate.UniquePath(dir, baseName, fileExtension);
     });
 

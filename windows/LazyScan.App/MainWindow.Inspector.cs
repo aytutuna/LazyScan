@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Shapes;
 using LazyScan.Core;
 
@@ -267,5 +268,53 @@ public partial class MainWindow
         FileNamePreview.Text = name ?? "";
         FileNamePreview.Visibility = name is null ? Visibility.Collapsed : Visibility.Visible;
         AutomationProperties.SetHelpText(TemplateBox, name is null ? "" : Loc.T("The next file is named {0}", name));
+        string? suggested = name is null ? null : System.IO.Path.GetFileNameWithoutExtension(name);
+        SaveNameHint.Text = suggested ?? "";
+        AutomationProperties.SetHelpText(SaveNameBox, suggested ?? "");
+    }
+
+    // MARK: - The name for one save
+
+    private void SaveName_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ViewModel.SaveName = SaveNameBox.Text;
+        SaveNameHint.Visibility = SaveNameBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ClearSaveNameButton.Visibility = SaveNameBox.Text.Length > 0 && SaveNameBox.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SaveName_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && SavePdfButton.IsEnabled)
+        {
+            e.Handled = true;
+            _ = ViewModel.SavePdf();
+        }
+        else if (e.Key == Key.Escape && SaveNameBox.Text.Length > 0)
+        {
+            e.Handled = true;
+            SaveNameBox.Clear();
+        }
+    }
+
+    private void ClearSaveName_Click(object sender, RoutedEventArgs e)
+    {
+        SaveNameBox.Clear();
+        SaveNameBox.Focus();
+    }
+
+    /// <summary>
+    /// The field shows the name the template would give until something is typed. It is off while the
+    /// queue is saved as several documents (the page strip names each) and while pages are added to a PDF.
+    /// </summary>
+    private void SyncSaveName(bool split)
+    {
+        if (SaveNameBox.Text != ViewModel.SaveName) SaveNameBox.Text = ViewModel.SaveName;
+        bool free = !ViewModel.IsBusy && !split && ViewModel.AppendTarget is null
+                    && ViewModel.Settings.DocumentMultiPage;
+        SaveNameBox.IsEnabled = free;
+        ClearSaveNameButton.IsEnabled = free;
+        ClearSaveNameButton.Visibility = SaveNameBox.Text.Length > 0 && free ? Visibility.Visible : Visibility.Collapsed;
+        SaveNameBox.ToolTip = split ? Loc.T("Each document is named in the page strip.")
+            : Loc.T("Name this file. Leave empty to use the file name from More options.");
     }
 }

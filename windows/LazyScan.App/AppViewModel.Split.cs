@@ -402,6 +402,7 @@ public sealed partial class AppViewModel
         DeleteSpoolFiles(queued);
         ScannedPages.Clear();
         ResetFlow();
+        SaveName = "";
         if (failures.Note is { } layerNote) ErrorMessage = layerNote;
         // The PDFs' size together, and "password-protected" when they are, in the brackets after the page count.
         string? size = format == OutputFormat.Pdf

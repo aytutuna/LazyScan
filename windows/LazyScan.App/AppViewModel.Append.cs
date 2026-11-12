@@ -99,6 +99,7 @@ public sealed partial class AppViewModel
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
+            SaveName = "";
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
                           + plan.LeftOutNote();

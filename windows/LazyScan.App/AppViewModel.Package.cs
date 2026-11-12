@@ -181,6 +181,7 @@ public sealed partial class AppViewModel
                 DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
                 ScannedPages.Clear();
                 ResetFlow();
+                SaveName = "";
             }
             string spoolDirectory = _spool.Directory;
             var spooled = await Task.Run(() => SpoolPages([.. pages], spoolDirectory).Select(p => new PageItem(p)).ToList(), token);

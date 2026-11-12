@@ -391,6 +391,8 @@ public partial class MainWindow : Window
             ? Visibility.Visible : Visibility.Collapsed;
         // The target row belongs to Save: it goes when the queue's buttons do.
         AppendTargetRow.Visibility = ViewModel.AppendTarget is not null ? QueueButtons.Visibility : Visibility.Collapsed;
+        SaveNameRow.Visibility = QueueButtons.Visibility;
+        SyncSaveName(savePlan.IsSplit);
         PageList.IsEnabled = !ViewModel.IsBusy;
         SyncPageView(pageCount);
 
