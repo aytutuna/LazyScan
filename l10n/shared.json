@@ -1107,6 +1107,10 @@
     "other": "Apply to the {0} spreads already scanned?",
     "note": "Offer after the book's reading order or rotation changed; a spread is two facing pages of a book scanned together."
   },
+  "Apply to the spread already scanned": {
+    "other": "Apply to the {0} spreads already scanned",
+    "note": "Button in the Mac inspector's Book section that cuts the spreads already scanned again with the new reading order or rotation."
+  },
   "Apply the new reading order to the spread already scanned?": {
     "other": "Apply the new reading order to the {0} spreads already scanned?"
   },

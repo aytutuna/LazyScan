@@ -25,8 +25,8 @@ struct StatusBarView: View {
                     .controlSize(.small)
                     .foregroundStyle(Color.accentColor)
                     .disabled(state.isBusy || state.readsQueue)
-                    .help(L10n.plural(state.removedCount, one: "Put the page back", other: "Put the pages back"))
-                    .accessibilityHint(Text(L10n.plural(state.removedCount, one: "Puts back the removed page", other: "Puts back the removed pages")))
+                    .help(undoHelp)
+                    .accessibilityHint(Text(undoHint))
             }
             if showsHeldCopy {
                 heldCopyActions
@@ -75,6 +75,16 @@ struct StatusBarView: View {
         }
         .buttonStyle(.borderless)
         .controlSize(.small)
+    }
+
+    private var undoHelp: String {
+        if state.removedByReorder { return String(localized: "Put the pages back as they were") }
+        return L10n.plural(state.removedCount, one: "Put the page back", other: "Put the pages back")
+    }
+
+    private var undoHint: String {
+        if state.removedByReorder { return String(localized: "Puts back the pages as they were before the spreads were updated") }
+        return L10n.plural(state.removedCount, one: "Puts back the removed page", other: "Puts back the removed pages")
     }
 
     /// The status in six words at most: empty while a review shows its own title, "Saved" while the

@@ -59,6 +59,12 @@ struct TaskBannerView: View {
                     if let flow = state.taskFlow, flow.stepCount > 1 {
                         stepIndicator(flow)
                     }
+                    if let line = bookLine {
+                        Text(line)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(prompt)
@@ -140,7 +146,35 @@ struct TaskBannerView: View {
         definition != nil ? String(localized: "Leave the task") : String(localized: "Scan one side only")
     }
 
-    private var bannerLabel: String { definition != nil ? String(localized: "Task: \(name)") : name }
+    private var bannerLabel: String {
+        guard definition != nil else { return name }
+        let task: String = String(localized: "Task: \(name)")
+        guard bookLine != nil else { return task }
+        let order: String = BookPages.readingOrderLine(rightToLeft: state.settings.taskOptions.bookRightToLeft)
+        return String(localized: "Task: \(name), \(order)")
+    }
+
+    /// The Book task's reading order, and its rotation when it turns the pages: "Reads right to left ·
+    /// Rotated 90° clockwise". Nothing while the facing pages are not split.
+    private var bookLine: String? {
+        let split: Bool = state.settings.document.splitFacingPages && BookPages.scansOneSide(state.settings)
+        guard definition?.task == .book, split else { return nil }
+        var line: String = BookPages.readingOrderLine(rightToLeft: state.settings.taskOptions.bookRightToLeft)
+        let turns: Int = BookSplitter.normalizedTurns(state.settings.taskOptions.bookRotationQuarterTurns)
+        if let rotated = Self.rotatedPhrase(turns) {
+            line += " \u{00B7} " + rotated
+        }
+        return line
+    }
+
+    private static func rotatedPhrase(_ turns: Int) -> String? {
+        switch turns {
+        case 1: return String(localized: "Rotated 90° clockwise")
+        case 2: return String(localized: "Rotated 180°")
+        case 3: return String(localized: "Rotated 90° counterclockwise")
+        default: return nil
+        }
+    }
 
     /// "Front · Back · Check": each step in a word, the current one bold in the accent color; VoiceOver
     /// reads "ID card, step 1 of 3: front side".

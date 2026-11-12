@@ -260,6 +260,7 @@ public final class AppState: ObservableObject {
     /// How many pages the hold has and whether Clear made it, for the Mac's Undo button and menu item.
     public var removedCount: Int { removedUndo?.pages.count ?? 0 }
     public var removedByClear: Bool { removedUndo?.cleared ?? false }
+    public var removedByReorder: Bool { (removedUndo?.reordered ?? 0) > 0 }
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// The scan under way was started from the receipts review (`scanMore`): its receipts are added to the

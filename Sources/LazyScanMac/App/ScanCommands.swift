@@ -91,6 +91,7 @@ struct UndoCommands: Commands {
 
     private var title: String {
         if !state.canUndoRemove { return String(localized: "Undo") }
+        if state.removedByReorder { return String(localized: "Undo Spread Update") }
         return state.removedByClear ? String(localized: "Undo Clear") : String(localized: "Undo Remove Page")
     }
 

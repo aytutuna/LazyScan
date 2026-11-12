@@ -804,6 +804,36 @@ struct InspectorView: View {
             Toggle("Soften spine shadow", isOn: $state.settings.document.softenSpineShadow)
                 .help(SpineShadow.hint(state.settings.document.softenSpineShadow))
                 .padding(.leading, 12)
+            bookReorderRows
+        }
+    }
+
+    /// After the reading order or rotation changed with spreads queued: the pages already scanned keep
+    /// the old ones until the button cuts the spreads again (`AppState.applyBookReorder`).
+    @ViewBuilder
+    private var bookReorderRows: some View {
+        if let offer = state.bookReorderOffer {
+            let caption: String = Self.bookReorderCaption(offer.changed)
+            let title: String = L10n.plural(offer.count, one: "Apply to the spread already scanned",
+                                            other: "Apply to the {0} spreads already scanned")
+            let busy: Bool = state.isBusy || state.readsQueue
+            reasonLine(caption)
+                .padding(.leading, 12)
+            Button(title) {
+                state.applyBookReorder()
+            }
+            .controlSize(.small)
+            .disabled(busy)
+            .padding(.leading, 12)
+            .accessibilityHint(Text("Reorders the pages of the spreads already in the queue with the reading order and rotation above"))
+        }
+    }
+
+    private static func bookReorderCaption(_ changed: BookReorderOffer.Changed) -> String {
+        switch changed {
+        case .order: return String(localized: "Pages already scanned keep the old order.")
+        case .rotation: return String(localized: "Pages already scanned keep the old rotation.")
+        case .both: return String(localized: "Pages already scanned keep the old order and rotation.")
         }
     }
 
