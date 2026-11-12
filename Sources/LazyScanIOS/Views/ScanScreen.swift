@@ -727,6 +727,9 @@ struct ScanScreen: View {
                 StatusPill(text: line, hint: nil)
                     .accessibilityIdentifier("step.prompt")
             }
+            if usesFlatbed && state.selectionRect != nil {
+                AreaPill(isBusy: state.isBusy, onClear: clearArea)
+            }
             Spacer(minLength: 0)
             cameraNotices
             if let mismatch = state.sidesMismatch, state.isTurningOverByHand {
@@ -1165,7 +1168,7 @@ struct ScanScreen: View {
     }
 
     /// Preview (the flatbed's overview, run once the sheet has closed, `previewFlatbed`) while the flatbed
-    /// is used, Choose area once there is one (the preview full screen, `CropScreen`), and Clear selection
+    /// is used, Choose area once there is one (the preview full screen, `CropScreen`), and Clear area
     /// once an area is chosen.
     @ViewBuilder
     private var previewControls: some View {
@@ -1189,21 +1192,24 @@ struct ScanScreen: View {
                     .disabled(state.isBusy)
                     .accessibilityIdentifier("crop.open")
                 }
-                if state.overviewImage != nil && state.selectionRect != nil {
+                if state.selectionRect != nil {
                     Button {
-                        state.selectionRect = nil
+                        clearArea()
                     } label: {
-                        Label("Clear selection", systemImage: "xmark.circle")
-                            .labelStyle(.iconOnly)
+                        Label("Clear area", systemImage: "xmark.circle")
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.bordered)
                     .disabled(state.isBusy)
-                    .accessibilityLabel(Text("Clear selection"))
                     .accessibilityIdentifier("crop.clear")
                 }
                 Spacer(minLength: 0)
             }
         }
+    }
+
+    private func clearArea() {
+        state.selectionRect = nil
+        AccessibilityNotification.Announcement(String(localized: "Scan area cleared")).post()
     }
 
     private var usesFlatbed: Bool {

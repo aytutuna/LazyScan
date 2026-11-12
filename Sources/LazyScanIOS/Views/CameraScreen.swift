@@ -464,6 +464,51 @@ struct StatusPill: View {
     }
 }
 
+/// Says a scan area is set, with a button that clears it; the next flatbed scan uses the area.
+struct AreaPill: View {
+    let isBusy: Bool
+    let onClear: () -> Void
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                label
+                clearButton
+            }
+            VStack(spacing: 0) {
+                label
+                clearButton
+            }
+        }
+        .padding(.horizontal, 12)
+        .background(Capsule().fill(Color.black.opacity(0.75)))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Scan area set"))
+        .accessibilityIdentifier("area.pill")
+    }
+
+    private var label: some View {
+        Text("Scan area set")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Color.white)
+            .multilineTextAlignment(.center)
+    }
+
+    private var clearButton: some View {
+        Button {
+            onClear()
+        } label: {
+            Text("Clear")
+                .font(.subheadline.weight(.semibold))
+                .frame(minHeight: 44)
+        }
+        .disabled(isBusy)
+        .accessibilityLabel(Text("Clear scan area"))
+        .accessibilityHint(Text("The next scan covers the whole glass."))
+        .accessibilityIdentifier("area.pill.clear")
+    }
+}
+
 /// The camera's live preview with the page's outline drawn over it, and over the preview, under the
 /// outline, the picture with the saved page's filter (`look`, `LiveViewfinder`) when there is one. The
 /// outline comes as shares of the sensor's frame (as the live frames are searched) and is placed with the
