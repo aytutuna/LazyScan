@@ -17,7 +17,7 @@ enum CaptureBar {
     static func sources(_ items: [PhotosPickerItem]) -> [IOSImportSource] {
         var sources: [IOSImportSource] = []
         for item in items {
-            let source = IOSImportSource(name: PhotoImport.label, expectedKind: .image) { () async -> Result<IOSImportItem, IOSImportError> in
+            let source = IOSImportSource(name: PhotoImport.label, expectedKind: .image, asksOnlyWhenUnsure: true) { () async -> Result<IOSImportItem, IOSImportError> in
                 await CaptureBar.load(item)
             }
             sources.append(source)

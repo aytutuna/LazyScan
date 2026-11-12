@@ -168,7 +168,7 @@ final class IOSImportSessionTests: XCTestCase {
     @MainActor
     func test_whatArrivesDuringAnImport_waits_andComesInAfterIt() async throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)
-        let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .none))
+        let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .unsure))
         let data: Data = sheetPNG()
         let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
             await importer.importItems([IOSImportItem(name: "a.png", data: data, kind: .image)])
@@ -393,9 +393,22 @@ final class IOSImportSessionTests: XCTestCase {
     }
 
     @MainActor
-    func test_filesFromTheFilesApp_areReadOnce_byTheirKind() async throws {
+    func test_filesFoundClearly_goStraightIn_withoutTheCornerEditor() async throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .none))
+        let url: URL = folder.appendingPathComponent("sheet.png")
+        try sheetPNG().write(to: url)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let outcome: IOSImportOutcome = await importer.importFiles([url, url])
+        XCTAssertNil(importer.cornerRequest)
+        XCTAssertEqual(outcome.added, 2)
+        XCTAssertEqual(state.scannedPages.count, 2)
+    }
+
+    @MainActor
+    func test_filesFromTheFilesApp_areReadOnce_byTheirKind() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .unsure))
         let url: URL = folder.appendingPathComponent("sheet.png")
         let data: Data = sheetPNG()
         try data.write(to: url)
