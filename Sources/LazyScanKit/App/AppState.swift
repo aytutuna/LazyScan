@@ -522,6 +522,9 @@ public final class AppState: ObservableObject {
     /// When the app is about to quit and when it comes to the front, as the app shell reports it
     /// (nil: never, as in tests that pass none).
     private let lifecycle: (any PlatformLifecycle)?
+    /// The system's background time for a long operation (`runExclusive`); nil where the app keeps running
+    /// in the background (the Mac).
+    private let background: (any BackgroundActivity)?
     /// Opens, shows, shares and copies saved files through the system (a stand-in in tests).
     private let fileActions: any FileActionService
     /// Opens Image Capture and System Settings and copies for the troubleshooter (a stand-in in tests).
@@ -618,14 +621,15 @@ public final class AppState: ObservableObject {
                             orientationScorer: (any OrientationScorer)? = nil,
                             barcodeReader: (any BarcodeReader)? = nil,
                             qrEncoder: (any QrEncoder)? = nil,
-                            lifecycle: (any PlatformLifecycle)? = nil, keepsQueue: Bool = false,
+                            lifecycle: (any PlatformLifecycle)? = nil,
+                            background: (any BackgroundActivity)? = nil, keepsQueue: Bool = false,
                             discardsQueueAtQuit: Bool = false) {
         var files: AppStateFiles = keepsQueue ? AppStateFiles.keepingQueue : AppStateFiles.standard
         files.discardsQueueAtQuit = discardsQueueAtQuit
         self.init(backends: backends, presetStore: presetStore, fileActions: fileActions,
                   troubleshooterService: troubleshooterService, printService: printService,
                   orientationScorer: orientationScorer, barcodeReader: barcodeReader, qrEncoder: qrEncoder,
-                  lifecycle: lifecycle, files: files)
+                  lifecycle: lifecycle, background: background, files: files)
     }
 
     /// The same, with the settings read from and written to, the page spool emptied and used, and the
@@ -638,6 +642,7 @@ public final class AppState: ObservableObject {
          barcodeReader: (any BarcodeReader)? = nil,
          qrEncoder: (any QrEncoder)? = nil,
          lifecycle: (any PlatformLifecycle)? = nil,
+         background: (any BackgroundActivity)? = nil,
          files: AppStateFiles) {
         self.settingsDirectory = files.settingsDirectory
         self.spoolDirectory = files.spoolDirectory
@@ -653,6 +658,7 @@ public final class AppState: ObservableObject {
         self.backends = backends ?? [AppState.makeDemoBackend()]
         self.presetStore = presetStore
         self.lifecycle = lifecycle
+        self.background = background
         self.fileActions = fileActions ?? UnavailableFileActions()
         self.troubleshooterService = troubleshooterService ?? UnavailableTroubleshooterService()
         self.printService = printService ?? NoPrintService()
@@ -1117,7 +1123,7 @@ public final class AppState: ObservableObject {
             return
         }
         let generation = switchGeneration
-        runExclusive { flag in
+        runExclusive(stopsInBackground: false) { flag in
             // The session selects one unit at a time: a feeder check under way goes first.
             await self.feederDuplexCheck?.value
             guard self.switchGeneration == generation else { return }
@@ -1149,7 +1155,7 @@ public final class AppState: ObservableObject {
         // A copy of an area selected on the preview is centred on the paper; of a page, it lies in the corner.
         let areaSelected = settings.source == .flatbed && selectionRect != nil
         let generation = switchGeneration
-        runExclusive { flag in
+        runExclusive(stopsInBackground: false) { flag in
             if self.settings.source == .documentFeeder { await self.checkFeederDuplex() }
             guard self.switchGeneration == generation else { return }
             self.statusMessage = L10n.t("Scanning…")
@@ -1254,7 +1260,7 @@ public final class AppState: ObservableObject {
         let marked: [ScannedPage] = incoming
         let markedArrangement: ScanArrangement = arrangement
         let markedSide: PageSide? = cameraSide
-        runExclusive { flag in
+        runExclusive(stopsInBackground: false) { flag in
             var copySetup: PrinterSetup?
             if copy {
                 guard let setup = self.setupForPrinting(s, requestedPaper: Self.requestedPaper(s)) else {
@@ -2803,6 +2809,28 @@ public final class AppState: ObservableObject {
         return resolved.folder
     }
 
+    /// Removes the hidden temporary files (`.<uuid>.pdf.tmp`) a save left in the save folder when the app
+    /// was ended before it finished. Run at launch, when no save is under way. The listing runs off the
+    /// main actor, since the folder may be on a slow or unreachable location, and leaves files changed in
+    /// the last hour, which another device syncing the folder may still be writing.
+    public func removeStaleSaveTemps() {
+        let folder: URL = openBookmarkedFolder() ?? URL(
+            fileURLWithPath: ScanSettings.rebasedDestinationPath(
+                (settings.destinationPath as NSString).expandingTildeInPath, documents: documentsFolder),
+            isDirectory: true)
+        Task.detached(priority: .utility) {
+            let manager: FileManager = FileManager.default
+            let names: [String] = (try? manager.contentsOfDirectory(atPath: folder.path)) ?? []
+            let cutoff: Date = Date().addingTimeInterval(-3600)
+            for name in names where name.hasPrefix(".") && name.hasSuffix(".pdf.tmp") {
+                let url: URL = folder.appendingPathComponent(name)
+                let changed: Date? = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+                if let changed, changed > cutoff { continue }
+                try? manager.removeItem(at: url)
+            }
+        }
+    }
+
     /// Where the running number of {counter} is kept, in the user's defaults.
     static let counterKey = "LazyScan.counter"
     /// The defaults that running number is kept in; a test gives its state its own, since the test
@@ -2835,11 +2863,18 @@ public final class AppState: ObservableObject {
 
     /// Run one long operation at a time; surface errors; manage busy state. The
     /// operation receives a CancelFlag it must poll between heavy work units.
-    func runExclusive(_ operation: @escaping (CancelFlag) async throws -> Void) {
+    /// `stopsInBackground`: the operation is cancelled when the system's background time runs out. Not
+    /// for the ones that bring pages in, which keep the pages they have when the app is suspended.
+    func runExclusive(stopsInBackground: Bool = true, _ operation: @escaping (CancelFlag) async throws -> Void) {
         guard !isBusy else { return }
         isBusy = true
         let flag = CancelFlag()
         currentCancelFlag = flag
+        // When the system's time is nearly up a save is cancelled, so a PDF being written removes its
+        // temporary file and the queue stays.
+        let activity: Int? = background?.beginActivity("Lazy Scan work", expired: {
+            if stopsInBackground { flag.cancel() }
+        })
         Task { @MainActor in
             do {
                 try await operation(flag)
@@ -2863,6 +2898,7 @@ public final class AppState: ObservableObject {
             currentCancelFlag = nil
             progress = nil
             isBusy = false
+            if let activity { background?.endActivity(activity) }
             endOfWork()
         }
     }

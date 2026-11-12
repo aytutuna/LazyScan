@@ -1264,6 +1264,7 @@ extension AppState {
         let state: AppState = AppState(backends: backends, fileActions: fileActions,
                                        troubleshooterService: IOSTroubleshooterService(),
                                        printService: printService ?? IOSPrintService(), lifecycle: lifecycle,
+                                       background: UIKitBackgroundActivity(),
                                        keepsQueue: !options.demoScannerOnly)
         state.platform = .ios
         state.listsFoundObjects = true
@@ -1289,6 +1290,7 @@ extension AppState {
             IOSSaveFolder.resolve(bookmark)
         }
         state.openBookmarkedFolder()
+        state.removeStaleSaveTemps()
         state.resolveSyncFolderBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
             IOSSyncFolder.resolve(bookmark)
         }

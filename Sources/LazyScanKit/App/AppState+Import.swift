@@ -222,7 +222,7 @@ extension AppState {
         let barcodes = barcodeReader
         let model = cornerModel
         let spool = spoolDirectory
-        runExclusive { flag in
+        runExclusive(stopsInBackground: false) { flag in
             var added: [ScannedPage] = []
             var problems: [String] = []
             var skipped = 0

@@ -458,7 +458,7 @@ target for each platform's own parts:
   the ImageCaptureCore backend, the system services (`SystemFileActions`, `SystemPrintService`,
   `SystemTroubleshooterService`, `AppKitLifecycle`) and `LazyScanApp`
 - `Sources/LazyScanIOS` — the iPhone and iPad only (each file inside `#if os(iOS)`):
-  `UIKitLifecycle`, `UIKitBackgroundActivity` (the system's background time for a network scan),
+  `UIKitLifecycle`, `UIKitBackgroundActivity` (the system's background time for a network scan and for a save),
   the app shell's services (`IOSShell`, `IOSFileActions`: Quick Look, the share
   sheet, Mail's composer, the Files app), the password sheet (`Protection/`), the camera (`Camera/`: the capture session,
   the lens choice, the live page outline, the automatic shutter, when the camera runs), importing photos and PDFs with the

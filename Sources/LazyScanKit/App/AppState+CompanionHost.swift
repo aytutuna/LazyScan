@@ -210,7 +210,7 @@ extension AppState {
     private func addPhoneDocument(_ package: ReceivedPackage, phoneName: String) {
         let s = settings
         let queueHasPages = !scannedPages.isEmpty
-        runExclusive { flag in
+        runExclusive(stopsInBackground: false) { flag in
             self.statusMessage = CompanionHostText.addingMessage(phoneName)
             let url = package.url
             let read: Result<PendingPackage, Error> = await Task.detached(priority: .userInitiated) {
