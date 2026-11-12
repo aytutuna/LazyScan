@@ -668,16 +668,14 @@ jobs:
               -resultBundlePath "$RUNNER_TEMP/ios-$lang-tests.xcresult" \
               CODE_SIGNING_ALLOWED=NO || echo "The $lang walk failed"
           done
-      # The same UI tests on an iPad, so the sidebar layout runs: iPad Pro 13-inch on the newest runtime
-      # when the image has it, else the newest iPad. The simulator is booted first; a cold one times out
-      # on the first launches. The screenshot frames are the iPhone's, so they stay out. It runs after the
-      # screenshot walks so a failure here does not skip them.
-      - name: Run the app's UI tests on an iPad
-        timeout-minutes: 45
+      # An iPad for the sidebar layout: iPad Pro 13-inch on the newest runtime when the image has it, else
+      # the newest iPad. The 13-inch is the 2064 x 2752 size the App Store asks for.
+      - name: Pick the iPad simulator
+        id: ipad
         run: |
-          set -eo pipefail
+          set -euo pipefail
           xcrun simctl list devices available --json > "$RUNNER_TEMP/simulators.json"
-          udid=$(python3 - "$RUNNER_TEMP/simulators.json" <<'PY'
+          python3 - "$RUNNER_TEMP/simulators.json" >> "$GITHUB_OUTPUT" <<'PY'
           import json, sys
           devices = json.load(open(sys.argv[1]))["devices"]
           pads = []
@@ -694,12 +692,17 @@ jobs:
           current = [p for p in pads if p[0] == newest]
           chosen = max([p for p in current if not p[1]] or current, key=lambda p: p[2])
           print("Simulator: %s, iOS %s, %s" % (chosen[2], ".".join(str(n) for n in chosen[0]), chosen[3]), file=sys.stderr)
-          print(chosen[3])
+          print("udid=%s" % chosen[3])
           PY
-          )
+      # The same UI tests on the iPad. The simulator is booted first; a cold one times out on the first
+      # launches. It runs after the screenshot walks so a failure here does not skip them.
+      - name: Run the app's UI tests on an iPad
+        timeout-minutes: 45
+        run: |
+          set -eo pipefail
+          udid=${{ steps.ipad.outputs.udid }}
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
-          status=0
           xcodebuild test-without-building \
             -project ios/LazyScaniOS.xcodeproj \
             -scheme LazyScaniOS \
@@ -708,15 +711,37 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/app-build" \
             -skip-testing:LazyScaniOSUITests/ScreenshotTests \
             -resultBundlePath "$RUNNER_TEMP/ios-ipad-tests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO || status=$?
+            CODE_SIGNING_ALLOWED=NO
+      # The screenshot walk on the iPad, for the store listing's iPad screenshots. A screen that does not
+      # fit the iPad's layout is left out by the walk itself; a failure here does not fail the job.
+      - name: Run the screenshots on an iPad
+        id: ipad-shots
+        if: always() && steps.ipad.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 40
+        run: |
+          set -eo pipefail
+          udid=${{ steps.ipad.outputs.udid }}
+          xcrun simctl bootstatus "$udid" -b
+          xcodebuild test-without-building \
+            -project ios/LazyScaniOS.xcodeproj \
+            -scheme LazyScaniOS \
+            -configuration Release \
+            -destination "platform=iOS Simulator,id=$udid" \
+            -derivedDataPath "$RUNNER_TEMP/app-build" \
+            -only-testing:LazyScaniOSUITests/ScreenshotTests \
+            -resultBundlePath "$RUNNER_TEMP/ios-ipad-shots-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
           xcrun simctl shutdown "$udid" || true
-          exit $status
+      - name: Shut down the iPad simulator
+        if: always() && steps.ipad.outcome == 'success'
+        run: xcrun simctl shutdown ${{ steps.ipad.outputs.udid }} || true
       # The screens ScreenshotTests keeps, renamed from the export's own file names to their attachment
       # names (01-camera.png, ...) through the manifest the export writes.
       - name: Export the screenshots
         if: always()
         run: |
-          runs=("ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo" "ios-rtl-tests ios-screenshots-rtl")
+          runs=("ios-app-tests ios-screenshots" "ios-pseudo-tests ios-screenshots-pseudo" "ios-rtl-tests ios-screenshots-rtl" "ios-ipad-shots-tests ios-screenshots-ipad")
           for lang in $SHOT_LANGUAGES; do
             runs+=("ios-$lang-tests ios-screenshots-languages/$lang")
           done
@@ -775,6 +800,13 @@ jobs:
           name: ios-screenshots-rtl
           path: ${{ runner.temp }}/ios-screenshots-rtl
           if-no-files-found: ignore
+      - name: Upload the iPad screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-screenshots-ipad
+          path: ${{ runner.temp }}/ios-screenshots-ipad
+          if-no-files-found: ignore
       - name: Upload the screenshots in each language
         if: always() && steps.languages.outcome != 'skipped'
         uses: actions/upload-artifact@v7
@@ -783,7 +815,7 @@ jobs:
           path: ${{ runner.temp }}/ios-screenshots-languages
           if-no-files-found: warn
       - name: Upload the test results
-        if: failure() || steps.pseudo.outcome == 'failure' || steps.rtl.outcome == 'failure'
+        if: failure() || steps.pseudo.outcome == 'failure' || steps.rtl.outcome == 'failure' || steps.ipad-shots.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: ios-tests-xcresult
@@ -793,6 +825,7 @@ jobs:
             ${{ runner.temp }}/ios-pseudo-tests.xcresult
             ${{ runner.temp }}/ios-rtl-tests.xcresult
             ${{ runner.temp }}/ios-ipad-tests.xcresult
+            ${{ runner.temp }}/ios-ipad-shots-tests.xcresult
           if-no-files-found: ignore
 
   ios18:
