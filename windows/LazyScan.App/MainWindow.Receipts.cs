@@ -27,14 +27,17 @@ public partial class MainWindow
         }
         // On without {docdate} in the file name, the switch does nothing: the reason shows under it.
         bool dateUnused = options.ReceiptNameByDate && !Receipts.NamesByDate(ViewModel.Settings);
-        string unusedHint = Loc.T("The file name has no Receipt date part, so the date printed on the receipt is not used.");
+        string unusedHint = Loc.T("The file name has no receipt date, so the date printed on the receipt is not used.");
         string dateHint = !options.ReceiptNameByDate
             ? Loc.T("Each file is named by today's date.")
             : dateUnused
                 ? unusedHint
-                : Loc.T("Each file is named by the date printed on the receipt ({docdate}), read from its text; today's date when none is found.");
+                : Loc.T("Each file is named by the date printed on the receipt, read from its text; today's date when none is found.");
         AutomationProperties.SetHelpText(ReceiptDateBox, dateHint);
         ReceiptDateReason.Visibility = dateUnused ? Visibility.Visible : Visibility.Collapsed;
+        string dateLabel = NamingTokens.All.First(t => t.Token == "{docdate}").Label;
+        ReceiptDateInsertButton.Content = Loc.T("Insert {0}", dateLabel);
+        AutomationProperties.SetName(ReceiptDateInsertButton, Loc.T("Insert {0} into the file name", dateLabel));
         ReceiptDateBox.ToolTip = dateUnused ? unusedHint : Loc.T("Uses the date printed on the receipt, or today");
         bool pdf = OutputFormats.PageFormat(ViewModel.Settings.Format) == OutputFormat.Pdf;
         ReceiptCombineBox.IsEnabled = pdf;
@@ -48,6 +51,9 @@ public partial class MainWindow
         ReceiptCombineBox.ToolTip = Loc.T("Off: a PDF for each receipt");
         AutomationProperties.SetHelpText(ReceiptCombineBox, combineHint);
     }
+
+    private void ReceiptDateInsert_Click(object sender, RoutedEventArgs e) =>
+        InsertToken("{docdate}");
 
     private void ReceiptDate_Changed(object sender, RoutedEventArgs e)
     {

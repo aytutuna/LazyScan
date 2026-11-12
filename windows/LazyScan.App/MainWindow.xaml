@@ -989,10 +989,17 @@
                                                       Content="{loc:T Name by receipt date}"
                                                       ToolTip="{loc:T Uses the date printed on the receipt\, or today}"
                                                       Checked="ReceiptDate_Changed" Unchecked="ReceiptDate_Changed" />
-                                            <DockPanel x:Name="ReceiptDateReason" Margin="0,0,0,4" Visibility="Collapsed">
-                                                <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
-                                                <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static local:ShortText.NeedsDocDate}" />
-                                            </DockPanel>
+                                            <StackPanel x:Name="ReceiptDateReason" Margin="0,0,0,4" Visibility="Collapsed">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
+                                                    <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static local:ShortText.NeedsDocDate}" />
+                                                </DockPanel>
+                                                <Button x:Name="ReceiptDateInsertButton" Style="{StaticResource SubtleButtonStyle}"
+                                                        HorizontalAlignment="Right" Margin="0,4,0,0" Padding="8,5,8,6"
+                                                        ToolTip="{loc:T Adds the receipt date to the file name}"
+                                                        AutomationProperties.HelpText="{x:Static local:ShortText.NeedsDocDate}"
+                                                        Click="ReceiptDateInsert_Click" />
+                                            </StackPanel>
                                             <CheckBox x:Name="ReceiptCombineBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,4,0,0"
                                                       Content="{loc:T One PDF for all}" ToolTipService.ShowOnDisabled="True"
                                                       Checked="ReceiptCombine_Changed" Unchecked="ReceiptCombine_Changed" />
