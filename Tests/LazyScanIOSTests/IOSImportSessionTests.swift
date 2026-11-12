@@ -127,12 +127,16 @@ final class IOSImportSessionTests: XCTestCase {
         XCTAssertEqual(outcome.added, 1)
         XCTAssertEqual(outcome.skipped, 1)
         defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
         let page: ScannedPage = try XCTUnwrap(state.scannedPages.first)
         XCTAssertEqual(state.scannedPages.count, 1)
-        XCTAssertNil(page.capture)
-        XCTAssertNil(page.geometry)
-        XCTAssertEqual(page.dpi, PhotoImport.wholePhotoDPI(width: 600, height: 450))
-        XCTAssertEqual(page.fullPixelSize, CGSize(width: 600, height: 450))
+        // Cut like any captured page, so the viewer can still crop and filter it.
+        XCTAssertEqual(page.source, .photo)
+        let capture: CaptureFacts = try XCTUnwrap(page.capture)
+        XCTAssertEqual(capture.sourceWidth, 600)
+        XCTAssertEqual(capture.sourceHeight, 450)
+        XCTAssertEqual(page.geometry?.basis, .perspective)
+        XCTAssertTrue(PageRecut.canCrop(page))
     }
 
     @MainActor

@@ -208,7 +208,7 @@ public enum IOSImportText {
 /// facts (the corners in the photo's pixels, its size and the camera's focal length), so the clean-up
 /// stage cuts the page out at its real size (`AppState.ingest`, `PageProcessor.forCapture`:
 /// `PerspectiveStep`, `CaptureScale`); Use whole photo takes the photo as it is
-/// (`PhotoImport.wholePhotoPage`); Skip leaves it out. Each PDF page is drawn at 300 dpi (`IOSPDFPages`)
+/// (the corners are the photo's own edges); Skip leaves it out. Each PDF page is drawn at 300 dpi (`IOSPDFPages`)
 /// and goes to the queue as it is.
 /// Each item's bytes are read only when its turn comes (`IOSImportSource`) and let go once its photo is
 /// decoded (a TIFF's and a PDF's while their pages come in), so only one item is in memory at a time;
@@ -634,20 +634,14 @@ public final class IOSImportSession: ObservableObject {
                 }.value
             }
         case .wholePhoto:
-            if kind == .idCard || state.isCopyFlow {
-                // The whole photo is the card: measured by its shape as any card is, never at a made-up size
-                // without its note. A copy's whole photo is measured too, so it prints at real size only
-                // when it snapped to a paper size.
-                let whole: Quad = PhotoImport.wholePhoto(width: photo.width, height: photo.height)
-                let wholeKind: CaptureKind = kind == .idCard ? CaptureKind.idCard : CaptureKind.document
-                page = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
-                    IOSImportSession.capturedPage(photo, corners: whole, focalLength: focalLength, kind: wholeKind)
-                }.value
-            } else {
-                page = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
-                    PhotoImport.wholePhotoPage(photo)
-                }.value
-            }
+            // Built like any captured page, so the viewer can still crop and filter it. A card's whole photo
+            // is measured by its shape, never at a made-up size without its note; a copy's is measured too, so
+            // it prints at real size only when it snapped to a paper size.
+            let whole: Quad = PhotoImport.wholePhoto(width: photo.width, height: photo.height)
+            let wholeKind: CaptureKind = kind == .idCard ? CaptureKind.idCard : CaptureKind.document
+            page = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
+                IOSImportSession.capturedPage(photo, corners: whole, focalLength: focalLength, kind: wholeKind)
+            }.value
         case .skip:
             page = nil
         }
