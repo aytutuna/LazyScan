@@ -83,8 +83,8 @@ public enum PhoneOutboxError: Error, Equatable, LocalizedError, Sendable {
 
 /// The documents waiting to be sent to the paired desktop, oldest first: a folder of `.lsdoc` files
 /// and outbox.json listing them (rule 6). A document stays until the desktop has it (201, or 200 for
-/// one it had already) or the user removes it, across launches; entries whose file went are dropped
-/// when the folder is opened. Safe to use from any thread.
+/// one it had already) or the user removes it, across launches; entries whose file went are dropped,
+/// and files no entry lists, when the folder is opened. Safe to use from any thread.
 public final class PhoneOutbox: @unchecked Sendable {
     public static let fileName = "outbox.json"
     public static let maxItems = 50
@@ -97,13 +97,33 @@ public final class PhoneOutbox: @unchecked Sendable {
     public init(directory: URL) {
         self.directory = directory
         url = directory.appendingPathComponent(PhoneOutbox.fileName)
-        file = StoreFiles.load(PhoneOutboxFile.self, from: url) ?? PhoneOutboxFile()
+        file = PhoneOutboxFile()
+        // An unreadable list says nothing about which files are wanted, so the sweep needs a good read.
+        var listIsKnown = true
+        switch StoreFiles.read(PhoneOutboxFile.self, from: url) {
+        case .loaded(let loaded):
+            file = loaded
+        case .missing:
+            break
+        case .corrupt(let error):
+            StoreFiles.keepUnreadable(url, error: error)
+            listIsKnown = false
+        case .inaccessible(let error):
+            StoreFiles.leaveInaccessible(url, error: error)
+            listIsKnown = false
+        }
         let before = file.items.count
         file.items.removeAll {
             !CompanionProtocol.isValidId($0.id) || $0.fileName.isEmpty
                 || !FileManager.default.fileExists(atPath: directory.appendingPathComponent($0.fileName).path)
         }
         if file.items.count != before { StoreFiles.write(file, to: url) }
+        guard listIsKnown else { return }
+        let listed = Set(file.items.map(\.fileName))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        for name in names where name.hasSuffix(".lsdoc") && !listed.contains(name) {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+        }
     }
 
     public var items: [PhoneOutboxItem] {

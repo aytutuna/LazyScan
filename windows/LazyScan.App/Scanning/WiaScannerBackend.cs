@@ -19,6 +19,19 @@ namespace LazyScan.App.Scanning;
 /// </summary>
 public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDiagnostics, IBackendDiagnostics
 {
+    // A kill between the transfer and the delete leaves a full-resolution bitmap in %TEMP%.
+    static WiaScannerBackend()
+    {
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(Path.GetTempPath(), "LazyScan-*.bmp"))
+            {
+                try { File.Delete(file); } catch { /* in use or gone: leave it */ }
+            }
+        }
+        catch { /* best effort */ }
+    }
+
     public event Action? DevicesChanged;
     public event Action? EnumerationFinished;
 

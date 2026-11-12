@@ -23,6 +23,10 @@ struct AppStateFiles {
     /// The kept queue is thrown away when the app is quit on purpose, and only a crash leaves it to come back:
     /// the Mac's, where quitting is guarded and the user has chosen to leave the pages.
     var discardsQueueAtQuit: Bool = false
+    /// Where the eSCL client downloads a page before it is read, when that is not `spoolDirectory`: the
+    /// iPhone's, whose spool is elsewhere. Emptied when the `AppState` is made, since a download a kill
+    /// interrupted leaves its file.
+    var downloadDirectory: URL?
 
     /// Application Support, LazyScan-pages in the temporary folder, and
     /// ~/Library/Logs/Lazy Scan/devices.txt.
@@ -42,6 +46,7 @@ struct AppStateFiles {
         var files = standard
         files.spoolDirectory = StoreFiles.defaultDirectory.appendingPathComponent("Pages", isDirectory: true)
         files.keepsQueue = true
+        files.downloadDirectory = standard.spoolDirectory
         return files
     }
 
@@ -679,6 +684,9 @@ public final class AppState: ObservableObject {
         }
         if files.keepsQueue {
             QueueRecord.keepOutOfBackups(files.spoolDirectory)
+        }
+        if let downloads = files.downloadDirectory {
+            try? FileManager.default.removeItem(at: downloads)
         }
         // Flush any debounced settings write on quit so a change made just
         // before Cmd-Q is not lost.

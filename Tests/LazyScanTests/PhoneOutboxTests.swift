@@ -89,6 +89,29 @@ final class PhoneOutboxTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: extra.path))
     }
 
+    func test_aNewInstance_deletesFilesNoEntryLists() throws {
+        let outbox = PhoneOutbox(directory: outboxFolder)
+        let kept = try outbox.enqueue(try package("Kept.lsdoc"), target: .new, desktopId: desk)
+        let stray = outboxFolder.appendingPathComponent("Stray.lsdoc")
+        try Data("stray".utf8).write(to: stray)
+
+        let reopened = PhoneOutbox(directory: outboxFolder)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stray.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: reopened.fileURL(of: kept).path))
+        XCTAssertEqual(reopened.items.count, 1)
+    }
+
+    func test_aNewInstance_keepsFilesWhenTheListCannotBeRead() throws {
+        let outbox = PhoneOutbox(directory: outboxFolder)
+        let kept = try outbox.enqueue(try package("Kept.lsdoc"), target: .new, desktopId: desk)
+        try Data("not json".utf8).write(to: outboxFolder.appendingPathComponent(PhoneOutbox.fileName))
+
+        let reopened = PhoneOutbox(directory: outboxFolder)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: reopened.fileURL(of: kept).path))
+    }
+
     func test_survivesANewInstance_droppingEntriesWhoseFileWent() throws {
         let outbox = PhoneOutbox(directory: outboxFolder)
         let kept = try outbox.enqueue(try package("Kept.lsdoc"), target: .current, desktopId: desk)
