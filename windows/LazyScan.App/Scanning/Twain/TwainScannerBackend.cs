@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Channels;
 using LazyScan.Core;
 using TwainException = LazyScan.Core.TwainException;
 
@@ -242,7 +243,7 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
     private volatile ScanStop? _lastScanStop;
     public ScanStop? LastScanStop => _lastScanStop;
 
-    /// <summary>Cleared on the calling thread when a scan starts, set there once its pages are in.</summary>
+    /// <summary>Cleared on the calling thread when a scan starts, set on the TWAIN thread before the first page is handed over (or when the scan ends).</summary>
     private bool? _lastScanDuplex;
     public bool? LastScanDuplex => _lastScanDuplex;
 
@@ -299,6 +300,31 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
 
     public async Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
     {
+        var pages = new List<ScannedPage>();
+        await Scan(settings, selection, pages.Add);
+        return pages;
+    }
+
+    /// <summary>
+    /// A page is handed over on the TWAIN thread, which waits until the caller has room for it. The driver
+    /// goes on feeding meanwhile, so memory stays bounded only while the app keeps up with the feeder.
+    /// </summary>
+    public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage) =>
+        PageHandover.Run(emit => Scan(settings, selection, page =>
+        {
+            try
+            {
+                emit(page).GetAwaiter().GetResult();
+            }
+            catch (Exception e) when (e is OperationCanceledException or ChannelClosedException)
+            {
+                // The caller gave up on the scan: let the loop stop the source cleanly.
+                CancelScan();
+            }
+        }), onPage);
+
+    private async Task Scan(ScanSettings settings, RectD? selection, Action<ScannedPage> deliver)
+    {
         _lastScanStop = null;
         _lastScanDuplex = null;
         var caps = _caps ?? await ReadCapabilities();
@@ -306,12 +332,13 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         ProgressHandler?.Invoke(new ScanProgress(request.ShowDriverWindow
             ? Loc.T("Choose the settings in the scanner's window, then start the scan there…")
             : Loc.T("Scanning…")));
-        var result = await Acquire(request);
-        var pages = result.PagesOrThrow();
         // Two-sided only when the source confirmed it (TwainScanResult.Duplex); a feeder
         // without CAP_DUPLEX is not asked (TwainScanRequests.ForScan).
-        if (request.Feeder && settings.Duplex == DuplexMode.Both) _lastScanDuplex = result.Duplex;
-        return pages.Select(page => new ScannedPage(page.Image, page.Dpi, page.ColorMode)).ToList();
+        bool duplexAsked = request.Feeder && settings.Duplex == DuplexMode.Both;
+        var result = await Acquire(request, page => deliver(new ScannedPage(page.Image, page.Dpi, page.ColorMode)),
+                                   duplex => { if (duplexAsked) _lastScanDuplex = duplex; });
+        result.PagesOrThrow();
+        if (duplexAsked) _lastScanDuplex = result.Duplex;
     }
 
     /// <summary>
@@ -321,7 +348,8 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
     /// stops the source in the background (the next call waits its turn behind it). The result
     /// carries the pages or the error (<see cref="TwainScanResult.PagesOrThrow"/>).
     /// </summary>
-    private async Task<TwainScanResult> Acquire(TwainScanRequest request)
+    private async Task<TwainScanResult> Acquire(TwainScanRequest request, Action<TwainPage>? onPage = null,
+                                                Action<bool>? onDuplex = null)
     {
         var cancellation = new CancellationTokenSource();
         var previous = Interlocked.Exchange(ref _scanCancellation, cancellation);
@@ -335,7 +363,7 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
                 // A source left enabled by a scan whose driver got stuck has to be disabled first.
                 if (!driver.Disable(TwainLoopTimeouts.Default.Stop)) throw TwainThread.NotResponding();
                 return TwainScanLoop.Run(driver, request, TwainLoopTimeouts.Default, token,
-                                         progress => ProgressHandler?.Invoke(progress), started);
+                                         progress => ProgressHandler?.Invoke(progress), started, onPage, onDuplex);
             }, StartTimeout, token);
         }
         catch

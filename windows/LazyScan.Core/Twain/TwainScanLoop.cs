@@ -68,6 +68,15 @@ public sealed class TwainScanResult
 /// </summary>
 public static class TwainScanLoop
 {
+    /// <param name="onPage">
+    /// When given, each page is handed to it as soon as it has transferred (on the calling thread, which waits
+    /// for it) instead of being kept in <see cref="TwainScanResult.Pages"/>, so a long stack is not held.
+    /// The result then reports failures and the end of the batch the same way, with no pages in it.
+    /// </param>
+    /// <param name="onDuplex">
+    /// With <paramref name="onPage"/> and a two-sided request: called once, before the first page is handed
+    /// over, with what <see cref="TwainScanResult.Duplex"/> will say.
+    /// </param>
     /// <param name="started">
     /// Called once the scan is under way, before the first wait; from there on only the loop's
     /// own time limits apply. That is once the source is enabled, or, with the driver's own
@@ -76,7 +85,8 @@ public static class TwainScanLoop
     /// </param>
     public static TwainScanResult Run(ITwainTransport transport, TwainScanRequest request, TwainLoopTimeouts timeouts,
                                       CancellationToken token, Action<ScanProgress>? progress = null,
-                                      Action? started = null)
+                                      Action? started = null, Action<TwainPage>? onPage = null,
+                                      Action<bool>? onDuplex = null)
     {
         var result = new TwainScanResult();
         TwainApplied applied;
@@ -113,12 +123,39 @@ public static class TwainScanLoop
         if (!request.ShowDriverWindow) started?.Invoke();
 
         var pages = new List<TwainPage>();
+        int pageCount = 0;
+        bool? duplexRead = null;
         TwainImageAssembler? current = null;
         TwainImageInfo? currentInfo = null;
         ScanException? failure = null;
         bool cancelled = false, driverCancelled = false, timedOut = false, stopping = false, finished = false;
         // A native image was announced and has not arrived yet.
         bool nativeTransfer = false;
+
+        // What the source really did, not what was asked. The user can turn two-sided off in the driver's
+        // window: read it back (once the source is disabled again, unless pages are handed over as they come, where
+        // an unanswered read mid-scan falls back to what was asked);
+        // a stuck source cannot be asked, and is taken as one-sided.
+        bool ConfirmDuplex()
+        {
+            bool? enabled = !request.ShowDriverWindow ? applied.DuplexEnabled
+                : result.DriverStuck ? null
+                : transport.ReadDuplexEnabled() ?? (onPage is not null ? applied.DuplexEnabled : null);
+            duplexRead = enabled == true;
+            return duplexRead.Value;
+        }
+
+        void Deliver(TwainPage page)
+        {
+            pageCount++;
+            if (onPage is null)
+            {
+                pages.Add(page);
+                return;
+            }
+            if (pageCount == 1 && request.Duplex) onDuplex?.Invoke(ConfirmDuplex());
+            onPage(page);
+        }
 
         // An interrupted image is dropped, unless every row of it had already arrived.
         void Settle()
@@ -143,8 +180,8 @@ public static class TwainScanLoop
             {
                 try
                 {
-                    pages.Add(Page(done.ToImage(), currentInfo, request));
-                    progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pages.Count)));
+                    Deliver(Page(done.ToImage(), currentInfo, request));
+                    progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pageCount)));
                 }
                 catch (FormatException e)
                 {
@@ -164,7 +201,7 @@ public static class TwainScanLoop
             }
             TimeSpan wait = stopping ? timeouts.Stop
                 : nativeTransfer ? Timeout.InfiniteTimeSpan
-                : pages.Count == 0 && current is null
+                : pageCount == 0 && current is null
                     ? (request.ShowDriverWindow ? Timeout.InfiniteTimeSpan : timeouts.FirstImage)
                     : timeouts.NextEvent;
             var next = transport.WaitForEvent(wait, stopping ? CancellationToken.None : token);
@@ -235,8 +272,8 @@ public static class TwainScanLoop
                         var info = currentInfo is null
                             ? new TwainImageInfo(image.Width, image.Height, request.PixelType, 0, bitmapDpi)
                             : currentInfo.XResolution > 0 ? currentInfo : currentInfo with { XResolution = bitmapDpi };
-                        pages.Add(Page(image, info, request));
-                        progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pages.Count)));
+                        Deliver(Page(image, info, request));
+                        progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pageCount)));
                     }
                     catch (FormatException e)
                     {
@@ -276,7 +313,7 @@ public static class TwainScanLoop
         }
         if (failure is not null)
         {
-            if (pages.Count == 0)
+            if (pageCount == 0)
             {
                 result.Error = failure;
                 return result;
@@ -284,7 +321,7 @@ public static class TwainScanLoop
             // An empty feeder after some sheets is just the end of the stack.
             if (failure.Problem != ScannerProblem.FeederEmpty) result.Stop = ScanStop.From(failure);
         }
-        else if (pages.Count == 0)
+        else if (pageCount == 0)
         {
             result.Error = driverCancelled || request.ShowDriverWindow
                 ? ScanException.Cancelled()
@@ -296,13 +333,7 @@ public static class TwainScanLoop
         result.Pages.AddRange(pages);
         if (request.Duplex)
         {
-            // What the source really did, not what was asked. The user can turn two-sided off
-            // in the driver's window: read it back once the source is disabled again; a stuck
-            // source cannot be asked, and is taken as one-sided.
-            bool? enabled = !request.ShowDriverWindow ? applied.DuplexEnabled
-                : result.DriverStuck ? null
-                : transport.ReadDuplexEnabled();
-            result.Duplex = enabled == true;
+            result.Duplex = duplexRead ?? ConfirmDuplex();
         }
         return result;
     }

@@ -522,6 +522,65 @@ public class TwainScanLoopTests
     }
 
     [Fact]
+    public void PagesHandedOver_ComeOneAtATimeAndAreNotKept()
+    {
+        var transport = new FakeTransport(FourSheets());
+        var handed = new List<(int Value, int CallsSoFar)>();
+        var result = TwainScanLoop.Run(transport, Feeder(), Timeouts, default,
+                                       onPage: page => handed.Add((page.Image.Pixels[0], transport.Waits.Count)));
+
+        Assert.Null(result.Error);
+        Assert.Empty(result.Pages);
+        Assert.Equal([1, 2, 3, 4], handed.Select(h => h.Value));
+        // Each page is handed over before the next event is waited for, not after the whole stack.
+        Assert.Equal(handed.Select(h => h.CallsSoFar).Order(), handed.Select(h => h.CallsSoFar));
+        Assert.True(handed[0].CallsSoFar < transport.Waits.Count);
+    }
+
+    [Fact]
+    public void PagesHandedOver_AFailureAfterSomeStopsTheBatch()
+    {
+        var transport = new FakeTransport([.. GrayPage(1), .. GrayPage(2), new TwainTransferFailed(TwainReturnCodes.Failure, TwainConditionCodes.PaperJam)]);
+        var handed = new List<int>();
+        var result = TwainScanLoop.Run(transport, Feeder(), Timeouts, default, onPage: page => handed.Add(page.Image.Pixels[0]));
+
+        Assert.Null(result.Error);
+        Assert.NotNull(result.Stop);
+        Assert.Equal([1, 2], handed);
+    }
+
+    [Fact]
+    public void PagesHandedOver_AFailureBeforeTheFirstFailsTheScan()
+    {
+        var transport = new FakeTransport(new TwainTransferFailed(TwainReturnCodes.Failure, TwainConditionCodes.PaperJam));
+        var handed = new List<int>();
+        var result = TwainScanLoop.Run(transport, Feeder(), Timeouts, default, onPage: page => handed.Add(page.Image.Pixels[0]));
+
+        Assert.NotNull(result.Error);
+        Assert.Empty(handed);
+    }
+
+    [Theory]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]   // the user turned two-sided off in the driver's window
+    public void PagesHandedOver_TwoSidedIsKnownBeforeTheFirstPage(bool driverWindow, bool afterScan, bool expected)
+    {
+        var transport = new FakeTransport(FourSheets())
+        {
+            Applied = new TwainApplied(TwainTransferMechanisms.Memory, DuplexEnabled: true),
+            DuplexAfterScan = afterScan,
+        };
+        var events = new List<string>();
+        var result = TwainScanLoop.Run(transport, TwoSided(driverWindow), Timeouts, default,
+                                       onPage: _ => events.Add("page"), onDuplex: duplex => events.Add($"duplex {duplex}"));
+
+        Assert.Equal($"duplex {expected}", events[0]);
+        Assert.Equal(4, events.Count(e => e == "page"));
+        Assert.Equal(expected, result.Duplex);
+        Assert.Equal(driverWindow ? 1 : 0, transport.Calls.Count(c => c == "read duplex"));
+    }
+
+    [Fact]
     public void DriverWindowClosedWithoutScanning_IsCancelled()
     {
         var result = Run(new FakeTransport(new TwainFinished()), Flatbed(driverWindow: true));

@@ -414,18 +414,38 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
             Apply(plan);
             if (flatbed.PreviewSupported && await PreviewAsync(cancel) is { } preview) return preview;
             // No preview of its own (or it failed): a quick low-resolution scan instead.
-            var pages = await ScanFilesAsync(plan, feeder: false, cancel);
+            var pages = new List<ScannedFrame>();
+            await ScanFilesAsync(plan, feeder: false, cancel, frame =>
+            {
+                pages.Add(frame);
+                return Task.CompletedTask;
+            });
             return pages.Count > 0 ? pages[0].Image : throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
         }, token);
     }
 
-    public Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
+    public async Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
+    {
+        var pages = new List<ScannedPage>();
+        await Scan(settings, selection, page =>
+        {
+            pages.Add(page);
+            return Task.CompletedTask;
+        });
+        return pages;
+    }
+
+    public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage) =>
+        PageHandover.Run(emit => Scan(settings, selection, emit), onPage);
+
+    /// <summary>Scans, passing each page to <paramref name="emit"/> once its file is read.</summary>
+    private Task Scan(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> emit)
     {
         _lastScanStop = null;
         _lastScanDuplex = -1;
         var token = BeginScan();
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
-        return Run<IReadOnlyList<ScannedPage>>(async cancel =>
+        return Run(async cancel =>
         {
             ReadFacts(force: false);
             bool feeder = settings.Source == ScanSource.DocumentFeeder;
@@ -441,17 +461,17 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
             {
                 _lastScanDuplex = plan.Duplex && Read(() => scanner.FeederConfiguration.Duplex, false) ? 1 : 0;
             }
-            var frames = await ScanFilesAsync(plan, feeder, cancel);
-            if (frames.Count == 0)
+            // The resolution sets each page's size on paper: when the driver does not say what it
+            // scanned at (a device that configures itself), the file's own is better than the one asked for.
+            int count = await ScanFilesAsync(plan, feeder, cancel, frame =>
+                emit(new ScannedPage(frame.Image, WindowsScanRequest.PageDpi(reportedDpi, frame.DpiX, plan.Dpi), settings.ColorMode)));
+            if (count == 0)
             {
                 throw feeder
                     ? ScanException.ForProblem(ScannerProblem.FeederEmpty)
                     : ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
             }
-            // The resolution sets each page's size on paper: when the driver does not say what it
-            // scanned at (a device that configures itself), the file's own is better than the one asked for.
-            return [.. frames.Select(frame => new ScannedPage(frame.Image, WindowsScanRequest.PageDpi(reportedDpi, frame.DpiX, plan.Dpi),
-                                                              settings.ColorMode))];
+            return true;
         }, token);
     }
 
@@ -675,11 +695,13 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
 
     /// <summary>
     /// Scans with <paramref name="plan"/>'s source into a new folder in the private spool and reads
-    /// the pages back, deleting the folder afterwards. A feeder batch that fails partway keeps the
+    /// the pages back one file at a time, passing each to <paramref name="onFrame"/>, then deletes the
+    /// folder. Returns how many pages were passed. A feeder batch that fails partway keeps the
     /// sheets already written (<see cref="WindowsScanRequest.AfterFailure"/>) and records why it
     /// stopped in <see cref="LastScanStop"/>. A folder that cannot be made is a failed scan.
     /// </summary>
-    private async Task<List<ScannedFrame>> ScanFilesAsync(WindowsScanPlan plan, bool feeder, CancellationToken cancel)
+    private async Task<int> ScanFilesAsync(WindowsScanPlan plan, bool feeder, CancellationToken cancel,
+                                           Func<ScannedFrame, Task> onFrame)
     {
         string folder = Path.Combine(scratchRoot(), "winrt-" + Guid.NewGuid().ToString("N"));
         try
@@ -712,8 +734,9 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
             catch (Exception e) when (feeder && e is not OperationCanceledException && !cancel.IsCancellationRequested)
             {
                 var error = WindowsScanErrors.ToScanException(e.HResult, e.Message);
-                var kept = ReadableFiles(folder);
-                switch (WindowsScanRequest.AfterFailure(error, kept.Count))
+                if (error.Kind == ScanErrorKind.Cancelled) throw error;
+                int kept = await PassReadableFiles(folder, onFrame, cancel);
+                switch (WindowsScanRequest.AfterFailure(error, kept))
                 {
                     case WindowsScanFailureOutcome.Finished:
                         return kept;
@@ -725,20 +748,27 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
                 }
             }
             if (cancel.IsCancellationRequested) throw ScanException.Cancelled();
-            var images = new List<ScannedFrame>();
+            int count = 0;
             foreach (var file in result.ScannedFiles)
             {
+                if (cancel.IsCancellationRequested) throw ScanException.Cancelled();
+                List<ScannedFrame> frames;
                 try
                 {
-                    images.AddRange(LoadFrames(file.Path));
+                    frames = LoadFrames(file.Path);
                 }
                 catch (Exception e) when (e is IOException or NotSupportedException or FileFormatException
                                               or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
                 {
                     throw ScanException.ScanFailed(() => Loc.T("the scanned page could not be read ({0}).", e.Message.Trim()));
                 }
+                foreach (var frame in frames)
+                {
+                    await onFrame(frame);
+                    count++;
+                }
             }
-            return images;
+            return count;
         }
         finally
         {
@@ -757,10 +787,9 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
     private static ScanException FolderFailed(Exception e) =>
         ScanException.ScanFailed(() => Loc.T("the app could not prepare its temporary folder for the scan ({0}).", e.Message.Trim()));
 
-    /// <summary>The pages of the files a failed batch left behind, in scan order, without the one cut off.</summary>
-    private static List<ScannedFrame> ReadableFiles(string folder)
+    /// <summary>Passes the pages of the files a failed batch left behind, in scan order and without the one cut off; returns how many.</summary>
+    private static async Task<int> PassReadableFiles(string folder, Func<ScannedFrame, Task> onFrame, CancellationToken cancel)
     {
-        var images = new List<ScannedFrame>();
         List<string> names;
         try
         {
@@ -768,20 +797,29 @@ internal sealed class WinRtScannerSession(ScannerInfo info, ImageScanner scanner
         }
         catch (Exception)
         {
-            return images;
+            return 0;
         }
+        int count = 0;
         foreach (string name in names)
         {
+            if (cancel.IsCancellationRequested) throw ScanException.Cancelled();
+            List<ScannedFrame> frames;
             try
             {
-                images.AddRange(LoadFrames(Path.Combine(folder, name)));
+                frames = LoadFrames(Path.Combine(folder, name));
             }
             catch (Exception)
             {
                 // A file the failure cut off.
+                continue;
+            }
+            foreach (var frame in frames)
+            {
+                await onFrame(frame);
+                count++;
             }
         }
-        return images;
+        return count;
     }
 
     /// <summary>Every page of an image file: one for PNG, JPEG and BMP, each frame of a multi-page TIFF.</summary>

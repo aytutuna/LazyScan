@@ -501,64 +501,81 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
 
     public Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
     {
-        _lastScanStop = null;
-        _lastScanDuplex = -1;
+        var pages = new List<ScannedPage>();
         return RunSta<IReadOnlyList<ScannedPage>>(() =>
         {
-            _cancelRequested = false;
-            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
-            var pages = new List<ScannedPage>();
-            ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
-            // One connection for the whole batch: every sheet of a feeder scan comes from the
-            // same prepared item.
-            dynamic device = Connect();
-            try
-            {
-                bool feeder = settings.Source == ScanSource.DocumentFeeder;
-                // Two-sided feeder scans deliver front, back, front, back… (FRONT_FIRST). A
-                // feeder the device reported as one-sided is not asked.
-                bool askedBoth = feeder && settings.Duplex == DuplexMode.Both;
-                object item = PrepareItem(device, settings.Resolution, settings.Source, settings.ColorMode,
-                                           feeder ? null : selection,
-                                           askedBoth && _supportsDuplex != false,
-                                           feeder ? settings.PaperSize : PaperSize.Auto);
-                // Whether the driver took two-sided feeding, so the app knows what the pages are.
-                if (askedBoth) _lastScanDuplex = _preparedTwoSided ? 1 : 0;
-                try
-                {
-                    if (feeder)
-                    {
-                        ScanFeeder(item, settings, pages);
-                    }
-                    else
-                    {
-                        RgbaImage image = Transfer(item);
-                        if (_cancelRequested) throw ScanException.Cancelled();
-                        pages.Add(new ScannedPage(image, _preparedDpi, settings.ColorMode));
-                    }
-                }
-                finally
-                {
-                    Release(item);
-                }
-            }
-            finally
-            {
-                Release(device);
-            }
-            if (pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
+            Scan(settings, selection, pages.Add);
             return pages;
         });
     }
 
-    /// <summary>
-    /// Keep pulling sheets until the feeder runs out. An empty feeder on the first sheet is
-    /// the user's to fix ("Load paper in the feeder"); later it just ends the batch. Any other
-    /// failure mid-batch keeps the sheets that already transferred (mirroring the macOS
-    /// backend) and records why the scan stopped in <see cref="LastScanStop"/>.
-    /// </summary>
-    private void ScanFeeder(object item, ScanSettings settings, List<ScannedPage> pages)
+    public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage) =>
+        PageHandover.Run(emit => RunSta(() =>
+        {
+            Scan(settings, selection, page => emit(page).GetAwaiter().GetResult());
+            return true;
+        }), onPage);
+
+    /// <summary>Scans on the WIA thread, passing each page to <paramref name="emit"/> as it transfers.</summary>
+    private void Scan(ScanSettings settings, RectD? selection, Action<ScannedPage> emit)
     {
+        _lastScanStop = null;
+        _lastScanDuplex = -1;
+        _cancelRequested = false;
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
+        int count = 0;
+        ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
+        // One connection for the whole batch: every sheet of a feeder scan comes from the
+        // same prepared item.
+        dynamic device = Connect();
+        try
+        {
+            bool feeder = settings.Source == ScanSource.DocumentFeeder;
+            // Two-sided feeder scans deliver front, back, front, back… (FRONT_FIRST). A
+            // feeder the device reported as one-sided is not asked.
+            bool askedBoth = feeder && settings.Duplex == DuplexMode.Both;
+            object item = PrepareItem(device, settings.Resolution, settings.Source, settings.ColorMode,
+                                       feeder ? null : selection,
+                                       askedBoth && _supportsDuplex != false,
+                                       feeder ? settings.PaperSize : PaperSize.Auto);
+            // Whether the driver took two-sided feeding, so the app knows what the pages are.
+            if (askedBoth) _lastScanDuplex = _preparedTwoSided ? 1 : 0;
+            try
+            {
+                if (feeder)
+                {
+                    count = ScanFeeder(item, settings, emit);
+                }
+                else
+                {
+                    RgbaImage image = Transfer(item);
+                    if (_cancelRequested) throw ScanException.Cancelled();
+                    emit(new ScannedPage(image, _preparedDpi, settings.ColorMode));
+                    count = 1;
+                }
+            }
+            finally
+            {
+                Release(item);
+            }
+        }
+        finally
+        {
+            Release(device);
+        }
+        if (count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
+    }
+
+    /// <summary>
+    /// Keep pulling sheets until the feeder runs out, passing each to <paramref name="emit"/>, and
+    /// return how many came. An empty feeder on the first sheet is the user's to fix ("Load paper in
+    /// the feeder"); later it just ends the batch. Any other failure mid-batch keeps the sheets that
+    /// already transferred (mirroring the macOS backend) and records why the scan stopped in
+    /// <see cref="LastScanStop"/>.
+    /// </summary>
+    private int ScanFeeder(object item, ScanSettings settings, Action<ScannedPage> emit)
+    {
+        int count = 0;
         while (true)
         {
             RgbaImage image;
@@ -566,18 +583,19 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             {
                 image = Transfer(item);
             }
-            catch (ScanException e) when (e.Problem == ScannerProblem.FeederEmpty && pages.Count > 0)
+            catch (ScanException e) when (e.Problem == ScannerProblem.FeederEmpty && count > 0)
             {
-                return;
+                return count;
             }
-            catch (ScanException e) when (pages.Count > 0 && e.Kind != ScanErrorKind.Cancelled)
+            catch (ScanException e) when (count > 0 && e.Kind != ScanErrorKind.Cancelled)
             {
                 _lastScanStop = ScanStop.From(e);
-                return;
+                return count;
             }
             if (_cancelRequested) throw ScanException.Cancelled();
-            pages.Add(new ScannedPage(image, _preparedDpi, settings.ColorMode));
-            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", pages.Count)));
+            emit(new ScannedPage(image, _preparedDpi, settings.ColorMode));
+            count++;
+            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", count)));
         }
     }
 
