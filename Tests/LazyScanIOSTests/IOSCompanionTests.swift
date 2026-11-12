@@ -201,6 +201,25 @@ final class IOSCompanionTests: XCTestCase {
                        CompanionText.notSavedMessage)
     }
 
+    func test_keychain_deleteAllClearsEveryItemOfTheService() throws {
+        let secrets = IOSCompanionSecrets(service: "com.lazyscan.companion.tests-\(UUID().uuidString)")
+        let secret = Data(repeating: 4, count: PairedDeviceStore.secretByteCount)
+        do {
+            try secrets.save(secret, for: IOSCompanionTests.desktopId)
+        } catch let error as IOSKeychainError where error.status == errSecMissingEntitlement {
+            throw XCTSkip("This test host has no Keychain access.")
+        }
+        try secrets.save(secret, for: IOSCompanionTests.desktopId + ".sync")
+        try secrets.save(secret, for: "desk-0002-other")
+
+        try secrets.deleteAll()
+
+        XCTAssertNil(try secrets.load(for: IOSCompanionTests.desktopId))
+        XCTAssertNil(try secrets.load(for: IOSCompanionTests.desktopId + ".sync"))
+        XCTAssertNil(try secrets.load(for: "desk-0002-other"))
+        try secrets.deleteAll()
+    }
+
     func test_keychain_keepsTheSyncKeyNextToTheSecret() throws {
         let secrets = IOSCompanionSecrets(service: "com.lazyscan.companion.tests-\(UUID().uuidString)")
         let secret = Data(repeating: 3, count: PairedDeviceStore.secretByteCount)

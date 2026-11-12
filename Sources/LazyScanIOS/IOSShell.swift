@@ -1294,7 +1294,13 @@ extension AppState {
         state.resolveSyncFolderBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
             IOSSyncFolder.resolve(bookmark)
         }
-        IOSShell.setUpCompanion(state, folder: IOSNetworkScanners.filesFolder(), secrets: IOSCompanionSecrets(),
+        let companionFolder: URL = IOSNetworkScanners.filesFolder()
+        let secrets = IOSCompanionSecrets()
+        let pairingFile: URL = companionFolder.appendingPathComponent(PairedDesktopStore.fileName)
+        if !FileManager.default.fileExists(atPath: pairingFile.path) {
+            try? secrets.deleteAll()
+        }
+        IOSShell.setUpCompanion(state, folder: companionFolder, secrets: secrets,
                                 browser: companion, lifecycle: lifecycle)
         return state
     }

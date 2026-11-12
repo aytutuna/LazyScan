@@ -51,6 +51,18 @@ public struct IOSCompanionSecrets: CompanionSecretStore {
         guard status == errSecSuccess || status == errSecItemNotFound else { throw IOSKeychainError(status: status) }
     }
 
+    /// Every item under the service, whichever desktop it names. For a launch that finds no pairing
+    /// file: iOS keeps Keychain items after the app is deleted, so what is left belongs to nothing.
+    public func deleteAll() throws {
+        let match: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecUseDataProtectionKeychain as String: true,
+        ]
+        let status: OSStatus = SecItemDelete(match as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw IOSKeychainError(status: status) }
+    }
+
     private func query(_ desktopId: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
