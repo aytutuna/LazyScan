@@ -77,7 +77,7 @@ public static class DocumentSides
                      Loc.T("Scan fronts"), Repeats: true,
                      Help: Loc.T("Only the front of each sheet is scanned this time."), ShortWord: Loc.T("Front|step")),
         new TaskStep(BacksStepId, Loc.T("Scan the back sides"),
-                     Loc.T("Turn the stack over, load it again and scan."),
+                     Loc.T("Restack in the original order, turn the pile over, scan."),
                      Loc.T("Scan backs"), Skippable: true, Repeats: true, RequiresCapture: false,
                      Help: Loc.T("Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
                      ShortWord: Loc.T("Back|step")),

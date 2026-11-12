@@ -103,7 +103,7 @@ public enum DocumentSides {
                      primaryActionLabel: L10n.t("Scan fronts"), repeats: true,
                      help: L10n.t("Only the front of each sheet is scanned this time."), shortWord: L10n.t("Front|step")),
             TaskStep(id: backsStepID, title: L10n.t("Scan the back sides"),
-                     prompt: L10n.t("Turn the stack over, load it again and scan."),
+                     prompt: L10n.t("Restack in the original order, turn the pile over, scan."),
                      primaryActionLabel: L10n.t("Scan backs"), skippable: true, repeats: true, requiresCapture: false,
                      help: L10n.t("Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides."),
                      shortWord: L10n.t("Back|step")),

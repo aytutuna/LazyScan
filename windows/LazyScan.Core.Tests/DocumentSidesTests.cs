@@ -173,7 +173,7 @@ public class DocumentSidesTests
         Assert.False(steps[1].RequiresCapture);
         Assert.True(steps[1].Skippable);
         Assert.Equal("Load the stack in the feeder and scan the fronts.", steps[0].Prompt);
-        Assert.Equal("Turn the stack over, load it again and scan.", steps[1].Prompt);
+        Assert.Equal("Restack in the original order, turn the pile over, scan.", steps[1].Prompt);
         Assert.Contains("turn it over", steps[1].Help);
         Assert.Equal(["Front", "Back"], steps.Select(s => s.Word));
         Assert.All(steps, step => Assert.InRange(StatusLine.Words(step.Prompt), 1, 10));

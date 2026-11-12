@@ -151,7 +151,7 @@ final class DocumentSidesTests: XCTestCase {
         XCTAssertFalse(steps[1].requiresCapture)
         XCTAssertTrue(steps[1].skippable)
         XCTAssertEqual(steps[0].prompt, "Load the stack in the feeder and scan the fronts.")
-        XCTAssertEqual(steps[1].prompt, "Turn the stack over, load it again and scan.")
+        XCTAssertEqual(steps[1].prompt, "Restack in the original order, turn the pile over, scan.")
         XCTAssertTrue(steps[1].help.contains("turn it over"))
         XCTAssertEqual(steps.map(\.word), ["Front", "Back"])
         for step in steps {

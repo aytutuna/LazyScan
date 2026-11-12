@@ -275,7 +275,7 @@
   "Scan fronts": {},
   "Only the front of each sheet is scanned this time.": {},
   "Scan the back sides": {},
-  "Turn the stack over, load it again and scan.": {},
+  "Restack in the original order, turn the pile over, scan.": {},
   "Scan backs": {},
   "Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides.": {},
   "Save Word": {},
@@ -441,7 +441,7 @@
   "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}": {
     "other": "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}"
   },
-  "Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.": {},
+  "Load the sheets not scanned yet and scan more fronts. Once every front is scanned, put all the sheets back in one pile in their original order, turn the whole pile over and choose {0}.": {},
   "Copied {0} and its picture to the clipboard.": {},
   "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
     "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."

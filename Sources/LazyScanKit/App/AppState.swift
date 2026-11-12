@@ -2371,7 +2371,7 @@ public final class AppState: ObservableObject {
 
     /// What to do while the fronts are scanned a part at a time.
     private var moreFrontsPrompt: String {
-        L10n.t("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.", L10n.t("Done with fronts"))
+        L10n.t("Load the sheets not scanned yet and scan more fronts. Once every front is scanned, put all the sheets back in one pile in their original order, turn the whole pile over and choose {0}.", L10n.t("Done with fronts"))
     }
 
     /// After a scan of a stack turned over by hand: the fronts move the steps on to the backs,

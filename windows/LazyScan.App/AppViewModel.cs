@@ -2948,7 +2948,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>What to do while the fronts are scanned a part at a time.</summary>
     private static string MoreFrontsPrompt =>
-        Loc.T("Load the sheets not scanned yet and scan more fronts; once every front is scanned, choose {0}.",
+        Loc.T("Load the sheets not scanned yet and scan more fronts. Once every front is scanned, put all the sheets back in one pile in their original order, turn the whole pile over and choose {0}.",
             Loc.T("Done with fronts"));
 
     /// <summary>Every front is scanned: on to the backs (after a batch cut short, or more fronts).</summary>
