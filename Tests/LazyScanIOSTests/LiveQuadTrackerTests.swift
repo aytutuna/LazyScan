@@ -850,6 +850,9 @@ final class LiveQuadTrackerTests: XCTestCase {
                     fired.append(i)
                     tracker.markCaptured()
                 }
+                if i == 40 {
+                    tracker.rearm()
+                }
                 i += 1
             }
             return fired

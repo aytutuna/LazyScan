@@ -3909,13 +3909,14 @@ public final class LiveQuadTracker: @unchecked Sendable {
     public static func normalized(_ quad: Quad, width: Int, height: Int) -> Quad
     public static func photoOutline(_ outline: Quad, rotationDegrees: Int) -> Quad?   // into the upright photo; nil unless 0/90/180/270
 }
-public struct PageThumbnail: Equatable, Sendable {                // a small grayscale look at the page (24 x 24 cell means over its bounding box)
+public struct PageThumbnail: Equatable, Sendable {                // a small grayscale look at the page (24 x 24 cell means over its bounding box, taken in by one cell on each side)
     public static let side = 24; public static let minCorrelation = 0.9; public static let flatSpread = 4.0; public static let flatBrightness = 12.0
     public init(_ frame: RgbaImage, page: Quad?)
     public func matches(_ other: PageThumbnail) -> Bool            // cells correlate >= 0.9; two flat looks: mean luma within 12
 }
 // The tracker drops a shouldCapture whose steady page matches the look at the page last photographed, so a shake or a hand
 // over the page does not take it twice (iPhone only: the Core has no live camera).
+// The look is kept until reset(), so a page deleted from the sheet and held again is not retaken by Auto; the shutter or leaving the camera takes it.
 public struct LiveQuadFilter: Sendable {                          // the tracker's steadying, pure logic
     // smoothing 0.5, jitterShare 0.01, jumpShare 0.06 (of the frame's diagonal); holds LiveQuadTracker.holdMs
     public struct Output: Equatable, Sendable { public let page: Quad?; public let shown: Quad? }   // for CaptureStability; to draw
