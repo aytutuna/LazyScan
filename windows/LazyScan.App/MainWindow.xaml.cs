@@ -1923,6 +1923,7 @@ public partial class MainWindow : Window
     /// uses chosen: photos are saved as an image, so a PDF or text format shows as JPEG there
     /// (the setting itself is kept for documents). Receipts and the ID card are saved as a PDF or an
     /// image (<see cref="OutputFormats.PageFormat"/>): Word and text are not offered, and show as PDF.
+    /// Collected pages are saved together, so the image formats are not offered and show as PDF.
     /// A copy saves a PDF or nothing, so the format is hidden for it.
     /// </summary>
     private void SyncFormatChoices()
@@ -1930,7 +1931,9 @@ public partial class MainWindow : Window
         var s = ViewModel.Settings;
         FormatRow.Visibility = TaskCatalog.FlowOf(s) == TaskFlowKind.Copy ? Visibility.Collapsed : Visibility.Visible;
         bool pageOnly = InspectorSections.SavesPageFormat(s);
-        var offered = OutputFormats.Offered(s.Intent).Where(f => !pageOnly || OutputFormats.PageFormat(f) == f).ToList();
+        bool collects = InspectorSections.CollectsPages(s);
+        var offered = OutputFormats.Offered(s.Intent)
+            .Where(f => (!pageOnly || OutputFormats.PageFormat(f) == f) && (!collects || OutputFormats.QueueFormat(f) == f)).ToList();
         var labels = offered.Select(f => f.Label()).ToList();
         bool wasUpdating = _updatingUi;
         _updatingUi = true;
@@ -1940,9 +1943,7 @@ public partial class MainWindow : Window
             {
                 FormatBox.ItemsSource = labels;
             }
-            var shown = offered.Contains(s.Format) ? s.Format
-                : pageOnly ? OutputFormats.PageFormat(s.Format)
-                : OutputFormats.ImageFormatOrJpeg(s.Format);
+            var shown = offered.Contains(s.Format) ? s.Format : InspectorSections.ShownFormat(s);
             FormatBox.SelectedItem = shown.Label();
         }
         finally

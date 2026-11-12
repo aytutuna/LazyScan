@@ -206,14 +206,19 @@ public static class InspectorSections
     /// </summary>
     public static bool SavesPageFormat(ScanSettings s) => TaskCatalog.FlowOf(s) is TaskFlowKind.ReceiptSplit or TaskFlowKind.IdCard;
 
+    /// <summary>Document pages are collected and saved together, so an image format shows as the PDF they are saved as.</summary>
+    public static bool CollectsPages(ScanSettings s) =>
+        s.Intent == ScanIntent.Document && TaskCatalog.FlowOf(s) == TaskFlowKind.DocumentQueue && s.DocumentMultiPage;
+
     /// <summary>
     /// The format the column shows: a copy saves a PDF or nothing, receipts and the ID card a PDF or an
-    /// image, photos an image, else the format.
+    /// image, photos an image, collected pages a PDF, Word or text, else the format.
     /// </summary>
     public static OutputFormat ShownFormat(ScanSettings s) =>
         TaskCatalog.FlowOf(s) == TaskFlowKind.Copy ? OutputFormat.Pdf
         : SavesPageFormat(s) ? OutputFormats.PageFormat(s.Format)
         : s.Intent == ScanIntent.Photo ? OutputFormats.ImageFormatOrJpeg(s.Format)
+        : CollectsPages(s) ? OutputFormats.QueueFormat(s.Format)
         : s.Format;
 
     /// <summary>

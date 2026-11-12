@@ -138,7 +138,9 @@ public class InspectorSectionsTests
         // A queue of image pages is saved as a PDF.
         s.Format = OutputFormat.Jpeg;
         Assert.True(InspectorSections.WritesPdf(s));
+        Assert.Equal(OutputFormat.Pdf, InspectorSections.ShownFormat(s));
         s.DocumentMultiPage = false;
+        Assert.Equal(OutputFormat.Jpeg, InspectorSections.ShownFormat(s));
         Assert.False(InspectorSections.WritesPdf(s));
 
         var photos = new ScanSettings { Intent = ScanIntent.Photo };
