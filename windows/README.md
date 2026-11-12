@@ -554,7 +554,7 @@ route are the iPhone's own (Swift only).
 
 ### Send from your phone
 
-A phone with Lazy Scan sends what it scans straight into this PC's page queue. **Phone** (at
+An iPhone or iPad with Lazy Scan sends what it scans straight into this PC's page queue. **Phone** (at
 the bottom of the side pane) opens the phone window:
 
 - **Pair a phone** shows a QR code to scan with the phone (Options › My computer, on the phone). The code

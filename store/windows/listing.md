@@ -18,7 +18,7 @@ It works with the scanners Windows already knows: drivers that use WIA or TWAIN,
 
 Each job has its own way through the app: letters and contracts, a stack in the document feeder (both sides, blank pages skipped), receipts, ID cards at real size, books and magazines, old faded photos, and copies sent straight to a printer. PDFs can be saved as PDF/A for long-term keeping, protected with an AES-256 password, or added to the end of a PDF you already have.
 
-Pair your phone once with a QR code, and pages scanned with Lazy Scan on the phone arrive on the PC over your own network, encrypted, with no account and no server.
+Pair your iPhone or iPad once with a QR code, and pages scanned with Lazy Scan on it arrive on the PC over your own network, encrypted, with no account and no server. Other phones can use Import photos of documents or a folder they sync to the PC.
 
 Lazy Scan is free, and its source is available under PolyForm Noncommercial 1.0.0. It is a sister app of Lazy Print and Lazy PDF.
 
@@ -33,7 +33,7 @@ Lazy Scan is new. If your scanner does not show up or a scan does not come out a
 - Tasks for receipts, ID cards, books and magazines, old photos and copies to a printer.
 - Fix brightness, contrast, color and sharpness, restore faded prints and crop by hand.
 - Save PDF/A files, protect a PDF with a password, or add pages to a PDF you already have.
-- Take pages from your phone over your own network, encrypted, and open Lazy Scan documents.
+- Take pages from your iPhone or iPad over your own network, encrypted, and open Lazy Scan documents.
 - Try it with the built-in Demo Scanner when no scanner is connected.
 
 **Search terms:** scanner, scan to pdf, photo scanner, document scanner, ocr, twain, wia

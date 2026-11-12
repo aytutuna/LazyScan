@@ -313,7 +313,7 @@
                     <!-- Pair a phone, the paired phones and the networks receiving is allowed on. -->
                     <Button x:Name="PhoneButton" Style="{StaticResource SubtleButtonStyle}"
                             local:Icon.Glyph="&#xE8EA;" Content="{loc:T Phone}"
-                            ToolTip="{loc:T Send documents from your phone to this PC}"
+                            ToolTip="{loc:T Send documents from your iPhone or iPad to this PC}"
                             AutomationProperties.HelpText="{loc:T Opens the phone settings: pair a phone\, the paired phones and the networks this PC receives on}"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="4,4,4,0"
                             Click="PhoneButton_Click" />

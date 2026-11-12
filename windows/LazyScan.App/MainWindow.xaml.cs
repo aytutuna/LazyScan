@@ -201,7 +201,7 @@ public partial class MainWindow : Window
             AppearanceButton.ToolTip = Loc.T("Appearance: light, dark, or follow Windows");
             PhoneButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Center;
-            PhoneButton.ToolTip = Loc.T("Phone: send documents from your phone to this PC");
+            PhoneButton.ToolTip = Loc.T("Phone: send documents from your iPhone or iPad to this PC");
             AboutButton.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
             AboutButton.HorizontalContentAlignment = HorizontalAlignment.Center;
         }
@@ -212,7 +212,7 @@ public partial class MainWindow : Window
             AppearanceButton.ToolTip = Loc.T("Light, dark, or follow Windows");
             PhoneButton.ClearValue(ContentControl.ContentTemplateProperty);
             PhoneButton.HorizontalContentAlignment = HorizontalAlignment.Left;
-            PhoneButton.ToolTip = Loc.T("Send documents from your phone to this PC");
+            PhoneButton.ToolTip = Loc.T("Send documents from your iPhone or iPad to this PC");
             AboutButton.ClearValue(ContentControl.ContentTemplateProperty);
             AboutButton.HorizontalContentAlignment = HorizontalAlignment.Left;
         }
