@@ -1788,6 +1788,11 @@
                             Click="Undo_Click" />
                     <ProgressBar x:Name="BusyBar" Width="160" VerticalAlignment="Center" Margin="0,0,12,0"
                                  AutomationProperties.Name="{loc:T Progress}" Visibility="Collapsed" />
+                    <Button x:Name="ShowScannerButton" Style="{StaticResource IconTextButtonStyle}"
+                            local:Icon.Glyph="&#xE8A7;" Content="{loc:T Show the scanner\'s window}" Padding="10,3,10,4" Margin="0,0,12,0"
+                            ToolTip="{loc:T Bring the scanner\'s window to the front}"
+                            AutomationProperties.HelpText="{loc:T Bring the scanner\'s window to the front}"
+                            Visibility="Collapsed" Click="ShowScanner_Click" />
                     <Button x:Name="CancelButton" Style="{StaticResource IconTextButtonStyle}"
                             local:Icon.Glyph="&#xE711;" Content="{loc:T Cancel}" Padding="10,3,10,4"
                             Visibility="Collapsed" AutomationProperties.AcceleratorKey="Esc"

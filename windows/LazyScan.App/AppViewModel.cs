@@ -2028,6 +2028,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         return new DetectedPhoto(region, page.Image, page.Dpi, sourcePageId: page.Id, colorMode: page.ColorMode);
     }
 
+    public bool CanShowScannerWindow => IsBusy && _session is Scanning.IDriverWindowControl { WaitingForDriverWindow: true };
+
+    public void ShowScannerWindow() => (_session as Scanning.IDriverWindowControl)?.ShowDriverWindow();
+
     /// <summary>
     /// Cancel whatever is running: the hardware if it is mid-scan, AND the software phases
     /// (processing, photo detection, OCR, PDF build, exports) — either may be the one running.

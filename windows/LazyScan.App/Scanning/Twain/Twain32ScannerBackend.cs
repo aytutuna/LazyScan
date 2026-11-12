@@ -288,7 +288,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
             transport.Open();
             return transport;
         }, StartingLimit(_timeouts.Open), whenAbandoned: late => late.Close());
-        var session = new TwainScannerSession(info, Worker, transport, transport.Close);
+        var session = new TwainScannerSession(info, Worker, transport, transport.Close, () => _helper.ProcessId);
         transport.ProgressHandler = progress => session.ProgressHandler?.Invoke(progress);
         return session;
     }

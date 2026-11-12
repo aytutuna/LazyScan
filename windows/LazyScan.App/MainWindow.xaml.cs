@@ -352,6 +352,7 @@ public partial class MainWindow : Window
         BusyBar.Visibility = ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.Visibility = ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = ViewModel.IsBusy;
+        ShowScannerButton.Visibility = ViewModel.CanShowScannerWindow ? Visibility.Visible : Visibility.Collapsed;
         UndoButton.Visibility = ViewModel.CanUndoRemove && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         UndoButton.ToolTip = WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
         if (ViewModel.Progress?.Fraction is { } fraction)
@@ -2068,6 +2069,8 @@ public partial class MainWindow : Window
         ViewModel.ClearPages();
     }
     private void Cancel_Click(object sender, RoutedEventArgs e) => ViewModel.CancelScan();
+
+    private void ShowScanner_Click(object sender, RoutedEventArgs e) => ViewModel.ShowScannerWindow();
 
     private void Undo_Click(object sender, RoutedEventArgs e)
     {

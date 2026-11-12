@@ -2661,6 +2661,8 @@
   "Use the arrow keys to scroll or change page.": {},
   "100%": {},
   "{0}%": {},
+  "Show the scanner's window": {},
+  "Bring the scanner's window to the front": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

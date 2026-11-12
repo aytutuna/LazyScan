@@ -245,7 +245,8 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
         string name = deviceId["twain:".Length..];
         // A source that opens after the time limit has nobody to use it: close it at once.
         var driver = await Worker.RunAsync(() => _host.Open(name), _openTimeout, whenAbandoned: _host.Close);
-        var session = new TwainScannerSession(info, Worker, driver, () => _host.Close(driver));
+        var session = new TwainScannerSession(info, Worker, driver, () => _host.Close(driver),
+                                              () => (_host as RemoteTwainHelperHost)?.ProcessId);
         if (driver is RemoteTwainTransport remote) remote.ProgressHandler = progress => session.ProgressHandler?.Invoke(progress);
         return session;
     }
@@ -257,8 +258,10 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
 /// <summary>An open TWAIN data source. All driver calls are queued to the backend's <see cref="TwainThread"/>.</summary>
 /// <param name="driver">The open source (<see cref="RemoteTwainTransport"/> in the app).</param>
 /// <param name="close">Closes the source; run on the TWAIN thread.</param>
-internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, ITwainTransport driver, Action close)
-    : IScannerSession, IDriverWindowOption
+/// <param name="helperProcessId">The helper process the source runs in, while it runs.</param>
+internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, ITwainTransport driver, Action close,
+                                          Func<int?> helperProcessId)
+    : IScannerSession, IDriverWindowOption, IDriverWindowControl
 {
     public ScannerInfo Info { get; } = info;
     public Action<ScanProgress>? ProgressHandler { get; set; }
@@ -279,6 +282,24 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
 
     /// <summary>Longest wait for a scan to get going (<see cref="TwainScannerBackend.ScanStartTimeout"/>).</summary>
     internal TimeSpan StartTimeout { get; init; } = TwainScannerBackend.ScanStartTimeout;
+
+    private volatile bool _waitingForDriverWindow;
+    public bool WaitingForDriverWindow => _waitingForDriverWindow;
+
+    public void ShowDriverWindow()
+    {
+        if (helperProcessId() is { } processId) DriverWindows.Raise(processId);
+    }
+
+    /// <summary>Raises the driver's window once it has opened, which can take a moment after Enable.</summary>
+    private async Task RaiseWhenOpened()
+    {
+        for (int attempt = 0; attempt < 120 && _waitingForDriverWindow; attempt++)
+        {
+            if (helperProcessId() is { } processId && DriverWindows.Raise(processId)) return;
+            await Task.Delay(250);
+        }
+    }
 
     public bool DriverWindowOptional => _caps?.UIControllable ?? true;
     public bool UseDriverWindow { get; set; }
@@ -353,14 +374,27 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         _lastScanDuplex = null;
         var caps = _caps ?? await ReadCapabilities();
         var request = TwainScanRequests.ForScan(settings, selection, caps, UseDriverWindow, _preferNative);
+        _waitingForDriverWindow = request.ShowDriverWindow;
         ProgressHandler?.Invoke(new ScanProgress(request.ShowDriverWindow
             ? Loc.T("Choose the settings in the scanner's window, then start the scan there…")
             : Loc.T("Scanning…")));
+        if (request.ShowDriverWindow) _ = RaiseWhenOpened();
         // Two-sided only when the source confirmed it (TwainScanResult.Duplex); a feeder
         // without CAP_DUPLEX is not asked (TwainScanRequests.ForScan).
         bool duplexAsked = request.Feeder && settings.Duplex == DuplexMode.Both;
-        var result = await Acquire(request, page => deliver(new ScannedPage(page.Image, page.Dpi, page.ColorMode)),
-                                   duplex => { if (duplexAsked) _lastScanDuplex = duplex; });
+        TwainScanResult result;
+        try
+        {
+            result = await Acquire(request, page =>
+            {
+                _waitingForDriverWindow = false;
+                deliver(new ScannedPage(page.Image, page.Dpi, page.ColorMode));
+            }, duplex => { if (duplexAsked) _lastScanDuplex = duplex; });
+        }
+        finally
+        {
+            _waitingForDriverWindow = false;
+        }
         result.PagesOrThrow();
         if (duplexAsked) _lastScanDuplex = result.Duplex;
     }

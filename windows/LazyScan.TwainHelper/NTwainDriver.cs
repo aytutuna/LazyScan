@@ -16,7 +16,8 @@ namespace LazyScan.App.Scanning.Twain;
 ///
 /// The driver's own settings window gets no owner window: as a child of the app's main
 /// window (owned by another thread) it would tie the two threads' input together, and a
-/// modal one would disable the main window and its Cancel button.
+/// modal one would disable the main window and its Cancel button. It can therefore open behind
+/// the app, which raises it by the helper's process id (DriverWindows in LazyScan.App).
 ///
 /// Experimental, untested against real TWAIN drivers: the flow follows the TWAIN 2.3
 /// specification and NTwain 3.7's documented behaviour, and the scan logic it feeds is

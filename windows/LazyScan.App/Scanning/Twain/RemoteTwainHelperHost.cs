@@ -11,7 +11,7 @@ internal sealed class RemoteTwainHelperHost(TwainHelperOptions options) : ITwain
 {
     private readonly TwainHelperProcess _helper = new(options);
 
-    /// <summary>The helper's process id while it runs (tests).</summary>
+    /// <summary>The helper's process id while it runs.</summary>
     internal int? ProcessId => _helper.ProcessId;
 
     public TwainHelperSourceList ListSources()

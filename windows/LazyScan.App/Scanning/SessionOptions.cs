@@ -14,6 +14,19 @@ internal interface IDriverWindowOption
     bool UseDriverWindow { get; set; }
 }
 
+/// <summary>
+/// A session whose scanner shows its own window while the scan waits, which can be brought
+/// to the front when it opened behind the app.
+/// </summary>
+internal interface IDriverWindowControl
+{
+    /// <summary>The scan is waiting on the scanner's window.</summary>
+    bool WaitingForDriverWindow { get; }
+
+    /// <summary>Brings the scanner's window to the front; does nothing while it has none.</summary>
+    void ShowDriverWindow();
+}
+
 /// <summary>A backend that adds a section to the device diagnostics file (devices.txt).</summary>
 internal interface IBackendDiagnostics
 {

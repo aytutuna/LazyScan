@@ -1812,7 +1812,7 @@ same scanners through ImageCaptureCore.
     Lazy Scan). It names them too while the helper's Data Source Manager is missing or
     lists no usable driver ("reached no usable driver" in `devices.txt`; that helper is stopped
     again). A driver window the helper opens belongs to the helper process, so it may appear behind
-    the app's window.
+    the app's window; the app raises it, or flashes its taskbar button, once it has opened.
   - A listing that fails for a reason that may pass (the helper slow to start, its Data Source
     Manager would not open, a driver holding it up) is tried again after 30 s, 1, 2 and then every
     5 minutes, and one that finishes after its time limit (the helper's own limits for starting,
@@ -1859,9 +1859,12 @@ same scanners through ImageCaptureCore.
   `preferences.json` (`twainDriverWindow`). A driver that cannot scan without its window
   always uses it, and then offers no preview. The window is opened without an owner, so it
   cannot disable the app's window (Cancel stays usable) or tie the app's input to a driver
-  that hangs; it may therefore open behind the app's window, and a driver that picks the
-  foreground window as its parent on its own can still do both. While the window is open the
-  scan waits without a time limit; Cancel ends it.
+  that hangs; it may therefore open behind the app's window. The app finds the helper's
+  visible windows by process id and raises them once the window has opened (within 30 s of the scan starting), or flashes their
+  taskbar buttons when Windows keeps them back; **Show the scanner's window**, beside Cancel
+  while the scan waits on the window, raises them again. A driver that picks the foreground
+  window as its parent on its own can still disable the app's window or tie its input to the
+  driver. While the window is open the scan waits without a time limit; Cancel ends it.
 - **To check on real hardware:** driver names and grouping (`devices.txt`), memory transfers,
   feeder and empty-feeder behaviour, cancel during a long transfer, drivers that show their
   own message boxes while opening or enabling, the driver window (and whether it opens in
