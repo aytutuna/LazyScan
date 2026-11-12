@@ -222,14 +222,16 @@ public static class DocumentSides
     /// <summary>
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in
     /// reading order, each marked with its sheet and side; the backs are turned upright for
-    /// <paramref name="binding"/>. The input is not changed.
+    /// <paramref name="binding"/>. <paramref name="firstTransfer"/>: how many pages were delivered
+    /// before <paramref name="pages"/>, which are a later part of the same scan. The input is not changed.
     /// </summary>
     public static List<ScannedPage> ArrangeTwoSided(IReadOnlyList<ScannedPage> pages, DuplexBinding binding,
-                                                     bool reverseOrder = false)
+                                                     bool reverseOrder = false, int firstTransfer = 0)
     {
         int turns = BackQuarterTurns(binding);
-        return AssignSides(pages.Count, duplex: true, reverseOrder)
-            .Select(t => Mark(pages[t.TransferIndex], t.Side, t.SheetIndex, turns))
+        return AssignSides(firstTransfer + pages.Count, duplex: true, reverseOrder)
+            .Where(t => t.TransferIndex >= firstTransfer)
+            .Select(t => Mark(pages[t.TransferIndex - firstTransfer], t.Side, t.SheetIndex, turns))
             .ToList();
     }
 

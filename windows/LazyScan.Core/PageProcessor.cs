@@ -538,14 +538,16 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// Arranges the pages, splits each spread when facing pages are split (where its gutter is found,
     /// <see cref="BookSplitter.FindGutter(RgbaImage, int)"/>; whole otherwise), then runs every step on
     /// every page. <paramref name="token"/> is checked before each page and each step, and handed to the
-    /// steps that can stop part way (<see cref="ICancellablePageStep"/>).
+    /// steps that can stop part way (<see cref="ICancellablePageStep"/>). <paramref name="firstTransfer"/>: how
+    /// many pages of a two-sided scan came before <paramref name="scanned"/>, which is a later part of it (a scan
+    /// processed as its pages arrive), so each page keeps its sheet and side.
     /// </summary>
-    public ProcessedScan Process(IReadOnlyList<ScannedPage> scanned, CancellationToken token = default)
+    public ProcessedScan Process(IReadOnlyList<ScannedPage> scanned, CancellationToken token = default, int firstTransfer = 0)
     {
         token.ThrowIfCancellationRequested();
         IReadOnlyList<ScannedPage> arranged = Arrangement switch
         {
-            ScanArrangement.TwoSided => DocumentSides.ArrangeTwoSided(scanned, Binding),
+            ScanArrangement.TwoSided => DocumentSides.ArrangeTwoSided(scanned, Binding, firstTransfer: firstTransfer),
             ScanArrangement.TurnedOverFronts => DocumentSides.MarkManual(scanned, PageSide.Front, Binding),
             ScanArrangement.TurnedOverBacks => DocumentSides.MarkManual(scanned, PageSide.Back, Binding),
             ScanArrangement.CameraFront => DocumentSides.MarkCamera(scanned, PageSide.Front),

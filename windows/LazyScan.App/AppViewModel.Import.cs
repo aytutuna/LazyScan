@@ -202,18 +202,19 @@ public sealed partial class AppViewModel
                 var cleaned = page;
                 var (processed, preview) = await Task.Run(() =>
                     (processor.Process([cleaned], token).Pages.ToList(), ScanHistory.MakePreview(cleaned.Image, CanvasPreviewMaxSide)), token);
-                if (savesAtOnce)
-                {
-                    added.AddRange(processed);
-                    lastPreview = preview;
-                    return;
-                }
-                // Spill the page and the photo it was taken from to disk; keep only previews in the queue.
+                // Spill the page and the photo it was taken from to disk; keep only previews, in the queue
+                // or until the pages are saved.
                 var spooled = await Task.Run(() => SpoolPages(processed, spoolDirectory).Select(p => new PageItem(p)).ToList());
                 if (token.IsCancellationRequested)
                 {
                     DeleteSpoolFiles(spooled.Select(item => item.Page));
                     token.ThrowIfCancellationRequested();
+                }
+                if (savesAtOnce)
+                {
+                    added.AddRange(spooled.Select(item => item.Page));
+                    lastPreview = preview;
+                    return;
                 }
                 foreach (var item in spooled) ScannedPages.Add(item);
                 added.AddRange(spooled.Select(item => item.Page));

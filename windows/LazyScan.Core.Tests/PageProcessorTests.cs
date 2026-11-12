@@ -278,6 +278,18 @@ public class PageProcessorTests
     }
 
     [Fact]
+    public void Process_TwoSided_ALaterPartContinuesTheSheets()
+    {
+        var scanned = Enumerable.Range(0, 4).Select(_ => Page(RgbaImage.Filled(4, 6, 255, 255, 255))).ToList();
+        var processor = new PageProcessor([], ScanArrangement.TwoSided);
+        var first = processor.Process(scanned.Take(3).ToList());
+        var rest = processor.Process([scanned[3]], firstTransfer: 3);
+        var pages = first.Pages.Concat(rest.Pages).ToList();
+        Assert.Equal([PageSide.Front, PageSide.Back, PageSide.Front, PageSide.Back], pages.Select(p => p.Side!.Value));
+        Assert.Equal([0, 0, 1, 1], pages.Select(p => p.SheetIndex!.Value));
+    }
+
+    [Fact]
     public void Process_TurnedOver_MarksTheSide()
     {
         var scanned = new[] { Page(BlankImage), Page(TextImage) };

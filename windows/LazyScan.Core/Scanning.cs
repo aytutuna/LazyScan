@@ -42,6 +42,19 @@ public interface IScannerSession
     Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection);
 
     /// <summary>
+    /// The same, handing each page to <paramref name="onPage"/> as it arrives, so the app can process and
+    /// store it while the feeder goes on instead of holding the whole stack. It returns once the scan is
+    /// over and every page has been handed over, one at a time and on the caller's context; the pages are
+    /// not returned again. Throws as <see cref="PerformScanAsync(ScanSettings, RectD?)"/> does, also when it
+    /// ends with nothing handed over. <see cref="LastScanDuplex"/> is known before the first page is handed
+    /// over. Default: the pages are handed over together once the scan is done.
+    /// </summary>
+    async Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage)
+    {
+        foreach (var page in await PerformScanAsync(settings, selection)) await onPage(page);
+    }
+
+    /// <summary>
     /// Why the last <see cref="PerformScanAsync"/> ended early while still returning the pages
     /// that transferred; null when it ran to the end (or failed outright). Reset by every scan.
     /// Sessions that never stop a batch early can leave the default.

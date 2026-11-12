@@ -299,6 +299,22 @@ public class DocumentSidesTests
     }
 
     [Fact]
+    public void ArrangeTwoSided_ALaterPartKeepsItsSheetsAndSides()
+    {
+        var pages = Enumerable.Range(0, 5).Select(_ => TwoPixelPage()).ToList();
+        var whole = DocumentSides.ArrangeTwoSided(pages, DuplexBinding.ShortEdge);
+        var parts = new List<ScannedPage>();
+        for (int index = 0; index < pages.Count; index++)
+        {
+            parts.AddRange(DocumentSides.ArrangeTwoSided([pages[index]], DuplexBinding.ShortEdge, firstTransfer: index));
+        }
+        Assert.Equal(whole.Select(p => p.Id), parts.Select(p => p.Id));
+        Assert.Equal([PageSide.Front, PageSide.Back, PageSide.Front, PageSide.Back, PageSide.Front], parts.Select(p => p.Side!.Value));
+        Assert.Equal([0, 0, 1, 1, 2], parts.Select(p => p.SheetIndex!.Value));
+        Assert.Equal(whole.Select(RedOnTheLeft), parts.Select(RedOnTheLeft));
+    }
+
+    [Fact]
     public void ArrangeTwoSided_ReverseOrder()
     {
         var pages = Enumerable.Range(0, 4).Select(_ => TwoPixelPage()).ToList();

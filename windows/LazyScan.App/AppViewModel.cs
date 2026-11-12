@@ -1545,6 +1545,15 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // The bar of the previous save makes way for the new scan.
             SavedBarPaths = null;
             NotifyAll();
+            // Pages that go to the queue are processed and stored one by one as the scanner delivers
+            // them, so a long stack is never held whole in memory.
+            if (TaskCatalog.FlowOf(s) == TaskFlowKind.DocumentQueue && s.DocumentMultiPage)
+            {
+                await ScanIntoQueue(session, s, selection, sides, manualSide, generation, token);
+                if (_switchGeneration == generation && Capabilities is null) await ReadCapabilitiesAfterScan(session, generation);
+                NotifyAll();
+                return;
+            }
             var scanned = await session.PerformScanAsync(s, selection);
             // Discard results that arrive after the user switched devices.
             if (_switchGeneration != generation) return;
@@ -1563,11 +1572,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // backs turned upright, then the blank-page check and the adjustments. Pixel-heavy
             // work runs off the UI thread so the window stays live; the token is checked between
             // pages and steps.
-            var arrangement = twoSided ? ScanArrangement.TwoSided
-                : manualSide == PageSide.Back ? ScanArrangement.TurnedOverBacks
-                : manualSide == PageSide.Front ? ScanArrangement.TurnedOverFronts
-                : ScanArrangement.AsScanned;
-            var processor = PageProcessor.ForScan(s, arrangement, _orientation, _barcodes);
+            var processor = PageProcessor.ForScan(s, ArrangementOf(twoSided, manualSide), _orientation, _barcodes);
             var cleaned = await Task.Run(() => processor.Process(scanned, token), token);
             if (_switchGeneration != generation) return;
             token.ThrowIfCancellationRequested();
@@ -1599,64 +1604,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             switch (TaskCatalog.FlowOf(s))
             {
                 case TaskFlowKind.DocumentQueue:
-                    if (s.DocumentMultiPage)
-                    {
-                        // Spill full-resolution pages to disk; keep only previews in the queue. The
-                        // spreads book pages were cut from are kept too, to join or split them again.
-                        string spoolDirectory = _spool.Directory;
-                        var spreads = cleaned.Spreads;
-                        var (spooled, spreadSources) = await Task.Run(() =>
-                            (SpoolPages(processed, spoolDirectory).Select(p => new PageItem(p)).ToList(),
-                             SpoolSpreads(spreads, spoolDirectory)));
-                        if (_switchGeneration != generation || token.IsCancellationRequested)
-                        {
-                            DeleteSpoolFiles(spooled.Select(p => p.Page));
-                            DeleteSpreadFiles(spreadSources.Values);
-                            if (_switchGeneration != generation) return;
-                            token.ThrowIfCancellationRequested();
-                        }
-                        foreach (var (spreadId, source) in spreadSources) _spreads[spreadId] = source;
-                        foreach (var item in spooled) ScannedPages.Add(item);
-                        // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
-                        if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
-                        RecordCaptures(spooled.Select(item => item.Page.Id));
-                        SetLastScan(rawPreview);
-                        int n = processed.Count;
-                        if (manualSide is { } scannedSide)
-                        {
-                            AfterTurnedOverScan(scannedSide, n, stopped: stop is not null);
-                        }
-                        else if (twoSided)
-                        {
-                            StatusMessage = Loc.Plural(n, "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
-                                "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
-                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
-                        }
-                        else if (sides == DuplexMode.Both)
-                        {
-                            StatusMessage = Loc.Plural(n, "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
-                                "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
-                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
-                        }
-                        else
-                        {
-                            StatusMessage = Loc.Plural(n, "Added {0} page — {1} in queue. Scan more or {2}.", "Added {0} pages — {1} in queue. Scan more or {2}.",
-                                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
-                        }
-                        StatusMessage += QueueScanNote(processed, s.Document);
-                        if (PageProcessor.TurnsPagesUpright(s) && !_orientation.IsAvailable) StatusMessage += PageTurns.UnavailableNote;
-                        if (manualSide is null)
-                        {
-                            StatusDetail = new StatusDetail(PagesAdded(processed, s.Document),
-                                                            !twoSided && sides == DuplexMode.Both ? new StatusWarning[] { new StatusWarning.OneSideOnly() } : null);
-                        }
-                    }
-                    else
-                    {
-                        SetLastScan(rawPreview);
-                        await SaveImmediately(processed, s, token);
-                        RecordCaptures(processed.Select(page => page.Id));
-                    }
+                    SetLastScan(rawPreview);
+                    await SaveImmediately(processed, s, token);
+                    RecordCaptures(processed.Select(page => page.Id));
                     break;
                 case TaskFlowKind.PhotoSplit:
                     SetLastScan(rawPreview);
@@ -1707,6 +1657,155 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (Capabilities is null) await ReadCapabilitiesAfterScan(session, generation);
             NotifyAll();
         });
+    }
+
+    private static ScanArrangement ArrangementOf(bool twoSided, PageSide? manualSide) =>
+        twoSided ? ScanArrangement.TwoSided
+        : manualSide == PageSide.Back ? ScanArrangement.TurnedOverBacks
+        : manualSide == PageSide.Front ? ScanArrangement.TurnedOverFronts
+        : ScanArrangement.AsScanned;
+
+    /// <summary>
+    /// A scan whose pages go to the queue: each page is processed, stored and queued as the scanner
+    /// delivers it, so the page strip fills while the feeder goes on and only the page in hand is held in
+    /// full. The pages queued before a Cancel or an error stay in the queue.
+    /// </summary>
+    private async Task ScanIntoQueue(IScannerSession session, ScanSettings s, RectD? selection, DuplexMode sides,
+                                     PageSide? manualSide, int generation, CancellationToken token)
+    {
+        int before = ScannedPages.Count;
+        int received = 0;
+        bool twoSided = false;
+        PageProcessor? processor = null;
+        Exception? failure = null;
+        try
+        {
+            await session.PerformScanAsync(s, selection, async page =>
+            {
+                if (failure is not null) return;
+                try
+                {
+                    if (processor is null)
+                    {
+                        // A scanner that fell back to one side (its feeder or driver could not scan both, or
+                        // its capabilities were never read) delivered one side of each sheet.
+                        twoSided = sides == DuplexMode.Both && session.LastScanDuplex != false;
+                        processor = PageProcessor.ForScan(s, ArrangementOf(twoSided, manualSide), _orientation, _barcodes);
+                    }
+                    received += await QueueScannedPage(page, processor, received, s, generation, token);
+                }
+                catch (Exception e)
+                {
+                    failure = e;
+                    session.CancelScan();
+                }
+            });
+        }
+        catch (Exception e)
+        {
+            failure ??= e;
+        }
+        // Discard results that arrive after the user switched devices.
+        if (_switchGeneration != generation) return;
+        if (failure is null && token.IsCancellationRequested) failure = new OperationCanceledException(token);
+        if (failure is not null && received == 0) throw failure;
+        if (received == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no pages."));
+        ClearFailure();
+        // Pages queued before a Cancel or an error are kept, so the stack is finished like a stopped batch.
+        bool cancelled = failure is not null && IsCancellation(failure);
+        var stop = failure switch
+        {
+            null => session.LastScanStop,
+            _ when cancelled => new ScanStop(""),
+            ScanException e => ScanStop.From(e),
+            _ => new ScanStop(failure.Message),
+        };
+        var added = ScannedPages.Skip(before).Select(item => item.Page).ToList();
+        AnnounceQueued(added, s, sides, twoSided, manualSide, stopped: stop is not null);
+        if (stop is null) return;
+        if (cancelled) StatusMessage = stop.Message(received);
+        else ErrorMessage = stop.Message(received);
+    }
+
+    /// <summary>
+    /// One page of a scan, delivered while the scan goes on: cleaned up, recorded in the history, spooled
+    /// and added to the queue. <paramref name="firstTransfer"/> pages came before it. Returns how many pages
+    /// of the scan it was.
+    /// </summary>
+    private async Task<int> QueueScannedPage(ScannedPage page, PageProcessor processor, int firstTransfer, ScanSettings s,
+                                             int generation, CancellationToken token)
+    {
+        StatusMessage = Loc.T("Processing…");
+        NotifyAll();
+        string spoolDirectory = _spool.Directory;
+        var (raw, preview, historyItems, spooled, spreadSources) = await Task.Run(() =>
+        {
+            var cleaned = processor.Process([page], token, firstTransfer);
+            var preview = ScanHistory.MakePreview(cleaned.Arranged[^1].Image, CanvasPreviewMaxSide);
+            var entries = ScanHistory.MakeEntries(cleaned.Arranged, s.Intent, DateTime.Now);
+            // The cards only display the bitmap: keep metadata-only entries so each
+            // preview's pixels are held once, not twice.
+            var items = entries
+                .Select(e => new HistoryItem(
+                    new ScanHistoryEntry(e.Date, e.Intent, e.Dpi, HistoryItem.NoPixels, e.PixelSize, e.Id),
+                    WpfImageCodec.ToBitmapSource(e.Thumbnail)))
+                .ToList();
+            // Spill full-resolution pages to disk; keep only previews in the queue. The spreads book
+            // pages were cut from are kept too, to join or split them again.
+            var pages = SpoolPages(cleaned.Pages.ToList(), spoolDirectory).Select(p => new PageItem(p)).ToList();
+            return (cleaned.Arranged, preview, items, pages, SpoolSpreads(cleaned.Spreads, spoolDirectory));
+        }, token);
+        if (_switchGeneration != generation || token.IsCancellationRequested)
+        {
+            DeleteSpoolFiles(spooled.Select(p => p.Page));
+            DeleteSpreadFiles(spreadSources.Values);
+            if (_switchGeneration != generation) throw new OperationCanceledException();
+            token.ThrowIfCancellationRequested();
+        }
+        RecordHistory(historyItems);
+        foreach (var (spreadId, source) in spreadSources) _spreads[spreadId] = source;
+        foreach (var item in spooled) ScannedPages.Add(item);
+        // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
+        if (PageProcessor.ReadsBarcodes(Settings)) _readBarcodesAfterWork = true;
+        RecordCaptures(spooled.Select(item => item.Page.Id));
+        SetLastScan(preview);
+        NotifyAll();
+        return raw.Count;
+    }
+
+    /// <summary>The status once a scan's pages are queued: what was added, the notes about the pages, and what to do next.</summary>
+    private void AnnounceQueued(List<ScannedPage> added, ScanSettings s, DuplexMode sides, bool twoSided,
+                                PageSide? manualSide, bool stopped)
+    {
+        int n = added.Count;
+        if (manualSide is { } scannedSide)
+        {
+            AfterTurnedOverScan(scannedSide, n, stopped);
+        }
+        else if (twoSided)
+        {
+            StatusMessage = Loc.Plural(n, "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
+                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+        }
+        else if (sides == DuplexMode.Both)
+        {
+            StatusMessage = Loc.Plural(n, "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+        }
+        else
+        {
+            StatusMessage = Loc.Plural(n, "Added {0} page — {1} in queue. Scan more or {2}.", "Added {0} pages — {1} in queue. Scan more or {2}.",
+                ScannedPages.Count, OutputFormats.SaveTitle(Settings.Format));
+        }
+        StatusMessage += QueueScanNote(added, s.Document);
+        if (PageProcessor.TurnsPagesUpright(s) && !_orientation.IsAvailable) StatusMessage += PageTurns.UnavailableNote;
+        if (manualSide is null)
+        {
+            StatusDetail = new StatusDetail(PagesAdded(added, s.Document),
+                                            !twoSided && sides == DuplexMode.Both ? new StatusWarning[] { new StatusWarning.OneSideOnly() } : null);
+        }
     }
 
     /// <summary>
@@ -1880,6 +1979,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             MarkSaved([written]);
+            DeleteSpoolFiles(pages);
             SetStatus(TextExport.SavedMessage(s.Format, pages.Count, Path.GetFileName(written), hasText), new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, [written]);
             return;
@@ -1910,6 +2010,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             string? textPath = text is null ? null : await WriteTextBeside(saved[0], text);
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
+            DeleteSpoolFiles(pages);
             detail = PdfDetail();
             textFileName = textPath is null ? null : Path.GetFileName(textPath);
         }
@@ -1917,17 +2018,23 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             try
             {
-                foreach (var page in pages)
+                for (int i = 0; i < pages.Count; i++)
                 {
                     token.ThrowIfCancellationRequested();
+                    var page = pages[i];
+                    int number = i + 1;
                     string path = await OutputPath(s, s.Format.FileExtension());
                     saved.Add(await Task.Run(() =>
-                        WpfImageCodec.SaveAsNew(page.Image, path, s.Format, page.Dpi, s.JpegQuality, page.ColorMode)));
+                    {
+                        var image = PdfBuilder.PreparePage(page, SpoolImage(page), number).Image;
+                        return WpfImageCodec.SaveAsNew(image, path, s.Format, page.Dpi, s.JpegQuality, page.ColorMode);
+                    }));
                 }
             }
             catch (Exception e)
             {
                 if (saved.Count > 0) MarkSaved(saved);
+                DeleteSpoolFiles(pages.Take(saved.Count));
                 await KeepInQueue(pages.Skip(saved.Count).ToList());
                 bool cancelled = IsCancellation(e);
                 if (!cancelled) ErrorMessage = e.Message;
@@ -1937,6 +2044,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
         }
         MarkSaved(saved);
+        DeleteSpoolFiles(pages);
         SetStatus(TextExport.SavedFilesMessage(string.Join(", ", saved.Select(Path.GetFileName)), detail, textFileName),
                   new(new StatusHead.Saved()));
         RunAfterSave(s.Output.AfterSave, saved);
@@ -3379,13 +3487,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// Write each full-resolution page to a spool PNG and return queue entries that carry
     /// only a preview in memory. A page whose spill fails is kept fully in memory instead. The
     /// page as scanned, kept by crop and straighten, gets a spool file of its own (and keeps its
-    /// pixels in memory when that fails), so one click can show it.
+    /// pixels in memory when that fails), so one click can show it. A page that has its file already is kept as it is.
     /// </summary>
     private static List<ScannedPage> SpoolPages(List<ScannedPage> pages, string spoolDirectory)
     {
         Directory.CreateDirectory(spoolDirectory);
         return pages.Select(page =>
         {
+            if (page.FilePath is not null) return page;
             string path = Path.Combine(spoolDirectory, $"{page.Id}.png");
             try
             {
