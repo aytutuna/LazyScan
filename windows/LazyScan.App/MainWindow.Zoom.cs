@@ -189,7 +189,13 @@ public partial class MainWindow
             if (e.Handled) AnnounceZoom();
             return;
         }
-        if (modifiers != ModifierKeys.None || !ReferenceEquals(Keyboard.FocusedElement, CanvasHost)) return;
+        if (!ReferenceEquals(Keyboard.FocusedElement, CanvasHost)) return;
+        if (AreaKey(e.Key, modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+        if (modifiers != ModifierKeys.None) return;
         e.Handled = _zoom is null ? StepPageKey(e.Key) : ScrollKey(e.Key);
     }
 

@@ -2544,6 +2544,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateMarquee()
     {
+        SyncAreaAutomation();
         if (_marqueeStart is not null) return;
         if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null || ViewModel.ViewsPage || _zoom is not null
             || ViewModel.Settings.Source != ScanSource.Flatbed || DisplayedImageRect() is not { } imageRect)
@@ -2556,6 +2557,71 @@ public partial class MainWindow : Window
         SelectionMarquee.Width = Math.Abs(selection.Width) * imageRect.Width;
         SelectionMarquee.Height = Math.Abs(selection.Height) * imageRect.Height;
         SelectionMarquee.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>The flatbed's overview is on the stage at fit size: the scan area can be drawn, or set from the keyboard.</summary>
+    private bool CanDrawArea() =>
+        ViewModel.OverviewImage is not null && !ViewModel.ViewsPage && _zoom is null
+        && ViewModel.Settings.Source == ScanSource.Flatbed;
+
+    private const double AreaStep = 0.01;
+    private const double AreaMinSize = 0.02;
+
+    /// <summary>
+    /// The arrow keys move the area by one percent of the bed; with Shift they resize it, keeping
+    /// its top-left corner. With no area yet, the middle quarter is the start.
+    /// </summary>
+    internal static RectD NudgeArea(RectD? area, int dx, int dy, bool resize)
+    {
+        var r = (area ?? new RectD(0.25, 0.25, 0.5, 0.5)).Standardized;
+        if (resize)
+        {
+            double w = Math.Clamp(r.Width + dx * AreaStep, Math.Min(AreaMinSize, 1 - r.X), 1 - r.X);
+            double h = Math.Clamp(r.Height + dy * AreaStep, Math.Min(AreaMinSize, 1 - r.Y), 1 - r.Y);
+            return new RectD(r.X, r.Y, w, h);
+        }
+        return new RectD(Math.Clamp(r.X + dx * AreaStep, 0, 1 - r.Width), Math.Clamp(r.Y + dy * AreaStep, 0, 1 - r.Height), r.Width, r.Height);
+    }
+
+    /// <summary>The keys of the scan area, when the stage has the focus; true when the key was one of them.</summary>
+    private bool AreaKey(Key key, ModifierKeys modifiers)
+    {
+        if (!CanDrawArea() || _marqueeStart is not null) return false;
+        if (key == Key.Delete && modifiers == ModifierKeys.None && ViewModel.SelectionRect is not null)
+        {
+            ViewModel.SelectionRect = null;
+            RefreshFromViewModel();
+            return true;
+        }
+        int dx = key switch { Key.Left => -1, Key.Right => 1, _ => 0 };
+        int dy = key switch { Key.Up => -1, Key.Down => 1, _ => 0 };
+        if (dx == 0 && dy == 0 || modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
+        ViewModel.SelectionRect = NudgeArea(ViewModel.SelectionRect, dx, dy, modifiers == ModifierKeys.Shift);
+        RefreshFromViewModel();
+        return true;
+    }
+
+    /// <summary>Tells screen readers where the scan area is, and which keys set it.</summary>
+    private void SyncAreaAutomation()
+    {
+        bool drawable = CanDrawArea();
+        string value = "";
+        if (drawable)
+        {
+            value = Loc.T("No scan area selected");
+            if (ViewModel.SelectionRect is { } area)
+            {
+                var r = area.Standardized;
+                value = Loc.T("Scan area: left {0}%, top {1}%, width {2}%, height {3}%",
+                              (int)Math.Round(r.X * 100), (int)Math.Round(r.Y * 100),
+                              (int)Math.Round(r.Width * 100), (int)Math.Round(r.Height * 100));
+            }
+        }
+        CanvasHost.AutomationValue = value;
+        string help = drawable
+            ? Loc.T("Use the arrow keys to move the scan area, Shift and the arrow keys to resize it, Delete to clear it.")
+            : Loc.T("Use the arrow keys to scroll or change page.");
+        AutomationProperties.SetHelpText(CanvasHost, help);
     }
 
     private void CanvasHost_SizeChanged(object sender, SizeChangedEventArgs e)
