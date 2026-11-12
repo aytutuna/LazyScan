@@ -1845,6 +1845,8 @@
   "The photo could not be shown: {0}": {},
   "The page could not be shown: {0}": {},
   "{0} × {1} px": {},
+  "{0} × {1} px, center {2}, {3}": {},
+  "Corner {0} of 4, {1} px from the left, {2} px from the top": {},
   "Split spread {0}": {},
   "Split": {
     "note": "Button that cuts a book spread in two at the line in the spread editor. A verb. The setting label is Split|setting."

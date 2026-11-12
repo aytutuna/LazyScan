@@ -139,6 +139,7 @@ public partial class PhotoCropEditorWindow : Window
         UpdateDimAndGrid(frame, corners);
         SizeCaption.Text = Loc.T("{0} × {1} px", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}");
         AngleCaption.Text = $"{Region.AngleDegrees:0.0}°";
+        Host.AutomationValue = Loc.T("{0} × {1} px, center {2}, {3}", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}", $"{Region.Center.X:0}", $"{Region.Center.Y:0}");
         ResetButton.IsEnabled = !Region.Equals(_original);
     }
 

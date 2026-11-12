@@ -49,7 +49,7 @@
 
         <!-- Neutral stage: the spread as scanned, the cut drawn across it. -->
         <Border Style="{StaticResource StageStyle}" Margin="12,0,12,0">
-            <Canvas x:Name="Host" Background="Transparent" ClipToBounds="True" FlowDirection="LeftToRight"
+            <ui:FocusCanvas x:Name="Host" Background="Transparent" ClipToBounds="True" FlowDirection="LeftToRight"
                     Focusable="True" KeyDown="Host_KeyDown"
                     FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
                     AutomationProperties.Name="{loc:T Spread}"
@@ -61,7 +61,7 @@
                        Effect="{DynamicResource PageShadow}" />
                 <Line x:Name="CutLine" Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
                       StrokeDashArray="4 2" IsHitTestVisible="False" />
-            </Canvas>
+            </ui:FocusCanvas>
         </Border>
     </DockPanel>
 </Window>

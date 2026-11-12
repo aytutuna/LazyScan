@@ -188,6 +188,8 @@ public partial class PhotoCornersWindow : Window
         UpdateLoupe(frame, corners);
         UseButton.IsEnabled = PhotoImport.CanUseCorners(Corners);
         ResetButton.IsEnabled = Corners != _start;
+        var at = Corners[_selected];
+        Host.AutomationValue = Loc.T("Corner {0} of 4, {1} px from the left, {2} px from the top", _selected + 1, (int)Math.Round(at.X), (int)Math.Round(at.Y));
     }
 
     /// <summary>

@@ -102,7 +102,7 @@ public partial class SpreadSplitWindow : Window
         }
         string percent = Fraction.ToString("P0", CultureInfo.CurrentCulture);
         string place = Axis == GutterAxis.Vertical ? Loc.T("{0} from the left", percent) : Loc.T("{0} from the top", percent);
-        System.Windows.Automation.AutomationProperties.SetItemStatus(Host, place);
+        Host.AutomationValue = place;
     }
 
     /// <summary>The cut moved to <paramref name="fraction"/> of the spread, kept within the slider's range.</summary>
