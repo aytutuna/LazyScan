@@ -586,10 +586,11 @@ public class ModelsCompatTests
     [Fact]
     public void Formats_NewMembersComeLast_WithTheirStoredNames()
     {
-        Assert.Equal(["pdf", "jpeg", "png", "tiff", "text", "word"],
+        Assert.Equal(["pdf", "jpeg", "png", "tiff", "text", "word", "tiffPages"],
                      Enum.GetValues<OutputFormat>().Select(f => JsonSerializer.Serialize(f, StoreFiles.JsonOptions).Trim('"')));
         Assert.Equal(OutputFormat.Word, Decode<ScanSettings>("""{"format": "word"}""").Format);
         Assert.Equal(OutputFormat.Text, Decode<ScanSettings>("""{"format": "text"}""").Format);
+        Assert.Equal(OutputFormat.TiffPages, Decode<ScanSettings>("""{"format": "tiffPages"}""").Format);
         // A format of a newer version is read as PDF.
         Assert.Equal(OutputFormat.Pdf, Decode<ScanSettings>("""{"format": "markdown", "resolution": 150}""").Format);
     }

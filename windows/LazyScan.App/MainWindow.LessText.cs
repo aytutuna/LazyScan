@@ -67,6 +67,7 @@ public partial class MainWindow
             {
                 OutputFormat.Word => Loc.Plural(savePlan.Documents.Count, "Save {0} Word document", "Save {0} Word documents"),
                 OutputFormat.Text => Loc.Plural(savePlan.Documents.Count, "Save {0} text file", "Save {0} text files"),
+                OutputFormat.TiffPages => Loc.Plural(savePlan.Documents.Count, "Save {0} TIFF file", "Save {0} TIFF files"),
                 _ => Loc.Plural(savePlan.Documents.Count, "Save {0} PDF", "Save {0} PDFs"),
             };
         bool pdf = target is not null || OutputFormats.QueueFormat(format) == OutputFormat.Pdf;

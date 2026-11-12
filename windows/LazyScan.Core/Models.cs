@@ -32,8 +32,9 @@ public enum ScanSource
 
 /// <summary>
 /// What a save writes. <see cref="Text"/> and <see cref="Word"/> hold the recognized text of the
-/// pages instead of their pictures (<see cref="TextExport"/>, <see cref="DocxWriter"/>); which
-/// formats a mode offers and what each save does with a format are in <see cref="OutputFormats"/>.
+/// pages instead of their pictures (<see cref="TextExport"/>, <see cref="DocxWriter"/>);
+/// <see cref="TiffPages"/> is a TIFF with every page of the queue in one file (a single scan saved
+/// in it is a plain TIFF). Which formats a mode offers and what each save does with a format are in <see cref="OutputFormats"/>.
 /// </summary>
 public enum OutputFormat
 {
@@ -43,6 +44,7 @@ public enum OutputFormat
     Tiff,
     Text,
     Word,
+    TiffPages,
 }
 
 /// <summary>
@@ -219,6 +221,7 @@ public static class ModelLabels
         OutputFormat.Tiff => "TIFF",
         OutputFormat.Text => Loc.T("Text (.txt)"),
         OutputFormat.Word => "Word (.docx)",
+        OutputFormat.TiffPages => Loc.T("TIFF (one file)"),
         _ => format.ToString(),
     };
 
@@ -374,6 +377,7 @@ public static class ModelLabels
         OutputFormat.Tiff => "tiff",
         OutputFormat.Text => "txt",
         OutputFormat.Word => "docx",
+        OutputFormat.TiffPages => "tiff",
         _ => format.ToString().ToLowerInvariant(),
     };
 }
@@ -399,35 +403,36 @@ public static class OutputFormats
     public static IReadOnlyList<OutputFormat> Offered(ScanIntent intent) =>
         intent == ScanIntent.Photo
             ? [OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff]
-            : [OutputFormat.Pdf, OutputFormat.Word, OutputFormat.Text, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff];
+            : [OutputFormat.Pdf, OutputFormat.Word, OutputFormat.Text, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.TiffPages];
 
     /// <summary>The format a photo is saved in: <paramref name="format"/> when it is an image format, otherwise JPEG.</summary>
     public static OutputFormat ImageFormatOrJpeg(OutputFormat format) =>
-        format.IsImageFormat() ? format : OutputFormat.Jpeg;
+        format == OutputFormat.TiffPages ? OutputFormat.Tiff : format.IsImageFormat() ? format : OutputFormat.Jpeg;
 
     /// <summary>
-    /// The format the collected pages are saved in together: Text and Word as chosen, anything
-    /// else as one PDF (the image formats apply to scans saved one at a time).
+    /// The format the collected pages are saved in together: Text, Word and TIFF (one file) as chosen,
+    /// anything else as one PDF (the other image formats apply to scans saved one at a time).
     /// </summary>
     public static OutputFormat QueueFormat(OutputFormat format) =>
-        format.IsTextFormat() ? format : OutputFormat.Pdf;
+        format.IsTextFormat() || format == OutputFormat.TiffPages ? format : OutputFormat.Pdf;
 
     /// <summary>
-    /// Whether a save writes a PDF: the collected pages in any format but Text and Word, a scan
+    /// Whether a save writes a PDF: the collected pages in any format but Text, Word and TIFF (one file), a scan
     /// saved at once only in PDF. The text beside a PDF can be asked for then.
     /// </summary>
     public static bool SavesPdf(OutputFormat format, bool collectsPages) =>
         collectsPages ? QueueFormat(format) == OutputFormat.Pdf : format == OutputFormat.Pdf;
 
-    /// <summary>The format of a page made of a scan, like the ID card's: PDF or the image format chosen; PDF for the text formats.</summary>
+    /// <summary>The format of a page made of a scan, like the ID card's: PDF or the image format chosen (TIFF for TIFF (one file)); PDF for the text formats.</summary>
     public static OutputFormat PageFormat(OutputFormat format) =>
-        format.IsImageFormat() ? format : OutputFormat.Pdf;
+        format == OutputFormat.TiffPages ? OutputFormat.Tiff : format.IsImageFormat() ? format : OutputFormat.Pdf;
 
-    /// <summary>"Save PDF", "Save Word", "Save Text": the button that saves the collected pages.</summary>
+    /// <summary>"Save PDF", "Save Word", "Save Text", "Save TIFF": the button that saves the collected pages.</summary>
     public static string SaveTitle(OutputFormat format) => QueueFormat(format) switch
     {
         OutputFormat.Word => Loc.T("Save Word"),
         OutputFormat.Text => Loc.T("Save Text"),
+        OutputFormat.TiffPages => Loc.T("Save TIFF"),
         _ => Loc.T("Save PDF"),
     };
 
@@ -439,6 +444,7 @@ public static class OutputFormats
         {
             OutputFormat.Word => Loc.Plural(pageCount, "Save Word ({0} page)", "Save Word ({0} pages)"),
             OutputFormat.Text => Loc.Plural(pageCount, "Save Text ({0} page)", "Save Text ({0} pages)"),
+            OutputFormat.TiffPages => Loc.Plural(pageCount, "Save TIFF ({0} page)", "Save TIFF ({0} pages)"),
             _ => Loc.Plural(pageCount, "Save PDF ({0} page)", "Save PDF ({0} pages)"),
         };
     }

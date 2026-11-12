@@ -2838,6 +2838,8 @@ only when the PDF or TIFF is written.
 // `pageFormat` give `.tiff` (a photo, the ID card's page: a plain TIFF); a scan saved at once is one TIFF with its pages;
 // offered(for: .document) lists it last, photos do not get it; saveTitle "Save TIFF", "Save TIFF (3 pages)";
 // a split queue writes a TIFF each ("Save 2 TIFF files"); TextExport.savedTIFFMessage "Saved 3-page TIFF: Scan 1.tiff".
+// Windows: `OutputFormat.TiffPages` ("tiffPages"), `WpfImageCodec.SaveTiffPagesAsNew` (G4 through `BilevelTiff.Make` with
+// every page, else a TiffBitmapEncoder with a frame a page, LZW), `TextExport.SavedTiffMessage`.
 // OutputOptions gains `alsoSaveText: Bool` ("alsoSaveText" in the "output" object; false by default and
 // for files written before it existed): a .txt with the PDF's name beside each saved PDF,
 // except one with a password (`OutputOptions.savesTextBeside` is `alsoSaveText && !protect`: the text would

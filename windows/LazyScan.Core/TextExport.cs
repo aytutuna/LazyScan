@@ -36,6 +36,10 @@ public static class TextExport
             : Loc.T("Saved {0}-page text file: {1} — no text was found", pageCount, fileName);
     }
 
+    /// <summary>"Saved 3-page TIFF: Scan 1.tiff": the status after the queue is saved as one TIFF.</summary>
+    public static string SavedTiffMessage(int pageCount, string fileName) =>
+        Loc.T("Saved {0}-page TIFF: {1}", pageCount, fileName);
+
     /// <summary>
     /// "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt": the status after a PDF is saved.
     /// <paramref name="detail"/> is what goes in brackets after the name (the size, password-protected),

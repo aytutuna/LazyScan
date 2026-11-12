@@ -128,6 +128,33 @@ public static class WpfImageCodec
         {
             write = CreateEncoder(image, format, dpi, jpegQuality).Save;
         }
+        return WriteNew(path, write);
+    }
+
+    /// <summary>
+    /// Export a TIFF with every page of <paramref name="pages"/> in one file, each at its own resolution:
+    /// CCITT G4 when <paramref name="bilevel"/> (every page is black &amp; white, <see cref="BilevelTiff"/>),
+    /// else LZW through WIC. Named and written as <see cref="SaveAsNew"/> does. Returns the path written.
+    /// </summary>
+    public static string SaveTiffPagesAsNew(IReadOnlyList<BilevelTiffPage> pages, string path, bool bilevel)
+    {
+        Action<Stream> write;
+        if (bilevel)
+        {
+            byte[] tiff = BilevelTiff.Make(pages);
+            write = stream => stream.Write(tiff);
+        }
+        else
+        {
+            var encoder = new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw };
+            foreach (var page in pages) encoder.Frames.Add(BitmapFrame.Create(WithDpi(page.Image, page.Dpi)));
+            write = encoder.Save;
+        }
+        return WriteNew(path, write);
+    }
+
+    private static string WriteNew(string path, Action<Stream> write)
+    {
         string tmp = WriteTempFile(path, write);
         try
         {

@@ -47,6 +47,7 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         {
             OutputFormat.Word => WithPages(Loc.Plural(Documents.Count, "Save {0} Word document", "Save {0} Word documents")),
             OutputFormat.Text => WithPages(Loc.Plural(Documents.Count, "Save {0} text file", "Save {0} text files")),
+            OutputFormat.TiffPages => WithPages(Loc.Plural(Documents.Count, "Save {0} TIFF file", "Save {0} TIFF files")),
             _ => WithPages(Loc.Plural(Documents.Count, "Save {0} PDF", "Save {0} PDFs")),
         };
     }
@@ -110,6 +111,7 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         {
             OutputFormat.Word => Loc.Plural(count, "Saved {0} Word document ({1}): {2}", "Saved {0} Word documents ({1}): {2}", pages, names),
             OutputFormat.Text => Loc.Plural(count, "Saved {0} text file ({1}): {2}", "Saved {0} text files ({1}): {2}", pages, names),
+            OutputFormat.TiffPages => Loc.Plural(count, "Saved {0} TIFF file ({1}): {2}", "Saved {0} TIFF files ({1}): {2}", pages, names),
             _ when textFileNames is { Count: > 0 } textNames =>
                 Loc.Plural(count, "Saved {0} PDF ({1}): {2} and their text, {3}", "Saved {0} PDFs ({1}): {2} and their text, {3}",
                            pages, names, string.Join(", ", textNames)),
@@ -118,10 +120,10 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         return saved + empty + LeftOutNote();
     }
 
-    /// <summary>The short status line's kind for <see cref="SavedMessage"/>: "Saved 3 PDFs", or just "Saved" for Word and text.</summary>
+    /// <summary>The short status line's kind for <see cref="SavedMessage"/>: "Saved 3 PDFs", or just "Saved" for Word, text and TIFF.</summary>
     public StatusHead SavedHead(OutputFormat format, int count) => OutputFormats.QueueFormat(format) switch
     {
-        OutputFormat.Word or OutputFormat.Text => new StatusHead.Saved(),
+        OutputFormat.Word or OutputFormat.Text or OutputFormat.TiffPages => new StatusHead.Saved(),
         _ => new StatusHead.SavedFiles(count, FileKind.Pdf),
     };
 

@@ -66,6 +66,7 @@ public class SavePlanTests
         Assert.Equal("Save 3 PDFs (4 pages)", three.SaveTitle(OutputFormat.Jpeg));
         Assert.Equal("Save 3 Word documents (4 pages)", three.SaveTitle(OutputFormat.Word));
         Assert.Equal("Save 3 text files (4 pages)", three.SaveTitle(OutputFormat.Text));
+        Assert.Equal("Save 3 TIFF files (4 pages)", three.SaveTitle(OutputFormat.TiffPages));
         Assert.Equal("Save 3 password-protected PDFs (4 pages)", three.ProtectedSaveTitle);
         Assert.Equal(" — 2 separator pages and 1 skipped page were left out", three.LeftOutNote());
         Assert.Equal("Saved 3 PDFs (4 pages): A.pdf, B.pdf, C.pdf — 2 separator pages and 1 skipped page were left out",

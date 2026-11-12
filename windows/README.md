@@ -1073,6 +1073,10 @@ For editable text rather than a picture of the paper:
   becomes **Save Word** or **Save Text** and writes one file with the text of every page; a scan
   saved at once is written as its own Word document or text file. The ID card's page is a PDF or
   an image whatever the format says.
+- **TIFF (one file)** (documents only) saves the collected pages as one multi-page TIFF, each page
+  at its own resolution: CCITT G4 when every page is black & white (`BilevelTiff` with all pages),
+  otherwise LZW through WIC (`WpfImageCodec.SaveTiffPagesAsNew`). The button reads **Save TIFF**; a
+  split queue writes a TIFF each. The ID card and receipts save a plain TIFF.
 - **Also save text (.txt)** (inspector, More options) writes a text file with the PDF's name next to
   every PDF of a document saved (the next free name when that one is taken; nothing is ever
   replaced). It is hidden when a save writes no PDF, and in the ID card and Copy tasks, whose PDFs

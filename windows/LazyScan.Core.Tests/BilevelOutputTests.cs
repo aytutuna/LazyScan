@@ -281,6 +281,8 @@ public class BilevelOutputTests
         Assert.True(BilevelTiff.Applies(OutputFormat.Tiff, ColorMode.BlackWhite));
         Assert.False(BilevelTiff.Applies(OutputFormat.Tiff, ColorMode.Grayscale));
         Assert.False(BilevelTiff.Applies(OutputFormat.Tiff, ColorMode.Color));
+        Assert.True(BilevelTiff.Applies(OutputFormat.TiffPages, ColorMode.BlackWhite));
+        Assert.False(BilevelTiff.Applies(OutputFormat.TiffPages, ColorMode.Color));
         Assert.False(BilevelTiff.Applies(OutputFormat.Png, ColorMode.BlackWhite));
         Assert.False(BilevelTiff.Applies(OutputFormat.Pdf, ColorMode.BlackWhite));
     }

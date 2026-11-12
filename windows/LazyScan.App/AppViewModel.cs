@@ -2306,6 +2306,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 RunAfterSave(s.Output.AfterSave, [written]);
                 return;
             }
+            if (format == OutputFormat.TiffPages)
+            {
+                StatusMessage = Loc.T("Building TIFF…");
+                NotifyAll();
+                string tiff = await WriteTiffPages(pages, await OutputPath(s, format.FileExtension(), label: document.Label, name: TypedName(format.FileExtension())), token);
+                MarkSaved([tiff]);
+                DropSaved(queued, [tiff]);
+                ResetFlow();
+                SaveName = "";
+                SetStatus(TextExport.SavedTiffMessage(pages.Count, Path.GetFileName(tiff)) + left, new(new StatusHead.Saved()));
+                RunAfterSave(s.Output.AfterSave, [tiff]);
+                return;
+            }
             var text = s.Output.SavesTextBeside ? new PdfText() : null;
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
@@ -2392,6 +2405,21 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             detail = PdfDetail();
             textFileName = textPath is null ? null : Path.GetFileName(textPath);
         }
+        else if (s.Format == OutputFormat.TiffPages)
+        {
+            try
+            {
+                saved = [await WriteTiffPages(pages, await OutputPath(s, s.Format.FileExtension()), token)];
+            }
+            catch (Exception e)
+            {
+                await KeepInQueue(pages);
+                bool cancelled = IsCancellation(e);
+                if (!cancelled) ErrorMessage = e.Message;
+                StatusMessage = TextExport.PagesKeptInQueue(pages.Count, 0, cancelled, OutputFormats.SaveTitle(s.Format));
+                return;
+            }
+        }
         else
         {
             try
@@ -2426,6 +2454,26 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         SetStatus(TextExport.SavedFilesMessage(string.Join(", ", saved.Select(Path.GetFileName)), detail, textFileName),
                   new(new StatusHead.Saved()));
         RunAfterSave(s.Output.AfterSave, saved);
+    }
+
+    /// <summary>
+    /// Writes <paramref name="pages"/> as one TIFF at <paramref name="path"/> (or the next free name):
+    /// each page read at full resolution with its rotation, G4 when every page is black &amp; white,
+    /// else LZW. Returns the path written.
+    /// </summary>
+    private async Task<string> WriteTiffPages(List<ScannedPage> pages, string path, CancellationToken token)
+    {
+        var tiffPages = new List<BilevelTiffPage>();
+        for (int i = 0; i < pages.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var page = pages[i];
+            int number = i + 1;
+            var image = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), number).Image, token);
+            tiffPages.Add(new BilevelTiffPage(image, page.Dpi));
+        }
+        bool bilevel = pages.All(p => p.ColorMode == ColorMode.BlackWhite);
+        return await Task.Run(() => WpfImageCodec.SaveTiffPagesAsNew(tiffPages, path, bilevel), token);
     }
 
     /// <summary>Spool <paramref name="pages"/> and add them to the queue, as a collected scan is.</summary>

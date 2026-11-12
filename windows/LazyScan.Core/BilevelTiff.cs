@@ -20,7 +20,7 @@ public static class BilevelTiff
 {
     /// <summary>Whether a page saved as <paramref name="format"/> in <paramref name="mode"/> is written here: black &amp; white TIFFs.</summary>
     public static bool Applies(OutputFormat format, ColorMode mode) =>
-        format == OutputFormat.Tiff && mode == ColorMode.BlackWhite;
+        format is OutputFormat.Tiff or OutputFormat.TiffPages && mode == ColorMode.BlackWhite;
 
     /// <summary>A one-page file.</summary>
     public static byte[] Make(RgbaImage image, int dpi) => Make([new BilevelTiffPage(image, dpi)]);

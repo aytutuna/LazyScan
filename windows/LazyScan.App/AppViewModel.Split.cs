@@ -378,6 +378,13 @@ public sealed partial class AppViewModel
                         if (!hasText) noText.Add(Path.GetFileName(written));
                         continue;
                     }
+                    if (format == OutputFormat.TiffPages)
+                    {
+                        string tiff = await WriteTiffPages(pages, path, token);
+                        files.Add(tiff);
+                        saved.Add(tiff);
+                        continue;
+                    }
                     var text = s.Output.SavesTextBeside ? new PdfText() : null;
                     string pdf = await WritePdfAtomically(pages, s, path, token, text, failures: failures);
                     files.Add(pdf);

@@ -168,15 +168,15 @@ public class OutputFormatsTests
         Assert.Equal([OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff],
                      Enum.GetValues<OutputFormat>().Where(f => f.IsImageFormat()));
         Assert.Equal([OutputFormat.Text, OutputFormat.Word], Enum.GetValues<OutputFormat>().Where(f => f.IsTextFormat()));
-        Assert.Equal(["PDF", "JPEG", "PNG", "TIFF", "Text (.txt)", "Word (.docx)"],
+        Assert.Equal(["PDF", "JPEG", "PNG", "TIFF", "Text (.txt)", "Word (.docx)", "TIFF (one file)"],
                      Enum.GetValues<OutputFormat>().Select(f => f.Label()));
-        Assert.Equal(["pdf", "jpg", "png", "tiff", "txt", "docx"], Enum.GetValues<OutputFormat>().Select(f => f.FileExtension()));
+        Assert.Equal(["pdf", "jpg", "png", "tiff", "txt", "docx", "tiff"], Enum.GetValues<OutputFormat>().Select(f => f.FileExtension()));
     }
 
     [Fact]
     public void Offered_DocumentsGetEveryFormat_PhotosTheImageFormats()
     {
-        Assert.Equal([OutputFormat.Pdf, OutputFormat.Word, OutputFormat.Text, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff],
+        Assert.Equal([OutputFormat.Pdf, OutputFormat.Word, OutputFormat.Text, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.TiffPages],
                      OutputFormats.Offered(ScanIntent.Document));
         Assert.Equal([OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff], OutputFormats.Offered(ScanIntent.Photo));
     }
@@ -184,29 +184,31 @@ public class OutputFormatsTests
     [Fact]
     public void WhatEachSaveWrites()
     {
-        Assert.Equal([OutputFormat.Jpeg, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.Jpeg, OutputFormat.Jpeg],
+        Assert.Equal([OutputFormat.Jpeg, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.Jpeg, OutputFormat.Jpeg, OutputFormat.Tiff],
                      Enum.GetValues<OutputFormat>().Select(OutputFormats.ImageFormatOrJpeg));
-        Assert.Equal([OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Text, OutputFormat.Word],
+        Assert.Equal([OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Text, OutputFormat.Word, OutputFormat.TiffPages],
                      Enum.GetValues<OutputFormat>().Select(OutputFormats.QueueFormat));
-        Assert.Equal([OutputFormat.Pdf, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.Pdf, OutputFormat.Pdf],
+        Assert.Equal([OutputFormat.Pdf, OutputFormat.Jpeg, OutputFormat.Png, OutputFormat.Tiff, OutputFormat.Pdf, OutputFormat.Pdf, OutputFormat.Tiff],
                      Enum.GetValues<OutputFormat>().Select(OutputFormats.PageFormat));
     }
 
     [Fact]
     public void SavesPdf_CollectedPagesInAnyFormatButText_AScanAtOnceInPdfOnly()
     {
-        Assert.Equal([true, true, true, true, false, false],
+        Assert.Equal([true, true, true, true, false, false, false],
                      Enum.GetValues<OutputFormat>().Select(f => OutputFormats.SavesPdf(f, collectsPages: true)));
-        Assert.Equal([true, false, false, false, false, false],
+        Assert.Equal([true, false, false, false, false, false, false],
                      Enum.GetValues<OutputFormat>().Select(f => OutputFormats.SavesPdf(f, collectsPages: false)));
     }
 
     [Fact]
     public void SaveTitles()
     {
-        Assert.Equal(["Save PDF", "Save PDF", "Save PDF", "Save PDF", "Save Text", "Save Word"],
+        Assert.Equal(["Save PDF", "Save PDF", "Save PDF", "Save PDF", "Save Text", "Save Word", "Save TIFF"],
                      Enum.GetValues<OutputFormat>().Select(f => OutputFormats.SaveTitle(f)));
         Assert.Equal("Save Word (3 pages)", OutputFormats.SaveTitle(OutputFormat.Word, 3));
+        Assert.Equal("Save TIFF (3 pages)", OutputFormats.SaveTitle(OutputFormat.TiffPages, 3));
+        Assert.Equal("Save TIFF (1 page)", OutputFormats.SaveTitle(OutputFormat.TiffPages, 1));
         Assert.Equal("Save PDF (1 page)", OutputFormats.SaveTitle(OutputFormat.Jpeg, 1));
         Assert.Equal("Save Text", OutputFormats.SaveTitle(OutputFormat.Text, 0));
     }

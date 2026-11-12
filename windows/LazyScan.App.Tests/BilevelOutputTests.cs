@@ -265,6 +265,34 @@ public class BilevelOutputTests : IDisposable
     }
 
     [Fact]
+    public void SaveTiffPagesAsNew_ThreePages_OneFile_G4ForBlackAndWhite_LzwOtherwise()
+    {
+        var pages = new[] { (TextPage(), 100), (NoiseImage(301, 97, 7), 300), (RgbaImage.Filled(9, 2, 0, 0, 0), 600) };
+        var input = pages.Select(p => new BilevelTiffPage(p.Item1, p.Item2)).ToList();
+
+        string bw = WpfImageCodec.SaveTiffPagesAsNew(input, Path.Combine(_folder, "bw.tiff"), bilevel: true);
+        byte[] bytes = File.ReadAllBytes(bw);
+        Assert.Equal(BilevelTiff.Make(input), bytes);
+        Assert.Equal(4u, TiffTag(bytes, 259));
+        var g4 = Decode(bytes);
+        Assert.Equal(3, g4.Frames.Count);
+        for (int i = 0; i < 3; i++) AssertSamePixels(pages[i].Item1, FromBitmap(g4.Frames[i]), $"page {i + 1}");
+
+        string color = WpfImageCodec.SaveTiffPagesAsNew(input, Path.Combine(_folder, "color.tiff"), bilevel: false);
+        byte[] lzw = File.ReadAllBytes(color);
+        Assert.Equal(5u, TiffTag(lzw, 259));
+        var decoder = Decode(lzw);
+        Assert.Equal(3, decoder.Frames.Count);
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.Equal(pages[i].Item2, decoder.Frames[i].DpiX, 3);
+            Assert.Equal(pages[i].Item1.Width, decoder.Frames[i].PixelWidth);
+            Assert.Equal(pages[i].Item1.Height, decoder.Frames[i].PixelHeight);
+        }
+        Assert.DoesNotContain(Directory.GetFiles(_folder), f => f.EndsWith(".tmp"));
+    }
+
+    [Fact]
     public async Task RotateInPlace_KeepsABlackAndWhiteTiffG4()
     {
         var page = Image(13, 7, (x, y) => x == 0 || y == 0 || (x + y) % 4 == 0);
