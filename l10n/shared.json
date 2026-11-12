@@ -2629,6 +2629,17 @@
   "Its saved scan is missing or unreadable. Scan the page again.": {},
   "Canvas view": {},
   "Page": {},
+  "Fit": {},
+  "Zoom": {},
+  "Zoom out": {},
+  "Page view": {},
+  "Fit the page to the window (Ctrl+0)": {},
+  "Show the page at full size (Ctrl+1)": {},
+  "Zoom in (Ctrl+Plus)": {},
+  "Zoom out (Ctrl+Minus)": {},
+  "Use the arrow keys to scroll or change page.": {},
+  "100%": {},
+  "{0}%": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

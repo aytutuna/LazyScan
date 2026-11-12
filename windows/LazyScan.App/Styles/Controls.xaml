@@ -65,6 +65,18 @@
         </Setter>
     </Style>
 
+    <!-- For the page stage: a ring just inside its edge. -->
+    <Style x:Key="StageFocusVisualStyle">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="1" StrokeThickness="2" SnapsToDevicePixels="True"
+                               Stroke="{DynamicResource AccentFillColorDefaultBrush}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Buttons ===== -->
     <!-- Content stays a plain string (code-behind and harnesses read it); the glyph comes from ui:Icon.Glyph. -->
     <!-- A DockPanel rather than a StackPanel: the label gets only the width left after the glyph,

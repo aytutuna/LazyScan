@@ -370,6 +370,7 @@ public partial class MainWindow : Window
         DragChip.Visibility = ViewModel.OverviewImage is not null && ViewModel.SelectionRect is null && !ViewModel.IsBusy
                               && !ViewModel.ViewsPage && ViewModel.CanvasBitmap is not null && ViewModel.Settings.Source == ScanSource.Flatbed
             ? Visibility.Visible : Visibility.Collapsed;
+        SyncZoom();
 
         int pageCount = ViewModel.ScannedPages.Count;
         var queued = ViewModel.ScannedPages.Select(item => item.Page).ToList();
@@ -2431,7 +2432,7 @@ public partial class MainWindow : Window
     private void UpdateMarquee()
     {
         if (_marqueeStart is not null) return;
-        if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null || ViewModel.ViewsPage
+        if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null || ViewModel.ViewsPage || _zoom is not null
             || ViewModel.Settings.Source != ScanSource.Flatbed || DisplayedImageRect() is not { } imageRect)
         {
             SelectionMarquee.Visibility = Visibility.Collapsed;
@@ -2447,6 +2448,7 @@ public partial class MainWindow : Window
     private void CanvasHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateMarquee();
+        if (_zoom is null) SyncZoomButtons();
         // In a small stage the full empty state would wrap and clip: keep just the title and text.
         bool compact = CanvasHost.ActualWidth < 300 || CanvasHost.ActualHeight < 300;
         CanvasHintGlyph.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
@@ -2457,6 +2459,8 @@ public partial class MainWindow : Window
     private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
         _marqueeStart = null;
+        CanvasHost.Focus();
+        if (BeginPan(e)) return;
         // The selection is a region of the flatbed, so it can only be drawn over the overview
         // (the bed) while the flatbed is the source — never over a last scan, which may be a
         // feeder page or an earlier crop.
@@ -2470,6 +2474,7 @@ public partial class MainWindow : Window
 
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
     {
+        Pan(e);
         if (_marqueeStart is not { } start || DisplayedImageRect() is not { } imageRect) return;
         var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);
         var rect = new Rect(start, p);
@@ -2482,6 +2487,12 @@ public partial class MainWindow : Window
 
     private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_panStart is not null)
+        {
+            CanvasHost.ReleaseMouseCapture();
+            EndPan();
+            return;
+        }
         if (_marqueeStart is not { } start) return;
         _marqueeStart = null;
         CanvasHost.ReleaseMouseCapture();
@@ -2512,6 +2523,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void Canvas_LostMouseCapture(object sender, MouseEventArgs e)
     {
+        EndPan();
         if (_marqueeStart is null) return;
         _marqueeStart = null;
         UpdateMarquee();

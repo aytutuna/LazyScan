@@ -430,7 +430,11 @@
 
                             <!-- Stage: the page sits on a neutral surface with a soft shadow. -->
                             <Border Grid.Row="1" Style="{StaticResource StageStyle}" Margin="12,12,12,0">
-                                <Grid x:Name="CanvasHost"
+                                <Grid x:Name="CanvasHost" Focusable="True"
+                                      AutomationProperties.Name="{loc:T Page view}"
+                                      AutomationProperties.HelpText="{loc:T Use the arrow keys to scroll or change page.}"
+                                      FocusVisualStyle="{StaticResource StageFocusVisualStyle}"
+                                      PreviewKeyDown="CanvasHost_PreviewKeyDown"
                                       MouseLeftButtonDown="Canvas_MouseDown"
                                       MouseMove="Canvas_MouseMove"
                                       MouseLeftButtonUp="Canvas_MouseUp"
@@ -438,9 +442,14 @@
                                       SizeChanged="CanvasHost_SizeChanged"
                                       Background="Transparent">
                                     <!-- The margin must stay uniform: DisplayedImageRect reads Margin.Left for every side. -->
-                                    <Image x:Name="CanvasImage" Stretch="Uniform" Margin="24" FlowDirection="LeftToRight"
-                                           Effect="{DynamicResource PageShadow}"
-                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <ScrollViewer x:Name="CanvasScroll" Focusable="False" PanningMode="None" FlowDirection="LeftToRight"
+                                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                                                  PreviewMouseWheel="CanvasScroll_PreviewMouseWheel">
+                                        <Image x:Name="CanvasImage" Stretch="Uniform" Margin="24" FlowDirection="LeftToRight"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Effect="{DynamicResource PageShadow}"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </ScrollViewer>
                                     <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" FlowDirection="LeftToRight">
                                         <Rectangle x:Name="SelectionMarquee"
                                                    Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
@@ -471,6 +480,33 @@
                                             <RadioButton x:Name="ShowPageButton" Style="{StaticResource SegmentedTextItemStyle}"
                                                          Content="{loc:T Page}" GroupName="CanvasView"
                                                          Padding="12,4" Checked="PageSwitch_Changed" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Over the image: zoom out and in, back to fitting the window, full size. -->
+                                    <Border x:Name="ZoomPill" Visibility="Collapsed"
+                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16"
+                                            Padding="4" CornerRadius="12" BorderThickness="1"
+                                            Background="{DynamicResource SolidBackgroundFillColorQuarternaryBrush}"
+                                            BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}">
+                                        <StackPanel Orientation="Horizontal" AutomationProperties.Name="{loc:T Zoom}">
+                                            <Button x:Name="ZoomOutButton" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE738;"
+                                                    ToolTip="{loc:T Zoom out (Ctrl+Minus)}" AutomationProperties.Name="{loc:T Zoom out}"
+                                                    Click="ZoomOut_Click" />
+                                            <Button x:Name="ZoomFitButton" Style="{StaticResource SubtleButtonStyle}" Content="{loc:T Fit}"
+                                                    Height="28" Padding="10,0" Margin="4,0,0,0"
+                                                    ToolTip="{loc:T Fit the page to the window (Ctrl+0)}"
+                                                    Click="ZoomFit_Click" />
+                                            <Button x:Name="ZoomFullButton" Style="{StaticResource SubtleButtonStyle}" Content="{loc:T 100%}"
+                                                    Height="28" Padding="10,0" Margin="4,0,0,0"
+                                                    ToolTip="{loc:T Show the page at full size (Ctrl+1)}"
+                                                    Click="ZoomFull_Click" />
+                                            <Button x:Name="ZoomInButton" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE710;"
+                                                    Margin="4,0,0,0"
+                                                    ToolTip="{loc:T Zoom in (Ctrl+Plus)}" AutomationProperties.Name="{loc:T Zoom in}"
+                                                    Click="ZoomIn_Click" />
+                                            <TextBlock x:Name="ZoomReadout" Style="{StaticResource CaptionText}" Width="40"
+                                                       TextAlignment="Right" VerticalAlignment="Center" Margin="4,0,6,0"
+                                                       AutomationProperties.LiveSetting="Polite" />
                                         </StackPanel>
                                     </Border>
                                     <Border x:Name="PageProblem" Visibility="Collapsed" IsHitTestVisible="False"
