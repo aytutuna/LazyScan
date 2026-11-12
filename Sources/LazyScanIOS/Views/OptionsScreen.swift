@@ -14,6 +14,7 @@ import SwiftUI
 struct OptionsScreen: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
+    @EnvironmentObject private var lock: IOSAppLock
     @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
     @AppStorage(IOSAfterSave.email.key) private var emails: Bool = false
     @AppStorage(IOSAfterSave.print.key) private var prints: Bool = false
@@ -33,6 +34,9 @@ struct OptionsScreen: View {
     /// Told when My computer is open: its pairing scanner needs the camera.
     let onPairing: (Bool) -> Void
     @State private var path: [IOSOptionsPage] = []
+    @State private var refusesLock: Bool = false
+
+    private let lockNote: String = String(localized: "Hides your pages and the Library when Lazy Scan opens. Files saved to the Files app are not covered.")
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -114,7 +118,38 @@ struct OptionsScreen: View {
             } footer: {
                 Text(String(localized: "The screen Lazy Scan opens on."))
             }
+            Section {
+                Toggle(lock.method.switchLabel, isOn: lockSwitch)
+                    .accessibilityIdentifier("options.requireLock")
+                    .accessibilityHint(lockNote)
+            } footer: {
+                Text(lockNote)
+            }
         }
+        .alert(String(localized: "Can't turn on the lock"), isPresented: $refusesLock) {
+            Button(String(localized: "OK")) {}
+        } message: {
+            Text(String(localized: "Set a passcode in Settings to use this lock."))
+        }
+    }
+
+    /// Turning it on asks the device first, so it only reads on once that worked.
+    private var lockSwitch: Binding<Bool> {
+        Binding<Bool>(
+            get: { lock.enabled },
+            set: { (on: Bool) in
+                if !on {
+                    Task { @MainActor in
+                        await lock.disable()
+                    }
+                    return
+                }
+                Task { @MainActor in
+                    if await lock.enable() == .unavailable {
+                        refusesLock = true
+                    }
+                }
+            })
     }
 
     @ToolbarContentBuilder

@@ -87,6 +87,8 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Lazy Scan uses Face ID to keep your scans private.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and for the computer you pair it with, so you can send it your scans.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

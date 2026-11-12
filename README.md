@@ -335,7 +335,9 @@ Options as a short list of pages (Save as, Look, Pages, Separate documents, File
 Share now, Presets, My computer, Help and about), each row showing its value, the
 presets (save the current settings under a name, rename, delete, apply; also in the task list) and
 the file name with a button per part and the next file's name; the library of this session's scans and
-the saved files with Share and Show in Files; on iPad a sidebar with the tasks, presets, scanners and library,
+the saved files with Share and Show in Files; an optional Face ID or passcode lock (Options) that hides the
+Library and the pages kept while the app is locked, though files saved to the Files app are not covered;
+on iPad a sidebar with the tasks, presets, scanners and library,
 Command-S, Command-N and Command-comma, Space for the shutter, pages reordered by dragging them in the
 grid and PDFs or pictures dropped on the scan screen, in any window size Stage Manager gives) is
 an Xcode project that
@@ -367,7 +369,7 @@ focus and macro switching, low light, the torch, Pro and non-Pro models, the aut
 timing and thresholds on real frames, the clean-up on real photos, heat and memory over a long queue;
 iCloud-only photos, large HEIC files and saving to the Files app; thermal and crumpled receipts, glossy
 prints, holograms and laminate glare; a printed separator sheet photographed, a real book, Mail's
-composer and Live Text) are checked on a real iPhone; iPad multitasking (Split View, Stage Manager
+composer and Live Text, the Face ID or passcode lock) are checked on a real iPhone; iPad multitasking (Split View, Stage Manager
 window sizes, the camera in a window that is not full screen, the camera or the scan area staying open
 while a window is resized between the sidebar and the narrow layout, a hardware keyboard, dragging files
 in from another app) on a real iPad.

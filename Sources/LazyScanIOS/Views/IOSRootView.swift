@@ -48,6 +48,7 @@ public struct IOSRootView: View {
     @State private var spreadEditor: SpreadEditorSource?
     @State private var columns: NavigationSplitViewVisibility = NavigationSplitViewVisibility.all
     @State private var started: Bool = false
+    @StateObject private var lock: IOSAppLock = IOSAppLock()
     /// On the iPad, a task picked that would leave the pages without a Save, while the question about them
     /// is up; then the ID card's question, when a side is held.
     @State private var leavingPages: PagesLeave?
@@ -129,11 +130,26 @@ public struct IOSRootView: View {
         layout
         .environmentObject(importer)
         .environmentObject(fileActions)
+        .environmentObject(lock)
         .task {
             startOnce()
         }
+        .onAppear {
+            showCover()
+        }
+        .onChange(of: cover) { (_: CoverMode, _: CoverMode) in
+            showCover()
+        }
+        .onChange(of: presentsEditor) { (_: Bool, _: Bool) in
+            if cover == .locked {
+                showCover()
+            }
+        }
         .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
-            PrivacyCover.show(phase != .active && showsPrivateContent)
+            if phase == .background {
+                lock.didEnterBackground()
+            }
+            promptForLock()
             keepAwake()
         }
         .onOpenURL { (url: URL) in
@@ -289,6 +305,34 @@ public struct IOSRootView: View {
         }
         let listing: Bool = !showsScanner && (detail == .history || detail == .saved)
         return cornerRequest.wrappedValue != nil || listing
+    }
+
+    /// What covers the window: the lock while it is on and something private is on screen, else the plain
+    /// cover while the app is not active.
+    private var cover: CoverMode {
+        guard showsPrivateContent else { return .none }
+        if lock.isLocked {
+            return .locked
+        }
+        return scenePhase == .active ? .none : .plain
+    }
+
+    /// A review or editor coming up adds its own container to the window, above a cover already there.
+    private var presentsEditor: Bool {
+        scanCover != nil || spreadEditor != nil || cornerRequest.wrappedValue != nil
+    }
+
+    private func showCover() {
+        PrivacyCover.show(cover, lock: lock)
+        promptForLock()
+    }
+
+    /// The device is asked as the locked cover comes up in an active app.
+    private func promptForLock() {
+        guard scenePhase == .active, cover == .locked else { return }
+        Task {
+            await lock.promptIfDue()
+        }
     }
 
     /// In camera mode, the first time, the card saying why the camera is asked for comes before iOS asks
@@ -808,27 +852,81 @@ struct ErrorAlert: ViewModifier {
     }
 }
 
-/// A plain view added to the window itself, above the sheets and covers, while the app is not active, so
-/// the app switcher's snapshot shows no page.
+private enum CoverMode: Equatable {
+    case none
+    case plain
+    case locked
+}
+
+/// A view added to the window itself, above the sheets and covers, so the app switcher's snapshot shows no
+/// page and a locked app shows none either. Plain it is empty, while the app is not active; locked it
+/// holds `LockCoverView` and stays until the lock opens. One view serves both, so they never stack.
 @MainActor
 private enum PrivacyCover {
     private static let tag: Int = 0x4C53
 
-    static func show(_ covered: Bool) {
+    static func show(_ mode: CoverMode, lock: IOSAppLock) {
         let scenes: [UIWindowScene] = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for window in scenes.flatMap({ $0.windows }) {
-            let shown: UIView? = window.viewWithTag(tag)
-            if !covered {
-                shown?.removeFromSuperview()
-            } else if shown == nil {
-                let cover = UIView(frame: window.bounds)
-                cover.tag = tag
-                cover.backgroundColor = .systemBackground
-                cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                cover.accessibilityElementsHidden = true
-                window.addSubview(cover)
+            let hosted: UIViewController? = host(in: window)
+            switch mode {
+            case .none:
+                remove(from: window)
+            case .plain:
+                if hosted != nil {
+                    remove(from: window)
+                }
+                if window.viewWithTag(tag) == nil {
+                    addPlain(to: window)
+                }
+            case .locked:
+                if let hosted {
+                    window.bringSubviewToFront(hosted.view)
+                } else {
+                    remove(from: window)
+                    addLocked(to: window, lock: lock)
+                }
             }
         }
+    }
+
+    private static func host(in window: UIWindow) -> UIViewController? {
+        window.rootViewController?.children.first { $0.isViewLoaded && $0.view.tag == tag }
+    }
+
+    private static func remove(from window: UIWindow) {
+        if let hosted = host(in: window) {
+            hosted.willMove(toParent: nil)
+            hosted.view.removeFromSuperview()
+            hosted.removeFromParent()
+        } else {
+            window.viewWithTag(tag)?.removeFromSuperview()
+        }
+    }
+
+    private static func addPlain(to window: UIWindow) {
+        let cover = UIView(frame: window.bounds)
+        cover.tag = tag
+        cover.backgroundColor = .systemBackground
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        cover.accessibilityElementsHidden = true
+        window.addSubview(cover)
+    }
+
+    private static func addLocked(to window: UIWindow, lock: IOSAppLock) {
+        guard let root = window.rootViewController else {
+            addPlain(to: window)
+            return
+        }
+        let hosted = UIHostingController(rootView: LockCoverView(lock: lock))
+        hosted.view.tag = tag
+        hosted.view.frame = window.bounds
+        hosted.view.backgroundColor = .systemBackground
+        hosted.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        hosted.view.accessibilityViewIsModal = true
+        root.addChild(hosted)
+        window.addSubview(hosted.view)
+        hosted.didMove(toParent: root)
     }
 }
 #endif
