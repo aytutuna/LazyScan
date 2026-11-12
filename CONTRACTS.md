@@ -232,7 +232,7 @@ public struct DeviceGroup: Equatable, Sendable {
 
 public enum DeviceMerge {
     public static let windowsRanking: [String]  // ["wia:WIA", "escl:Network", "wia:*", "twain:*"]
-    public static let macRanking: [String]      // ["ic:USB", "ic:Network", "ic:Shared"]
+    public static let macRanking: [String]      // ["ic:USB", "ic:Network", "ic:Shared", "escl:Network"]
     public static let iosRanking: [String]      // I12: ["escl:Network", "companion:*"]; Windows never uses it
     /// Lowercased model words: brackets, IP addresses and bit widths removed, vendor aliases
     /// mapped, connection words dropped, duplicates removed; joined by spaces.

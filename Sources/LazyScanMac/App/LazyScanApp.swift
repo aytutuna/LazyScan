@@ -59,7 +59,19 @@ public struct LazyScanApp: App {
 }
 
 extension AppState {
-    /// The Mac app's state: ImageCaptureCore's scanners and the demo scanner, with the Mac's file
+    /// The eSCL connection for scanners added by address, with its files in Application Support/Lazy Scan/Network.
+    /// ImageCaptureCore finds the scanners on the network, so nothing is searched for here.
+    @MainActor
+    static func makeNetworkBackend() -> EsclScannerBackend {
+        let base: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
+        let folder: URL = base.appendingPathComponent("Lazy Scan", isDirectory: true)
+            .appendingPathComponent("Network", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return EsclScannerBackend(trust: EsclTrustStore(directory: folder), hosts: EsclHostList(directory: folder))
+    }
+
+    /// The Mac app's state: ImageCaptureCore's scanners, the scanners added by address (eSCL) and the demo scanner, with the Mac's file
     /// actions, troubleshooter links, printing and app lifecycle, the corner model for imported photos
     /// when it is in the build (`FastViTCornerModel`), the password dialog of a protected
     /// PDF (`PDFPasswordWindow`), the question before adding pages to a signed or PDF/A file, and the
@@ -68,7 +80,7 @@ extension AppState {
     /// their bookmarks, which the sandboxed build needs.
     @MainActor
     static func makeForMac() -> AppState {
-        let backends: [any ScannerBackend] = [ICScannerBackend(), AppState.makeDemoBackend()]
+        let backends: [any ScannerBackend] = [ICScannerBackend(), AppState.makeNetworkBackend(), AppState.makeDemoBackend()]
         let state = AppState(backends: backends,
                              fileActions: SystemFileActions(),
                              troubleshooterService: SystemTroubleshooterService(),

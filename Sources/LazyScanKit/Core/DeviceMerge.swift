@@ -25,8 +25,9 @@ public enum DeviceMerge {
     /// Windows connection ranking, best first: WIA, then eSCL, then TWAIN.
     public static let windowsRanking = ["wia:WIA", "escl:Network", "wia:*", "twain:*"]
 
-    /// macOS connection ranking, best first: USB, then Bonjour, then shared scanners.
-    public static let macRanking = ["ic:USB", "ic:Network", "ic:Shared"]
+    /// macOS connection ranking, best first: USB, then Bonjour, then shared scanners, then a scanner added by
+    /// address (eSCL), which ranks last so the same scanner found by Bonjour stays the one in use.
+    public static let macRanking = ["ic:USB", "ic:Network", "ic:Shared", "escl:Network"]
 
     /// iPhone and iPad connection ranking, best first: the scanner's own network connection (eSCL),
     /// then a computer's scanner reached through the desktop companion. Windows never uses it.

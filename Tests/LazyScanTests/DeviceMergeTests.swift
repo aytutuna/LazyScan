@@ -124,6 +124,15 @@ final class DeviceMergeTests: XCTestCase {
         XCTAssertEqual(groups.first?.members.count, 3)
     }
 
+    func test_group_macRankingPutsAddressAddedScannerAfterBonjour() {
+        let bonjour = ic("HP LaserJet MFP M428fdw", "Network")
+        let added = escl("HP LaserJet MFP M428fdw", uuid: "4509a320-00a0")
+        let groups = DeviceMerge.group([added, bonjour], rankPatterns: DeviceMerge.macRanking)
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.primary, bonjour)
+        XCTAssertEqual(groups.first?.members.count, 2)
+    }
+
     func test_group_iosRankingPrefersTheScannersOwnNetworkConnection() {
         XCTAssertEqual(DeviceMerge.iosRanking, ["escl:Network", "companion:*"])
         // The same scanner through a computer (the desktop companion) and on its own network connection.

@@ -129,6 +129,16 @@ public class DeviceMergeTests
     }
 
     [Fact]
+    public void Group_MacRankingPutsAddressAddedScannerAfterBonjour()
+    {
+        var bonjour = Ic("HP LaserJet MFP M428fdw", "Network");
+        var added = Escl("HP LaserJet MFP M428fdw", "4509a320-00a0");
+        var group = Assert.Single(DeviceMerge.Group([added, bonjour], DeviceMerge.MacRanking));
+        Assert.Same(bonjour, group.Primary);
+        Assert.Equal(2, group.Members.Count);
+    }
+
+    [Fact]
     public void Group_IosRankingPrefersTheScannersOwnNetworkConnection()
     {
         Assert.Equal(["escl:Network", "companion:*"], DeviceMerge.IosRanking);

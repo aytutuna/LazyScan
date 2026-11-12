@@ -24,8 +24,11 @@ public static class DeviceMerge
     /// <summary>Windows connection ranking, best first: WIA, then eSCL, then TWAIN.</summary>
     public static readonly IReadOnlyList<string> WindowsRanking = ["wia:WIA", "escl:Network", "wia:*", "twain:*"];
 
-    /// <summary>macOS connection ranking, best first: USB, then Bonjour, then shared scanners.</summary>
-    public static readonly IReadOnlyList<string> MacRanking = ["ic:USB", "ic:Network", "ic:Shared"];
+    /// <summary>
+    /// macOS connection ranking, best first: USB, then Bonjour, then shared scanners, then a scanner added by
+    /// address (eSCL), which ranks last so the same scanner found by Bonjour stays the one in use.
+    /// </summary>
+    public static readonly IReadOnlyList<string> MacRanking = ["ic:USB", "ic:Network", "ic:Shared", "escl:Network"];
 
     /// <summary>
     /// iPhone and iPad connection ranking, best first: the scanner's own network connection (eSCL),

@@ -455,8 +455,9 @@ target for each platform's own parts:
     addresses added by hand, checked again every minute while they do not answer, and the
     troubleshooter's view); finding scanners on the network (`EsclDiscovery`: an NWBrowser per
     service type with the TXT records, every address resolved with DNS-SD, Local Network access
-    that is off told from what the system says). The Mac, which reaches these scanners through
-    ImageCaptureCore, could use it later
+    that is off told from what the system says). The Mac finds scanners on the network through
+    ImageCaptureCore and uses `EsclScannerBackend` only for scanners added by address, ranked
+    after the ImageCaptureCore entries
   - `App` — `AppState`, which every view binds to, and the protocols of the system services each
     app passes in (`FileActionService`, `PrintService`, `TroubleshooterService`,
     `PlatformLifecycle`, `BackgroundActivity`); pages from a scan or any other source come in through `AppState.ingest`
