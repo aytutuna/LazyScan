@@ -967,15 +967,16 @@ public enum IOSShell {
     /// A split choice made on the Separate documents page. For the Document kind, going to or from separator
     /// sheets and codes is Separate documents turned on or off, as its switch does, so the task, the feeder and
     /// the file names follow the choice; the other choices only set the split. Where the switch is dimmed
-    /// (Both sides, no feeder) the choice only sets the split too, and leaving Separate for another split
-    /// keeps the source.
+    /// (no feeder) or Both sides is on, the choice only sets the split too, so the task and the fronts
+    /// already taken stay, and leaving Separate for another split keeps the source.
     @MainActor
     static func setSplit(_ mode: SplitMode, in state: AppState) {
         let separates: Bool = mode == SplitMode.separatorSheet || mode == SplitMode.barcode
-        if shownKind(state.settings) == .document && separates != separatesDocuments(state.settings) {
+        if shownKind(state.settings) == .document && state.activeTask != .twoSided
+            && separates != separatesDocuments(state.settings) {
             if separates {
                 let availability: TaskAvailability = TaskCatalog.availability(of: .batch, capabilities: state.capabilities)
-                if availability.isAvailable && state.activeTask != .twoSided {
+                if availability.isAvailable {
                     setSeparate(true, in: state)
                 }
             } else {
