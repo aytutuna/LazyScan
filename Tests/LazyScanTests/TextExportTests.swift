@@ -142,32 +142,34 @@ final class OutputFormatsTests: XCTestCase {
     func test_imageAndTextFormats() {
         XCTAssertEqual(OutputFormat.allCases.filter(\.isImageFormat), [.jpeg, .png, .tiff])
         XCTAssertEqual(OutputFormat.allCases.filter(\.isTextFormat), [.text, .word])
-        XCTAssertEqual(OutputFormat.allCases.map(\.label), ["PDF", "JPEG", "PNG", "TIFF", "Text (.txt)", "Word (.docx)"])
-        XCTAssertEqual(OutputFormat.allCases.map(\.fileExtension), ["pdf", "jpg", "png", "tiff", "txt", "docx"])
+        XCTAssertEqual(OutputFormat.allCases.map(\.label), ["PDF", "JPEG", "PNG", "TIFF", "Text (.txt)", "Word (.docx)", "TIFF (one file)"])
+        XCTAssertEqual(OutputFormat.allCases.map(\.fileExtension), ["pdf", "jpg", "png", "tiff", "txt", "docx", "tiff"])
     }
 
     func test_offered_documentsGetEveryFormat_photosTheImageFormats() {
-        XCTAssertEqual(OutputFormat.offered(for: .document), [.pdf, .word, .text, .jpeg, .png, .tiff])
+        XCTAssertEqual(OutputFormat.offered(for: .document), [.pdf, .word, .text, .jpeg, .png, .tiff, .tiffPages])
         XCTAssertEqual(OutputFormat.offered(for: .photo), [.jpeg, .png, .tiff])
     }
 
     func test_whatEachSaveWrites() {
-        XCTAssertEqual(OutputFormat.allCases.map(\.imageFormatOrJPEG), [.jpeg, .jpeg, .png, .tiff, .jpeg, .jpeg])
-        XCTAssertEqual(OutputFormat.allCases.map(\.queueFormat), [.pdf, .pdf, .pdf, .pdf, .text, .word])
-        XCTAssertEqual(OutputFormat.allCases.map(\.pageFormat), [.pdf, .jpeg, .png, .tiff, .pdf, .pdf])
+        XCTAssertEqual(OutputFormat.allCases.map(\.imageFormatOrJPEG), [.jpeg, .jpeg, .png, .tiff, .jpeg, .jpeg, .tiff])
+        XCTAssertEqual(OutputFormat.allCases.map(\.queueFormat), [.pdf, .pdf, .pdf, .pdf, .text, .word, .tiffPages])
+        XCTAssertEqual(OutputFormat.allCases.map(\.pageFormat), [.pdf, .jpeg, .png, .tiff, .pdf, .pdf, .tiff])
     }
 
     func test_savesPDF_collectedPagesInAnyFormatButText_aScanAtOnceInPDFOnly() {
         XCTAssertEqual(OutputFormat.allCases.map { $0.savesPDF(collectsPages: true) },
-                       [true, true, true, true, false, false])
+                       [true, true, true, true, false, false, false])
         XCTAssertEqual(OutputFormat.allCases.map { $0.savesPDF(collectsPages: false) },
-                       [true, false, false, false, false, false])
+                       [true, false, false, false, false, false, false])
     }
 
     func test_saveTitles() {
         XCTAssertEqual(OutputFormat.allCases.map(\.saveTitle),
-                       ["Save PDF", "Save PDF", "Save PDF", "Save PDF", "Save Text", "Save Word"])
+                       ["Save PDF", "Save PDF", "Save PDF", "Save PDF", "Save Text", "Save Word", "Save TIFF"])
         XCTAssertEqual(OutputFormat.word.saveTitle(pageCount: 3), "Save Word (3 pages)")
+        XCTAssertEqual(OutputFormat.tiffPages.saveTitle(pageCount: 3), "Save TIFF (3 pages)")
+        XCTAssertEqual(OutputFormat.tiffPages.saveTitle(pageCount: 1), "Save TIFF (1 page)")
         XCTAssertEqual(OutputFormat.jpeg.saveTitle(pageCount: 1), "Save PDF (1 page)")
         XCTAssertEqual(OutputFormat.text.saveTitle(pageCount: 0), "Save Text")
     }

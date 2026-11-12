@@ -1927,7 +1927,7 @@ public final class AppState: ObservableObject {
 
     /// Saves the collected pages as one file: a PDF (with its text beside it when
     /// `OutputOptions.alsoSaveText` is on), or a Word document or text file when that is the format
-    /// chosen (`OutputFormat.queueFormat`). OCR reads each page once. With an `appendTarget` the pages
+    /// chosen, or a TIFF with every page (`OutputFormat.queueFormat`). OCR reads each page once. With an `appendTarget` the pages
     /// are added to that PDF instead (`appendToPDF(at:)`).
     public func savePDF(sides choice: SidesSaveChoice? = nil, name: String? = nil) {
         guard !scannedPages.isEmpty, settleSides(choice) else { return }
@@ -1975,6 +1975,20 @@ public final class AppState: ObservableObject {
                 self.resetFlow()
                 self.setStatus(TextExport.savedMessage(format: format, pageCount: pages.count,
                                                        fileName: url.lastPathComponent, hasText: hasText) + left,
+                               StatusDetail(head: .saved))
+                self.runAfterSave(s.output.afterSave, saved: [url])
+                return
+            }
+            if format == .tiffPages {
+                self.statusMessage = L10n.t("Building TIFF…")
+                let planned = try self.outputURL(fileExtension: format.fileExtension, label: document.label, name: typedName)
+                let url = try await Task.detached(priority: .userInitiated) {
+                    try Self.writeTIFFAtomically(pages: pages, to: planned, shouldContinue: { !flag.isCancelled })
+                }.value
+                self.lastSavedURLs = [url]
+                self.dropSaved(queued, wrote: [url])
+                self.resetFlow()
+                self.setStatus(TextExport.savedTIFFMessage(pageCount: pages.count, fileName: url.lastPathComponent) + left,
                                StatusDetail(head: .saved))
                 self.runAfterSave(s.output.afterSave, saved: [url])
                 return
@@ -2088,6 +2102,19 @@ public final class AppState: ObservableObject {
                 let cancelled = await keepInQueue(pages, after: error)
                 statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: 0, cancelled: cancelled,
                                                             saveTitle: OutputFormat.pdf.saveTitle)
+                return
+            }
+        } else if s.format == .tiffPages {
+            do {
+                let planned = try outputURL(fileExtension: s.format.fileExtension)
+                let url = try await Task.detached(priority: .userInitiated) {
+                    try Self.writeTIFFAtomically(pages: pages, to: planned, shouldContinue: { !flag.isCancelled })
+                }.value
+                saved = [url]
+            } catch {
+                let cancelled = await keepInQueue(pages, after: error)
+                statusMessage = TextExport.pagesKeptInQueue(pageCount: pages.count, written: 0, cancelled: cancelled,
+                                                            saveTitle: s.format.saveTitle)
                 return
             }
         } else {

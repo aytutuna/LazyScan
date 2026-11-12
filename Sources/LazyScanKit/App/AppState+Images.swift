@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Saving the collected pages as pictures, one file a page: the iPhone's "Save JPEG" (the Mac and Windows
 /// save the queue as one PDF, Word document or text file; `OutputFormat.queueFormat`). Swift only, like
@@ -78,6 +80,57 @@ extension AppState {
             self.resetFlow()
             self.setStatus(Self.imagesSavedMessage(saved, format: format) + left, StatusDetail(head: .saved))
             self.runAfterSave(s.output.afterSave, saved: saved)
+        }
+    }
+
+    /// Writes `pages` as one TIFF at `url` (or the next free name when it has been taken), each page at
+    /// its own resolution: CCITT G4 when every page is black & white (`BilevelTIFF`), else LZW through
+    /// ImageIO. The file is written under a hidden temporary name first, so a failure or Cancel leaves
+    /// nothing behind. Returns where the file went.
+    nonisolated static func writeTIFFAtomically(pages: [ScannedPage], to url: URL,
+                                                shouldContinue: (() -> Bool)? = nil) throws -> URL {
+        let folder: URL = url.deletingLastPathComponent()
+        let tmp: URL = folder.appendingPathComponent(".\(UUID().uuidString).tiff.tmp")
+        do {
+            if pages.allSatisfy({ $0.colorMode == .blackWhite }) {
+                var bilevel: [BilevelTIFFPage] = []
+                for (index, page) in pages.enumerated() {
+                    if shouldContinue?() == false { throw ScanError.cancelled }
+                    let full: CGImage = try fullImage(of: page, number: index + 1)
+                    guard let pixels = RgbaImage(cgImage: full) else {
+                        throw ScanError.exportFailed(L10n.t("Could not read the page to write {0}.", url.lastPathComponent))
+                    }
+                    bilevel.append(BilevelTIFFPage(image: pixels, dpi: page.dpi))
+                }
+                do {
+                    try BilevelTIFF.make(bilevel).write(to: tmp, options: .atomic)
+                } catch {
+                    throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
+                }
+            } else {
+                guard let destination = CGImageDestinationCreateWithURL(tmp as CFURL, UTType.tiff.identifier as CFString,
+                                                                        pages.count, nil) else {
+                    throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
+                }
+                for (index, page) in pages.enumerated() {
+                    if shouldContinue?() == false { throw ScanError.cancelled }
+                    let full: CGImage = try fullImage(of: page, number: index + 1)
+                    // 5 = LZW compression.
+                    let properties: [CFString: Any] = [
+                        kCGImagePropertyDPIWidth: page.dpi,
+                        kCGImagePropertyDPIHeight: page.dpi,
+                        kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFCompression: 5],
+                    ]
+                    CGImageDestinationAddImage(destination, full, properties as CFDictionary)
+                }
+                guard CGImageDestinationFinalize(destination) else {
+                    throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
+                }
+            }
+            return try NamingTemplate.moveToFreeURL(tmp, to: url)
+        } catch {
+            try? FileManager.default.removeItem(at: tmp)
+            throw error
         }
     }
 

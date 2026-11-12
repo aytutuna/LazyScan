@@ -38,7 +38,7 @@ public enum ImageExporter {
         switch format {
         case .jpeg: utType = .jpeg
         case .png: utType = .png
-        case .tiff: utType = .tiff
+        case .tiff, .tiffPages: utType = .tiff
         case .pdf: throw ScanError.unsupported("Use PDFBuilder to write PDF files.")
         case .text, .word: throw ScanError.unsupported("Use TextExport or DocxWriter to write text.")
         }
@@ -68,7 +68,7 @@ public enum ImageExporter {
         switch format {
         case .jpeg:
             properties[kCGImageDestinationLossyCompressionQuality] = jpegQuality
-        case .tiff:
+        case .tiff, .tiffPages:
             // 5 = LZW compression.
             properties[kCGImagePropertyTIFFDictionary] = [kCGImagePropertyTIFFCompression: 5]
         case .png, .pdf, .text, .word:

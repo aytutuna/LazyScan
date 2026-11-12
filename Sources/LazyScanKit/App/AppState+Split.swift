@@ -260,6 +260,14 @@ extension AppState {
                     if !hasText { noText.append(url.lastPathComponent) }
                     continue
                 }
+                if format == .tiffPages {
+                    let url = try await Task.detached(priority: .userInitiated) {
+                        try Self.writeTIFFAtomically(pages: pages, to: planned, shouldContinue: { !flag.isCancelled })
+                    }.value
+                    files.add(url)
+                    saved.append(url)
+                    continue
+                }
                 let text = s.output.savesTextBeside ? PDFTextCollector() : nil
                 let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                 protectedPDFs = options.isProtected

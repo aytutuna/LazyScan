@@ -12,7 +12,8 @@ scanners** — including the Epson Perfection V39 II.
 
 - **Any scanner**: USB scanners via their macOS (ICA) driver, plus network/shared scanners
   discovered over Bonjour. Flatbed and document-feeder (ADF) sources.
-- **Document mode**: scan pages into a queue, reorder/delete, then save one multi-page PDF.
+- **Document mode**: scan pages into a queue, reorder/delete, then save one multi-page PDF
+  (or one multi-page TIFF with **TIFF (one file)**, G4 for black & white and LZW otherwise).
   Optional **searchable PDF** — OCR (Apple Vision) embeds an invisible text layer so the PDF
   is selectable and searchable. Or save every scan immediately as its own PDF/JPEG/PNG/TIFF.
 - **Text: Word documents, text files, Copy Text**: save the collected pages as a **Word

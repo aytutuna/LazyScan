@@ -61,10 +61,11 @@ public enum ScanSource: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 /// What a save writes. `.text` and `.word` hold the recognized text of the pages instead of their
-/// pictures (`TextExport`, `DocxWriter`); which formats a mode offers and what each save does with
-/// a format are below. Twin of C# `OutputFormat` and `OutputFormats`.
+/// pictures (`TextExport`, `DocxWriter`); `.tiffPages` is a TIFF with every page of the queue in one
+/// file (a single scan saved in it is a plain TIFF). Which formats a mode offers and what each save
+/// does with a format are below. Twin of C# `OutputFormat` and `OutputFormats`.
 public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable {
-    case pdf, jpeg, png, tiff, text, word
+    case pdf, jpeg, png, tiff, text, word, tiffPages
 
     public var id: String { rawValue }
     public var label: String {
@@ -75,6 +76,7 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
         case .tiff: return "TIFF"
         case .text: return L10n.t("Text (.txt)")
         case .word: return "Word (.docx)"
+        case .tiffPages: return L10n.t("TIFF (one file)")
         }
     }
     public var fileExtension: String {
@@ -85,6 +87,7 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
         case .tiff: return "tiff"
         case .text: return "txt"
         case .word: return "docx"
+        case .tiffPages: return "tiff"
         }
     }
 
@@ -92,7 +95,7 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
     public var isImageFormat: Bool {
         switch self {
         case .jpeg, .png, .tiff: return true
-        case .pdf, .text, .word: return false
+        case .pdf, .text, .word, .tiffPages: return false
         }
     }
 
@@ -100,38 +103,45 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
     public var isTextFormat: Bool {
         switch self {
         case .text, .word: return true
-        case .pdf, .jpeg, .png, .tiff: return false
+        case .pdf, .jpeg, .png, .tiff, .tiffPages: return false
         }
     }
 
     /// The formats the inspector offers: every format for documents, the image formats for photos
     /// (a photo has no text to save, and PDF photos are saved as JPEG).
     public static func offered(for intent: ScanIntent) -> [OutputFormat] {
-        intent == .photo ? [.jpeg, .png, .tiff] : [.pdf, .word, .text, .jpeg, .png, .tiff]
+        intent == .photo ? [.jpeg, .png, .tiff] : [.pdf, .word, .text, .jpeg, .png, .tiff, .tiffPages]
     }
 
     /// The format a photo is saved in: this one when it is an image format, otherwise JPEG.
-    public var imageFormatOrJPEG: OutputFormat { isImageFormat ? self : .jpeg }
+    public var imageFormatOrJPEG: OutputFormat {
+        if self == .tiffPages { return .tiff }
+        return isImageFormat ? self : .jpeg
+    }
 
-    /// The format the collected pages are saved in together: Text and Word as chosen, anything
-    /// else as one PDF (the image formats apply to scans saved one at a time).
-    public var queueFormat: OutputFormat { isTextFormat ? self : .pdf }
+    /// The format the collected pages are saved in together: Text, Word and TIFF (one file) as chosen,
+    /// anything else as one PDF (the other image formats apply to scans saved one at a time).
+    public var queueFormat: OutputFormat { isTextFormat || self == .tiffPages ? self : .pdf }
 
-    /// Whether a save writes a PDF: the collected pages in any format but Text and Word, a scan
+    /// Whether a save writes a PDF: the collected pages in any format but Text, Word and TIFF (one file), a scan
     /// saved at once only in PDF. The text beside a PDF can be asked for then.
     public func savesPDF(collectsPages: Bool) -> Bool {
         collectsPages ? queueFormat == .pdf : self == .pdf
     }
 
-    /// The format of a page made of a scan, like the ID card's: PDF or the image format chosen;
-    /// PDF for the text formats.
-    public var pageFormat: OutputFormat { isImageFormat ? self : .pdf }
+    /// The format of a page made of a scan, like the ID card's: PDF or the image format chosen (TIFF
+    /// for TIFF (one file)); PDF for the text formats.
+    public var pageFormat: OutputFormat {
+        if self == .tiffPages { return .tiff }
+        return isImageFormat ? self : .pdf
+    }
 
-    /// "Save PDF", "Save Word", "Save Text": the button that saves the collected pages.
+    /// "Save PDF", "Save Word", "Save Text", "Save TIFF": the button that saves the collected pages.
     public var saveTitle: String {
         switch queueFormat {
         case .word: return L10n.t("Save Word")
         case .text: return L10n.t("Save Text")
+        case .tiffPages: return L10n.t("Save TIFF")
         default: return L10n.t("Save PDF")
         }
     }
@@ -142,6 +152,7 @@ public enum OutputFormat: String, Codable, CaseIterable, Identifiable, Sendable 
         switch queueFormat {
         case .word: return L10n.plural(pageCount, one: "Save Word ({0} page)", other: "Save Word ({0} pages)")
         case .text: return L10n.plural(pageCount, one: "Save Text ({0} page)", other: "Save Text ({0} pages)")
+        case .tiffPages: return L10n.plural(pageCount, one: "Save TIFF ({0} page)", other: "Save TIFF ({0} pages)")
         default: return L10n.plural(pageCount, one: "Save PDF ({0} page)", other: "Save PDF ({0} pages)")
         }
     }

@@ -2799,11 +2799,18 @@ only when the PDF or TIFF is written.
 // OutputFormat gains `.text` ("Text (.txt)", txt) and `.word` ("Word (.docx)", docx), after the
 // earlier cases, and:
 //   isImageFormat (jpeg, png, tiff), isTextFormat (text, word),
-//   static offered(for: ScanIntent) -> [OutputFormat]   // documents: pdf, word, text, jpeg, png, tiff; photos: jpeg, png, tiff
-//   imageFormatOrJPEG (what a photo is saved as), queueFormat (collected pages: text and word as chosen, else pdf),
+//   static offered(for: ScanIntent) -> [OutputFormat]   // documents: pdf, word, text, jpeg, png, tiff, tiffPages; photos: jpeg, png, tiff
+//   imageFormatOrJPEG (what a photo is saved as), queueFormat (collected pages: text, word and tiffPages as chosen, else pdf),
 //   pageFormat (the ID card's page: pdf or the image format), savesPDF(collectsPages:) -> Bool,
 //   saveTitle ("Save PDF", "Save Word", "Save Text"), saveTitle(pageCount:) ("Save Word (3 pages)").
 // Every switch over OutputFormat lists the new cases (ImageExporter throws ScanError.unsupported for them).
+// `.tiffPages` ("TIFF (one file)", tiff) follows `.word`: the collected pages in one TIFF, G4 when every page
+// is black & white (BilevelTIFF.make with all pages), else LZW through ImageIO, each page at its own dpi
+// (`AppState.writeTIFFAtomically`, hidden temp name, then the next free name). It is not an image format
+// (`isImageFormat` false: no file a page); `queueFormat` stays `.tiffPages`; `imageFormatOrJPEG` and
+// `pageFormat` give `.tiff` (a photo, the ID card's page: a plain TIFF); a scan saved at once is one TIFF with its pages;
+// offered(for: .document) lists it last, photos do not get it; saveTitle "Save TIFF", "Save TIFF (3 pages)";
+// a split queue writes a TIFF each ("Save 2 TIFF files"); TextExport.savedTIFFMessage "Saved 3-page TIFF: Scan 1.tiff".
 // OutputOptions gains `alsoSaveText: Bool` ("alsoSaveText" in the "output" object; false by default and
 // for files written before it existed): a .txt with the PDF's name beside each saved PDF,
 // except one with a password (`OutputOptions.savesTextBeside` is `alsoSaveText && !protect`: the text would
@@ -3101,7 +3108,8 @@ public struct VisionOrientationScorer: OrientationScorer { public init() }
 public enum ImageExporter {
     /// Write jpeg/png/tiff with DPI metadata. Throws ScanError.unsupported for .pdf, .text and .word.
     /// A black & white page (`colorMode`, the mode it was scanned in) saved as TIFF is a 1-bit CCITT
-    /// G4 file (`BilevelTIFF.make`); every other TIFF is LZW (ImageIO).
+    /// G4 file (`BilevelTIFF.make`); every other TIFF is LZW (ImageIO). `.tiffPages` is written as `.tiff`
+    /// (a queue's one file is `AppState.writeTIFFAtomically`).
     /// With `keepingExisting` the image goes to a hidden temp file, is moved to `url` or the next free
     /// name, and that name is returned.
     @discardableResult

@@ -494,8 +494,29 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_savePDF_asTiffPages_writesOneFileWithEveryPage_leavesOutSkippedPages_andEmptiesTheQueue() async throws {
+        let state = makeState()
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 300, height: 200, dpi: 50),
+                                    seamPage(width: 260, height: 340, dpi: 50), seamPage(width: 200, height: 200, dpi: 50)],
+                                   source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        state.scannedPages[1] = state.scannedPages[1].withInclusion(.skip)
+        state.settings.format = .tiffPages
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.lastSavedURLs.count, 1)
+        let url: URL = try XCTUnwrap(state.lastSavedURLs.first)
+        XCTAssertEqual(url.pathExtension, "tiff")
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetCount(source), 3)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+        XCTAssertTrue(state.statusMessage.hasPrefix("Saved 3-page TIFF: "), state.statusMessage)
+    }
+
+    @MainActor
     func test_save_withAPageWhoseSpoolFileWent_failsNamingThePage_writesNothing_andKeepsTheQueue() async throws {
-        for format in [OutputFormat.pdf, .jpeg, .word] {
+        for format in [OutputFormat.pdf, .jpeg, .word, .tiffPages] {
             let state = makeState()
             XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 300, height: 200, dpi: 50)],
                                        source: .photo))
@@ -510,7 +531,7 @@ final class AppStateSeamTests: XCTestCase {
             XCTAssertEqual(state.scannedPages.count, 2, "\(format)")
             XCTAssertEqual(state.lastSavedURLs, [], "\(format)")
             let written: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
-                .filter { (name: String) -> Bool in ["pdf", "jpg", "docx"].contains((name as NSString).pathExtension) }
+                .filter { (name: String) -> Bool in ["pdf", "jpg", "docx", "tiff"].contains((name as NSString).pathExtension) }
             XCTAssertEqual(written, [], "\(format)")
         }
     }

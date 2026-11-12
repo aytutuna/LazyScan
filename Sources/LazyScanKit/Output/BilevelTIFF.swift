@@ -22,7 +22,7 @@ public struct BilevelTIFFPage {
 public enum BilevelTIFF {
     /// Whether a page saved as `format` in `mode` is written here: black & white TIFFs.
     public static func applies(_ format: OutputFormat, _ mode: ColorMode) -> Bool {
-        format == .tiff && mode == .blackWhite
+        (format == .tiff || format == .tiffPages) && mode == .blackWhite
     }
 
     /// A one-page file.

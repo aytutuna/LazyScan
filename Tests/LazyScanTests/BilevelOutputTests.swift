@@ -369,6 +369,8 @@ final class BilevelOutputTests: XCTestCase {
         XCTAssertTrue(BilevelTIFF.applies(.tiff, .blackWhite))
         XCTAssertFalse(BilevelTIFF.applies(.tiff, .grayscale))
         XCTAssertFalse(BilevelTIFF.applies(.tiff, .color))
+        XCTAssertTrue(BilevelTIFF.applies(.tiffPages, .blackWhite))
+        XCTAssertFalse(BilevelTIFF.applies(.tiffPages, .color))
         XCTAssertFalse(BilevelTIFF.applies(.png, .blackWhite))
         XCTAssertFalse(BilevelTIFF.applies(.pdf, .blackWhite))
     }
@@ -398,5 +400,33 @@ final class BilevelOutputTests: XCTestCase {
         try ImageExporter.write(image, to: pngURL, format: .png, dpi: 200, jpegQuality: 0.9, colorMode: .blackWhite)
         let png = try Data(contentsOf: pngURL)
         XCTAssertEqual(Array(png.prefix(4)), [0x89, 0x50, 0x4E, 0x47])
+    }
+
+    func test_writeTIFFAtomically_oneFileWithEveryPage_g4ForBlackAndWhite_lzwOtherwise() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("BilevelOutputTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let sizes: [(Int, Int)] = [(120, 80), (90, 130), (64, 64)]
+        for (mode, compression) in [(ColorMode.blackWhite, 4), (ColorMode.color, 5)] {
+            let pages: [ScannedPage] = try sizes.map { (size: (Int, Int)) -> ScannedPage in
+                let pixels = CCITTG4EncoderTests.image(width: size.0, height: size.1) { x, y in (x + 2 * y) % 11 < 4 }
+                return ScannedPage(image: try XCTUnwrap(pixels.makeCGImage()), dpi: 200, colorMode: mode)
+            }
+            let planned = folder.appendingPathComponent("\(mode.rawValue).tiff")
+            let url = try AppState.writeTIFFAtomically(pages: pages, to: planned)
+            XCTAssertEqual(url, planned)
+            let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+            XCTAssertEqual(CGImageSourceGetCount(source), 3, "\(mode)")
+            for (index, size) in sizes.enumerated() {
+                let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+                XCTAssertEqual((properties?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue, size.0, "\(mode) page \(index)")
+                XCTAssertEqual((properties?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue, size.1, "\(mode) page \(index)")
+                XCTAssertEqual((properties?[kCGImagePropertyDPIWidth] as? NSNumber)?.intValue, 200, "\(mode) page \(index)")
+                let tiff = properties?[kCGImagePropertyTIFFDictionary] as? [CFString: Any]
+                XCTAssertEqual((tiff?[kCGImagePropertyTIFFCompression] as? NSNumber)?.intValue, compression, "\(mode) page \(index)")
+            }
+        }
+        let left: [String] = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+        XCTAssertEqual(left.filter { $0.hasPrefix(".") }, [])
     }
 }

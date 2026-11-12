@@ -28,6 +28,11 @@ public enum TextExport {
             : L10n.t("Saved {0}-page text file: {1} — no text was found", pageCount, fileName)
     }
 
+    /// "Saved 3-page TIFF: Scan 1.tiff": the status after the queue is saved as one TIFF.
+    public static func savedTIFFMessage(pageCount: Int, fileName: String) -> String {
+        L10n.t("Saved {0}-page TIFF: {1}", pageCount, fileName)
+    }
+
     /// "Saved 3-page PDF: Scan 1.pdf (412 KB) and its text, Scan 1.txt": the status after a PDF is saved.
     /// `detail` is what goes in brackets after the name (`AppState.pdfDetail`), `textFileName` the text
     /// saved beside the PDF; each may be nil.

@@ -99,7 +99,8 @@ struct SaveAsPage: View {
     /// for the Text kind's held page (saved as a picture); the ID card is saved as a PDF or an image.
     private var formats: [OutputFormat] {
         if IOSSettingsSections.offersEveryFormat(state.settings) {
-            return OutputFormat.offered(for: ScanIntent.document)
+            let everyFormat: [OutputFormat] = OutputFormat.offered(for: ScanIntent.document)
+            return everyFormat.filter { (f: OutputFormat) -> Bool in f != OutputFormat.tiffPages }
         }
         if state.activeTask == ScanTask.quickScan && !state.settings.documentMultiPage {
             return OutputFormat.offered(for: ScanIntent.photo)

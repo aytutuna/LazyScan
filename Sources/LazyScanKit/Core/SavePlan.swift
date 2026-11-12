@@ -59,6 +59,8 @@ public struct SavePlan {
             return withPages(L10n.plural(documents.count, one: "Save {0} Word document", other: "Save {0} Word documents"))
         case .text:
             return withPages(L10n.plural(documents.count, one: "Save {0} text file", other: "Save {0} text files"))
+        case .tiffPages:
+            return withPages(L10n.plural(documents.count, one: "Save {0} TIFF file", other: "Save {0} TIFF files"))
         default:
             return withPages(L10n.plural(documents.count, one: "Save {0} PDF", other: "Save {0} PDFs"))
         }
@@ -122,6 +124,8 @@ public struct SavePlan {
             saved = L10n.plural(count, one: "Saved {0} Word document ({1}): {2}", other: "Saved {0} Word documents ({1}): {2}", pages, names)
         case .text:
             saved = L10n.plural(count, one: "Saved {0} text file ({1}): {2}", other: "Saved {0} text files ({1}): {2}", pages, names)
+        case .tiffPages:
+            saved = L10n.plural(count, one: "Saved {0} TIFF file ({1}): {2}", other: "Saved {0} TIFF files ({1}): {2}", pages, names)
         default:
             if textFileNames.isEmpty {
                 saved = L10n.plural(count, one: "Saved {0} PDF ({1}): {2}", other: "Saved {0} PDFs ({1}): {2}", pages, names)
@@ -137,7 +141,7 @@ public struct SavePlan {
     /// The short status line's kind for `savedMessage`: "Saved 3 PDFs", or just "Saved" for Word and text.
     public func savedHead(_ format: OutputFormat, count: Int) -> StatusHead {
         switch format.queueFormat {
-        case .word, .text: return .saved
+        case .word, .text, .tiffPages: return .saved
         default: return .savedFiles(count, .pdf)
         }
     }

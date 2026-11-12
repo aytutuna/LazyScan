@@ -221,6 +221,9 @@
     "note": "{1} is a file name; keep it exactly."
   },
   "Saved {0}-page Word document: {1} — no text was found": {},
+  "Saved {0}-page TIFF: {1}": {
+    "note": "{1} is a file name; keep it exactly."
+  },
   "Saved {0}-page text file: {1}": {
     "note": "{1} is a file name; keep it exactly."
   },
@@ -280,6 +283,7 @@
   "Take the stack from the output tray and turn it over as a whole, keeping the sheets in order. Then scan the back sides.": {},
   "Save Word": {},
   "Save Text": {},
+  "Save TIFF": {},
   "Save PDF": {},
   "— {0} and {1} were left out": {},
   "— no text was found": {},
@@ -314,6 +318,9 @@
   },
   "Save Text ({0} page)": {
     "other": "Save Text ({0} pages)"
+  },
+  "Save TIFF ({0} page)": {
+    "other": "Save TIFF ({0} pages)"
   },
   "Save PDF ({0} page)": {
     "other": "Save PDF ({0} pages)"
@@ -646,6 +653,7 @@
   "The scanner's glass": {},
   "Automatic document feeder (ADF)": {},
   "Text (.txt)": {},
+  "TIFF (one file)": {},
   "Standard": {},
   "Best": {},
   "Compact": {},
@@ -1530,6 +1538,7 @@
   "Reading the text of the pages…": {},
   "Running OCR and building PDF…": {},
   "Building PDF…": {},
+  "Building TIFF…": {},
   "password-protected": {},
   "Receipts discarded.": {},
   "Photo batch discarded.": {},
@@ -1763,6 +1772,9 @@
   },
   "Saved {0} text file ({1}): {2}": {
     "other": "Saved {0} text files ({1}): {2}"
+  },
+  "Saved {0} TIFF file ({1}): {2}": {
+    "other": "Saved {0} TIFF files ({1}): {2}"
   },
   "Saved {0} PDF ({1}): {2}": {
     "other": "Saved {0} PDFs ({1}): {2}"
@@ -2082,6 +2094,9 @@
   },
   "Save {0} text file": {
     "other": "Save {0} text files"
+  },
+  "Save {0} TIFF file": {
+    "other": "Save {0} TIFF files"
   },
   "Save {0} PDF": {
     "other": "Save {0} PDFs"

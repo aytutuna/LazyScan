@@ -522,9 +522,10 @@ final class ModelsCompatTests: XCTestCase {
     // MARK: Text output (CONTRACTS.md, rule 6)
 
     func test_formats_newCasesComeLast_withTheirStoredNames() throws {
-        XCTAssertEqual(OutputFormat.allCases.map(\.rawValue), ["pdf", "jpeg", "png", "tiff", "text", "word"])
+        XCTAssertEqual(OutputFormat.allCases.map(\.rawValue), ["pdf", "jpeg", "png", "tiff", "text", "word", "tiffPages"])
         XCTAssertEqual(try decode(ScanSettings.self, #"{"format": "word"}"#).format, .word)
         XCTAssertEqual(try decode(ScanSettings.self, #"{"format": "text"}"#).format, .text)
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"format": "tiffPages"}"#).format, .tiffPages)
         // A format of a newer version is read as PDF.
         XCTAssertEqual(try decode(ScanSettings.self, #"{"format": "markdown", "resolution": 150}"#).format, .pdf)
     }
