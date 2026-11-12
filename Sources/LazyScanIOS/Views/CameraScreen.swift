@@ -189,6 +189,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     .background(Capsule().fill(fill))
                     .overlay(Capsule().strokeBorder(Color.accentColor, lineWidth: 1))
                     .frame(minHeight: 44)
+                    .opacity(state.isBusy ? 0.4 : 1)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -206,6 +207,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var flashButton: some View {
         if model.showsPreview, model.hasTorch {
             let on: Bool = model.torchOn
+            let enabled: Bool = model.lifecycle.isLive && !state.isBusy
             let glyphColour: Color = on ? Color.yellow : Color.primary
             let backing: Color = on ? Color.black.opacity(0.75) : Color.clear
             Button {
@@ -217,10 +219,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(backing))
                     .frame(width: 44, height: 44)
+                    .opacity(enabled ? 1 : 0.4)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(!model.lifecycle.isLive || state.isBusy)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .disabled(!enabled)
             .accessibilityLabel(Text(IOSCameraText.flashLabel))
             .accessibilityValue(Text(on ? IOSCameraText.onValue : IOSCameraText.offValue))
             .accessibilityIdentifier("camera.flash")
