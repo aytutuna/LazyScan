@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     {
         FlowDirection = App.Flow;
         InitializeComponent();
+        CancelButton.ToolTip = Loc.T("Esc");
         if (CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft) LazyScan.App.Icon.SetGlyph(SkipStepButton, "");
         ViewModel = new AppViewModel();
         ViewModel.PropertyChanged += (_, _) => Dispatcher.BeginInvoke(RefreshFromViewModel);
@@ -354,12 +355,12 @@ public partial class MainWindow : Window
         PreviewButton.IsEnabled = !ViewModel.IsBusy && previewReason is null;
         // The tooltip also shows while the button is greyed out (ShowOnDisabled), so it says why.
         string previewHint = previewReason ?? Loc.T("Quick look at the whole glass");
-        PreviewButton.ToolTip = previewHint;
+        PreviewButton.ToolTip = PreviewButton.IsEnabled ? WithKeys(previewHint, PreviewKeys) : previewHint;
         AutomationProperties.SetHelpText(PreviewButton, previewHint);
         // Scan has a tooltip only while it waits for the scanner.
         string? notConnected = NotConnectedHint();
         ScanButton.IsEnabled = !ViewModel.IsBusy && ViewModel.IsConnected;
-        ScanButton.ToolTip = notConnected;
+        ScanButton.ToolTip = ScanButton.IsEnabled ? WithKeys(notConnected, ScanKeys) : notConnected;
         AutomationProperties.SetHelpText(ScanButton, notConnected ?? "");
         ScanButton.Content = ViewModel.PrimaryActionLabel;
         SyncTaskBanner();

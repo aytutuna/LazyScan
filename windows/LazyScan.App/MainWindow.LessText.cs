@@ -77,9 +77,9 @@ public partial class MainWindow
             : label;
         AutomationProperties.SetName(SavePdfButton, name);
         bool nothingToSave = pageCount > 0 && saveCount == 0;
-        SavePdfButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : null;
-        ToolTipService.SetShowOnDisabled(SavePdfButton, true);
         SavePdfButton.IsEnabled = saveCount > 0 && !ViewModel.IsBusy;
+        SavePdfButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : SavePdfButton.IsEnabled ? SaveKeys : null;
+        ToolTipService.SetShowOnDisabled(SavePdfButton, true);
         // The menu's ways to save need pages to save too: it greys out with the button.
         SaveMenuButton.IsEnabled = saveCount > 0 && !ViewModel.IsBusy;
         AddToPdfButton.IsEnabled = saveCount > 0 && !ViewModel.IsBusy;

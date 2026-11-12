@@ -57,7 +57,7 @@ public partial class MainWindow
         bool underWay = ViewModel.IsStackUnderWay;
         ImportPhotosButton.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
         ImportPhotosButton.IsEnabled = ViewModel.CanImportPhotos;
-        ImportPhotosButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : ImportName;
+        ImportPhotosButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : WithKeys(ImportName, ImportKeys);
         CanvasImport.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
         CanvasImportButton.IsEnabled = ViewModel.CanImportPhotos;
         CanvasImportButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : PhotoImport.ButtonHint;

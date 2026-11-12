@@ -10,7 +10,8 @@
         Icon="{x:Static local:AppIcon.Image}"
         FontFamily="{StaticResource TextFontFamily}"
         AllowDrop="True" PreviewDragEnter="Window_PreviewDragOver" PreviewDragOver="Window_PreviewDragOver"
-        PreviewDragLeave="Window_PreviewDragLeave" PreviewDrop="Window_PreviewDrop">
+        PreviewDragLeave="Window_PreviewDragLeave" PreviewDrop="Window_PreviewDrop"
+        PreviewKeyDown="Window_PreviewKeyDown" KeyDown="Window_KeyDown">
     <Window.Resources>
         <Style x:Key="SectionExpanderStyle" TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
             <Setter Property="IsExpanded" Value="False" />
@@ -1272,10 +1273,12 @@
                                                 HorizontalAlignment="Stretch" MinHeight="36"
                                                 ToolTip="{loc:T Quick look at the whole glass}"
                                                 ToolTipService.ShowOnDisabled="True"
+                                                AutomationProperties.AcceleratorKey="Ctrl+Shift+Enter"
                                                 Click="Preview_Click" />
                                         <Button Grid.Column="2" x:Name="ScanButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                                 local:Icon.Glyph="&#xE8FE;" Content="{loc:T Scan}" MinHeight="36"
                                                 ToolTipService.ShowOnDisabled="True"
+                                                AutomationProperties.AcceleratorKey="Ctrl+Enter"
                                                 Click="Scan_Click" />
                                     </Grid>
                                     <!-- Save (with the page count and, for a protected PDF, a lock) and its menu;
@@ -1293,6 +1296,7 @@
                                         <Button x:Name="SavePdfButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                                 ContentTemplate="{StaticResource SaveLabelTemplate}"
                                                 local:Icon.Glyph="&#xEA90;" Content="{loc:T Save PDF}" MinHeight="36"
+                                                AutomationProperties.AcceleratorKey="Ctrl+S"
                                                 Click="SavePdf_Click" />
                                         <!-- The split part: the other ways to save the queue. -->
                                         <Button Grid.Column="2" x:Name="SaveMenuButton" Style="{StaticResource AccentButtonStyle}"
@@ -1323,6 +1327,7 @@
                                         <!-- Pages from photos of documents, no scanner needed (PhotoImport). -->
                                         <Button Grid.Column="4" x:Name="ImportPhotosButton" Style="{StaticResource IconButtonStyle}"
                                                 Content="&#xEB9F;" Width="36" Height="36"
+                                                AutomationProperties.AcceleratorKey="Ctrl+O"
                                                 Click="ImportPhotos_Click" />
                                         <Button Grid.Column="6" x:Name="ClearButton" Style="{StaticResource IconButtonStyle}"
                                                 Content="&#xE74D;" Width="36" Height="36"
@@ -1660,7 +1665,8 @@
                                  AutomationProperties.Name="{loc:T Progress}" Visibility="Collapsed" />
                     <Button x:Name="CancelButton" Style="{StaticResource IconTextButtonStyle}"
                             local:Icon.Glyph="&#xE711;" Content="{loc:T Cancel}" Padding="10,3,10,4"
-                            Visibility="Collapsed" Click="Cancel_Click" />
+                            Visibility="Collapsed" AutomationProperties.AcceleratorKey="Esc"
+                            Click="Cancel_Click" />
                 </StackPanel>
             </StatusBarItem>
             <StatusBarItem>

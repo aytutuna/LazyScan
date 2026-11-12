@@ -145,7 +145,10 @@ The main window has four tabs, like the macOS app:
 - **Scan** — preview canvas, page queue and the settings inspector (Preview/Scan stay pinned
   at the bottom). Adjustment sliders are centered (-100…+100, 0 = neutral) and preview live
   on the canvas; queued pages can be reordered, rotated 90° or removed; detected photos open
-  in a review where each crop can be corrected by hand. **Cancel** works in every busy phase
+  in a review where each crop can be corrected by hand. Scan (Ctrl+Enter or F5), Preview
+  (Ctrl+Shift+Enter), Save (Ctrl+S), Import (Ctrl+O) and Cancel (Esc) have shortcuts, shown in their
+  tooltips, that work exactly when the button does; Delete removes the page the keyboard is on.
+  **Cancel** works in every busy phase
   (scanning, processing, photo detection, OCR, PDF writing, exports) and never leaves a
   partial file behind.
 - **Scans** — this session's scans, newest first; click one to enlarge it. A card shows the
