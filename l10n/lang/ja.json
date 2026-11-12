@@ -1030,7 +1030,6 @@
     "The phone link could not start: {0}": "iPhoneからの受信を開始できませんでした: {0}",
     "Adding pages from {0}…": "“{0}”からページを追加中…",
     "The document from {0} could not be added: one of its pictures could not be read.": "“{0}”からの書類を追加できませんでした。読み込めない画像があります。",
-    "The document from {0} could not be added: one of its pictures could not be read ({1}).": "“{0}”からの書類を追加できませんでした。読み込めない画像があります（{1}）。",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": "“{0}”からの書類を今はキューに追加できませんでした（{1}）。このMacに保管され、次回Lazy Scanを起動したときに追加されます。",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": "“{0}”からの書類をキューに追加できませんでした（{1}）。書類はこのPCに保管され、次回Lazy Scanを起動したときに追加されます。",
     "a phone": "iPhone",

@@ -1030,7 +1030,6 @@
     "The phone link could not start: {0}": "تعذر بدء الاتصال بالهاتف: {0}",
     "Adding pages from {0}…": "جارٍ إضافة صفحات من {0}…",
     "The document from {0} could not be added: one of its pictures could not be read.": "تعذرت إضافة المستند الوارد من {0}، لأن إحدى صوره غير قابلة للقراءة.",
-    "The document from {0} could not be added: one of its pictures could not be read ({1}).": "تعذرت إضافة المستند الوارد من {0}، لأن إحدى صوره غير قابلة للقراءة ({1}).",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": "تعذرت الآن إضافة المستند الوارد من {0} إلى قائمة الانتظار ({1}). تم الاحتفاظ به على جهاز Mac هذا، وستتم إضافته عند فتح Lazy Scan في المرة القادمة.",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": "تعذرت الآن إضافة المستند الوارد من {0} إلى قائمة الانتظار ({1}). تم الاحتفاظ به على هذا الكمبيوتر، وستتم إضافته عند فتح Lazy Scan في المرة القادمة.",
     "a phone": "هاتف",

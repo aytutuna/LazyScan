@@ -1564,7 +1564,7 @@
   "The document from {0} could not be added: one of its pictures could not be read.": {
     "note": "{0} is the name of a phone."
   },
-  "The document from {0} could not be added: one of its pictures could not be read ({1}).": {
+  "The document from {0} could not be added: there is not enough memory for its pictures.": {
     "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": {

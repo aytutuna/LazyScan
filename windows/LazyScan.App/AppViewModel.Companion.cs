@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using LazyScan.App.Services;
 using LazyScan.App.Services.Companion;
@@ -275,35 +276,9 @@ public sealed partial class AppViewModel
             NotifyAll();
             bool queueHasPages = ScannedPages.Count > 0;
             string spoolDirectory = _spool.Directory;
-            List<ScannedPage> pages;
             try
             {
-                // The pictures are decoded from the package's bytes in memory: a failure here is the picture's.
-                pages = await Task.Run(() => CompanionPages.ToScannedPages(package.Document, package.Target, queueHasPages,
-                                                                           WpfImageCodec.Decode), token);
-            }
-            catch (OperationCanceledException)
-            {
-                cancelled = true;
-                throw;
-            }
-            catch (Exception e) when (e is NotSupportedException or System.IO.FileFormatException or ArgumentException
-                                          or InvalidOperationException or IOException)
-            {
-                unreadable = true;
-                problem = Loc.T("The document from {0} could not be added: one of its pictures could not be read ({1}).", phoneName, e.Message);
-                StatusMessage = Loc.T("Ready.");
-                return;
-            }
-            List<PageItem> spooled;
-            try
-            {
-                spooled = await Task.Run(() => SpoolPages(pages, spoolDirectory).Select(p => new PageItem(p)).ToList(), token);
-            }
-            catch (OperationCanceledException)
-            {
-                cancelled = true;
-                throw;
+                Directory.CreateDirectory(spoolDirectory);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -312,6 +287,39 @@ public sealed partial class AppViewModel
                 StatusMessage = Loc.T("Ready.");
                 return;
             }
+            List<ScannedPage> pages;
+            var spooledSoFar = new List<ScannedPage>();
+            try
+            {
+                // Each picture is decoded from the package's bytes, spooled and dropped before the next, so a long
+                // document never holds all its pixels at once. A failure here is the picture's, or the memory's.
+                pages = await Task.Run(() => CompanionPages.ToScannedPages(package.Document, package.Target, queueHasPages,
+                    PendingPackage.Decode, keep: page =>
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var spooledPage = SpoolPages([page], spoolDirectory)[0];
+                        spooledSoFar.Add(spooledPage);
+                        return spooledPage;
+                    }), token);
+            }
+            catch (Exception e) when (e is OperationCanceledException or OutOfMemoryException or NotSupportedException
+                                          or System.IO.FileFormatException or COMException or ArgumentException
+                                          or InvalidOperationException or OverflowException or IOException)
+            {
+                DeleteSpoolFiles(spooledSoFar);
+                if (e is OperationCanceledException)
+                {
+                    cancelled = true;
+                    throw;
+                }
+                unreadable = true;
+                problem = e is OutOfMemoryException
+                    ? Loc.T("The document from {0} could not be added: there is not enough memory for its pictures.", phoneName)
+                    : Loc.T("The document from {0} could not be added: one of its pictures could not be read.", phoneName);
+                StatusMessage = Loc.T("Ready.");
+                return;
+            }
+            var spooled = pages.Select(p => new PageItem(p)).ToList();
             foreach (var item in spooled) ScannedPages.Add(item);
             added = spooled.Count;
             if (spooled.Count > 0) SetLastScan(ScanHistory.MakePreview(spooled[^1].Page.Image, CanvasPreviewMaxSide));

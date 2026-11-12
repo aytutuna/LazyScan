@@ -1030,7 +1030,6 @@
     "The phone link could not start: {0}": "Не удалось запустить связь с телефоном: {0}",
     "Adding pages from {0}…": "{0}: добавление страниц…",
     "The document from {0} could not be added: one of its pictures could not be read.": "{0}: не удалось добавить документ, одно из изображений не читается.",
-    "The document from {0} could not be added: one of its pictures could not be read ({1}).": "{0}: не удалось добавить документ, одно из изображений не читается ({1}).",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": "{0}: документ пока не добавлен в очередь ({1}). Он сохранен на этом Mac и будет добавлен при следующем запуске Lazy Scan.",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": "{0}: документ пока не добавлен в очередь ({1}). Он сохранен на этом компьютере и будет добавлен при следующем запуске Lazy Scan.",
     "a phone": "С телефона",

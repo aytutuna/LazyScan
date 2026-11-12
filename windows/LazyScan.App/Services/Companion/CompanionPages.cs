@@ -16,8 +16,11 @@ public static class CompanionPages
 {
     /// <param name="decode">Decodes a picture's bytes (JPEG, PNG or bilevel TIFF).</param>
     /// <param name="queueHasPages">Pages are queued already.</param>
+    /// <param name="keep">Takes each page as soon as it is built and returns what to keep of it (a page
+    /// spooled to disk, say), so a long document does not hold every picture in memory at once.</param>
     public static List<ScannedPage> ToScannedPages(CompanionDocument document, CompanionTarget target, bool queueHasPages,
-                                                   Func<byte[], RgbaImage> decode, DateTime? createdAt = null)
+                                                   Func<byte[], RgbaImage> decode, DateTime? createdAt = null,
+                                                   Func<ScannedPage, ScannedPage>? keep = null)
     {
         var pages = new List<ScannedPage>(document.Pages.Count);
         DateTime created = createdAt ?? DateTime.Now;
@@ -43,7 +46,7 @@ public static class CompanionPages
                 };
                 page = photographed.WithGeometry(image, new PageGeometry(true, 0, GeometryBasis.Perspective));
             }
-            pages.Add(page);
+            pages.Add(keep is null ? page : keep(page));
         }
         if (pages.Count > 0 && target == CompanionTarget.New)
         {

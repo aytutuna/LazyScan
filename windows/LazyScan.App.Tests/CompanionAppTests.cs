@@ -110,6 +110,21 @@ public class CompanionAppTests
     }
 
     [Fact]
+    public void PhoneDocument_HandsEachPageOverAsItIsBuilt()
+    {
+        int built = 0;
+        var kept = new List<int>();
+        var pages = CompanionPages.ToScannedPages(Document(), CompanionTarget.Current, queueHasPages: false, WpfImageCodec.Decode,
+            keep: page =>
+            {
+                kept.Add(++built);
+                return page;
+            });
+        Assert.Equal(Enumerable.Range(1, pages.Count), kept);
+        Assert.NotEmpty(pages);
+    }
+
+    [Fact]
     public void FirewallState_JudgesTheNetworksReceivedOn()
     {
         const string app = @"C:\Program Files\Lazy Scan\LazyScan.exe";

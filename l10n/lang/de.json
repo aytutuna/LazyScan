@@ -1030,7 +1030,6 @@
     "The phone link could not start: {0}": "Der Empfang von Telefonen ließ sich nicht starten: {0}",
     "Adding pages from {0}…": "Seiten von {0} werden hinzugefügt …",
     "The document from {0} could not be added: one of its pictures could not be read.": "Das Dokument von {0} konnte nicht hinzugefügt werden: Ein Bild ließ sich nicht lesen.",
-    "The document from {0} could not be added: one of its pictures could not be read ({1}).": "Das Dokument von „{0}“ wurde nicht hinzugefügt: Eines seiner Bilder ist nicht lesbar ({1}).",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": "Das Dokument von {0} konnte jetzt nicht zur Warteschlange hinzugefügt werden ({1}). Es bleibt auf diesem Mac und wird beim nächsten Start von Lazy Scan hinzugefügt.",
     "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": "Das Dokument von „{0}“ konnte vorerst nicht zur Warteschlange hinzugefügt werden ({1}). Es bleibt auf diesem PC und wird beim nächsten Start von Lazy Scan hinzugefügt.",
     "a phone": "einem Telefon",
