@@ -274,4 +274,27 @@ final class PerspectiveWarpTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(prefilteredPsnr, 30, "prefiltered PSNR \(prefilteredPsnr) dB")
         XCTAssertGreaterThan(prefilteredPsnr, plainPsnr + 6, "prefiltered \(prefilteredPsnr) dB, plain \(plainPsnr) dB")
     }
+
+    func testRowBandsCoverEveryRowOnce() {
+        for rows in [0, 1, 2, 7, 64, 1000] {
+            var visits = [Int](repeating: 0, count: rows)
+            visits.withUnsafeMutableBufferPointer { counts in
+                RowBands.perform(rows: rows) { range in
+                    for row in range { counts[row] += 1 }
+                }
+            }
+            XCTAssertEqual(visits, [Int](repeating: 1, count: rows), "\(rows) rows")
+        }
+    }
+
+    /// Timings for the warp and the box average on a large photo are read on CI or a device.
+    func testWarpOfLargePhotoMeasure() throws {
+        let photo = WarpFixtures.photo(4000, 3000)
+        let quad = WarpFixtures.quad(300, 200, 3700, 260, 3650, 2800, 350, 2750)
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        measure(options: options) {
+            XCTAssertNotNil(PerspectiveWarp.warp(photo, quad: quad, width: 1654, height: 2339))
+        }
+    }
 }

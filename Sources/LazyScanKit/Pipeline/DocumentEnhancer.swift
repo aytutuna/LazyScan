@@ -326,38 +326,38 @@ public enum DocumentEnhancer {
         let lumas: [UInt8] = gray.pixels
         let blackBelow: Int = Int(floor(blackShare(threshold: threshold) * Double(levels) + 0.5))
         var output: [UInt8] = [UInt8](repeating: 0, count: w * h * 4)
-        var y: Int = 0
-        while y < h {
-            var x: Int = 0
-            while x < w {
-                let p: Int = y * w + x
-                let i: Int = p * 4
-                let background: Double = paper.valueAt(x: x, y: y)
-                if color {
-                    output[i] = lut[level(Double(src[i]) * balance.r, background)]
-                    output[i + 1] = lut[level(Double(src[i + 1]) * balance.g, background)]
-                    output[i + 2] = lut[level(Double(src[i + 2]) * balance.b, background)]
-                } else {
-                    let share: Int = level(Double(lumas[p]), background)
-                    var v: UInt8 = lut[share]
-                    if mode == .blackAndWhite {
-                        v = share < blackBelow ? 0 : 255
+        output.withUnsafeMutableBufferPointer { out in
+            RowBands.perform(rows: h) { rows in
+                for y in rows {
+                    for x in 0..<w {
+                        let p: Int = y * w + x
+                        let i: Int = p * 4
+                        let background: Double = paper.valueAt(x: x, y: y)
+                        if color {
+                            out[i] = lut[level(Double(src[i]) * balance.r, background)]
+                            out[i + 1] = lut[level(Double(src[i + 1]) * balance.g, background)]
+                            out[i + 2] = lut[level(Double(src[i + 2]) * balance.b, background)]
+                        } else {
+                            let share: Int = level(Double(lumas[p]), background)
+                            var v: UInt8 = lut[share]
+                            if mode == .blackAndWhite {
+                                v = share < blackBelow ? 0 : 255
+                            }
+                            out[i] = v
+                            out[i + 1] = v
+                            out[i + 2] = v
+                        }
+                        out[i + 3] = 255
                     }
-                    output[i] = v
-                    output[i + 1] = v
-                    output[i + 2] = v
                 }
-                output[i + 3] = 255
-                x += 1
             }
-            y += 1
         }
         if mode == .auto {
             if !ColorAnalysis.isEffectivelyGray(rgba: output, width: w, height: h) {
                 return DocumentEnhancement(image: RgbaImage(width: w, height: h, pixels: output), mode: .color)
             }
             // No color left: the gray page, as the gray mode makes it.
-            y = 0
+            var y: Int = 0
             while y < h {
                 var x: Int = 0
                 while x < w {

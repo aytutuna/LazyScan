@@ -52,9 +52,31 @@ public struct PerspectiveStep: PageStep {
         self.spread = spread
     }
 
+    /// The pixels of the photo the last page was cut from: the objects of a shot share one photo, so it
+    /// is converted once per shot. The photo is held weakly, and its pixels are dropped at the next cut
+    /// once the photo is gone.
+    private final class SharedPhoto: @unchecked Sendable {
+        private let lock = NSLock()
+        private weak var source: CGImage?
+        private var pixels: RgbaImage?
+
+        func rgba(of image: CGImage) -> RgbaImage? {
+            lock.lock()
+            defer { lock.unlock() }
+            if let pixels, source === image { return pixels }
+            pixels = nil
+            source = nil
+            pixels = RgbaImage(cgImage: image)
+            source = pixels == nil ? nil : image
+            return pixels
+        }
+    }
+
+    private static let sharedPhoto = SharedPhoto()
+
     public func apply(_ page: ScannedPage) -> ScannedPage {
         guard let capture = page.capture, capture.scale == nil, page.geometry == nil,
-              let photo = RgbaImage(cgImage: page.image) else { return page }
+              let photo = PerspectiveStep.sharedPhoto.rgba(of: page.image) else { return page }
         var facts: CaptureFacts = capture
         if capture.sourceWidth > 0 && capture.sourceHeight > 0
             && (capture.sourceWidth != photo.width || capture.sourceHeight != photo.height) {

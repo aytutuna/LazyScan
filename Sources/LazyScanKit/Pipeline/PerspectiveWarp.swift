@@ -39,30 +39,34 @@ public enum PerspectiveWarp {
         let rh = (h + factor - 1) / factor
         var output = [UInt8](repeating: 0, count: rw * rh * 4)
         let pixels = image.pixels
-        for oy in 0..<rh {
-            let y0 = oy * factor
-            let y1 = min(h, y0 + factor)
-            for ox in 0..<rw {
-                let x0 = ox * factor
-                let x1 = min(w, x0 + factor)
-                var r = 0, g = 0, b = 0, a = 0
-                for y in y0..<y1 {
-                    var si = (y * w + x0) * 4
-                    for _ in x0..<x1 {
-                        r += Int(pixels[si])
-                        g += Int(pixels[si + 1])
-                        b += Int(pixels[si + 2])
-                        a += Int(pixels[si + 3])
-                        si += 4
+        output.withUnsafeMutableBufferPointer { out in
+            RowBands.perform(rows: rh) { rows in
+                for oy in rows {
+                    let y0 = oy * factor
+                    let y1 = min(h, y0 + factor)
+                    for ox in 0..<rw {
+                        let x0 = ox * factor
+                        let x1 = min(w, x0 + factor)
+                        var r = 0, g = 0, b = 0, a = 0
+                        for y in y0..<y1 {
+                            var si = (y * w + x0) * 4
+                            for _ in x0..<x1 {
+                                r += Int(pixels[si])
+                                g += Int(pixels[si + 1])
+                                b += Int(pixels[si + 2])
+                                a += Int(pixels[si + 3])
+                                si += 4
+                            }
+                        }
+                        let count = (y1 - y0) * (x1 - x0)
+                        let half = count / 2
+                        let di = (oy * rw + ox) * 4
+                        out[di] = UInt8((r + half) / count)
+                        out[di + 1] = UInt8((g + half) / count)
+                        out[di + 2] = UInt8((b + half) / count)
+                        out[di + 3] = UInt8((a + half) / count)
                     }
                 }
-                let count = (y1 - y0) * (x1 - x0)
-                let half = count / 2
-                let di = (oy * rw + ox) * 4
-                output[di] = UInt8((r + half) / count)
-                output[di + 1] = UInt8((g + half) / count)
-                output[di + 2] = UInt8((b + half) / count)
-                output[di + 3] = UInt8((a + half) / count)
             }
         }
         return RgbaImage(width: rw, height: rh, pixels: output)

@@ -264,26 +264,30 @@ public enum PerspectiveCorrector {
         var output = [UInt8](repeating: 0, count: w * h * 4)
         let m = plan.outputToSource
         image.pixels.withUnsafeBufferPointer { pixels in
-            for oy in 0..<h {
-                for ox in 0..<w {
-                    let di = (oy * w + ox) * 4
-                    var acc: (Double, Double, Double, Double) = (0, 0, 0, 0)
-                    if plan.supersampled {
-                        for s in 0..<4 {
-                            let px = Double(ox) + ((s & 1) == 0 ? 0.25 : 0.75)
-                            let py = Double(oy) + ((s >> 1) == 0 ? 0.25 : 0.75)
-                            accumulate(pixels, image.width, image.height, m, px, py, &acc, options)
+            output.withUnsafeMutableBufferPointer { out in
+                RowBands.perform(rows: h) { rows in
+                    for oy in rows {
+                        for ox in 0..<w {
+                            let di = (oy * w + ox) * 4
+                            var acc: (Double, Double, Double, Double) = (0, 0, 0, 0)
+                            if plan.supersampled {
+                                for s in 0..<4 {
+                                    let px = Double(ox) + ((s & 1) == 0 ? 0.25 : 0.75)
+                                    let py = Double(oy) + ((s >> 1) == 0 ? 0.25 : 0.75)
+                                    accumulate(pixels, image.width, image.height, m, px, py, &acc, options)
+                                }
+                                out[di] = roundByte(acc.0 / 4)
+                                out[di + 1] = roundByte(acc.1 / 4)
+                                out[di + 2] = roundByte(acc.2 / 4)
+                                out[di + 3] = roundByte(acc.3 / 4)
+                            } else {
+                                accumulate(pixels, image.width, image.height, m, Double(ox) + 0.5, Double(oy) + 0.5, &acc, options)
+                                out[di] = roundByte(acc.0)
+                                out[di + 1] = roundByte(acc.1)
+                                out[di + 2] = roundByte(acc.2)
+                                out[di + 3] = roundByte(acc.3)
+                            }
                         }
-                        output[di] = roundByte(acc.0 / 4)
-                        output[di + 1] = roundByte(acc.1 / 4)
-                        output[di + 2] = roundByte(acc.2 / 4)
-                        output[di + 3] = roundByte(acc.3 / 4)
-                    } else {
-                        accumulate(pixels, image.width, image.height, m, Double(ox) + 0.5, Double(oy) + 0.5, &acc, options)
-                        output[di] = roundByte(acc.0)
-                        output[di + 1] = roundByte(acc.1)
-                        output[di + 2] = roundByte(acc.2)
-                        output[di + 3] = roundByte(acc.3)
                     }
                 }
             }
