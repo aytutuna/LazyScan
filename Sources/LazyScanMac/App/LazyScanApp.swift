@@ -32,7 +32,7 @@ public struct LazyScanApp: App {
             ImportFromDevicesCommands()
             // Help > Lazy Scan Help: no help book is registered, so the default item only says help isn't available.
             CommandGroup(replacing: .help) {
-                Link("Lazy Scan Help", destination: URL(string: "https://scan.alazy.app/#support")!)
+                Link("Lazy Scan Help", destination: URL(string: "https://alazy.app/scan/#support")!)
             }
         }
     }

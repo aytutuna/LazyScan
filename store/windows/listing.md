@@ -44,9 +44,9 @@ Lazy Scan is new. If your scanner does not show up or a scan does not come out a
 
 **Support contact:** support@alazy.app
 
-**Website:** https://scan.alazy.app
+**Website:** https://alazy.app/scan/
 
-**Privacy policy URL:** https://scan.alazy.app/privacy.html
+**Privacy policy URL:** https://alazy.app/scan/privacy.html
 
 **Screenshots:** none in this folder yet. Take them from a neutral folder with the Demo Scanner or public-domain scans, at 1920x1080, light, so that no local path or personal file name shows.
 
