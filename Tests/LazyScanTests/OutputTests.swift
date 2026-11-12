@@ -148,6 +148,29 @@ final class OutputTests: XCTestCase {
         XCTAssertEqual(asked, ["0: 800x600 400", "1: 200x100 200"])
     }
 
+    func test_makePDF_spooledPages_writeTheSameBytesAsInMemoryOnes_andLeaveNoTempFolder() throws {
+        let color = ScannedPage(image: makeSolidImage(width: 400, height: 300, red: 0.9, green: 0.3, blue: 0.2),
+                                dpi: 100, colorMode: .color)
+        let bilevel = ScannedPage(image: makeSolidImage(width: 200, height: 100, red: 1, green: 1, blue: 1),
+                                  dpi: 100, colorMode: .blackWhite)
+        let line = OCRLine(text: "Spooled words", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.6, height: 0.08),
+                           confidence: 1)
+        let pages = [color, bilevel]
+        let layer: PDFTextLayer = { index, _ in index == 0 ? [line] : nil }
+        let options = PDFWriteOptions(conformance: .pdfA2b, creationDate: Date(timeIntervalSince1970: 0),
+                                      timeZone: TimeZone(secondsFromGMT: 0), documentId: [UInt8](repeating: 7, count: 16))
+        let inputs = try PDFBuilder.pageInputs(pages, pdfSize: .best, progress: nil, shouldContinue: nil, textLayer: layer)
+        let expected = try PDFWriter.make(inputs, options: options)
+        let spooled = try PDFBuilder.makePDF(pages: pages, progress: nil, textLayer: layer, options: options)
+        XCTAssertEqual(spooled, expected)
+        XCTAssertThrowsError(try PDFBuilder.makePDF(pages: pages, progress: nil, shouldContinue: { false },
+                                                    textLayer: nil))
+        let spool = try PDFBuilder.spoolPages(pages, pdfSize: .best, progress: nil, shouldContinue: nil, textLayer: nil)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: spool.folder.path))
+        spool.remove()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: spool.folder.path))
+    }
+
     func test_imageExporterKeepingExistingTakesTheNextFreeName() throws {
         let image = makeSolidImage(width: 20, height: 10, red: 0.3, green: 0.7, blue: 0.4)
         let dir = try makeTempDirectory()

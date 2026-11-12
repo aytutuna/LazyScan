@@ -13,8 +13,8 @@ public typealias PDFTextLayer = (_ index: Int, _ page: PDFBuilder.PreparedPage) 
 /// writer, so a PDF has the same structure on every platform: each page one stored image (the JPEG
 /// its PDF size plans, or CCITT G4 for a page scanned in black & white), the text layer in the
 /// embedded `GlyphlessFont`, and PDF/A-2b or a password when `PDFWriteOptions` ask for it. The
-/// pages are prepared, read and encoded one at a time (`pageInputs`), as the Windows view model does,
-/// then written.
+/// pages are prepared, read and encoded one at a time (`spoolPages`); each encoded page waits in a
+/// temporary file and is read back as it is written, so one page's bytes are in memory at a time.
 public enum PDFBuilder {
     /// The pixels and media-box size of one queued page, with the user's page rotation applied
     /// (twin of C# `PdfBuilder.PreparedPage`). `pixelWidth` × `pixelHeight` is the full-resolution
@@ -51,9 +51,10 @@ public enum PDFBuilder {
     public static func makePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, progress: ((String) -> Void)?,
                                shouldContinue: (() -> Bool)? = nil, textLayer: PDFTextLayer?,
                                options: PDFWriteOptions? = nil) throws -> Data {
-        let inputs = try pageInputs(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
-                                    textLayer: textLayer)
-        return try PDFWriter.make(inputs, progress: progress, shouldContinue: shouldContinue, options: options)
+        let spool = try spoolPages(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
+                                   textLayer: textLayer)
+        defer { spool.remove() }
+        return try PDFWriter.make(spool.source, progress: progress, shouldContinue: shouldContinue, options: options)
     }
 
     /// The same, written to the file at `url` (created or replaced). A failed or cancelled write
@@ -79,9 +80,11 @@ public enum PDFBuilder {
     public static func writePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, to url: URL,
                                 progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil,
                                 textLayer: PDFTextLayer?, options: PDFWriteOptions? = nil) throws {
-        let inputs = try pageInputs(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
-                                    textLayer: textLayer)
-        try PDFWriter.writeFile(inputs, to: url, progress: progress, shouldContinue: shouldContinue, options: options)
+        let spool = try spoolPages(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
+                                   textLayer: textLayer)
+        defer { spool.remove() }
+        try PDFWriter.writeFile(spool.source, to: url, progress: progress, shouldContinue: shouldContinue,
+                                options: options)
     }
 
     /// The image and media-box size of one queued page: the full-resolution pixels from its spill
@@ -136,21 +139,99 @@ public enum PDFBuilder {
         var inputs: [PDFPageInput] = []
         for index in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
-            let page = pages[index]
-            let prepared = try preparePage(page, number: index + 1)
-            var lines: [OCRLine]? = nil
-            if let textLayer {
-                progress?(L10n.t("OCR page {0} of {1}…", index + 1, pages.count))
-                // A page without lines (OCR failed or found nothing) is still written, without a text layer.
-                lines = textLayer(index, prepared)
-            }
-            guard let stored = storedImage(prepared, colorMode: page.colorMode, dpi: page.dpi, pdfSize: pdfSize) else {
-                throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
-            }
-            inputs.append(PDFPageInput(image: stored, pixelWidth: prepared.pixelWidth,
-                                       pixelHeight: prepared.pixelHeight, dpi: page.dpi, ocrLines: lines))
+            inputs.append(try pageInput(pages, index, pdfSize: pdfSize, progress: progress, textLayer: textLayer))
         }
         return inputs
+    }
+
+    /// The same pages, but each encoded image goes to a temporary file and is dropped, so only the
+    /// text layers stay in memory. The caller calls `remove()` on the result when the write is over,
+    /// whether it worked, failed or was cancelled.
+    static func spoolPages(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((String) -> Void)?,
+                           shouldContinue: (() -> Bool)?, textLayer: PDFTextLayer?) throws -> PageSpool {
+        let spool = try PageSpool()
+        do {
+            for index in 0..<pages.count {
+                if shouldContinue?() == false { throw ScanError.cancelled }
+                let input = try pageInput(pages, index, pdfSize: pdfSize, progress: progress, textLayer: textLayer)
+                try spool.add(input, number: index + 1)
+            }
+        } catch {
+            spool.remove()
+            throw error
+        }
+        return spool
+    }
+
+    private static func pageInput(_ pages: [ScannedPage], _ index: Int, pdfSize: PDFSizePreset,
+                                  progress: ((String) -> Void)?, textLayer: PDFTextLayer?) throws -> PDFPageInput {
+        let page = pages[index]
+        let prepared = try preparePage(page, number: index + 1)
+        var lines: [OCRLine]? = nil
+        if let textLayer {
+            progress?(L10n.t("OCR page {0} of {1}…", index + 1, pages.count))
+            // A page without lines (OCR failed or found nothing) is still written, without a text layer.
+            lines = textLayer(index, prepared)
+        }
+        guard let stored = storedImage(prepared, colorMode: page.colorMode, dpi: page.dpi, pdfSize: pdfSize) else {
+            throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
+        }
+        return PDFPageInput(image: stored, pixelWidth: prepared.pixelWidth,
+                            pixelHeight: prepared.pixelHeight, dpi: page.dpi, ocrLines: lines)
+    }
+
+    /// Encoded pages in a temporary folder while a PDF is written, with what the writer needs of
+    /// each in memory: its sizes, resolution and text layer.
+    final class PageSpool {
+        private struct Entry {
+            let file: URL
+            let g4Size: (width: Int, height: Int)?
+            let pixelWidth: Int
+            let pixelHeight: Int
+            let dpi: Int
+        }
+
+        let folder: URL
+        private var entries: [Entry] = []
+        private var lines: [[OCRLine]?] = []
+
+        init() throws {
+            folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent("LazyScanPDF-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        }
+
+        func add(_ page: PDFPageInput, number: Int) throws {
+            let file = folder.appendingPathComponent("\(number)")
+            do {
+                try page.image.data.write(to: file)
+            } catch {
+                throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", number))
+            }
+            var g4Size: (width: Int, height: Int)? = nil
+            if case .ccittG4(_, let width, let height) = page.image { g4Size = (width, height) }
+            entries.append(Entry(file: file, g4Size: g4Size, pixelWidth: page.pixelWidth,
+                                 pixelHeight: page.pixelHeight, dpi: page.dpi))
+            lines.append(page.ocrLines)
+        }
+
+        /// The pages for `PDFWriter`, each read back from its file as it is written.
+        var source: PDFPageSource {
+            PDFPageSource(count: entries.count, ocrLines: lines, page: { [self] index in
+                let entry = entries[index]
+                guard let data = try? Data(contentsOf: entry.file) else {
+                    throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
+                }
+                var image = PDFImageData.jpeg(data)
+                if let size = entry.g4Size { image = .ccittG4(data: data, width: size.width, height: size.height) }
+                return PDFPageInput(image: image, pixelWidth: entry.pixelWidth, pixelHeight: entry.pixelHeight,
+                                    dpi: entry.dpi, ocrLines: lines[index])
+            })
+        }
+
+        func remove() {
+            try? FileManager.default.removeItem(at: folder)
+        }
     }
 
     /// One page's image as the PDF size plans it (`PDFImageEncoding`): a black & white page

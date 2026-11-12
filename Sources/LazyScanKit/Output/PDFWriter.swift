@@ -70,6 +70,24 @@ public struct PDFPageInput {
     public var jpegData: Data { image.data }
 }
 
+/// The pages of a document to be written: how many, their text layers (all read first, for the glyph
+/// codes), and each page's input on demand, so a page's image can stay on disk until it is written.
+struct PDFPageSource {
+    let count: Int
+    let ocrLines: [[OCRLine]?]
+    let page: (Int) throws -> PDFPageInput
+
+    init(count: Int, ocrLines: [[OCRLine]?], page: @escaping (Int) throws -> PDFPageInput) {
+        self.count = count
+        self.ocrLines = ocrLines
+        self.page = page
+    }
+
+    init(_ pages: [PDFPageInput]) {
+        self.init(count: pages.count, ocrLines: pages.map { $0.ocrLines }, page: { pages[$0] })
+    }
+}
+
 /// The dependency-free PDF writer of scanned pages, ported from C# `PdfBuilder`. It writes PDF 1.4,
 /// PDF/A-2b for keeping, or a PDF 1.7 file that opens only with a password (AES-256), as
 /// `PDFWriteOptions` ask.
@@ -92,6 +110,11 @@ public enum PDFWriter {
     /// Build the PDF in memory (`options`: see `write(_:progress:shouldContinue:options:to:)`).
     public static func make(_ pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
                             shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws -> Data {
+        try make(PDFPageSource(pages), progress: progress, shouldContinue: shouldContinue, options: options)
+    }
+
+    static func make(_ pages: PDFPageSource, progress: ((String) -> Void)? = nil,
+                     shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws -> Data {
         var result = Data()
         try write(pages, progress: progress, shouldContinue: shouldContinue, options: options) { chunk in
             result.append(chunk)
@@ -104,6 +127,12 @@ public enum PDFWriter {
     /// incomplete file, so callers write to a temporary file and move it into place.
     public static func writeFile(_ pages: [PDFPageInput], to url: URL, progress: ((String) -> Void)? = nil,
                                  shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
+        try writeFile(PDFPageSource(pages), to: url, progress: progress, shouldContinue: shouldContinue,
+                      options: options)
+    }
+
+    static func writeFile(_ pages: PDFPageSource, to url: URL, progress: ((String) -> Void)? = nil,
+                          shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
         let folder = url.deletingLastPathComponent()
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
             throw ScanError.exportFailed(SaveFailure.message(nil, folder: folder))
@@ -138,13 +167,20 @@ public enum PDFWriter {
     public static func write(_ pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
                              shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil,
                              to output: @escaping (Data) throws -> Void) throws {
+        try write(PDFPageSource(pages), progress: progress, shouldContinue: shouldContinue, options: options,
+                  to: output)
+    }
+
+    static func write(_ pages: PDFPageSource, progress: ((String) -> Void)? = nil,
+                      shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil,
+                      to output: @escaping (Data) throws -> Void) throws {
         let settings: PDFWriteOptions = options ?? PDFWriteOptions.standard
         let archival: Bool = settings.isArchival
         if archival && settings.isProtected { throw ScanError.exportFailed(PDFA.cannotProtectNote) }
         var hasText = false
         var texts: [String] = []
-        for page in pages {
-            guard let lines = page.ocrLines else { continue }
+        for pageLines in pages.ocrLines {
+            guard let lines = pageLines else { continue }
             if !lines.isEmpty { hasText = true }
             for line in lines { texts.append(line.text) }
         }
@@ -214,7 +250,7 @@ public enum PDFWriter {
             progress?(L10n.t("Writing page {0} of {1}…", i + 1, pages.count))
             let pageObject = firstPageObject + i * 3
             try writePage(w, pageObject: pageObject, imageObject: pageObject + 1, contentsObject: pageObject + 2,
-                          parent: "2 0 R", index: i, page: pages[i], fontObject: fontObject, codes: codes,
+                          parent: "2 0 R", index: i, page: try pages.page(i), fontObject: fontObject, codes: codes,
                           extraEntries: "")
         }
 
