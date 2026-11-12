@@ -355,7 +355,7 @@ final class CaptureFlowTests: XCTestCase {
         try await waitFor(timeout: 60) { !state.isBusy }
         XCTAssertNil(state.errorMessage)
         let side: DetectedPhoto = try XCTUnwrap(state.idCardFront)
-        XCTAssertEqual(side.dpi, CaptureScale.nominalDPI)
+        XCTAssertEqual(side.dpi, CaptureScale.paperDPI(longSidePixels: 600, regionCode: Locale.current.region?.identifier))
         XCTAssertEqual(state.idCardFrontNote, CaptureObjects.cardNotRealSizeNote)
         state.discardIdCard()
     }

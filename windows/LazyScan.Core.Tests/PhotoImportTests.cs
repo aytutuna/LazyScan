@@ -177,7 +177,8 @@ public class PhotoImportTests
         int longSide = 3508, shortSide = (int)Math.Floor(3508 * a4.Width / a4.Height + 0.5);
         Assert.Equal((int)Math.Floor(3508 / a4.Height + 0.5), PhotoImport.WholePhotoDpi(shortSide, longSide));
         Assert.Equal(PhotoImport.WholePhotoDpi(shortSide, longSide), PhotoImport.WholePhotoDpi(longSide, shortSide));
-        Assert.Equal(200, PhotoImport.WholePhotoDpi(4032, 3024));
+        Assert.Equal(367, PhotoImport.WholePhotoDpi(4032, 3024, "US"));
+        Assert.Equal(345, PhotoImport.WholePhotoDpi(4032, 3024, "DE"));
         Assert.Equal(200, PhotoImport.WholePhotoDpi(0, 10));
         // A corrected page takes the resolution of the paper size its shape matched.
         var photo = PhotoScenes.WoodScene();

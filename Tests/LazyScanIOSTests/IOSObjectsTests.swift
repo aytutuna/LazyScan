@@ -691,7 +691,7 @@ final class IOSObjectsTests: XCTestCase {
         try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
         // Taken anyway: at a made-up size, and the side says so.
         let side: DetectedPhoto = try XCTUnwrap(state.idCardFront)
-        XCTAssertEqual(side.dpi, CaptureScale.nominalDPI)
+        XCTAssertEqual(side.dpi, CaptureScale.paperDPI(longSidePixels: 428, regionCode: Locale.current.region?.identifier))
         XCTAssertEqual(state.idCardFrontNote, CaptureObjects.cardNotRealSizeNote)
         state.discardIdCard()
     }

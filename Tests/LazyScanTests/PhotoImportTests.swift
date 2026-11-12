@@ -176,7 +176,8 @@ final class PhotoImportTests: XCTestCase {
                        Int((3508 / Double(a4.height) + 0.5).rounded(.down)))
         XCTAssertEqual(PhotoImport.wholePhotoDPI(width: longSide, height: shortSide),
                        PhotoImport.wholePhotoDPI(width: shortSide, height: longSide))
-        XCTAssertEqual(PhotoImport.wholePhotoDPI(width: 4032, height: 3024), 200)
+        XCTAssertEqual(PhotoImport.wholePhotoDPI(width: 4032, height: 3024, regionCode: "US"), 367)
+        XCTAssertEqual(PhotoImport.wholePhotoDPI(width: 4032, height: 3024, regionCode: "DE"), 345)
         XCTAssertEqual(PhotoImport.wholePhotoDPI(width: 0, height: 10), 200)
         // A corrected page takes the resolution of the paper size its shape matched.
         let photo = PhotoScenes.woodScene()

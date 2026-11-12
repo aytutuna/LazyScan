@@ -40,7 +40,7 @@ public sealed class BlankDetectionStep(BlankPageOptions options) : IPageStep
 
 /// <summary>
 /// Cuts a page taken by a camera out of its photo (<see cref="ScannedPage.Capture"/> not yet measured,
-/// no geometry yet): its real size from <see cref="CaptureScale.Measure(Quad, int, int, CaptureKind, double?)"/>
+/// no geometry yet): its real size from <see cref="CaptureScale.Measure(Quad, int, int, CaptureKind, double?, string?)"/>
 /// (the capture's facts scaled to the pixels at hand, <see cref="CaptureFacts.ScaledTo"/>, when the
 /// photo in memory is the one taken at another size), the page made upright at that size by
 /// <see cref="PerspectiveWarp"/>, the resolution set to the size's and recorded on the capture

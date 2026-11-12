@@ -598,14 +598,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public string IdCardPaperChoiceLabel(IdCardPaper paper) => IdCardPapers.ChoiceLabel(paper, RegionCode, _defaultPrinterPaper);
 
     /// <summary>The user's country or region (two letters), for the paper usual there; null when unknown.</summary>
-    public static string? RegionCode
-    {
-        get
-        {
-            try { return RegionInfo.CurrentRegion.TwoLetterISORegionName; }
-            catch (ArgumentException) { return null; }
-        }
-    }
+    public static string? RegionCode => CaptureScale.UserRegion;
 
     /// <summary>The start screen's task cards, with what the connected scanner (and, for Copy, the printers) can do.</summary>
     public IReadOnlyList<TaskCardItem> TaskCards =>

@@ -156,19 +156,22 @@ final class CaptureScaleTests: XCTestCase {
         XCTAssertEqual(capped.pixelHeight, rounded(2.125 * 1200))
     }
 
-    func testAPageThatMatchesNothingGetsTheNominalResolution() {
-        // 3:2 is no paper size: 200 dpi, the page keeps its pixels, its size is made up.
+    func testAPageThatMatchesNothingIsScaledToThePaperLength() {
+        // 3:2 is no paper size: the page keeps its pixels, 11 in long at Letter's, its size is made up.
         let odd = rect(50, 50, 900, 600)
-        let scale = CaptureScale.measure(odd, imageWidth: 1000, imageHeight: 800, kind: .document)
+        let scale = CaptureScale.measure(odd, imageWidth: 1000, imageHeight: 800, kind: .document, regionCode: "US")
         XCTAssertEqual(scale.basis, .nominal)
         XCTAssertNil(scale.size)
         XCTAssertNil(scale.paper)
         XCTAssertFalse(scale.isRealSize)
-        XCTAssertEqual(scale.dpi, CaptureScale.nominalDPI)
+        XCTAssertEqual(scale.dpi, 82)
         XCTAssertEqual(scale.pixelWidth, 900)
         XCTAssertEqual(scale.pixelHeight, 600)
-        XCTAssertEqual(scale.widthInches, 4.5)
-        XCTAssertEqual(scale.heightInches, 3.0)
+        XCTAssertEqual(scale.widthInches, 900.0 / 82, accuracy: 1e-9)
+        XCTAssertEqual(scale.heightInches, 600.0 / 82, accuracy: 1e-9)
+        // A4 is longer than Letter: fewer pixels per inch.
+        let a4Region = CaptureScale.measure(odd, imageWidth: 1000, imageHeight: 800, kind: .document, regionCode: "DE")
+        XCTAssertEqual(a4Region.dpi, 77)
         // As a photo it is 4 × 6 in.
         let photo = CaptureScale.measure(odd, imageWidth: 1000, imageHeight: 800, kind: .photo)
         XCTAssertEqual(photo.basis, .photoSize)
@@ -244,6 +247,27 @@ final class CaptureScaleTests: XCTestCase {
         for size in CaptureScale.photoSizes { XCTAssertEqual(size.basis, .photoSize) }
     }
 
+    func testBigShotsOfNoKnownShapeAreAboutAsLongAsThePaper() {
+        // A 24 MP square and a 24 MP 6 x 9 print match no sheet: their pixels stay, and the page is
+        // as long as Letter or A4, not 20 to 35 in.
+        let letterLong = 11.0 * 72, a4Long = 11.6929 * 72
+        let square = CaptureScale.snap(widthOverHeight: 1, longSidePixels: 4899, candidates: CaptureScale.papers, regionCode: "US")
+        XCTAssertEqual(square.basis, .nominal)
+        XCTAssertFalse(square.isRealSize)
+        XCTAssertEqual(square.pixelWidth, 4899)
+        XCTAssertEqual(square.heightInches * 72, letterLong, accuracy: 3)
+        let print = CaptureScale.snap(widthOverHeight: 2.0 / 3, longSidePixels: 6000, candidates: CaptureScale.papers, regionCode: "DE")
+        XCTAssertEqual(print.basis, .nominal)
+        XCTAssertFalse(print.isRealSize)
+        XCTAssertEqual(print.pixelHeight, 6000)
+        XCTAssertEqual(print.heightInches * 72, a4Long, accuracy: 3)
+        let whole = CaptureScale.fromAspect(pixelWidth: 4000, pixelHeight: 6000, kind: .document, regionCode: "US")
+        XCTAssertFalse(whole.isRealSize)
+        XCTAssertEqual(whole.heightInches * 72, letterLong, accuracy: 3)
+        // No candidates to match (a book's whole spread): the nominal resolution.
+        XCTAssertEqual(CaptureScale.snap(widthOverHeight: 1.3, longSidePixels: 2600, candidates: []).dpi, CaptureScale.nominalDPI)
+    }
+
     func testFromAspectKeepsThePixelsOfAnUprightPage() {
         // A whole A4 page, 2480 × 3508: 300 dpi.
         let a4 = CaptureScale.fromAspect(pixelWidth: 2480, pixelHeight: 3508, kind: .document)
@@ -257,11 +281,11 @@ final class CaptureScaleTests: XCTestCase {
         let card = CaptureScale.fromAspect(pixelWidth: 4044, pixelHeight: 2550, kind: .idCard)
         XCTAssertEqual(card.size, "idCard")
         XCTAssertEqual(card.dpi, 1200)
-        let odd = CaptureScale.fromAspect(pixelWidth: 1000, pixelHeight: 1000, kind: .document)
+        let odd = CaptureScale.fromAspect(pixelWidth: 1000, pixelHeight: 1000, kind: .document, regionCode: "US")
         XCTAssertEqual(odd.basis, .nominal)
-        XCTAssertEqual(odd.dpi, 200)
-        XCTAssertEqual(odd.widthInches, 5.0)
-        XCTAssertEqual(odd.heightInches, 5.0)
+        XCTAssertEqual(odd.dpi, 91)
+        XCTAssertEqual(odd.widthInches, 1000.0 / 91, accuracy: 1e-9)
+        XCTAssertEqual(odd.heightInches, 1000.0 / 91, accuracy: 1e-9)
         let receipt = CaptureScale.fromAspect(pixelWidth: 630, pixelHeight: 3000, kind: .receipt)
         XCTAssertEqual(receipt.size, "receipt80mm")
         XCTAssertEqual(receipt.dpi, 200)

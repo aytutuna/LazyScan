@@ -154,20 +154,22 @@ public class CaptureScaleTests
     }
 
     [Fact]
-    public void APageThatMatchesNothingGetsTheNominalResolution()
+    public void APageThatMatchesNothingIsScaledToThePaperLength()
     {
-        // 3:2 is no paper size: 200 dpi, the page keeps its pixels, its size is made up.
+        // 3:2 is no paper size: the page keeps its pixels, 11 in long at Letter's, its size is made up.
         var odd = Rect(50, 50, 900, 600);
-        var scale = CaptureScale.Measure(odd, 1000, 800, CaptureKind.Document);
+        var scale = CaptureScale.Measure(odd, 1000, 800, CaptureKind.Document, regionCode: "US");
         Assert.Equal(CaptureScaleBasis.Nominal, scale.Basis);
         Assert.Null(scale.Size);
         Assert.Null(scale.Paper);
         Assert.False(scale.IsRealSize);
-        Assert.Equal(CaptureScale.NominalDpi, scale.Dpi);
+        Assert.Equal(82, scale.Dpi);
         Assert.Equal(900, scale.PixelWidth);
         Assert.Equal(600, scale.PixelHeight);
-        Assert.Equal(4.5, scale.WidthInches);
-        Assert.Equal(3.0, scale.HeightInches);
+        Assert.Equal(900.0 / 82, scale.WidthInches, 9);
+        Assert.Equal(600.0 / 82, scale.HeightInches, 9);
+        // A4 is longer than Letter: fewer pixels per inch.
+        Assert.Equal(77, CaptureScale.Measure(odd, 1000, 800, CaptureKind.Document, regionCode: "DE").Dpi);
         // As a photo it is 4 × 6 in.
         var photo = CaptureScale.Measure(odd, 1000, 800, CaptureKind.Photo);
         Assert.Equal(CaptureScaleBasis.PhotoSize, photo.Basis);
@@ -243,6 +245,29 @@ public class CaptureScaleTests
     }
 
     [Fact]
+    public void BigShotsOfNoKnownShapeAreAboutAsLongAsThePaper()
+    {
+        // A 24 MP square and a 24 MP 6 x 9 print match no sheet: their pixels stay, and the page is
+        // as long as Letter or A4, not 20 to 35 in.
+        double letterLong = 11.0 * 72, a4Long = 11.6929 * 72;
+        var square = CaptureScale.Snap(1, 4899, CaptureScale.Papers, "US");
+        Assert.Equal(CaptureScaleBasis.Nominal, square.Basis);
+        Assert.False(square.IsRealSize);
+        Assert.Equal(4899, square.PixelWidth);
+        Assert.InRange(square.HeightInches * 72, letterLong - 3, letterLong + 3);
+        var print = CaptureScale.Snap(2.0 / 3, 6000, CaptureScale.Papers, "DE");
+        Assert.Equal(CaptureScaleBasis.Nominal, print.Basis);
+        Assert.False(print.IsRealSize);
+        Assert.Equal(6000, print.PixelHeight);
+        Assert.InRange(print.HeightInches * 72, a4Long - 3, a4Long + 3);
+        var whole = CaptureScale.FromAspect(4000, 6000, CaptureKind.Document, "US");
+        Assert.False(whole.IsRealSize);
+        Assert.InRange(whole.HeightInches * 72, letterLong - 3, letterLong + 3);
+        // No candidates to match (a book's whole spread): the nominal resolution.
+        Assert.Equal(CaptureScale.NominalDpi, CaptureScale.Snap(1.3, 2600, []).Dpi);
+    }
+
+    [Fact]
     public void FromAspectKeepsThePixelsOfAnUprightPage()
     {
         // Apple's scanner's A4 page, 2480 × 3508: 300 dpi.
@@ -252,8 +277,10 @@ public class CaptureScaleTests
         // A close-up card keeps its 1200 dpi: its pixels are not touched.
         var card = CaptureScale.FromAspect(4044, 2550, CaptureKind.IdCard);
         Assert.Equal(("idCard", 1200), (card.Size, card.Dpi));
-        var odd = CaptureScale.FromAspect(1000, 1000, CaptureKind.Document);
-        Assert.Equal((CaptureScaleBasis.Nominal, 200, 5.0, 5.0), (odd.Basis, odd.Dpi, odd.WidthInches, odd.HeightInches));
+        var odd = CaptureScale.FromAspect(1000, 1000, CaptureKind.Document, "US");
+        Assert.Equal((CaptureScaleBasis.Nominal, 91), (odd.Basis, odd.Dpi));
+        Assert.Equal(1000.0 / 91, odd.WidthInches, 9);
+        Assert.Equal(1000.0 / 91, odd.HeightInches, 9);
         var receipt = CaptureScale.FromAspect(630, 3000, CaptureKind.Receipt);
         Assert.Equal(("receipt80mm", 200), (receipt.Size, receipt.Dpi));
         Assert.Equal(1, CaptureScale.FromAspect(0, 0, CaptureKind.Document).PixelWidth);

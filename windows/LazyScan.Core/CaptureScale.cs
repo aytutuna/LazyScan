@@ -27,7 +27,7 @@ public enum CaptureKind
 /// </summary>
 public enum CaptureScaleBasis
 {
-    /// <summary>No known size matched: the page is taken at <see cref="CaptureScale.NominalDpi"/>, so its size is made up.</summary>
+    /// <summary>No known size matched: the page keeps its pixels at <see cref="CaptureScale.PaperDpi"/> (<see cref="CaptureScale.NominalDpi"/> with no sizes to match), so its size is made up.</summary>
     Nominal,
     /// <summary>A paper size (<see cref="PaperSize"/>), the ID-1 card included.</summary>
     Paper,
@@ -50,7 +50,7 @@ public sealed record CaptureSize(string Id, CaptureScaleBasis Basis, double Shor
 }
 
 /// <summary>
-/// A captured page's real size (<see cref="CaptureScale.Measure(Quad, int, int, CaptureKind, double?)"/>):
+/// A captured page's real size (<see cref="CaptureScale.Measure(Quad, int, int, CaptureKind, double?, string?)"/>):
 /// what it snapped to, the resolution, and the pixel size the page is made at.
 /// </summary>
 /// <param name="Basis">Where the size comes from.</param>
@@ -170,7 +170,8 @@ public sealed record CaptureFacts(Quad Quad, int SourceWidth, int SourceHeight)
 /// A match fixes the resolution: the whole number of pixels per inch the camera resolved along the
 /// page's long side (its short side for a receipt), at most <see cref="MaxDpi"/>, and the page is
 /// made at that size: never larger than the photo shows it, so nothing is upsampled. A page that
-/// matches nothing keeps its pixels at <see cref="NominalDpi"/>, and its size is made up
+/// matches nothing keeps its pixels, with the resolution that makes its long side the long side of the
+/// usual paper in the user's region (<see cref="PaperDpi"/>); its size is made up
 /// (<see cref="CaptureScaleResult.IsRealSize"/> is false), so real-size printing must fit it to the
 /// paper instead.
 /// </summary>
@@ -178,12 +179,35 @@ public static class CaptureScale
 {
     /// <summary>A shape matches a size when the long-over-short ratios differ by at most this share (3 %).</summary>
     public const double Tolerance = PerspectiveCorrector.PaperAspectTolerance;
-    /// <summary>The resolution of a page that matches no known size.</summary>
+    /// <summary>The resolution of a page with no size to match (a book's whole spread, a page without facts).</summary>
     public const int NominalDpi = 200;
     /// <summary>A snapped page is made at no more than this resolution (a close-up of a card is made smaller).</summary>
     public const int MaxDpi = 1200;
     /// <summary>The diagonal of a 36 × 24 mm frame, which "35 mm equivalent" focal lengths refer to.</summary>
     public const double FullFrameDiagonalMm = 43.266615305567875;
+
+    /// <summary>The user's country or region (two letters); null when unknown.</summary>
+    public static string? UserRegion
+    {
+        get
+        {
+            try { return System.Globalization.RegionInfo.CurrentRegion.TwoLetterISORegionName; }
+            catch (ArgumentException) { return null; }
+        }
+    }
+
+    /// <summary>
+    /// The resolution that makes <paramref name="longSidePixels"/> the long side of the usual paper in
+    /// <paramref name="regionCode"/> (null: <see cref="UserRegion"/>; Letter or A4), rounded and kept within
+    /// <see cref="PhotoImport.MinDpi"/> to <see cref="PhotoImport.MaxDpi"/> as <see cref="PhotoImport.PageDpi"/>
+    /// does: the size given to a page that matches no known size.
+    /// </summary>
+    public static int PaperDpi(double longSidePixels, string? regionCode = null)
+    {
+        var paper = PaperSizes.DefaultForRegion(regionCode ?? UserRegion);
+        if (PaperSizes.Inches(paper) is not { } inches) return NominalDpi;
+        return PhotoImport.PageDpi(longSidePixels / Math.Max(inches.Width, inches.Height));
+    }
 
     private const double MmPerInch = 25.4;
 
@@ -286,8 +310,9 @@ public static class CaptureScale
     /// The real size of the page <paramref name="quad"/> outlines in a <paramref name="imageWidth"/> ×
     /// <paramref name="imageHeight"/> photo, among the sizes for <paramref name="kind"/>.
     /// </summary>
-    public static CaptureScaleResult Measure(Quad quad, int imageWidth, int imageHeight, CaptureKind kind, double? focalLength = null) =>
-        Measure(quad, imageWidth, imageHeight, Candidates(kind), focalLength);
+    public static CaptureScaleResult Measure(Quad quad, int imageWidth, int imageHeight, CaptureKind kind, double? focalLength = null,
+                                             string? regionCode = null) =>
+        Measure(quad, imageWidth, imageHeight, Candidates(kind), focalLength, regionCode);
 
     /// <summary>
     /// The real size of the page <paramref name="quad"/> outlines, among <paramref name="candidates"/>:
@@ -296,7 +321,7 @@ public static class CaptureScale
     /// of the photo's diagonal and <see cref="PerspectiveCorrector.MaxOutputSide"/>), then <see cref="Snap"/>.
     /// </summary>
     public static CaptureScaleResult Measure(Quad quad, int imageWidth, int imageHeight, IReadOnlyList<CaptureSize> candidates,
-                                             double? focalLength = null)
+                                             double? focalLength = null, string? regionCode = null)
     {
         var estimate = Aspect(quad, imageWidth, imageHeight, focalLength);
         double w0 = Math.Max(quad.EdgeLength(0), quad.EdgeLength(2));
@@ -304,7 +329,7 @@ public static class CaptureScale
         double longSide = Math.Max(w0, h0);
         double photoDiagonal = Math.Sqrt((double)imageWidth * imageWidth + (double)imageHeight * imageHeight);
         longSide = Math.Min(longSide, Math.Min(PerspectiveCorrector.MaxPhotoDiagonals * photoDiagonal, PerspectiveCorrector.MaxOutputSide));
-        return Snap(estimate.WidthOverHeight, longSide, candidates);
+        return Snap(estimate.WidthOverHeight, longSide, candidates, regionCode);
     }
 
     /// <summary>
@@ -313,10 +338,11 @@ public static class CaptureScale
     /// (<see cref="Match"/>). Snapped to a fixed size: the resolution is the whole number of pixels per
     /// inch along the long side, 1 to <see cref="MaxDpi"/>, and the page is the size's inches at that
     /// resolution. Snapped to a receipt width: the same along the short side, the length the page's own.
-    /// Nothing matched: <see cref="NominalDpi"/>, the page keeps its pixels. Landscape when the shape is
-    /// at least 1.
+    /// Nothing matched: the page keeps its pixels at <see cref="PaperDpi"/>, or at <see cref="NominalDpi"/>
+    /// when there are no <paramref name="candidates"/> to match. Landscape when the shape is at least 1.
     /// </summary>
-    public static CaptureScaleResult Snap(double widthOverHeight, double longSidePixels, IReadOnlyList<CaptureSize> candidates)
+    public static CaptureScaleResult Snap(double widthOverHeight, double longSidePixels, IReadOnlyList<CaptureSize> candidates,
+                                          string? regionCode = null)
     {
         double aspect = widthOverHeight > 0 && double.IsFinite(widthOverHeight) ? widthOverHeight : 1;
         bool landscape = aspect >= 1;
@@ -327,8 +353,9 @@ public static class CaptureScale
         {
             int longPx = Math.Max(1, RoundHalfUp(longSide));
             int shortPx = Math.Max(1, RoundHalfUp(longSide / longOverShort));
-            return Oriented(CaptureScaleBasis.Nominal, null, NominalDpi, longPx, shortPx,
-                            (double)longPx / NominalDpi, (double)shortPx / NominalDpi, landscape);
+            int nominalDpi = candidates.Count == 0 ? NominalDpi : PaperDpi(longSide, regionCode);
+            return Oriented(CaptureScaleBasis.Nominal, null, nominalDpi, longPx, shortPx,
+                            (double)longPx / nominalDpi, (double)shortPx / nominalDpi, landscape);
         }
         double shortInches = size.ShortInches;
         double longInches;
@@ -353,9 +380,9 @@ public static class CaptureScale
     /// The real size of a page already upright at <paramref name="pixelWidth"/> × <paramref name="pixelHeight"/>
     /// (Apple's document scanner gives no corners): its shape matched as <see cref="Snap"/> does, the
     /// resolution the nearest whole number of pixels per inch of the size (the pixels are kept, so it
-    /// is not limited to <see cref="MaxDpi"/>); <see cref="NominalDpi"/> when nothing matches.
+    /// is not limited to <see cref="MaxDpi"/>); <see cref="PaperDpi"/> of the long side when nothing matches.
     /// </summary>
-    public static CaptureScaleResult FromAspect(int pixelWidth, int pixelHeight, CaptureKind kind)
+    public static CaptureScaleResult FromAspect(int pixelWidth, int pixelHeight, CaptureKind kind, string? regionCode = null)
     {
         int w = Math.Max(1, pixelWidth), h = Math.Max(1, pixelHeight);
         bool landscape = w >= h;
@@ -364,7 +391,8 @@ public static class CaptureScale
         var size = Match(longOverShort, Candidates(kind));
         if (size is null)
         {
-            return new CaptureScaleResult(CaptureScaleBasis.Nominal, null, NominalDpi, w, h, (double)w / NominalDpi, (double)h / NominalDpi);
+            int nominalDpi = PaperDpi(longPx, regionCode);
+            return new CaptureScaleResult(CaptureScaleBasis.Nominal, null, nominalDpi, w, h, (double)w / nominalDpi, (double)h / nominalDpi);
         }
         double shortInches = size.ShortInches;
         double longInches = size.LongInches ?? shortInches * longOverShort;

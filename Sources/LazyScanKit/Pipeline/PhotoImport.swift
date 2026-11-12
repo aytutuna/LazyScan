@@ -316,12 +316,16 @@ public enum PhotoImport {
         return min(max(Int((d + 0.5).rounded(.down)), minDPI), maxDPI)
     }
 
-    /// The resolution of a whole photo taken as the page: from a paper size its shape matches, else `nominalDPI`.
-    public static func wholePhotoDPI(width: Int, height: Int) -> Int {
+    /// The resolution of a whole photo taken as the page: from a paper size its shape matches, else
+    /// the one that makes its long side the usual paper's (`CaptureScale.paperDPI`).
+    public static func wholePhotoDPI(width: Int, height: Int,
+                                     regionCode: String? = Locale.current.region?.identifier) -> Int {
         guard width > 0, height > 0 else { return nominalDPI }
         let longSide = Double(max(width, height)), shortSide = Double(min(width, height))
         guard let paper = PerspectiveCorrector.matchPaper(longSide / shortSide, sizes: PerspectiveCorrector.documentSizes),
-              let inches = PaperSizes.inches(paper.size) else { return nominalDPI }
+              let inches = PaperSizes.inches(paper.size) else {
+            return CaptureScale.paperDPI(longSidePixels: longSide, regionCode: regionCode)
+        }
         return pageDPI(longSide / max(Double(inches.width), Double(inches.height)))
     }
 

@@ -21,7 +21,7 @@ public enum CaptureKind: String, CaseIterable, Codable, Sendable {
 /// Where a captured page's real size comes from. Stored by its raw value; the first is the default
 /// and the fallback. Twin of C# `CaptureScaleBasis`.
 public enum CaptureScaleBasis: String, CaseIterable, Codable, Sendable {
-    /// No known size matched: the page is taken at `CaptureScale.nominalDPI`, so its size is made up.
+    /// No known size matched: the page keeps its pixels at `CaptureScale.paperDPI` (`nominalDPI` with no sizes to match), so its size is made up.
     case nominal
     /// A paper size (`PaperSize`), the ID-1 card included.
     case paper
@@ -206,13 +206,14 @@ public struct CaptureFacts: Equatable, Codable, Sendable {
 /// (the first on a tie). A match fixes the resolution: the whole number of pixels per inch the camera
 /// resolved along the page's long side (its short side for a receipt), at most `maxDPI`, and the page
 /// is made at that size: never larger than the photo shows it, so nothing is upsampled. A page that
-/// matches nothing keeps its pixels at `nominalDPI`, and its size is made up
-/// (`CaptureScaleResult.isRealSize` is false), so real-size printing must fit it to the paper instead.
+/// matches nothing keeps its pixels, with the resolution that makes its long side the long side of the
+/// usual paper in the user's region (`paperDPI`); its size is made up (`CaptureScaleResult.isRealSize`
+/// is false), so real-size printing must fit it to the paper instead.
 /// Twin of C# `CaptureScale`.
 public enum CaptureScale {
     /// A shape matches a size when the long-over-short ratios differ by at most this share (3 %).
     public static let tolerance: Double = PerspectiveCorrector.paperAspectTolerance
-    /// The resolution of a page that matches no known size.
+    /// The resolution of a page with no size to match (a book's whole spread, a page without facts).
     public static let nominalDPI = 200
     /// A snapped page is made at no more than this resolution (a close-up of a card is made smaller).
     public static let maxDPI = 1200
@@ -220,6 +221,14 @@ public enum CaptureScale {
     public static let fullFrameDiagonalMm: Double = 43.266615305567875
 
     private static let mmPerInch: Double = 25.4
+
+    /// The resolution that makes `longSidePixels` the long side of the usual paper in `regionCode`
+    /// (Letter or A4), rounded and kept within `PhotoImport.minDPI` to `PhotoImport.maxDPI` as
+    /// `PhotoImport.pageDPI` does: the size given to a page that matches no known size.
+    public static func paperDPI(longSidePixels: Double, regionCode: String?) -> Int {
+        guard let inches = PaperSizes.inches(PaperSizes.defaultForRegion(regionCode)) else { return nominalDPI }
+        return PhotoImport.pageDPI(longSidePixels / Double(max(inches.width, inches.height)))
+    }
 
     /// The paper sizes a document page snaps to (`PerspectiveCorrector.documentSizes`: A4 stands for
     /// every √2 sheet). A shape near none of them, such as half letter, keeps its own size.
@@ -307,9 +316,10 @@ public enum CaptureScale {
     /// The real size of the page `quad` outlines in an `imageWidth` × `imageHeight` photo, among the
     /// sizes for `kind`.
     public static func measure(_ quad: Quad, imageWidth: Int, imageHeight: Int, kind: CaptureKind,
-                               focalLength: Double? = nil) -> CaptureScaleResult {
+                               focalLength: Double? = nil,
+                               regionCode: String? = Locale.current.region?.identifier) -> CaptureScaleResult {
         measure(quad, imageWidth: imageWidth, imageHeight: imageHeight, candidates: candidates(kind),
-                focalLength: focalLength)
+                focalLength: focalLength, regionCode: regionCode)
     }
 
     /// The real size of the page `quad` outlines, among `candidates`: its shape (`aspect`) and the
@@ -317,7 +327,8 @@ public enum CaptureScale {
     /// within `PerspectiveCorrector.maxPhotoDiagonals` of the photo's diagonal and
     /// `PerspectiveCorrector.maxOutputSide`), then `snap`.
     public static func measure(_ quad: Quad, imageWidth: Int, imageHeight: Int, candidates: [CaptureSize],
-                               focalLength: Double? = nil) -> CaptureScaleResult {
+                               focalLength: Double? = nil,
+                               regionCode: String? = Locale.current.region?.identifier) -> CaptureScaleResult {
         let estimate = aspect(quad, imageWidth: imageWidth, imageHeight: imageHeight, focalLength: focalLength)
         let w0: Double = max(quad.edgeLength(0), quad.edgeLength(2))
         let h0: Double = max(quad.edgeLength(1), quad.edgeLength(3))
@@ -327,16 +338,18 @@ public enum CaptureScale {
         let limit: Double = min(PerspectiveCorrector.maxPhotoDiagonals * photoDiagonal,
                                 Double(PerspectiveCorrector.maxOutputSide))
         longSide = min(longSide, limit)
-        return snap(widthOverHeight: estimate.widthOverHeight, longSidePixels: longSide, candidates: candidates)
+        return snap(widthOverHeight: estimate.widthOverHeight, longSidePixels: longSide, candidates: candidates,
+                    regionCode: regionCode)
     }
 
     /// The real size of a page of shape `widthOverHeight` whose long side the camera resolved in
     /// `longSidePixels` pixels, among `candidates` (`match`). Snapped to a fixed size: the resolution is
     /// the whole number of pixels per inch along the long side, 1 to `maxDPI`, and the page is the
     /// size's inches at that resolution. Snapped to a receipt width: the same along the short side, the
-    /// length the page's own. Nothing matched: `nominalDPI`, the page keeps its pixels. Landscape when
-    /// the shape is at least 1.
-    public static func snap(widthOverHeight: Double, longSidePixels: Double, candidates: [CaptureSize]) -> CaptureScaleResult {
+    /// length the page's own. Nothing matched: the page keeps its pixels at `paperDPI`, or at `nominalDPI`
+    /// when there are no `candidates` to match. Landscape when the shape is at least 1.
+    public static func snap(widthOverHeight: Double, longSidePixels: Double, candidates: [CaptureSize],
+                            regionCode: String? = Locale.current.region?.identifier) -> CaptureScaleResult {
         let aspect: Double = widthOverHeight > 0 && widthOverHeight.isFinite ? widthOverHeight : 1
         let landscape = aspect >= 1
         let longOverShort: Double = landscape ? aspect : 1 / aspect
@@ -344,9 +357,9 @@ public enum CaptureScale {
         guard let size = match(longOverShort, candidates: candidates) else {
             let longPx = max(1, roundHalfUp(longSide))
             let shortPx = max(1, roundHalfUp(longSide / longOverShort))
-            let nominal = Double(nominalDPI)
-            return oriented(.nominal, nil, nominalDPI, longPx, shortPx,
-                            Double(longPx) / nominal, Double(shortPx) / nominal, landscape)
+            let dpi = candidates.isEmpty ? nominalDPI : paperDPI(longSidePixels: longSide, regionCode: regionCode)
+            return oriented(.nominal, nil, dpi, longPx, shortPx,
+                            Double(longPx) / Double(dpi), Double(shortPx) / Double(dpi), landscape)
         }
         let shortInches = size.shortInches
         let longInches: Double
@@ -368,16 +381,17 @@ public enum CaptureScale {
     /// The real size of a page already upright at `pixelWidth` × `pixelHeight` (Apple's document
     /// scanner gives no corners): its shape matched as `snap` does, the resolution the nearest whole
     /// number of pixels per inch of the size (the pixels are kept, so it is not limited to `maxDPI`);
-    /// `nominalDPI` when nothing matches.
-    public static func fromAspect(pixelWidth: Int, pixelHeight: Int, kind: CaptureKind) -> CaptureScaleResult {
+    /// `paperDPI` of the long side when nothing matches.
+    public static func fromAspect(pixelWidth: Int, pixelHeight: Int, kind: CaptureKind,
+                                  regionCode: String? = Locale.current.region?.identifier) -> CaptureScaleResult {
         let w = max(1, pixelWidth), h = max(1, pixelHeight)
         let landscape = w >= h
         let longPx = Double(max(w, h)), shortPx = Double(min(w, h))
         let longOverShort: Double = longPx / shortPx
         guard let size = match(longOverShort, candidates: candidates(kind)) else {
-            let nominal = Double(nominalDPI)
-            return CaptureScaleResult(basis: .nominal, size: nil, dpi: nominalDPI, pixelWidth: w, pixelHeight: h,
-                                      widthInches: Double(w) / nominal, heightInches: Double(h) / nominal)
+            let dpi = paperDPI(longSidePixels: longPx, regionCode: regionCode)
+            return CaptureScaleResult(basis: .nominal, size: nil, dpi: dpi, pixelWidth: w, pixelHeight: h,
+                                      widthInches: Double(w) / Double(dpi), heightInches: Double(h) / Double(dpi))
         }
         let shortInches = size.shortInches
         let longInches: Double = size.longInches ?? shortInches * longOverShort

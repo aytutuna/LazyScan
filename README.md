@@ -111,7 +111,7 @@ scanners** — including the Epson Perfection V39 II.
   page is cut out with its perspective corrected and cleaned up like a scan. When the page is not
   found clearly, a corner editor (with a magnifier) asks you to place the corners, or to use the
   whole photo, or to skip it. The page gets the resolution of the paper size its shape matches (A4,
-  Letter, Legal, ID-1), else 200 dpi, is labelled **Photo** in the page strip, and one click shows
+  Letter, Legal, ID-1), else the one that makes its long side as long as Letter's or A4's, is labelled **Photo** in the page strip, and one click shows
   it as photographed. The photo files themselves are only read, never changed or moved. On Windows,
   HEIC photos need Microsoft's free HEIF Image Extensions. On the Mac, **File > Import from iPhone or
   iPad** takes a photo or a scanned document from a nearby iPhone or iPad the same way (Continuity

@@ -419,8 +419,8 @@ once, so **Cancel** keeps the pages already added. With **Collect pages** off a 
 adjustments and color mode, as a scan saved at once does, and the pages are saved together once the
 last photo is in; **Cancel** then puts the pages imported so far in the queue, as a cancelled save
 does. Its resolution is the one its shape gives when it
-matches a paper size (A4, Letter, Legal, ID-1 within 3 %: the page then saves at that size), else
-200 dpi. The strip labels the page **Photo**, and its swap button shows it **as photographed** (the
+matches a paper size (A4, Letter, Legal, ID-1 within 3 %: the page then saves at that size), else the
+one that makes its long side as long as Letter's or A4's. The strip labels the page **Photo**, and its swap button shows it **as photographed** (the
 whole photo, saved that way at the page's resolution) and back. Photos that cannot be read are
 listed in one message at the end; the others are imported. A HEIC photo needs Microsoft's free
 **HEIF Image Extensions** (and **HEVC Video Extensions** for most iPhone photos) from the Microsoft
@@ -448,7 +448,7 @@ page is made more than twice smaller, then sampling it as `PerspectiveCorrector`
 platforms give the same bytes (pinned in `PerspectiveWarpTests`); `CaptureScale` gives a captured
 page its real size by its shape (A4, Letter, Legal, ID-1; receipts 80 or 57 mm wide; 4 × 6, 5 × 7
 and 3.5 × 5 in photos, a 10 × 15 cm print having 4 × 6 in's shape and so reported as 4 × 6 in; within
-3 %), never upsampling and at most 600 dpi, else 200 dpi with the size marked as made up;
+3 %), never upsampling and at most 600 dpi, else the resolution that makes the long side Letter's or A4's with the size marked as made up;
 `MultiQuadPicker` picks receipts, photos, a card or a page out of the outlines found in one shot (an
 outline holding one smaller fitting outline is one object, such as a print and its picture; one
 holding several separate ones that cover at least 15 % of it, such as an album page or a sheet

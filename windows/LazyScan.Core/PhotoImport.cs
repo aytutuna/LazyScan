@@ -323,15 +323,18 @@ public static class PhotoImport
             ? Math.Clamp((int)Math.Floor(d + 0.5), MinDpi, MaxDpi)
             : NominalDpi;
 
-    /// <summary>The resolution of a whole photo taken as the page: from a paper size its shape matches, else <see cref="NominalDpi"/>.</summary>
-    public static int WholePhotoDpi(int width, int height)
+    /// <summary>
+    /// The resolution of a whole photo taken as the page: from a paper size its shape matches, else the one
+    /// that makes its long side the usual paper's (<see cref="CaptureScale.PaperDpi"/>).
+    /// </summary>
+    public static int WholePhotoDpi(int width, int height, string? regionCode = null)
     {
         if (width <= 0 || height <= 0) return NominalDpi;
         double longSide = Math.Max(width, height), shortSide = Math.Min(width, height);
         if (PerspectiveCorrector.MatchPaper(longSide / shortSide, sizes: PerspectiveCorrector.DocumentSizes) is not { } paper
             || PaperSizes.Inches(paper.Size) is not { } inches)
         {
-            return NominalDpi;
+            return CaptureScale.PaperDpi(longSide, regionCode);
         }
         return PageDpi(longSide / Math.Max(inches.Width, inches.Height));
     }
