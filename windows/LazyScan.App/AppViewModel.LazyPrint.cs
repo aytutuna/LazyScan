@@ -5,7 +5,7 @@ namespace LazyScan.App;
 
 /// <summary>
 /// Lazy Print for what is not saved yet: the queue and the ID card review. The pages are
-/// written as a PDF in a folder of the temp directory and that file is opened in Lazy Print, which keeps
+/// written as a PDF in a Print folder inside the default save folder and that file is opened in Lazy Print, which keeps
 /// the path and reads the file again when it prints, so it stays after the app ends; a day later the next
 /// hand-off deletes it. Twin of the Mac's AppState+LazyPrint.swift.
 /// </summary>
@@ -97,7 +97,8 @@ public sealed partial class AppViewModel
         return NamingTemplate.UniquePath(folder, name, "pdf");
     }
 
-    private static string HandoffFolder => Path.Combine(Path.GetTempPath(), "LazyScan-print");
+    // Outside AppData: a packaged app's writes there can be redirected where Lazy Print cannot read them.
+    private static string HandoffFolder => Path.Combine(ScanSettings.DefaultDestinationPath, "Print");
 
     /// <summary>Deletes the hand-off files that are a day old; run at launch and before each hand-off.</summary>
     private static void SweepHandoffs()
