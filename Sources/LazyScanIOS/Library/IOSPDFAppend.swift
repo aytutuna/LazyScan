@@ -44,7 +44,7 @@ public enum IOSPDFAppend {
     /// with Add Pages and Cancel. Nothing shown to ask over answers no.
     @MainActor
     public static func confirm(_ question: String) async -> Bool {
-        guard let top: UIViewController = IOSPasswordPrompt.topViewController() else { return false }
+        guard let top: UIViewController = await IOSPasswordPrompt.settledTopViewController() else { return false }
         var details: String = question
         let ending: String = "\n\n" + PDFAppender.confirmQuestion
         if details.hasSuffix(ending) { details.removeLast(ending.count) }
@@ -60,6 +60,9 @@ public enum IOSPDFAppend {
                 answer.give(true)
             })
             top.present(alert, animated: true, completion: nil)
+            if alert.presentingViewController == nil {
+                answer.give(false)
+            }
         }
     }
 }

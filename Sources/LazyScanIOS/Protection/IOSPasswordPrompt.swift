@@ -140,7 +140,13 @@ public final class IOSPasswordPrompt {
 
     /// The sheet over the view controller on top, kept up until Save or Cancel (a swipe does not close it).
     static func presentSheet(_ form: IOSPasswordForm, finish: @escaping @MainActor (Bool) -> Void) {
-        guard let top = IOSPasswordPrompt.topViewController() else {
+        Task { @MainActor in
+            await IOSPasswordPrompt.showSheet(form, finish: finish)
+        }
+    }
+
+    private static func showSheet(_ form: IOSPasswordForm, finish: @escaping @MainActor (Bool) -> Void) async {
+        guard let top = await IOSPasswordPrompt.settledTopViewController() else {
             finish(false)
             return
         }
@@ -160,6 +166,22 @@ public final class IOSPasswordPrompt {
         controller.rootView = PasswordSheetView(form: form, onSave: save, onCancel: cancel)
         controller.isModalInPresentation = true
         top.present(controller, animated: true, completion: nil)
+        if controller.presentingViewController == nil {
+            form.clear()
+            finish(false)
+        }
+    }
+
+    /// The top view controller once a cover that is closing has gone, since UIKit drops a presentation over it.
+    static func settledTopViewController() async -> UIViewController? {
+        var top: UIViewController? = topViewController()
+        var waited: Int = 0
+        while let current = top, current.isBeingDismissed, waited < 20 {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            waited += 1
+            top = topViewController()
+        }
+        return top
     }
 
     /// The view controller shown on top of the key window: the root's, or the last one it presented.

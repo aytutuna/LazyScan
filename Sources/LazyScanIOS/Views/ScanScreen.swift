@@ -234,7 +234,7 @@ struct ScanScreen: View {
                 showReview(!empty, as: .copy)
                 if empty && savesAfterPrint {
                     savesAfterPrint = false
-                    saveNow(emails: emailsAfterPrint)
+                    saveAfterCoverCloses()
                 }
             }
             .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
@@ -1259,6 +1259,15 @@ struct ScanScreen: View {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
             printThenSave(steps)
+        }
+    }
+
+    /// The copy cover is closing: a password sheet presented over it would be dropped, so the save waits.
+    private func saveAfterCoverCloses() {
+        let emails: Bool = emailsAfterPrint
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            saveNow(emails: emails)
         }
     }
 
