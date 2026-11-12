@@ -1605,7 +1605,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Width="208" Margin="6">
-                                                <Border x:Name="Card" Style="{StaticResource CardStyle}">
+                                                <Border x:Name="Card" Style="{StaticResource CardStyle}" AutomationProperties.Name="{Binding CardName}">
                                                     <StackPanel>
                                                         <Border x:Name="Well" Style="{StaticResource ImageWellStyle}" Height="160">
                                                             <Viewbox StretchDirection="DownOnly" Margin="5">
@@ -1620,13 +1620,14 @@
                                                         <DockPanel Margin="0,8,0,0">
                                                             <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
                                                                     Content="&#xE7AD;" ToolTip="{loc:T Rotate}"
-                                                                    AutomationProperties.Name="{loc:T Rotate 90° clockwise}"
+                                                                    AutomationProperties.Name="{Binding RotateName}"
                                                                     Click="ReviewRotate_Click" />
                                                             <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
                                                                     Content="&#xE7A8;" ToolTip="{loc:T Fix crop}"
-                                                                    AutomationProperties.Name="{loc:T Adjust the crop manually}"
+                                                                    AutomationProperties.Name="{Binding CropName}"
                                                                     Click="ReviewCrop_Click" />
                                                             <CheckBox Content="{loc:T Keep}" IsChecked="{Binding Included}" Click="ReviewKeep_Click"
+                                                                      AutomationProperties.Name="{Binding KeepName}"
                                                                       VerticalAlignment="Center" />
                                                         </DockPanel>
                                                     </StackPanel>

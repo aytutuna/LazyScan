@@ -1237,6 +1237,10 @@
   "Card corners": {},
   "Photo {0} of {1}": {},
   "Photo {0} of {1}: {2}": {},
+  "Photo {0} of {1}, {2} × {3} px": {},
+  "Keep photo {0}": {},
+  "Fix crop of photo {0}": {},
+  "Rotate photo {0} clockwise": {},
   "Importing photo {0} of {1}…": {},
   "Importing photo…": {},
   "Importing photo {0} of {1}, page {2} of {3}…": {},
@@ -2404,7 +2408,6 @@
   "Fix crop": {
     "note": "Button: correct the automatic crop by hand."
   },
-  "Adjust the crop manually": {},
   "Keep": {
     "note": "Review button: keep this photo or page. Opposite of Scan again."
   },

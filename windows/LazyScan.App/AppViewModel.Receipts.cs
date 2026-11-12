@@ -97,6 +97,7 @@ public sealed partial class AppViewModel
         token.ThrowIfCancellationRequested();
         // Every page's full-resolution scan stays while the review is open, for Fix crop.
         _photoSourceImages = processed.ToDictionary(p => p.Id, p => p.Image);
+        PhotoItem.Renumber(found);
         DetectedPhotos = new System.Collections.ObjectModel.ObservableCollection<PhotoItem>(found);
         IsReceiptReview = true;
         RecordCaptures(found.Select(item => item.Photo.Id));

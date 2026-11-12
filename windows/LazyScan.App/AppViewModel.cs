@@ -300,6 +300,24 @@ public sealed class PhotoItem : INotifyPropertyChanged
     public DetectedPhoto Photo { get; }
     public BitmapSource Thumbnail { get; }
 
+    // Where the card sits in the review, so its controls can say which photo they belong to.
+    public int Number { get; set; }
+    public int Count { get; set; }
+
+    public static void Renumber(List<PhotoItem> items)
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].Number = i + 1;
+            items[i].Count = items.Count;
+        }
+    }
+
+    public string CardName => Loc.T("Photo {0} of {1}, {2} × {3} px", Number, Count, Photo.Image.Width, Photo.Image.Height);
+    public string KeepName => Loc.T("Keep photo {0}", Number);
+    public string CropName => Loc.T("Fix crop of photo {0}", Number);
+    public string RotateName => Loc.T("Rotate photo {0} clockwise", Number);
+
     public bool Included
     {
         get => Photo.Included;
@@ -1763,6 +1781,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     // Keep every sheet's full-resolution source while the review is open so
                     // manual crop corrections can re-extract from the correct page.
                     _photoSourceImages = processed.ToDictionary(p => p.Id, p => p.Image);
+                    PhotoItem.Renumber(found);
                     DetectedPhotos = new ObservableCollection<PhotoItem>(found);
                     IsReceiptReview = false;
                     RecordCaptures(found.Select(item => item.Photo.Id));
@@ -2383,7 +2402,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             // Rebuild from the CURRENT item so Keep/rotate changes made meanwhile survive.
             var current = DetectedPhotos[index];
-            DetectedPhotos[index] = new PhotoItem(current.Photo.Recropped(edited, r.Item1), r.Item2);
+            DetectedPhotos[index] = new PhotoItem(current.Photo.Recropped(edited, r.Item1), r.Item2) { Number = current.Number, Count = current.Count };
             StatusMessage = Loc.T("Crop updated.");
             NotifyAll();
             return true;
