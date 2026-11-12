@@ -551,6 +551,20 @@
   "{0} document in the cloud folder": {
     "other": "{0} documents in the cloud folder"
   },
+  "Remove {0} document?": {
+    "other": "Remove {0} documents?"
+  },
+  "It will not be sent.": {
+    "other": "They will not be sent."
+  },
+  "It will not be sent to {1}.": {
+    "other": "They will not be sent to {1}."
+  },
+  "{0} document waiting to be sent stays here until you pair it again.": {
+    "other": "{0} documents waiting to be sent stay here until you pair it again."
+  },
+  "Unpair {0}?": {},
+  "Not sent: {0}": {},
   "New document every {0} sheet": {
     "other": "New document every {0} sheets"
   },

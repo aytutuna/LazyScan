@@ -19,6 +19,7 @@ public enum IOSCompanionText {
     public static var refreshButton: String { String(localized: "Refresh") }
     public static var sendAgainButton: String { String(localized: "Send again") }
     public static var removeButton: String { String(localized: "Remove") }
+    public static var removeAllButton: String { String(localized: "Remove all") }
     public static var unpairButton: String { String(localized: "Unpair") }
     public static var notPaired: String { String(localized: "Not paired") }
     public static var checking: String { String(localized: "Checking\u{2026}") }
@@ -59,6 +60,44 @@ public enum IOSCompanionText {
     public static func waiting(_ count: Int) -> String {
         if count == 0 { return nothingWaiting }
         return L10n.plural(count, one: "{0} document waiting to be sent", other: "{0} documents waiting to be sent")
+    }
+
+    /// "Remove 2 documents?"
+    public static func removeAllTitle(_ count: Int) -> String {
+        L10n.plural(count, one: "Remove {0} document?", other: "Remove {0} documents?")
+    }
+
+    /// "They will not be sent to Office PC."; without a computer, "They will not be sent."
+    public static func removeAllMessage(_ count: Int, computer: String?) -> String {
+        guard let computer else {
+            return L10n.plural(count, one: "It will not be sent.", other: "They will not be sent.")
+        }
+        return L10n.plural(count, one: "It will not be sent to {1}.", other: "They will not be sent to {1}.", computer)
+    }
+
+    public static func unpairTitle(_ computer: String) -> String {
+        L10n.t("Unpair {0}?", computer)
+    }
+
+    /// What unpairing does, with the documents that stay when any wait.
+    @MainActor public static func unpairMessage(waiting count: Int) -> String {
+        let line: String = String(localized: "The computer will no longer take documents from this \(UIDevice.current.model).")
+        if count == 0 { return line }
+        let stays: String = L10n.plural(count, one: "{0} document waiting to be sent stays here until you pair it again.",
+                                        other: "{0} documents waiting to be sent stay here until you pair it again.")
+        return line + " " + stays
+    }
+
+    /// "Not sent: The package is larger than the computer accepts."
+    public static func notSent(_ reason: String) -> String {
+        L10n.t("Not sent: {0}", reason)
+    }
+
+    public static var inCloudFolderRow: String { String(localized: "In the cloud folder") }
+
+    /// The swipe action's and the VoiceOver action's name.
+    public static func removeDocument(_ name: String) -> String {
+        L10n.t("Remove {0}", name)
     }
 
     /// "2 documents for a computer no longer paired": queued for it before another was paired.
@@ -218,8 +257,22 @@ public final class IOSCompanionModel: ObservableObject {
         inCloudFolder = IOSSyncFolder.waitingCount(in: folder)
     }
 
+    /// The documents waiting for the paired computer, refused ones included.
+    public var waitingItems: [PhoneOutboxItem] {
+        state.companionWaiting
+    }
+
+    /// How many of them will be sent: the refused ones are not.
+    public var sendableCount: Int {
+        state.companionWaiting.filter { !$0.refused }.count
+    }
+
     public func removeWaiting() {
         state.clearOutbox()
+    }
+
+    public func removeWaiting(id: String) {
+        state.removeWaiting(id: id)
     }
 
     public func removeOtherWaiting() {

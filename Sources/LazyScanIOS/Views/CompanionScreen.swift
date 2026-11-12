@@ -7,16 +7,21 @@ import UniformTypeIdentifiers
 /// My computer, a page of the Options sheet (`IOSCompanionModel`): with no computer paired, Pair with a computer
 /// (the camera looking for its code, the code's text to enter instead, the check code to compare, the
 /// name the computer will list the phone under, Pair); once paired, the computer's name and state
-/// (checked when the screen opens, and on Refresh), Unpair, and the documents waiting to be sent with
-/// Send again and Remove, and those in the cloud folder the computer has not taken yet. For a computer that
+/// (checked when the screen opens, and on Refresh), Unpair (asked first), and the documents waiting to be
+/// sent, each with its date and why it has not gone, removable by a swipe, with Send again and Remove all
+/// (asked first), and those in the cloud folder the computer has not taken yet. For a computer that
 /// handed out a sync key, the cloud folder (Choose…, Clear) documents go to when it cannot be reached. A
 /// computer that no longer knows the phone is shown with pairing offered again. Local Network access that
 /// is off is said with Open Settings. Documents left for a computer no longer paired have a line and a Remove
-/// of their own.
+/// all of their own.
 struct CompanionScreen: View {
     @EnvironmentObject private var state: AppState
     @StateObject private var model: IOSCompanionModel
     @State private var choosingFolder: Bool = false
+    @State private var confirmingUnpair: Bool = false
+    @State private var confirmingRemoveAll: Bool = false
+    @State private var confirmingRemoveOther: Bool = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(state: AppState, browser: IOSCompanionBrowser?) {
         _model = StateObject(wrappedValue: IOSCompanionModel(state: state, browser: browser))
@@ -46,37 +51,28 @@ struct CompanionScreen: View {
                         .accessibilityIdentifier("companion.refresh")
                     }
                     Button(role: .destructive) {
-                        Task { await model.unpair() }
+                        confirmingUnpair = true
                     } label: {
                         Label(IOSCompanionText.unpairButton, systemImage: "xmark.circle")
                     }
                     .disabled(model.isPairing)
                     .accessibilityIdentifier("companion.unpair")
+                    .confirmationDialog(IOSCompanionText.unpairTitle(desktop.name), isPresented: $confirmingUnpair,
+                                        titleVisibility: .visible) {
+                        Button(IOSCompanionText.unpairButton, role: .destructive) {
+                            Task { await model.unpair() }
+                        }
+                        .accessibilityIdentifier("companion.unpair.confirm")
+                    } message: {
+                        Text(IOSCompanionText.unpairMessage(waiting: state.companionOutboxCount))
+                    }
                 }
             }
             if model.needsPairing {
                 pairSection
             }
             if state.companionDesktop != nil || state.companionOutboxCount > 0 {
-                Section {
-                    Text(IOSCompanionText.waiting(state.companionOutboxCount))
-                        .accessibilityIdentifier("companion.outbox")
-                    if model.inCloudFolder > 0 {
-                        Text(IOSCompanionText.inCloudFolder(model.inCloudFolder))
-                            .accessibilityIdentifier("companion.inCloudFolder")
-                    }
-                    if state.companionOutboxCount > 0 {
-                        Button(IOSCompanionText.sendAgainButton) {
-                            Task { await model.sendAgain() }
-                        }
-                        .disabled(model.needsPairing)
-                        .accessibilityIdentifier("companion.sendAgain")
-                        Button(IOSCompanionText.removeButton, role: .destructive) {
-                            model.removeWaiting()
-                        }
-                        .accessibilityIdentifier("companion.remove")
-                    }
-                }
+                outboxSection
             }
             if state.companionOtherOutboxCount > 0 {
                 otherOutboxSection
@@ -112,14 +108,98 @@ struct CompanionScreen: View {
         }
     }
 
+    private var outboxSection: some View {
+        Section {
+            ForEach(model.waitingItems, id: \.id) { (item: PhoneOutboxItem) in
+                waitingRow(item)
+            }
+            if model.sendableCount > 0 {
+                Button(IOSCompanionText.sendAgainButton) {
+                    Task { await model.sendAgain() }
+                }
+                .disabled(model.needsPairing)
+                .accessibilityIdentifier("companion.sendAgain")
+            }
+            if state.companionOutboxCount > 0 {
+                Button(IOSCompanionText.removeAllButton, role: .destructive) {
+                    confirmingRemoveAll = true
+                }
+                .accessibilityIdentifier("companion.remove")
+                .confirmationDialog(IOSCompanionText.removeAllTitle(state.companionOutboxCount),
+                                    isPresented: $confirmingRemoveAll, titleVisibility: .visible) {
+                    Button(IOSCompanionText.removeAllButton, role: .destructive) {
+                        model.removeWaiting()
+                    }
+                    .accessibilityIdentifier("companion.remove.confirm")
+                } message: {
+                    Text(IOSCompanionText.removeAllMessage(state.companionOutboxCount, computer: state.companionDesktop?.name))
+                }
+            }
+            if model.inCloudFolder > 0 {
+                Text(IOSCompanionText.inCloudFolder(model.inCloudFolder))
+                    .accessibilityIdentifier("companion.inCloudFolder")
+            }
+        } header: {
+            Text(IOSCompanionText.waiting(model.sendableCount))
+                .accessibilityIdentifier("companion.outbox")
+        }
+    }
+
+    private func waitingRow(_ item: PhoneOutboxItem) -> some View {
+        let name: String = URL(fileURLWithPath: item.fileName).deletingPathExtension().lastPathComponent
+        let reason: String = waitingReason(item)
+        let reasonColor: Color = item.refused ? Color.red : Color.secondary
+        let reasonLines: Int? = dynamicTypeSize.isAccessibilitySize ? nil : 2
+        let removeName: String = IOSCompanionText.removeDocument(name)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(name)
+            if let created = item.created {
+                Text(created.formatted(date: .abbreviated, time: .shortened))
+                    .font(.footnote)
+                    .foregroundStyle(Color.secondary)
+            }
+            if !reason.isEmpty {
+                Text(reason)
+                    .font(.footnote)
+                    .foregroundStyle(reasonColor)
+                    .lineLimit(reasonLines)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("companion.outbox.row.\(item.id)")
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                model.removeWaiting(id: item.id)
+            } label: {
+                Text(IOSCompanionText.removeButton)
+            }
+            .accessibilityLabel(Text(removeName))
+        }
+    }
+
+    private func waitingReason(_ item: PhoneOutboxItem) -> String {
+        if item.refused { return IOSCompanionText.notSent(item.lastError) }
+        if item.inSyncFolder { return IOSCompanionText.inCloudFolderRow }
+        return item.lastError
+    }
+
     private var otherOutboxSection: some View {
         Section {
             Text(IOSCompanionText.forUnpairedComputer(state.companionOtherOutboxCount))
                 .accessibilityIdentifier("companion.otherOutbox")
-            Button(IOSCompanionText.removeButton, role: .destructive) {
-                model.removeOtherWaiting()
+            Button(IOSCompanionText.removeAllButton, role: .destructive) {
+                confirmingRemoveOther = true
             }
             .accessibilityIdentifier("companion.otherOutbox.remove")
+            .confirmationDialog(IOSCompanionText.removeAllTitle(state.companionOtherOutboxCount),
+                                isPresented: $confirmingRemoveOther, titleVisibility: .visible) {
+                Button(IOSCompanionText.removeAllButton, role: .destructive) {
+                    model.removeOtherWaiting()
+                }
+                .accessibilityIdentifier("companion.otherOutbox.remove.confirm")
+            } message: {
+                Text(IOSCompanionText.removeAllMessage(state.companionOtherOutboxCount, computer: nil))
+            }
         }
     }
 

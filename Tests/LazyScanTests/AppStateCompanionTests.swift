@@ -406,6 +406,24 @@ final class AppStateCompanionTests: XCTestCase {
     }
 
     @MainActor
+    func test_removeWaiting_takesOneDocument_andListsTheRest() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+        fake.downHosts = [CompanionLink.address]
+        await state.sendQueueToDesktop(target: .new)
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.companionOutboxCount, 2)
+        XCTAssertEqual(state.companionWaiting.count, 2)
+        let first = try XCTUnwrap(state.companionWaiting.first)
+
+        state.removeWaiting(id: first.id)
+
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        XCTAssertFalse(state.companionWaiting.contains { $0.id == first.id })
+    }
+
+    @MainActor
     func test_clearOutbox_keepsWhatWaitsForAnotherDesktop_clearOtherOutboxRemovesIt() async throws {
         let fake = CompanionFakeDesktop()
         let state = try await makeState(pages: 1)
@@ -734,6 +752,25 @@ final class AppStateCompanionTests: XCTestCase {
         try FileManager.default.removeItem(at: cloud.appendingPathComponent(name))
         await state.drainOutbox()
         XCTAssertEqual(state.companionOutboxCount, 0)
+    }
+
+    @MainActor
+    func test_drainOutbox_aRefusedDocumentIsNotSentAgain_andStaysListed() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+        fake.on("PUT " + CompanionProtocol.inboxPrefix + "*",
+                .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: "The picture of page 2 is damaged.")))
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertNotNil(state.errorMessage)
+        state.errorMessage = nil
+
+        await state.drainOutbox()
+
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        XCTAssertEqual(state.companionWaiting.first?.refused, true)
+        XCTAssertEqual(state.companionWaiting.first?.attempts, 1)
     }
 
     @MainActor

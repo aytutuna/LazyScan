@@ -44,6 +44,30 @@ final class PhoneOutboxTests: XCTestCase {
         XCTAssertNil(outbox.next(excluding: [first.id, second.id]))
     }
 
+    func test_next_skipsARefusedDocument_whichStaysListed() throws {
+        let outbox = PhoneOutbox(directory: outboxFolder)
+        let refused = try outbox.enqueue(try package("Big.lsdoc"), target: .new, desktopId: desk)
+        let good = try outbox.enqueue(try package("Scan.lsdoc"), target: .new, desktopId: desk)
+
+        outbox.markRefused(refused.id)
+
+        XCTAssertEqual(outbox.next()?.id, good.id)
+        XCTAssertNil(outbox.next(excluding: [good.id]))
+        XCTAssertEqual(outbox.items.map(\.id), [refused.id, good.id])
+    }
+
+    func test_remove_takesOneDocumentAndItsFile() throws {
+        let outbox = PhoneOutbox(directory: outboxFolder)
+        let first = try outbox.enqueue(try package("Scan 1.lsdoc"), target: .new, desktopId: desk)
+        let second = try outbox.enqueue(try package("Scan 2.lsdoc"), target: .new, desktopId: desk)
+
+        outbox.remove(first.id)
+
+        XCTAssertEqual(outbox.items.map(\.id), [second.id])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outbox.fileURL(of: first).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outbox.fileURL(of: second).path))
+    }
+
     func test_enqueue_aFileInTheOutboxStaysWhereItIs_aNameTakenGetsANumber() throws {
         let outbox = PhoneOutbox(directory: outboxFolder)
         try FileManager.default.createDirectory(at: outboxFolder, withIntermediateDirectories: true)

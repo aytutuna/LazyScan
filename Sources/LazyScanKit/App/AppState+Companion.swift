@@ -302,7 +302,7 @@ extension AppState {
     /// Sends the documents waiting in the outbox for the paired desktop one by one, oldest first (those
     /// queued for a desktop paired before wait for it), each removed once the desktop has it (a duplicate
     /// counts: it had it already). One the desktop refuses (too large, not readable) stays, said in
-    /// `errorMessage`, and the next is sent; when the desktop is busy or no longer knows this phone, the
+    /// `errorMessage` once and never tried again, and the next is sent; when the desktop is busy or no longer knows this phone, the
     /// rest wait. When it does not answer, the rest go through the sync folder if the desktop handed out
     /// a sync key and a folder is set (`sendThroughSyncFolder`), except those it refused as too large or
     /// not readable (another error status sends the next too, but keeps the folder open); with a key but no
@@ -401,6 +401,7 @@ extension AppState {
             for item in outbox.items where item.desktopId == desktop.id && item.inSyncFolder {
                 outbox.markInSyncFolder(item.id, false)
             }
+            countOutbox()
         }
         desktop.syncFolderBookmark = bookmark
         companionStore?.update(desktop)
@@ -491,6 +492,12 @@ extension AppState {
         for item in outbox.items where isForPairedDesktop(item) {
             outbox.remove(item.id)
         }
+        countOutbox()
+    }
+
+    /// Removes one waiting document, unsent.
+    public func removeWaiting(id: String) {
+        companionOutbox?.remove(id)
         countOutbox()
     }
 
@@ -609,9 +616,10 @@ extension AppState {
     /// Counts what waits in the outbox for the paired desktop, and apart what waits for another.
     private func countOutbox() {
         let items = companionOutbox?.items ?? []
-        let waiting = items.filter { isForPairedDesktop($0) }.count
-        companionOutboxCount = waiting
-        companionOtherOutboxCount = items.count - waiting
+        let waiting = items.filter { isForPairedDesktop($0) }
+        companionWaiting = waiting
+        companionOutboxCount = waiting.count
+        companionOtherOutboxCount = items.count - waiting.count
     }
 
     /// `desktop` did not answer: what waits for it goes through the sync folder when it handed out a sync

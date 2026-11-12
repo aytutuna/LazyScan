@@ -566,6 +566,8 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var companionStatus = CompanionStatus.notPaired
     /// Documents waiting in the outbox to be sent to the paired desktop; all of them while none is paired.
     @Published public internal(set) var companionOutboxCount = 0
+    /// Those documents themselves, oldest first, the refused ones too.
+    @Published public internal(set) var companionWaiting: [PhoneOutboxItem] = []
     /// Documents waiting in the outbox for a desktop no longer paired while another is: they wait for that one
     /// to be paired again, or for `clearOtherOutbox`.
     @Published public internal(set) var companionOtherOutboxCount = 0

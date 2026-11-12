@@ -168,11 +168,12 @@ public final class PhoneOutbox: @unchecked Sendable {
         return item
     }
 
-    /// The oldest waiting document not in `excluding` (those tried already in this round).
+    /// The oldest waiting document not in `excluding` (those tried already in this round); one the desktop
+    /// refused stays listed but is not sent again.
     public func next(excluding: Set<String> = []) -> PhoneOutboxItem? {
         lock.lock()
         defer { lock.unlock() }
-        return file.items.first { !excluding.contains($0.id) }
+        return file.items.first { !$0.refused && !excluding.contains($0.id) }
     }
 
     /// The desktop has it: its file and entry go.

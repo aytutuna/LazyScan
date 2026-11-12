@@ -300,8 +300,9 @@ struct ShareNowPage: View {
             }
             .disabled(state.scannedPages.isEmpty || !idle)
             .accessibilityIdentifier("send.computer")
-            if state.companionOutboxCount > 0 {
-                Button(IOSCompanionText.waiting(state.companionOutboxCount)) {}
+            let sendable: Int = state.companionWaiting.filter { !$0.refused }.count
+            if sendable > 0 {
+                Button(IOSCompanionText.waiting(sendable)) {}
                     .disabled(true)
                     .accessibilityIdentifier("send.waiting")
             }

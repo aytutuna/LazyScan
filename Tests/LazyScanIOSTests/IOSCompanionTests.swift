@@ -292,6 +292,27 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertEqual(IOSCompanionText.inCloudFolder(3), "3 documents in the cloud folder")
     }
 
+    func test_removeAllAndNotSentLines() {
+        XCTAssertEqual(IOSCompanionText.removeAllTitle(1), "Remove 1 document?")
+        XCTAssertEqual(IOSCompanionText.removeAllTitle(3), "Remove 3 documents?")
+        XCTAssertEqual(IOSCompanionText.removeAllMessage(1, computer: "Office PC"), "It will not be sent to Office PC.")
+        XCTAssertEqual(IOSCompanionText.removeAllMessage(3, computer: "Office PC"), "They will not be sent to Office PC.")
+        XCTAssertEqual(IOSCompanionText.removeAllMessage(3, computer: nil), "They will not be sent.")
+        XCTAssertEqual(IOSCompanionText.unpairTitle("Office PC"), "Unpair Office PC?")
+        XCTAssertEqual(IOSCompanionText.notSent("Too large."), "Not sent: Too large.")
+    }
+
+    @MainActor
+    func test_unpairMessage_mentionsWaitingDocumentsOnlyWhenThereAreSome() {
+        let none = IOSCompanionText.unpairMessage(waiting: 0)
+        XCTAssertTrue(none.hasPrefix("The computer will no longer take documents from this"))
+        XCTAssertFalse(none.contains("waiting"))
+        XCTAssertTrue(IOSCompanionText.unpairMessage(waiting: 1).hasSuffix(
+            "1 document waiting to be sent stays here until you pair it again."))
+        XCTAssertTrue(IOSCompanionText.unpairMessage(waiting: 3).hasSuffix(
+            "3 documents waiting to be sent stay here until you pair it again."))
+    }
+
     // MARK: The cloud folder
 
     @MainActor
