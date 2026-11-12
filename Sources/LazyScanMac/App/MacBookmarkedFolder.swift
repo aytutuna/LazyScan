@@ -35,6 +35,12 @@ final class MacBookmarkedFolder: @unchecked Sendable {
             close()
             return nil
         }
+        // Bookmarks follow a folder into the Trash; saving there would lose the scans when it is emptied. The bookmark is
+        // kept, so Put Back brings the folder back.
+        if folder.pathComponents.contains(where: { $0 == ".Trash" || $0 == ".Trashes" }) {
+            close()
+            return nil
+        }
         lock.lock()
         defer { lock.unlock() }
         if accessed != folder {
@@ -45,6 +51,10 @@ final class MacBookmarkedFolder: @unchecked Sendable {
             return (folder: folder, bookmark: fresh)
         }
         return (folder: folder, bookmark: bookmark)
+    }
+
+    private static func isInTrash(_ folder: URL) -> Bool {
+        folder.pathComponents.contains { $0 == ".Trash" || $0 == ".Trashes" }
     }
 
     func close() {

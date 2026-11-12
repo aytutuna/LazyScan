@@ -66,6 +66,12 @@ final class IOSBookmarkedFolder {
             close()
             return nil
         }
+        // A folder deleted in Files may still resolve from the Trash of its drive; it is treated as out of reach and its
+        // bookmark kept. Recently Deleted of the local storage has no path that tells it apart.
+        if folder.pathComponents.contains(where: { $0 == ".Trash" || $0 == ".Trashes" }) {
+            close()
+            return nil
+        }
         if opened?.folder != folder {
             close()
             if folder.startAccessingSecurityScopedResource() {

@@ -258,7 +258,8 @@ Twin of `windows/LazyScan.Core/DeviceMerge.cs` (`HardwareId`, `ConnectionId`): s
 // left out when nil): the iPhone's or the Mac's save folder picked outside the app (iCloud Drive, a USB drive),
 // with `destinationPath` its path. iOS and the Mac read it (`AppState.resolveDestinationBookmark`, set by
 // `makeForIOS` and `makeForMac`; `openBookmarkedFolder()` keeps the bookmark and path up to date, also when a preset
-// is applied; when it does not resolve, the bookmark and path are kept and that save goes to the
+// is applied; when it does not resolve, or resolves to a folder in a Trash (a `.Trash` or `.Trashes` path component),
+// the bookmark and path are kept and that save goes to the
 // app's folder with an alert (on the Mac Downloads/Lazy Scan, said once per launch), since the drive may
 // only be unplugged; only Use app folder drops it); Windows keeps it unchanged. The Mac makes it as a
 // security-scoped bookmark (`MacBookmarkedFolder`, needs the sandbox's `files.bookmarks.app-scope`) and
