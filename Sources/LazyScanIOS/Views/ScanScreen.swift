@@ -413,14 +413,22 @@ struct ScanScreen: View {
         }
     }
 
-    /// The status a busy spell or the companion left, gone after about four seconds.
+    /// The status a busy spell or the companion left, spoken when it shows. It is gone after about four
+    /// seconds; with VoiceOver on it stays whole until it is tapped or the next action starts.
     private func statusCard(_ message: String) -> some View {
-        Text(message)
+        let spoken: Bool = UIAccessibility.isVoiceOverRunning
+        let lines: Int? = spoken ? nil : 3
+        return Text(message)
             .font(.footnote)
-            .lineLimit(3)
+            .lineLimit(lines)
             .modifier(NoticeCard())
             .accessibilityIdentifier("camera.notice")
+            .onTapGesture {
+                if spoken { statusAfterBusy = nil }
+            }
             .task(id: message) {
+                AccessibilityNotification.Announcement(message).post()
+                if spoken { return }
                 try? await Task.sleep(nanoseconds: 4_000_000_000)
                 if statusAfterBusy == message {
                     statusAfterBusy = nil

@@ -8,6 +8,7 @@ import SwiftUI
 /// (`StatusLine`); VoiceOver reads the whole sentence.
 struct StatusBarView: View {
     @EnvironmentObject var state: AppState
+    @State private var statusBeforeBusy = ""
 
     /// The actions with their own button; the rest are in More.
     private static let barActions: [FileAction] = [.open, .reveal, .share, .copy]
@@ -21,7 +22,10 @@ struct StatusBarView: View {
                 .truncationMode(.tail)
                 .accessibilityLabel(Text(state.statusMessage))
             if showsUndo {
-                Button("Undo") { state.undoRemove() }
+                Button("Undo") {
+                    state.undoRemove()
+                    AccessibilityNotification.Announcement(state.statusMessage).post()
+                }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(Color.accentColor)
@@ -47,6 +51,13 @@ struct StatusBarView: View {
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.bar)
+        .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
+            if busy {
+                statusBeforeBusy = state.statusMessage
+            } else if !state.statusMessage.isEmpty, state.statusMessage != statusBeforeBusy {
+                AccessibilityNotification.Announcement(state.statusMessage).post()
+            }
+        }
     }
 
     private var showsUndo: Bool { state.canUndoRemove }
