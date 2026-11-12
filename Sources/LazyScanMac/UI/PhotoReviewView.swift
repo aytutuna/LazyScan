@@ -49,9 +49,11 @@ struct PhotoReviewView: View {
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 16)], spacing: 16) {
-                    ForEach(state.detectedPhotos) { photo in
+                    ForEach(Array(state.detectedPhotos.enumerated()), id: \.element.id) { index, photo in
                         PhotoReviewCard(
                             photo: photo,
+                            number: index + 1,
+                            total: state.detectedPhotos.count,
                             included: includedBinding(id: photo.id),
                             cropDisabled: state.isBusy,
                             onRotate: { rotate(id: photo.id, by: $0) },
@@ -137,6 +139,8 @@ struct PhotoReviewView: View {
 
 fileprivate struct PhotoReviewCard: View {
     let photo: DetectedPhoto
+    let number: Int
+    let total: Int
     @Binding var included: Bool
     let cropDisabled: Bool
     let onRotate: (Int) -> Void
@@ -166,10 +170,12 @@ fileprivate struct PhotoReviewCard: View {
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .accessibilityHidden(true)
 
             HStack(spacing: 10) {
                 Toggle("Include", isOn: $included)
                     .toggleStyle(.checkbox)
+                    .accessibilityLabel(Text(String(localized: "Keep photo \(number)")))
                     .font(.caption)
 
                 Spacer(minLength: 4)
@@ -179,7 +185,7 @@ fileprivate struct PhotoReviewCard: View {
                 }
                 .disabled(cropDisabled)
                 .help("Fix crop")
-                .accessibilityLabel(Text("Adjust the crop manually"))
+                .accessibilityLabel(Text(String(localized: "Fix crop of photo \(number)")))
 
                 Button {
                     onRotate(-1)
@@ -187,7 +193,7 @@ fileprivate struct PhotoReviewCard: View {
                     Image(systemName: "rotate.left")
                 }
                 .help("Rotate left")
-                .accessibilityLabel(Text("Rotate 90° counterclockwise"))
+                .accessibilityLabel(Text(String(localized: "Rotate photo \(number) counterclockwise")))
 
                 Button {
                     onRotate(1)
@@ -195,17 +201,24 @@ fileprivate struct PhotoReviewCard: View {
                     Image(systemName: "rotate.right")
                 }
                 .help("Rotate right")
-                .accessibilityLabel(Text("Rotate 90° clockwise"))
+                .accessibilityLabel(Text(String(localized: "Rotate photo \(number) clockwise")))
             }
             .buttonStyle(.borderless)
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(groupLabel))
         // Keyed on the region so a manual re-crop re-renders the thumbnail.
         .task(id: photo.region) {
             thumbnail = reviewThumbnail(photo.image, maxDimension: 340)
         }
+    }
+
+    private var groupLabel: String {
+        let w = photo.image.width, h = photo.image.height
+        return String(localized: "Photo \(number) of \(total), \(w) × \(h) px")
     }
 
     private var sizeCaption: String {
