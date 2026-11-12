@@ -624,6 +624,9 @@ public final class AppState: ObservableObject {
     /// Mac's FastViT-T8 when it is in the build; nil, the page search alone. Twin of the Windows view
     /// model's corner model.
     public var cornerModel: (any CornerModel)?
+    /// Draws the pages of an imported PDF (`PhotoImport.isPdf`): PDFKit on the Mac; nil, PDFs are reported
+    /// as unreadable.
+    public var pdfPages: (any PDFPageRenderer)?
     /// Queued pages a reading could not settle (the reader failed on them, or only their preview could
     /// be read and showed no code): not read again on their own, only when the split is chosen again
     /// (AppState+Split.swift).

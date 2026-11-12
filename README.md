@@ -117,7 +117,9 @@ scanners** — including the Epson Perfection V39 II.
   HEIC photos need Microsoft's free HEIF Image Extensions. On the Mac, **File > Import from iPhone or
   iPad** takes a photo or a scanned document from a nearby iPhone or iPad the same way (Continuity
   Camera), and a Lazy Scan document (`.lsdoc`) opened in the Finder, dropped on the window or
-  picked with Import offers **Add to pages** or **Open as new** on a banner.
+  picked with Import offers **Add to pages** or **Open as new** on a banner. On the Mac, Import also
+  takes a PDF: each page is drawn at 300 dpi and added to the queue without the corner
+  editor, and a PDF that needs a password is refused with a message.
 - **Send from your phone** (Windows and the Mac): pair a phone once by scanning a QR code on the PC, and
   documents scanned with Lazy Scan on the phone are added to the PC's page queue on their own,
   labelled **From phone**. The phone and the PC talk directly, encrypted and pinned to the PC's own

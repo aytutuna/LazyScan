@@ -116,10 +116,15 @@ public enum PhotoImport {
     /// A photo of more pixels than this is not imported (its pixels alone would take 600 MB).
     public static let maxPhotoPixels = 150_000_000
 
-    /// The file types offered for import (lowercase, without the dot).
-    public static let fileExtensions = ["jpg", "jpeg", "jpe", "png", "heic", "heif", "hif", "tif", "tiff", "bmp", "webp"]
+    /// The file types offered for import (lowercase, without the dot). A PDF is imported page by page
+    /// (`isPdf`, `pdfDPI`).
+    public static let fileExtensions = ["jpg", "jpeg", "jpe", "png", "heic", "heif", "hif", "tif", "tiff", "bmp", "webp", "pdf"]
     /// The HEIF file types (iPhone photos): Windows reads them only with the HEIF extension installed.
     public static let heifExtensions = ["heic", "heif", "hif"]
+    /// The resolution a PDF's pages are drawn at.
+    public static let pdfDPI = 300
+    /// The longest side a PDF page is drawn to, in pixels (a poster is drawn at a lower resolution).
+    public static let pdfMaxLongSide = 7000
 
     public static var buttonLabel: String { L10n.t("Import photos of documents…") }
     /// The import button's tooltip.
@@ -155,9 +160,23 @@ public enum PhotoImport {
     public static var tooLargeDetail: String { L10n.t("the photo is too large (more than {0} megapixels).", 150) }
     /// Why a file that went away before it was read was not imported.
     public static var missingDetail: String { L10n.t("the file is no longer there.") }
+    /// Why a password-protected PDF was not imported: there is nothing to draw without the password.
+    public static var lockedDetail: String { L10n.t("it needs a password.") }
 
     /// `path` names a file of a type offered for import (by its extension).
     public static func isPhotoFile(_ path: String) -> Bool { fileExtensions.contains(extensionOf(path)) }
+
+    /// `path` names a PDF (.pdf): its pages are drawn, not decoded as a photo.
+    public static func isPdf(_ path: String) -> Bool { extensionOf(path) == "pdf" }
+
+    /// The resolution a PDF page of `widthPoints` × `heightPoints` (1/72 in) is drawn at: `pdfDPI`, or
+    /// less so that its long side stays within `pdfMaxLongSide` pixels; at least 1.
+    public static func pdfResolution(widthPoints: Double, heightPoints: Double) -> Int {
+        let longPoints = max(widthPoints, heightPoints)
+        guard longPoints > 0 else { return pdfDPI }
+        if longPoints / 72.0 * Double(pdfDPI) <= Double(pdfMaxLongSide) { return pdfDPI }
+        return max(1, Int((Double(pdfMaxLongSide) * 72.0 / longPoints).rounded(.down)))
+    }
 
     /// `path` names a HEIF file (.heic, .heif, .hif).
     public static func isHeif(_ path: String) -> Bool { heifExtensions.contains(extensionOf(path)) }

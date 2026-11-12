@@ -109,12 +109,20 @@ public static class PhotoImport
     /// <summary>A photo of more pixels than this is not imported (its pixels alone would take 600 MB).</summary>
     public const long MaxPhotoPixels = 150_000_000;
 
-    /// <summary>The file types offered for import (lowercase, without the dot).</summary>
+    /// <summary>
+    /// The file types offered for import (lowercase, without the dot). A PDF is imported page by page
+    /// (<see cref="IsPdf"/>, <see cref="PdfDpi"/>).
+    /// </summary>
     public static IReadOnlyList<string> FileExtensions { get; } =
-        ["jpg", "jpeg", "jpe", "png", "heic", "heif", "hif", "tif", "tiff", "bmp", "webp"];
+        ["jpg", "jpeg", "jpe", "png", "heic", "heif", "hif", "tif", "tiff", "bmp", "webp", "pdf"];
 
     /// <summary>The HEIF file types (iPhone photos): Windows reads them only with the HEIF extension installed.</summary>
     public static IReadOnlyList<string> HeifExtensions { get; } = ["heic", "heif", "hif"];
+
+    /// <summary>The resolution a PDF's pages are drawn at.</summary>
+    public const int PdfDpi = 300;
+    /// <summary>The longest side a PDF page is drawn to, in pixels (a poster is drawn at a lower resolution).</summary>
+    public const int PdfMaxLongSide = 7000;
 
     public static string ButtonLabel => Loc.T("Import photos of documents…");
     /// <summary>The import button's tooltip.</summary>
@@ -150,9 +158,27 @@ public static class PhotoImport
     public static string TooLargeDetail => Loc.T("the photo is too large (more than {0} megapixels).", 150);
     /// <summary>Why a file that went away before it was read was not imported.</summary>
     public static string MissingDetail => Loc.T("the file is no longer there.");
+    /// <summary>Why a password-protected PDF was not imported: there is nothing to draw without the password.</summary>
+    public static string LockedDetail => Loc.T("it needs a password.");
 
     /// <summary><paramref name="path"/> names a file of a type offered for import (by its extension).</summary>
     public static bool IsPhotoFile(string path) => FileExtensions.Contains(ExtensionOf(path));
+
+    /// <summary><paramref name="path"/> names a PDF (.pdf): its pages are drawn, not decoded as a photo.</summary>
+    public static bool IsPdf(string path) => ExtensionOf(path) == "pdf";
+
+    /// <summary>
+    /// The resolution a PDF page of <paramref name="widthPoints"/> × <paramref name="heightPoints"/> (1/72 in) is
+    /// drawn at: <see cref="PdfDpi"/>, or less so that its long side stays within <see cref="PdfMaxLongSide"/>
+    /// pixels; at least 1.
+    /// </summary>
+    public static int PdfResolution(double widthPoints, double heightPoints)
+    {
+        double longPoints = Math.Max(widthPoints, heightPoints);
+        if (longPoints <= 0) return PdfDpi;
+        if (longPoints / 72.0 * PdfDpi <= PdfMaxLongSide) return PdfDpi;
+        return Math.Max(1, (int)Math.Floor(PdfMaxLongSide * 72.0 / longPoints));
+    }
 
     /// <summary><paramref name="path"/> names a HEIF file (.heic, .heif, .hif).</summary>
     public static bool IsHeif(string path) => HeifExtensions.Contains(ExtensionOf(path));

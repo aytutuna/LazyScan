@@ -299,7 +299,7 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertTrue(PhotoImport.isPhotoFile("letter.HEIC"))
         XCTAssertTrue(PhotoImport.isPhotoFile("page.png"))
         XCTAssertFalse(PhotoImport.isPhotoFile("notes.txt"))
-        XCTAssertFalse(PhotoImport.isPhotoFile("report.pdf"))
+        XCTAssertTrue(PhotoImport.isPhotoFile("report.PDF"))
         XCTAssertFalse(PhotoImport.isPhotoFile("README"))
         XCTAssertFalse(PhotoImport.isPhotoFile("C:\\photos.jpg\\README"))
         XCTAssertFalse(PhotoImport.isPhotoFile("trailing."))
@@ -308,6 +308,24 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertFalse(PhotoImport.isHeif("IMG_1.jpg"))
         XCTAssertEqual(PhotoImport.photoFiles(["b.jpg", "notes.txt", "a.PNG", "B.JPG", "c.heic", "a.png"]),
                        ["b.jpg", "a.PNG", "c.heic"])
+        XCTAssertEqual(PhotoImport.photoFiles(["a.pdf", "b.jpg", "A.PDF"]), ["a.pdf", "b.jpg"])
+    }
+
+    func testPdfsAreToldApartAndDrawnAtTheirResolution() {
+        XCTAssertTrue(PhotoImport.isPdf("C:\\Docs\\Contract.PDF"))
+        XCTAssertTrue(PhotoImport.isPdf("/Users/me/a.pdf"))
+        XCTAssertFalse(PhotoImport.isPdf("a.pdf.jpg"))
+        XCTAssertFalse(PhotoImport.isPdf("pdf"))
+        XCTAssertEqual(PhotoImport.pdfDPI, 300)
+        XCTAssertEqual(PhotoImport.pdfMaxLongSide, 7000)
+        // A Letter page and a 20 in poster are drawn at full resolution, a 40 in poster at a lower one.
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 612, heightPoints: 792), 300)
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 792, heightPoints: 612), 300)
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 1440, heightPoints: 720), 300)
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 2880, heightPoints: 1440), 175)
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 0, heightPoints: 0), 300)
+        XCTAssertEqual(PhotoImport.pdfResolution(widthPoints: 1_000_000, heightPoints: 10), 1)
+        XCTAssertEqual(PhotoImport.lockedDetail, "it needs a password.")
     }
 
     func testPhotosAreImportedWhereTheQueueCollectsPages() {

@@ -221,6 +221,7 @@ extension AppState {
         let scorer = orientationScorer
         let barcodes = barcodeReader
         let model = cornerModel
+        let renderer = pdfPages
         let spool = spoolDirectory
         runExclusive(stopsInBackground: false) { flag in
             var added: [ScannedPage] = []
@@ -228,10 +229,40 @@ extension AppState {
             var skipped = 0
             var lastPreview: CGImage?
             var lastSize: CGSize?
+            // The clean-up stage, then spill the page (and the photo it was taken from) to disk; keep only
+            // previews, in the queue or until the pages are saved.
+            func bringIn(_ cleaned: ScannedPage) async throws {
+                let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
+                    let processor: PageProcessor = savesAtOnce
+                        ? PageProcessor.forScan(s)
+                        : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
+                    let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
+                    let pages: [ScannedPage] = Self.spoolPages(processed, to: spool)
+                    return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
+                }.value
+                if savesAtOnce {
+                    added.append(contentsOf: done.0)
+                    lastPreview = done.1
+                    lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
+                    return
+                }
+                let spooled = done.0
+                if flag.isCancelled {
+                    self.deleteSpoolFiles(of: spooled)
+                    throw ScanError.cancelled
+                }
+                self.scannedPages.append(contentsOf: spooled)
+                added.append(contentsOf: spooled)
+                // Photos come in between stacks turned over by hand, never as one of their sides.
+                if !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
+                lastPreview = done.1
+                lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
+            }
             do {
                 for (index, url) in files.enumerated() {
                     if flag.isCancelled { throw ScanError.cancelled }
                     self.statusMessage = PhotoImport.progressMessage(index + 1, of: files.count)
+                    let isPdf = PhotoImport.isPdf(url.path)
                     let loaded: Result<Data, Error> = await Task.detached(priority: .userInitiated) {
                         Result { try PhotoFileReader.readData(url) }
                     }.value
@@ -242,6 +273,32 @@ extension AppState {
                     case .failure(let error):
                         problems.append((error as? PhotoUnreadableError)?.message
                                         ?? PhotoImport.unreadableMessage(url.lastPathComponent, detail: PhotoImport.unreadableDetail))
+                        continue
+                    }
+                    if isPdf {
+                        // A PDF's pages are drawn one at a time and go in as scans: no corner editor.
+                        let name = url.lastPathComponent
+                        let opened: PDFOpening = await Task.detached(priority: .userInitiated) {
+                            renderer?.open(data) ?? .unreadable
+                        }.value
+                        guard case .pages(let count) = opened else {
+                            let detail = opened == .locked ? PhotoImport.lockedDetail : PhotoImport.unreadableDetail
+                            problems.append(PhotoImport.unreadableMessage(name, detail: detail))
+                            continue
+                        }
+                        for number in 1...count {
+                            if flag.isCancelled { throw ScanError.cancelled }
+                            self.statusMessage = PhotoImport.progressMessage(index + 1, of: files.count, page: number, pageCount: count)
+                            let drawn: ScannedPage? = await Task.detached(priority: .userInitiated) {
+                                renderer?.page(data, at: number - 1)
+                            }.value
+                            guard let drawn else {
+                                let shown = PhotoImport.pageName(name, page: number, pageCount: count)
+                                problems.append(PhotoImport.unreadableMessage(shown, detail: PhotoImport.unreadableDetail))
+                                continue
+                            }
+                            try await bringIn(drawn)
+                        }
                         continue
                     }
                     // A TIFF may hold several pages: each is imported in turn. Their count is read from the
@@ -299,33 +356,7 @@ extension AppState {
                             skipped += 1
                             continue
                         }
-                        // The clean-up stage, then spill the page and the photo it was taken from to disk; keep
-                        // only previews, in the queue or until the pages are saved.
-                        let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
-                            let processor: PageProcessor = savesAtOnce
-                                ? PageProcessor.forScan(s)
-                                : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
-                            let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
-                            let pages: [ScannedPage] = Self.spoolPages(processed, to: spool)
-                            return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
-                        }.value
-                        if savesAtOnce {
-                            added.append(contentsOf: done.0)
-                            lastPreview = done.1
-                            lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
-                            continue
-                        }
-                        let spooled = done.0
-                        if flag.isCancelled {
-                            self.deleteSpoolFiles(of: spooled)
-                            throw ScanError.cancelled
-                        }
-                        self.scannedPages.append(contentsOf: spooled)
-                        added.append(contentsOf: spooled)
-                        // Photos come in between stacks turned over by hand, never as one of their sides.
-                        if !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
-                        lastPreview = done.1
-                        lastSize = done.1.map { CGSize(width: $0.width, height: $0.height) }
+                        try await bringIn(cleaned)
                     }
                 }
             } catch ScanError.cancelled {

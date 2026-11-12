@@ -413,6 +413,7 @@ fax, a scan) becomes a page; a photo of more than 150 megapixels is turned down 
 before its pixels are decoded, and the other photos go on. It is offered wherever the queue
 collects pages (Document mode and the document tasks, also with **Collect pages** off, where the
 pages are then saved at once, as a scan's are); not in Photos mode or the ID card, copy and receipt tasks, nor while
+A PDF is accepted by the import but its pages are not drawn yet, so it is listed as not imported.
 a stack turned over by hand is under way (between stacks it is, and photos never count as its sides).
 
 Each photo is read once into memory and never changed, moved or locked: the spool gets the page and

@@ -305,7 +305,7 @@ public class PhotoImportTests
         Assert.True(PhotoImport.IsPhotoFile("letter.HEIC"));
         Assert.True(PhotoImport.IsPhotoFile("page.png"));
         Assert.False(PhotoImport.IsPhotoFile("notes.txt"));
-        Assert.False(PhotoImport.IsPhotoFile("report.pdf"));
+        Assert.True(PhotoImport.IsPhotoFile("report.PDF"));
         Assert.False(PhotoImport.IsPhotoFile("README"));
         Assert.False(PhotoImport.IsPhotoFile(@"C:\photos.jpg\README"));
         Assert.False(PhotoImport.IsPhotoFile("trailing."));
@@ -314,6 +314,26 @@ public class PhotoImportTests
         Assert.False(PhotoImport.IsHeif("IMG_1.jpg"));
         Assert.Equal(["b.jpg", "a.PNG", "c.heic"],
                      PhotoImport.PhotoFiles(["b.jpg", "notes.txt", "a.PNG", "B.JPG", "c.heic", "a.png"]));
+        Assert.Equal(["a.pdf", "b.jpg"], PhotoImport.PhotoFiles(["a.pdf", "b.jpg", "A.PDF"]));
+    }
+
+    [Fact]
+    public void PdfsAreToldApartAndDrawnAtTheirResolution()
+    {
+        Assert.True(PhotoImport.IsPdf(@"C:\Docs\Contract.PDF"));
+        Assert.True(PhotoImport.IsPdf("/Users/me/a.pdf"));
+        Assert.False(PhotoImport.IsPdf("a.pdf.jpg"));
+        Assert.False(PhotoImport.IsPdf("pdf"));
+        Assert.Equal(300, PhotoImport.PdfDpi);
+        Assert.Equal(7000, PhotoImport.PdfMaxLongSide);
+        // A Letter page and a 20 in poster are drawn at full resolution, a 40 in poster at a lower one.
+        Assert.Equal(300, PhotoImport.PdfResolution(612, 792));
+        Assert.Equal(300, PhotoImport.PdfResolution(792, 612));
+        Assert.Equal(300, PhotoImport.PdfResolution(1440, 720));
+        Assert.Equal(175, PhotoImport.PdfResolution(2880, 1440));
+        Assert.Equal(300, PhotoImport.PdfResolution(0, 0));
+        Assert.Equal(1, PhotoImport.PdfResolution(1_000_000, 10));
+        Assert.Equal("it needs a password.", PhotoImport.LockedDetail);
     }
 
     [Fact]
