@@ -23,6 +23,14 @@ public enum PageRecut {
         canCrop(page) && filter(of: page) != nil
     }
 
+    /// Whether `page` can be cropped by a rectangle and made grayscale or black and white from its own spool
+    /// file: a page with no capture facts (a scanner's, an imported file's, a whole spread's) shown as it
+    /// is saved, not as scanned. The file the page has now stays as its other version until the page is
+    /// swapped back, so the edit can be undone.
+    public static func canEdit(_ page: ScannedPage) -> Bool {
+        page.capture == nil && page.fileURL != nil && !page.showsOriginal
+    }
+
     /// The page's filter: the one recorded, or for a page queued before filters the one its clean-up stands
     /// for; nil for pages without one (photos, cards, pages not taken by a camera).
     public static func filter(of page: ScannedPage) -> CaptureFilter? {
@@ -81,6 +89,44 @@ public enum PageRecut {
         return result
     }
 
+    /// `page` cut to `rect` (fractions of the page as shown, turned by its rotation, from the top left; nil:
+    /// all of it) and made `filter` (nil: its colors kept), from `full`, the pixels of its spool file. The
+    /// pixels come back turned as the file holds them. The page's other version stays, or else the page as
+    /// it was becomes it (swapping goes back to it); a page with no crop or straightening recorded gets
+    /// the facts of a crop, which is what lets it swap. Nil when the rectangle cuts nothing or the filter
+    /// is Original.
+    static func edit(_ page: ScannedPage, full: CGImage, rect: CGRect?, filter: CaptureFilter?) -> ScannedPage? {
+        guard var pixels = RgbaImage(cgImage: full) else { return nil }
+        if let rect {
+            let inFile: CGRect = fileRect(rect, quarterTurns: page.rotationQuarterTurns)
+            let width = CGFloat(pixels.width), height = CGFloat(pixels.height)
+            let box = CGRect(x: inFile.minX * width, y: inFile.minY * height,
+                             width: inFile.width * width, height: inFile.height * height)
+            guard let cut = pixels.cropped(box) else { return nil }
+            pixels = cut
+        }
+        if let filter {
+            guard let mode = filter.mode else { return nil }
+            pixels = DocumentEnhancer.enhance(pixels, mode: mode).image
+        }
+        guard let image = pixels.makeCGImage() else { return nil }
+        var result = ScannedPage(image: image, dpi: page.dpi, colorMode: page.colorMode, id: page.id, createdAt: page.createdAt)
+        result.rotationQuarterTurns = page.rotationQuarterTurns
+        result = result.copyMeta(from: page)
+        result.alternate = page.alternate ?? PageVersion(image: nil, fileURL: page.fileURL, fullPixelSize: page.fullPixelSize)
+        result.geometry = page.geometry ?? PageGeometry(cropped: rect != nil, angleDegrees: 0, basis: .pageEdges)
+        return result
+    }
+
+    /// `rect` (fractions of a picture turned `quarterTurns` clockwise) as fractions of the picture before the turn.
+    static func fileRect(_ rect: CGRect, quarterTurns: Int) -> CGRect {
+        var result: CGRect = rect
+        for _ in 0..<(((quarterTurns % 4) + 4) % 4) {
+            result = CGRect(x: result.minY, y: 1 - result.minX - result.width, width: result.height, height: result.width)
+        }
+        return result
+    }
+
     /// The adjustments a photo of Photos was given when it was taken (Restore faded colors, the colour mode),
     /// as recorded on its capture facts, which a cut again takes too; nil for any other page, and when they
     /// changed nothing.
@@ -113,6 +159,11 @@ public enum PageRecut {
     /// "Page 2 is cut out again."
     public static func cropNote(number: Int) -> String {
         L10n.t("Page {0} is cut out again.", number)
+    }
+
+    /// "Page 2 is cropped."
+    public static func rectangleNote(number: Int) -> String {
+        L10n.t("Page {0} is cropped.", number)
     }
 
     public static var failedMessage: String { L10n.t("The page could not be changed: its photo could not be read.") }
@@ -159,6 +210,28 @@ extension AppState {
         let taken: Quad = PageRecut.cornersAsTaken(corners, facts: facts, quarterTurns: turns)
         enqueuePageEdit { (state: AppState) async -> Void in
             await state.recut(id: id, filter: PageRecut.filter(of: page), corners: taken)
+        }
+    }
+
+    /// Crops the queued page `id` to `rect` (fractions of the page as shown, from the top left) while its
+    /// rotation is `rotation`, from its own spool file (`PageRecut.edit`); as `setPageFilter(id:_:)` does it.
+    /// Nothing happens once the page was turned since, or for a page `PageRecut.canEdit` refuses.
+    public func cropPage(id: UUID, to rect: CGRect, rotation: Int) {
+        let whole = CGRect(x: 0, y: 0, width: 1, height: 1)
+        guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              page.rotationQuarterTurns == rotation, PageRecut.canEdit(page),
+              !rect.contains(whole), !rect.intersection(whole).isEmpty else { return }
+        enqueuePageEdit { (state: AppState) async -> Void in
+            await state.editSpooled(id: id, rect: rect, filter: nil)
+        }
+    }
+
+    /// Makes the queued page `id` grayscale or black and white from its own spool file, as `cropPage(id:to:rotation:)` does.
+    public func filterPage(id: UUID, _ filter: CaptureFilter) {
+        guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              PageRecut.canEdit(page), filter.mode != nil else { return }
+        enqueuePageEdit { (state: AppState) async -> Void in
+            await state.editSpooled(id: id, rect: nil, filter: filter)
         }
     }
 
@@ -244,6 +317,43 @@ extension AppState {
         // The record names the new file at once: the old one is gone.
         if keepsQueue { writeQueueRecord() }
         return true
+    }
+
+    /// Edits the page from its own spool file (`PageRecut.edit`) and puts it in the queue with a spool file of
+    /// its own, if the page is still there as it was when the work started. The old file is the page's other
+    /// version now, unless the page had one already: then it goes.
+    func editSpooled(id: UUID, rect: CGRect?, filter: CaptureFilter?) async {
+        guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              PageRecut.canEdit(page), let oldFile = page.fileURL else { return }
+        let spool: URL = spoolDirectory
+        recuttingPages.insert(id)
+        let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
+            guard let full = AppState.imageInFile(oldFile),
+                  let edited = PageRecut.edit(page, full: full, rect: rect, filter: filter) else { return nil }
+            return AppState.spoolRecut(edited, to: spool)
+        }.value
+        recuttingPages.remove(id)
+        guard let index = scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              scannedPages[index].fileURL == oldFile,
+              scannedPages[index].rotationQuarterTurns == page.rotationQuarterTurns,
+              scannedPages[index].showsOriginal == page.showsOriginal else {
+            if let file = made?.fileURL { try? FileManager.default.removeItem(at: file) }
+            return
+        }
+        guard let made else {
+            errorMessage = PageRecut.failedMessage
+            return
+        }
+        var updated: ScannedPage = made.copyMeta(from: scannedPages[index])
+        updated.geometry = made.geometry
+        scannedPages[index] = updated
+        if page.alternate != nil { try? FileManager.default.removeItem(at: oldFile) }
+        if rect == nil, let filter {
+            statusMessage = PageRecut.filterNote(filter, number: index + 1)
+        } else {
+            statusMessage = PageRecut.rectangleNote(number: index + 1)
+        }
+        if keepsQueue { writeQueueRecord() }
     }
 
     /// `page` (full pixels, no file) written to a spool file of its own in `directory` and queued as a preview

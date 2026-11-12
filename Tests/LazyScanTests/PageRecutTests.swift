@@ -326,4 +326,124 @@ final class PageRecutTests: XCTestCase {
         try await waitUntil(timeout: 60) { state.scannedPages.first?.capture?.filter == .grayscale }
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
+
+    /// 40 × 20 pixels, the top half red and the bottom half blue.
+    private func halves() -> CGImage {
+        var data = [UInt8]()
+        for y in 0..<20 {
+            for _ in 0..<40 {
+                data += y < 10 ? [200, 40, 40, 255] : [40, 40, 200, 255]
+            }
+        }
+        return RgbaImage(width: 40, height: 20, pixels: data).makeCGImage()!
+    }
+
+    func testFileRect_putsTheRectangleBackOnThePictureBeforeTheTurn() {
+        let left = CGRect(x: 0, y: 0, width: 0.5, height: 1)
+        XCTAssertEqual(PageRecut.fileRect(left, quarterTurns: 0), left)
+        XCTAssertEqual(PageRecut.fileRect(left, quarterTurns: 1), CGRect(x: 0, y: 0.5, width: 1, height: 0.5))
+        XCTAssertEqual(PageRecut.fileRect(left, quarterTurns: 2), CGRect(x: 0.5, y: 0, width: 0.5, height: 1))
+        XCTAssertEqual(PageRecut.fileRect(left, quarterTurns: 3), CGRect(x: 0, y: 0, width: 1, height: 0.5))
+    }
+
+    func testEdit_cropsThePageAsShown_andKeepsTheFileAsItsOtherVersion() throws {
+        let file = URL(fileURLWithPath: "/spool/a.tiff")
+        var page = ScannedPage(image: halves(), dpi: 200, colorMode: .color, fileURL: file,
+                               fullPixelSize: CGSize(width: 40, height: 20))
+        XCTAssertTrue(PageRecut.canEdit(page))
+        let left = CGRect(x: 0, y: 0, width: 0.5, height: 1)
+
+        let upright: ScannedPage = try XCTUnwrap(PageRecut.edit(page, full: halves(), rect: left, filter: nil))
+        XCTAssertEqual(upright.image.width, 20)
+        XCTAssertEqual(upright.image.height, 20)
+        XCTAssertEqual(upright.dpi, 200)
+        XCTAssertEqual(upright.alternate?.fileURL, file)
+        XCTAssertEqual(upright.alternate?.fullPixelSize, CGSize(width: 40, height: 20))
+        XCTAssertEqual(upright.geometry?.cropped, true)
+        XCTAssertTrue(upright.canSwapVersions)
+        XCTAssertEqual(pixels(upright.image).prefix(4), [200, 40, 40, 255])
+
+        // Turned a quarter, the left of the page is the bottom of the file.
+        page.rotationQuarterTurns = 1
+        let turned: ScannedPage = try XCTUnwrap(PageRecut.edit(page, full: halves(), rect: left, filter: nil))
+        XCTAssertEqual(turned.image.width, 40)
+        XCTAssertEqual(turned.image.height, 10)
+        XCTAssertEqual(turned.rotationQuarterTurns, 1)
+        XCTAssertEqual(pixels(turned.image).prefix(4), [40, 40, 200, 255])
+    }
+
+    func testEdit_filtersTheWholePage_andKeepsTheOtherVersionItHad() throws {
+        let file = URL(fileURLWithPath: "/spool/b.tiff")
+        let first = URL(fileURLWithPath: "/spool/first.tiff")
+        var page = ScannedPage(image: halves(), dpi: 200, colorMode: .color, fileURL: file)
+        page.alternate = PageVersion(image: nil, fileURL: first, fullPixelSize: nil)
+        page.geometry = PageGeometry(cropped: true, angleDegrees: 0, basis: .pageEdges)
+
+        let gray: ScannedPage = try XCTUnwrap(PageRecut.edit(page, full: halves(), rect: nil, filter: .grayscale))
+        XCTAssertEqual(gray.colorMode, .color)
+        XCTAssertEqual(gray.image.width, 40)
+        XCTAssertEqual(gray.alternate?.fileURL, first)
+        XCTAssertEqual(gray.geometry, page.geometry)
+        let flat: [UInt8] = pixels(gray.image)
+        XCTAssertEqual(flat[0], flat[1])
+        XCTAssertEqual(flat[1], flat[2])
+
+        XCTAssertNil(PageRecut.edit(page, full: halves(), rect: nil, filter: .original))
+        XCTAssertNil(PageRecut.edit(page, full: halves(), rect: CGRect(x: 2, y: 2, width: 1, height: 1), filter: nil))
+    }
+
+    func testOnlyAPageWithNoCaptureFacts_shownAsSaved_isEditedFromItsFile() {
+        let file = URL(fileURLWithPath: "/spool/c.tiff")
+        let plain = ScannedPage(image: halves(), dpi: 200, colorMode: .color, fileURL: file)
+        XCTAssertTrue(PageRecut.canEdit(plain))
+        XCTAssertFalse(PageRecut.canEdit(ScannedPage(image: halves(), dpi: 200, colorMode: .color)))
+        var swapped = plain
+        swapped.showsOriginal = true
+        XCTAssertFalse(PageRecut.canEdit(swapped))
+        XCTAssertFalse(PageRecut.canEdit(plain.withCapture(CaptureFacts(quad: Quad(topLeft: .zero, topRight: .zero,
+                                                                                  bottomRight: .zero, bottomLeft: .zero),
+                                                                        sourceWidth: 40, sourceHeight: 20))))
+    }
+
+    @MainActor
+    func testAScannerPage_isCropped_andFiltered_andSwapsBackToTheFileItHad() async throws {
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecutScorer(),
+                             barcodeReader: RecutBarcodes(), files: AppStateFiles.all(in: folder))
+        try FileManager.default.createDirectory(at: state.spoolDirectory, withIntermediateDirectories: true)
+        let whole = ScannedPage(image: halves(), dpi: 200, colorMode: .color)
+        let page: ScannedPage = try XCTUnwrap(AppState.spoolRecut(whole, to: state.spoolDirectory))
+        state.scannedPages = [page]
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let firstFile: URL = try XCTUnwrap(page.fileURL)
+
+        state.cropPage(id: page.id, to: CGRect(x: 0, y: 0, width: 0.5, height: 1), rotation: 1)
+        XCTAssertNil(state.pageEditChain)
+        state.cropPage(id: page.id, to: CGRect(x: 0, y: 0, width: 0.5, height: 1), rotation: 0)
+        try await waitUntil(timeout: 60) { state.scannedPages.first?.fileURL != firstFile }
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        let cropped: ScannedPage = state.scannedPages[0]
+        XCTAssertEqual(AppState.imageInFile(try XCTUnwrap(cropped.fileURL))?.width, 20)
+        XCTAssertEqual(cropped.fullPixelSize, CGSize(width: 20, height: 20))
+        XCTAssertEqual(cropped.alternate?.fileURL, firstFile)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: firstFile.path))
+        XCTAssertEqual(state.statusMessage, "Page 1 is cropped.")
+        XCTAssertTrue(state.recuttingPages.isEmpty)
+
+        state.filterPage(id: page.id, .blackAndWhite)
+        try await waitUntil(timeout: 60) { state.scannedPages.first?.fileURL != cropped.fileURL }
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        let filtered: ScannedPage = state.scannedPages[0]
+        XCTAssertNotEqual(filtered.fileURL, cropped.fileURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: try XCTUnwrap(cropped.fileURL).path))
+        XCTAssertEqual(filtered.alternate?.fileURL, firstFile)
+        XCTAssertEqual(state.statusMessage, "Page 1: B&W.")
+
+        state.togglePageGeometry(id: page.id)
+        try await waitUntil(timeout: 60) { state.scannedPages.first?.showsOriginal == true }
+        XCTAssertEqual(state.scannedPages[0].fileURL, firstFile)
+        XCTAssertFalse(PageRecut.canEdit(state.scannedPages[0]))
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        state.filterPage(id: page.id, .grayscale)
+        XCTAssertNil(state.pageEditChain)
+    }
 }

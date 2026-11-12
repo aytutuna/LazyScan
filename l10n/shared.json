@@ -1339,6 +1339,7 @@
   },
   "Page {0}: {1}.": {},
   "Page {0} is cut out again.": {},
+  "Page {0} is cropped.": {},
   "The page could not be changed: its photo could not be read.": {},
   "Document {0} is named “{1}”: it goes into the file name.": {},
   "Document {0} is named “{1}” by its barcode.": {},
