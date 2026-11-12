@@ -164,7 +164,7 @@ extension AppState {
         if !queued.isEmpty {
             deleteSpoolFiles(of: queued)
             scannedPages = []
-            scanHistory.removeAll { entry in queued.contains { $0.id == entry.pageID } }
+            removeHistory { entry in queued.contains { $0.id == entry.pageID } }
         }
         return true
     }

@@ -344,6 +344,39 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_historyEntry_keepsItsPage_addToQueueQueuesACopy_clearDeletesTheFile() async throws {
+        let state = makeState()
+        let page = seamPage(width: 400, height: 520, dpi: 50)
+        XCTAssertTrue(state.ingest([page], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let entry = try XCTUnwrap(state.scanHistory.first)
+        let file = try XCTUnwrap(entry.pageFile)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+
+        state.removePage(id: page.id)
+        XCTAssertTrue(state.scanHistory.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        let second = try XCTUnwrap(state.scanHistory.first)
+        let secondFile = try XCTUnwrap(second.pageFile)
+        state.addToQueue(second)
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        let added = try XCTUnwrap(state.scannedPages.last)
+        XCTAssertNotEqual(added.id, second.pageID)
+        XCTAssertEqual(added.dpi, 50)
+        XCTAssertEqual(added.fullPixelSize, CGSize(width: 400, height: 520))
+        XCTAssertNotEqual(added.fileURL, secondFile)
+
+        state.removePage(id: added.id)
+        XCTAssertEqual(state.scanHistory.count, 1)
+        state.clearHistory()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: secondFile.path))
+    }
+
+    @MainActor
     func test_printQueueWithLazyPrint_opensAPDFOutsideTheSpool_leavesTheQueueAndTheStatus() async throws {
         let files = SeamFileActions()
         let state = makeState(files: files)

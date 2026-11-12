@@ -15,6 +15,9 @@ struct AppStateFiles {
     /// AppState+Book.swift). Emptied when the `AppState` is made: what a previous run left goes, but for
     /// a queue kept (`keepsQueue`).
     var spoolDirectory: URL
+    /// Where the scans of `scanHistory` keep their pages for this session. Emptied when the `AppState` is
+    /// made, since a kill leaves what a run did not remove at quit.
+    var historyDirectory: URL
     /// The device diagnostics file, devices.txt (`AppState.writeDeviceDiagnostics`); nil: not written.
     var diagnosticsFile: URL?
     /// The queue is recorded beside its spool files and brought back when the `AppState` is made
@@ -37,6 +40,8 @@ struct AppStateFiles {
         return AppStateFiles(settingsDirectory: StoreFiles.defaultDirectory,
                              spoolDirectory: FileManager.default.temporaryDirectory
                                  .appendingPathComponent("LazyScan-pages", isDirectory: true),
+                             historyDirectory: FileManager.default.temporaryDirectory
+                                 .appendingPathComponent("LazyScan-history", isDirectory: true),
                              diagnosticsFile: logs?.appendingPathComponent("devices.txt"))
     }
 
@@ -54,6 +59,7 @@ struct AppStateFiles {
     static func all(in folder: URL) -> AppStateFiles {
         AppStateFiles(settingsDirectory: folder,
                       spoolDirectory: folder.appendingPathComponent("pages", isDirectory: true),
+                      historyDirectory: folder.appendingPathComponent("history", isDirectory: true),
                       diagnosticsFile: folder.appendingPathComponent("devices.txt"))
     }
 }
@@ -599,6 +605,8 @@ public final class AppState: ObservableObject {
     let settingsDirectory: URL
     /// Where queued pages are spilled to disk (`AppStateFiles.spoolDirectory`).
     let spoolDirectory: URL
+    /// Where the scans of `scanHistory` keep their pages for this session; a folder of its own, removed at quit.
+    let historyDirectory: URL
     /// devices.txt (`writeDeviceDiagnostics`); nil: not written.
     private let diagnosticsFile: URL?
     /// When the app is about to quit and when it comes to the front, as the app shell reports it
@@ -738,6 +746,7 @@ public final class AppState: ObservableObject {
          files: AppStateFiles) {
         self.settingsDirectory = files.settingsDirectory
         self.spoolDirectory = files.spoolDirectory
+        self.historyDirectory = files.historyDirectory
         self.diagnosticsFile = files.diagnosticsFile
         self.keepsQueue = files.keepsQueue
         self.discardsQueueAtQuit = files.discardsQueueAtQuit
@@ -775,6 +784,7 @@ public final class AppState: ObservableObject {
         if let downloads = files.downloadDirectory {
             try? FileManager.default.removeItem(at: downloads)
         }
+        try? FileManager.default.removeItem(at: files.historyDirectory)
         // Flush any debounced settings write on quit so a change made just
         // before Cmd-Q is not lost.
         lifecycle?.observeWillTerminate { [weak self] in
@@ -783,6 +793,7 @@ public final class AppState: ObservableObject {
             SettingsStore.save(self.settings, directory: self.settingsDirectory)
             if self.keepsSavedForUndo { self.discardSavedUndo() }
             self.discardRemovedUndo()
+            try? FileManager.default.removeItem(at: self.historyDirectory)
             if self.discardsQueueAtQuit {
                 self.queueRecordTask?.cancel()
                 QueueRecord.clear(self.spoolDirectory, keeping: nil)
@@ -1600,7 +1611,7 @@ public final class AppState: ObservableObject {
         guard self.isCurrent(generation) else { return nil }
         let shownPixelSize = shownLast.map { CGSize(width: $0.width, height: $0.height) }
 
-        // Record every scanned page in the session history (small previews only). ID cards are
+        // Record every scanned page in the session history (a preview and the page in a temp file). ID cards are
         // kept out of it: nothing of them is left once saved or discarded. A copy held on the phone
         // goes in once it is printed.
         let copyHeld = self.holdsCopy(s)
@@ -1773,31 +1784,90 @@ public final class AppState: ObservableObject {
         applyNewDocument(to: ids)
     }
 
-    /// Puts small previews of `pages` at the top of the session history, keeping the 50 newest. False,
+    /// Puts previews of `pages` at the top of the session history, each page kept in `historyDirectory`,
+    /// keeping the 50 newest. False,
     /// with nothing added, when another scanner was chosen meanwhile (`generation`).
     func addToHistory(_ pages: [ScannedPage], intent: ScanIntent, generation: Int?) async -> Bool {
-        let historyThumbs: [(CGImage, CGSize, Int, UUID)] = await Task.detached(priority: .utility) {
-            pages.map { page in
-                (Self.makePreview(page.image, maxSide: 700) ?? page.image,
-                 CGSize(width: page.image.width, height: page.image.height),
-                 page.dpi, page.id)
+        let folder = historyDirectory
+        let historyThumbs: [(CGImage, CGSize, Int, UUID, ColorMode, URL?)] = await Task.detached(priority: .utility) {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            return pages.map { page in
+                let file = folder.appendingPathComponent("\(UUID().uuidString).tiff")
+                var kept: URL?
+                if let full = try? Self.fullImage(of: page, number: 1),
+                   (try? ImageExporter.write(full, to: file, format: .tiff, dpi: page.dpi, jpegQuality: 1.0,
+                                           colorMode: page.colorMode)) != nil {
+                    kept = file
+                }
+                return (Self.makePreview(page.image, maxSide: 700) ?? page.image,
+                        CGSize(width: page.image.width, height: page.image.height),
+                        page.dpi, page.id, page.colorMode, kept)
             }
         }.value
-        guard isCurrent(generation) else { return false }
         let now = Date()
         let entries = historyThumbs.map {
-            ScanHistoryEntry(date: now, intent: intent, dpi: $0.2,
-                             thumbnail: $0.0, pixelSize: $0.1, pageID: $0.3)
+            ScanHistoryEntry(date: now, intent: intent, dpi: $0.2, thumbnail: $0.0, pixelSize: $0.1,
+                             pageID: $0.3, colorMode: $0.4, pageFile: $0.5)
+        }
+        guard isCurrent(generation) else {
+            entries.forEach { removePageFile(of: $0) }
+            return false
         }
         scanHistory.insert(contentsOf: entries.reversed(), at: 0)
         if scanHistory.count > 50 {
+            scanHistory[50...].forEach { removePageFile(of: $0) }
             scanHistory.removeSubrange(50...)
         }
         return true
     }
 
     public func clearHistory() {
+        scanHistory.forEach { removePageFile(of: $0) }
         scanHistory = []
+    }
+
+    /// Takes the entries `isRemoved` picks out of the history, with their page files.
+    func removeHistory(where isRemoved: (ScanHistoryEntry) -> Bool) {
+        scanHistory.filter(isRemoved).forEach { removePageFile(of: $0) }
+        scanHistory.removeAll(where: isRemoved)
+    }
+
+    private func removePageFile(of entry: ScanHistoryEntry) {
+        if let file = entry.pageFile { try? FileManager.default.removeItem(at: file) }
+    }
+
+    /// Puts the page of a history entry at the end of the queue as a page of its own, so taking it out of
+    /// the queue leaves the entry in the history.
+    public func addToQueue(_ entry: ScanHistoryEntry) {
+        guard !isBusy, !readsQueue else { return }
+        guard let file = entry.pageFile, FileManager.default.fileExists(atPath: file.path) else {
+            errorMessage = L10n.t("This scan's page is no longer available.")
+            return
+        }
+        let spool = spoolDirectory
+        let dpi = entry.dpi
+        let colorMode = entry.colorMode
+        let pixelSize = entry.pixelSize
+        runExclusive(stopsInBackground: false) { _ in
+            let id = UUID()
+            let page: ScannedPage? = await Task.detached(priority: .userInitiated) {
+                let copy = spool.appendingPathComponent("\(id.uuidString).tiff")
+                try? FileManager.default.createDirectory(at: spool, withIntermediateDirectories: true)
+                guard (try? FileManager.default.copyItem(at: file, to: copy)) != nil else { return nil }
+                guard let preview = Self.previewOfSpoolFile(copy, quarterTurns: 0) else {
+                    try? FileManager.default.removeItem(at: copy)
+                    return nil
+                }
+                return ScannedPage(image: preview, dpi: dpi, colorMode: colorMode, id: id,
+                                   fileURL: copy, fullPixelSize: pixelSize)
+            }.value
+            guard let page else {
+                self.errorMessage = L10n.t("This scan's page could not be added to the queue.")
+                return
+            }
+            self.scannedPages.append(page)
+            self.statusMessage = L10n.t("Page added to the queue.")
+        }
     }
 
     /// The capabilities could not be read on connect (the scanner was off, say) yet a scan just

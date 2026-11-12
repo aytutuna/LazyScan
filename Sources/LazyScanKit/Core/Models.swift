@@ -1276,14 +1276,21 @@ public struct ScanHistoryEntry: Identifiable {
     public let date: Date
     public let intent: ScanIntent
     public let dpi: Int
-    /// Downsampled preview (≤ ~700 px long side) — history never retains full pixels.
+    /// Downsampled preview (≤ ~700 px long side), the only pixels kept in memory.
     public let thumbnail: CGImage
     /// True pixel dimensions of the original scan.
     public let pixelSize: CGSize
+    public let colorMode: ColorMode
+    /// The page as scanned (`ProcessedScan.arranged`), full resolution, in a temp file of this session; nil
+    /// when it could not be written. Gone when the entry is removed, on Clear and at quit.
+    public let pageFile: URL?
 
     public init(date: Date, intent: ScanIntent, dpi: Int, thumbnail: CGImage,
-                pixelSize: CGSize, id: UUID = UUID(), pageID: UUID = UUID()) {
+                pixelSize: CGSize, id: UUID = UUID(), pageID: UUID = UUID(),
+                colorMode: ColorMode = .color, pageFile: URL? = nil) {
         self.id = id
+        self.colorMode = colorMode
+        self.pageFile = pageFile
         self.pageID = pageID
         self.date = date
         self.intent = intent

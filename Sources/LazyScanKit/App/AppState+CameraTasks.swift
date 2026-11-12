@@ -218,7 +218,7 @@ extension AppState {
     public func discardQuickScan() {
         guard !isBusy, let page = quickScanPage else { return }
         quickScanPage = nil
-        scanHistory.removeAll { $0.pageID == page.id }
+        removeHistory { $0.pageID == page.id }
         statusMessage = L10n.t("Page discarded.")
     }
 

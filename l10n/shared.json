@@ -1446,6 +1446,9 @@
   "No text found.": {},
   "Text copied.": {},
   "Page discarded.": {},
+  "This scan's page is no longer available.": {},
+  "This scan's page could not be added to the queue.": {},
+  "Page added to the queue.": {},
   "The copy could not be prepared for printing.": {},
   "Printing on {0}…": {
     "note": "{0} is the printer name."
