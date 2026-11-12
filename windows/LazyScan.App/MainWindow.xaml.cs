@@ -2349,6 +2349,7 @@ public partial class MainWindow : Window
         if (_marqueeStart is not { } start) return;
         _marqueeStart = null;
         CanvasHost.ReleaseMouseCapture();
+        if (ViewModel.OverviewImage is null) { SelectionMarquee.Visibility = Visibility.Collapsed; return; }
         if (DisplayedImageRect() is not { } imageRect) return;
 
         var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);

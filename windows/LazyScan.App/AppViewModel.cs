@@ -609,7 +609,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             TaskCatalog.Summary(SettingsAdapter.Adapt(TaskCatalog.Apply(definition.Task, new ScanSettings()),
                                                       Capabilities).Settings))).ToList();
 
-    /// <summary>Image shown in the preview canvas (before live adjustments).</summary>
+    /// <summary>Image shown in the preview canvas (before live adjustments): the overview until a page lands, then the last scan.</summary>
     public RgbaImage? CanvasImage => OverviewImage ?? LastScanImage;
     /// <summary><see cref="CanvasImage"/> rendered through the current adjustments.</summary>
     public BitmapSource? CanvasBitmap { get; private set; }
@@ -3106,6 +3106,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     private void SetLastScan(RgbaImage preview)
     {
+        // A new page replaces the overview; the area drawn on it still applies until cleared.
+        OverviewImage = null;
         LastScanImage = preview;
         CanvasImageChanged();
     }

@@ -111,7 +111,7 @@ public partial class MainWindow
     /// <summary>"Using the selected area" under Paper size while an area of the preview is selected, with × to clear it.</summary>
     private void SyncSelectedArea()
     {
-        bool area = ViewModel.SelectionRect is not null && ViewModel.OverviewImage is not null
+        bool area = ViewModel.SelectionRect is not null
                     && ViewModel.Settings.Source == ScanSource.Flatbed;
         SelectedAreaRow.Visibility = area ? Visibility.Visible : Visibility.Collapsed;
         PaperSizeHint.Text = area ? PaperSizes.SelectedAreaNote : "";
