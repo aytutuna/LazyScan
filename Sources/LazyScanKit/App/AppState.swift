@@ -627,9 +627,13 @@ public final class AppState: ObservableObject {
         self.presets = presetStore.load()
         syncTaskFlow()
         syncCameraSides()
-        // Clear page spill files left behind by a previous run, but for the queue kept last time.
+        // Clear page spill files left behind by a previous run, but for the queue kept last time; a record that cannot be read leaves them all.
         let kept: QueueRecord? = files.keepsQueue ? QueueRecord.read(in: files.spoolDirectory, settings: initial) : nil
-        QueueRecord.clear(files.spoolDirectory, keeping: kept)
+        if files.keepsQueue, kept == nil, QueueRecord.isUnreadable(in: files.spoolDirectory, settings: initial) {
+            errorMessage = L10n.t("The pages kept from last time could not be read.")
+        } else {
+            QueueRecord.clear(files.spoolDirectory, keeping: kept)
+        }
         if files.keepsQueue {
             QueueRecord.keepOutOfBackups(files.spoolDirectory)
         }

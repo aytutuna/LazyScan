@@ -272,6 +272,72 @@ final class AppStateQueueRecordTests: XCTestCase {
         XCTAssertEqual(spoolNames(), [])
     }
 
+    /// Rewrites the record `makeQueue` wrote through `change`, as an older or newer version would have left it.
+    private func editRecord(_ change: (inout [String: Any], inout [[String: Any]]) -> Void) throws {
+        let url: URL = spool.appendingPathComponent(QueueRecord.fileName)
+        var record = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var pages = try XCTUnwrap(record["pages"] as? [[String: Any]])
+        change(&record, &pages)
+        record["pages"] = pages
+        try JSONSerialization.data(withJSONObject: record).write(to: url)
+    }
+
+    @MainActor
+    func test_aPageWithAnUnknownValue_isLeftOut_andTheOthersComeBack() async throws {
+        let before = try await makeQueue()
+        let kept: ScannedPage = before.scannedPages[0]
+        try editRecord { _, pages in
+            pages[0]["fromANewerVersion"] = true
+            pages[1]["colorMode"] = "a mode from a newer version"
+        }
+        let after = makeState()
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.map(\.id), [kept.id])
+        XCTAssertEqual(after.statusMessage, "Pages back from last time: 1 of 2.")
+    }
+
+    @MainActor
+    func test_aRecordFromAnOlderVersion_keepsItsReadablePages() async throws {
+        let before = try await makeQueue()
+        let kept: ScannedPage = before.scannedPages[0]
+        try editRecord { record, pages in
+            record["queued"] = nil
+            pages[1]["dpi"] = nil
+        }
+        let after = makeState()
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.map(\.id), [kept.id])
+        XCTAssertEqual(after.statusMessage, "Pages back from last time: 1 of 2.")
+    }
+
+    @MainActor
+    func test_aRecordThatCannotBeRead_leavesTheSpoolAlone() async throws {
+        _ = try await makeQueue()
+        let names: [String] = spoolNames()
+        try Data("{".utf8).write(to: spool.appendingPathComponent(QueueRecord.fileName))
+        let after = makeState()
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertTrue(after.scannedPages.isEmpty)
+        XCTAssertEqual(spoolNames(), names)
+        XCTAssertEqual(after.errorMessage, "The pages kept from last time could not be read.")
+    }
+
+    @MainActor
+    func test_aRecordWhosePagesAllFail_leavesTheSpoolAlone() async throws {
+        _ = try await makeQueue()
+        let names: [String] = spoolNames()
+        try editRecord { _, pages in
+            for index in pages.indices {
+                pages[index]["colorMode"] = "a mode from a newer version"
+            }
+        }
+        let after = makeState()
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertTrue(after.scannedPages.isEmpty)
+        XCTAssertEqual(spoolNames(), names)
+        XCTAssertEqual(after.errorMessage, "The pages kept from last time could not be read.")
+    }
+
     func test_aRecordWithoutTheQueuedCount_stillDecodes() throws {
         let record: QueueRecord = try JSONDecoder().decode(QueueRecord.self, from: Data(#"{"pages":[]}"#.utf8))
         XCTAssertNil(record.queued)

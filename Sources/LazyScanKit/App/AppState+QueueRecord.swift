@@ -39,6 +39,29 @@ struct QueueRecord: Codable, Sendable {
 
     static let fileName = "queue.json"
 
+    /// Decodes a page without failing the list it sits in: one with an unknown value or a missing field
+    /// comes out nil.
+    private struct Lenient: Decodable {
+        let page: Page?
+
+        init(from decoder: Decoder) throws {
+            page = try? Page(from: decoder)
+        }
+    }
+
+    /// Pages that do not decode are left out; `queued` then counts them, so the restore says some did not
+    /// come back. When none does, the record is unreadable as a whole.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let entries = try container.decode([Lenient].self, forKey: .pages)
+        pages = entries.compactMap(\.page)
+        if pages.isEmpty && !entries.isEmpty {
+            throw DecodingError.dataCorruptedError(forKey: .pages, in: container, debugDescription: "No page could be read")
+        }
+        let recorded = try container.decodeIfPresent(Int.self, forKey: .queued)
+        queued = recorded ?? (pages.count < entries.count ? entries.count : nil)
+    }
+
     /// "Bringing back 3 pages…"
     static func restoringMessage(_ count: Int) -> String {
         L10n.plural(count, one: "Bringing back {0} page…", other: "Bringing back {0} pages…")
@@ -84,18 +107,33 @@ struct QueueRecord: Codable, Sendable {
     /// save a queue (`TaskFlowKind.documentQueue`, or Photos and Receipts, whose objects the iPhone queues,
     /// `AppState.listsFoundObjects`). A page whose file is gone is left out (the record is
     /// written a moment after a page goes, and the app may end in between); nil when none is left, and the
-    /// spool is emptied as it always was.
+    /// spool is emptied as it always was. A page that does not decode is left out like one whose file is gone.
     static func read(in spool: URL, settings: ScanSettings) -> QueueRecord? {
-        let flow: TaskFlowKind = TaskCatalog.flow(of: settings)
-        guard flow == .documentQueue || flow == .photoSplit || flow == .receiptSplit,
-              let data = try? Data(contentsOf: spool.appendingPathComponent(fileName)),
-              var record = try? JSONDecoder().decode(QueueRecord.self, from: data) else {
-            return nil
-        }
+        guard keepsQueue(settings), var record = decoded(in: spool) else { return nil }
         record.pages = record.pages.filter { (page: Page) -> Bool in
             FileManager.default.fileExists(atPath: spool.appendingPathComponent(page.file).path)
         }
         return record.pages.isEmpty ? nil : record
+    }
+
+    /// True when a record is in `spool` for a queue the settings save but it cannot be decoded at all. The
+    /// spool is then left as it is, as the pages are still in it.
+    static func isUnreadable(in spool: URL, settings: ScanSettings) -> Bool {
+        guard keepsQueue(settings),
+              FileManager.default.fileExists(atPath: spool.appendingPathComponent(fileName).path) else {
+            return false
+        }
+        return decoded(in: spool) == nil
+    }
+
+    private static func keepsQueue(_ settings: ScanSettings) -> Bool {
+        let flow: TaskFlowKind = TaskCatalog.flow(of: settings)
+        return flow == .documentQueue || flow == .photoSplit || flow == .receiptSplit
+    }
+
+    private static func decoded(in spool: URL) -> QueueRecord? {
+        guard let data = try? Data(contentsOf: spool.appendingPathComponent(fileName)) else { return nil }
+        return try? JSONDecoder().decode(QueueRecord.self, from: data)
     }
 
     /// Pages kept in Application Support are no use in a backup: they belong to this device's session.
