@@ -374,6 +374,67 @@ final class AppStateQueueRecordTests: XCTestCase {
         XCTAssertNil(record.queued)
     }
 
+    func test_aRecordWithoutTheSessionFields_decodesThemAsNil() throws {
+        let record: QueueRecord = try JSONDecoder().decode(QueueRecord.self, from: Data(#"{"pages":[],"queued":0}"#.utf8))
+        XCTAssertNil(record.taskId)
+        XCTAssertNil(record.cameraSides)
+        XCTAssertNil(record.flowCaptures)
+        XCTAssertNil(record.flowStep)
+        XCTAssertNil(record.newDocumentPending)
+        XCTAssertNil(record.appendBookmark)
+    }
+
+    func test_theSessionFields_roundTrip() throws {
+        var sides = CameraSides(mode: .frontsFirst)
+        let front: UUID = UUID()
+        sides.took([front])
+        sides.startBacks()
+        var record = QueueRecord([], spool: folder)
+        record.taskId = "twoSided"
+        record.cameraSides = sides
+        record.flowCaptures = ["scan": [front]]
+        record.flowStep = 1
+        record.newDocumentPending = true
+        record.appendBookmark = Data([1, 2, 3])
+        let back: QueueRecord = try JSONDecoder().decode(QueueRecord.self, from: JSONEncoder().encode(record))
+        XCTAssertEqual(back.taskId, "twoSided")
+        XCTAssertEqual(back.cameraSides, sides)
+        XCTAssertEqual(back.flowCaptures, ["scan": [front]])
+        XCTAssertEqual(back.flowStep, 1)
+        XCTAssertEqual(back.newDocumentPending, true)
+        XCTAssertEqual(back.appendBookmark, Data([1, 2, 3]))
+    }
+
+    @MainActor
+    func test_theCamerasFrontsAndTheAppendTarget_comeBackWithTheQueue() async throws {
+        let before = makeState()
+        before.bookmarkAppendTarget = { (url: URL) -> Data? in Data(url.path.utf8) }
+        XCTAssertTrue(before.startTask(.twoSided))
+        before.settings.taskOptions.cameraFrontsFirst = true
+        before.settings.destinationPath = folder.path
+        XCTAssertTrue(before.ingest([recordPage(), recordPage()], source: .photo))
+        try await waitUntil(timeout: 60) { !before.isBusy && before.scannedPages.count == 2 }
+        let fronts: [UUID] = before.scannedPages.map(\.id)
+        before.startCameraBacks()
+        XCTAssertEqual(before.cameraSides?.fronts, fronts)
+        let target: URL = folder.appendingPathComponent("Contract.pdf")
+        before.setAppendTarget(target)
+        before.writeQueueRecord()
+        // The settings' own write lands 0.4 s after they change; this one comes after it.
+        try await Task.sleep(nanoseconds: 600_000_000)
+        SettingsStore.save(before.settings, directory: folder)
+
+        let after = makeState()
+        after.resolveAppendTarget = { (bookmark: Data) -> URL? in
+            URL(fileURLWithPath: String(decoding: bookmark, as: UTF8.self))
+        }
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.cameraSides?.fronts, fronts)
+        XCTAssertEqual(after.cameraSides?.next, .back)
+        XCTAssertEqual(after.taskFlow?.allCaptures, before.taskFlow?.allCaptures)
+        XCTAssertEqual(after.appendTarget?.path, target.path)
+    }
+
     func test_onlyTheIPhonesFiles_keepTheQueue_inApplicationSupport() {
         XCTAssertFalse(AppStateFiles.standard.keepsQueue)
         let kept = AppStateFiles.keepingQueue

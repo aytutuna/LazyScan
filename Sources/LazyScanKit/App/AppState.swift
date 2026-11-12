@@ -379,8 +379,15 @@ public final class AppState: ObservableObject {
     /// and other providers see the new file. Nil (the Mac) uses the file as it is. Set by `makeForIOS`.
     public var accessPDFForAppend: (@Sendable (_ url: URL, _ writing: Bool, _ body: (URL) throws -> Void) throws -> Void)?
     /// The PDF Save adds the queue to instead of writing a new file (`setAppendTarget`, the start screen's
-    /// "Add pages to a PDF"); nil otherwise. Kept for this session only (AppState+Append.swift).
-    @Published public internal(set) var appendTarget: URL?
+    /// "Add pages to a PDF"); nil otherwise. Kept in the queue's record as a bookmark where the shell can
+    /// make one (`bookmarkAppendTarget`), else for this session only (AppState+Append.swift).
+    @Published public internal(set) var appendTarget: URL? {
+        didSet { scheduleQueueRecord() }
+    }
+    /// Makes the bookmark of `appendTarget` the queue's record keeps, and opens one again after a relaunch.
+    /// Set by `makeForIOS`.
+    public var bookmarkAppendTarget: (@MainActor (URL) -> Data?)?
+    public var resolveAppendTarget: (@MainActor (Data) -> URL?)?
     /// The name typed for the next save (Options, Save as): the whole file name of the one file the queue
     /// is saved as. Nil keeps the template, which it never changes. Reset once a save has used it.
     @Published public var pendingName: String?
@@ -485,9 +492,13 @@ public final class AppState: ObservableObject {
     public var afterSidesAnswer: (() -> Void)?
     /// The camera takes both sides of each sheet in the two-sided task: the side the next shot is, and the
     /// fronts and backs taken (AppState+CameraTasks.swift); nil for the other tasks.
-    @Published public internal(set) var cameraSides: CameraSides?
+    @Published public internal(set) var cameraSides: CameraSides? {
+        didSet { scheduleQueueRecord() }
+    }
     /// Separate documents: the next page taken starts a new document (`startNewDocument`).
-    @Published public internal(set) var newDocumentPending = false
+    @Published public internal(set) var newDocumentPending = false {
+        didSet { scheduleQueueRecord() }
+    }
     /// Quick scan on the camera, and a scanner's page on the phone: the page, held until it is saved as a
     /// picture, its text copied, or discarded (AppState+CameraTasks.swift); nil otherwise.
     @Published public internal(set) var quickScanPage: ScannedPage?
@@ -707,6 +718,8 @@ public final class AppState: ObservableObject {
         self.presets = presetStore.load()
         syncTaskFlow()
         syncCameraSides()
+        queueRecordTask?.cancel()
+        queueRecordTask = nil
         // Clear page spill files left behind by a previous run, but for the queue kept last time; a record that cannot be read leaves them all.
         let kept: QueueRecord? = files.keepsQueue ? QueueRecord.read(in: files.spoolDirectory, settings: initial) : nil
         if files.keepsQueue, kept == nil, QueueRecord.isUnreadable(in: files.spoolDirectory, settings: initial) {

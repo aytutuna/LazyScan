@@ -11,6 +11,16 @@ struct QueueRecord: Codable, Sendable {
     /// How many pages the queue had when it was recorded, those left out included; nil in a record written
     /// before it existed.
     var queued: Int?
+    /// What the camera, the task's steps and Save knew besides the pages, set again by `restoreQueue` when
+    /// the task is still `taskId`; nil in a record written before they were kept, or with nothing to keep.
+    /// The Windows record has none of them and leaves them out when it reads this one.
+    var taskId: String?
+    var cameraSides: CameraSides?
+    var flowCaptures: [String: [UUID]]?
+    var flowStep: Int?
+    var newDocumentPending: Bool?
+    /// The bookmark of `AppState.appendTarget` (`AppState.bookmarkAppendTarget`).
+    var appendBookmark: Data?
 
     struct Page: Codable, Sendable {
         var id: UUID
@@ -60,6 +70,12 @@ struct QueueRecord: Codable, Sendable {
         }
         let recorded = try container.decodeIfPresent(Int.self, forKey: .queued)
         queued = recorded ?? (pages.count < entries.count ? entries.count : nil)
+        taskId = try? container.decodeIfPresent(String.self, forKey: .taskId)
+        cameraSides = try? container.decodeIfPresent(CameraSides.self, forKey: .cameraSides)
+        flowCaptures = try? container.decodeIfPresent([String: [UUID]].self, forKey: .flowCaptures)
+        flowStep = try? container.decodeIfPresent(Int.self, forKey: .flowStep)
+        newDocumentPending = try? container.decodeIfPresent(Bool.self, forKey: .newDocumentPending)
+        appendBookmark = try? container.decodeIfPresent(Data.self, forKey: .appendBookmark)
     }
 
     /// "Bringing back 3 pages…"
@@ -200,7 +216,13 @@ extension AppState {
         queueRecordTask?.cancel()
         queueRecordTask = nil
         let url = spoolDirectory.appendingPathComponent(QueueRecord.fileName)
-        let record = QueueRecord(scannedPages, spool: spoolDirectory)
+        var record = QueueRecord(scannedPages, spool: spoolDirectory)
+        record.taskId = settings.taskId
+        record.cameraSides = cameraSides
+        record.flowCaptures = taskFlow?.allCaptures
+        record.flowStep = taskFlow.map(\.stepIndex)
+        record.newDocumentPending = newDocumentPending ? true : nil
+        record.appendBookmark = appendTarget.flatMap { bookmarkAppendTarget?($0) }
         guard !record.pages.isEmpty, let data = try? JSONEncoder().encode(record) else {
             try? FileManager.default.removeItem(at: url)
             warnIfNotKept(!scannedPages.isEmpty)
@@ -230,7 +252,7 @@ extension AppState {
         let delay = queueRecordDelay
         queueRecordTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: delay)
-            guard !Task.isCancelled, let self else { return }
+            guard !Task.isCancelled, let self, !self.restoringQueue else { return }
             self.writeQueueRecord()
         }
     }
@@ -257,7 +279,32 @@ extension AppState {
             }
             self.restoringQueue = false
             self.scannedPages = pages + self.scannedPages
+            self.restoreSession(from: record, pages: pages)
             self.statusMessage = QueueRecord.restoredMessage(pages.count, of: record.queued ?? record.pages.count)
+        }
+    }
+
+    /// Gives back what went with the pages, when the task is still the one they were taken in: the camera's
+    /// two-sided steps (when they take the sides the way the settings now say, as `syncCameraSides` made
+    /// them), the steps' captures of pages that came back, a pending New document and the PDF to add to.
+    private func restoreSession(from record: QueueRecord, pages: [ScannedPage]) {
+        guard record.taskId == settings.taskId else { return }
+        let ids = Set(pages.map(\.id))
+        if var sides = record.cameraSides, sides.mode == cameraSides?.mode {
+            for page in record.pages where !ids.contains(page.id) { sides.removed(page.id) }
+            cameraSides = sides
+        }
+        for (stepID, captures) in record.flowCaptures ?? [:] {
+            for id in captures where ids.contains(id) {
+                taskFlow?.record(stepID: stepID, captureID: id)
+            }
+        }
+        while (taskFlow?.stepIndex ?? 0) < (record.flowStep ?? 0), taskFlow?.advance() == true {}
+        if record.newDocumentPending == true && offersNewDocument {
+            newDocumentPending = true
+        }
+        if let bookmark = record.appendBookmark, let url = resolveAppendTarget?(bookmark) {
+            appendTarget = url
         }
     }
 }

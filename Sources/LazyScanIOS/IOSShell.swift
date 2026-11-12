@@ -1286,6 +1286,12 @@ extension AppState {
         state.accessPDFForAppend = { (url: URL, writing: Bool, body: (URL) throws -> Void) throws -> Void in
             try IOSPDFAppend.access(url, writing: writing, body)
         }
+        state.bookmarkAppendTarget = { (url: URL) -> Data? in
+            IOSPDFAppend.bookmark(of: url)
+        }
+        state.resolveAppendTarget = { (bookmark: Data) -> URL? in
+            IOSPDFAppend.resolve(bookmark)
+        }
         state.documentsFolder = IOSShell.documentsFolder
         state.resolveDestinationBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
             IOSSaveFolder.resolve(bookmark)

@@ -2,7 +2,7 @@ import Foundation
 
 /// How the iPhone's camera takes both sides of each sheet in the two-sided task (I14), as
 /// `TaskOptions.cameraFrontsFirst` says.
-public enum CameraSidesMode: String, Sendable {
+public enum CameraSidesMode: String, Codable, Sendable {
     /// Flip & capture: each front, then its back, the sheet turned over between the two shots.
     case flip
     /// Every front first, then every back, first sheet first; put in order with the manual interleave.
@@ -15,7 +15,7 @@ public enum CameraSidesMode: String, Sendable {
 /// come in (`ScanArrangement.cameraFront`, `.cameraBack`); a back is never turned for the binding, since
 /// the user turned the sheet over and turning pages upright fixes it. Swift only: the Windows app takes
 /// no camera shots.
-public struct CameraSides: Equatable, Sendable {
+public struct CameraSides: Equatable, Codable, Sendable {
     public let mode: CameraSidesMode
     /// The side the next shot is.
     public private(set) var next: PageSide = .front

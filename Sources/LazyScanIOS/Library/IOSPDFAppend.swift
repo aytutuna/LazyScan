@@ -10,6 +10,21 @@ import UIKit
 /// question before adding pages to a signed or PDF/A file is an alert over whatever is shown
 /// (`AppState.confirmAppend`). Both are set by `AppState.makeForIOS`.
 public enum IOSPDFAppend {
+    /// The bookmark of the PDF picked in Files, kept in the queue's record (`AppState.bookmarkAppendTarget`).
+    public static func bookmark(of file: URL) -> Data? {
+        let started: Bool = file.startAccessingSecurityScopedResource()
+        defer {
+            if started { file.stopAccessingSecurityScopedResource() }
+        }
+        return try? file.bookmarkData()
+    }
+
+    /// The file a bookmark of `bookmark(of:)` stands for; nil when it no longer resolves.
+    public static func resolve(_ bookmark: Data) -> URL? {
+        var stale: Bool = false
+        return try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+    }
+
     /// Runs `body` on the file at `url`: read (`writing` false) or replaced (`writing` true).
     public static func access(_ url: URL, writing: Bool, _ body: (URL) throws -> Void) throws {
         let scoped: Bool = url.startAccessingSecurityScopedResource()

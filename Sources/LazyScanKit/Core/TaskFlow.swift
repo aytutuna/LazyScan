@@ -80,6 +80,9 @@ public struct TaskFlow: Equatable, Sendable {
     /// The step to show; nil once the flow is complete.
     public var current: TaskStep? { stepIndex < steps.count ? steps[stepIndex] : nil }
 
+    /// Every step's captures, by step id.
+    public var allCaptures: [String: [UUID]] { capturesByStep }
+
     /// Every step was advanced past or skipped.
     public var isComplete: Bool { stepIndex >= steps.count }
 
