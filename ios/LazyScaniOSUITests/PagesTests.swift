@@ -102,7 +102,8 @@ final class PagesTests: XCTestCase {
     // The sheet's title says its count in digits, in any language.
     @MainActor
     private func titleCount(_ app: XCUIApplication, is count: Int) -> Bool {
-        let bar: XCUIElement = app.navigationBars.firstMatch
+        // The sheet's bar: on the iPad the first one is the sidebar's.
+        let bar: XCUIElement = app.navigationBars.containing(NSPredicate(format: "identifier IN %@", ["pages.cancel", "pages.done"])).firstMatch
         let counted = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
             Int((bar.label.isEmpty ? bar.identifier : bar.label).filter(\.isNumber)) == count
         }, object: nil)

@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 // By identifier among every element: toolbar items and some rows are not buttons in the Simulator's tree.
@@ -16,10 +17,13 @@ extension XCUIApplication {
     func waitForScanScreen(file: StaticString = #filePath, line: UInt = #line) -> Bool {
         let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
         let camera: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
+        // The iPad starts on its task list; the scan screen is behind this button.
+        let open: XCUIElement = descendants(matching: .any)["open.scanner"].firstMatch
         let deadline: Date = Date().addingTimeInterval(60)
         while Date() < deadline {
             if printer.exists { return true }
             if camera.exists { return false }
+            if open.exists && open.isHittable { open.tap() }
             _ = printer.waitForExistence(timeout: 1)
         }
         XCTFail("The scan screen", file: file, line: line)
@@ -208,6 +212,14 @@ extension XCUIApplication {
     /// scanner from run to run.
     @MainActor
     func pickScanner(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
+        // The iPad lists the scanners in its sidebar, beside the screen.
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            let listed: XCUIElement = descendants(matching: .any)[id].firstMatch
+            XCTAssertTrue(listed.waitForExistence(timeout: 30), "The \(id) row in the sidebar", file: file, line: line)
+            waitUntilEnabled(listed, "The \(id) row", file: file, line: line)
+            listed.tap()
+            return
+        }
         openOptions("Scanner", file: file, line: line)
         let row: XCUIElement = descendants(matching: .any)[id].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 30), "The \(id) row in the Scanner options", file: file, line: line)
