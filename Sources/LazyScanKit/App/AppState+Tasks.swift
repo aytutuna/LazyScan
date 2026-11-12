@@ -103,6 +103,7 @@ extension AppState {
             return false
         }
         discardRemovedUndo()
+        bookReorderChanged = nil
         // A task that keeps no queue would leave the held pages with nowhere to come back to.
         if savedUndo != nil && !carriesQueue(task) { discardSavedUndo() }
         var base: ScanSettings = settings

@@ -141,6 +141,137 @@ extension AppState {
         replaceSpread(id: id, cut: nil)
     }
 
+    /// The spreads in the queue that are split and can be cut again, in queue order.
+    private var splitSpreadIDs: [UUID] {
+        var ids: [UUID] = []
+        for page in scannedPages {
+            guard let part = page.spread, !part.isWhole, spreadSources[part.spreadID] != nil,
+                  !ids.contains(part.spreadID) else { continue }
+            ids.append(part.spreadID)
+        }
+        return ids
+    }
+
+    /// The offer to cut the spreads in the queue again after the reading order or the rotation changed:
+    /// nil when neither changed since, or no split spread is queued. The count follows the queue.
+    public var bookReorderOffer: BookReorderOffer? {
+        guard let changed = bookReorderChanged else { return nil }
+        let count = splitSpreadIDs.count
+        return count > 0 ? BookReorderOffer(count: count, changed: changed) : nil
+    }
+
+    /// Raises the offer when the settings just changed the book's reading order or rotation with split
+    /// spreads queued (`settings`' didSet); the options still apply to the next scan either way.
+    func noteBookOptionChange(from old: ScanSettings) {
+        guard settings.taskId == old.taskId else {
+            bookReorderChanged = nil
+            return
+        }
+        let order = settings.taskOptions.bookRightToLeft != old.taskOptions.bookRightToLeft
+        let turns = BookSplitter.normalizedTurns(settings.taskOptions.bookRotationQuarterTurns)
+        let turned = turns != BookSplitter.normalizedTurns(old.taskOptions.bookRotationQuarterTurns)
+        guard order || turned, settings.document.splitFacingPages, !splitSpreadIDs.isEmpty else { return }
+        var changed: BookReorderOffer.Changed = order ? .order : .rotation
+        if order && turned { changed = .both }
+        if let before = bookReorderChanged, before != changed { changed = .both }
+        bookReorderChanged = changed
+    }
+
+    /// "Not now": the spreads stay as they are. Changing an option again raises the offer again.
+    public func dismissBookReorder() {
+        bookReorderChanged = nil
+    }
+
+    /// The offer's Apply: every split spread in the queue is cut again where it is cut now, with the
+    /// current reading order and rotation, as "Change the split" does one (`PageProcessor.processSpread`);
+    /// the pages keep their document break, name and keep or skip (`BookPages.replacementPages`). The old
+    /// pages wait in the hold of `undoRemove()`, so the whole reorder is one Undo. A spread that cannot be
+    /// read keeps its pages.
+    public func applyBookReorder() {
+        guard !isBusy, !readsQueue, bookReorderOffer != nil else { return }
+        let s = settings
+        let scorer = orientationScorer
+        let barcodes = barcodeReader
+        let spool = spoolDirectory
+        runExclusive { flag in
+            // Turns and swaps clicked before must not land on pages about to be replaced.
+            await self.pageEditChain?.value
+            self.statusMessage = BookPages.reorderingStatus
+            var fresh: [UUID: [ScannedPage]] = [:]
+            var unread = 0
+            do {
+                for spreadID in self.splitSpreadIDs {
+                    guard let page = self.scannedPages.first(where: { $0.spreadID == spreadID }),
+                          let source = self.spreadSources[spreadID] else { continue }
+                    let cut = page.spread?.gutter
+                    let side = page.side
+                    let sheetIndex = page.sheetIndex
+                    let pages: [ScannedPage]? = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage]? in
+                        guard let image = Self.loadSpread(source) else { return nil }
+                        var spread = ScannedPage(image: image, dpi: source.dpi, colorMode: s.colorMode, id: spreadID,
+                                                 createdAt: source.createdAt)
+                        spread.side = side
+                        spread.sheetIndex = sheetIndex
+                        let processed = try PageProcessor.forScan(s, arrangement: .asScanned, scorer: scorer, barcodes: barcodes)
+                            .processSpread(spread, cut: cut, options: BookSplitOptions.of(s), shouldContinue: { !flag.isCancelled })
+                        return Self.spoolPages(processed, to: spool)
+                    }.value
+                    if let pages, !pages.isEmpty {
+                        fresh[spreadID] = pages
+                    } else {
+                        unread += 1
+                    }
+                }
+            } catch {
+                for pages in fresh.values { self.deleteSpoolFiles(of: pages) }
+                throw error
+            }
+            guard !flag.isCancelled, !fresh.isEmpty else {
+                for pages in fresh.values { self.deleteSpoolFiles(of: pages) }
+                if flag.isCancelled { throw ScanError.cancelled }
+                if unread > 0 { self.errorMessage = L10n.t("The spread could not be read.") }
+                return
+            }
+            let before = self.scannedPages
+            // What goes in the hold: the pages of the spreads cut again, each with the place it had once the
+            // ones before it were gone (`holdRemoved`).
+            var held: [(page: ScannedPage, index: Int)] = []
+            for (index, page) in before.enumerated() {
+                guard let spreadID = page.spreadID, fresh[spreadID] != nil else { continue }
+                held.append((page: page, index: index - held.count))
+            }
+            var queue = before
+            var added: [UUID] = []
+            for (spreadID, pages) in fresh {
+                let indices = queue.indices.filter { queue[$0].spreadID == spreadID }
+                guard let firstIndex = indices.first else {
+                    self.deleteSpoolFiles(of: pages)
+                    continue
+                }
+                let old = indices.map { queue[$0] }
+                var replacement = BookPages.replacementPages(old, fresh: pages)
+                // A break or a name marks a place in the queue, so it stays there when the halves swap.
+                if replacement.count == old.count {
+                    for i in replacement.indices {
+                        replacement[i] = replacement[i].withDocumentBreak(old[i].documentBreak).withDocumentLabel(old[i].documentLabel)
+                    }
+                }
+                let kept = Set(replacement.map(\.id))
+                self.deleteSpoolFiles(of: pages.filter { !kept.contains($0.id) })
+                for index in indices.reversed() { queue.remove(at: index) }
+                queue.insert(contentsOf: replacement, at: firstIndex)
+                added.append(contentsOf: replacement.map(\.id))
+            }
+            self.discardRemovedUndo()
+            self.scannedPages = queue
+            self.removedUndo = RemovedUndo(pages: held, cleared: false, taskFlow: nil, cameraSides: nil,
+                                           replacedBy: added, reordered: fresh.count)
+            self.bookReorderChanged = nil
+            self.statusMessage = BookPages.reorderedNote(fresh.count)
+            if unread > 0 { self.errorMessage = L10n.t("The spread could not be read.") }
+        }
+    }
+
     private func replaceSpread(id: UUID, cut: (axis: GutterAxis, fraction: Double)?) {
         guard !isBusy, canEditSpread(id: id) else { return }
         let s = settings

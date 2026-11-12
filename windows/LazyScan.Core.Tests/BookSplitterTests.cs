@@ -504,6 +504,24 @@ public class BookSplitterTests
     }
 
     [Fact]
+    public void ReorderOffer_Words()
+    {
+        Assert.Equal("Reads left to right", BookPages.ReadingOrderLine(false));
+        Assert.Equal("Reads right to left", BookPages.ReadingOrderLine(true));
+        Assert.Equal("Apply to the spread already scanned?", BookPages.ReorderOfferText(1));
+        Assert.Equal("Apply to the 5 spreads already scanned?", BookPages.ReorderOfferText(5));
+        Assert.Equal("Apply the new reading order to the 5 spreads already scanned?",
+                     BookPages.ReorderOfferLabel(5, BookReorderChange.Order));
+        Assert.Equal("Apply the new rotation to the spread already scanned?",
+                     BookPages.ReorderOfferLabel(1, BookReorderChange.Rotation));
+        Assert.Equal("Apply the new settings to the 2 spreads already scanned?",
+                     BookPages.ReorderOfferLabel(2, BookReorderChange.Both));
+        Assert.Equal("Reordered 1 spread", BookPages.ReorderedNote(1));
+        Assert.Equal("Reordered 5 spreads", BookPages.ReorderedNote(5));
+        Assert.Equal("Reordering the pages…", BookPages.ReorderingStatus);
+    }
+
+    [Fact]
     public void Rotation_And_Hint()
     {
         Assert.Equal(["As scanned", "90° clockwise", "180°", "90° counterclockwise"],

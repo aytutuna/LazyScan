@@ -479,6 +479,22 @@ final class BookSplitterTests: XCTestCase {
                        " 1 spread split into pages. The spine of 2 spreads was not found: they were added as one page each (Split\u{2026} on one splits it).")
     }
 
+    func test_reorderOffer_words() {
+        XCTAssertEqual(BookPages.readingOrderLine(rightToLeft: false), "Reads left to right")
+        XCTAssertEqual(BookPages.readingOrderLine(rightToLeft: true), "Reads right to left")
+        XCTAssertEqual(BookPages.reorderOfferText(count: 1), "Apply to the spread already scanned?")
+        XCTAssertEqual(BookPages.reorderOfferText(count: 5), "Apply to the 5 spreads already scanned?")
+        XCTAssertEqual(BookPages.reorderOfferLabel(count: 5, changed: .order),
+                       "Apply the new reading order to the 5 spreads already scanned?")
+        XCTAssertEqual(BookPages.reorderOfferLabel(count: 1, changed: .rotation),
+                       "Apply the new rotation to the spread already scanned?")
+        XCTAssertEqual(BookPages.reorderOfferLabel(count: 2, changed: .both),
+                       "Apply the new settings to the 2 spreads already scanned?")
+        XCTAssertEqual(BookPages.reorderedNote(1), "Reordered 1 spread")
+        XCTAssertEqual(BookPages.reorderedNote(5), "Reordered 5 spreads")
+        XCTAssertEqual(BookPages.reorderingStatus, "Reordering the pages…")
+    }
+
     func test_rotation_andHint() {
         XCTAssertEqual(BookPages.rotationChoices.map { BookPages.rotationLabel($0) },
                        ["As scanned", "90\u{00B0} clockwise", "180\u{00B0}", "90\u{00B0} counterclockwise"])

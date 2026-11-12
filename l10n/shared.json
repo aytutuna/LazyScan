@@ -1102,6 +1102,25 @@
   "Join the two pages": {},
   "Spread {0} is split into two pages.": {},
   "Spread {0} is one page again.": {},
+  "Reads left to right": {},
+  "Apply to the spread already scanned?": {
+    "other": "Apply to the {0} spreads already scanned?",
+    "note": "Offer after the book's reading order or rotation changed; a spread is two facing pages of a book scanned together."
+  },
+  "Apply the new reading order to the spread already scanned?": {
+    "other": "Apply the new reading order to the {0} spreads already scanned?"
+  },
+  "Apply the new rotation to the spread already scanned?": {
+    "other": "Apply the new rotation to the {0} spreads already scanned?"
+  },
+  "Apply the new settings to the spread already scanned?": {
+    "other": "Apply the new settings to the {0} spreads already scanned?"
+  },
+  "Reordering the pages…": {},
+  "Reordered {0} spread": {
+    "other": "Reordered {0} spreads",
+    "note": "Status after the pages of the spreads already scanned were put in a new order. Also the name of the Undo for it."
+  },
   "90° clockwise": {},
   "90° counterclockwise": {},
   "As scanned": {},

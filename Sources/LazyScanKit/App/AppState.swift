@@ -180,6 +180,7 @@ public final class AppState: ObservableObject {
             if settings.taskId == nil && !taskChoicesNote.isEmpty { taskChoicesNote = "" }
             syncTaskFlow()
             syncCameraSides()
+            noteBookOptionChange(from: oldValue)
             if !copyPages.isEmpty && !isCopyFlow && !copyIsOfQueue { copyPages = [] }
             // A named document whose first page the settings now leave out keeps its name.
             if settings.document != oldValue.document { carryDocumentLabels(settingsBefore: oldValue.document) }
@@ -227,6 +228,8 @@ public final class AppState: ObservableObject {
         didSet {
             if savedUndo != nil && !scannedPages.isEmpty { discardSavedUndo() }
             if removedUndo != nil && scannedPages.count > oldValue.count { discardRemovedUndo() }
+            if let held = removedUndo, held.reordered > 0, !Set(scannedPages.map(\.id)).isSuperset(of: held.replacedBy) { discardRemovedUndo() }
+            if bookReorderChanged != nil && (scannedPages.isEmpty || scannedPages.count > oldValue.count) { bookReorderChanged = nil }
             pruneSpreads()
             keepViewedPage(after: oldValue)
             if let target = rescanTarget, !scannedPages.contains(where: { $0.id == target }) { rescanTarget = nil }
@@ -251,6 +254,9 @@ public final class AppState: ObservableObject {
     /// The pages taken out of the queue last (a removal, a clear, the backs left out), with their spool files,
     /// for `undoRemove()` (AppState+Undo.swift). Let go on the next scan or import, save or task change.
     @Published var removedUndo: RemovedUndo?
+    /// The book option changed while spreads were queued, until the offer to cut them again is taken or
+    /// dropped (`bookReorderOffer`, AppState+Book.swift).
+    @Published var bookReorderChanged: BookReorderOffer.Changed?
     /// How many pages the hold has and whether Clear made it, for the Mac's Undo button and menu item.
     public var removedCount: Int { removedUndo?.pages.count ?? 0 }
     public var removedByClear: Bool { removedUndo?.cleared ?? false }

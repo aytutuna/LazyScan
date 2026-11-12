@@ -708,4 +708,82 @@ final class CameraTaskTests: XCTestCase {
         XCTAssertEqual(state.scannedPages.count, 1)
         XCTAssertNil(state.scannedPages.first?.spread)
     }
+
+    @MainActor
+    private func bringInSpread(_ state: AppState) async throws {
+        let table: TablePhoto = CameraSheets.squareOnATable(TestPages.shadowSpread().toRgba())
+        let photo: CGImage = try XCTUnwrap(table.photo.makeCGImage())
+        var shot: ScannedPage = ScannedPage(image: photo, dpi: CaptureScale.nominalDPI, colorMode: .color)
+            .withCapture(CaptureFacts(quad: table.quad, sourceWidth: table.photo.width, sourceHeight: table.photo.height))
+        shot.source = .photo
+        try await bringIn(state, shot)
+    }
+
+    @MainActor
+    func test_book_changingTheReadingOrder_offersToCutTheQueuedSpreadsAgain_andUndoes() async throws {
+        var options = TaskOptions()
+        options.cameraSpreads = true
+        let state: AppState = makeState(.book, options: options)
+        state.settings.taskOptions.bookRightToLeft = true
+        XCTAssertNil(state.bookReorderOffer)
+        state.settings.taskOptions.bookRightToLeft = false
+        try await bringInSpread(state)
+        let queued: [UUID] = state.scannedPages.map(\.id)
+        XCTAssertEqual(queued.count, 2)
+        XCTAssertEqual(state.scannedPages.first?.spread?.isLeft, true)
+        XCTAssertNil(state.bookReorderOffer)
+        state.scannedPages[0] = state.scannedPages[0].withDocumentBreak(.split)
+
+        state.settings.taskOptions.bookRightToLeft = true
+        XCTAssertEqual(state.bookReorderOffer, BookReorderOffer(count: 1, changed: .order))
+        state.settings.taskOptions.bookRotationQuarterTurns = 2
+        XCTAssertEqual(state.bookReorderOffer, BookReorderOffer(count: 1, changed: .both))
+        state.settings.taskOptions.bookRotationQuarterTurns = 0
+
+        state.applyBookReorder()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertNil(state.bookReorderOffer)
+        XCTAssertEqual(state.scannedPages.count, 2)
+        XCTAssertTrue(Set(state.scannedPages.map(\.id)).isDisjoint(with: queued))
+        XCTAssertEqual(state.scannedPages.first?.spread?.isLeft, false)
+        XCTAssertEqual(state.scannedPages.first?.documentBreak, .split)
+        XCTAssertEqual(state.removedTitle, "Reordered 1 spread")
+
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.map(\.id), queued)
+        XCTAssertFalse(state.canUndoRemove)
+    }
+
+    @MainActor
+    func test_book_editingAReplacedSpread_letsTheReorderHoldGo() async throws {
+        var options = TaskOptions()
+        options.cameraSpreads = true
+        let state: AppState = makeState(.book, options: options)
+        try await bringInSpread(state)
+        state.settings.taskOptions.bookRightToLeft = true
+        state.applyBookReorder()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertTrue(state.canUndoRemove)
+        let spreadID: UUID = try XCTUnwrap(state.scannedPages.first?.spreadID)
+        state.joinSpread(id: spreadID)
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertFalse(state.canUndoRemove)
+    }
+
+    @MainActor
+    func test_book_notNow_dropsTheOffer_andChangingAgainRaisesIt() async throws {
+        var options = TaskOptions()
+        options.cameraSpreads = true
+        let state: AppState = makeState(.book, options: options)
+        try await bringInSpread(state)
+        state.settings.taskOptions.bookRotationQuarterTurns = 1
+        XCTAssertEqual(state.bookReorderOffer, BookReorderOffer(count: 1, changed: .rotation))
+        state.dismissBookReorder()
+        XCTAssertNil(state.bookReorderOffer)
+        state.settings.taskOptions.bookRightToLeft = true
+        XCTAssertEqual(state.bookReorderOffer, BookReorderOffer(count: 1, changed: .order))
+        state.clearPages()
+        XCTAssertNil(state.bookReorderOffer)
+    }
 }

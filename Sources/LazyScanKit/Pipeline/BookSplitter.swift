@@ -692,6 +692,26 @@ public struct BookPageLabel: Equatable, Sendable {
     }
 }
 
+/// The offer to redo the spreads already scanned after the book's reading order or rotation changed
+/// (`AppState.bookReorderOffer`). Twin of C# `BookReorderOffer`.
+public struct BookReorderOffer: Equatable, Sendable {
+    /// Which option changed since the spreads were last cut.
+    public enum Changed: Equatable, Sendable {
+        case order
+        case rotation
+        case both
+    }
+
+    /// The spreads in the queue that are split and can be cut again.
+    public let count: Int
+    public let changed: Changed
+
+    public init(count: Int, changed: Changed) {
+        self.count = count
+        self.changed = changed
+    }
+}
+
 /// What the page strip, the status and the inspector say about books and magazines: a label on each
 /// page cut from a spread, the page's split and join actions, and the notes after a scan or a split.
 /// Twin of C# `BookPages`.
@@ -816,6 +836,39 @@ public enum BookPages {
     public static func splitNote(spreadNumber: Int, split: Bool) -> String {
         let shown = spreadNumber.formatted(.number.grouping(.never))
         return split ? L10n.t("Spread {0} is split into two pages.", shown) : L10n.t("Spread {0} is one page again.", shown)
+    }
+
+    /// "Reads left to right" or "Reads right to left": the order the pages of a spread come in.
+    public static func readingOrderLine(rightToLeft: Bool) -> String {
+        rightToLeft ? L10n.t("Reads right to left") : L10n.t("Reads left to right")
+    }
+
+    /// "Apply to the 5 spreads already scanned?"
+    public static func reorderOfferText(count: Int) -> String {
+        L10n.plural(count, one: "Apply to the spread already scanned?", other: "Apply to the {0} spreads already scanned?")
+    }
+
+    /// The offer spoken: "Apply the new reading order to the 5 spreads already scanned?", naming what changed.
+    public static func reorderOfferLabel(count: Int, changed: BookReorderOffer.Changed) -> String {
+        switch changed {
+        case .order:
+            return L10n.plural(count, one: "Apply the new reading order to the spread already scanned?",
+                               other: "Apply the new reading order to the {0} spreads already scanned?")
+        case .rotation:
+            return L10n.plural(count, one: "Apply the new rotation to the spread already scanned?",
+                               other: "Apply the new rotation to the {0} spreads already scanned?")
+        case .both:
+            return L10n.plural(count, one: "Apply the new settings to the spread already scanned?",
+                               other: "Apply the new settings to the {0} spreads already scanned?")
+        }
+    }
+
+    /// "Reordering the pages…", while the spreads are cut again.
+    public static var reorderingStatus: String { L10n.t("Reordering the pages…") }
+
+    /// "Reordered 1 spread" or "Reordered 5 spreads": what the hold for Undo is called.
+    public static func reorderedNote(_ count: Int) -> String {
+        L10n.plural(count, one: "Reordered {0} spread", other: "Reordered {0} spreads")
     }
 
     /// The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.

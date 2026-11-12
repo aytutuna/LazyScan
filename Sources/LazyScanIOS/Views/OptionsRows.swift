@@ -17,6 +17,66 @@ struct ReasonLine: View {
     }
 }
 
+/// The offer under the book's reading order and rotation to cut the spreads already scanned again with
+/// them (`AppState.bookReorderOffer`); Apply is one Undo on the scan screen. Nothing while no offer is up.
+struct BookReorderRow: View {
+    @EnvironmentObject private var state: AppState
+
+    var body: some View {
+        if let offer = state.bookReorderOffer {
+            row(offer)
+        }
+    }
+
+    private func row(_ offer: BookReorderOffer) -> some View {
+        let working: Bool = state.isBusy && state.statusMessage == BookPages.reorderingStatus
+        let text: String = working ? BookPages.reorderingStatus : BookPages.reorderOfferText(count: offer.count)
+        let spoken: String = BookPages.reorderOfferLabel(count: offer.count, changed: offer.changed)
+        let busy: Bool = state.isBusy
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                if working {
+                    ProgressView()
+                }
+                Text(text)
+                    .font(.footnote)
+                    .foregroundStyle(Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(Text(spoken))
+            }
+            ViewThatFits {
+                HStack(spacing: 24) {
+                    buttons
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    buttons
+                }
+            }
+            .disabled(busy)
+        }
+        .accessibilityElement(children: .contain)
+        .onAppear {
+            AccessibilityNotification.Announcement(spoken).post()
+        }
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        Button("Apply") {
+            state.applyBookReorder()
+        }
+        .buttonStyle(.borderless)
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("book.reorder.apply")
+        Button("Not now") {
+            state.dismissBookReorder()
+        }
+        .buttonStyle(.borderless)
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("book.reorder.dismiss")
+    }
+}
+
 /// The scanner's Source, Sides (with a feeder), Paper size (not on the demo scanner, which ignores it),
 /// Resolution and Color: for the scanner in use (a network scanner, the demo scanner), in printer mode
 /// only, since the camera measures its own pages; with no
@@ -424,6 +484,7 @@ struct PageSettingsRows: View {
                     Text(BookPages.rotationLabel(turns)).tag(turns)
                 }
             }
+            BookReorderRow()
             Toggle("Soften spine shadow", isOn: $state.settings.document.softenSpineShadow)
                 .accessibilityHint(Text(SpineShadow.hint(s.document.softenSpineShadow)))
         }

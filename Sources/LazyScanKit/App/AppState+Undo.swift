@@ -47,6 +47,10 @@ struct RemovedUndo {
     var cleared: Bool
     var taskFlow: TaskFlow?
     var cameraSides: CameraSides?
+    /// The pages that took the place of `pages` when the spreads were cut again (`applyBookReorder`), and
+    /// how many spreads that was; both empty for pages that were taken out.
+    var replacedBy: [UUID] = []
+    var reordered = 0
 }
 
 extension AppState {
@@ -141,6 +145,7 @@ extension AppState {
     /// "Page removed", "3 pages removed" or "Cleared 12 pages": what the hold is, for the Undo beside it.
     public var removedTitle: String {
         guard let held = removedUndo else { return "" }
+        if held.reordered > 0 { return BookPages.reorderedNote(held.reordered) }
         return held.cleared ? Self.clearedMessage(held.pages.count) : Self.removedMessage(held.pages.count)
     }
 
@@ -157,6 +162,8 @@ extension AppState {
     /// change. `flowBefore` is the task's steps when they were changed before the pages left.
     @discardableResult
     func holdRemoved(_ ids: Set<UUID>, cleared: Bool = false, flowBefore: TaskFlow? = nil) -> Int {
+        // The places held for a reorder are those of the queue before it; pages taken out now would not fit them.
+        if let held = removedUndo, held.reordered > 0 { discardRemovedUndo() }
         var hold = removedUndo ?? RemovedUndo(pages: [], cleared: false, taskFlow: flowBefore ?? taskFlow,
                                               cameraSides: cameraSides)
         var gone = 0
@@ -178,6 +185,9 @@ extension AppState {
         guard !isBusy, !readsQueue, let held = removedUndo else { return }
         removedUndo = nil
         var queue = scannedPages
+        let replaced = Set(held.replacedBy)
+        deleteSpoolFiles(of: queue.filter { replaced.contains($0.id) })
+        queue.removeAll { replaced.contains($0.id) }
         var lost = 0
         for (page, index) in held.pages.reversed() {
             let files = [page.fileURL, page.alternate?.fileURL].compactMap { $0 }

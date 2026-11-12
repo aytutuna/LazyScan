@@ -185,6 +185,7 @@ struct TaskWayPicker: View {
                     Toggle(CameraTaskCatalog.rightToLeftLabel, isOn: rightToLeft)
                         .accessibilityHint(Text(CameraTaskCatalog.rightToLeftHint))
                         .accessibilityIdentifier("task.rightToLeft")
+                    BookReorderRow()
                 }
             }
             .disabled(state.isBusy || importer.isImporting)

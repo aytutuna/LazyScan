@@ -691,6 +691,14 @@ public static class BookSplitter
 /// <param name="Help">The badge spelled out for screen readers: "Spread 2, left page", "Spread 2, not split".</param>
 public sealed record BookPageLabel(string Label, string Help);
 
+/// <summary>Which book option changed since the spreads were last cut (<see cref="BookReorderOffer"/>).</summary>
+public enum BookReorderChange { Order, Rotation, Both }
+
+/// <summary>The offer to redo the spreads already scanned after the book's reading order or rotation changed.</summary>
+/// <param name="Count">The spreads in the queue that are split and can be cut again.</param>
+/// <param name="Changed">Which option changed since the spreads were last cut.</param>
+public sealed record BookReorderOffer(int Count, BookReorderChange Changed);
+
 /// <summary>
 /// What the page strip, the status and the inspector say about books and magazines: a label on each page
 /// cut from a spread, the page's split and join actions, and the notes after a scan or a split.
@@ -824,6 +832,31 @@ public static class BookPages
         string shown = spreadNumber.ToString("D", CultureInfo.CurrentCulture);
         return split ? Loc.T("Spread {0} is split into two pages.", shown) : Loc.T("Spread {0} is one page again.", shown);
     }
+
+    /// <summary>"Reads left to right" or "Reads right to left": the order the pages of a spread come in.</summary>
+    public static string ReadingOrderLine(bool rightToLeft) =>
+        rightToLeft ? Loc.T("Reads right to left") : Loc.T("Reads left to right");
+
+    /// <summary>"Apply to the 5 spreads already scanned?"</summary>
+    public static string ReorderOfferText(int count) =>
+        Loc.Plural(count, "Apply to the spread already scanned?", "Apply to the {0} spreads already scanned?");
+
+    /// <summary>The offer spoken: "Apply the new reading order to the 5 spreads already scanned?", naming what changed.</summary>
+    public static string ReorderOfferLabel(int count, BookReorderChange changed) => changed switch
+    {
+        BookReorderChange.Order => Loc.Plural(count, "Apply the new reading order to the spread already scanned?",
+                                              "Apply the new reading order to the {0} spreads already scanned?"),
+        BookReorderChange.Rotation => Loc.Plural(count, "Apply the new rotation to the spread already scanned?",
+                                                 "Apply the new rotation to the {0} spreads already scanned?"),
+        _ => Loc.Plural(count, "Apply the new settings to the spread already scanned?",
+                        "Apply the new settings to the {0} spreads already scanned?"),
+    };
+
+    /// <summary>"Reordering the pages…", while the spreads are cut again.</summary>
+    public static string ReorderingStatus => Loc.T("Reordering the pages…");
+
+    /// <summary>"Reordered 1 spread" or "Reordered 5 spreads": what the hold for Undo is called.</summary>
+    public static string ReorderedNote(int count) => Loc.Plural(count, "Reordered {0} spread", "Reordered {0} spreads");
 
     /// <summary>The choices of the book's rotation (quarter turns clockwise), as the inspector lists them.</summary>
     public static IReadOnlyList<int> RotationChoices { get; } = [0, 1, 2, 3];
