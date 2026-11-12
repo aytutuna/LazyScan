@@ -3,9 +3,10 @@ import Foundation
 import XCTest
 @testable import LazyScanKit
 
-// The queue the iPhone keeps (AppState+QueueRecord.swift): recorded beside its spool files and brought back
-// when the next AppState is made, the pages whose files are there, as long as the settings save a queue;
-// otherwise the spool is emptied as it always was. Swift only: Windows has no queue record.
+// The queue the iPhone and the Mac keep (AppState+QueueRecord.swift): recorded beside its spool files and
+// brought back when the next AppState is made, the pages whose files are there, as long as the settings save
+// a queue; otherwise the spool is emptied as it always was. The Mac's queue is emptied at quit
+// (discardsQueueAtQuit), so only a crash leaves it. The Core's QueueRecord is the twin.
 
 /// Text recognition that cannot run, so no page is read with Vision here.
 private struct RecordScorer: OrientationScorer {
@@ -261,6 +262,22 @@ final class AppStateQueueRecordTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: record.path), "The record waits for its delay")
         lifecycle.sendWillTerminate()
         XCTAssertTrue(FileManager.default.fileExists(atPath: record.path))
+    }
+
+    @MainActor
+    func test_quittingWhereTheQueueIsDiscarded_emptiesTheSpool() async throws {
+        let lifecycle = RecordLifecycle()
+        var kept: AppStateFiles = files(keepsQueue: true)
+        kept.discardsQueueAtQuit = true
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecordScorer(),
+                             barcodeReader: RecordBarcodes(), lifecycle: lifecycle, files: kept)
+        XCTAssertTrue(state.startTask(.document))
+        XCTAssertTrue(state.ingest([recordPage(), recordPage()], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        state.writeQueueRecord()
+        XCTAssertFalse(spoolNames().isEmpty)
+        lifecycle.sendWillTerminate()
+        XCTAssertEqual(spoolNames(), [])
     }
 
     @MainActor

@@ -20,6 +20,9 @@ struct AppStateFiles {
     /// The queue is recorded beside its spool files and brought back when the `AppState` is made
     /// (`QueueRecord`): the iPhone's, which iOS ends in the background without asking.
     var keepsQueue: Bool = false
+    /// The kept queue is thrown away when the app is quit on purpose, and only a crash leaves it to come back:
+    /// the Mac's, where quitting is guarded and the user has chosen to leave the pages.
+    var discardsQueueAtQuit: Bool = false
 
     /// Application Support, LazyScan-pages in the temporary folder, and
     /// ~/Library/Logs/Lazy Scan/devices.txt.
@@ -546,6 +549,8 @@ public final class AppState: ObservableObject {
     private var settingsSaveTask: Task<Void, Never>?
     /// The queue is recorded beside its spool files and brought back at launch (`AppStateFiles.keepsQueue`).
     let keepsQueue: Bool
+    /// The spool is emptied when the app terminates (`AppStateFiles.discardsQueueAtQuit`).
+    let discardsQueueAtQuit: Bool
     /// The queue's record written shortly after the queue last changed (`scheduleQueueRecord`).
     var queueRecordTask: Task<Void, Never>?
     /// The warning that pages are not kept has been shown since the queue was last whole (`warnIfNotKept`).
@@ -579,7 +584,7 @@ public final class AppState: ObservableObject {
     /// recognition, barcode reading and QR codes default to Vision and Core Image, which every
     /// platform has. The settings, the page spool and the diagnostics are in the app's own places
     /// (`AppStateFiles.standard`); with `keepsQueue` (the iPhone's), the queue survives the app being ended
-    /// (`AppStateFiles.keepingQueue`).
+    /// (`AppStateFiles.keepingQueue`), and with `discardsQueueAtQuit` (the Mac's) only a crash leaves it.
     public convenience init(backends: [any ScannerBackend]? = nil, presetStore: PresetStore = PresetStore(),
                             fileActions: (any FileActionService)? = nil,
                             troubleshooterService: (any TroubleshooterService)? = nil,
@@ -587,11 +592,14 @@ public final class AppState: ObservableObject {
                             orientationScorer: (any OrientationScorer)? = nil,
                             barcodeReader: (any BarcodeReader)? = nil,
                             qrEncoder: (any QrEncoder)? = nil,
-                            lifecycle: (any PlatformLifecycle)? = nil, keepsQueue: Bool = false) {
+                            lifecycle: (any PlatformLifecycle)? = nil, keepsQueue: Bool = false,
+                            discardsQueueAtQuit: Bool = false) {
+        var files: AppStateFiles = keepsQueue ? AppStateFiles.keepingQueue : AppStateFiles.standard
+        files.discardsQueueAtQuit = discardsQueueAtQuit
         self.init(backends: backends, presetStore: presetStore, fileActions: fileActions,
                   troubleshooterService: troubleshooterService, printService: printService,
                   orientationScorer: orientationScorer, barcodeReader: barcodeReader, qrEncoder: qrEncoder,
-                  lifecycle: lifecycle, files: keepsQueue ? AppStateFiles.keepingQueue : AppStateFiles.standard)
+                  lifecycle: lifecycle, files: files)
     }
 
     /// The same, with the settings read from and written to, the page spool emptied and used, and the
@@ -609,6 +617,7 @@ public final class AppState: ObservableObject {
         self.spoolDirectory = files.spoolDirectory
         self.diagnosticsFile = files.diagnosticsFile
         self.keepsQueue = files.keepsQueue
+        self.discardsQueueAtQuit = files.discardsQueueAtQuit
         let saved = SettingsStore.load(directory: files.settingsDirectory)
         self.isFirstRun = saved == nil
         // A task saved last time is still active: its banner comes back with the settings.
@@ -643,7 +652,10 @@ public final class AppState: ObservableObject {
             guard let self else { return }
             self.settingsSaveTask?.cancel()
             SettingsStore.save(self.settings, directory: self.settingsDirectory)
-            if self.keepsQueue && !self.restoringQueue {
+            if self.discardsQueueAtQuit {
+                self.queueRecordTask?.cancel()
+                QueueRecord.clear(self.spoolDirectory, keeping: nil)
+            } else if self.keepsQueue && !self.restoringQueue {
                 self.writeQueueRecord()
             }
         }

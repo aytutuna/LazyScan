@@ -1,11 +1,11 @@
 import CoreGraphics
 import Foundation
 
-/// The page queue as the iPhone keeps it beside its spool files (queue.json), so the pages taken survive iOS
-/// ending the app in the background (`AppStateFiles.keepsQueue`): each page's spool files and what the queue
-/// knows about it. The previews are read from the files again. The spreads book pages were cut from and the
-/// spine's shadow stay in memory only, as the companion package leaves them out. Swift only: Windows keeps
-/// emptying its spool at launch.
+/// The page queue as the iPhone and the Mac keep it beside its spool files (queue.json), so the pages taken
+/// survive iOS ending the app in the background and a crash of the Mac app (`AppStateFiles.keepsQueue`): each
+/// page's spool files and what the queue knows about it. The previews are read from the files again. The
+/// spreads book pages were cut from and the spine's shadow stay in memory only, as the companion package
+/// leaves them out. The Mac's is emptied when the app is quit (`AppStateFiles.discardsQueueAtQuit`).
 struct QueueRecord: Codable, Sendable {
     var pages: [Page]
     /// How many pages the queue had when it was recorded, those left out included; nil in a record written

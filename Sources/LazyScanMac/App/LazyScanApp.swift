@@ -53,7 +53,10 @@ extension AppState {
                              fileActions: SystemFileActions(),
                              troubleshooterService: SystemTroubleshooterService(),
                              printService: SystemPrintService(),
-                             lifecycle: AppKitLifecycle())
+                             lifecycle: AppKitLifecycle(),
+                             keepsQueue: true, discardsQueueAtQuit: true)
+        // The spool earlier builds kept in the temporary folder.
+        try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("LazyScan-pages", isDirectory: true))
         state.cornerModel = FastViTCornerModel.isAvailable ? FastViTCornerModel.shared : nil
         state.resolveDestinationBookmark = { MacBookmarkedFolder.saveFolder.resolve($0) }
         state.openBookmarkedFolder()
