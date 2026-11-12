@@ -627,7 +627,23 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         resumeOpen(.failure(error))
         resumeSelect(.failure(error))
         resumeOverview(.failure(error))
-        resumeScan(.failure(error))
+        endScan(with: error)
+    }
+
+    // A failure mid-batch (a jam, a dropped cable or network) must not throw away
+    // the sheets that already transferred; keep them and record why the batch
+    // stopped (lastScanStop), which the app reports once the pages are handled.
+    // Deliberate cancellation, or nothing transferred yet, still fails the scan.
+    private func endScan(with error: ScanError) {
+        guard scanContinuation != nil else { return }
+        var wasCancelled = cancelRequested
+        if case .cancelled = error { wasCancelled = true }
+        if wasCancelled || scannedURLs.isEmpty {
+            resumeScan(.failure(error))
+        } else {
+            lastScanStop = ScanStop.from(error)
+            resumeScan(.success(scannedURLs))
+        }
     }
 
     // MARK: ICDeviceDelegate
@@ -719,18 +735,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     nonisolated func scannerDevice(_ scanner: ICScannerDevice, didCompleteScanWithError error: Error?) {
         performOnMainActor {
             if let error {
-                let mapped = self.mapScanError(error)
-                // A failure mid-batch (e.g. an ADF jam on sheet 20 of 20) must
-                // not throw away the sheets that already transferred; keep them
-                // and record why the batch stopped (lastScanStop), which the app
-                // reports once the pages are handled. Deliberate cancellation
-                // still discards.
-                if case .scanFailed = mapped, !self.scannedURLs.isEmpty {
-                    self.lastScanStop = ScanStop.from(mapped)
-                    self.resumeScan(.success(self.scannedURLs))
-                } else {
-                    self.resumeScan(.failure(mapped))
-                }
+                self.endScan(with: self.mapScanError(error))
             } else {
                 self.resumeScan(.success(self.scannedURLs))
             }
