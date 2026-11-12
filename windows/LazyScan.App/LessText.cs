@@ -30,5 +30,5 @@ internal static class ShortText
     /// <summary>Receipts in one PDF, while they are saved as images.</summary>
     public static string OnlyForPdfs => Loc.T("Only for PDFs");
     /// <summary>Name by receipt date while the file name has no {docdate}: the receipt's date is not used.</summary>
-    public static string NeedsDocDate => Loc.T("Needs {docdate} in File name");
+    public static string NeedsDocDate => Loc.T("Needs Receipt date in the file name");
 }

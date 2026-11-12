@@ -165,7 +165,7 @@ struct OptionsScreen: View {
         case .computer:
             return state.companionDesktop?.name ?? IOSCompanionText.notPaired
         case .fileName:
-            return s.namingTemplate
+            return IOSNamingModel(state: state).exampleName
         case .presets, .help, .about, .licences:
             return ""
         }

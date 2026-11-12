@@ -197,7 +197,7 @@ texts); the Mac mirrors the layout (see the main README).
   for blanks, Skip blank on or off (it decides which pages the strip flags and which sheets are
   separators), with "Check flagged pages before saving" at High. What conflicts with another choice is greyed out with a short reason and a glyph next
   to it ("Needs the feeder", "Not with PDF/A", "Not with a password", "Not with two-sided", "Needs
-  Collect pages", "Needs {docdate} in File name"); the full sentence is its tooltip (shown on disabled controls too) and its help
+  Collect pages", "Needs Receipt date in the file name"); the full sentence is its tooltip (shown on disabled controls too) and its help
   text. The captions that explained a switch are its tooltip and help text now.
 - **ⓘ flyouts** (`InfoButton`, a Popup styled as a Fluent flyout) hold procedures and keyboard
   help: the task banner's fuller guidance (`TaskStep.Help`; the banner shows the step's one-line

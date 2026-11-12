@@ -238,8 +238,8 @@ struct InspectorView: View {
                 set: { state.setReceiptNameByDate($0) }))
                 .help("Uses the date printed on the receipt, or today")
             if options.receiptNameByDate && !dateUsed {
-                reasonLine(String(localized: "Needs {docdate} in File name"))
-                    .help("The file name has no {docdate}, so the date printed on the receipt is not used.")
+                reasonLine(String(localized: "Needs Receipt date in the file name"))
+                    .help("The file name has no Receipt date part, so the date printed on the receipt is not used.")
             }
             Toggle("One PDF for all", isOn: Binding(
                 get: { state.settings.taskOptions.receiptCombine },

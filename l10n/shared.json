@@ -1973,7 +1973,7 @@
   "Needs Collect pages": {},
   "Blank sheets split documents": {},
   "Only for PDFs": {},
-  "Needs {docdate} in File name": {},
+  "Needs Receipt date in the file name": {},
   "The next file is named {0}": {},
   "Save password-protected PDF": {},
   "Pages are collected until they are added to {0}. The × under Save saves new files again.": {
@@ -2062,7 +2062,7 @@
   "The page in the queue has not been saved. “{1}” opens in its place.\n\nDiscard the page?": {
     "other": "The {0} pages in the queue have not been saved. “{1}” opens in their place.\n\nDiscard the pages?"
   },
-  "The file name has no {docdate}, so the date printed on the receipt is not used.": {},
+  "The file name has no Receipt date part, so the date printed on the receipt is not used.": {},
   "Each file is named by today's date.": {},
   "Each file is named by the date printed on the receipt ({docdate}), read from its text; today's date when none is found.": {},
   "Uses the date printed on the receipt, or today": {},

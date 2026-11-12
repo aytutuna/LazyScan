@@ -374,6 +374,9 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertTrue(model.example.hasPrefix("Invoice "), model.example)
         XCTAssertTrue(model.example.hasSuffix(".pdf"), model.example)
 
+        XCTAssertEqual(model.exampleName, String(model.example.dropLast(".pdf".count)))
+        XCTAssertFalse(model.exampleName.contains("{"), model.exampleName)
+
         model.setText("   ")
         XCTAssertEqual(model.problem, NamingTokens.emptyProblem)
         XCTAssertEqual(state.settings.namingTemplate, "Invoice {date}", "A blank name keeps the last one in use")

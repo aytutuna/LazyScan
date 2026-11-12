@@ -40,13 +40,20 @@ struct NamingEditorScreen: View {
                     Button {
                         model.insert(part.token)
                     } label: {
-                        LabeledContent(part.label) {
-                            Text(part.token)
-                                .font(.system(.footnote, design: .monospaced))
+                        VStack(alignment: .leading) {
+                            LabeledContent(part.label) {
+                                Text(part.token)
+                                    .font(.system(.footnote, design: .monospaced))
+                                    .foregroundStyle(Color.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                            Text(part.help)
+                                .font(.footnote)
                                 .foregroundStyle(Color.secondary)
                         }
                     }
-                    .accessibilityHint(Text(part.help))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("naming.insert.\(part.token)")
                 }
             }

@@ -27,7 +27,7 @@ public partial class MainWindow
         }
         // On without {docdate} in the file name, the switch does nothing: the reason shows under it.
         bool dateUnused = options.ReceiptNameByDate && !Receipts.NamesByDate(ViewModel.Settings);
-        string unusedHint = Loc.T("The file name has no {docdate}, so the date printed on the receipt is not used.");
+        string unusedHint = Loc.T("The file name has no Receipt date part, so the date printed on the receipt is not used.");
         string dateHint = !options.ReceiptNameByDate
             ? Loc.T("Each file is named by today's date.")
             : dateUnused

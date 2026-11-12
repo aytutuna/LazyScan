@@ -58,6 +58,11 @@ public final class IOSNamingModel: ObservableObject {
         state.fileNameExample(state.settings.namingTemplate, format: format)
     }
 
+    /// `example` without its extension, for the Options row: the format has a row of its own.
+    public var exampleName: String {
+        String(example.dropLast(format.fileExtension.count + 1))
+    }
+
     /// The template typed: in use at once unless it is blank.
     public func setText(_ newText: String) {
         text = newText
