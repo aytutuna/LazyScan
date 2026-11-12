@@ -1160,7 +1160,6 @@
     "Replace the page in the queue?": {"other": "キュー内の{0}ページを置き換えますか?"},
     "It has not been saved. “{1}” opens in its place.": {"other": "まだ保存されていません。代わりに“{1}”が開きます。"},
     "Remove the page?": {"other": "キュー内の{0}ページを削除しますか?"},
-    "{0} file saved": {"other": "{0}個のファイルを保存済み"},
     "Confirm the scanner's certificate to continue.": "続けるには、スキャナの証明書を確認してください。",
     "The scanner was not added, because its certificate was not trusted.": "証明書が信頼されなかったため、スキャナは追加されませんでした。",
     "No scanner answered at {0}.": "“{0}”のスキャナから応答がありませんでした。",

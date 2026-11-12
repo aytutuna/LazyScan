@@ -1160,7 +1160,6 @@
     "Replace the page in the queue?": {"one": "Seite in der Warteschlange ersetzen?", "other": "{0} Seiten in der Warteschlange ersetzen?"},
     "It has not been saved. “{1}” opens in its place.": {"one": "Sie wurde nicht gesichert. „{1}“ wird an ihrer Stelle geöffnet.", "other": "Sie wurden nicht gesichert. „{1}“ wird an ihrer Stelle geöffnet."},
     "Remove the page?": {"one": "Seite entfernen?", "other": "{0} Seiten entfernen?"},
-    "{0} file saved": {"one": "{0} Datei gesichert", "other": "{0} Dateien gesichert"},
     "Confirm the scanner's certificate to continue.": "Bestätige das Zertifikat des Scanners, um fortzufahren.",
     "The scanner was not added, because its certificate was not trusted.": "Der Scanner wurde nicht hinzugefügt, weil seinem Zertifikat nicht vertraut wurde.",
     "No scanner answered at {0}.": "Unter {0} antwortet kein Scanner.",

@@ -1160,7 +1160,6 @@
     "Replace the page in the queue?": {"one": "Kuyruktaki sayfa değiştirilsin mi?", "other": "Kuyruktaki {0} sayfa değiştirilsin mi?"},
     "It has not been saved. “{1}” opens in its place.": {"one": "Bu sayfa kaydedilmedi. Yerine “{1}” açılacak.", "other": "Bu sayfalar kaydedilmedi. Yerlerine “{1}” açılacak."},
     "Remove the page?": {"one": "Sayfa kaldırılsın mı?", "other": "{0} sayfa kaldırılsın mı?"},
-    "{0} file saved": {"one": "{0} dosya kaydedildi", "other": "{0} dosya kaydedildi"},
     "Confirm the scanner's certificate to continue.": "Devam etmek için tarayıcının sertifikasını onaylayın.",
     "The scanner was not added, because its certificate was not trusted.": "Sertifikasına güvenilmediği için tarayıcı eklenmedi.",
     "No scanner answered at {0}.": "Yanıt veren tarayıcı yok: {0}.",

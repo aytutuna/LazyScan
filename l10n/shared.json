@@ -1752,8 +1752,11 @@
   "Remove the page?": {
     "other": "Remove all {0} pages?"
   },
-  "{0} file saved": {
-    "other": "{0} files saved"
+  "Saved {0} file in {1}": {
+    "other": "Saved {0} files in {1}"
+  },
+  "Saved {0} file": {
+    "other": "Saved {0} files"
   },
   "Confirm the scanner's certificate to continue.": {},
   "The scanner was not added, because its certificate was not trusted.": {},

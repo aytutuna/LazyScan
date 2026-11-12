@@ -15,12 +15,7 @@ struct StatusBarView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(shownStatus)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .accessibilityLabel(Text(state.statusMessage))
+            statusText
             if showsUndo {
                 Button("Undo") {
                     state.undoRemove()
@@ -39,11 +34,6 @@ struct StatusBarView: View {
             }
             Spacer(minLength: 16)
             if !state.lastSavedURLs.isEmpty {
-                if state.lastSavedURLs.count > 1 {
-                    Text(L10n.plural(state.lastSavedURLs.count, one: "{0} file saved", other: "{0} files saved"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
                 savedActions
             }
         }
@@ -70,6 +60,49 @@ struct StatusBarView: View {
         let reviewShown: Bool = idle && (state.showPhotoReview || state.showIdCardReview)
         let savedShown: Bool = idle && !state.lastSavedURLs.isEmpty
         return StatusLine.shown(state.statusMessage, state.statusDetail, deviceName: device, reviewShown: reviewShown, savedShown: savedShown)
+    }
+
+    /// The status, and after a save the file's name beside it (middle-truncated, the full path as
+    /// help); several files read as one phrase with the folder's name. VoiceOver reads the sentence.
+    private var statusText: some View {
+        let urls: [URL] = state.lastSavedURLs
+        let showsSaved: Bool = !state.isBusy && !state.showPhotoReview && !state.showIdCardReview && !urls.isEmpty
+        let single: Bool = urls.count == 1
+        let folder: URL? = urls.first?.deletingLastPathComponent()
+        let plainSaved: Bool = shownStatus == L10n.t("Saved")
+        let path: String = single ? urls[0].path : (folder?.path ?? "")
+        return HStack(spacing: 6) {
+            if showsSaved && !single && plainSaved, let folder {
+                Text(savedFilesPhrase(urls.count, folder: folder.lastPathComponent))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else {
+                Text(shownStatus)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+            }
+            if showsSaved && single {
+                Text(urls[0].lastPathComponent)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .help(showsSaved ? path : "")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(state.statusMessage))
+    }
+
+    private func savedFilesPhrase(_ count: Int, folder: String) -> String {
+        if folder.isEmpty {
+            return L10n.plural(count, one: "Saved {0} file", other: "Saved {0} files")
+        }
+        return L10n.plural(count, one: "Saved {0} file in {1}", other: "Saved {0} files in {1}", folder)
     }
 
     private var savedActions: some View {
