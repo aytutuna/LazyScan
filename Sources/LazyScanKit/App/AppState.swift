@@ -231,6 +231,7 @@ public final class AppState: ObservableObject {
             keepViewedPage(after: oldValue)
             if let target = rescanTarget, !scannedPages.contains(where: { $0.id == target }) { rescanTarget = nil }
             companionService?.queuedPages = scannedPages.count
+            OCRLineCache.shared.keep(Set(scannedPages.map(\.id)))
             scheduleQueueRecord()
         }
     }
@@ -2859,9 +2860,11 @@ public final class AppState: ObservableObject {
                                                        failures: PDFTextFailures? = nil,
                                                        progress: ((String) -> Void)?) throws -> URL {
         let layer: PDFTextLayer? = searchable
-            ? { _, page in
+            ? { index, prepared in
                 do {
-                    return try OCRService.recognizeLines(in: page.image, languages: languages)
+                    return try OCRLineCache.shared.read(pages[index]) {
+                        try OCRService.recognizeLines(in: prepared.image, languages: languages)
+                    }
                 } catch {
                     failures?.add(error)
                     return nil
@@ -2906,7 +2909,7 @@ public final class AppState: ObservableObject {
             if !searchable && (text == nil || text?.problem != nil) { return nil }
             let lines: [OCRLine]?
             do {
-                lines = try OCRService.recognizeLines(in: prepared.image)
+                lines = try OCRLineCache.shared.read(pages[index]) { try OCRService.recognizeLines(in: prepared.image) }
             } catch {
                 lines = nil
                 if searchable { failures?.add(error) }
@@ -2954,7 +2957,7 @@ public final class AppState: ObservableObject {
             progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count),
                      StatusDetail(head: .readingPage(index + 1, of: pages.count)))
             let prepared = try PDFBuilder.preparePage(page, number: index + 1)
-            let lines = try recognizeForText(prepared.image)
+            let lines = try recognizeForText(prepared.image, of: page)
             ocrPages.append(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
                                        pixelHeight: prepared.pixelHeight, dpi: page.dpi))
             if format == .word, let size = pageImages {
@@ -2996,9 +2999,9 @@ public final class AppState: ObservableObject {
 
     /// The lines OCR finds on `image`, for text the user asked for: a failure is an error that says
     /// why (`TextOutputError`, not a scanner failure, so the troubleshooter does not record it).
-    nonisolated fileprivate static func recognizeForText(_ image: CGImage) throws -> [OCRLine] {
+    nonisolated fileprivate static func recognizeForText(_ image: CGImage, of page: ScannedPage) throws -> [OCRLine] {
         do {
-            return try OCRService.recognizeLines(in: image)
+            return try OCRLineCache.shared.read(page) { try OCRService.recognizeLines(in: image) }
         } catch {
             throw TextOutputError(TextExport.recognitionFailed(error.localizedDescription))
         }
@@ -3017,7 +3020,7 @@ public final class AppState: ObservableObject {
             self.setStatus(L10n.t("Reading the text of page {0}…", index + 1), StatusDetail(head: .readingPage(index + 1, of: nil)))
             let text = try await Task.detached(priority: .userInitiated) { () throws -> String in
                 let prepared = try PDFBuilder.preparePage(page, number: index + 1)
-                let lines = try Self.recognizeForText(prepared.image)
+                let lines = try Self.recognizeForText(prepared.image, of: page)
                 return OCRText.pageText(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
                                                    pixelHeight: prepared.pixelHeight, dpi: page.dpi))
             }.value

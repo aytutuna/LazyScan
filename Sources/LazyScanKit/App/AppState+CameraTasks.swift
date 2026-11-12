@@ -228,7 +228,7 @@ extension AppState {
         let prepared = try PDFBuilder.preparePage(page, number: number)
         let lines: [OCRLine]
         do {
-            lines = try OCRService.recognizeLines(in: prepared.image)
+            lines = try OCRLineCache.shared.read(page) { try OCRService.recognizeLines(in: prepared.image) }
         } catch {
             throw TextOutputError(TextExport.recognitionFailed(error.localizedDescription))
         }

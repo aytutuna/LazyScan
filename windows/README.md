@@ -1076,6 +1076,10 @@ For editable text rather than a picture of the paper:
 - **Copy text** in a queued page's right-click menu reads that page and puts its text on the
   clipboard (Windows line breaks, a blank line between paragraphs). The page stays queued.
 
+The lines OCR read on a page are kept (`OcrLineCache`) while its pixels, turn, resolution and OCR language stay
+the same, so a save that was cancelled or failed does not read those pages again: the next save, a
+change of format or Copy text takes them from the cache, and an edit of the page reads it again.
+
 OCR reads each page once per save, on the full-resolution page with its rotation: the same
 lines make the PDF's text layer and the text file beside it, and nothing is read when neither is
 asked for. When a page cannot be read (no OCR language installed), a Word or text save fails

@@ -700,6 +700,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private readonly IReadOnlyList<IScannerBackend> _backends;
     private readonly PresetStore _presetStore;
     private readonly IOcrService _ocrService;
+    /// <summary>The lines OCR read on the queue's pages, so an interrupted save does not read them again.</summary>
+    private readonly OcrLineCache _ocrLines = new();
     /// <summary>Reads pages for "Rotate pages upright" (<see cref="OrientationStep"/>).</summary>
     private readonly IOrientationScorer _orientation;
     /// <summary>Reads barcodes and QR codes on pages, when the stack is split at barcode or QR sheets.</summary>
@@ -3990,9 +3992,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 StatusMessage = Loc.T("OCR page {0} of {1}…", i + 1, pages.Count);
                 NotifyAll();
                 // If OCR fails for a page, the PDF is still produced without a text layer (and
-                // without the text file beside it). Cancel stops waiting at once (the recognizer
-                // has no cancellation of its own; its late result is simply ignored).
-                try { lines = await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token); }
+                // without the text file beside it).
+                try { lines = await RecognizeKept(page, image, s, token); }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception e)
                 {
@@ -4096,7 +4097,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), i + 1), token);
             SetStatus(Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count), new(new StatusHead.ReadingPage(i + 1, pages.Count)));
             NotifyAll();
-            ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, s, token),
+            ocrPages.Add(OcrPage.Of(await RecognizeForText(page, prepared.Image, s, token),
                                     prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
             if (withPictures)
             {
@@ -4123,14 +4124,28 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// The lines of <paramref name="page"/> (<paramref name="image"/> is its pixels as prepared): the ones
+    /// kept from an earlier read, else read now and kept, so a cancelled or failed save leaves the
+    /// pages it did read for the next one. Cancel stops waiting at once (the recognizer has no
+    /// cancellation of its own; its late result is simply ignored).
+    /// </summary>
+    private async Task<IReadOnlyList<OcrLine>> RecognizeKept(ScannedPage page, RgbaImage image, ScanSettings s, CancellationToken token)
+    {
+        if (_ocrLines.Get(page, s.OcrLanguage) is { } kept) return kept;
+        var lines = await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token);
+        _ocrLines.Store(page, s.OcrLanguage, lines);
+        return lines;
+    }
+
+    /// <summary>
     /// The lines OCR finds on <paramref name="image"/>, for text the user asked for: a failure is an
     /// error that says why (not a scanner failure, so the troubleshooter does not record it).
     /// </summary>
-    private async Task<IReadOnlyList<OcrLine>> RecognizeForText(RgbaImage image, ScanSettings s, CancellationToken token)
+    private async Task<IReadOnlyList<OcrLine>> RecognizeForText(ScannedPage page, RgbaImage image, ScanSettings s, CancellationToken token)
     {
         try
         {
-            return await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token);
+            return await RecognizeKept(page, image, s, token);
         }
         catch (OperationCanceledException)
         {
@@ -4166,7 +4181,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             SetStatus(Loc.T("Reading the text of page {0}…", index + 1), new(new StatusHead.ReadingPage(index + 1, null)));
             NotifyAll();
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), index + 1), token);
-            var lines = await RecognizeForText(prepared.Image, Settings, token);
+            var lines = await RecognizeForText(page, prepared.Image, Settings, token);
             string text = OcrText.PageText(OcrPage.Of(lines, prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
             if (text.Length > 0)
             {

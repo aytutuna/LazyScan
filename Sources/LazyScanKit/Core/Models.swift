@@ -823,6 +823,10 @@ public struct ScannedPage: Identifiable {
     /// is spooled), so physical page size stays correct even if only the preview
     /// is available.
     public let fullPixelSize: CGSize?
+    /// Names these pixels: a page rebuilt with other pixels (`withImage`) gets a new one, a copy that only
+    /// changes what is recorded about the page keeps it. What was read from the pixels (`OCRLineCache`)
+    /// is kept against it.
+    let pixelsID = UUID()
     /// User-requested rotation applied at save time (0...3 quarter turns clockwise).
     /// `image` already shows the rotation; the full-resolution original (spool file)
     /// stays unrotated until PDFBuilder applies it.
