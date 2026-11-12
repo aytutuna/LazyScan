@@ -47,6 +47,14 @@ public enum CompanionText {
         L10n.t("{0} cannot be reached on this network.", desktopName)
     }
 
+    /// "Sending to Office PC..."
+    public static func sendingMessage(_ desktopName: String) -> String {
+        L10n.t("Sending to {0}...", desktopName)
+    }
+
+    public static var cancelledNothingSentMessage: String { L10n.t("Cancelled. Nothing was sent.") }
+    public static var cancelledWaitingMessage: String { L10n.t("Cancelled. The document is waiting in My computer.") }
+
     /// "Paired with Office PC."
     public static func pairedMessage(_ desktopName: String) -> String {
         L10n.t("Paired with {0}.", desktopName)
@@ -239,6 +247,7 @@ extension AppState {
             companionStatus = .unpaired(byDesktop: desktop.name)
             return
         }
+        let before = companionStatus
         companionStatus = .checking
         do {
             let hello = try await client.hello()
@@ -249,6 +258,8 @@ extension AppState {
             companionStore?.update(current)
             companionDesktop = current
             companionStatus = .reachable(desktopName: current.name, queuedPages: hello.queuedPages)
+        } catch is CancellationError {
+            companionStatus = before
         } catch {
             companionFailed(error, desktop)
         }
@@ -256,26 +267,36 @@ extension AppState {
 
     /// Writes the queue as a `.lsdoc` (`exportPackage`) into the outbox for the paired desktop and sends
     /// what waits there (`drainOutbox`); the queue is not touched. A document that cannot be sent now
-    /// waits in the outbox for the next time.
-    public func sendQueueToDesktop(target: CompanionTarget) async {
+    /// waits in the outbox for the next time. A cancelled send stops quietly. True when the document
+    /// this send queued is still in the outbox.
+    @discardableResult
+    public func sendQueueToDesktop(target: CompanionTarget) async -> Bool {
         guard let outbox = companionOutbox, let desktop = companionDesktop, desktopClient() != nil else {
             errorMessage = CompanionText.notPairedMessage
-            return
+            return false
         }
         guard outbox.count < PhoneOutbox.maxItems else {
             errorMessage = CompanionText.outboxFullMessage
-            return
+            return false
         }
+        let queued: PhoneOutboxItem
         do {
             try FileManager.default.createDirectoryCompleteUnlessOpen(at: outbox.directory)
             let url = try await exportPackage(to: outbox.directory)
-            try outbox.enqueue(url, target: target, desktopId: desktop.id)
+            if Task.isCancelled {
+                try? FileManager.default.removeItem(at: url)
+                return false
+            }
+            queued = try outbox.enqueue(url, target: target, desktopId: desktop.id)
+        } catch is CancellationError {
+            return false
         } catch {
             errorMessage = error.localizedDescription
-            return
+            return false
         }
         countOutbox()
         await drainOutbox()
+        return outbox.items.contains { $0.id == queued.id }
     }
 
     /// Sends the documents waiting in the outbox for the paired desktop one by one, oldest first (those
@@ -328,6 +349,8 @@ extension AppState {
                 outbox.markSent(item.id)
                 pages += response.pageCount
                 countOutbox()
+            } catch is CancellationError {
+                return
             } catch {
                 outbox.markFailed(item.id, error: error.localizedDescription)
                 switch error as? CompanionClientError {
@@ -353,7 +376,7 @@ extension AppState {
         if pages > 0 {
             statusMessage = CompanionText.sentMessage(pages, desktopName: desktop.name)
             companionNotice = CompanionNotice(text: statusMessage)
-            await checkDesktop()
+            if !Task.isCancelled { await checkDesktop() }
         }
     }
 

@@ -443,7 +443,7 @@ public final class AppState: ObservableObject {
     var companionClient: CompanionClient?
     /// The long poll for what the desktop holds (`pullFromDesktop`); nil when it does not run.
     var companionPull: Task<Void, Never>?
-    var companionDraining = false
+    @Published public internal(set) var companionDraining = false
     /// URLProtocol stubs for the companion client's sessions (tests).
     var companionProtocolClasses: [AnyClass] = []
     /// The desktop's side of C1 on the Mac (AppState+CompanionHost.swift): the platform's pieces the

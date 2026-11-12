@@ -96,6 +96,8 @@ struct ScanScreen: View {
     @State private var asksSendTarget: Bool = false
     /// The queue is being written and sent to the paired computer.
     @State private var sendsToComputer: Bool = false
+    /// The send this screen started, which Cancel on the sending card stops.
+    @State private var sendTask: Task<Void, Never>?
     /// Save waits for the copy screen After saving's Print opened, then emails when `emailsAfterPrint`.
     @State private var savesAfterPrint: Bool = false
     @State private var emailsAfterPrint: Bool = false
@@ -419,6 +421,9 @@ struct ScanScreen: View {
             ImportProgressRow()
                 .modifier(NoticeCard())
         }
+        if sendsToComputer || state.companionDraining {
+            sendingCard
+        }
         if let message = statusAfterBusy, !state.isBusy {
             statusCard(message)
         }
@@ -545,6 +550,31 @@ struct ScanScreen: View {
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("cancel.button")
+            }
+        }
+        .modifier(NoticeCard())
+    }
+
+    /// A send to the computer under way, named after it, with Cancel when this screen started it.
+    private var sendingCard: some View {
+        let name: String = state.companionDesktop?.name ?? ""
+        let text: String = CompanionText.sendingMessage(name)
+        return HStack(spacing: 12) {
+            ProgressView()
+            Text(text)
+                .font(.footnote)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("send.progress")
+            if sendTask != nil {
+                Button(role: .cancel) {
+                    sendTask?.cancel()
+                } label: {
+                    Text("Cancel")
+                }
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityIdentifier("cancel.send.button")
             }
         }
         .modifier(NoticeCard())
@@ -1322,11 +1352,21 @@ struct ScanScreen: View {
             return
         }
         let appState: AppState = state
-        Task { @MainActor in
-            sendsToComputer = true
-            await appState.sendQueueToDesktop(target: .new)
-            reportUnsent(appState)
+        sendsToComputer = true
+        sendTask = Task { @MainActor in
+            let noticeBefore: CompanionNotice? = appState.companionNotice
+            let kept: Bool = await appState.sendQueueToDesktop(target: .new)
+            let cancelled: Bool = Task.isCancelled
+            if cancelled {
+                reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
+            } else {
+                reportUnsent(appState)
+            }
             sendsToComputer = false
+            sendTask = nil
+            if cancelled {
+                return
+            }
             if appState.errorMessage != nil {
                 stepsAfterAlert = steps
                 return
@@ -1419,10 +1459,26 @@ struct ScanScreen: View {
     private func sendToComputer(_ target: CompanionTarget) {
         sendsToComputer = true
         let appState: AppState = state
-        Task { @MainActor in
-            await appState.sendQueueToDesktop(target: target)
-            reportUnsent(appState)
+        sendTask = Task { @MainActor in
+            let noticeBefore: CompanionNotice? = appState.companionNotice
+            let kept: Bool = await appState.sendQueueToDesktop(target: target)
+            if Task.isCancelled {
+                reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
+            } else {
+                reportUnsent(appState)
+            }
             sendsToComputer = false
+            sendTask = nil
+        }
+    }
+
+    /// A cancelled send says where the document is: in the outbox when it is still there, nowhere when it was
+    /// never written; one that went before Cancel keeps the sent notice the Kit posted.
+    private func reportCancelled(_ appState: AppState, kept: Bool, noticeBefore: CompanionNotice?) {
+        if kept {
+            statusAfterBusy = CompanionText.cancelledWaitingMessage
+        } else if appState.companionNotice == noticeBefore {
+            statusAfterBusy = CompanionText.cancelledNothingSentMessage
         }
     }
 

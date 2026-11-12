@@ -1817,6 +1817,9 @@ public enum CompanionText {                        // localNetworkOffReason, ref
                                                    // refusedSyncFolderReason
     public static func notOnNetworkReason(_ desktopName: String) -> String       // "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."
     public static func cannotReachMessage(_ desktopName: String) -> String       // "Office PC cannot be reached on this network."
+    public static func sendingMessage(_ desktopName: String) -> String           // "Sending to Office PC..."
+    public static var cancelledNothingSentMessage: String                        // "Cancelled. Nothing was sent."
+    public static var cancelledWaitingMessage: String                            // "Cancelled. The document is waiting in My computer."
     public static func pairedMessage(_ desktopName: String) -> String            // "Paired with Office PC."
     public static func unpairedMessage(_ desktopName: String) -> String          // "This device is no longer paired with Office PC."
     public static func sentMessage(_ pageCount: Int, desktopName: String) -> String   // "3 pages sent to Office PC."
@@ -1826,13 +1829,15 @@ public enum CompanionText {                        // localNetworkOffReason, ref
     public static func putInSyncFolderMessage(_ documentName: String, desktopName: String) -> String   // "Put Scan 12 in the cloud folder for Office PC."
     public static func putInSyncFolderMessage(count: Int, desktopName: String) -> String   // "Put 3 documents in the cloud folder for Office PC."
 }
-extension AppState {                               // companionDesktop, companionStatus, companionOutboxCount, companionOtherOutboxCount, companionNotice
+extension AppState {                               // companionDesktop, companionStatus, companionOutboxCount, companionOtherOutboxCount, companionNotice, companionDraining
                                                    // (published) and companionDesktopSeenOnNetwork: ((String) -> Bool)? and companionAccessDenied: (() -> Bool)? are
                                                    // stored in AppState.swift
     public func setUpCompanion(in folder: URL, secrets: any CompanionSecretStore)
     public func pairDesktop(uri: String, phoneName: String) async
     public func unpairDesktop() async; public func checkDesktop() async
-    public func sendQueueToDesktop(target: CompanionTarget) async; public func drainOutbox() async
+    @discardableResult public func sendQueueToDesktop(target: CompanionTarget) async -> Bool   // true while the document it queued waits in the outbox;
+                                                   // a cancelled send or drain stops quietly (no markFailed, no error), a package written but not queued is deleted
+    public func drainOutbox() async
     public func pullFromDesktop(); public func stopPulling()
     public func clearOutbox()                                      // the paired desktop's waiting documents (all while none is) removed, unsent
     public func clearOtherOutbox()                                 // those for a desktop no longer paired while another is, removed unsent

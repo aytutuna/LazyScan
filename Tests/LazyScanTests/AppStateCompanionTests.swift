@@ -295,6 +295,74 @@ final class AppStateCompanionTests: XCTestCase {
     }
 
     @MainActor
+    func test_sendQueueToDesktop_cancelledBeforeTheDocumentIsQueued_leavesNothing() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+
+        let send = Task { @MainActor in await state.sendQueueToDesktop(target: .new) }
+        send.cancel()
+        await send.value
+
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.companionOutboxCount, 0)
+        XCTAssertFalse(state.companionDraining)
+        let left = try FileManager.default.contentsOfDirectory(atPath: companionFolder.appendingPathComponent("Outbox").path)
+        XCTAssertEqual(left.filter { $0.hasSuffix(".lsdoc") }, [])
+    }
+
+    @MainActor
+    func test_drainOutbox_cancelled_keepsTheDocumentWithoutAFailure() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+        fake.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello())
+        fake.downHosts = [CompanionLink.address]
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        fake.downHosts = []
+        fake.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+            let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
+            return .json(201, InboxResponse(packageId: id, pageCount: 1, duplicate: false).toJSON())
+        }
+
+        let drain = Task { @MainActor in await state.drainOutbox() }
+        drain.cancel()
+        await drain.value
+
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertFalse(state.companionDraining)
+        await state.drainOutbox()
+        XCTAssertEqual(state.companionOutboxCount, 0)
+    }
+
+    @MainActor
+    func test_sendQueueToDesktop_cancelledDuringTheUpload_keepsItAndTheOneAlreadyWaiting() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+        fake.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello())
+        fake.downHosts = [CompanionLink.address]
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        fake.downHosts = []
+        fake.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+            let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
+            return .json(201, InboxResponse(packageId: id, pageCount: 1, duplicate: false).toJSON())
+        }
+
+        let send = Task { @MainActor in await state.sendQueueToDesktop(target: .new) }
+        await Task.yield()
+        send.cancel()
+        let kept = await send.value
+
+        XCTAssertNil(state.errorMessage)
+        XCTAssertFalse(state.companionDraining)
+        XCTAssertEqual(kept, state.companionOutboxCount > 0)
+    }
+
+    @MainActor
     func test_drainOutbox_sendsADocumentOnlyToTheDesktopItWasFor() async throws {
         let fake = CompanionFakeDesktop()
         let state = try await makeState()
