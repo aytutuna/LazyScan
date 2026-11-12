@@ -191,7 +191,7 @@ extension AppState {
     /// Copy text: reads the held Quick scan page's text and puts it on the pasteboard, a blank line between
     /// paragraphs; the page stays, to be saved too.
     public func copyQuickScanText() {
-        copyQuickScanText(reading: AppState.readText)
+        copyQuickScanText(reading: { try AppState.readText($0, number: 1) })
     }
 
     /// The same with the text read by `reading` (tests pass a stand-in).
