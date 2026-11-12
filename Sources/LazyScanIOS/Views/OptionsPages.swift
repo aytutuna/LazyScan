@@ -43,6 +43,19 @@ struct SaveAsPage: View {
     var body: some View {
         let s: ScanSettings = state.settings
         OptionsForm(title: IOSSettingsText.saveAsLabel) {
+            if offersName {
+                Section {
+                    TextField("Name", text: name, prompt: Text("Scan name"))
+                        .submitLabel(.done)
+                        .autocorrectionDisabled()
+                        .accessibilityHint(Text("The file name for this save. The File name setting is unchanged."))
+                        .accessibilityIdentifier("options.saveName")
+                } header: {
+                    Text("Name")
+                } footer: {
+                    Text("Used for this save only.")
+                }
+            }
             Section {
                 Picker("Format", selection: format) {
                     ForEach(formats) { (choice: OutputFormat) in
@@ -59,6 +72,24 @@ struct SaveAsPage: View {
                 PDFOptionsSection()
             }
         }
+    }
+
+    /// A name can be typed when Save writes one new file from the queue: not into a PDF picked, as pictures, or
+    /// as several documents.
+    private var offersName: Bool {
+        let s: ScanSettings = state.settings
+        return IOSShell.offersSave(s, pageCount: state.scannedPages.count) && !state.scannedPages.isEmpty
+            && state.appendTarget == nil && !IOSShell.savesImages(s) && !state.queueSavePlan.isSplit
+    }
+
+    /// The suggested name until something else is typed; the template is not written.
+    private var name: Binding<String> {
+        let appState: AppState = state
+        return Binding<String>(
+            get: { appState.pendingName ?? appState.suggestedName },
+            set: { (text: String) in
+                appState.pendingName = text == appState.suggestedName ? nil : text
+            })
     }
 
     /// Every format for documents, Photos and Receipts (the format Options saves them in), the image formats

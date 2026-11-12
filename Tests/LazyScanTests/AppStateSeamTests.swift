@@ -473,6 +473,31 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertNil(state.errorTitle)
     }
 
+    @MainActor
+    func test_savePDF_withATypedName_writesThatNameAlone_andKeepsTheTemplateAndTheNumber() async throws {
+        let state = makeState()
+        state.settings.namingTemplate = "Scan {counter}"
+        let template: String = state.settings.namingTemplate
+        let before: String = state.suggestedName
+        for round in 0..<2 {
+            XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            state.pendingName = "  Lease 2026 "
+            state.savePDF()
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            XCTAssertEqual(state.lastSavedURLs.map(\.lastPathComponent), [round == 0 ? "Lease 2026.pdf" : "Lease 2026 2.pdf"])
+            XCTAssertNil(state.pendingName)
+        }
+        XCTAssertEqual(state.settings.namingTemplate, template)
+        XCTAssertEqual(state.suggestedName, before)
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        state.pendingName = "   "
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertEqual(state.lastSavedURLs.map(\.lastPathComponent), [before + ".pdf"])
+    }
+
     func test_imagesSaveTitle_andMessage() {
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 1), "Save JPEG")
         XCTAssertEqual(AppState.imagesSaveTitle(.jpeg, pageCount: 0), "Save JPEG")

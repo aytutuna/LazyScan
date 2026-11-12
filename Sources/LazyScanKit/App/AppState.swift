@@ -368,6 +368,9 @@ public final class AppState: ObservableObject {
     /// The PDF Save adds the queue to instead of writing a new file (`setAppendTarget`, the start screen's
     /// "Add pages to a PDF"); nil otherwise. Kept for this session only (AppState+Append.swift).
     @Published public internal(set) var appendTarget: URL?
+    /// The name typed for the next save (Options, Save as): the whole file name of the one file the queue
+    /// is saved as. Nil keeps the template, which it never changes. Reset once a save has used it.
+    @Published public var pendingName: String?
 
     /// Opens the folder of `ScanSettings.destinationBookmark` (the save folder outside the app) and gives it
     /// with the bookmark to keep, made again when the old one is stale; nil when it no longer resolves. Set by
@@ -1709,13 +1712,14 @@ public final class AppState: ObservableObject {
     /// `OutputOptions.alsoSaveText` is on), or a Word document or text file when that is the format
     /// chosen (`OutputFormat.queueFormat`). OCR reads each page once. With an `appendTarget` the pages
     /// are added to that PDF instead (`appendToPDF(at:)`).
-    public func savePDF(sides choice: SidesSaveChoice? = nil) {
+    public func savePDF(sides choice: SidesSaveChoice? = nil, name: String? = nil) {
         guard !scannedPages.isEmpty, settleSides(choice) else { return }
         if let target = appendTarget {
             appendToPDF(at: target)
             return
         }
         let s = settings
+        let typedName = name ?? pendingName
         runExclusive { flag in
             // Let page swaps and turns that were clicked before the save land first.
             await self.pageEditChain?.value
@@ -1740,7 +1744,7 @@ public final class AppState: ObservableObject {
             let format = s.format.queueFormat
             if format.isTextFormat {
                 self.statusMessage = L10n.t("Reading the text of the pages…")
-                let planned = try self.outputURL(fileExtension: format.fileExtension, label: document.label)
+                let planned = try self.outputURL(fileExtension: format.fileExtension, label: document.label, name: typedName)
                 let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
                 let (url, hasText) = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: format, to: planned,
@@ -1762,7 +1766,7 @@ public final class AppState: ObservableObject {
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
             _ = try await self.protectionFor(s)
-            let planned = try self.outputURL(fileExtension: "pdf", label: document.label)
+            let planned = try self.outputURL(fileExtension: "pdf", label: document.label, name: typedName)
             let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
             self.statusMessage = s.pdfSearchable || text != nil ? L10n.t("Running OCR and building PDF…") : L10n.t("Building PDF…")
             let failures = PDFTextFailures()
@@ -2993,14 +2997,35 @@ public final class AppState: ObservableObject {
         return NamingTokens.example(template, settings: settings, format: format, counter: next, date: Date())
     }
 
+    /// `name`, when it holds text, is the whole file name: it does not go through the template and does
+    /// not take the running number. It is cut and sanitized as {label} is.
     func outputURL(fileExtension: String, index: Int? = nil, documentDate: DocumentDate? = nil,
-                   label: String? = nil) throws -> URL {
+                   label: String? = nil, name: String? = nil) throws -> URL {
         let dir = try destinationDirectory()
-        let base = NamingTemplate(settings.namingTemplate)
-            .baseFilename(NamingContext(counter: nextCounter(), date: Date(), intent: settings.intent,
-                                        index: index, task: TaskCatalog.infer(settings), documentDate: documentDate,
-                                        label: label))
+        let base: String
+        let suffix = "." + fileExtension.lowercased()
+        var bare = DocumentSplitter.cleaned(name)
+        if let typed = bare, typed.lowercased().hasSuffix(suffix) {
+            bare = DocumentSplitter.cleaned(String(typed.dropLast(suffix.count)))
+        }
+        if let typed = bare {
+            base = NamingTemplate("{label}")
+                .baseFilename(NamingContext(counter: 0, date: Date(), intent: settings.intent, label: typed))
+        } else {
+            base = NamingTemplate(settings.namingTemplate)
+                .baseFilename(NamingContext(counter: nextCounter(), date: Date(), intent: settings.intent,
+                                            index: index, task: TaskCatalog.infer(settings), documentDate: documentDate,
+                                            label: label))
+        }
         return NamingTemplate.uniqueURL(in: dir, base: base, fileExtension: fileExtension)
+    }
+
+    /// The name the next single file would get, without its extension: what the name field shows until
+    /// something else is typed (`pendingName`).
+    public var suggestedName: String {
+        let format = settings.format.queueFormat
+        let example = fileNameExample(settings.namingTemplate, format: format)
+        return String(example.dropLast(format.fileExtension.count + 1))
     }
 
     /// Run one long operation at a time; surface errors; manage busy state. The

@@ -218,6 +218,7 @@ extension AppState {
             cameraSides = sides
         }
         if newDocumentPending { newDocumentPending = false }
+        if pendingName != nil { pendingName = nil }
     }
 
     /// Notes the current step of the active task what a scan produced (page or photo ids).
