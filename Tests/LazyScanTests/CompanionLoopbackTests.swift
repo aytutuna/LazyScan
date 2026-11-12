@@ -336,7 +336,7 @@ final class CompanionLoopbackTests: XCTestCase {
         XCTAssertEqual(received.value.count, 1)
         let arrived = try XCTUnwrap(received.value.first)
         XCTAssertEqual(arrived.target, .current)
-        XCTAssertEqual(arrived.document.title, CompanionFixtures.sample.title)
+        XCTAssertEqual(arrived.pageCount, CompanionFixtures.sample.pages.count)
         XCTAssertEqual(try Data(contentsOf: arrived.url), package)
         inbox.release(arrived)
         XCTAssertFalse(FileManager.default.fileExists(atPath: arrived.url.path))

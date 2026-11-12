@@ -114,7 +114,7 @@ final class AppStateCompanionHostTests: XCTestCase {
         try FileManager.default.createDirectory(at: phoneFolder, withIntermediateDirectories: true)
         let url = phoneFolder.appendingPathComponent("\(id).\(CompanionPackage.fileExtension)")
         try CompanionPackage.make(document).write(to: url)
-        return ReceivedPackage(deviceId: "phone-0001", packageId: id, url: url, document: document, target: target,
+        return ReceivedPackage(deviceId: "phone-0001", packageId: id, url: url, pageCount: document.pages.count, target: target,
                                received: Date())
     }
 

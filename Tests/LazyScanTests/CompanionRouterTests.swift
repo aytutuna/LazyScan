@@ -252,7 +252,7 @@ final class CompanionRouterTests: XCTestCase {
         XCTAssertEqual(e.package.target, .current)
         XCTAssertEqual(e.device.id, "phone-0001")
         XCTAssertTrue(FileManager.default.fileExists(atPath: e.package.url.path))
-        XCTAssertEqual(e.package.document.title, "Scan")
+        XCTAssertEqual(e.package.pageCount, CompanionFixtures.minimal.pages.count)
 
         // A retry, even after the package was imported and released, is answered as a duplicate.
         inbox.release(e.package)
@@ -312,8 +312,23 @@ final class CompanionRouterTests: XCTestCase {
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: locked.path) }
 
         XCTAssertEqual(inbox.pending().map(\.packageId), ["package-0001"])
+        XCTAssertEqual(inbox.pending().map(\.pageCount), [CompanionFixtures.minimal.pages.count])
         XCTAssertFalse(FileManager.default.fileExists(atPath: corrupt.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: locked.path))
+    }
+
+    func testInbox_PendingCountsPagesWithoutReadingThePictures() throws {
+        let folder = directory.appendingPathComponent("Inbox/phone-0001", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent("package-0001.lsdoc")
+        var bytes = try CompanionPackage.make(CompanionFixtures.minimal)
+        let dataOffset = try XCTUnwrap(ZipStoreReader(data: bytes).entry(named: "pages/0001.jpg")).dataOffset
+        bytes[dataOffset + 100] ^= 0xFF
+        try bytes.write(to: file)
+
+        XCTAssertEqual(inbox.pending().map(\.pageCount), [CompanionFixtures.minimal.pages.count])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertThrowsError(try CompanionPackage.read(contentsOf: file)) { XCTAssertTrue($0 is CompanionPackageError) }
     }
 
     func testInbox_RefusesAnOversizeUploadBeforeReadingIt() async throws {

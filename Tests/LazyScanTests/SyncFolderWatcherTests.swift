@@ -73,7 +73,7 @@ final class SyncFolderWatcherTests: XCTestCase {
         XCTAssertEqual(first.device.id, phoneId)
         XCTAssertEqual(first.package.packageId, "package-0001")
         XCTAssertEqual(first.package.target, .current)
-        XCTAssertEqual(first.package.document.pages.count, CompanionFixtures.minimal.pages.count)
+        XCTAssertEqual(first.package.pageCount, CompanionFixtures.minimal.pages.count)
         XCTAssertTrue(FileManager.default.fileExists(atPath: first.package.url.path))
         XCTAssertNotNil(inbox.find(deviceId: phoneId, packageId: "package-0001"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))

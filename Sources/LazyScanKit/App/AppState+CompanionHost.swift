@@ -174,7 +174,7 @@ extension AppState {
             var pages = 0
             var names: [String] = []
             for document in phoneDocuments {
-                pages += document.package.document.pages.count
+                pages += document.package.pageCount
                 if !names.contains(document.phoneName) { names.append(document.phoneName) }
             }
             let collects = PhotoImport.isOffered(settings) && settings.documentMultiPage

@@ -8,21 +8,22 @@ import os
 private let inboxLog = Logger(subsystem: "LazyScan", category: "Companion")
 
 /// A package a paired phone sent, checked and waiting to be added to the queue. `url` is the package
-/// file in the inbox; `CompanionInbox.release` deletes it once imported.
+/// file in the inbox, read again when its pages are added; `CompanionInbox.release` deletes it once
+/// imported.
 public struct ReceivedPackage {
     public var deviceId: String
     public var packageId: String
     public var url: URL
-    public var document: CompanionDocument
+    public var pageCount: Int
     public var target: CompanionTarget
     public var received: Date
 
-    public init(deviceId: String, packageId: String, url: URL, document: CompanionDocument, target: CompanionTarget,
+    public init(deviceId: String, packageId: String, url: URL, pageCount: Int, target: CompanionTarget,
                 received: Date) {
         self.deviceId = deviceId
         self.packageId = packageId
         self.url = url
-        self.document = document
+        self.pageCount = pageCount
         self.target = target
         self.received = received
     }
@@ -164,7 +165,7 @@ public final class CompanionInbox: @unchecked Sendable {
             try? FileManager.default.removeItem(at: final)
             throw CompanionInboxError.notSaved
         }
-        return ReceivedPackage(deviceId: deviceId, packageId: packageId, url: final, document: document, target: target,
+        return ReceivedPackage(deviceId: deviceId, packageId: packageId, url: final, pageCount: document.pages.count, target: target,
                                received: now)
     }
 
@@ -175,8 +176,8 @@ public final class CompanionInbox: @unchecked Sendable {
     }
 
     /// The packages received but not released (the app ended before adding them), oldest first, each
-    /// read again; a file that is no longer a valid package is deleted, one that cannot be read stays for
-    /// the next start.
+    /// known by its page count from the manifest (no picture is read); a file that is no longer a valid
+    /// package is deleted, one that cannot be read stays for the next start.
     public func pending() -> [ReceivedPackage] {
         var pending: [ReceivedPackage] = []
         let manager = FileManager.default
@@ -190,9 +191,9 @@ public final class CompanionInbox: @unchecked Sendable {
                 let packageId = file.deletingPathExtension().lastPathComponent
                 guard CompanionProtocol.isValidId(packageId) else { continue }
                 do {
-                    let document = try CompanionPackage.read(contentsOf: file)
+                    let pageCount = try CompanionPackage.pageCount(contentsOf: file)
                     let values = try? file.resourceValues(forKeys: [.contentModificationDateKey])
-                    pending.append(ReceivedPackage(deviceId: deviceId, packageId: packageId, url: file, document: document,
+                    pending.append(ReceivedPackage(deviceId: deviceId, packageId: packageId, url: file, pageCount: pageCount,
                                                    target: .new, received: values?.contentModificationDate ?? Date.distantPast))
                 } catch is CompanionPackageError {
                     CompanionInbox.tryDelete(file)

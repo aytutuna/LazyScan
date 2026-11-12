@@ -334,7 +334,7 @@ public final class CompanionRouter: @unchecked Sendable {
             let package = try await inbox.receive(deviceId: device.id, packageId: packageId, target: target,
                                                   body: request.body, length: length, now: now)
             onPackageReceived?(package, device)
-            return .json(201, InboxResponse(packageId: packageId, pageCount: package.document.pages.count,
+            return .json(201, InboxResponse(packageId: packageId, pageCount: package.pageCount,
                                             duplicate: false).toJSON())
         } catch let error as CompanionPackageError {
             return .error(422, CompanionError(code: CompanionErrorCode.invalidPackage, message: error.message))
