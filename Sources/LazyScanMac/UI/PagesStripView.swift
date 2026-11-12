@@ -28,6 +28,27 @@ struct PagesStripView: View {
         state.settings.format.queueFormat == .pdf && state.settings.output.protect && state.appendTarget == nil
     }
 
+    /// Names the one file the queue is saved as, for this save only; empty leaves the template in charge.
+    private func nameField(saveCount: Int) -> some View {
+        let text = Binding<String>(
+            get: { state.pendingName ?? "" },
+            set: { state.pendingName = $0.isEmpty || $0 == state.suggestedName ? nil : $0 })
+        return TextField("File name", text: text, prompt: Text(state.suggestedName))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 170)
+            .disabled(state.isBusy)
+            .onSubmit {
+                if !state.isBusy && saveCount > 0 { state.savePDF() }
+            }
+            .onKeyPress(.escape) {
+                state.pendingName = nil
+                return .handled
+            }
+            .help("Name for this file. Leave empty to use the File name template.")
+            .accessibilityLabel(Text("File name"))
+            .accessibilityHint(Text("Names this save only. Empty uses the file name template."))
+    }
+
     var body: some View {
         let options = state.settings.document
         let plan = DocumentSplitter.plan(state.scannedPages, options: options)
@@ -35,6 +56,7 @@ struct PagesStripView: View {
         let showsBreaks = DocumentSplitter.showsBreaks(plan, options: options)
         let saveCount = savePlan.pageCount
         let target = state.appendTarget
+        let showsNameField = !savePlan.isSplit && target == nil
         let saveTitle = target.map { PDFAppender.saveTitle($0.lastPathComponent) } ?? savePlan.saveTitle(state.settings.format)
         let saveHelp: String = saveCount == 0 && !state.scannedPages.isEmpty ? PageFilter.nothingToSaveMessage : ""
         // Worked out once per refresh, in one pass over the queue.
@@ -97,46 +119,51 @@ struct PagesStripView: View {
                 Text(DocumentSplitter.queueSummary(state.scannedPages, options: options))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                // Pages go into an existing PDF as PDF pages, so the menu is there while the queue is saved
-                // as one, or while it goes into a PDF picked on the start screen.
-                if state.settings.format.queueFormat == .pdf || target != nil {
-                    Menu {
-                        // Word and text queues save their own format once the target is cleared.
-                        if state.settings.format.queueFormat == .pdf {
-                            Button(PDFAppender.saveAsNewLabel) {
-                                state.clearAppendTarget()
-                                state.savePDF()
-                            }
-                        }
-                        Button(PDFAppender.buttonLabel) {
-                            state.chooseAndAppendToPDF()
-                        }
-                        if state.canPrintQueueWithLazyPrint {
-                            Button("Print with Lazy Print") {
-                                state.printQueueWithLazyPrint()
-                            }
-                        }
-                    } label: {
-                        saveLabel(saveTitle)
-                    } primaryAction: {
-                        state.savePDF()
+                HStack(spacing: 8) {
+                    if showsNameField {
+                        nameField(saveCount: saveCount)
                     }
-                    .menuStyle(.button)
-                    .buttonStyle(.borderedProminent)
-                    .fixedSize()
-                    .disabled(state.isBusy || saveCount == 0)
-                    .help(saveHelp.isEmpty ? (target?.path ?? "") : saveHelp)
-                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
-                } else {
-                    Button {
-                        state.savePDF()
-                    } label: {
-                        saveLabel(saveTitle)
+                    // Pages go into an existing PDF as PDF pages, so the menu is there while the queue is saved
+                    // as one, or while it goes into a PDF picked on the start screen.
+                    if state.settings.format.queueFormat == .pdf || target != nil {
+                        Menu {
+                            // Word and text queues save their own format once the target is cleared.
+                            if state.settings.format.queueFormat == .pdf {
+                                Button(PDFAppender.saveAsNewLabel) {
+                                    state.clearAppendTarget()
+                                    state.savePDF()
+                                }
+                            }
+                            Button(PDFAppender.buttonLabel) {
+                                state.chooseAndAppendToPDF()
+                            }
+                            if state.canPrintQueueWithLazyPrint {
+                                Button("Print with Lazy Print") {
+                                    state.printQueueWithLazyPrint()
+                                }
+                            }
+                        } label: {
+                            saveLabel(saveTitle)
+                        } primaryAction: {
+                            state.savePDF()
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.borderedProminent)
+                        .fixedSize()
+                        .disabled(state.isBusy || saveCount == 0)
+                        .help(saveHelp.isEmpty ? (target?.path ?? "") : saveHelp)
+                        .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
+                    } else {
+                        Button {
+                            state.savePDF()
+                        } label: {
+                            saveLabel(saveTitle)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(state.isBusy || saveCount == 0)
+                        .help(saveHelp)
+                        .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(state.isBusy || saveCount == 0)
-                    .help(saveHelp)
-                    .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
                 }
 
                 HStack(spacing: 8) {
