@@ -665,7 +665,12 @@ extension AppState {
                     try Task.checkCancellation()
                     try await receive(item, from: client, desktop: desktop)
                 }
+                let recovered = failures > 0
                 failures = 0
+                if recovered {
+                    await checkDesktop()
+                    await drainOutbox()
+                }
             } catch is CancellationError {
                 return
             } catch {
