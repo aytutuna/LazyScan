@@ -71,7 +71,7 @@ public sealed partial class AppViewModel
     /// <summary>The phone link, started now if it was not (the Phone window opens); null when another window has it.</summary>
     public CompanionService? EnsureCompanion(CompanionServiceOptions? options = null)
     {
-        if (_companion is not null || CompanionElsewhere) return _companion;
+        if (_companion is not null) return _companion;
         _companionMutex ??= new Mutex(false, CompanionMutexName, out _);
         bool owned;
         try
@@ -89,6 +89,8 @@ public sealed partial class AppViewModel
             _companionMutex = null;
             return null;
         }
+        CompanionElsewhere = false;
+        CompanionError = null;
         try
         {
             if (options is null)

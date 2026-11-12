@@ -27,7 +27,7 @@ namespace LazyScan.App;
 public partial class PhoneWindow : Window
 {
     private readonly AppViewModel _viewModel;
-    private readonly CompanionService? _companion;
+    private CompanionService? _companion;
     private readonly IQrEncoder _qrEncoder;
     private readonly DispatcherTimer _clock;
     private FirewallState _firewall = FirewallState.Unknown;
@@ -366,6 +366,14 @@ public partial class PhoneWindow : Window
         }
     }
 
+    /// <summary>Starts the link here when the window that had it has closed.</summary>
+    private void TakeOverCompanion()
+    {
+        _companion = _viewModel.EnsureCompanion();
+        if (_companion is not null) _companion.DevicePaired += Companion_DevicePaired;
+        Refresh();
+    }
+
     private void Companion_DevicePaired(object? sender, PairedDevice device) =>
         Dispatcher.BeginInvoke(() =>
         {
@@ -693,6 +701,7 @@ public partial class PhoneWindow : Window
                 if (!_viewModel.OpenSystemSettings(action)) ShowStatus(Loc.T("Settings did not open."));
                 break;
             default:
+                if (_companion is null) TakeOverCompanion();
                 if (_companion is not null) await _companion.RefreshAsync();
                 await RefreshFirewallAsync();
                 break;
