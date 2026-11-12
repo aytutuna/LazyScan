@@ -350,8 +350,8 @@ final class CapturePageTests: XCTestCase {
     func testForCaptureAWholeSpreadKeepsItsPixelsNotASingleSheetsSize() throws {
         var s = TaskCatalog.apply(.book, to: ScanSettings())
         s.taskOptions.cameraSpreads = true
-        // A Letter book's 17 × 11 in spread has nearly an ID card's shape; an A4 book's spread is A3, A4's shape.
-        let cases: [(width: Int, height: Int, lookalike: PaperSize)] = [(1700, 1100, .idCard), (1414, 1000, .a4)]
+        // A Letter book's 17 × 11 in spread matches no sheet; an A4 book's spread is A3, A4's shape.
+        let cases: [(width: Int, height: Int, lookalike: PaperSize?)] = [(1700, 1100, nil), (1414, 1000, .a4)]
         for (width, height, lookalike) in cases {
             let sheet: RgbaImage = TestPages.spread(width / 2, innerMargin: 20, outerMargin: 80, shadowDepth: 250,
                                                     shadowRadius: 17, seed: 0xB00C_0011, width: width, height: height).toRgba()

@@ -221,8 +221,8 @@ public enum CaptureScale {
 
     private static let mmPerInch: Double = 25.4
 
-    /// The paper sizes a document page snaps to (`PerspectiveCorrector.matchedSizes`: A4 stands for
-    /// every √2 sheet).
+    /// The paper sizes a document page snaps to (`PerspectiveCorrector.documentSizes`: A4 stands for
+    /// every √2 sheet). A shape near none of them, such as half letter, keeps its own size.
     public static let papers: [CaptureSize] = makePaperSizes()
 
     /// The receipt widths, 80 mm first (the most common roll: two widths cannot be told apart by shape).
@@ -240,10 +240,7 @@ public enum CaptureScale {
     ]
 
     /// The ID-1 card.
-    public static var idCard: CaptureSize {
-        for size in papers where size.paper == .idCard { return size }
-        preconditionFailure("The paper sizes include the ID-1 card.")
-    }
+    public static let idCard = CaptureSize(id: PaperSize.idCard.rawValue, basis: .paper, shortInches: 2.125, longInches: 3.370, paper: .idCard)
 
     /// The sizes a page of `kind` snaps to.
     public static func candidates(_ kind: CaptureKind) -> [CaptureSize] {
@@ -258,7 +255,7 @@ public enum CaptureScale {
     /// The size named `id` among every list here; nil for none.
     public static func find(_ id: String?) -> CaptureSize? {
         guard let id = id else { return nil }
-        let lists: [[CaptureSize]] = [papers, receiptWidths, photoSizes]
+        let lists: [[CaptureSize]] = [papers, [idCard], receiptWidths, photoSizes]
         for list in lists {
             for size in list where size.id == id { return size }
         }
@@ -413,7 +410,7 @@ public enum CaptureScale {
 
     private static func makePaperSizes() -> [CaptureSize] {
         var sizes: [CaptureSize] = []
-        for paper in PerspectiveCorrector.matchedSizes {
+        for paper in PerspectiveCorrector.documentSizes {
             guard let inches = PaperSizes.inches(paper) else { continue }
             let w = Double(inches.width), h = Double(inches.height)
             sizes.append(CaptureSize(id: paper.rawValue, basis: .paper, shortInches: min(w, h), longInches: max(w, h),

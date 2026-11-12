@@ -120,6 +120,10 @@ public enum PerspectiveCorrector {
     /// The sizes a camera page is matched against, in this order (the nearest wins).
     public static let matchedSizes: [PaperSize] = [.a4, .letter, .legal, .idCard]
 
+    /// The sizes a page of a document is made at: `matchedSizes` without the card, which a sheet such as
+    /// half letter (1.545) is nearer to than to Legal.
+    public static let documentSizes: [PaperSize] = [.a4, .letter, .legal]
+
     /// The shape of the flat rectangle seen as `quad` in a photo of `imageWidth` × `imageHeight`
     /// taken by a camera centered on the photo with square pixels (Zhang and He, "Whiteboard
     /// scanning and image enhancement", 2007). When the quad is seen straight on, or no focal length
@@ -177,13 +181,14 @@ public enum PerspectiveCorrector {
         return AspectEstimate(widthOverHeight: fallback, focalLength: nil)
     }
 
-    /// The known size (`matchedSizes`) whose long-over-short ratio is nearest to `longOverShort`,
+    /// The known size (of `sizes`) whose long-over-short ratio is nearest to `longOverShort`,
     /// when within `tolerance` of it (as a share of the size's ratio); nil otherwise.
     public static func matchPaper(_ longOverShort: Double,
-                                  tolerance: Double = PerspectiveCorrector.paperAspectTolerance) -> PaperMatch? {
+                                  tolerance: Double = PerspectiveCorrector.paperAspectTolerance,
+                                  sizes: [PaperSize] = PerspectiveCorrector.matchedSizes) -> PaperMatch? {
         var best: PaperMatch?
         var bestDiff = Double.greatestFiniteMagnitude
-        for size in matchedSizes {
+        for size in sizes {
             guard let inches = PaperSizes.inches(size) else { continue }
             let w = Double(inches.width), h = Double(inches.height)
             let ratio = max(w, h) / min(w, h)
@@ -208,7 +213,8 @@ public enum PerspectiveCorrector {
         let w0 = max(top, bottom), h0 = max(left, right)
         let estimate = estimateAspect(quad, imageWidth: Double(imageWidth), imageHeight: Double(imageHeight))
         var aspect = estimate.widthOverHeight
-        let paper = o.snapToPaper ? matchPaper(estimate.longOverShort, tolerance: o.paperAspectTolerance) : nil
+        let paper = o.snapToPaper
+            ? matchPaper(estimate.longOverShort, tolerance: o.paperAspectTolerance, sizes: documentSizes) : nil
         if let paper = paper { aspect = aspect >= 1 ? paper.longOverShort : 1 / paper.longOverShort }
 
         let width: Int, height: Int

@@ -328,7 +328,7 @@ public static class PhotoImport
     {
         if (width <= 0 || height <= 0) return NominalDpi;
         double longSide = Math.Max(width, height), shortSide = Math.Min(width, height);
-        if (PerspectiveCorrector.MatchPaper(longSide / shortSide) is not { } paper
+        if (PerspectiveCorrector.MatchPaper(longSide / shortSide, sizes: PerspectiveCorrector.DocumentSizes) is not { } paper
             || PaperSizes.Inches(paper.Size) is not { } inches)
         {
             return NominalDpi;

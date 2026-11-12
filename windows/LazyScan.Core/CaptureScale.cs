@@ -187,7 +187,7 @@ public static class CaptureScale
 
     private const double MmPerInch = 25.4;
 
-    /// <summary>The paper sizes a document page snaps to (<see cref="PerspectiveCorrector.MatchedSizes"/>: A4 stands for every √2 sheet).</summary>
+    /// <summary>The paper sizes a document page snaps to (<see cref="PerspectiveCorrector.DocumentSizes"/>: A4 stands for every √2 sheet).</summary>
     public static IReadOnlyList<CaptureSize> Papers { get; } = MakePaperSizes();
 
     /// <summary>The receipt widths, 80 mm first (the most common roll: two widths cannot be told apart by shape).</summary>
@@ -216,13 +216,13 @@ public static class CaptureScale
     };
 
     /// <summary>The ID-1 card.</summary>
-    public static CaptureSize IdCard => Papers.First(size => size.Paper == PaperSize.IdCard);
+    public static CaptureSize IdCard { get; } = new(PaperSize.IdCard.RawValue(), CaptureScaleBasis.Paper, 2.125, 3.370, PaperSize.IdCard);
 
     /// <summary>The size named <paramref name="id"/> among every list here; null for none.</summary>
     public static CaptureSize? Find(string? id)
     {
         if (id is null) return null;
-        foreach (var list in new[] { Papers, ReceiptWidths, PhotoSizes })
+        foreach (var list in new IReadOnlyList<CaptureSize>[] { Papers, [IdCard], ReceiptWidths, PhotoSizes })
         {
             foreach (var size in list)
             {
@@ -383,7 +383,7 @@ public static class CaptureScale
     private static IReadOnlyList<CaptureSize> MakePaperSizes()
     {
         var sizes = new List<CaptureSize>();
-        foreach (var paper in PerspectiveCorrector.MatchedSizes)
+        foreach (var paper in PerspectiveCorrector.DocumentSizes)
         {
             if (PaperSizes.Inches(paper) is not { } inches) continue;
             double shortSide = Math.Min(inches.Width, inches.Height), longSide = Math.Max(inches.Width, inches.Height);

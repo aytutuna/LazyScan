@@ -104,6 +104,9 @@ public static class PerspectiveCorrector
     /// <summary>The sizes a camera page is matched against, in this order (the nearest wins).</summary>
     public static IReadOnlyList<PaperSize> MatchedSizes { get; } = [PaperSize.A4, PaperSize.Letter, PaperSize.Legal, PaperSize.IdCard];
 
+    /// <summary>The sizes a page of a document is made at: <see cref="MatchedSizes"/> without the card, which a sheet such as half letter (1.545) is nearer to than to Legal.</summary>
+    public static IReadOnlyList<PaperSize> DocumentSizes { get; } = [PaperSize.A4, PaperSize.Letter, PaperSize.Legal];
+
     /// <summary>
     /// The shape of the flat rectangle seen as <paramref name="quad"/> in a photo of
     /// <paramref name="imageWidth"/> × <paramref name="imageHeight"/> taken by a camera centered on
@@ -160,15 +163,15 @@ public static class PerspectiveCorrector
     }
 
     /// <summary>
-    /// The known size (<see cref="MatchedSizes"/>) whose long-over-short ratio is nearest to
+    /// The known size (of <paramref name="sizes"/>, <see cref="MatchedSizes"/> by default) whose long-over-short ratio is nearest to
     /// <paramref name="longOverShort"/>, when within <paramref name="tolerance"/> of it (as a share
     /// of the size's ratio); null otherwise.
     /// </summary>
-    public static PaperMatch? MatchPaper(double longOverShort, double tolerance = PaperAspectTolerance)
+    public static PaperMatch? MatchPaper(double longOverShort, double tolerance = PaperAspectTolerance, IReadOnlyList<PaperSize>? sizes = null)
     {
         PaperMatch? best = null;
         double bestDiff = double.MaxValue;
-        foreach (var size in MatchedSizes)
+        foreach (var size in sizes ?? MatchedSizes)
         {
             if (PaperSizes.Inches(size) is not { } inches) continue;
             double ratio = Math.Max(inches.Width, inches.Height) / Math.Min(inches.Width, inches.Height);
@@ -198,7 +201,7 @@ public static class PerspectiveCorrector
         double w0 = Math.Max(top, bottom), h0 = Math.Max(left, right);
         var estimate = EstimateAspect(quad, imageWidth, imageHeight);
         double aspect = estimate.WidthOverHeight;
-        PaperMatch? paper = o.SnapToPaper ? MatchPaper(estimate.LongOverShort, o.PaperAspectTolerance) : null;
+        PaperMatch? paper = o.SnapToPaper ? MatchPaper(estimate.LongOverShort, o.PaperAspectTolerance, DocumentSizes) : null;
         if (paper is not null) aspect = aspect >= 1 ? paper.LongOverShort : 1 / paper.LongOverShort;
 
         int width, height;

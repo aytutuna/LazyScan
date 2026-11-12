@@ -1310,11 +1310,11 @@ public struct PerspectivePlan: Equatable, Sendable {
 public struct PerspectiveCorrection: Sendable { public let image: RgbaImage; public let plan: PerspectivePlan }
 public enum PerspectiveCorrector {
     // paperAspectTolerance 0.03, nominalDPI 200, minFocalDiagonals 0.3, maxFocalDiagonals 4, supersampleAbove 1.25,
-    // maxPhotoDiagonals 2, maxOutputSide 23170, matchedSizes [.a4, .letter, .legal, .idCard] (A4 stands for every √2 size)
+    // maxPhotoDiagonals 2, maxOutputSide 23170, matchedSizes [.a4, .letter, .legal, .idCard] and documentSizes [.a4, .letter, .legal] (A4 stands for every √2 size; a page of a document is never made card-sized)
     public static func estimateAspect(_ quad: Quad, imageWidth: Double, imageHeight: Double) -> AspectEstimate
     public static func estimateAspect(_ quad: Quad, imageWidth: Double, imageHeight: Double,   // with a known focal length (pixels);
                                       focalLength: Double) -> AspectEstimate                    // not a positive number: the overload above
-    public static func matchPaper(_ longOverShort: Double, tolerance: Double = paperAspectTolerance) -> PaperMatch?
+    public static func matchPaper(_ longOverShort: Double, tolerance: Double = paperAspectTolerance, sizes: [PaperSize] = matchedSizes) -> PaperMatch?
     public static func plan(_ quad: Quad, imageWidth: Int, imageHeight: Int, options: PerspectiveOptions = .default) -> PerspectivePlan?
     public static func warp(_ image: RgbaImage, plan: PerspectivePlan, options: PerspectiveOptions = .default) -> RgbaImage
     public static func correct(_ image: RgbaImage, quad: Quad, options: PerspectiveOptions = .default) -> PerspectiveCorrection?
@@ -1402,10 +1402,10 @@ public struct CaptureFacts: Equatable, Sendable {
 }
 public enum CaptureScale {
     // tolerance 0.03, nominalDPI 200, maxDPI 1200, fullFrameDiagonalMm 43.266615305567875
-    public static let papers: [CaptureSize]                 // PerspectiveCorrector.matchedSizes: a4, letter, legal, idCard
+    public static let papers: [CaptureSize]                 // PerspectiveCorrector.documentSizes: a4, letter, legal
     public static let receiptWidths: [CaptureSize]          // receipt80mm, receipt57mm
     public static let photoSizes: [CaptureSize]             // photo4x6in, photo5x7in, photo3.5x5in, photo10x15cm (4 × 6 in's shape: never matched after it)
-    public static var idCard: CaptureSize
+    public static let idCard: CaptureSize                   // ID-1, found by `find` and the only size of the idCard kind
     public static func candidates(_ kind: CaptureKind) -> [CaptureSize]   // document papers, receipt widths, photo sizes, [idCard]
     public static func find(_ id: String?) -> CaptureSize?
     public static func focalLengthPixels(_ focalLength35mm: Double, width: Int, height: Int) -> Double?

@@ -297,15 +297,15 @@ public class CapturePageTests
     }
 
     [Theory]
-    [InlineData(1700, 1100, PaperSize.IdCard)] // a Letter book's 17 × 11 in spread has nearly an ID card's shape
+    [InlineData(1700, 1100, null)] // a Letter book's 17 × 11 in spread matches no sheet
     [InlineData(1414, 1000, PaperSize.A4)] // an A4 book's spread is A3, A4's shape
-    public void ForCapture_AWholeSpreadKeepsItsPixels_NotASingleSheetsSize(int width, int height, PaperSize lookalike)
+    public void ForCapture_AWholeSpreadKeepsItsPixels_NotASingleSheetsSize(int width, int height, PaperSize? lookalike)
     {
         var s = TaskCatalog.Apply(ScanTask.Book, new ScanSettings());
         s.TaskOptions.CameraSpreads = true;
         var (photo, quad) = SquareOnATable(TestPages.Spread(width / 2, 20, 80, 250, 17, 0xB00C0011, width, height).ToRgba());
         // As one page, the spread would snap to a sheet it only looks like.
-        Assert.Equal(lookalike, CaptureScale.Match((double)width / height, CaptureScale.Papers)!.Paper);
+        Assert.Equal(lookalike, CaptureScale.Match((double)width / height, CaptureScale.Papers)?.Paper);
 
         var result = PageProcessor.ForCapture(s).Process([Captured(photo, new CaptureFacts(quad, photo.Width, photo.Height))]);
         var spread = Assert.Single(result.Spreads);

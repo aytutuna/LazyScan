@@ -61,7 +61,7 @@ final class CaptureScaleTests: XCTestCase {
         let f = try XCTUnwrap(estimate.focalLength)
         XCTAssertEqual(f, focal, accuracy: focal * 0.01)
         XCTAssertEqual(estimate.longOverShort, 1.5858, accuracy: 1.5858 * 0.01)
-        for kind in [CaptureKind.idCard, CaptureKind.document] {
+        for kind in [CaptureKind.idCard] {
             let scale = CaptureScale.measure(card, imageWidth: photoWidth, imageHeight: photoHeight, kind: kind)
             XCTAssertEqual(scale.basis, .paper)
             XCTAssertEqual(scale.size, "idCard")
@@ -74,6 +74,19 @@ final class CaptureScaleTests: XCTestCase {
             XCTAssertEqual(shortMm, 53.98, accuracy: 0.5)
             XCTAssertTrue((250...400).contains(scale.dpi), "dpi \(scale.dpi)")
         }
+    }
+
+    func testADocumentShotNearACardsShapeIsNotACard() {
+        // Half letter and 11 × 17 in (1.545) are nearer to an ID card than to Legal.
+        let sheet = rect(100, 100, 1545, 1000)
+        let document = CaptureScale.measure(sheet, imageWidth: 5712, imageHeight: 4284, kind: .document)
+        XCTAssertEqual(document.basis, .nominal)
+        XCTAssertNil(document.size)
+        XCTAssertNil(document.paper)
+        XCTAssertEqual(CaptureScale.fromAspect(pixelWidth: 1545, pixelHeight: 1000, kind: .document).basis, .nominal)
+        XCTAssertNil(PerspectiveCorrector.matchPaper(1.545, sizes: PerspectiveCorrector.documentSizes))
+        let card = CaptureScale.measure(sheet, imageWidth: 5712, imageHeight: 4284, kind: .idCard)
+        XCTAssertEqual(card.size, "idCard")
     }
 
     func testACardTiltedAboutItsOwnEdgeNeedsTheFocalLength() throws {
@@ -192,7 +205,8 @@ final class CaptureScaleTests: XCTestCase {
         XCTAssertNil(CaptureScale.match(1.4142 * 1.031 * 1.0, candidates: [papers[0]]))
         XCTAssertEqual(CaptureScale.match(1.30, candidates: papers)?.id, "letter")
         XCTAssertEqual(CaptureScale.match(1.64, candidates: papers)?.id, "legal")
-        XCTAssertEqual(CaptureScale.match(1.60, candidates: papers)?.id, "idCard")
+        XCTAssertNil(CaptureScale.match(1.58, candidates: papers))
+        XCTAssertEqual(CaptureScale.match(1.58, candidates: [CaptureScale.idCard])?.id, "idCard")
         XCTAssertNil(CaptureScale.match(1.50, candidates: papers))
         XCTAssertEqual(CaptureScale.match(1.40, candidates: CaptureScale.photoSizes)?.id, "photo5x7in")
         XCTAssertEqual(CaptureScale.match(1.43, candidates: CaptureScale.photoSizes)?.id, "photo3.5x5in")
@@ -217,10 +231,11 @@ final class CaptureScaleTests: XCTestCase {
         }
         var ids: [String] = []
         for size in CaptureScale.papers { ids.append(size.id) }
-        XCTAssertEqual(ids, ["a4", "letter", "legal", "idCard"])
+        XCTAssertEqual(ids, ["a4", "letter", "legal"])
         XCTAssertEqual(CaptureScale.candidates(.idCard).count, 1)
         XCTAssertEqual(CaptureScale.candidates(.idCard).first?.id, "idCard")
         XCTAssertEqual(CaptureScale.find("a4")?.paper, .a4)
+        XCTAssertEqual(CaptureScale.find("idCard")?.paper, .idCard)
         XCTAssertNil(CaptureScale.find("a3"))
         XCTAssertNil(CaptureScale.find(nil))
         // Each basis has its sizes.

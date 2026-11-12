@@ -53,7 +53,7 @@ public class CaptureScaleTests
         Assert.NotNull(estimate.FocalLength);
         Assert.InRange(estimate.FocalLength!.Value, Focal * 0.99, Focal * 1.01);
         Assert.InRange(estimate.LongOverShort, 1.5858 * 0.99, 1.5858 * 1.01);
-        foreach (var kind in new[] { CaptureKind.IdCard, CaptureKind.Document })
+        foreach (var kind in new[] { CaptureKind.IdCard })
         {
             var scale = CaptureScale.Measure(card, PhotoWidth, PhotoHeight, kind);
             Assert.Equal(CaptureScaleBasis.Paper, scale.Basis);
@@ -67,6 +67,20 @@ public class CaptureScaleTests
             Assert.InRange(shortMm, 53.48, 54.48);
             Assert.InRange(scale.Dpi, 250, 400);
         }
+    }
+
+    [Fact]
+    public void ADocumentShotNearACardsShapeIsNotACard()
+    {
+        // Half letter and 11 × 17 in (1.545) are nearer to an ID card than to Legal.
+        var sheet = Rect(100, 100, 1545, 1000);
+        var document = CaptureScale.Measure(sheet, 5712, 4284, CaptureKind.Document);
+        Assert.Equal(CaptureScaleBasis.Nominal, document.Basis);
+        Assert.Null(document.Size);
+        Assert.Null(document.Paper);
+        Assert.Equal(CaptureScaleBasis.Nominal, CaptureScale.FromAspect(1545, 1000, CaptureKind.Document).Basis);
+        Assert.Null(PerspectiveCorrector.MatchPaper(1.545, sizes: PerspectiveCorrector.DocumentSizes));
+        Assert.Equal("idCard", CaptureScale.Measure(sheet, 5712, 4284, CaptureKind.IdCard).Size);
     }
 
     [Fact]
@@ -190,7 +204,8 @@ public class CaptureScaleTests
         Assert.Null(CaptureScale.Match(1.4142 * 1.031 * 1.0, [CaptureScale.Papers[0]]));
         Assert.Equal("letter", CaptureScale.Match(1.30, CaptureScale.Papers)!.Id);
         Assert.Equal("legal", CaptureScale.Match(1.64, CaptureScale.Papers)!.Id);
-        Assert.Equal("idCard", CaptureScale.Match(1.60, CaptureScale.Papers)!.Id);
+        Assert.Null(CaptureScale.Match(1.58, CaptureScale.Papers));
+        Assert.Equal("idCard", CaptureScale.Match(1.58, [CaptureScale.IdCard])!.Id);
         Assert.Null(CaptureScale.Match(1.50, CaptureScale.Papers));
         Assert.Equal("photo5x7in", CaptureScale.Match(1.40, CaptureScale.PhotoSizes)!.Id);
         Assert.Equal("photo3.5x5in", CaptureScale.Match(1.43, CaptureScale.PhotoSizes)!.Id);
@@ -215,9 +230,10 @@ public class CaptureScaleTests
                 Assert.True(size.LongInches is null || size.LongInches >= size.ShortInches);
             }
         }
-        Assert.Equal(["a4", "letter", "legal", "idCard"], CaptureScale.Papers.Select(s => s.Id));
+        Assert.Equal(["a4", "letter", "legal"], CaptureScale.Papers.Select(s => s.Id));
         Assert.Equal(["idCard"], CaptureScale.Candidates(CaptureKind.IdCard).Select(s => s.Id));
         Assert.Equal(PaperSize.A4, CaptureScale.Find("a4")!.Paper);
+        Assert.Equal(PaperSize.IdCard, CaptureScale.Find("idCard")!.Paper);
         Assert.Null(CaptureScale.Find("a3"));
         Assert.Null(CaptureScale.Find(null));
         // Each basis has its sizes.

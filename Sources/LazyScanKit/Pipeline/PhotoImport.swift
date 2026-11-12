@@ -320,7 +320,7 @@ public enum PhotoImport {
     public static func wholePhotoDPI(width: Int, height: Int) -> Int {
         guard width > 0, height > 0 else { return nominalDPI }
         let longSide = Double(max(width, height)), shortSide = Double(min(width, height))
-        guard let paper = PerspectiveCorrector.matchPaper(longSide / shortSide),
+        guard let paper = PerspectiveCorrector.matchPaper(longSide / shortSide, sizes: PerspectiveCorrector.documentSizes),
               let inches = PaperSizes.inches(paper.size) else { return nominalDPI }
         return pageDPI(longSide / max(Double(inches.width), Double(inches.height)))
     }
