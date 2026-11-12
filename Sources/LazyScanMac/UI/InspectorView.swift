@@ -613,7 +613,15 @@ struct InspectorView: View {
     /// so Word and text are not offered there.
     private var availableFormats: [OutputFormat] {
         let offered = OutputFormat.offered(for: state.settings.intent)
-        return InspectorSections.savesPageFormat(state.settings) ? offered.filter { $0.pageFormat == $0 } : offered
+        if InspectorSections.savesPageFormat(state.settings) { return offered.filter { $0.pageFormat == $0 } }
+        return collectsDocumentPages ? offered.filter { !$0.isImageFormat } : offered
+    }
+
+    /// Collected document pages are saved together, so an image format is not offered and shows as
+    /// PDF (`OutputFormat.queueFormat`); iPhone saves a picture per page instead.
+    private var collectsDocumentPages: Bool {
+        let s = state.settings
+        return s.intent == .document && s.documentMultiPage && !state.isCopyFlow && !InspectorSections.savesPageFormat(s)
     }
 
     /// The format a save uses, as the picker shows it: photos are saved as an image, so a PDF or
@@ -624,7 +632,8 @@ struct InspectorView: View {
     private var shownFormat: OutputFormat {
         if state.isCopyFlow { return .pdf }
         if state.settings.intent == .photo { return state.settings.format.imageFormatOrJPEG }
-        return InspectorSections.savesPageFormat(state.settings) ? state.settings.format.pageFormat : state.settings.format
+        if InspectorSections.savesPageFormat(state.settings) { return state.settings.format.pageFormat }
+        return collectsDocumentPages ? state.settings.format.queueFormat : state.settings.format
     }
 
     private var shownFormatBinding: Binding<OutputFormat> {
