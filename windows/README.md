@@ -96,13 +96,15 @@ UI per platform** architecture:
 - **`LazyScan.TwainHelper`** — the 32-bit TWAIN helper (x86, .NET 10): a small console
   program without a window that the app starts when a scanner driver is installed only for
   32-bit programs (see [TWAIN](#twain)). The app's build copies it next to `LazyScan.exe`.
-- **`LazyScan.TwainHelper64`** — the same program built for x64, which runs 64-bit drivers
-  outside the app when `LAZYSCAN_TWAIN_HELPER64=1` is set (see [TWAIN](#twain)).
+- **`LazyScan.TwainHelper64`** — the same program built for x64, which runs every 64-bit
+  driver outside the app (see [TWAIN](#twain)). Both helpers use
+  [NTwain](https://github.com/soukoku/ntwain) 3.7.6 (MIT) (`NTwainDriver`, `NTwainSessionHost`, `NTwainHelperHost`, in
+  `LazyScan.TwainHelper/`); the app itself does not load NTwain.
 - **`LazyScan.App`** — the native Windows shell (WPF, .NET 10): main window with
   sidebar/inspector/preview-canvas/page-strip/photo-review, a view-model porting the shared Swift
   `AppState` orchestration, and Windows service implementations (WIA, Windows Scan, eSCL and TWAIN
   scanning, Windows.Media.Ocr, WPF imaging codecs). Its package dependencies, each pinned to an
-  exact version, are [NTwain](https://github.com/soukoku/ntwain) 3.7.6 (MIT) for TWAIN,
+  exact version, are
   [ZXing.Net](https://github.com/micjahn/ZXing.Net) 0.16.11 (Apache-2.0) for barcode and QR
   separator sheets, and [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.24.2 (MIT)
   for the page corner model (see [Third-party notices](#third-party-notices)).
@@ -1759,7 +1761,18 @@ same scanners through ImageCaptureCore.
   again). A listing that fails (the Data Source Manager would
   not open, or a driver held it up past 60 s) is tried again after 30 s, 1, 2 and then every
   5 minutes, and a listing that finishes late is still used.
-- **32-bit drivers.** The app itself loads 64-bit drivers (`C:\Windows\twain_64`). A driver
+- **64-bit drivers.** The app never loads a driver itself. It lists and opens 64-bit drivers
+  (`C:\Windows\twain_64`) through `LazyScan.TwainHelper64.exe` (`RemoteTwainHelperHost`, the
+  same protocol and process handling as for the 32-bit helper below), started the first time the app
+  lists TWAIN drivers and again after it stopped, so a driver that faults or hangs, while
+  listing, opening or scanning, ends only the helper: the error is reported, the pages already
+  scanned and the queue stay, and the next listing or scan starts a new helper. The helper is
+  stopped again when a listing finds nothing. Sources keep
+  their `twain:` ids. The Store package carries it in `Twain64` (x64 under emulation on Arm). It
+  loads the 64-bit Data Source Manager (`TWAINDSM.dll` in `System32`), which the app never
+  ships. Checked with the stand-in scanners only (`TwainHelperTests`, `TwainBackendTests`); no
+  64-bit driver has been tried, and the helper's error texts still say "32-bit".
+- **32-bit drivers.** A driver
   installed only for 32-bit programs (a `C:\Windows\twain_32` data source with no 64-bit
   counterpart, the Windows WIA bridge `wiatwain.ds` aside) is reached through a small 32-bit
   helper, `LazyScan.TwainHelper.exe`, next to `LazyScan.exe`:
@@ -1777,7 +1790,7 @@ same scanners through ImageCaptureCore.
     when the helper connects). Nothing listens on the network.
   - A helper that crashes ends the scan in progress with "stopped unexpectedly"; one that does
     not answer in time (the same limits as above), or whose driver will not stop scanning, is stopped
-    and the scan says so. Unlike a driver stuck in the app itself, this never blocks later scans: the
+    and the scan says so. This never blocks later scans: the
     next scan or connection starts a new helper and opens the scanner again. Cancel works as above.
   - It ends with the app: it is in a job that Windows closes when the app exits or crashes, it
     watches the app's process, and it exits when the pipe closes.
@@ -1795,23 +1808,16 @@ same scanners through ImageCaptureCore.
     x86 runtime, the helper missing) waits for the troubleshooter's **Refresh**.
   - A source's resolutions cross the pipe as runs (first value, step, count), so a driver that
     reports a fine range such as 50 to 9600 dpi in 1 dpi steps offers the same resolutions as it
-    would in-process.
-- **64-bit helper (experimental, off by default).** With the environment variable
-  `LAZYSCAN_TWAIN_HELPER64=1`, `TwainScannerBackend` lists and opens 64-bit drivers through
-  `LazyScan.TwainHelper64.exe` (`RemoteTwainHelperHost`, the same protocol and process handling as
-  above) instead of loading the Data Source Manager in the app, so a driver that faults or hangs
-  ends only the helper, and the next listing or scan starts a new one. Sources keep their
-  `twain:` ids. The Store package carries it for x64 in `Twain64`. Checked with the stand-in
-  scanners only (`TwainHelperTests`); no 64-bit driver has been tried, and the helper's error
-  texts still say "32-bit".
+    would in the app.
 - **Installed, not connected.** TWAIN lists installed drivers, so a scanner that is off still
   has a row (captioned "TWAIN driver" when no other connection reaches it). Connecting then
   says the scanner is offline. The app therefore never picks such a row on its own (at start,
   when a scanner appears while the demo scanner is selected, or when the WIA or eSCL
   connection in use goes away and only TWAIN still lists the scanner, which then counts as
   gone); it connects only when the user chooses it.
-- **Its own thread.** Every TWAIN call runs on one dedicated thread; NTwain runs the driver's
-  messages and the transfers on its own message-loop thread. A driver that hangs while
+- **Its own thread.** Every TWAIN call the app makes runs on one dedicated thread, which
+  waits for the helper; NTwain runs the driver's messages and the transfers on its own
+  message-loop thread in the helper. A driver that hangs while
   scanning without its own window never blocks the app: opening a scanner, reading what it
   offers and closing it give up after 60 s, and getting a scan going (an earlier scan
   finishing its stop, negotiating and, without the driver's window, enabling the source,
@@ -1927,7 +1933,7 @@ row's **via** menu chooses between them.
 
 ## Third-party notices
 
-The packages the app and its 32-bit TWAIN helper include (ZXing.Net, NTwain, ONNX Runtime and
+The packages the app and its TWAIN helpers include (ZXing.Net, NTwain, ONNX Runtime and
 DocAligner's model), with their licences, are listed in
 [THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt) at the root of the repository. The tests also
 use PdfPig 0.1.16 (Apache-2.0), which is never shipped.

@@ -58,7 +58,7 @@ public sealed class Twain32ScannerBackend : IScannerBackend, IBackendDiagnostics
 
     public string? DiagnosticsReport { get; private set; }
 
-    /// <param name="sixtyFourBit">The in-process backend: sources it lists are not listed again here.</param>
+    /// <param name="sixtyFourBit">The 64-bit backend: sources it lists are not listed again here.</param>
     public Twain32ScannerBackend(TwainScannerBackend? sixtyFourBit = null)
         : this(sixtyFourBit, TwainHelperOptions.Default, TwainScannerBackend.ThirtyTwoBitOnlySources)
     {

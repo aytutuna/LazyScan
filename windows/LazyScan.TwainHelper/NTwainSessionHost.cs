@@ -7,9 +7,9 @@ namespace LazyScan.App.Scanning.Twain;
 
 /// <summary>
 /// The process's TWAIN session: opening the Data Source Manager, listing its sources and
-/// opening one. Used by the in-process 64-bit backend (<see cref="TwainScannerBackend"/>) and
-/// compiled into the 32-bit helper (LazyScan.TwainHelper) as well, so both load drivers
-/// the same way. Every member is called from one thread (the TWAIN thread of the process).
+/// opening one. Used by the 32-bit and the 64-bit helper (LazyScan.TwainHelper and
+/// LazyScan.TwainHelper64), so both load drivers the same way. Every member is called from one
+/// thread (the TWAIN thread of the process).
 /// </summary>
 internal sealed class NTwainSessionHost
 {

@@ -2,7 +2,7 @@
 
   <!-- The 64-bit TWAIN helper: the same program as LazyScan.TwainHelper (its sources are compiled in
        from that folder), built for x64 so the app can run 64-bit TWAIN drivers outside its own process.
-       The app uses it only when LAZYSCAN_TWAIN_HELPER64=1 is set. It loads the 64-bit Data Source
+       The app runs every 64-bit TWAIN driver through it. It loads the 64-bit Data Source
        Manager (TWAINDSM.dll in System32), which is never shipped. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -18,9 +18,9 @@
   <ItemGroup>
     <Compile Include="..\LazyScan.TwainHelper\Program.cs" Link="Program.cs" />
     <Compile Include="..\LazyScan.TwainHelper\SimulatedTwainHost.cs" Link="SimulatedTwainHost.cs" />
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainDriver.cs" Link="Shared\NTwainDriver.cs" />
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainSessionHost.cs" Link="Shared\NTwainSessionHost.cs" />
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainHelperHost.cs" Link="Shared\NTwainHelperHost.cs" />
+    <Compile Include="..\LazyScan.TwainHelper\NTwainDriver.cs" Link="NTwainDriver.cs" />
+    <Compile Include="..\LazyScan.TwainHelper\NTwainSessionHost.cs" Link="NTwainSessionHost.cs" />
+    <Compile Include="..\LazyScan.TwainHelper\NTwainHelperHost.cs" Link="NTwainHelperHost.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -34,8 +34,8 @@ sRGB color profile, sRGB-v2-magic.icc (iPhone, Mac, Windows)
 NTwain 3.7.6 (Windows)
     By Eugene Wang. MIT License, in full below.
     https://github.com/soukoku/ntwain
-    Talks to TWAIN scanners, in the 32-bit scanning helper that ships with the
-    Windows app.
+    Talks to TWAIN scanners, in the 32-bit and 64-bit scanning helpers that ship
+    with the Windows app.
 
 ZXing.Net 0.16.11 (Windows)
     By Michael Jahn, a port of the ZXing ("Zebra Crossing") library.

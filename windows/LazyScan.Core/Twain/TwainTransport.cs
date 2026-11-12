@@ -1,7 +1,7 @@
 namespace LazyScan.Core;
 
 // The seam between the TWAIN scan logic in Core (TwainScanLoop, TwainScanRequests) and the
-// TWAIN library the Windows app hosts (LazyScan.App/Scanning/Twain/NTwainDriver.cs).
+// TWAIN library the Windows app hosts (LazyScan.TwainHelper/NTwainDriver.cs).
 // Tests drive the same logic through a scripted fake. Windows only, like TwainCodes.cs.
 
 /// <summary>

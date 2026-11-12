@@ -6,13 +6,12 @@ using TwainException = LazyScan.Core.TwainException;
 namespace LazyScan.App.Scanning.Twain;
 
 /// <summary>
-/// Scanners whose drivers speak TWAIN, through NTwain on a thread of their own
-/// (<see cref="TwainThread"/>), so a driver that hangs never blocks the UI.
-/// 64-bit: this process can load only 64-bit data sources (C:\Windows\twain_64); drivers
-/// installed only in 32-bit form are reached through the 32-bit helper instead
-/// (<see cref="Twain32ScannerBackend"/>). With <see cref="TwainHelperOptions.Helper64Enabled"/>
-/// the 64-bit drivers run in a 64-bit helper process as well (<see cref="RemoteTwainHelperHost"/>),
-/// so one that faults or hangs ends only the helper.
+/// Scanners whose drivers speak TWAIN, reached through a 64-bit helper process
+/// (<see cref="RemoteTwainHelperHost"/>) so a driver that faults or hangs ends only the helper and
+/// never the app. Calls are queued to a thread of their own (<see cref="TwainThread"/>), so a driver
+/// that hangs never blocks the UI either. The helper loads 64-bit data sources only
+/// (C:\Windows\twain_64); drivers installed only in 32-bit form are reached through the 32-bit
+/// helper instead (<see cref="Twain32ScannerBackend"/>).
 ///
 /// TWAIN lists installed drivers, not connected scanners: a scanner that is off or unplugged
 /// is still listed, and connecting to it reports it offline (CAP_DEVICEONLINE); the app
@@ -20,7 +19,7 @@ namespace LazyScan.App.Scanning.Twain;
 /// TWAIN Data Source Manager (TWAINDSM.dll, installed by scanner drivers and never shipped
 /// with the app) the backend lists nothing and says why in the diagnostics.
 ///
-/// Experimental, untested against real TWAIN drivers (see <see cref="NTwainDriver"/>).
+/// Experimental, untested against real TWAIN drivers.
 /// </summary>
 public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, IScannerBackendDiagnostics, IDisposable
 {
@@ -48,7 +47,7 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     public IReadOnlyList<ScannerInfo> Devices => _devices;
 
     private readonly Lazy<TwainThread> _thread = new(() => new TwainThread());
-    /// <summary>The TWAIN session, in this process or in the 64-bit helper; only touched on the TWAIN thread.</summary>
+    /// <summary>The TWAIN session in the 64-bit helper; only touched on the TWAIN thread.</summary>
     private readonly ITwainHelperHost _host;
     private readonly TimeSpan _enumerateTimeout = EnumerateTimeout;
     private readonly TimeSpan _openTimeout = OpenTimeout;
@@ -65,12 +64,11 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     private int? _retryPending;
 
     public TwainScannerBackend()
-        : this(TwainHelperOptions.Helper64Enabled ? new RemoteTwainHelperHost(TwainHelperOptions.Default64) : new NTwainHelperHost(),
-               TwainHelperOptions.Helper64Enabled ? TwainHelperOptions.Default64 : null)
+        : this(new RemoteTwainHelperHost(TwainHelperOptions.Default64), TwainHelperOptions.Default64)
     {
     }
 
-    /// <param name="remote">The helper's options when <paramref name="host"/> runs the session in the helper; its calls may first have to start it.</param>
+    /// <param name="remote">The helper's options when <paramref name="host"/> runs the session in a helper; its calls may first have to start it.</param>
     internal TwainScannerBackend(ITwainHelperHost host, TwainHelperOptions? remote = null)
     {
         _host = host;
@@ -257,7 +255,7 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
 }
 
 /// <summary>An open TWAIN data source. All driver calls are queued to the backend's <see cref="TwainThread"/>.</summary>
-/// <param name="driver">The open source (<see cref="NTwainDriver"/> in the app).</param>
+/// <param name="driver">The open source (<see cref="RemoteTwainTransport"/> in the app).</param>
 /// <param name="close">Closes the source; run on the TWAIN thread.</param>
 internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, ITwainTransport driver, Action close)
     : IScannerSession, IDriverWindowOption

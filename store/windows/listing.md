@@ -77,11 +77,11 @@ The IARC questionnaire in Partner Center. The rating this should give is 3+ (PEG
 
 The package declares `runFullTrust` and nothing else. Partner Center asks for a reason:
 
-> Lazy Scan is a desktop app built with .NET and WPF. It talks to scanners through their WIA and TWAIN drivers, which load into the app's process, and starts a 32-bit helper process for drivers that exist only as 32-bit. It runs a local listener for a paired phone, and reads and saves the files the user picks anywhere on the PC. It cannot work inside the app sandbox, and it has no other capability.
+> Lazy Scan is a desktop app built with .NET and WPF. It talks to scanners through their WIA drivers, and through TWAIN drivers that load into helper processes it starts: a 64-bit one, and a 32-bit one for drivers that exist only as 32-bit. It runs a local listener for a paired phone, and reads and saves the files the user picks anywhere on the PC. It cannot work inside the app sandbox, and it has no other capability.
 
 ## Notes for certification
 
-> No account or sign-in is needed. To try the app without a scanner, pick Demo Scanner in the scanner list on the left, then press Scan: it produces sample pages and photos. The app listens for a phone only after a phone is paired, so nothing needs a second device. The package carries a 32-bit helper (Twain\LazyScan.TwainHelper.exe) that is started only when a scanner has a 32-bit TWAIN driver. The x64 package also carries a 64-bit copy (Twain64\LazyScan.TwainHelper64.exe), which is started only when LAZYSCAN_TWAIN_HELPER64=1 is set.
+> No account or sign-in is needed. To try the app without a scanner, pick Demo Scanner in the scanner list on the left, then press Scan: it produces sample pages and photos. The app listens for a phone only after a phone is paired, so nothing needs a second device. The package carries a 64-bit helper (Twain64\LazyScan.TwainHelper64.exe) that is started when the app looks for TWAIN scanners, and a 32-bit one (Twain\LazyScan.TwainHelper.exe) that is started only when a scanner has a 32-bit TWAIN driver.
 
 ## What only the owner can do in Partner Center
 

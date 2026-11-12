@@ -8,7 +8,7 @@ namespace LazyScan.App.Scanning.Twain;
 /// a driver. Work runs in the order it was queued, one item at a time. The TWAIN library's
 /// own message loop (which receives the driver's messages and runs the transfers) is a
 /// separate thread the library starts; transfers reach this thread as queued events
-/// (<see cref="NTwainDriver"/>).
+/// (<see cref="RemoteTwainTransport"/>).
 ///
 /// A driver can block indefinitely (a dialog nobody sees, a hung device). Every call
 /// therefore has a time limit (<see cref="RunAsync{T}"/>; a scan's covers getting the source

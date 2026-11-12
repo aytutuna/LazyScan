@@ -11,8 +11,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace LazyScan.App.Scanning.Twain;
 
-/// <summary>How the app starts its 32-bit TWAIN helper.</summary>
-/// <param name="HelperPath">LazyScan.TwainHelper.exe; the build puts it next to the app.</param>
+/// <summary>How the app starts a TWAIN helper (32-bit, or 64-bit for 64-bit drivers).</summary>
+/// <param name="HelperPath">LazyScan.TwainHelper.exe or LazyScan.TwainHelper64.exe; the build puts them next to the app.</param>
 /// <param name="Simulate">Start the helper with its stand-in scanners instead of TWAIN (for tests).</param>
 /// <param name="StartTimeout">How long the helper has to connect to the app's pipe.</param>
 /// <param name="Bits">The bitness the helper must report (32, or 64 for the 64-bit helper).</param>
@@ -33,9 +33,6 @@ internal sealed record TwainHelperOptions(string HelperPath, bool Simulate = fal
         }
     }
 
-    /// <summary>Runs 64-bit TWAIN drivers in the 64-bit helper instead of in the app (off unless LAZYSCAN_TWAIN_HELPER64 is 1).</summary>
-    public static bool Helper64Enabled => Environment.GetEnvironmentVariable("LAZYSCAN_TWAIN_HELPER64") == "1";
-
     public static TwainHelperOptions Default64
     {
         get
@@ -51,7 +48,7 @@ internal sealed record TwainHelperOptions(string HelperPath, bool Simulate = fal
 }
 
 /// <summary>
-/// The app's one 32-bit TWAIN helper process, started when first needed and again after it
+/// One TWAIN helper process of the app, started when first needed and again after it
 /// stopped. The two talk over a named pipe with a random name that only the current user may
 /// open, never from the network, created by the app with a single instance and checked to be
 /// opened by the process the app started. The helper is tied to the app: it is in a job that

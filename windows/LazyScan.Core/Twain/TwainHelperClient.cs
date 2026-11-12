@@ -535,7 +535,7 @@ public static class TwainHelperSources
 
     /// <summary>
     /// The sources worth listing: named ones that no 64-bit driver also lists (the app uses
-    /// those in-process) and that are not the Windows WIA bridge ("WIA-…", from wiatwain.ds; WIA
+    /// those through the 64-bit helper) and that are not the Windows WIA bridge ("WIA-…", from wiatwain.ds; WIA
     /// reaches those scanners directly), once each, in the helper's order.
     /// </summary>
     public static List<TwainHelperSource> Usable(IEnumerable<TwainHelperSource> sources, IEnumerable<string> sixtyFourBitNames)

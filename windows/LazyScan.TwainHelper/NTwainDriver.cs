@@ -9,7 +9,7 @@ namespace LazyScan.App.Scanning.Twain;
 
 /// <summary>
 /// <see cref="ITwainTransport"/> over one open NTwain data source. Capability calls run on
-/// the caller's thread (the app's <see cref="TwainThread"/>); NTwain runs enabling, the
+/// the caller's thread (the helper's main thread); NTwain runs enabling, the
 /// driver's messages and the transfers on its own message-loop thread and raises its events
 /// there. The handlers only copy what arrived into a queue (<see cref="WaitForEvent"/>) and
 /// answer "cancel all" once a stop was requested, so a slow consumer never holds up the driver.

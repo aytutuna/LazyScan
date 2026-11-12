@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LazyScan.Core\LazyScan.Core.csproj" />
-    <!-- The TWAIN helpers (x86, and x64 for LAZYSCAN_TWAIN_HELPER64): built with the app, not referenced as an assembly; their files
+    <!-- The TWAIN helpers (x86 and x64): built with the app, not referenced as an assembly; their files
          are copied next to LazyScan.exe by the target below. scripts/make_msix.ps1 passes SkipTwainHelper
          and publishes the helper on its own: a reference to it would pass the app's win-x64 or win-arm64
          runtime to the x86 project (NETSDK1032). -->
@@ -41,9 +41,9 @@
     <InternalsVisibleTo Include="LazyScan.App.Tests" />
   </ItemGroup>
 
-  <!-- Puts the helper's own files (its exe, assembly, runtime and dependency manifests) next to the
-       app's, wherever the helper was built (artifacts output included). Its other files, the Core
-       library and NTwain, are the app's own. As copy-to-output items they also reach projects that
+  <!-- Puts the helper's own files (its exe, assembly, runtime and dependency manifests, and NTwain.dll) next to the
+       app's, wherever the helper was built (artifacts output included). Its other file, the Core
+       library, is the app's own. As copy-to-output items they also reach projects that
        reference the app (its tests). -->
   <Target Name="AddTwainHelperFiles" BeforeTargets="AssignTargetPaths" Condition="'$(SkipTwainHelper)' != 'true'">
     <MSBuild Projects="..\LazyScan.TwainHelper\LazyScan.TwainHelper.csproj" Targets="GetTargetPath">
@@ -53,7 +53,7 @@
       <_TwainHelperDir>@(_TwainHelperTarget->'%(RootDir)%(Directory)')</_TwainHelperDir>
     </PropertyGroup>
     <ItemGroup>
-      <_TwainHelperFile Include="$(_TwainHelperDir)LazyScan.TwainHelper.exe;$(_TwainHelperDir)LazyScan.TwainHelper.dll;$(_TwainHelperDir)LazyScan.TwainHelper.runtimeconfig.json;$(_TwainHelperDir)LazyScan.TwainHelper.deps.json" />
+      <_TwainHelperFile Include="$(_TwainHelperDir)LazyScan.TwainHelper.exe;$(_TwainHelperDir)LazyScan.TwainHelper.dll;$(_TwainHelperDir)LazyScan.TwainHelper.runtimeconfig.json;$(_TwainHelperDir)LazyScan.TwainHelper.deps.json;$(_TwainHelperDir)NTwain.dll" />
       <None Include="@(_TwainHelperFile)" CopyToOutputDirectory="PreserveNewest" Visible="false"
             Link="%(_TwainHelperFile.Filename)%(_TwainHelperFile.Extension)" />
     </ItemGroup>
@@ -71,10 +71,6 @@
   </Target>
 
   <ItemGroup>
-    <!-- TWAIN (Scanning/Twain). MIT licensed, no dependencies; pinned to an exact version.
-         The TWAIN Data Source Manager it loads (TWAINDSM.dll, LGPL) is never shipped with
-         the app: scanner drivers install it. -->
-    <PackageReference Include="NTwain" Version="[3.7.6]" />
     <!-- Barcode and QR separator sheets (Services/ZXingBarcodeReader.cs, ZXingQrEncoder.cs).
          Apache-2.0, no dependencies; the core package only, fed the page's gray pixels, so no
          image-binding package is needed. Pinned to an exact version. -->

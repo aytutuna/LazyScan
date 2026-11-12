@@ -5,7 +5,7 @@ namespace LazyScan.App.Scanning.Twain;
 /// <summary>
 /// TWAIN in a helper process of its own (<see cref="TwainHelperProcess"/>) instead of this one, so a
 /// driver that faults or hangs ends only the helper. Used by <see cref="TwainScannerBackend"/> for
-/// 64-bit drivers when <see cref="TwainHelperOptions.Helper64Enabled"/> is set.
+/// every 64-bit driver.
 /// </summary>
 internal sealed class RemoteTwainHelperHost(TwainHelperOptions options) : ITwainHelperHost, IDisposable
 {
@@ -19,6 +19,8 @@ internal sealed class RemoteTwainHelperHost(TwainHelperOptions options) : ITwain
         // A listing is the moment to try again after a helper that could not start.
         _helper.Retry();
         var reply = _helper.Connect().Request(new TwainHelperListSources(), options.Limits.ListSources);
+        if (reply is TwainHelperSourceList { Availability: not TwainAvailability.Available } or TwainHelperSourceList { Sources.Count: 0 })
+            _helper.Shutdown();
         return reply switch
         {
             TwainHelperSourceList found => found,

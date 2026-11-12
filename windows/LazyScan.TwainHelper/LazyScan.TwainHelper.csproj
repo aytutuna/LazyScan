@@ -3,8 +3,8 @@
   <!-- The 32-bit TWAIN helper: a small x86 process the 64-bit app starts on demand to load scanner
        drivers installed only for 32-bit programs (C:\Windows\twain_32). It speaks the protocol in
        LazyScan.Core/Twain/TwainHelperProtocol.cs over a named pipe the app creates. It uses
-       the same TWAIN code as the app (Scanning/Twain/NTwainDriver.cs and NTwainSessionHost.cs are
-       compiled in from the app's folder) against the 32-bit Data Source Manager the drivers
+       the same TWAIN code as the 64-bit helper (LazyScan.TwainHelper64 compiles in the NTwain files of
+       this folder) against the 32-bit Data Source Manager the drivers
        installed (TWAINDSM.dll in SysWOW64, or Windows' own twain_32.dll), which is never shipped.
        The app's build copies its output next to LazyScan.exe. Console subsystem, started
        without a window, so a missing runtime is reported on its error output, not in a dialog. -->
@@ -18,12 +18,6 @@
     <IsPackable>false</IsPackable>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainDriver.cs" Link="Shared\NTwainDriver.cs" />
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainSessionHost.cs" Link="Shared\NTwainSessionHost.cs" />
-    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainHelperHost.cs" Link="Shared\NTwainHelperHost.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LazyScan.Core\LazyScan.Core.csproj" />
