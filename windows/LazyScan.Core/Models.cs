@@ -715,6 +715,18 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     public double? BookLastCut { get; set; }
 
     /// <summary>
+    /// The camera's book pages are drawn flat between their curved top and bottom edges
+    /// (<see cref="PageFlatten.Flatten"/>). Off unless chosen.
+    /// </summary>
+    public bool BookFlattenCurves { get; set; } = false;
+
+    /// <summary>
+    /// The fingers holding a camera's book page at its margins are painted over with paper
+    /// (<see cref="PageFlatten.FillFingers"/>). Off unless chosen.
+    /// </summary>
+    public bool BookFillFingers { get; set; } = false;
+
+    /// <summary>
     /// The iPhone's camera takes both sides of each sheet for the two-sided task as all the fronts
     /// first, then all the backs. Off: "Flip &amp; capture", each front followed by its back. The
     /// Windows app keeps it as it is.
@@ -747,6 +759,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         && ReceiptEachFile == other.ReceiptEachFile
         && BookRightToLeft == other.BookRightToLeft && BookRotationQuarterTurns == other.BookRotationQuarterTurns
         && BookCutAt == other.BookCutAt && BookLastCut == other.BookLastCut
+        && BookFlattenCurves == other.BookFlattenCurves && BookFillFingers == other.BookFillFingers
         && CameraFrontsFirst == other.CameraFrontsFirst && CameraSpreads == other.CameraSpreads
         && CameraFilter == other.CameraFilter;
     public override bool Equals(object? obj) => Equals(obj as TaskOptions);
@@ -766,6 +779,8 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(BookRotationQuarterTurns);
         hash.Add(BookCutAt);
         hash.Add(BookLastCut);
+        hash.Add(BookFlattenCurves);
+        hash.Add(BookFillFingers);
         hash.Add(CameraFrontsFirst);
         hash.Add(CameraSpreads);
         hash.Add(CameraFilter);

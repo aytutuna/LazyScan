@@ -160,6 +160,7 @@ internal static class CompatFixtures
         + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n        \"receiptEachFile\": false,\n"
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
         + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
+        + "        \"bookFlattenCurves\": false,\n        \"bookFillFingers\": false,\n"
         + "        \"cameraFrontsFirst\": true,\n        \"cameraSpreads\": true,\n        \"cameraFilter\": \"original\"\n      }\n");
 
     /// <summary>Field-by-field equality, including the legacy OCR languages.</summary>
@@ -1298,7 +1299,7 @@ public class ModelsCompatTests
                 // No printer chosen: the key is left out, as Swift leaves out a nil.
                 Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage", "copyAlsoSavePdf",
                               "receiptNameByDate", "receiptCombine", "receiptEachFile", "bookRightToLeft", "bookRotationQuarterTurns",
-                              "bookCutAt", "cameraFrontsFirst", "cameraSpreads"],
+                              "bookCutAt", "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst", "cameraSpreads"],
                              written.RootElement.GetProperty("taskOptions").EnumerateObject().Select(p => p.Name));
                 Assert.Equal(settings.TaskOptions, Decode<ScanSettings>(json).TaskOptions);
             }
@@ -1434,6 +1435,23 @@ public class ModelsCompatTests
         Assert.NotEqual(original.Document, clone.Document);
         Assert.NotEqual(original.TaskOptions, clone.TaskOptions);
         Assert.NotEqual(original.TaskOptions.GetHashCode(), clone.TaskOptions.GetHashCode());
+    }
+
+    [Fact]
+    public void BookFlattenOptions_AreOffByDefault_AndInFilesWithoutThem()
+    {
+        Assert.False(new ScanSettings().TaskOptions.BookFlattenCurves);
+        Assert.False(new ScanSettings().TaskOptions.BookFillFingers);
+        var older = Decode<ScanSettings>("""{"taskOptions": {"bookRightToLeft": true, "cameraSpreads": true}}""").TaskOptions;
+        Assert.Equal((true, false, false), (older.BookRightToLeft, older.BookFlattenCurves, older.BookFillFingers));
+        var corrupt = Decode<ScanSettings>("""
+            {"taskOptions": {"bookFlattenCurves": "yes", "bookFillFingers": true, "cameraSpreads": true}}
+            """).TaskOptions;
+        Assert.Equal((false, true, true), (corrupt.BookFlattenCurves, corrupt.BookFillFingers, corrupt.CameraSpreads));
+        var chosen = new ScanSettings();
+        chosen.TaskOptions.BookFlattenCurves = true;
+        var back = Decode<ScanSettings>(CompatFixtures.Encode(chosen)).TaskOptions;
+        Assert.Equal((true, false), (back.BookFlattenCurves, back.BookFillFingers));
     }
 
     // MARK: - The iPhone camera's choices (CONTRACTS.md, rule 6)

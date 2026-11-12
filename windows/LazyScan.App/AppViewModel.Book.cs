@@ -336,6 +336,24 @@ public sealed partial class AppViewModel
         NotifyAll();
     }
 
+    /// <summary>Drawing curved pages flat, from the inspector: for the spreads taken from now on.</summary>
+    public void SetBookFlattenCurves(bool flatten)
+    {
+        if (Settings.TaskOptions.BookFlattenCurves == flatten) return;
+        Settings.TaskOptions.BookFlattenCurves = flatten;
+        SettingsEdited();
+        NotifyAll();
+    }
+
+    /// <summary>Painting over fingers at the margins, from the inspector: for the spreads taken from now on.</summary>
+    public void SetBookFillFingers(bool fill)
+    {
+        if (Settings.TaskOptions.BookFillFingers == fill) return;
+        Settings.TaskOptions.BookFillFingers = fill;
+        SettingsEdited();
+        NotifyAll();
+    }
+
     /// <summary>Right-to-left reading order, from the inspector: for the next scans, and for the spreads queued once the offer is taken.</summary>
     public void SetBookRightToLeft(bool rightToLeft)
     {

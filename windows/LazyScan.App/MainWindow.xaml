@@ -1402,6 +1402,19 @@
                                                 <CheckBox x:Name="SoftenSpineShadowBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
                                                           Content="{loc:T Soften spine shadow}"
                                                           Checked="SoftenSpineShadow_Changed" Unchecked="SoftenSpineShadow_Changed" />
+                                                <!-- For the phone's spreads only: they are the pages cut out of a camera's photo. -->
+                                                <CheckBox x:Name="BookFlattenCurvesBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
+                                                          Content="{loc:T Flatten curved pages}"
+                                                          AutomationProperties.Name="{loc:T Flatten curved pages}"
+                                                          AutomationProperties.HelpText="{loc:T Straightens text lines that bend near the spine.}"
+                                                          ToolTip="{loc:T Straightens text lines that bend near the spine.}"
+                                                          Checked="BookFlattenCurves_Changed" Unchecked="BookFlattenCurves_Changed" />
+                                                <CheckBox x:Name="BookFillFingersBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
+                                                          Content="{loc:T Remove fingers at the margins}"
+                                                          AutomationProperties.Name="{loc:T Remove fingers at the margins}"
+                                                          AutomationProperties.HelpText="{loc:T Fills fingers holding the book at the page edge with paper color.}"
+                                                          ToolTip="{loc:T Fills fingers holding the book at the page edge with paper color.}"
+                                                          Checked="BookFillFingers_Changed" Unchecked="BookFillFingers_Changed" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Expander>

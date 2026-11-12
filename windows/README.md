@@ -1380,9 +1380,9 @@ the Pages section is hidden. A spread whose spine was not found is cut as **Cut 
 in the middle; Middle: always there, without looking for a spine; Same as last: where the last cut by
 hand was, in the middle before any), and **Change the split…** moves the cut. While it is on, **Reads right to left**
 (Arabic, Hebrew, manga: the right page first), **Book rotation** (as scanned, 90° clockwise,
-180°, 90° counterclockwise, for a book lying sideways or upside down), **Cut at** and **Soften spine shadow**
-show beneath it; the first two are kept when a task is picked, and all of them apply from the next
-spread on (all but Cut at also to a spread joined or split again). Changing the reading order or the rotation with
+180°, 90° counterclockwise, for a book lying sideways or upside down), **Cut at**, **Soften spine shadow**, **Flatten curved pages** and
+**Remove fingers at the margins** show beneath it; the first two are kept when a task is picked, and all of them apply from the next
+spread on (Reading order, Book rotation and Soften spine shadow also to a spread joined or split again). Changing the reading order or the rotation with
 split spreads queued shows "Pages already scanned keep the old order." (rotation, or order and
 rotation) under the rotation and the button **Apply to the 5 spreads already scanned**
 (`AppViewModel.BookReorderOffer`, `ApplyBookReorder`). It cuts every queued split spread again where it
@@ -1442,8 +1442,13 @@ with a shadow of 20 % or more, 20 of 25 with a fainter one, 44 of 45 with inner 
 more and no shadow; the rest (tight margins without a shadow, a blank page without one) stayed
 whole. 160 synthetic single pages (one or two columns, section gaps, pictures, letters folded in
 three) were never split. The demo book is cut at its spine to the pixel. Finding the spine takes
-about 50 ms at 100 dpi and 120 to 240 ms on a 300 dpi spread. Curved pages near the spine are not
-flattened.
+about 50 ms at 100 dpi and 120 to 240 ms on a 300 dpi spread.
+
+**Flatten curved pages** (off by default) straightens the text lines that bend near the spine.
+**Remove fingers at the margins** (off by default) fills fingers at the page edge with paper color.
+Both apply to pages a phone's camera takes from now on; a spread split again keeps the page as it was taken
+(`FlattenStep` and `FingerFillStep`, between the perspective cut and the clean-up in
+`PageProcessor.ForCapture`; `PageFlatten`).
 
 **Soften spine shadow** (on for the Book or magazine task, off for every other task and for settings
 files written before it existed) lifts the shadow along the spine on each page cut from a spread

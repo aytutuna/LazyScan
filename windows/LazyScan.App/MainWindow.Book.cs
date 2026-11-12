@@ -44,6 +44,8 @@ public partial class MainWindow
             BookRotationBox.SelectedItem = BookRotationBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == turns);
             CutAtBox.SelectedItem = CutAtBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (BookCutAt)i.Tag == s.TaskOptions.BookCutAt);
             SoftenSpineShadowBox.IsChecked = s.Document.SoftenSpineShadow;
+            BookFlattenCurvesBox.IsChecked = s.TaskOptions.BookFlattenCurves;
+            BookFillFingersBox.IsChecked = s.TaskOptions.BookFillFingers;
         }
         finally
         {
@@ -95,6 +97,18 @@ public partial class MainWindow
         ViewModel.SetSoftenSpineShadow(SoftenSpineShadowBox.IsChecked == true);
         SyncBookOptions();
         RefreshFromViewModel();
+    }
+
+    private void BookFlattenCurves_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        ViewModel.SetBookFlattenCurves(BookFlattenCurvesBox.IsChecked == true);
+    }
+
+    private void BookFillFingers_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        ViewModel.SetBookFillFingers(BookFillFingersBox.IsChecked == true);
     }
 
     private void SplitFacingPages_Changed(object sender, RoutedEventArgs e)

@@ -95,6 +95,12 @@ public sealed record CaptureFacts(Quad Quad, int SourceWidth, int SourceHeight)
     /// <summary>The filter the page was given once cut out (<see cref="EnhanceStep"/>); null until then, and for a photo or a card. Kept in memory only.</summary>
     public CaptureFilter? Filter { get; init; }
 
+    /// <summary>Whether <see cref="FlattenStep"/> drew the page flat; null for pages where it did not.</summary>
+    public bool? Flattened { get; init; }
+
+    /// <summary>Whether <see cref="FingerFillStep"/> painted over fingers at the page's margins; null for pages where it did not.</summary>
+    public bool? FingersFilled { get; init; }
+
     /// <summary>
     /// These facts for the photo mirrored and turned as <paramref name="orientation"/> says (mirrored left
     /// to right first, then turned clockwise, as <see cref="PhotoImport.Oriented"/> turns its pixels): each

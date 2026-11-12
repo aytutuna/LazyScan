@@ -440,8 +440,10 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// <summary>
     /// The steps for pages taken by a camera (<see cref="ScannedPage.Capture"/>), which go to the queue
     /// like imported photos: <see cref="PerspectiveStep"/> cuts each page out of its photo at its real
-    /// size, <see cref="EnhanceStep"/> cleans it up in the task's mode (<see cref="DocumentEnhancer.ModeFor(ScanSettings)"/>),
-    /// both in <see cref="Prepare"/>, then the steps of <see cref="ForPhotoImport"/> for pages that go to the queue. The objects of the
+    /// size, <see cref="FlattenStep"/> and <see cref="FingerFillStep"/> draw a book's curved page flat and paint over
+    /// fingers at its margins when asked for (<see cref="FlattensCurvedPages"/>, <see cref="FillsFingers"/>),
+    /// <see cref="EnhanceStep"/> cleans it up in the task's mode (<see cref="DocumentEnhancer.ModeFor(ScanSettings)"/>),
+    /// all in <see cref="Prepare"/>, then the steps of <see cref="ForPhotoImport"/> for pages that go to the queue. The objects of the
     /// other tasks (photos, receipts, an ID card: <see cref="CaptureObjects"/>) get only the adjustments
     /// after that, unless they change nothing, and not on the shot kept as their other version: no
     /// blank-page or separator check, no barcodes, and no text recognition to turn them upright, so an ID
@@ -457,7 +459,10 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
                                            ScanArrangement arrangement = ScanArrangement.AsScanned)
     {
         var spreads = SplitsCameraSpreads(settings);
-        IPageStep[] cut = [new PerspectiveStep(spread: spreads), new EnhanceStep(DocumentEnhancer.ModeFor(settings), settings.Adjustments.BlackWhiteThreshold)];
+        var cut = new List<IPageStep> { new PerspectiveStep(spread: spreads) };
+        if (FlattensCurvedPages(settings)) cut.Add(new FlattenStep());
+        if (FillsFingers(settings)) cut.Add(new FingerFillStep());
+        cut.Add(new EnhanceStep(DocumentEnhancer.ModeFor(settings), settings.Adjustments.BlackWhiteThreshold));
         var steps = new List<IPageStep>();
         if (TaskCatalog.FlowOf(settings) == TaskFlowKind.DocumentQueue)
         {
@@ -477,6 +482,22 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         }
         return new PageProcessor(steps, arrangement, prepare: cut);
     }
+
+    /// <summary>
+    /// Whether a camera's book pages are drawn flat after they are cut out of their photos
+    /// (<see cref="FlattenStep"/>): asked for (<see cref="TaskOptions.BookFlattenCurves"/>) while facing
+    /// pages are split (<see cref="SplitsFacingPages"/>), which is the book task's.
+    /// </summary>
+    public static bool FlattensCurvedPages(ScanSettings settings) =>
+        SplitsFacingPages(settings) && settings.TaskOptions.BookFlattenCurves;
+
+    /// <summary>
+    /// Whether the fingers at the margins of a camera's book pages are painted over
+    /// (<see cref="FingerFillStep"/>): asked for (<see cref="TaskOptions.BookFillFingers"/>) for the book
+    /// task, as <see cref="FlattensCurvedPages"/>.
+    /// </summary>
+    public static bool FillsFingers(ScanSettings settings) =>
+        SplitsFacingPages(settings) && settings.TaskOptions.BookFillFingers;
 
     /// <summary>
     /// Whether a camera's shot of a book is a whole spread, cut at its spine (the iPhone's "Whole

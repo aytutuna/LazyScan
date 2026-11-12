@@ -2514,6 +2514,10 @@
     "note": "Status after the spreads still whole were cut at one place."
   },
   "Soften spine shadow": {},
+  "Flatten curved pages": {},
+  "Straightens text lines that bend near the spine.": {},
+  "Remove fingers at the margins": {},
+  "Fills fingers holding the book at the page edge with paper color.": {},
   "How it works": {},
   "Split|section": {
     "note": "Heading of the inspector section about splitting the queue into separate documents."
