@@ -2503,6 +2503,16 @@
     "other": "{0} spreads",
     "note": "A spread is two facing pages of a book scanned together."
   },
+  "Cut at": {
+    "note": "Setting label: where a book spread is cut when no gutter is found."
+  },
+  "Where a spread is cut when no gutter is found. Same as last uses the cut you set by hand last.": {},
+  "Split all unsplit spreads here": {},
+  "Cut every spread that is still whole at this position.": {},
+  "Split {0} spread.": {
+    "other": "Split {0} spreads.",
+    "note": "Status after the spreads still whole were cut at one place."
+  },
   "Soften spine shadow": {},
   "How it works": {},
   "Split|section": {

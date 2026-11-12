@@ -63,6 +63,45 @@ public class BookReorderTests
     }
 
     [Fact]
+    public void SplitAll_CutsEverySpreadKeptWholeAtTheSamePlaceAndUndoBringsThemBack()
+    {
+        Run(session =>
+        {
+            session.Scan();
+            session.Scan();
+            session.Scan();
+            session.Wait(session.Model.JoinSpread(session.Model.ScannedPages[2].Page.Id));
+            session.Wait(session.Model.JoinSpread(session.Model.ScannedPages[3].Page.Id));
+            Assert.Equal(4, session.Model.ScannedPages.Count);
+
+            session.Model.SetBookCutAt(BookCutAt.SameAsLast);
+            session.Wait(session.Model.SplitSpread(session.Model.ScannedPages[0].Page.Id, GutterAxis.Vertical, 0.4));
+            Assert.Equal(0.4, session.Model.Settings.TaskOptions.BookLastCut);
+            var second = session.Model.ScannedPages[2].Page;
+            Assert.True(second.Spread!.IsWhole);
+
+            var editor = session.Wait(session.Model.LoadSpreadEditor(second.Id));
+            Assert.Equal(0.4, editor!.Fraction);
+            Assert.Equal(1, editor.OtherUnsplit);
+
+            session.Wait(session.Model.SplitAllSpreads(second.Id, GutterAxis.Vertical, 0.45));
+
+            var after = session.Model.ScannedPages.Select(item => item.Page).ToList();
+            Assert.Equal(6, after.Count);
+            Assert.All(after, page => Assert.False(page.Spread!.IsWhole));
+            Assert.Equal(0.45, session.Model.Settings.TaskOptions.BookLastCut);
+            Assert.Equal("Split 2 spreads.", session.Model.StatusMessage);
+            Assert.True(session.Model.CanUndoRemove);
+
+            session.Model.UndoRemoval();
+
+            var undone = session.Model.ScannedPages.Select(item => item.Page).ToList();
+            Assert.Equal(4, undone.Count);
+            Assert.Equal([false, false, true, true], undone.Select(page => page.Spread!.IsWhole));
+        });
+    }
+
+    [Fact]
     public void TheOfferGoesWhenTheOptionIsSetBack()
     {
         Run(session =>
@@ -144,6 +183,12 @@ public class BookReorderTests
             Wait(Model.PerformScan());
             Wait(() => Model.ScannedPages.Count > before);
             Pump(500);
+        }
+
+        public T Wait<T>(Task<T> task)
+        {
+            Wait(() => task.IsCompleted);
+            return task.GetAwaiter().GetResult();
         }
 
         public void Wait(Task task)

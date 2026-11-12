@@ -4,7 +4,7 @@
         xmlns:loc="clr-namespace:LazyScan.App"
         xmlns:ui="clr-namespace:LazyScan.App"
         Title="{loc:T Split the spread}"
-        Width="820" Height="680" MinWidth="560" MinHeight="460"
+        Width="820" Height="680" MinWidth="700" MinHeight="460"
         FontFamily="{StaticResource TextFontFamily}"
         Icon="{x:Static ui:AppIcon.Image}"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
@@ -39,6 +39,8 @@
                 <Button x:Name="KeepWholeButton" DockPanel.Dock="Left" Content="{loc:T Keep as one page}" Style="{StaticResource SubtleButtonStyle}"
                         ui:Icon.Glyph="&#xE8A5;" Margin="-11,0,0,0" Click="KeepWhole_Click"
                         AutomationProperties.HelpText="{loc:T Join the two pages: the spread is saved as one page.}" />
+                <Button x:Name="SplitAllButton" DockPanel.Dock="Left" Content="{loc:T Split all unsplit spreads here}" Style="{StaticResource SubtleButtonStyle}"
+                        AutomationProperties.AutomationId="SplitAllButton" Click="SplitAll_Click" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button x:Name="SplitButton" Content="{loc:T Split}" IsDefault="True" MinWidth="96"
                             Style="{StaticResource AccentButtonStyle}" Click="Split_Click" />

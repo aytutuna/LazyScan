@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using LazyScan.App.Services;
@@ -14,6 +15,8 @@ public enum SpreadSplitChoice
     Split,
     /// <summary>Keep the spread as one page.</summary>
     KeepWhole,
+    /// <summary>Cut this spread and every other one kept whole at <see cref="SpreadSplitWindow.Fraction"/>.</summary>
+    SplitAll,
 }
 
 /// <summary>
@@ -58,6 +61,12 @@ public partial class SpreadSplitWindow : Window
         // A spread kept whole is already one page; a split one can be joined here too.
         KeepWholeButton.Visibility = source.IsSplit ? Visibility.Visible : Visibility.Collapsed;
         SplitButton.Content = source.IsSplit ? Loc.T("Split here") : Loc.T("Split");
+        // Without another spread kept whole there is nothing more to cut than this dialog's Split does.
+        SplitAllButton.Visibility = source.OtherUnsplit > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (!source.IsSplit) SplitAllButton.Margin = new Thickness(-11, 0, 0, 0);
+        string splitAllHelp = Loc.T("Cut every spread that is still whole at this position.");
+        AutomationProperties.SetHelpText(SplitAllButton, Loc.T("{0} {1}.", splitAllHelp,
+            Loc.Plural(source.OtherUnsplit + 1, "{0} spread", "{0} spreads")));
         _syncing = true;
         SideBySideButton.IsChecked = Axis == GutterAxis.Vertical;
         StackedButton.IsChecked = Axis == GutterAxis.Horizontal;
@@ -175,6 +184,12 @@ public partial class SpreadSplitWindow : Window
     private void Split_Click(object sender, RoutedEventArgs e)
     {
         Choice = SpreadSplitChoice.Split;
+        DialogResult = true;
+    }
+
+    private void SplitAll_Click(object sender, RoutedEventArgs e)
+    {
+        Choice = SpreadSplitChoice.SplitAll;
         DialogResult = true;
     }
 

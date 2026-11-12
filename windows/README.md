@@ -1376,12 +1376,13 @@ because the Standard PDF size already stores pages that are really gray in gray,
 their color. The switch works for any collected document scan of one side of each sheet; with each
 scan saved at once and for two-sided feeder scans (whose pages are paired by sheet and side) it is
 greyed out with the reason ("Needs Collect pages", "Not with two-sided"); for copies and receipts
-the Pages section is hidden. A spread whose spine was not found is cut in the middle, and **Change the
-split…** moves the cut. While it is on, **Reads right to left**
+the Pages section is hidden. A spread whose spine was not found is cut as **Cut at** says (Automatic:
+in the middle; Middle: always there, without looking for a spine; Same as last: where the last cut by
+hand was, in the middle before any), and **Change the split…** moves the cut. While it is on, **Reads right to left**
 (Arabic, Hebrew, manga: the right page first), **Book rotation** (as scanned, 90° clockwise,
-180°, 90° counterclockwise, for a book lying sideways or upside down) and **Soften spine shadow**
-show beneath it; the first two are kept when a task is picked, and all three apply from the next
-spread on (and to a spread joined or split again). Changing the reading order or the rotation with
+180°, 90° counterclockwise, for a book lying sideways or upside down), **Cut at** and **Soften spine shadow**
+show beneath it; the first two are kept when a task is picked, and all of them apply from the next
+spread on (all but Cut at also to a spread joined or split again). Changing the reading order or the rotation with
 split spreads queued shows "Pages already scanned keep the old order." (rotation, or order and
 rotation) under the rotation and the button **Apply to the 5 spreads already scanned**
 (`AppViewModel.BookReorderOffer`, `ApplyBookReorder`). It cuts every queued split spread again where it
@@ -1399,7 +1400,10 @@ page keeps it when moved, when its partner is removed, and when the reading orde
 later spreads; only a spread joined by hand stays one page, "2 · not split". A page's right-click menu has **Split this spread…** (for a
 spread kept whole) or **Change the split…**, which opens a dialog with the spread as scanned and the
 cut drawn across it: click or drag on the spread, or use the slider or the arrow keys, choose
-**Side by side** or **Stacked**, then **Split**; **Keep as one page** and the menu's
+**Side by side** or **Stacked**, then **Split** (the cut is kept as the last cut, and with **Cut at** on
+Same as last the dialog opens at it); **Split all unsplit spreads here**, shown while another spread is
+kept whole, cuts this spread and every whole one in the queue at that place (along its longer side
+for the others) in one Undo step (`AppViewModel.SplitAllSpreads`); **Keep as one page** and the menu's
 **Join the two pages** make the spread one page again. Joining or splitting again starts from the
 spread as scanned, kept in the page spool (`<id>-spread.png`) until its last page is removed, saved or
 cleared, and runs the clean-up again with the current settings. A split moved keeps what was decided

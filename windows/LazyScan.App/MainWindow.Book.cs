@@ -16,6 +16,10 @@ public partial class MainWindow
         {
             BookRotationBox.Items.Add(new ComboBoxItem { Content = BookPages.RotationLabel(turns), Tag = turns });
         }
+        foreach (var cutAt in Enum.GetValues<BookCutAt>())
+        {
+            CutAtBox.Items.Add(new ComboBoxItem { Content = BookPages.CutAtLabel(cutAt), Tag = cutAt });
+        }
     }
 
     /// <summary>
@@ -38,6 +42,7 @@ public partial class MainWindow
             BookRightToLeftBox.IsChecked = s.TaskOptions.BookRightToLeft;
             int turns = BookSplitter.NormalizedTurns(s.TaskOptions.BookRotationQuarterTurns);
             BookRotationBox.SelectedItem = BookRotationBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == turns);
+            CutAtBox.SelectedItem = CutAtBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (BookCutAt)i.Tag == s.TaskOptions.BookCutAt);
             SoftenSpineShadowBox.IsChecked = s.Document.SoftenSpineShadow;
         }
         finally
@@ -48,6 +53,7 @@ public partial class MainWindow
         BookOptions.Visibility = collecting && s.Document.SplitFacingPages ? Visibility.Visible : Visibility.Collapsed;
         BookRightToLeftBox.IsEnabled = !ViewModel.IsBusy;
         BookRotationBox.IsEnabled = !ViewModel.IsBusy;
+        CutAtBox.IsEnabled = !ViewModel.IsBusy;
         SyncBookReorderOffer();
         string hint = BookPages.Hint(s);
         bool twoSided = queue && !oneSide;
@@ -113,6 +119,13 @@ public partial class MainWindow
         RefreshFromViewModel();
     }
 
+    private void CutAt_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded || CutAtBox.SelectedItem is not ComboBoxItem { Tag: BookCutAt cutAt }) return;
+        ViewModel.SetBookCutAt(cutAt);
+        RefreshFromViewModel();
+    }
+
     /// <summary>"Split this spread…" or "Change the split…" in a page's menu: the split dialog, then the spread split or joined.</summary>
     private async void PageSplitSpread_Click(object sender, RoutedEventArgs e)
     {
@@ -128,6 +141,10 @@ public partial class MainWindow
         if (dialog.Choice == SpreadSplitChoice.KeepWhole)
         {
             await ViewModel.JoinSpread(id);
+        }
+        else if (dialog.Choice == SpreadSplitChoice.SplitAll)
+        {
+            await ViewModel.SplitAllSpreads(id, dialog.Axis, dialog.Fraction);
         }
         else
         {

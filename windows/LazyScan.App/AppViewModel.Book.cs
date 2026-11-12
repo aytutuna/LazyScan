@@ -107,7 +107,8 @@ public sealed partial class AppViewModel
 
     /// <summary>
     /// What the split dialog shows for the spread a queued page was cut from: a preview of the spread
-    /// as scanned, where it is cut now (a spread kept whole: up and down its middle), and its number.
+    /// as scanned, where it is cut now (a spread kept whole: across its longer side, in the middle; with Cut at
+    /// "Same as last" it starts where the last cut by hand was), and its number.
     /// Null when the page is no book page or its spread can no longer be read.
     /// </summary>
     public async Task<SpreadEditorSource?> LoadSpreadEditor(Guid pageId)
@@ -128,9 +129,12 @@ public sealed partial class AppViewModel
             NotifyAll();
             return null;
         }
-        var axis = part.Gutter?.Axis ?? GutterAxis.Vertical;
+        var axis = part.Gutter?.Axis ?? BookSplitter.DefaultAxis(source.Width, source.Height);
         double fraction = part.Gutter?.Fraction(source.Width, source.Height) ?? 0.5;
-        return new SpreadEditorSource(pageId, preview, axis, fraction, !part.IsWhole, SpreadNumber(part.SpreadId));
+        var options = BookSplitOptions.Of(Settings);
+        if (options.CutAt == BookCutAt.SameAsLast && options.LastCut is { } last) fraction = last;
+        int others = WholeSpreadIds().Count(id => id != part.SpreadId);
+        return new SpreadEditorSource(pageId, preview, axis, fraction, !part.IsWhole, SpreadNumber(part.SpreadId), others);
     }
 
     /// <summary>The spread's full-resolution pixels: from memory, or read from its spool file.</summary>
@@ -155,6 +159,7 @@ public sealed partial class AppViewModel
     private Task ReplaceSpread(Guid pageId, (GutterAxis Axis, double Fraction)? cut)
     {
         if (IsBusy || !CanEditSpread(pageId)) return Task.CompletedTask;
+        if (cut is { } manual) SetBookLastCut(manual.Fraction);
         var s = Settings.Clone();
         return RunExclusive(async token =>
         {
@@ -208,6 +213,109 @@ public sealed partial class AppViewModel
                             + PageFilter.ScanNote(replacement, s.Document) + PageCorrections.ScanNote(replacement)
                             + PageTurns.ScanNote(replacement);
         });
+    }
+
+    /// <summary>
+    /// The split dialog's Split all unsplit spreads here: the spread the page was cut from is cut along
+    /// <paramref name="axis"/> at <paramref name="fraction"/>, and so is every other spread of the queue kept
+    /// whole, along its own longer side. The fraction is kept as the last cut. A spread that cannot be read
+    /// stays as it is and the others are still cut. One Undo puts all the old pages back.
+    /// </summary>
+    public Task SplitAllSpreads(Guid pageId, GutterAxis axis, double fraction)
+    {
+        if (IsBusy || !CanEditSpread(pageId)) return Task.CompletedTask;
+        SetBookLastCut(fraction);
+        var s = Settings.Clone();
+        return RunExclusive(async token =>
+        {
+            // Turns and swaps clicked before must not land on pages about to be replaced.
+            await Settled(_pageRotateChain);
+            int index = IndexOfPage(pageId);
+            if (index < 0 || ScannedPages[index].Page.SpreadId is not { } openId) return;
+            var ids = WholeSpreadIds();
+            if (!ids.Contains(openId)) ids.Add(openId);
+            StatusMessage = Loc.T("Splitting the spread…");
+            NotifyAll();
+            string spoolDirectory = _spool.Directory;
+            var processor = PageProcessor.ForScan(s, ScanArrangement.AsScanned, _orientation, _barcodes);
+            var fresh = new Dictionary<Guid, List<PageItem>>();
+            string? unread = null;
+            try
+            {
+                foreach (var spreadId in ids)
+                {
+                    var page = ScannedPages.First(item => item.Page.SpreadId == spreadId).Page;
+                    var source = _spreads[spreadId];
+                    var cutAxis = spreadId == openId ? axis : BookSplitter.DefaultAxis(source.Width, source.Height);
+                    try
+                    {
+                        var made = await Task.Run(() =>
+                        {
+                            var spread = new ScannedPage(LoadSpread(source), source.Dpi, s.ColorMode, spreadId, source.CreatedAt)
+                            {
+                                Side = page.Side,
+                                SheetIndex = page.SheetIndex,
+                            };
+                            var gutter = BookSplitter.Manual(cutAxis, fraction, source.Width, source.Height);
+                            var pages = processor.ProcessSpread(spread, gutter, BookSplitOptions.Of(s), token).ToList();
+                            return SpoolPages(pages, spoolDirectory).Select(p => new PageItem(p)).ToList();
+                        }, token);
+                        if (made.Count > 0) fresh[spreadId] = made;
+                    }
+                    catch (Exception e) when (!IsCancellation(e))
+                    {
+                        unread ??= e.Message;
+                    }
+                }
+            }
+            catch
+            {
+                foreach (var items in fresh.Values) DeleteSpoolFiles(items.Select(item => item.Page));
+                throw;
+            }
+            if (token.IsCancellationRequested || fresh.Count == 0)
+            {
+                foreach (var items in fresh.Values) DeleteSpoolFiles(items.Select(item => item.Page));
+                token.ThrowIfCancellationRequested();
+                if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
+                return;
+            }
+            var cutWith = _bookCutWith;
+            PutSpreadsInPlace(fresh);
+            _bookCutWith = cutWith;
+            StatusMessage = Loc.Plural(fresh.Count, "Split {0} spread.", "Split {0} spreads.");
+            if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
+        });
+    }
+
+    /// <summary>The spreads in the queue kept whole that can be cut by hand, in queue order.</summary>
+    private List<Guid> WholeSpreadIds()
+    {
+        var ids = new List<Guid>();
+        foreach (var item in ScannedPages)
+        {
+            if (item.Page.Spread is { IsWhole: true } part && _spreads.ContainsKey(part.SpreadId) && !ids.Contains(part.SpreadId))
+            {
+                ids.Add(part.SpreadId);
+            }
+        }
+        return ids;
+    }
+
+    /// <summary>The place of the cut made by hand last, kept with the task options.</summary>
+    private void SetBookLastCut(double fraction)
+    {
+        Settings.TaskOptions.BookLastCut = fraction;
+        SettingsEdited();
+    }
+
+    /// <summary>Where a spread is cut when no gutter is found, from the inspector: for the next scans.</summary>
+    public void SetBookCutAt(BookCutAt cutAt)
+    {
+        if (Settings.TaskOptions.BookCutAt == cutAt) return;
+        Settings.TaskOptions.BookCutAt = cutAt;
+        SettingsEdited();
+        NotifyAll();
     }
 
     /// <summary>Split facing pages, from the inspector.</summary>
@@ -363,44 +471,52 @@ public sealed partial class AppViewModel
                 if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
                 return;
             }
-            // The old pages go to the hold, each with the place it had once the ones before it were gone.
-            DiscardRemoved();
-            var held = new List<(PageItem Item, int Index)>();
-            for (int i = 0; i < ScannedPages.Count; i++)
-            {
-                if (ScannedPages[i].Page.SpreadId is { } id && fresh.ContainsKey(id)) held.Add((ScannedPages[i], i - held.Count));
-            }
-            foreach (var (spreadId, spooled) in fresh)
-            {
-                var indices = Enumerable.Range(0, ScannedPages.Count).Where(i => ScannedPages[i].Page.SpreadId == spreadId).ToList();
-                var old = indices.Select(i => ScannedPages[i].Page).ToList();
-                var replacement = BookPages.ReplacementPages(old, spooled.Select(item => item.Page).ToList()).ToList();
-                // A break or a name marks a place in the queue, so it stays there when the halves swap.
-                if (replacement.Count == old.Count)
-                {
-                    for (int i = 0; i < replacement.Count; i++)
-                    {
-                        replacement[i] = replacement[i].WithDocumentBreak(old[i].DocumentBreak).WithDocumentLabel(old[i].DocumentLabel);
-                    }
-                }
-                var thumbnails = spooled.ToDictionary(item => item.Page.Id, item => item.Thumbnail);
-                var kept = replacement.Select(page => page.Id).ToHashSet();
-                DeleteSpoolFiles(spooled.Select(item => item.Page).Where(page => !kept.Contains(page.Id)));
-                for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
-                for (int k = 0; k < replacement.Count; k++)
-                {
-                    ScannedPages.Insert(indices[0] + k, new PageItem(replacement[k], thumbnails[replacement[k].Id], Settings.Document));
-                    _reorderedTo.Add(replacement[k].Id);
-                }
-            }
-            _removed.AddRange(held);
-            _removedByClear = false;
-            _flowBefore = null;
-            _queueLength = ScannedPages.Count;
+            PutSpreadsInPlace(fresh);
             if (unread is null) _bookCutWith = null;
             StatusMessage = BookPages.ReorderedNote(fresh.Count);
             if (unread is not null) ErrorMessage = Loc.T("The spread could not be read: {0}", unread);
         });
+    }
+
+    /// <summary>
+    /// Puts the new pages of the spreads in place of their old ones. The old pages go to the hold, each
+    /// with the place it had once the ones before it were gone, so one Undo brings them all back.
+    /// </summary>
+    private void PutSpreadsInPlace(Dictionary<Guid, List<PageItem>> fresh)
+    {
+        DiscardRemoved();
+        var held = new List<(PageItem Item, int Index)>();
+        for (int i = 0; i < ScannedPages.Count; i++)
+        {
+            if (ScannedPages[i].Page.SpreadId is { } id && fresh.ContainsKey(id)) held.Add((ScannedPages[i], i - held.Count));
+        }
+        foreach (var (spreadId, spooled) in fresh)
+        {
+            var indices = Enumerable.Range(0, ScannedPages.Count).Where(i => ScannedPages[i].Page.SpreadId == spreadId).ToList();
+            var old = indices.Select(i => ScannedPages[i].Page).ToList();
+            var replacement = BookPages.ReplacementPages(old, spooled.Select(item => item.Page).ToList()).ToList();
+            // A break or a name marks a place in the queue, so it stays there when the halves swap.
+            if (replacement.Count == old.Count)
+            {
+                for (int i = 0; i < replacement.Count; i++)
+                {
+                    replacement[i] = replacement[i].WithDocumentBreak(old[i].DocumentBreak).WithDocumentLabel(old[i].DocumentLabel);
+                }
+            }
+            var thumbnails = spooled.ToDictionary(item => item.Page.Id, item => item.Thumbnail);
+            var kept = replacement.Select(page => page.Id).ToHashSet();
+            DeleteSpoolFiles(spooled.Select(item => item.Page).Where(page => !kept.Contains(page.Id)));
+            for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
+            for (int k = 0; k < replacement.Count; k++)
+            {
+                ScannedPages.Insert(indices[0] + k, new PageItem(replacement[k], thumbnails[replacement[k].Id], Settings.Document));
+                _reorderedTo.Add(replacement[k].Id);
+            }
+        }
+        _removed.AddRange(held);
+        _removedByClear = false;
+        _flowBefore = null;
+        _queueLength = ScannedPages.Count;
     }
 
     /// <summary>The pages that took the place of the held ones when the spreads were cut again; Undo takes them out.</summary>
@@ -430,4 +546,6 @@ public sealed record PageBookView(string? Label, string? Help, string? SplitLabe
 /// <param name="Fraction">Where it is cut now, along <paramref name="Axis"/> (0...1).</param>
 /// <param name="IsSplit">It is cut now (not kept whole).</param>
 /// <param name="SpreadNumber">Its number in the queue, from 1.</param>
-public sealed record SpreadEditorSource(Guid PageId, RgbaImage Preview, GutterAxis Axis, double Fraction, bool IsSplit, int SpreadNumber);
+/// <param name="OtherUnsplit">How many other spreads in the queue are kept whole.</param>
+public sealed record SpreadEditorSource(Guid PageId, RgbaImage Preview, GutterAxis Axis, double Fraction, bool IsSplit, int SpreadNumber,
+                                        int OtherUnsplit);

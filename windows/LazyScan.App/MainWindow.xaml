@@ -1392,6 +1392,12 @@
                                                 <Button x:Name="BookReorderButton" Style="{StaticResource IconTextButtonStyle}"
                                                         local:Icon.Glyph="&#xE72C;" HorizontalAlignment="Stretch"
                                                         Visibility="Collapsed" Click="BookReorder_Click" />
+                                                <TextBlock Text="{loc:T Cut at}" Style="{StaticResource FieldLabelText}" Margin="0,8,0,4" />
+                                                <ComboBox x:Name="CutAtBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="CutAtBox"
+                                                          AutomationProperties.Name="{loc:T Cut at}"
+                                                          AutomationProperties.HelpText="{loc:T Where a spread is cut when no gutter is found. Same as last uses the cut you set by hand last.}"
+                                                          ToolTip="{loc:T Where a spread is cut when no gutter is found. Same as last uses the cut you set by hand last.}"
+                                                          SelectionChanged="CutAt_Changed" />
                                                 <!-- The spine's shadow lightened on each page; the page strip's arrow shows a page as scanned. -->
                                                 <CheckBox x:Name="SoftenSpineShadowBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
                                                           Content="{loc:T Soften spine shadow}"
