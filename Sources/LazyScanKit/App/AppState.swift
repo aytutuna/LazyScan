@@ -2685,7 +2685,7 @@ public final class AppState: ObservableObject {
             return
         }
         guard let step = SaveActions.plan(action, saved: saved) else { return }
-        runFileAction(Self.afterSaveFileAction(step.fileAction, task: settings.task, platform: platform), urls: step.urls)
+        runFileAction(Self.afterSaveFileAction(step.fileAction, task: settings.task), urls: step.urls)
     }
 
     /// Saves the collected pages as Save does (`saveImages` for pictures, else `savePDF`), then sends the
@@ -2717,11 +2717,11 @@ public final class AppState: ObservableObject {
         if !isBusy { sharesAfterSave = false }
     }
 
-    /// The file action an after-save step runs: the iPhone's Email task sends what it shares by email (a
-    /// mail message when Mail is set up, the share sheet otherwise: `SaveActions.emailRoute`); everything
+    /// The file action an after-save step runs: the Email task sends what it shares by email (a mail
+    /// message when Mail is set up, the share sheet otherwise: `SaveActions.emailRoute`); everything
     /// else as the step says. Nothing is sent until the user sends it.
-    nonisolated static func afterSaveFileAction(_ action: FileAction, task: ScanTask?, platform: TroubleshootPlatform) -> FileAction {
-        platform == .ios && task == .email && action == .share ? .email : action
+    nonisolated static func afterSaveFileAction(_ action: FileAction, task: ScanTask?) -> FileAction {
+        task == .email && action == .share ? .email : action
     }
 
     /// The message of a refused file action, without ScanError's "Saving failed:" style prefix.

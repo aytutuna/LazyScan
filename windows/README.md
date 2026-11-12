@@ -1009,7 +1009,7 @@ installed).
 
 After every save a green bar above the window names what was saved (the PDF's size too) and
 offers **Open**, **Show in folder**, **Share** and **Copy**; its **…** button adds **Open
-with…** and **Email…**. With several files (a batch of photos) Open and Open with are left out.
+with…**. With several files (a batch of photos) Open and Open with are left out.
 The bar goes away with its close button or when the next scan starts; in narrow windows its
 buttons show only their icons (names stay in tooltips and for screen readers). The Saved tab's
 cards offer the same actions. Nothing leaves the PC without the user choosing where it goes:
@@ -1018,9 +1018,10 @@ cards offer the same actions. Nothing leaves the PC without the user choosing wh
   windows), which lists Mail, Outlook, nearby sharing and other apps. The files are offered as
   read-only copies. Where Windows has no share window, the files are shown in their folder with
   a note instead.
-- **Email** opens the same share window: pick Mail or Outlook there. The app does not use
-  Simple MAPI or `mailto:` (the new Outlook does not support Simple MAPI, and `mailto:` cannot
-  attach files), and it never writes a message or an address itself.
+- **Email** is not offered as an item of its own: with no way to start a message with files
+  attached it would open the same share window as **Share**, where Mail and Outlook are listed.
+  The app does not use Simple MAPI or `mailto:` (the new Outlook does not support Simple MAPI,
+  and `mailto:` cannot attach files), and it never writes a message or an address itself.
 - **Open with…** is the Windows "Open with" dialog for the file.
 - **Copy** puts the files on the clipboard (pasting into a folder copies them); for one image
   file its picture goes on the clipboard too, for pasting into a document or an image editor.
@@ -1614,7 +1615,8 @@ Known divergences from the macOS app (all documented in the source):
 - Rotating a saved JPEG re-encodes it at its own estimated quality (read from the file's
   quantization table) instead of a fixed 95%.
 - Email: the Mac starts a new Mail message with the files attached; Windows has no such route
-  (no Simple MAPI), so Email opens the share window, where Mail and Outlook are listed. The
+  (no Simple MAPI), so it has no Email item and the Email task ends in the share window, where
+  Mail and Outlook are listed. The
   actions after a save are a bar above the window on Windows and buttons in the status bar on
   the Mac.
 - Two-sided scanning: the Windows connections report whether the feeder scans both sides when

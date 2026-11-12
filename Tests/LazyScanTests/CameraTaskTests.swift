@@ -647,12 +647,11 @@ final class CameraTaskTests: XCTestCase {
 
     // MARK: Email
 
-    func test_email_afterSave_isSentByEmailOnTheIPhoneOnly() {
-        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: .email, platform: .ios), .email)
-        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: .email, platform: .mac), .share)
-        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: .document, platform: .ios), .share)
-        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: nil, platform: .ios), .share)
-        XCTAssertEqual(AppState.afterSaveFileAction(.open, task: .email, platform: .ios), .open)
+    func test_email_afterSave_isSentByEmail() {
+        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: .email), .email)
+        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: .document), .share)
+        XCTAssertEqual(AppState.afterSaveFileAction(.share, task: nil), .share)
+        XCTAssertEqual(AppState.afterSaveFileAction(.open, task: .email), .open)
     }
 
     @MainActor

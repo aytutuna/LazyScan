@@ -3688,9 +3688,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>The actions the bar offers for the last save's files.</summary>
     public IReadOnlyList<FileAction> SavedBarActions => OfferedFor(SavedBarPaths ?? []);
 
-    /// <summary>The actions offered for these files: Lazy Print only when it is installed and can read them.</summary>
+    /// <summary>
+    /// The actions offered for these files: Lazy Print only when it is installed and can read them,
+    /// Email only when a mail message can be started (otherwise it is the same window as Share).
+    /// </summary>
     public IReadOnlyList<FileAction> OfferedFor(IReadOnlyList<string> paths) =>
-        SaveActions.Offered(paths.Count, SaveActions.CanPrintWithLazyPrint(paths) && _fileActions.LazyPrintInstalled());
+        SaveActions.Offered(paths.Count, SaveActions.CanPrintWithLazyPrint(paths) && _fileActions.LazyPrintInstalled())
+            .Where(a => a != FileAction.Email || _fileActions.SendProbe.CanCompose).ToList();
 
     /// <summary>
     /// Opens, shows, shares, emails or copies saved files (the Saved tab and the bar after a
