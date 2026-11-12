@@ -20,6 +20,15 @@ struct StatusBarView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .accessibilityLabel(Text(state.statusMessage))
+            if showsUndo {
+                Button("Undo") { state.undoRemove() }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .foregroundStyle(Color.accentColor)
+                    .disabled(state.isBusy || state.readsQueue)
+                    .help(L10n.plural(state.removedCount, one: "Put the page back", other: "Put the pages back"))
+                    .accessibilityHint(Text(L10n.plural(state.removedCount, one: "Puts back the removed page", other: "Puts back the removed pages")))
+            }
             if state.isBusy {
                 ProgressView()
                     .controlSize(.small)
@@ -39,6 +48,8 @@ struct StatusBarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.bar)
     }
+
+    private var showsUndo: Bool { state.canUndoRemove }
 
     /// The status in six words at most: empty while a review shows its own title, "Saved" while the
     /// saved files' actions show (with any warning a setting changed for the scanner adds).

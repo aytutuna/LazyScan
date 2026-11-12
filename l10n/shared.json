@@ -64,6 +64,12 @@
   "{0} page could not be restored": {
     "other": "{0} pages could not be restored"
   },
+  "Put the page back": {
+    "other": "Put the pages back"
+  },
+  "Puts back the removed page": {
+    "other": "Puts back the removed pages"
+  },
   "Reading page {0}…": {},
   "Reading page {0} of {1}…": {},
   "Sent to the printer": {},

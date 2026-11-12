@@ -48,6 +48,7 @@ public struct LazyScanApp: App {
                     .disabled(state.viewedPageID == nil)
             }
             PageZoomCommands()
+            UndoCommands(state: state)
             ScanCommands(state: state)
             // Help > Lazy Scan Help: no help book is registered, so the default item only says help isn't available.
             CommandGroup(replacing: .help) {

@@ -85,6 +85,38 @@ struct ScanCommands: Commands {
     }
 }
 
+/// Edit > Undo and Redo. Undo puts back removed pages; a text field being edited keeps its own undo and redo.
+struct UndoCommands: Commands {
+    @ObservedObject var state: AppState
+
+    private var title: String {
+        if !state.canUndoRemove { return String(localized: "Undo") }
+        return state.removedByClear ? String(localized: "Undo Clear") : String(localized: "Undo Remove Page")
+    }
+
+    /// The menu is not re-evaluated when focus moves into a text field, so Undo and Redo stay on unless
+    /// they could only do nothing: Undo while the pages cannot come back.
+    private var canUndo: Bool { !state.canUndoRemove || (!state.isBusy && !state.readsQueue) }
+
+    private var editsText: Bool { NSApp.keyWindow?.firstResponder is NSText }
+
+    var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {
+            Button(title) {
+                if editsText {
+                    NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+                } else if NSApp.keyWindow?.sheetParent == nil {
+                    state.undoRemove()
+                }
+            }
+            .keyboardShortcut("z")
+            .disabled(!canUndo)
+            Button("Redo") { NSApp.sendAction(Selector(("redo:")), to: nil, from: nil) }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
+    }
+}
+
 /// View > Show Scan Settings or Hide Scan Settings.
 struct ScanSettingsCommands: Commands {
     @FocusedValue(\.scanSettingsShown) private var shown

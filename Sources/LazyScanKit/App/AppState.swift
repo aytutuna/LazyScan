@@ -245,6 +245,9 @@ public final class AppState: ObservableObject {
     /// The pages taken out of the queue last (a removal, a clear, the backs left out), with their spool files,
     /// for `undoRemove()` (AppState+Undo.swift). Let go on the next scan or import, save or task change.
     @Published var removedUndo: RemovedUndo?
+    /// How many pages the hold has and whether Clear made it, for the Mac's Undo button and menu item.
+    public var removedCount: Int { removedUndo?.pages.count ?? 0 }
+    public var removedByClear: Bool { removedUndo?.cleared ?? false }
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
