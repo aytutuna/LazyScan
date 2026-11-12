@@ -149,8 +149,14 @@ struct TaskStartView: View {
             guard let url = appState.choosePDFForAppend(prompt: String(localized: "Choose")) else { return }
             appState.leaveIdCard {
                 if appState.startTask(.document, keepingChoices: true) {
-                    appState.setAppendTarget(url)
-                    openScanner()
+                    Task { @MainActor in
+                        guard await appState.checkAppendTarget(url), appState.activeTask == .document else {
+                            appState.clearAppendTarget()
+                            return
+                        }
+                        appState.setAppendTarget(url)
+                        openScanner()
+                    }
                 }
             }
         } label: {

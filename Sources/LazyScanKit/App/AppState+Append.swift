@@ -4,7 +4,8 @@ import Foundation
 // PDF the user picks, as an incremental update (`PDFAppender`). The window asks the question
 // (`confirmAppend`); the iPhone also wraps the file's reading and its update in the picked file's
 // security scope and a coordinated access (`accessPDFForAppend`), which Windows has no need of. A PDF
-// picked before scanning (`appendTarget`) takes the queue when it is saved (`savePDF()`).
+// picked before scanning (`appendTarget`) is checked when it is picked (`checkAppendTarget`) and takes
+// the queue when it is saved (`savePDF()`), which reads it again.
 
 extension AppState {
     /// There are pages to add (some are not left out), in reading order, and nothing else is running.
@@ -18,9 +19,36 @@ extension AppState {
         appendTarget = url
     }
 
+    /// Reads the PDF at `url` before it becomes the append target, so a file that can never take the pages
+    /// (password-protected, damaged, read-only, open in another app) is refused now with what to do, and
+    /// the signed or PDF/A question is asked now. True when the file can take them (and the question, if
+    /// any, got a yes): the caller then calls `setAppendTarget`. The answer is kept for the file as it is
+    /// now; `appendToPDF` asks again only when the file has changed since.
+    public func checkAppendTarget(_ url: URL) async -> Bool {
+        let access = accessPDFForAppend
+        do {
+            let (target, seen): (PDFAppendTarget, FileStamp?) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendTarget, FileStamp?) in
+                try Self.accessing(url, writing: false, through: access) { (file: URL) throws -> (PDFAppendTarget, FileStamp?) in
+                    (try PDFAppender.inspect(path: file.path), FileStamp(of: file))
+                }
+            }.value
+            if let question = target.confirmMessage {
+                var yes = false
+                if let ask = confirmAppend { yes = await ask(question) }
+                if !yes { return false }
+            }
+            confirmedAppend = (url: url, stamp: seen)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     /// Save writes a new file again.
     public func clearAppendTarget() {
         appendTarget = nil
+        confirmedAppend = nil
     }
 
     /// Adds the pages the queue would save (all its documents, in order; pages left out stay out) to
@@ -55,12 +83,13 @@ extension AppState {
             }
             let name: String = url.lastPathComponent
             self.statusMessage = L10n.t("Reading {0}…", name)
-            let target: PDFAppendTarget = try await Task.detached(priority: .userInitiated) { () throws -> PDFAppendTarget in
-                try Self.accessing(url, writing: false, through: access) { (file: URL) throws -> PDFAppendTarget in
-                    try PDFAppender.inspect(path: file.path)
+            let (target, seen): (PDFAppendTarget, FileStamp?) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendTarget, FileStamp?) in
+                try Self.accessing(url, writing: false, through: access) { (file: URL) throws -> (PDFAppendTarget, FileStamp?) in
+                    (try PDFAppender.inspect(path: file.path), FileStamp(of: file))
                 }
             }.value
-            if let question = target.confirmMessage {
+            let answered: Bool = url == self.appendTarget && (self.confirmedAppend.map { $0.url == url && $0.stamp == seen } ?? false)
+            if !answered, let question = target.confirmMessage {
                 var yes = false
                 if let ask = self.confirmAppend { yes = await ask(question) }
                 if !yes {
@@ -112,6 +141,7 @@ extension AppState {
             }
             let earlierTarget: URL? = self.appendTarget
             self.appendTarget = nil
+            self.confirmedAppend = nil
             self.dropSaved(queued, appended: backup.map { AppendedPDF(url: url, backup: $0, stamp: stamp, earlierTarget: earlierTarget) },
                            undoable: kept)
             self.resetFlow()

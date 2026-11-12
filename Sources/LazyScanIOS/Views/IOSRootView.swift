@@ -240,12 +240,19 @@ public struct IOSRootView: View {
             IOSShell.rememberChoices(appState.settings, defaults: UserDefaults.standard)
             let started: Bool = discardingPages ? appState.discardPages(andStart: task) : appState.startTask(task)
             guard started else { return }
-            if let target {
-                appState.setAppendTarget(target)
-            } else {
+            guard let target else {
                 appState.clearAppendTarget()
+                open()
+                return
             }
-            open()
+            Task { @MainActor in
+                guard await appState.checkAppendTarget(target), appState.activeTask == task else {
+                    appState.clearAppendTarget()
+                    return
+                }
+                appState.setAppendTarget(target)
+                open()
+            }
         }
         if appState.pendingIdCardLeave != nil {
             askedToDiscard = true

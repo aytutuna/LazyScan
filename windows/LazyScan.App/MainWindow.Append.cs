@@ -35,6 +35,11 @@ public partial class MainWindow
     private async void StartAddingToPdf()
     {
         if (ViewModel.IsBusy || await PickPdfToAddTo() is not { } path) return;
+        if (!await ViewModel.CheckAppendTarget(path))
+        {
+            ViewModel.ClearAppendTarget();
+            return;
+        }
         if (!ConfirmDropIdCard() || !ViewModel.StartTask(ScanTask.Document)) return;
         ViewModel.SetAppendTarget(path);
         OpenSectionFor(ScanTask.Document);

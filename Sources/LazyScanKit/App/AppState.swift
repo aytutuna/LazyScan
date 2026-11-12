@@ -385,6 +385,9 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var appendTarget: URL? {
         didSet { scheduleQueueRecord() }
     }
+    /// The file `checkAppendTarget` asked the signed or PDF/A question about, as it was then: Save does
+    /// not ask again while it is unchanged.
+    var confirmedAppend: (url: URL, stamp: FileStamp?)?
     /// Makes the bookmark of `appendTarget` the queue's record keeps, and opens one again after a relaunch.
     /// Set by `makeForIOS`.
     public var bookmarkAppendTarget: (@MainActor (URL) -> Data?)?

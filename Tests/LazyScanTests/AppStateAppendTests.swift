@@ -295,6 +295,89 @@ final class AppStateAppendTests: XCTestCase {
     }
 
     @MainActor
+    func test_checkAppendTarget_refusesAnEncryptedFile_atOnce_andAsksNothing() async throws {
+        let state = try await makeState(pages: 1)
+        let protection = try PDFProtection("Şifre 2026")
+        let url = try builtPDF("Gizli.pdf", options: PDFWriteOptions(protection: protection))
+        var asked = false
+        state.confirmAppend = { (_: String) async -> Bool in
+            asked = true
+            return true
+        }
+        let ok = await state.checkAppendTarget(url)
+        XCTAssertFalse(ok)
+        XCTAssertEqual(state.errorMessage, PDFAppender.message(.encrypted, "Gizli.pdf"))
+        XCTAssertFalse(asked)
+        XCTAssertNil(state.appendTarget)
+        state.deleteSpoolFiles(of: state.scannedPages)
+    }
+
+    @MainActor
+    func test_checkAppendTarget_asksAboutASignedFile_andSaveDoesNotAskAgainUntilItChanges() async throws {
+        let state = try await makeState(pages: 1)
+        let url = folder.appendingPathComponent("Contract.pdf")
+        try Data(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>")).write(to: url)
+        var questions: [String] = []
+        state.confirmAppend = { (question: String) async -> Bool in
+            questions.append(question)
+            return questions.count > 1
+        }
+        let declined = await state.checkAppendTarget(url)
+        XCTAssertFalse(declined)
+        XCTAssertNil(state.errorMessage)
+        let accepted = await state.checkAppendTarget(url)
+        XCTAssertTrue(accepted)
+        XCTAssertEqual(questions.count, 2)
+        state.setAppendTarget(url)
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(questions.count, 2)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    @MainActor
+    func test_saveAsksAgain_whenTheCheckedFileChangedSinceTheCheck() async throws {
+        let state = try await makeState(pages: 1)
+        let url = folder.appendingPathComponent("Contract.pdf")
+        try Data(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>")).write(to: url)
+        var questions = 0
+        state.confirmAppend = { (_: String) async -> Bool in
+            questions += 1
+            return true
+        }
+        let ok = await state.checkAppendTarget(url)
+        XCTAssertTrue(ok)
+        XCTAssertEqual(questions, 1)
+        state.setAppendTarget(url)
+        var bytes = try Data(contentsOf: url)
+        bytes.append(0x0A)
+        try bytes.write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)], ofItemAtPath: url.path)
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(questions, 2)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    @MainActor
+    func test_checkAppendTarget_acceptsAPlainFile_withoutAQuestion() async throws {
+        let state = try await makeState(pages: 1)
+        let url = try builtPDF("Contract.pdf")
+        var asked = false
+        state.confirmAppend = { (_: String) async -> Bool in
+            asked = true
+            return false
+        }
+        let ok = await state.checkAppendTarget(url)
+        XCTAssertTrue(ok)
+        XCTAssertFalse(asked)
+        XCTAssertNil(state.errorMessage)
+        state.deleteSpoolFiles(of: state.scannedPages)
+    }
+
+    @MainActor
     func test_aFileThatIsNotAPDF_isRefused_andThePagesStay() async throws {
         let state = try await makeState(pages: 1)
         let url = folder.appendingPathComponent("Notes.pdf")

@@ -8,7 +8,8 @@ namespace LazyScan.App;
 /// Adding the queued pages to the end of an existing PDF the user picks (Add to existing PDF… under
 /// the queue, or a PDF's menu in the Saved tab), as an incremental update (<see cref="PdfAppender"/>).
 /// The Mac and the iPhone add pages the same way (Sources/LazyScanKit/App/AppState+Append.swift).
-/// A PDF picked before scanning (<see cref="AppendTarget"/>) takes the queue when it is saved.
+/// A PDF picked before scanning (<see cref="AppendTarget"/>) is checked when it is picked
+/// (<see cref="CheckAppendTarget"/>) and takes the queue when it is saved, which reads it again.
 /// </summary>
 public sealed partial class AppViewModel
 {
@@ -25,6 +26,43 @@ public sealed partial class AppViewModel
     /// </summary>
     public string? AppendTarget { get; private set; }
 
+    // The file CheckAppendTarget asked its question about, as it was then; Save does not ask again
+    // while it is unchanged.
+    private (string Path, long Length, DateTime Written)? _confirmedAppend;
+
+    private static (long Length, DateTime Written) StampOf(string path)
+    {
+        var info = new FileInfo(path);
+        return (info.Length, info.LastWriteTimeUtc);
+    }
+
+    /// <summary>
+    /// Reads the PDF at <paramref name="path"/> before it becomes the append target, so a file that can
+    /// never take the pages (password-protected, damaged, read-only, open in another app) is refused now
+    /// with what to do, and the signed or PDF/A question is asked now. True when the file can take them
+    /// (and the question, if any, got a yes): the caller then calls <see cref="SetAppendTarget"/>.
+    /// </summary>
+    public async Task<bool> CheckAppendTarget(string path)
+    {
+        try
+        {
+            var (target, stamp) = await Task.Run(() =>
+            {
+                var inspected = PdfAppender.Inspect(path);
+                return (inspected, StampOf(path));
+            });
+            if (target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true) return false;
+            _confirmedAppend = (path, stamp.Length, stamp.Written);
+            return true;
+        }
+        catch (Exception e)
+        {
+            ErrorMessage = e.Message;
+            NotifyAll();
+            return false;
+        }
+    }
+
     /// <summary>
     /// Makes Save add the queue to <paramref name="path"/> (read when the pages are added, not now)
     /// until the pages are in or <see cref="ClearAppendTarget"/> is called.
@@ -39,6 +77,7 @@ public sealed partial class AppViewModel
     public void ClearAppendTarget()
     {
         AppendTarget = null;
+        _confirmedAppend = null;
         NotifyAll();
     }
 
@@ -78,8 +117,10 @@ public sealed partial class AppViewModel
             string name = Path.GetFileName(targetPath);
             StatusMessage = Loc.T("Reading {0}…", name);
             NotifyAll();
-            var target = await Task.Run(() => PdfAppender.Inspect(targetPath), token);
-            if (target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true)
+            var (target, stamp) = await Task.Run(() => (PdfAppender.Inspect(targetPath), StampOf(targetPath)), token);
+            bool answered = targetPath == AppendTarget && _confirmedAppend is { } done
+                            && done.Path == targetPath && done.Length == stamp.Length && done.Written == stamp.Written;
+            if (!answered && target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true)
             {
                 StatusMessage = Loc.T("Nothing was added to {0}.", name);
                 return;
@@ -96,6 +137,7 @@ public sealed partial class AppViewModel
             LastPdfProtected = false;
             MarkSaved([result.Path]);
             AppendTarget = null;
+            _confirmedAppend = null;
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
