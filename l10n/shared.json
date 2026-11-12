@@ -2048,6 +2048,7 @@
   },
   "{0}. Save the separator sheet as a PDF to print it elsewhere.": {},
   "Still stopping the current operation. Quit now anyway? A file being written may be left incomplete.": {},
+  "A scan or save is still running.": {},
   "A scan or save is still running.\n\nStop it and quit?": {},
   "A scan or save is still running. {0}\n\nStop it and quit?": {},
   "{0}\n\nQuit anyway?": {},

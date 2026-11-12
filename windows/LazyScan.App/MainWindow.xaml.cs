@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -110,7 +111,12 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
         // Flush any debounced settings write and remove this instance's page spill files.
         // Done here rather than in App.OnExit: Application.MainWindow is already null by then.
-        Closed += (_, _) => ViewModel.Shutdown();
+        Closed += (_, _) =>
+        {
+            Application.Current.SessionEnding -= App_SessionEnding;
+            ViewModel.Shutdown();
+        };
+        Application.Current.SessionEnding += App_SessionEnding;
         SizeChanged += (_, _) => UpdatePane();
     }
 
@@ -280,6 +286,39 @@ public partial class MainWindow : Window
         Close();
     }
 
+    /// <summary>
+    /// On sign-out or shutdown WPF closes the window and ignores Closing's Cancel, so unsaved work is guarded
+    /// here instead: Windows lists the app as preventing it, with the reason SyncShutdownBlock registered,
+    /// and the user decides there.
+    /// </summary>
+    private void App_SessionEnding(object? sender, SessionEndingCancelEventArgs e)
+    {
+        SyncShutdownBlock();
+        if (_shutdownBlockText is not null) e.Cancel = true;
+    }
+
+    private string? _shutdownBlockText;
+
+    private void SyncShutdownBlock()
+    {
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        string? unsaved = UnsavedWorkDescription();
+        string? text = ViewModel.IsBusy ? unsaved ?? Loc.T("A scan or save is still running.") : unsaved;
+        if (text == _shutdownBlockText) return;
+        _shutdownBlockText = text;
+        if (text is null) ShutdownBlockReasonDestroy(hwnd);
+        else ShutdownBlockReasonCreate(hwnd, text);
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShutdownBlockReasonCreate(IntPtr hwnd, string reason);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShutdownBlockReasonDestroy(IntPtr hwnd);
+
     private string? UnsavedWorkDescription()
     {
         int pages = ViewModel.ScannedPages.Count;
@@ -305,6 +344,7 @@ public partial class MainWindow : Window
     private void RefreshFromViewModel()
     {
         SyncStatusLine();
+        SyncShutdownBlock();
 
         // Cancel is offered in every busy phase: scanning, processing, detection, OCR,
         // PDF writing and exports.
