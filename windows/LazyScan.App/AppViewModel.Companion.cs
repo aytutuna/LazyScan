@@ -55,9 +55,12 @@ public sealed partial class AppViewModel
     /// <summary>"3 pages from Aytu's iPhone are waiting: …"; null when nothing waits.</summary>
     public string? PhoneDocumentsWaitingMessage { get; private set; }
 
-    /// <summary>The queue can take a phone's pages now: it collects pages and nothing else is going on.</summary>
-    public bool CanTakePhonePages =>
-        !IsBusy && CollectsPackages && !IsStackUnderWay && !ShowPhotoReview && !ShowIdCardReview;
+    /// <summary>The queue can take a phone's pages now: nothing else is going on, whatever the task.</summary>
+    public bool CanAddPhoneDocuments =>
+        !IsBusy && !IsStackUnderWay && !ShowPhotoReview && !ShowIdCardReview;
+
+    /// <summary>A package opened by hand can be added now: <see cref="CanAddPhoneDocuments"/> and the queue collects pages.</summary>
+    public bool CanTakePhonePages => CanAddPhoneDocuments && CollectsPackages;
 
     /// <summary>
     /// Starts the phone link at launch when a phone is paired (nothing listens otherwise, and no
@@ -212,14 +215,13 @@ public sealed partial class AppViewModel
             }
             return;
         }
-        if (!CanTakePhonePages)
+        if (!CanAddPhoneDocuments)
         {
             string waiting = WaitingMessage();
             if (waiting != PhoneDocumentsWaitingMessage)
             {
                 PhoneDocumentsWaitingMessage = waiting;
-                // Only the reason the user can act on is announced; being busy passes on its own.
-                if (!IsBusy || !CollectsPackages) PhoneDocumentArrived?.Invoke(waiting);
+                if (!IsBusy) PhoneDocumentArrived?.Invoke(waiting);
                 NotifyAll();
             }
             if (_phoneRetryTimer is null)
@@ -245,16 +247,8 @@ public sealed partial class AppViewModel
             return Loc.Plural(pages, "{0} page from {1} will be added to the queue when this two-sided stack is finished.",
                 "{0} pages from {1} will be added to the queue when this two-sided stack is finished.", from);
         }
-        if (CollectsPackages)
-        {
-            return Loc.Plural(pages, "{0} page from {1} will be added to the queue when the current step is done.",
-                "{0} pages from {1} will be added to the queue when the current step is done.", from);
-        }
-        return PhotoImport.OwnSaveTaskReason(Settings) is { } reason
-            ? Loc.Plural(pages, "{0} page from {1} is waiting: {2}. Leave the task or pick Document to PDF to add it to the queue.",
-                "{0} pages from {1} are waiting: {2}. Leave the task or pick Document to PDF to add them to the queue.", from, reason)
-            : Loc.Plural(pages, "{0} page from {1} is waiting: choose Document mode, or a document task, with Collect pages before saving on, to add it to the queue.",
-                "{0} pages from {1} are waiting: choose Document mode, or a document task, with Collect pages before saving on, to add them to the queue.", from);
+        return Loc.Plural(pages, "{0} page from {1} will be added to the queue when the current step is done.",
+            "{0} pages from {1} will be added to the queue when the current step is done.", from);
     }
 
     /// <summary>

@@ -586,8 +586,8 @@ the bottom of the side pane) opens the phone window:
 Documents from paired phones are added to the queue **on their own**, labelled **From phone** in the
 page strip, with a bar saying what arrived (the taskbar button flashes when the window is in the
 background). A document sent as new starts a document of its own in the queue, under the name it
-came with; one sent to the current document joins it. While the queue does not collect pages
-(Photos mode, the ID card, copy and receipt tasks, **Collect pages before saving** off, a review open, a stack turned over by hand under way) or a scan runs, the document waits
+came with; one sent to the current document joins it. Whatever the task or mode, with
+**Collect pages before saving** on or off, the pages join the queue to be saved with Save. While a scan runs, a review is open or a stack turned over by hand is under way, the document waits
 and says so, and is added as soon as it can be. Pages the phone kept as photographed can be shown
 that way with one click, as for imported photos. A `.lsdoc` opened from File Explorer (the app
 registers the type for your user each time it starts), dropped on the window or picked with Import
