@@ -10,6 +10,14 @@ public struct LazyScanApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     public init() {
+        // Before the state is made: a second copy would clear the first one's kept pages.
+        if let bundleID = Bundle.main.bundleIdentifier {
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            if let other = running.first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+                other.activate()
+                exit(0)
+            }
+        }
         // No tabs: each would be another window over the same state.
         NSWindow.allowsAutomaticWindowTabbing = false
     }
