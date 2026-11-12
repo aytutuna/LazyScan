@@ -14,19 +14,16 @@ public partial class MainWindow
     /// <summary>The offer the bar shows; a new one is announced.</summary>
     private PendingPackage? _shownPackage;
 
-    /// <summary>Opens the first <c>.lsdoc</c> among the command line's arguments (File Explorer passes one).</summary>
-    private void OpenCommandLinePackage()
+    /// <summary>Takes the <c>.lsdoc</c> and photo files among the command line's arguments (File Explorer's Open with passes them).</summary>
+    private void OpenCommandLineFiles()
     {
-        if (PendingPackage.PackageIn(Environment.GetCommandLineArgs().Skip(1)) is { } path)
-        {
-            _ = ViewModel.OpenPackage(path);
-        }
+        if (PendingPackage.FilesIn(Environment.GetCommandLineArgs().Skip(1)) is { Length: > 0 } files) Take(files);
     }
 
-    /// <summary>Another Lazy Scan was started with <paramref name="args"/>: its <c>.lsdoc</c> is offered here and this window comes forward.</summary>
+    /// <summary>Another Lazy Scan was started with <paramref name="args"/>: its <c>.lsdoc</c> is offered and its photos imported here, and this window comes forward.</summary>
     public void OpenFromOtherProcess(string[] args)
     {
-        if (PendingPackage.PackageIn(args) is { } path) _ = ViewModel.OpenPackage(path);
+        if (PendingPackage.FilesIn(args) is { Length: > 0 } files) Take(files);
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
     }

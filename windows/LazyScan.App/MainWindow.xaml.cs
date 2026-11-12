@@ -98,8 +98,8 @@ public partial class MainWindow : Window
             OfferLeftBehindPages();
             // Receives from paired phones on trusted networks; nothing listens while no phone is paired.
             ViewModel.StartCompanionIfPaired();
-            // Opened from File Explorer: the .lsdoc is offered on its bar.
-            OpenCommandLinePackage();
+            // Opened from File Explorer: the .lsdoc is offered on its bar and photos are imported.
+            OpenCommandLineFiles();
             _ = Task.Run(Services.FileAssociation.RegisterForCurrentUser);
             if (StartTab.IsSelected) StartView.FocusDefaultCard();
         };

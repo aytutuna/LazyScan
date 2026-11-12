@@ -104,16 +104,16 @@ public sealed class PackageAppTests : IDisposable
     }
 
     [Fact]
-    public void PackageIn_SkipsEverythingAfterALazyScanAddress()
+    public void FilesIn_TakesPackagesAndPhotosAndSkipsEverythingAfterALazyScanAddress()
     {
-        Assert.Equal(@"C:\Scans\Receipt.lsdoc", PendingPackage.PackageIn([@"C:\Scans\Receipt.lsdoc"]));
-        Assert.Equal(@"D:\b.lsdoc", PendingPackage.PackageIn([@"C:\a.pdf", @"D:\b.lsdoc"]));
-        Assert.Null(PendingPackage.PackageIn([]));
+        Assert.Equal([@"C:\Scans\Receipt.lsdoc"], PendingPackage.FilesIn([@"C:\Scans\Receipt.lsdoc"]));
+        Assert.Equal([@"C:\My Photos\IMG 1.JPG", @"D:\b.lsdoc"], PendingPackage.FilesIn([@"C:\My Photos\IMG 1.JPG", @"C:\a.pdf", @"D:\b.lsdoc"]));
+        Assert.Empty(PendingPackage.FilesIn([]));
         // The address only opens the app, and what follows it is not read: an address with a quote in it adds arguments.
-        Assert.Null(PendingPackage.PackageIn(["lazyscan:"]));
-        Assert.Null(PendingPackage.PackageIn(["lazyscan:Receipt.lsdoc"]));
-        Assert.Null(PendingPackage.PackageIn([" lazyscan:x", @"C:\Scans\Receipt.lsdoc"]));
-        Assert.Null(PendingPackage.PackageIn(["LazyScan://pair", @"C:\Scans\Receipt.lsdoc"]));
+        Assert.Empty(PendingPackage.FilesIn(["lazyscan:"]));
+        Assert.Empty(PendingPackage.FilesIn(["lazyscan:Receipt.lsdoc"]));
+        Assert.Empty(PendingPackage.FilesIn([" lazyscan:x", @"C:\Scans\Receipt.lsdoc"]));
+        Assert.Empty(PendingPackage.FilesIn(["LazyScan://pair", @"C:\Scans\Receipt.lsdoc"]));
     }
 
     [Fact]
