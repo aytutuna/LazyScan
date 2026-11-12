@@ -1146,7 +1146,8 @@ struct ScanScreen: View {
 
     private var noScannerLine: String {
         IOSShell.noScannerLine(explained: !picker.showsExplanation, denied: picker.showsDenied,
-                               searching: picker.showsSearching, found: state.hasRealDevices)
+                               offWiFi: picker.showsOffWiFi, searching: picker.showsSearching,
+                               found: state.hasRealDevices)
     }
 
     /// In the step card's place while no scanner is in use: where the search is, with Pick a scanner (the

@@ -16,6 +16,9 @@ public enum IOSNetworkText {
     /// The scanner picker.
     public static var pickerTitle: String { String(localized: "Scanners") }
     public static var noScanner: String { String(localized: "No scanner found") }
+    /// The phone is on neither Wi-Fi nor a wired network, the commonest reason for an empty list (the
+    /// troubleshooter's network problem).
+    public static var offWiFi: String { L10n.t("Not connected to Wi-Fi") }
     /// The Scanner row in printer mode before its scanner is picked or found.
     public static var noScannerPicked: String { String(localized: "No scanner") }
     public static var troubleshoot: String { String(localized: "Troubleshoot") }
@@ -71,11 +74,14 @@ public final class IOSNetworkScanners: ObservableObject {
     @Published public private(set) var certificateQuestion: EsclCertificateError?
     /// Bumped when the search's state changes, so the screens read `accessDenied` again.
     @Published public private(set) var revision: Int = 0
+    /// Whether the phone is on Wi-Fi or a wired network, as far as the system has said.
+    @Published public private(set) var networkStatus: NetworkStatus = .unknown
 
     private let defaults: UserDefaults
     private let center: NotificationCenter
     private var observers: [NSObjectProtocol] = []
     private var answer: CheckedContinuation<Bool, Never>?
+    private var path: IOSNetworkPath?
 
     /// The app's: the files in Application Support, the system's search, UIKit's background time, the
     /// standard user defaults and notification center.
@@ -89,6 +95,13 @@ public final class IOSNetworkScanners: ObservableObject {
                                                              discovery: discovery,
                                                              background: UIKitBackgroundActivity())
         self.init(backend: backend, defaults: UserDefaults.standard, center: NotificationCenter.default)
+        let path: IOSNetworkPath = IOSNetworkPath()
+        path.onChange = { [weak self, weak path] in
+            if let status = path?.status {
+                self?.networkChanged(status)
+            }
+        }
+        self.path = path
     }
 
     /// Wraps `backend` (tests: with a search of stand-ins), with the explanation flag in `defaults` and the
@@ -135,6 +148,20 @@ public final class IOSNetworkScanners: ObservableObject {
         defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
         needsExplanation = false
         backend.allowNetwork()
+    }
+
+    /// The phone is known to be on neither Wi-Fi nor a wired network, so no scanner can be found.
+    public var isOffWiFi: Bool {
+        networkStatus == .offline
+    }
+
+    /// The network changed: the lists say so while it is gone, and the search starts again once it is back.
+    public func networkChanged(_ status: NetworkStatus) {
+        let wasOffline: Bool = isOffWiFi
+        networkStatus = status
+        if wasOffline && !isOffWiFi && !needsExplanation {
+            backend.rescan()
+        }
     }
 
     /// Local Network access is off for the app, as far as the system has said.

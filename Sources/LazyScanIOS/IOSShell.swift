@@ -442,12 +442,15 @@ public enum IOSShell {
 
     /// What printer mode says while no scanner is in use, on the card in the step card's place and on the
     /// status line: where the search is, as the Scanner options show it (the explanation card's title before
-    /// the first search, Local Network access being off, "Looking for scanners…", "No scanner found"), or,
+    /// the first search, Local Network access being off, "Not connected to Wi-Fi", "Looking for scanners…",
+    /// "No scanner found"), or,
     /// with scanners listed (`found`: none picked yet, or the one picked not among them), that none is in use.
-    public static func noScannerLine(explained: Bool, denied: Bool, searching: Bool, found: Bool) -> String {
+    public static func noScannerLine(explained: Bool, denied: Bool, offWiFi: Bool, searching: Bool,
+                                       found: Bool) -> String {
         if !explained { return IOSNetworkText.explanationTitle }
         if denied { return IOSNetworkText.deniedLine }
         if found { return noScannerInUse }
+        if offWiFi { return IOSNetworkText.offWiFi }
         if searching { return IOSNetworkText.searching }
         return IOSNetworkText.noScanner
     }

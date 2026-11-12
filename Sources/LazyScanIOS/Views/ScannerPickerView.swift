@@ -160,7 +160,7 @@ private struct ScannerPickerContent: View {
             }
             if picker.showsEmpty && !picker.showsExplanation {
                 HStack(spacing: 8) {
-                    Text(IOSNetworkText.noScanner)
+                    Text(picker.emptyLine)
                         .foregroundStyle(Color.secondary)
                         .accessibilityIdentifier("scanners.empty")
                     Spacer(minLength: 0)

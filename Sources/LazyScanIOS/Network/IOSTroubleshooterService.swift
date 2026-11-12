@@ -16,6 +16,8 @@ public protocol IOSNetworkStatusReading: AnyObject {
 @MainActor
 public final class IOSNetworkPath: IOSNetworkStatusReading {
     public private(set) var status: NetworkStatus = .unknown
+    /// Runs when the network changes, on the main actor.
+    public var onChange: (@MainActor () -> Void)?
     private let monitor: NWPathMonitor = NWPathMonitor()
 
     public init() {
@@ -28,7 +30,9 @@ public final class IOSNetworkPath: IOSNetworkStatusReading {
             let wired: Bool = types.contains(NWInterface.InterfaceType.wiredEthernet)
             let status: NetworkStatus = IOSNetworkPath.status(wifi: wifi, wired: wired)
             MainActor.assumeIsolated {
-                self?.status = status
+                guard let self, self.status != status else { return }
+                self.status = status
+                self.onChange?()
             }
         }
         monitor.start(queue: DispatchQueue.main)

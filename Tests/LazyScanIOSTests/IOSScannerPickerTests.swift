@@ -254,6 +254,36 @@ final class IOSScannerPickerTests: XCTestCase {
         XCTAssertFalse(network.backend.isSearching)
     }
 
+    @MainActor
+    func test_picker_saysThePhoneIsOffWiFi_andSearchesAgainWhenItIsBack() {
+        prepare()
+        defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
+        let network: IOSNetworkScanners = makeNetwork()
+        let state: AppState = makeState([AppState.makeDemoBackend(), network.backend])
+        let picker: IOSScannerPickerModel = IOSScannerPickerModel(state: state, network: network)
+        state.start()
+        XCTAssertTrue(picker.showsSearching)
+        XCTAssertFalse(picker.showsOffWiFi)
+
+        // A browser that failed with the network gone is started again only when the network returns.
+        browsers.made[0].onStatus?(.failed(code: nil, detail: "no network"))
+        network.networkChanged(.offline)
+        XCTAssertTrue(picker.showsOffWiFi)
+        XCTAssertTrue(picker.showsEmpty)
+        XCTAssertFalse(picker.showsSearching)
+        XCTAssertEqual(picker.emptyLine, "Not connected to Wi-Fi")
+
+        let made: Int = browsers.made.count
+        network.networkChanged(.privateNetwork)
+        XCTAssertTrue(browsers.made.count > made)
+        XCTAssertFalse(picker.showsOffWiFi)
+        let restarted: Int = browsers.made.count
+        network.networkChanged(.privateNetwork)
+        XCTAssertEqual(browsers.made.count, restarted)
+        XCTAssertEqual(picker.emptyLine, IOSNetworkText.noScanner)
+        network.backend.stopBrowsing()
+    }
+
     // MARK: Local Network access
 
     @MainActor

@@ -295,21 +295,27 @@ final class IOSShellTests: XCTestCase {
     }
 
     func test_noScannerLine_saysWhereTheSearchIs_orThatNoneIsInUse() {
-        XCTAssertEqual(IOSShell.noScannerLine(explained: false, denied: false, searching: true, found: false),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: false, denied: false, offWiFi: false, searching: true, found: false),
                        IOSNetworkText.explanationTitle)
-        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: true, searching: true, found: false),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: true, offWiFi: false, searching: true, found: false),
                        IOSNetworkText.deniedLine)
-        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, searching: true, found: false),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, offWiFi: false, searching: true, found: false),
                        IOSNetworkText.searching)
-        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, searching: false, found: false),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, offWiFi: false, searching: false, found: false),
                        IOSNetworkText.noScanner)
         // Scanners listed, none picked yet or the one picked not among them: not "No scanner found".
-        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, searching: false, found: true),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, offWiFi: false, searching: false, found: true),
                        IOSShell.noScannerInUse)
-        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: true, searching: false, found: true),
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: true, offWiFi: false, searching: false, found: true),
                        IOSNetworkText.deniedLine)
+        // Off Wi-Fi it says so instead of searching; scanners listed still win.
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, offWiFi: true, searching: false, found: false),
+                       IOSNetworkText.offWiFi)
+        XCTAssertEqual(IOSShell.noScannerLine(explained: true, denied: false, offWiFi: true, searching: false, found: true),
+                       IOSShell.noScannerInUse)
         // The status line says the same, within its six words.
-        for line in [IOSNetworkText.explanationTitle, IOSNetworkText.deniedLine, IOSNetworkText.searching,
+        for line in [IOSNetworkText.explanationTitle, IOSNetworkText.deniedLine, IOSNetworkText.offWiFi,
+                     IOSNetworkText.searching,
                      IOSNetworkText.noScanner, IOSShell.noScannerInUse] {
             XCTAssertLessThanOrEqual(StatusLine.words(line), StatusLine.maxWords, line)
         }

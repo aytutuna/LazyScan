@@ -106,10 +106,22 @@ public final class IOSScannerPickerModel {
         return !network.needsExplanation && network.accessDenied
     }
 
+    /// The phone is off Wi-Fi and no scanner other than the demo scanner is listed: the reason, in place of
+    /// "Looking for scanners…" and "No scanner found".
+    public var showsOffWiFi: Bool {
+        guard let network, !network.needsExplanation, !network.accessDenied else { return false }
+        return !state.hasRealDevices && network.isOffWiFi
+    }
+
+    /// What the empty list says: why no scanner is found when the phone is off Wi-Fi, else that none was.
+    public var emptyLine: String {
+        showsOffWiFi ? IOSNetworkText.offWiFi : IOSNetworkText.noScanner
+    }
+
     /// No scanner other than the demo scanner is listed yet while the search has just started or resolves
     /// what it found: "Looking for scanners…" instead of the empty state.
     public var showsSearching: Bool {
-        guard let network, !network.needsExplanation, !network.accessDenied else { return false }
+        guard let network, !network.needsExplanation, !network.accessDenied, !network.isOffWiFi else { return false }
         return !state.hasRealDevices && network.backend.isSearching
     }
 
