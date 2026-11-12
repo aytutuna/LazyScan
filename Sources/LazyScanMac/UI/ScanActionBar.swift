@@ -79,7 +79,6 @@ struct ScanActionBar: View {
                 Label(state.primaryActionLabel, systemImage: "scanner")
             }
             .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.defaultAction)
             .disabled(state.isBusy || !state.isConnected)
             .help(scanHelp)
 
@@ -92,7 +91,7 @@ struct ScanActionBar: View {
     private var cancelButton: some View {
         Button("Cancel") { state.cancelScan() }
             .keyboardShortcut(.cancelAction)
-            .help("Stop the scan")
+            .help("Stop")
     }
 
     // Photos of documents become pages of the queue too, with no scanner (AppState+Import.swift).
