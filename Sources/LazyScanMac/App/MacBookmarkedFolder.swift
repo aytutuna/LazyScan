@@ -53,10 +53,6 @@ final class MacBookmarkedFolder: @unchecked Sendable {
         return (folder: folder, bookmark: bookmark)
     }
 
-    private static func isInTrash(_ folder: URL) -> Bool {
-        folder.pathComponents.contains { $0 == ".Trash" || $0 == ".Trashes" }
-    }
-
     func close() {
         lock.lock()
         accessed?.stopAccessingSecurityScopedResource()
