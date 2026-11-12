@@ -426,7 +426,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     private bool _preparedTwoSided;
     private int _preparedDpi;
 
-    public Task<ScannerCapabilities> GetCapabilitiesAsync() => RunSta(() =>
+    public Task<ScannerCapabilities> GetCapabilitiesAsync() => WiaApartment.Run(() =>
     {
         var caps = new ScannerCapabilities();
         dynamic device = Connect();
@@ -469,7 +469,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         {
             Release(device);
         }
-    });
+    }, ReadTimeout, Info.Name);
 
     public Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
@@ -884,5 +884,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// transfers also block. Each call runs on the WIA thread (<see cref="WiaApartment"/>), after
     /// the enumerations and session work queued before it, so the UI stays live.
     /// </summary>
-    private static Task<T> RunSta<T>(Func<T> work) => WiaApartment.Run(work);
+    private Task<T> RunSta<T>(Func<T> work) => WiaApartment.Run(work, Timeout.InfiniteTimeSpan, Info.Name);
+
+    /// <summary>For the calls that only read the device: a driver that never answers must not hold the scanner for good.</summary>
+    internal static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(30);
 }

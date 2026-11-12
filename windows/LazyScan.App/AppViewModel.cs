@@ -744,6 +744,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private Task _switchTask = Task.CompletedTask;
     private int _switchGeneration;
+    /// <summary>Ends the connect of the switch in progress when another device is chosen.</summary>
+    private CancellationTokenSource _switchCancel = new();
     private DispatcherTimer? _settingsSaveTimer;
     private int _counterFallback;
     /// <summary>The current exclusive operation's cancellation (null when idle).</summary>
@@ -1425,6 +1427,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         _switchGeneration += 1;
         int generation = _switchGeneration;
         var previous = _switchTask;
+        _switchCancel.Cancel();
+        _switchCancel = new CancellationTokenSource();
+        var token = _switchCancel.Token;
         _switchTask = RunSwitch();
         NotifyAll();
         return;
@@ -1433,14 +1438,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             await previous;
             if (_switchGeneration != generation) return;
-            await SwitchSession(lost ? null : id, interactive);
+            await SwitchSession(lost ? null : id, interactive, token);
             // SwitchSession's own NotifyAll can be handled before this task completes, while
             // IsConnected and IsConnecting still see the switch running.
             NotifyAll();
         }
     }
 
-    private async Task SwitchSession(string? id, bool interactive)
+    private async Task SwitchSession(string? id, bool interactive, CancellationToken token)
     {
         if (_session is { } old)
         {
@@ -1485,7 +1490,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         try
         {
             var session = backend is Scanning.EsclScannerBackend network
-                ? await network.OpenSessionAsync(id, interactive)
+                ? await network.OpenSessionAsync(id, interactive, token)
                 : await backend.OpenSessionAsync(id);
             _certificateRefused.Remove(id);
             if (SelectedDeviceId != id) { await session.CloseAsync(); return; }
@@ -1506,7 +1511,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 option.UseDriverWindow = _driverWindowDevices.Contains(session.Info.Id);
             }
-            var caps = await session.GetCapabilitiesAsync();
+            var caps = await session.GetCapabilitiesAsync().WaitAsync(token);
             Capabilities = caps;
             ClearFailure();
             var adapted = SettingsAdapter.Adapt(Settings, caps);
@@ -1541,6 +1546,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     });
                 }
             }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Another scanner was picked meanwhile: its switch reports.
         }
         catch (Exception e)
         {

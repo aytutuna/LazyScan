@@ -131,4 +131,57 @@ public sealed class EsclScannerBackendTests : IDisposable
         Assert.True(Volatile.Read(ref _plainConnections) > 0);
         backend.StopBrowsing();
     }
+
+    /// <summary>A scanner whose only address accepts connections and never answers.</summary>
+    private (EsclScannerBackend Backend, TcpListener Silent) SilentScanner(EsclClientOptions options)
+    {
+        var silent = new TcpListener(IPAddress.Loopback, 0);
+        silent.Start();
+        var address = ScannerAddress.Create(secure: false, "127.0.0.1", ((IPEndPoint)silent.LocalEndpoint).Port, "eSCL")!;
+        var endpoint = new EsclEndpoint
+        {
+            Key = "uuid:hp",
+            Name = "HP M479",
+            Txt = EsclTxtRecord.Parse(null),
+            Addresses = [address, address],
+        };
+        var backend = new EsclScannerBackend(new EsclHostList(_directory), new EsclTrustStore(_directory), discover: false,
+                                             options, [endpoint]);
+        backend.StartBrowsing();
+        return (backend, silent);
+    }
+
+    [Fact]
+    public async Task CancellingTheTokenEndsAConnectAtOnce()
+    {
+        var (backend, silent) = SilentScanner(new EsclClientOptions { RequestTimeout = TimeSpan.FromSeconds(30) });
+        using var cancel = new CancellationTokenSource();
+
+        var open = backend.OpenSessionAsync("escl:uuid:hp", interactive: false, cancel.Token);
+        cancel.CancelAfter(200);
+
+        var started = DateTime.UtcNow;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => open);
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(5));
+        silent.Stop();
+        backend.StopBrowsing();
+    }
+
+    [Fact]
+    public async Task SeveralAddressesThatDoNotAnswerAreGivenUpOnAfterTheConnectTimeout()
+    {
+        var (backend, silent) = SilentScanner(new EsclClientOptions
+        {
+            RequestTimeout = TimeSpan.FromSeconds(30),
+            ConnectTimeout = TimeSpan.FromMilliseconds(300),
+        });
+
+        var started = DateTime.UtcNow;
+        var error = await Assert.ThrowsAsync<ScanException>(() => backend.OpenSessionAsync("escl:uuid:hp"));
+
+        Assert.Contains("HP M479 did not answer.", error.Message);
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(5));
+        silent.Stop();
+        backend.StopBrowsing();
+    }
 }

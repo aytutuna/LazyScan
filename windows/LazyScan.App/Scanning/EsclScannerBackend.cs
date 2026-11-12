@@ -37,7 +37,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// <summary>
     /// Asks the user whether to trust a scanner certificate that changed since it was trusted;
     /// true trusts it. Called on the UI thread while a scanner the user chose is being opened
-    /// (<see cref="OpenSessionAsync(string, bool)"/>). Without it, such scanners do not connect.
+    /// (<see cref="OpenSessionAsync(string, bool, CancellationToken)"/>). Without it, such scanners do not connect.
     /// </summary>
     public Func<EsclCertificateException, Task<bool>>? ConfirmCertificate { get; set; }
 
@@ -166,7 +166,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// <summary>
     /// <see cref="CheckAddressAsync(ScannerAddress, CancellationToken)"/> for an address in
     /// escl-hosts.json. A certificate seen for the first time is trusted, as on any first
-    /// connection (see <see cref="OpenSessionAsync(string, bool)"/>), so the scanner is listed
+    /// connection (see <see cref="OpenSessionAsync(string, bool, CancellationToken)"/>), so the scanner is listed
     /// under its own name and UUID and joins its discovered entry; but when the UUID it reports
     /// belongs to a scanner trusted with another certificate, nothing is trusted and the
     /// address is listed as that scanner's, with the changed certificate to confirm.
@@ -335,7 +335,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
 
     // MARK: - Sessions
 
-    /// <summary>A connection the app opens on its own: a changed certificate is not asked about (see <see cref="OpenSessionAsync(string, bool)"/>).</summary>
+    /// <summary>A connection the app opens on its own: a changed certificate is not asked about (see <see cref="OpenSessionAsync(string, bool, CancellationToken)"/>).</summary>
     public Task<IScannerSession> OpenSessionAsync(string deviceId) => OpenSessionAsync(deviceId, interactive: false);
 
     /// <summary>
@@ -349,17 +349,24 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
     /// app and the scanner could cause that. Nor does a scanner with a pinned certificate
     /// (<see cref="EsclTrustStore.IsPinned"/>) whose HTTPS addresses do not answer, since
     /// dropping their port would do the same; scanners never trusted keep the fallback.
-    /// Throws <see cref="ScanException"/>, or the
+    /// Addresses are tried for at most <see cref="EsclClientOptions.ConnectTimeout"/> in all, and
+    /// cancelling <paramref name="token"/> ends the attempt at once with an
+    /// <see cref="OperationCanceledException"/>. Throws <see cref="ScanException"/>, or the
     /// <see cref="EsclCertificateException"/>.
     /// </summary>
-    public async Task<IScannerSession> OpenSessionAsync(string deviceId, bool interactive)
+    public async Task<IScannerSession> OpenSessionAsync(string deviceId, bool interactive, CancellationToken token = default)
     {
         var record = _records.FirstOrDefault(r => r.Info.Id == deviceId)
             ?? throw ScanException.DeviceUnavailable(() => Loc.T("The selected scanner is not connected."));
         bool pinned = record.Addresses.Any(a => a.Secure && _trust.IsPinned(record.Uuid, a.Authority));
         bool skippedPlain = false;
+        using var cap = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var connectTimeout = (_clientOptions ?? new EsclClientOptions()).ConnectTimeout;
+        cap.CancelAfter(connectTimeout);
         foreach (var address in record.Addresses)
         {
+            token.ThrowIfCancellationRequested();
+            if (cap.IsCancellationRequested) break;
             if (pinned && !address.Secure)
             {
                 skippedPlain = true;
@@ -373,7 +380,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 var client = NewClient(address, validator, record.Info.Name);
                 try
                 {
-                    var caps = await client.GetCapabilitiesAsync();
+                    var caps = await client.GetCapabilitiesAsync(cap.Token);
                     validator.RememberDevice(caps.Uuid);
                     return new EsclScannerSession(record.Info, client, caps);
                 }
@@ -387,8 +394,13 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                     }
                     // Trusting the same address twice in a row means the pin did not take: stop.
                     if (!trustedHere && e.CanTrust && e.Verdict == EsclTrustVerdict.Changed
-                        && interactive && ConfirmCertificate is { } confirm && await confirm(e))
+                        && interactive && ConfirmCertificate is { } confirm)
                     {
+                        // The time the user takes with the dialog does not count against the cap.
+                        cap.CancelAfter(Timeout.InfiniteTimeSpan);
+                        bool trusted = await confirm(e);
+                        cap.CancelAfter(connectTimeout);
+                        if (!trusted) throw;
                         TrustCertificate(e, e.DeviceUuid ?? record.Uuid, record.Info.Name);
                         trustedHere = true;
                         continue;
@@ -402,6 +414,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                 }
             }
         }
+        token.ThrowIfCancellationRequested();
         if (skippedPlain)
         {
             throw ScanException.SessionFailed(() => Loc.T("{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.", record.Info.Name));

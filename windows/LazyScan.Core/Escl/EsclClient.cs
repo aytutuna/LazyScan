@@ -13,6 +13,8 @@ public sealed class EsclClientOptions
 {
     /// <summary>Capabilities, status and delete requests: a device that does not answer this soon is treated as gone.</summary>
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(10);
+    /// <summary>All the addresses of one scanner together when connecting to it, so several that do not answer cannot add up to minutes.</summary>
+    public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(40);
     /// <summary>
     /// Job requests: some devices hold a NextDocument request open until the page has been
     /// scanned, which at high resolution takes far longer than other requests.

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using LazyScan.Core;
 
 namespace LazyScan.App.Scanning;
 
@@ -22,6 +23,8 @@ internal static class WiaApartment
     private static int _mostInUse;
     private static long _uses;
     private static long _completed;
+    private static int _timedOut;
+    private static string? _hungDevice;
 
     /// <summary>The managed id of the WIA thread (it is started if it was not yet).</summary>
     internal static int ThreadId => Worker.Value.ManagedThreadId;
@@ -83,6 +86,47 @@ internal static class WiaApartment
         });
         return done.Task;
     }
+
+    /// <summary>
+    /// Like <see cref="Run{T}(Func{T})"/>, for a call that must not hold a scanner up for good. When
+    /// <paramref name="work"/> has not finished <paramref name="timeout"/> after it began on the WIA
+    /// thread, the task faults with a "not responding" <see cref="ScanException"/>. The call itself
+    /// cannot be stopped, so the thread stays busy until it returns; every timed call asked for
+    /// meanwhile fails at once, naming the device that is stuck, instead of waiting behind it.
+    /// </summary>
+    public static async Task<T> Run<T>(Func<T> work, TimeSpan timeout, string deviceName)
+    {
+        if (Volatile.Read(ref _timedOut) > 0) throw NotResponding(Volatile.Read(ref _hungDevice) ?? deviceName);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var abandoned = false;
+        var task = Run(() =>
+        {
+            if (Volatile.Read(ref abandoned)) throw new OperationCanceledException();
+            started.SetResult();
+            return work();
+        });
+        try
+        {
+            await started.Task.WaitAsync(timeout).ConfigureAwait(false);
+            return await task.WaitAsync(timeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            if (!started.Task.IsCompleted)
+            {
+                // Still queued behind other work: drop it rather than run it late.
+                Volatile.Write(ref abandoned, true);
+                throw NotResponding(Volatile.Read(ref _hungDevice) ?? deviceName);
+            }
+            Volatile.Write(ref _hungDevice, deviceName);
+            Interlocked.Increment(ref _timedOut);
+            _ = task.ContinueWith(_ => Interlocked.Decrement(ref _timedOut), TaskScheduler.Default);
+            throw NotResponding(deviceName);
+        }
+    }
+
+    private static ScanException NotResponding(string deviceName) =>
+        ScanException.SessionFailed(() => Loc.T("{0} is not responding. Turn it off and on again, then try again.", deviceName));
 
     private static Thread Start()
     {

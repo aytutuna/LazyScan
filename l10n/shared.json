@@ -1629,6 +1629,7 @@
   "The name {0} could not be found. Check the address on the scanner's screen.": {},
   "{0} is not a usable address. Check the address on the scanner's screen.": {},
   "{0} did not answer. Check that the scanner is on and reachable, then try again.": {},
+  "{0} is not responding. Turn it off and on again, then try again.": {},
   "Something answered at {0}, but it is not a scanner Lazy Scan can use. Check the address on the scanner's screen.": {},
   "Nothing answered at {0} in time. Check that the scanner is on and on the same network, then try again.": {},
   "Lazy Scan could not connect to {0}. Check the address and that the scanner is on and on the same network, then try again.": {},
