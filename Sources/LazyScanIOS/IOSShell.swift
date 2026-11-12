@@ -726,7 +726,7 @@ public enum IOSShell {
     static func copyPackage(_ url: URL) throws -> URL {
         let folder: URL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.createDirectoryCompleteUnlessOpen(at: folder)
         let copy: URL = folder.appendingPathComponent(url.lastPathComponent)
         do {
             try IOSPDFAppend.access(url, writing: false) { (file: URL) throws -> Void in
@@ -753,7 +753,7 @@ public enum IOSShell {
         let folder: URL = packageShareFolder
         do {
             try? FileManager.default.removeItem(at: folder)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try FileManager.default.createDirectoryCompleteUnlessOpen(at: folder)
             let url: URL = try await state.exportPackage(to: folder)
             state.runFileAction(.share, urls: [url])
             return url

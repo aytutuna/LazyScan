@@ -150,7 +150,7 @@ public final class PhoneOutbox: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard file.items.count < PhoneOutbox.maxItems else { throw PhoneOutboxError.full }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectoryCompleteUnlessOpen(at: directory)
         var destination = directory.appendingPathComponent(package.lastPathComponent)
         if destination.resolvingSymlinksInPath().path != package.resolvingSymlinksInPath().path {
             destination = NamingTemplate.uniqueURL(in: directory, base: package.deletingPathExtension().lastPathComponent,

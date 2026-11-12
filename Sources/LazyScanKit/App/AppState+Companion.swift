@@ -257,7 +257,7 @@ extension AppState {
             return
         }
         do {
-            try FileManager.default.createDirectory(at: outbox.directory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectoryCompleteUnlessOpen(at: outbox.directory)
             let url = try await exportPackage(to: outbox.directory)
             try outbox.enqueue(url, target: target, desktopId: desktop.id)
         } catch {

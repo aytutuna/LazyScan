@@ -131,7 +131,7 @@ public enum IOSPageSelection {
         let folder: URL = shareFolder
         return try await Task.detached(priority: .userInitiated) { () -> [URL] in
             try? FileManager.default.removeItem(at: folder)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try FileManager.default.createDirectoryCompleteUnlessOpen(at: folder)
             var urls: [URL] = []
             var number: Int = 1
             for page in pages {
