@@ -1545,7 +1545,7 @@
   "The cloud folder could not be opened. Choose it again in My computer.": {},
   "The cloud folder could not be opened. Choose it again.": {},
   "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": {},
-  "{0} is not on this network.": {},
+  "{0} was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.": {},
   "{0} cannot be reached on this network.": {},
   "Paired with {0}.": {
     "note": "{0} is the name of a phone or computer."

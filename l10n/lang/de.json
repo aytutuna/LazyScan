@@ -1017,7 +1017,6 @@
     "The cloud folder could not be opened. Choose it again in My computer.": "Der Cloud-Ordner ließ sich nicht öffnen. Wähle ihn unter „Mein Computer“ erneut aus.",
     "The cloud folder could not be opened. Choose it again.": "Der Cloud-Ordner ließ sich nicht öffnen. Wähle ihn erneut aus.",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "Ein Ordner in iCloud Drive oder OneDrive, den auch dein Computer synchronisiert. Dokumente landen verschlüsselt hier, wenn der Computer nicht erreichbar ist.",
-    "{0} is not on this network.": "{0} ist nicht in diesem Netzwerk.",
     "{0} cannot be reached on this network.": "{0} ist in diesem Netzwerk nicht erreichbar.",
     "Paired with {0}.": "Mit „{0}“ gekoppelt.",
     "This device is no longer paired with {0}.": "Dieses Gerät ist nicht mehr mit {0} gekoppelt.",

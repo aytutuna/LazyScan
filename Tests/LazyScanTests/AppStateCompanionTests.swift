@@ -217,7 +217,7 @@ final class AppStateCompanionTests: XCTestCase {
 
         fake.downHosts = [CompanionLink.address]
         await state.checkDesktop()
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC is not on this network."))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."))
 
         var asked: [String] = []
         state.companionDesktopSeenOnNetwork = { id in
@@ -281,7 +281,7 @@ final class AppStateCompanionTests: XCTestCase {
         await state.sendQueueToDesktop(target: .current)
 
         XCTAssertEqual(state.statusMessage, "Office PC cannot be reached on this network.")
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC is not on this network."))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."))
         XCTAssertEqual(state.companionOutboxCount, 1)
 
         fake.downHosts = []
@@ -810,6 +810,6 @@ final class AppStateCompanionTests: XCTestCase {
 
         state.companionDesktopSeenOnNetwork = { _ in false }
         await state.checkDesktop()
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC is not on this network."))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."))
     }
 }

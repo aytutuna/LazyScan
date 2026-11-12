@@ -37,9 +37,9 @@ public enum CompanionText {
         L10n.t("A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.")
     }
 
-    /// "Office PC is not on this network."
+    /// "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."
     public static func notOnNetworkReason(_ desktopName: String) -> String {
-        L10n.t("{0} is not on this network.", desktopName)
+        L10n.t("{0} was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.", desktopName)
     }
 
     /// "Office PC cannot be reached on this network."

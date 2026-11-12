@@ -279,8 +279,8 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertEqual(IOSCompanionText.status(.reachable(desktopName: "Office PC", queuedPages: 0)), "Connected")
         XCTAssertEqual(IOSCompanionText.status(.reachable(desktopName: "Office PC", queuedPages: 3)),
                        "Connected \u{00B7} 3 pages queued there")
-        XCTAssertEqual(IOSCompanionText.status(.unreachable(reason: "Office PC is not on this network.")),
-                       "Office PC is not on this network.")
+        XCTAssertEqual(IOSCompanionText.status(.unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")),
+                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")
         XCTAssertEqual(IOSCompanionText.status(.unpaired(byDesktop: "Office PC")),
                        "This device is no longer paired with Office PC.")
         XCTAssertEqual(IOSCompanionText.waiting(0), "Nothing waiting to be sent")
@@ -424,11 +424,11 @@ final class IOSCompanionTests: XCTestCase {
         try await waitUntil(timeout: 5) { state.companionPull != nil }
         // The check browses while it runs, and a few seconds more when the desktop does not answer.
         try await waitUntil(timeout: 30) {
-            state.companionStatus == .unreachable(reason: "Office PC is not on this network.")
+            state.companionStatus == .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")
         }
         XCTAssertTrue(browser.isBrowsing)
         try await waitUntil(timeout: 40) { !browser.isBrowsing }
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC is not on this network."))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."))
         XCTAssertEqual(browsers.made.count, 1)
 
         center.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -492,7 +492,7 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .reachable(desktopName: "Office PC", queuedPages: 0)))
         XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .checking))
         // It waits in the outbox until the computer answers.
-        XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .unreachable(reason: "Office PC is not on this network.")))
+        XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")))
         XCTAssertFalse(IOSShell.offersSendToComputer(settings, status: .notPaired))
         XCTAssertFalse(IOSShell.offersSendToComputer(settings, status: .unpaired(byDesktop: "Office PC")))
 

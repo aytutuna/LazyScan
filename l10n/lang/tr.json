@@ -1017,7 +1017,6 @@
     "The cloud folder could not be opened. Choose it again in My computer.": "Bulut klasörü açılamadı. Bilgisayarım’da yeniden seçin.",
     "The cloud folder could not be opened. Choose it again.": "Bulut klasörü açılamadı. Yeniden seçin.",
     "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.": "iCloud Drive ya da OneDrive’da, bilgisayarınızın da eşzamanladığı bir klasör. Bilgisayara ulaşılamadığında belgeler buraya şifreli olarak gider.",
-    "{0} is not on this network.": "{0} bu ağda değil.",
     "{0} cannot be reached on this network.": "Bu ağda ulaşılamıyor: {0}.",
     "Paired with {0}.": "{0} ile eşleştirildi.",
     "This device is no longer paired with {0}.": "Bu aygıtın {0} ile eşleştirmesi kaldırıldı.",
