@@ -1,5 +1,20 @@
 import Foundation
 
+/// The answer to "the fronts and backs are not in order" when Save is pressed (`AppState.sidesNeedOrder`).
+public enum SidesSaveChoice: Sendable {
+    /// Put the pages in reading order as they are (the extra pages at the end), then save.
+    case combine
+    /// Leave the backs out and save the fronts.
+    case frontsOnly
+
+    public static var title: String { L10n.t("Fronts and backs are not in order") }
+    public static var message: String {
+        L10n.t("Saving now writes the fronts first and the backs after them. Put the pages in order first, or leave the backs out.")
+    }
+    public static var combineLabel: String { L10n.t("Combine and save") }
+    public static var frontsOnlyLabel: String { L10n.t("Save fronts only") }
+}
+
 /// A task card on the start screen: the task, whether the connected scanner can do it, and
 /// what it sets. Twin of the Windows `TaskCardItem`.
 public struct TaskCard: Identifiable, Equatable {

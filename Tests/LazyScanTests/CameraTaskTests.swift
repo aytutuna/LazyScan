@@ -459,6 +459,77 @@ final class CameraTaskTests: XCTestCase {
     }
 
     @MainActor
+    func test_twoSided_frontsFirst_saveBeforePutInOrder_asksFirst() async throws {
+        var options = TaskOptions()
+        options.cameraFrontsFirst = true
+        let state: AppState = makeState(.twoSided, options: options)
+        let page: ScannedPage = try printedPage()
+        for _ in 0..<3 {
+            try await bringIn(state, page)
+        }
+        state.startCameraBacks()
+        XCTAssertFalse(state.sidesNeedOrder)
+        try await bringIn(state, page)
+        XCTAssertTrue(state.sidesNeedOrder)
+
+        state.savePDF()
+        XCTAssertTrue(state.asksSidesOrder)
+        XCTAssertFalse(state.isBusy)
+        XCTAssertEqual(state.scannedPages.count, 4)
+        XCTAssertTrue(state.lastSavedURLs.isEmpty)
+
+        state.savePDF(sides: .combine)
+        XCTAssertFalse(state.asksSidesOrder)
+        XCTAssertEqual(state.scannedPages.map(\.side), [.front, .back, .front, .front])
+        XCTAssertFalse(state.sidesNeedOrder)
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(pdfPageCount(try XCTUnwrap(state.lastSavedURLs.first)), 4)
+    }
+
+    @MainActor
+    func test_twoSided_frontsFirst_holdForSidesOrder_resumesAfterAnswer() async throws {
+        var options = TaskOptions()
+        options.cameraFrontsFirst = true
+        let state: AppState = makeState(.twoSided, options: options)
+        let page: ScannedPage = try printedPage()
+        for _ in 0..<3 {
+            try await bringIn(state, page)
+        }
+        state.startCameraBacks()
+        try await bringIn(state, page)
+
+        var resumed = false
+        XCTAssertTrue(state.holdForSidesOrder { resumed = true })
+        XCTAssertTrue(state.asksSidesOrder)
+        XCTAssertFalse(resumed)
+
+        state.putSidesInOrder(.combine)
+        XCTAssertFalse(state.sidesNeedOrder)
+        XCTAssertFalse(state.holdForSidesOrder { resumed = true })
+        XCTAssertEqual(state.scannedPages.map(\.side), [.front, .back, .front, .front])
+    }
+
+    @MainActor
+    func test_twoSided_frontsFirst_saveFrontsOnly_leavesTheBacksOut() async throws {
+        var options = TaskOptions()
+        options.cameraFrontsFirst = true
+        let state: AppState = makeState(.twoSided, options: options)
+        let page: ScannedPage = try printedPage()
+        for _ in 0..<3 {
+            try await bringIn(state, page)
+        }
+        state.startCameraBacks()
+        try await bringIn(state, page)
+
+        state.savePDF(sides: .frontsOnly)
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(pdfPageCount(try XCTUnwrap(state.lastSavedURLs.first)), 3)
+        XCTAssertEqual(state.cameraSides, CameraSides(mode: .frontsFirst))
+    }
+
+    @MainActor
     func test_twoSided_theWayCanChange_otherTasksHaveNoSides() {
         let state: AppState = makeState(.twoSided)
         XCTAssertEqual(state.cameraSides?.mode, .flip)

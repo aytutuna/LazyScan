@@ -75,7 +75,7 @@ extension AppState {
     /// Puts the fronts and backs of the camera's stack in reading order in the queue
     /// (`CameraSides.collation`), unless their counts differ and `combineAnyway` is false: then the mismatch
     /// is shown and more backs can be taken. The steps start again for the next stack.
-    private func collateCameraSides(combineAnyway: Bool) {
+    func collateCameraSides(combineAnyway: Bool) {
         guard var sides = cameraSides else { return }
         let collation: QueueCollation = sides.collation(scannedPages.map(\.id))
         let counts: ManualInterleave = collation.interleave

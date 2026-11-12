@@ -427,6 +427,11 @@ public final class AppState: ObservableObject {
     /// nil otherwise. The user scans the backs again, combines the pages as they are, or keeps
     /// the fronts only.
     @Published public internal(set) var sidesMismatch: String?
+    /// Save was asked for while fronts and backs are out of order (`sidesNeedOrder`): the app asks what to
+    /// do (`SidesSaveChoice`) and saves again with the answer, or clears this on Cancel.
+    @Published public var asksSidesOrder = false
+    /// What runs once the question is answered, when a step before the save asked it (`holdForSidesOrder`).
+    public var afterSidesAnswer: (() -> Void)?
     /// The camera takes both sides of each sheet in the two-sided task: the side the next shot is, and the
     /// fronts and backs taken (AppState+CameraTasks.swift); nil for the other tasks.
     @Published public internal(set) var cameraSides: CameraSides?
@@ -1583,8 +1588,8 @@ public final class AppState: ObservableObject {
     /// `OutputOptions.alsoSaveText` is on), or a Word document or text file when that is the format
     /// chosen (`OutputFormat.queueFormat`). OCR reads each page once. With an `appendTarget` the pages
     /// are added to that PDF instead (`appendToPDF(at:)`).
-    public func savePDF() {
-        guard !scannedPages.isEmpty else { return }
+    public func savePDF(sides choice: SidesSaveChoice? = nil) {
+        guard !scannedPages.isEmpty, settleSides(choice) else { return }
         if let target = appendTarget {
             appendToPDF(at: target)
             return
@@ -2168,6 +2173,64 @@ public final class AppState: ObservableObject {
     public func combineSidesAnyway() {
         guard !isBusy, awaitingBacks else { return }
         collateTurnedOverStack(combineAnyway: true)
+    }
+
+    /// The queue is fronts then backs, not yet in reading order: the backs of a stack turned over by hand
+    /// did not pair up with the fronts, or the camera has taken some backs and not put the stack in order.
+    /// Saving it as it is would write the backs after the fronts.
+    public var sidesNeedOrder: Bool {
+        if awaitingBacks && sidesMismatch != nil { return true }
+        return cameraSides?.canPutInOrder ?? false
+    }
+
+    /// Before a save: true when the save can go on. While `sidesNeedOrder` and no answer is given, asks
+    /// (`asksSidesOrder`) and returns false. Combine puts the pages in order as they are; Fronts only leaves
+    /// the backs out of the queue.
+    func settleSides(_ choice: SidesSaveChoice?) -> Bool {
+        asksSidesOrder = false
+        guard sidesNeedOrder else { return true }
+        guard !isBusy else { return false }
+        guard let choice else {
+            afterSidesAnswer = nil
+            asksSidesOrder = true
+            return false
+        }
+        putSidesInOrder(choice)
+        return true
+    }
+
+    /// Asks what to do about the sides before a step that would take the queue as it is. Returns true when it
+    /// asked: `resume` runs after the answer, which puts the sides in order first (`putSidesInOrder`).
+    public func holdForSidesOrder(_ resume: @escaping () -> Void) -> Bool {
+        guard sidesNeedOrder else { return false }
+        afterSidesAnswer = resume
+        asksSidesOrder = true
+        return true
+    }
+
+    /// The answer to the question: Combine puts the pages in order as they are, Fronts only leaves the backs
+    /// out of the queue.
+    public func putSidesInOrder(_ choice: SidesSaveChoice) {
+        guard !isBusy, sidesNeedOrder else { return }
+        switch (choice, cameraSides?.canPutInOrder ?? false) {
+        case (.combine, true):
+            collateCameraSides(combineAnyway: true)
+        case (.combine, false):
+            collateTurnedOverStack(combineAnyway: true)
+        case (.frontsOnly, true):
+            keepCameraFrontsOnly()
+        case (.frontsOnly, false):
+            keepFrontsOnly()
+        }
+    }
+
+    /// The camera's backs leave the queue, the fronts stay, and the next shot starts a new stack.
+    private func keepCameraFrontsOnly() {
+        guard var sides = cameraSides else { return }
+        removeQueuedPages(sides.backs)
+        sides.reset()
+        cameraSides = sides
+        sidesMismatch = nil
     }
 
     /// The back sides scanned so far leave the queue, to be scanned again.

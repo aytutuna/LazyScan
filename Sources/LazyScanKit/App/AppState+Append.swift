@@ -7,9 +7,9 @@ import Foundation
 // picked before scanning (`appendTarget`) takes the queue when it is saved (`savePDF()`).
 
 extension AppState {
-    /// There are pages to add (some are not left out) and nothing else is running.
+    /// There are pages to add (some are not left out), in reading order, and nothing else is running.
     public var canAppendPages: Bool {
-        !isBusy && SavePlan.make(scannedPages, options: settings.document).pageCount > 0
+        !isBusy && !sidesNeedOrder && SavePlan.make(scannedPages, options: settings.document).pageCount > 0
     }
 
     /// Makes Save add the queue to the PDF at `url` (read when the pages are added, not now) until the
@@ -33,6 +33,12 @@ extension AppState {
     /// saved one, with the after-save action, and the `appendTarget` is cleared.
     public func appendToPDF(at url: URL) {
         guard !scannedPages.isEmpty else { return }
+        guard !sidesNeedOrder else {
+            // The answer only puts the pages in order; the file is picked again.
+            afterSidesAnswer = {}
+            asksSidesOrder = true
+            return
+        }
         let s: ScanSettings = settings
         let access = accessPDFForAppend
         runExclusive { flag in

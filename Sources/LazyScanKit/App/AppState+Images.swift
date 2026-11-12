@@ -28,8 +28,8 @@ extension AppState {
     /// each page's spool file, turned as the page is shown. All or nothing: a failure or Cancel part-way
     /// removes the files written, and the queue stays as it was. Saved, the queue is emptied, the task's
     /// steps start over and the after-save action runs, as `savePDF()` does.
-    public func saveImages() {
-        guard !scannedPages.isEmpty else { return }
+    public func saveImages(sides choice: SidesSaveChoice? = nil) {
+        guard !scannedPages.isEmpty, settleSides(choice) else { return }
         let s: ScanSettings = settings
         let format: OutputFormat = s.format.imageFormatOrJPEG
         runExclusive { flag in

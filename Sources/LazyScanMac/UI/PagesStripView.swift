@@ -177,6 +177,17 @@ struct PagesStripView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .confirmationDialog(SidesSaveChoice.title, isPresented: $state.asksSidesOrder, titleVisibility: .visible) {
+            Button(SidesSaveChoice.combineLabel) {
+                state.savePDF(sides: .combine)
+            }
+            Button(SidesSaveChoice.frontsOnlyLabel) {
+                state.savePDF(sides: .frontsOnly)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(SidesSaveChoice.message)
+        }
         .sheet(item: $editingSpread) { source in
             SpreadSplitView(source: source) { choice in
                 switch choice {

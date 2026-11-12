@@ -779,6 +779,7 @@ struct ScanScreen: View {
             .presentationBackground(Color(uiColor: .systemGroupedBackground))
             // The root's alert cannot show over a sheet, nor its troubleshooter until the sheet has closed.
             .modifier(ErrorAlert(state: state, onTroubleshoot: openTroubleshooter))
+            .modifier(SidesOrderQuestion(state: state))
             // Nor its question about a changed certificate, which a scanner picked here asks.
             .background {
                 if let network = picker.network {
@@ -1199,6 +1200,7 @@ struct ScanScreen: View {
     /// opens to close. Email goes out with the saved file. A send that failed, or whose pages wait for a
     /// computer that did not answer, says so in an alert, and the other steps run once it is closed.
     private func saveWithActions() {
+        guard !state.holdForSidesOrder(saveWithActions) else { return }
         let paired: Bool = IOSShell.offersSendToComputer(state.settings, status: state.companionStatus)
         let steps: [IOSAfterSave] = IOSAfterSave.steps(UserDefaults.standard, paired: paired)
         guard steps.contains(.send) else {
@@ -1268,6 +1270,7 @@ struct ScanScreen: View {
 
     /// Email… in Options: this save only is sent by email once written.
     private func saveAndEmail() {
+        guard !state.holdForSidesOrder(saveAndEmail) else { return }
         state.saveAndEmail(images: savesImages)
     }
 
@@ -1465,6 +1468,7 @@ struct KeepPagesQuestion: ViewModifier {
     }
 
     private func saveFirst(_ asked: PagesLeave) {
+        guard !state.holdForSidesOrder({ saveFirst(asked) }) else { return }
         afterSave = asked
         IOSShell.saveQueue(state)
         if !state.isBusy {

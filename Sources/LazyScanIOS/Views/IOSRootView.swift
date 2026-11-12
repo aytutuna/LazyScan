@@ -525,6 +525,7 @@ private struct FileActionPresenters: ViewModifier {
             }
             .quickLookPreview($fileActions.previewURL)
             .modifier(ErrorAlert(state: state))
+            .modifier(SidesOrderQuestion(state: state))
     }
 
     private func closeShareSheet() {
@@ -582,6 +583,42 @@ struct CertificateQuestion: View {
 
     private func answer(_ trust: Bool) {
         network.answerCertificate(trust)
+    }
+}
+
+/// What Save asks while the fronts and backs are not in order (`AppState.asksSidesOrder`): the answer puts
+/// them in order, then the step that asked goes on (`AppState.holdForSidesOrder`), or Save runs.
+/// The root has it, and so does the Options sheet, which the root's cannot show over.
+@MainActor
+struct SidesOrderQuestion: ViewModifier {
+    @ObservedObject var state: AppState
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(SidesSaveChoice.title, isPresented: $state.asksSidesOrder, titleVisibility: .visible) {
+                Button(SidesSaveChoice.combineLabel) {
+                    answer(.combine)
+                }
+                Button(SidesSaveChoice.frontsOnlyLabel) {
+                    answer(.frontsOnly)
+                }
+                Button("Cancel", role: .cancel) {
+                    state.afterSidesAnswer = nil
+                }
+            } message: {
+                Text(SidesSaveChoice.message)
+            }
+    }
+
+    private func answer(_ choice: SidesSaveChoice) {
+        state.putSidesInOrder(choice)
+        let resume: (() -> Void)? = state.afterSidesAnswer
+        state.afterSidesAnswer = nil
+        if let resume {
+            resume()
+        } else {
+            IOSShell.saveQueue(state)
+        }
     }
 }
 
