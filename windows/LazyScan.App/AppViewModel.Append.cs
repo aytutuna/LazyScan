@@ -44,7 +44,7 @@ public sealed partial class AppViewModel
 
     /// <summary>There are pages to add (some are not left out) and nothing else is running.</summary>
     public bool CanAppendPages =>
-        !IsBusy && SavePlan.Make([.. ScannedPages.Select(p => p.Page)], Settings.Document).PageCount > 0;
+        !IsBusy && !SidesNeedOrder && SavePlan.Make([.. ScannedPages.Select(p => p.Page)], Settings.Document).PageCount > 0;
 
     /// <summary>
     /// Adds the pages the queue would save (all its documents, in order; pages left out stay out) to
@@ -59,7 +59,7 @@ public sealed partial class AppViewModel
     /// </summary>
     public Task AppendToPdf(string targetPath)
     {
-        if (ScannedPages.Count == 0) return Task.CompletedTask;
+        if (ScannedPages.Count == 0 || !SettleSides()) return Task.CompletedTask;
         var s = Settings.Clone();
         return RunExclusive(async token =>
         {

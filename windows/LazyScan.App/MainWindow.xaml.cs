@@ -64,6 +64,7 @@ public partial class MainWindow : Window
         SetUpInspectorSections();
         // A protected PDF's password is asked for at save time, over this window.
         ViewModel.AskPdfPassword = () => PdfPasswordWindow.Ask(this);
+        ViewModel.AskSidesOrder = () => SidesOrderWindow.Ask(this);
         SetUpAddToPdf();
         SetUpImport();
         SetUpPhone();

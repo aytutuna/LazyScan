@@ -307,3 +307,22 @@ public static class DocumentSides
         return new QueueCollation(order, positions, interleave);
     }
 }
+
+/// <summary>The answer to "the fronts and backs are not in order" when Save is pressed.</summary>
+public enum SidesSaveChoice
+{
+    /// <summary>Put the pages in reading order as they are (the extra pages at the end), then save.</summary>
+    Combine,
+    /// <summary>Leave the backs out and save the fronts.</summary>
+    FrontsOnly,
+}
+
+/// <summary>The question asked before saving fronts and backs that are not in order.</summary>
+public static class SidesSaveText
+{
+    public static string Title => Loc.T("Fronts and backs are not in order");
+    public static string Message =>
+        Loc.T("Saving now writes the fronts first and the backs after them. Put the pages in order first, or leave the backs out.");
+    public static string CombineLabel => Loc.T("Combine and save");
+    public static string FrontsOnlyLabel => Loc.T("Save fronts only");
+}

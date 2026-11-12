@@ -290,7 +290,10 @@ with its sheet and side ("2 · back").
   holds is scanned a part at a time: **Scan more fronts** goes back to the fronts until the first
   back is scanned. When the counts differ ("3 fronts but 2 backs") the banner says so and offers
   **Combine anyway** (the extra pages at the end), **Scan back sides again** (the backs leave the
-  queue) and **Keep fronts only**; scanning again adds the rest of the backs. Without a task the
+  queue) and **Keep fronts only**; scanning again adds the rest of the backs. Save during the
+  mismatch asks first, in a window with **Combine and save**, **Save fronts only** and Cancel,
+  rather than writing the backs after the fronts (`AppViewModel.SidesNeedOrder`, `AskSidesOrder`;
+  Add to existing PDF asks the same way). Without a task the
   banner's close button goes back to one side. Screen readers name each page by its place and
   side ("Page 3, Sheet 2, back").
 - **Two-sided document** task: a 300 dpi PDF of both sides through the feeder; on a feeder that

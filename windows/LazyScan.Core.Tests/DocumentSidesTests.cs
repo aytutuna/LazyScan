@@ -400,4 +400,12 @@ public class DocumentSidesTests
         Assert.Null(TwoPixelPage().Side);
         Assert.Null(source.WithSide(null, null).SheetIndex);
     }
+
+    [Fact]
+    public void SaveQuestion_IsWorded()
+    {
+        Assert.Equal("Fronts and backs are not in order", SidesSaveText.Title);
+        Assert.Equal("Saving now writes the fronts first and the backs after them. Put the pages in order first, or leave the backs out.", SidesSaveText.Message);
+        Assert.Equal(("Combine and save", "Save fronts only"), (SidesSaveText.CombineLabel, SidesSaveText.FrontsOnlyLabel));
+    }
 }

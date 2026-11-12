@@ -349,4 +349,11 @@ final class DocumentSidesTests: XCTestCase {
         XCTAssertNil(twoPixelPage().side)
         XCTAssertNil(source.withSide(nil, sheetIndex: nil).sheetIndex)
     }
+
+    func testSaveQuestionIsWorded() {
+        XCTAssertEqual(SidesSaveChoice.title, "Fronts and backs are not in order")
+        XCTAssertEqual(SidesSaveChoice.message, "Saving now writes the fronts first and the backs after them. Put the pages in order first, or leave the backs out.")
+        XCTAssertEqual(SidesSaveChoice.combineLabel, "Combine and save")
+        XCTAssertEqual(SidesSaveChoice.frontsOnlyLabel, "Save fronts only")
+    }
 }

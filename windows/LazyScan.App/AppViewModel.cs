@@ -553,6 +553,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     public string? SidesMismatch { get; private set; }
 
+    /// <summary>
+    /// The queue is fronts then backs, not yet in reading order: the backs of a stack turned over by
+    /// hand did not pair up with the fronts. Saving it as it is would write the backs after the
+    /// fronts, so Save asks first (<see cref="AskSidesOrder"/>).
+    /// </summary>
+    public bool SidesNeedOrder => AwaitingBacks && SidesMismatch is not null;
+
+    /// <summary>
+    /// Asks what to do when Save is pressed while <see cref="SidesNeedOrder"/>: combine and save,
+    /// or save the fronts only; null is Cancel. Without anyone to ask, nothing is saved.
+    /// </summary>
+    public Func<SidesSaveChoice?>? AskSidesOrder { get; set; }
+
     /// <summary>How the next scan captures the sheets (one side, both, or turned over by hand).</summary>
     public DuplexMode EffectiveDuplex => DocumentSides.Effective(Settings, Capabilities);
 
@@ -1781,7 +1794,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     public Task SavePdf()
     {
-        if (ScannedPages.Count == 0) return Task.CompletedTask;
+        if (ScannedPages.Count == 0 || !SettleSides()) return Task.CompletedTask;
         if (AppendTarget is { } target) return AppendToPdf(target);
         var s = Settings.Clone();
         return RunExclusive(async token =>
@@ -2581,6 +2594,21 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || !AwaitingBacks) return;
         CollateTurnedOverStack(combineAnyway: true);
         NotifyAll();
+    }
+
+    /// <summary>
+    /// Before a save: true when it can go on. While <see cref="SidesNeedOrder"/> the user is asked;
+    /// Combine puts the pages in order as they are, Fronts only leaves the backs out of the queue,
+    /// and Cancel (or nobody to ask) keeps everything as it is.
+    /// </summary>
+    private bool SettleSides()
+    {
+        if (!SidesNeedOrder) return true;
+        if (IsBusy) return false;
+        if (AskSidesOrder?.Invoke() is not { } choice) return false;
+        if (choice == SidesSaveChoice.Combine) CombineSidesAnyway();
+        else KeepFrontsOnly();
+        return true;
     }
 
     /// <summary>The back sides scanned so far leave the queue, to be scanned again.</summary>
