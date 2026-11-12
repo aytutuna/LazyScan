@@ -220,7 +220,9 @@ scanners** — including the Epson Perfection V39 II.
   Archive document), **Photos & images** (Photos, Restore old photos, Quick scan) and
   **Other** (ID card, Photocopy, Receipts, Book or magazine). A tile is an icon and a title; what
   the task does and what it sets are its help. Picking one sets everything up for it, with a one-line
-  guide on the scan screen and the fuller guidance behind its info button. Tasks the connected
+  guide on the scan screen and the fuller guidance behind its info button. On the Mac and Windows
+  your file name, PDF size and action after saving stay as you set them, except in Email a
+  document, Receipts and ID card, which set their own. Tasks the connected
   scanner cannot do are greyed out with a short reason ("Needs a document feeder", "Needs a
   printer"). The app remembers the task you used last.
 - **Less text, same clarity** (both apps): icons and short labels on screen, explanations one hover

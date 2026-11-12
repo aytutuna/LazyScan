@@ -88,9 +88,12 @@ extension AppState {
     /// Sets everything up for a task picked on the start screen: its settings are laid over the
     /// current ones (the destination folder is kept) and fitted to the connected scanner, and
     /// its guided steps start. Refused (false) while an operation runs, or when the connected
-    /// scanner cannot do the task (the reason is shown).
+    /// scanner cannot do the task (the reason is shown). With `keepingChoices` (the desktop apps) the
+    /// file name template, the PDF size and the after-save action stay the user's, except where the
+    /// task sets its own (`TaskCatalog.apply`); the task banner then says so (`taskChoicesNote`), and leaving that task
+    /// puts the user's back.
     @discardableResult
-    public func startTask(_ task: ScanTask) -> Bool {
+    public func startTask(_ task: ScanTask, keepingChoices: Bool = false) -> Bool {
         guard !isBusy else { return false }
         // Printers come and go: the Copy task reads them again.
         if task == .copy { refreshPrinters() }
@@ -102,9 +105,19 @@ extension AppState {
         discardRemovedUndo()
         // A task that keeps no queue would leave the held pages with nowhere to come back to.
         if savedUndo != nil && !carriesQueue(task) { discardSavedUndo() }
+        var base: ScanSettings = settings
+        if keepingChoices, let leaving = settings.task {
+            base = TaskCatalog.restoring(keptChoices ?? KeptChoices(ScanSettings()), leaving: leaving, in: base)
+        }
         // A feeder not asked yet whether it scans both sides is taken to (`sidesCapabilities`); the
         // check that follows the change of source switches to turning over by hand if it does not.
-        let adapted = SettingsAdapter.adapt(TaskCatalog.apply(task, to: settings), to: sidesCapabilities)
+        let adapted = SettingsAdapter.adapt(TaskCatalog.apply(task, to: base, keepingChoices: keepingChoices),
+                                            to: sidesCapabilities)
+        var choicesNote: String = ""
+        if keepingChoices {
+            keptChoices = KeptChoices(base)
+            choicesNote = TaskCatalog.setChoicesNote(task, before: base, after: adapted.settings)
+        }
         // Fresh steps, even when the same task is picked again: nothing of an ID card is kept, on
         // the stage either.
         if isIdCardFlow || hasIdCardCaptures || showIdCardReview { clearIdCard(clearCanvas: true) }
@@ -113,6 +126,7 @@ extension AppState {
         flowTask = nil
         flowIsManual = false
         if newDocumentPending { newDocumentPending = false }
+        taskChoicesNote = choicesNote
         settings = adapted.settings
         if let section = InspectorSections.openedBy(task) { sectionsOpenedByTask.insert(section) }
         setStatus(L10n.t("Ready for “{0}”.", TaskCatalog.definition(task).title), notes: adapted.notes, head: .readyForTask)

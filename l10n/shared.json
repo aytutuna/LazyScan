@@ -1436,6 +1436,9 @@
   "Saved {0}: {1}": {},
   "Saving page {0} of {1}…": {},
   "Ready for “{0}”.": {},
+  "This task sets the file name.": {},
+  "This task sets the PDF size.": {},
+  "This task sets the action after saving.": {},
   "No back side. Check the front, then save.": {},
   "Looking for scanners…": {},
   "Connecting to {0}…": {

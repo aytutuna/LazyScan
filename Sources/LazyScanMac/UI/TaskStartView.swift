@@ -119,7 +119,7 @@ struct TaskStartView: View {
             let openScanner = onOpenScanner
             let task = card.definition.task
             appState.leaveIdCard {
-                if appState.startTask(task) {
+                if appState.startTask(task, keepingChoices: true) {
                     appState.clearAppendTarget()
                     openScanner()
                 }
@@ -148,7 +148,7 @@ struct TaskStartView: View {
             let openScanner = onOpenScanner
             guard let url = appState.choosePDFForAppend(prompt: String(localized: "Choose")) else { return }
             appState.leaveIdCard {
-                if appState.startTask(.document) {
+                if appState.startTask(.document, keepingChoices: true) {
                     appState.setAppendTarget(url)
                     openScanner()
                 }

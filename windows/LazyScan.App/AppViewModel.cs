@@ -418,6 +418,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public bool IsConnecting => !_switchTask.IsCompleted;
     public ScannerCapabilities? Capabilities { get; private set; }
     public ScanSettings Settings { get; private set; }
+    private KeptChoices? _keptChoices;
+    /// <summary>What the active task set of the kept choices, for the task banner; empty when none.</summary>
+    public string TaskChoicesNote { get; private set; } = "";
 
     /// <summary>Low-res preview of the full bed; the selection marquee is only valid over this image.</summary>
     public RgbaImage? OverviewImage { get; private set; }
@@ -2832,7 +2835,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// Sets everything up for a task picked on the start screen: its settings are laid over the
     /// current ones (the destination folder is kept) and fitted to the connected scanner, and
     /// its guided steps start. Refused (false) while an operation runs, or when the connected
-    /// scanner cannot do the task (the reason is shown).
+    /// scanner cannot do the task (the reason is shown). The file name template, the PDF size and the
+    /// after-save action stay the user's, except where the task sets its own
+    /// (<see cref="TaskCatalog.Apply"/>); the task banner then says so (<see cref="TaskChoicesNote"/>), and leaving that
+    /// task puts the user's back.
     /// </summary>
     public bool StartTask(ScanTask task)
     {
@@ -2847,7 +2853,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return false;
         }
         DiscardRemoved();
-        var adapted = SettingsAdapter.Adapt(TaskCatalog.Apply(task, Settings), Capabilities);
+        var current = Settings;
+        if (current.Task is { } leaving)
+            current = TaskCatalog.Restoring(_keptChoices ?? new KeptChoices(new ScanSettings()), leaving, current);
+        _keptChoices = new KeptChoices(current);
+        var adapted = SettingsAdapter.Adapt(TaskCatalog.Apply(task, current, keepingChoices: true), Capabilities);
+        TaskChoicesNote = TaskCatalog.SetChoicesNote(task, current, adapted.Settings);
         Settings = adapted.Settings;
         // Fresh steps, even for the same task: nothing of an ID card is kept, on the stage either.
         if (IsIdCardFlow || HasIdCardCaptures || ShowIdCardReview) ClearIdCard(clearCanvas: true);
@@ -2903,6 +2914,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         bool wasIdCard = IsIdCardFlow;
         if (Settings.Task is { } task && !TaskCatalog.Fits(task, Settings)) Settings.TaskId = null;
+        if (Settings.TaskId is null) TaskChoicesNote = "";
         bool manual = DocumentSides.UsesManualSteps(Settings, Capabilities);
         (ScanTask?, bool) key = manual ? (null, true) : (Settings.Task, false);
         if (TaskCatalog.GuidedSteps(Settings, Capabilities) is not { } steps)

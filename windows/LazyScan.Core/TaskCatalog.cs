@@ -69,6 +69,18 @@ public sealed record TaskAvailability(bool IsAvailable, string? Reason = null)
 }
 
 /// <summary>
+/// The choices the desktop apps keep across tasks: the file name template, the PDF size and the
+/// action after saving. A task that sets one of them itself (<see cref="TaskCatalog.SetsNamingTemplate"/>,
+/// <see cref="TaskCatalog.SetsPdfSize"/>, <see cref="TaskCatalog.SetsAfterSave"/>) leaves the user's
+/// here until another task is picked.
+/// </summary>
+public sealed record KeptChoices(string NamingTemplate, PdfSizePreset PdfSize, AfterSaveAction AfterSave)
+{
+    public KeptChoices(ScanSettings settings)
+        : this(settings.NamingTemplate, settings.Output.PdfSize, settings.Output.AfterSave) { }
+}
+
+/// <summary>
 /// The tasks of the start screen, in code rather than in a settings file. Picking a task lays
 /// its settings over the current ones (<see cref="Apply"/>); a preset without a stored task
 /// is shown with the task its settings look like (<see cref="Infer"/>).
@@ -242,9 +254,13 @@ public static class TaskCatalog
     /// sheets, skipping blank pages); the others save one document; no task splits at barcode or QR
     /// sheets. The sheets per document of <see cref="SplitMode.SheetCount"/>, whether a barcode starts a
     /// document (<see cref="DocumentOptions.BarcodeStartsDocument"/>) and the separator codes' prefix
-    /// (<see cref="DocumentOptions.SplitBarcodePrefix"/>) are kept.
+    /// (<see cref="DocumentOptions.SplitBarcodePrefix"/>) are kept. With <paramref name="keepingChoices"/>
+    /// (the desktop apps) the file name template, the PDF size and the after-save action stay the
+    /// user's unless the task sets its own: the Receipts and ID card tasks the file name (a template that
+    /// is one of the tasks' own is replaced by the task's), the Email, Receipts and Archive document
+    /// tasks the PDF size, and Email the action.
     /// </summary>
-    public static ScanSettings Apply(ScanTask task, ScanSettings current)
+    public static ScanSettings Apply(ScanTask task, ScanSettings current, bool keepingChoices = false)
     {
         var s = current.Clone();
         s.Source = ScanSource.Flatbed;
@@ -368,8 +384,59 @@ public static class TaskCatalog
                 s.NamingTemplate = "Scan {date} {counter}";
                 break;
         }
+        if (keepingChoices)
+        {
+            if (!SetsPdfSize(task)) s.Output.PdfSize = current.Output.PdfSize;
+            if (!SetsAfterSave(task)) s.Output.AfterSave = current.Output.AfterSave;
+            if (!SetsNamingTemplate(task) && !IsTaskTemplate(current.NamingTemplate))
+                s.NamingTemplate = current.NamingTemplate;
+        }
         s.TaskId = task.RawValue();
         return s;
+    }
+
+    /// <summary>The task names its files itself (Receipts by the receipt's date, the ID card).</summary>
+    public static bool SetsNamingTemplate(ScanTask task) => task is ScanTask.Receipt or ScanTask.IdCard;
+
+    /// <summary>The task needs its own PDF size: Compact for Email and Receipts, Best for the PDF/A file.</summary>
+    public static bool SetsPdfSize(ScanTask task) => task is ScanTask.Email or ScanTask.Receipt or ScanTask.Archive;
+
+    /// <summary>The task needs its own action after saving (Email opens the share window).</summary>
+    public static bool SetsAfterSave(ScanTask task) => task == ScanTask.Email;
+
+    /// <summary>The template is one a task sets (the default of a fresh install among them), not one the user wrote.</summary>
+    private static bool IsTaskTemplate(string template) =>
+        ScanTasks.All.Any(task => Apply(task, new ScanSettings()).NamingTemplate == template);
+
+    /// <summary>
+    /// <paramref name="settings"/> after leaving <paramref name="task"/>: what the task set itself and
+    /// the user did not change since goes back to <paramref name="kept"/>, the choices the user had
+    /// before it. <paramref name="settings"/> is not changed.
+    /// </summary>
+    public static ScanSettings Restoring(KeptChoices kept, ScanTask task, ScanSettings settings)
+    {
+        var s = settings.Clone();
+        var own = Apply(task, new ScanSettings());
+        if (SetsNamingTemplate(task) && s.NamingTemplate == own.NamingTemplate) s.NamingTemplate = kept.NamingTemplate;
+        if (SetsPdfSize(task) && s.Output.PdfSize == own.Output.PdfSize) s.Output.PdfSize = kept.PdfSize;
+        if (SetsAfterSave(task) && s.Output.AfterSave == own.Output.AfterSave) s.Output.AfterSave = kept.AfterSave;
+        return s;
+    }
+
+    /// <summary>
+    /// The sentences saying what <paramref name="task"/> set of the choices that stay across tasks, when
+    /// it changed them from what <paramref name="before"/> had; empty when it left them.
+    /// </summary>
+    public static string SetChoicesNote(ScanTask task, ScanSettings before, ScanSettings after)
+    {
+        var sentences = new List<string>();
+        if (after.NamingTemplate != before.NamingTemplate && SetsNamingTemplate(task))
+            sentences.Add(Loc.T("This task sets the file name."));
+        if (after.Output.PdfSize != before.Output.PdfSize && SetsPdfSize(task))
+            sentences.Add(Loc.T("This task sets the PDF size."));
+        if (after.Output.AfterSave != before.Output.AfterSave && SetsAfterSave(task))
+            sentences.Add(Loc.T("This task sets the action after saving."));
+        return string.Join(" ", sentences);
     }
 
     /// <summary>

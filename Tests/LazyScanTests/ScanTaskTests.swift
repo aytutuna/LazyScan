@@ -209,6 +209,71 @@ final class ScanTaskTests: XCTestCase {
         ])
     }
 
+    func test_apply_keepingChoices_theFileNameSizeAndActionStayUnlessTheTaskSetsItsOwn() {
+        var current = ScanSettings()
+        current.namingTemplate = "Invoice {date}"
+        current.output.pdfSize = .smallest
+        current.output.afterSave = .open
+        let sets: [ScanTask: (String?, PDFSizePreset?, AfterSaveAction?)] = [
+            .email: (nil, .compact, .share),
+            .receipt: ("Receipt {docdate} {counter}", .compact, nil),
+            .idCard: ("ID card {date}", nil, nil),
+            .archive: (nil, .best, nil),
+        ]
+        for task in ScanTask.allCases {
+            let s = TaskCatalog.apply(task, to: current, keepingChoices: true)
+            let own = sets[task]
+            XCTAssertEqual(s.namingTemplate, own?.0 ?? "Invoice {date}", task.rawValue)
+            XCTAssertEqual(s.output.pdfSize, own?.1 ?? .smallest, task.rawValue)
+            XCTAssertEqual(s.output.afterSave, own?.2 ?? .open, task.rawValue)
+            // Without it every task resets them, as the iPhone expects.
+            let reset = TaskCatalog.apply(task, to: current)
+            XCTAssertEqual(reset.output.afterSave, task == .email ? .share : AfterSaveAction.none, task.rawValue)
+            XCTAssertNotEqual(reset.namingTemplate, "Invoice {date}", task.rawValue)
+        }
+    }
+
+    func test_apply_keepingChoices_aTemplateOfATaskGivesWayToTheNextTasks() {
+        var current = ScanSettings()
+        XCTAssertEqual(TaskCatalog.apply(.photos, to: current, keepingChoices: true).namingTemplate, "Photo {date} {counter}")
+        current.namingTemplate = "Photo {date} {counter}"
+        XCTAssertEqual(TaskCatalog.apply(.document, to: current, keepingChoices: true).namingTemplate, "Scan {date} {counter}")
+    }
+
+    func test_restoring_givesBackTheUsersChoicesOnlyWhereTheTaskSetThem() {
+        var user = ScanSettings()
+        user.namingTemplate = "Invoice {date}"
+        user.output.pdfSize = .smallest
+        user.output.afterSave = .open
+        let kept = KeptChoices(user)
+        let email = TaskCatalog.apply(.email, to: user, keepingChoices: true)
+        let back = TaskCatalog.restoring(kept, leaving: .email, in: email)
+        XCTAssertEqual(back.output.pdfSize, .smallest)
+        XCTAssertEqual(back.output.afterSave, .open)
+        XCTAssertEqual(back.namingTemplate, "Invoice {date}")
+        var edited = email
+        edited.output.pdfSize = .best
+        XCTAssertEqual(TaskCatalog.restoring(kept, leaving: .email, in: edited).output.pdfSize, .best)
+        let receipt = TaskCatalog.apply(.receipt, to: user, keepingChoices: true)
+        XCTAssertEqual(TaskCatalog.restoring(kept, leaving: .receipt, in: receipt).namingTemplate, "Invoice {date}")
+        XCTAssertEqual(TaskCatalog.restoring(kept, leaving: .document, in: receipt).namingTemplate, "Receipt {docdate} {counter}")
+    }
+
+    func test_setChoicesNote_namesWhatTheTaskChanged() {
+        var user = ScanSettings()
+        user.namingTemplate = "Invoice {date}"
+        user.output.pdfSize = .smallest
+        let email = TaskCatalog.apply(.email, to: user, keepingChoices: true)
+        XCTAssertEqual(TaskCatalog.setChoicesNote(.email, before: user, after: email),
+                       "This task sets the PDF size. This task sets the action after saving.")
+        let receipt = TaskCatalog.apply(.receipt, to: user, keepingChoices: true)
+        XCTAssertEqual(TaskCatalog.setChoicesNote(.receipt, before: user, after: receipt),
+                       "This task sets the file name. This task sets the PDF size.")
+        let document = TaskCatalog.apply(.document, to: user, keepingChoices: true)
+        XCTAssertEqual(TaskCatalog.setChoicesNote(.document, before: user, after: document), "")
+        XCTAssertEqual(TaskCatalog.setChoicesNote(.receipt, before: receipt, after: receipt), "")
+    }
+
     func test_apply_onlyTheTwoSidedTaskScansBothSides_thePaperIsKept() {
         let current = customized()
         for task in ScanTask.allCases {

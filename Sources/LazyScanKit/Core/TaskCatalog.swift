@@ -79,6 +79,22 @@ public struct TaskAvailability: Equatable, Sendable {
     public static let available = TaskAvailability(isAvailable: true)
 }
 
+/// The choices the desktop apps keep across tasks: the file name template, the PDF size and the
+/// action after saving. A task that sets one of them itself (`TaskCatalog.setsNamingTemplate`,
+/// `setsPDFSize`, `setsAfterSave`) leaves the user's here until another task is picked. Twin of C#
+/// `KeptChoices`.
+public struct KeptChoices: Equatable, Sendable {
+    public var namingTemplate: String
+    public var pdfSize: PDFSizePreset
+    public var afterSave: AfterSaveAction
+
+    public init(_ settings: ScanSettings) {
+        namingTemplate = settings.namingTemplate
+        pdfSize = settings.output.pdfSize
+        afterSave = settings.output.afterSave
+    }
+}
+
 /// The tasks of the start screen, in code rather than in a settings file. Picking a task lays
 /// its settings over the current ones (`apply`); a preset without a stored task is shown with
 /// the task its settings look like (`infer`). Twin of C# `TaskCatalog`.
@@ -289,9 +305,12 @@ public enum TaskCatalog {
     /// copy. The Receipts task scans in grayscale (thermal print has no color) into Compact PDFs, named
     /// by the receipt's date. Only the Batch task splits the stack into documents (at separator
     /// sheets, skipping blank pages); the others save one document; no task splits at barcode or QR
-    /// sheets. The sheets per document of `.sheetCount`, whether a barcode starts a document
+    /// sheets. With `keepingChoices` (the desktop apps) the file name template, the PDF size and the
+    /// after-save action stay the user's unless the task sets its own: the Receipts and ID card tasks
+    /// the file name (a template that is one of the tasks' own is replaced by the task's), the Email,
+    /// Receipts and Archive document tasks the PDF size, and Email the action. The sheets per document of `.sheetCount`, whether a barcode starts a document
     /// (`barcodeStartsDocument`) and the separator codes' prefix (`splitBarcodePrefix`) are kept.
-    public static func apply(_ task: ScanTask, to current: ScanSettings) -> ScanSettings {
+    public static func apply(_ task: ScanTask, to current: ScanSettings, keepingChoices: Bool = false) -> ScanSettings {
         var s = current
         s.source = .flatbed
         s.colorMode = .color
@@ -399,8 +418,58 @@ public enum TaskCatalog {
             s.output.pdfSize = .best
             s.namingTemplate = "Scan {date} {counter}"
         }
+        if keepingChoices {
+            if !setsPDFSize(task) { s.output.pdfSize = current.output.pdfSize }
+            if !setsAfterSave(task) { s.output.afterSave = current.output.afterSave }
+            if !setsNamingTemplate(task) && !isTaskTemplate(current.namingTemplate) {
+                s.namingTemplate = current.namingTemplate
+            }
+        }
         s.taskId = task.rawValue
         return s
+    }
+
+    /// The task names its files itself (Receipts by the receipt's date, the ID card).
+    public static func setsNamingTemplate(_ task: ScanTask) -> Bool { task == .receipt || task == .idCard }
+
+    /// The task needs its own PDF size: Compact for Email and Receipts, Best for the PDF/A file.
+    public static func setsPDFSize(_ task: ScanTask) -> Bool { task == .email || task == .receipt || task == .archive }
+
+    /// The task needs its own action after saving (Email opens the share window).
+    public static func setsAfterSave(_ task: ScanTask) -> Bool { task == .email }
+
+    /// The template is one a task sets (the default of a fresh install among them), not one the user wrote.
+    private static func isTaskTemplate(_ template: String) -> Bool {
+        ScanTask.allCases.contains { (task: ScanTask) -> Bool in
+            apply(task, to: ScanSettings()).namingTemplate == template
+        }
+    }
+
+    /// `settings` after leaving `task`: what the task set itself and the user did not change since goes
+    /// back to `kept`, the choices the user had before it.
+    public static func restoring(_ kept: KeptChoices, leaving task: ScanTask, in settings: ScanSettings) -> ScanSettings {
+        var s = settings
+        let own = apply(task, to: ScanSettings())
+        if setsNamingTemplate(task) && s.namingTemplate == own.namingTemplate { s.namingTemplate = kept.namingTemplate }
+        if setsPDFSize(task) && s.output.pdfSize == own.output.pdfSize { s.output.pdfSize = kept.pdfSize }
+        if setsAfterSave(task) && s.output.afterSave == own.output.afterSave { s.output.afterSave = kept.afterSave }
+        return s
+    }
+
+    /// The sentences saying what `task` set of the choices that stay across tasks, when it changed
+    /// them from what `before` had; empty when it left them.
+    public static func setChoicesNote(_ task: ScanTask, before: ScanSettings, after: ScanSettings) -> String {
+        var sentences: [String] = []
+        if after.namingTemplate != before.namingTemplate && setsNamingTemplate(task) {
+            sentences.append(L10n.t("This task sets the file name."))
+        }
+        if after.output.pdfSize != before.output.pdfSize && setsPDFSize(task) {
+            sentences.append(L10n.t("This task sets the PDF size."))
+        }
+        if after.output.afterSave != before.output.afterSave && setsAfterSave(task) {
+            sentences.append(L10n.t("This task sets the action after saving."))
+        }
+        return sentences.joined(separator: " ")
     }
 
     /// The task the settings belong to: the stored one when it is known, otherwise the one they

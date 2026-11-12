@@ -779,7 +779,11 @@ pixel of every 4th row) differ by more than 32 between their strongest and weake
 so a stamp or a highlighter mark keeps the page in color. The size alone sets the JPEG
 quality of PDF pages; the JPEG quality setting (stored in the settings file, no control on
 Windows) applies to JPEG files only, as before. The **Email a document** task scans at 300 dpi,
-saves Compact and then opens the share window.
+saves Compact and then opens the share window. Picking any task keeps the file name template,
+the PDF size and the action after saving the user chose, except where the task needs its own
+(Email: Compact and Share; Receipts: Compact and its file name; ID card: its file name; Archive
+document: Best). The task banner says what the task set, and leaving the task puts the user's
+choices back.
 
 **Behavior change:** Standard is the default for everyone, including existing settings and
 presets, which have no size stored; earlier versions always wrote full-resolution RGB JPEGs
@@ -1030,8 +1034,9 @@ cards offer the same actions. Nothing leaves the PC without the user choosing wh
 button) runs one of these on its own once a save has finished: **Do nothing** (the default),
 **Open**, **Show in folder** or **Share…**. Several files are shown in their folder rather than
 opened one by one. A cancelled or failed save runs nothing, and a file that has been moved or
-deleted since is reported instead. Picking a task sets it: the **Email a document** task shares,
-the others do nothing; choosing another action ends the Email task. The choice is decided in Core
+deleted since is reported instead. Picking a task keeps it, except the **Email a document**
+task, which shares; leaving Email puts the user's choice back. Choosing another action ends
+the Email task. The choice is decided in Core
 (`SaveActions`: the plan, the actions offered, what Copy puts on the clipboard, the email route)
 and carried out by `Services/FileActions.cs` and `Services/ShareService.cs`, which the view model
 takes as a stand-in in checks.

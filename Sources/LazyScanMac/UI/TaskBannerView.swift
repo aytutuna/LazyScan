@@ -36,7 +36,12 @@ struct TaskBannerView: View {
     private var prompt: String { shownStep?.prompt ?? definition?.subtitle ?? DuplexMode.manual.hint }
 
     /// The step's fuller guidance; empty when the prompt says it all.
-    private var guidance: String { shownStep?.help ?? "" }
+    private var guidance: String {
+        let help: String = shownStep?.help ?? ""
+        let note: String = state.taskChoicesNote
+        if help.isEmpty { return note }
+        return note.isEmpty ? help : help + "\n\n" + note
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {

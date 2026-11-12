@@ -204,6 +204,78 @@ public class ScanTaskTests
     }
 
     [Fact]
+    public void Apply_KeepingChoices_TheFileNameSizeAndActionStayUnlessTheTaskSetsItsOwn()
+    {
+        var current = new ScanSettings { NamingTemplate = "Invoice {date}" };
+        current.Output.PdfSize = PdfSizePreset.Smallest;
+        current.Output.AfterSave = AfterSaveAction.Open;
+        var sets = new Dictionary<ScanTask, (string?, PdfSizePreset?, AfterSaveAction?)>
+        {
+            [ScanTask.Email] = (null, PdfSizePreset.Compact, AfterSaveAction.Share),
+            [ScanTask.Receipt] = ("Receipt {docdate} {counter}", PdfSizePreset.Compact, null),
+            [ScanTask.IdCard] = ("ID card {date}", null, null),
+            [ScanTask.Archive] = (null, PdfSizePreset.Best, null),
+        };
+        foreach (var task in ScanTasks.All)
+        {
+            var s = TaskCatalog.Apply(task, current, keepingChoices: true);
+            var own = sets.GetValueOrDefault(task);
+            Assert.Equal(own.Item1 ?? "Invoice {date}", s.NamingTemplate);
+            Assert.Equal(own.Item2 ?? PdfSizePreset.Smallest, s.Output.PdfSize);
+            Assert.Equal(own.Item3 ?? AfterSaveAction.Open, s.Output.AfterSave);
+            // Without it every task resets them, as the iPhone expects.
+            var reset = TaskCatalog.Apply(task, current);
+            Assert.Equal(task == ScanTask.Email ? AfterSaveAction.Share : AfterSaveAction.None, reset.Output.AfterSave);
+            Assert.NotEqual("Invoice {date}", reset.NamingTemplate);
+        }
+    }
+
+    [Fact]
+    public void Apply_KeepingChoices_ATemplateOfATaskGivesWayToTheNextTasks()
+    {
+        var current = new ScanSettings();
+        Assert.Equal("Photo {date} {counter}", TaskCatalog.Apply(ScanTask.Photos, current, keepingChoices: true).NamingTemplate);
+        current.NamingTemplate = "Photo {date} {counter}";
+        Assert.Equal("Scan {date} {counter}", TaskCatalog.Apply(ScanTask.Document, current, keepingChoices: true).NamingTemplate);
+    }
+
+    [Fact]
+    public void Restoring_GivesBackTheUsersChoicesOnlyWhereTheTaskSetThem()
+    {
+        var user = new ScanSettings { NamingTemplate = "Invoice {date}" };
+        user.Output.PdfSize = PdfSizePreset.Smallest;
+        user.Output.AfterSave = AfterSaveAction.Open;
+        var kept = new KeptChoices(user);
+        var email = TaskCatalog.Apply(ScanTask.Email, user, keepingChoices: true);
+        var back = TaskCatalog.Restoring(kept, ScanTask.Email, email);
+        Assert.Equal(PdfSizePreset.Smallest, back.Output.PdfSize);
+        Assert.Equal(AfterSaveAction.Open, back.Output.AfterSave);
+        Assert.Equal("Invoice {date}", back.NamingTemplate);
+        var edited = email.Clone();
+        edited.Output.PdfSize = PdfSizePreset.Best;
+        Assert.Equal(PdfSizePreset.Best, TaskCatalog.Restoring(kept, ScanTask.Email, edited).Output.PdfSize);
+        var receipt = TaskCatalog.Apply(ScanTask.Receipt, user, keepingChoices: true);
+        Assert.Equal("Invoice {date}", TaskCatalog.Restoring(kept, ScanTask.Receipt, receipt).NamingTemplate);
+        Assert.Equal("Receipt {docdate} {counter}", TaskCatalog.Restoring(kept, ScanTask.Document, receipt).NamingTemplate);
+    }
+
+    [Fact]
+    public void SetChoicesNote_NamesWhatTheTaskChanged()
+    {
+        var user = new ScanSettings { NamingTemplate = "Invoice {date}" };
+        user.Output.PdfSize = PdfSizePreset.Smallest;
+        var email = TaskCatalog.Apply(ScanTask.Email, user, keepingChoices: true);
+        Assert.Equal("This task sets the PDF size. This task sets the action after saving.",
+                     TaskCatalog.SetChoicesNote(ScanTask.Email, user, email));
+        var receipt = TaskCatalog.Apply(ScanTask.Receipt, user, keepingChoices: true);
+        Assert.Equal("This task sets the file name. This task sets the PDF size.",
+                     TaskCatalog.SetChoicesNote(ScanTask.Receipt, user, receipt));
+        var document = TaskCatalog.Apply(ScanTask.Document, user, keepingChoices: true);
+        Assert.Equal("", TaskCatalog.SetChoicesNote(ScanTask.Document, user, document));
+        Assert.Equal("", TaskCatalog.SetChoicesNote(ScanTask.Receipt, receipt, receipt));
+    }
+
+    [Fact]
     public void Apply_TaskSettingsTable()
     {
         var current = Customized();

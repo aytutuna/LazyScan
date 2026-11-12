@@ -175,6 +175,7 @@ public final class AppState: ObservableObject {
             // A task the settings no longer fit (the mode changed by hand, or a scanner without
             // the task's source) ends; its steps follow the task (AppState+Tasks.swift).
             if let task = settings.task, !TaskCatalog.fits(task, settings) { settings.taskId = nil }
+            if settings.taskId == nil && !taskChoicesNote.isEmpty { taskChoicesNote = "" }
             syncTaskFlow()
             syncCameraSides()
             if !copyPages.isEmpty && !isCopyFlow && !copyIsOfQueue { copyPages = [] }
@@ -481,6 +482,12 @@ public final class AppState: ObservableObject {
     /// closes them, for this session only: kept here, not in the inspector, so they stay open when the
     /// inspector is shown again. Never remembered across launches.
     @Published public package(set) var sectionsOpenedByTask: Set<String> = []
+    /// The file name template, PDF size and after-save action the user had before the task that sets its own
+    /// (`startTask(_:keepingChoices:)`); kept in memory only, so a task left after a relaunch falls back to the defaults.
+    var keptChoices: KeptChoices?
+    /// What the active task set of those choices, in words for the task banner; empty when it set none
+    /// or no task is active.
+    @Published public package(set) var taskChoicesNote: String = ""
     /// Turning over by hand, the fronts and backs did not pair up, e.g. "3 fronts but 2 backs";
     /// nil otherwise. The user scans the backs again, combines the pages as they are, or keeps
     /// the fronts only.

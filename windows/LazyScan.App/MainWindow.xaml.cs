@@ -756,7 +756,10 @@ public partial class MainWindow : Window
         // The step's short line on screen; its fuller guidance behind the ⓘ. Screen readers get both.
         string prompt = step?.Prompt ?? task?.Subtitle ?? DuplexMode.Manual.Hint();
         string help = step?.Help ?? "";
+        string note = ViewModel.TaskChoicesNote;
+        if (note.Length > 0) help = help.Length > 0 ? help + "\n\n" + note : note;
         string spoken = step?.FullPrompt ?? prompt;
+        if (note.Length > 0) spoken += " " + note;
         bool promptChanged = TaskBannerPrompt.Text != prompt;
         TaskBannerPrompt.Text = prompt;
         AutomationProperties.SetName(TaskBannerPrompt, spoken);
