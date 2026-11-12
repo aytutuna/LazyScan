@@ -96,25 +96,105 @@ public sealed partial class AppViewModel
             foreach (var page in processed)
             {
                 token.ThrowIfCancellationRequested();
-                all.AddRange(SplitReceipts(page, s, token).Select(p => new PhotoItem(p) { DatesShown = byDate }));
+                all.AddRange(SplitReceipts(page, s, token).Select(p => new PhotoItem(p) { DatesShown = byDate, IsReceipt = true }));
             }
             return all;
         }, token);
         if (_switchGeneration != generation) return;
         token.ThrowIfCancellationRequested();
-        // Every page's full-resolution scan stays while the review is open, for Fix crop.
-        _photoSourceImages = processed.ToDictionary(p => p.Id, p => p.Image);
-        PhotoItem.Renumber(found);
-        DetectedPhotos = new System.Collections.ObjectModel.ObservableCollection<PhotoItem>(found);
-        IsReceiptReview = true;
-        RecordCaptures(found.Select(item => item.Photo.Id));
-        ShowPhotoReview = found.Count > 0;
-        if (!ShowPhotoReview) _photoSourceImages = [];
-        SetStatus(Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts."), new(new StatusHead.Found(found.Count, FileKind.Receipt)));
+        if (_scanningMore)
+        {
+            // Scan more: the new receipts follow the ones already in the review, whose sources stay.
+            foreach (var page in processed) _photoSourceImages[page.Id] = page.Image;
+            foreach (var item in found) DetectedPhotos.Add(item);
+            PhotoItem.Renumber(DetectedPhotos);
+            RecordCaptures(found.Select(item => item.Photo.Id));
+            ShowPhotoReview = true;
+        }
+        else
+        {
+            // Every page's full-resolution scan stays while the review is open, for Fix crop.
+            _photoSourceImages = processed.ToDictionary(p => p.Id, p => p.Image);
+            PhotoItem.Renumber(found);
+            DetectedPhotos = new System.Collections.ObjectModel.ObservableCollection<PhotoItem>(found);
+            IsReceiptReview = true;
+            RecordCaptures(found.Select(item => item.Photo.Id));
+            ShowPhotoReview = found.Count > 0;
+            if (!ShowPhotoReview) _photoSourceImages = [];
+        }
+        string foundText = found.Count == 0 && _scanningMore
+            ? Loc.T("Found no receipts in that scan.")
+            : Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts.");
+        SetStatus(foundText, new(new StatusHead.Found(found.Count, FileKind.Receipt)));
         if (byDate) foreach (var item in found) ReadReceiptDate(item);
     }
 
     private Task _receiptReads = Task.CompletedTask;
+
+    private bool _scanningMore;
+
+    /// <summary>Scan more is under way: the review is out of sight, with its receipts kept, while the next scan runs.</summary>
+    public bool IsScanningMore => _scanningMore;
+
+    /// <summary>
+    /// Scans again with the review's receipts kept; the receipts found are added after them and the review
+    /// comes back, with the receipts it had when the scan failed, was cancelled or found nothing.
+    /// </summary>
+    public async Task ScanMoreReceipts()
+    {
+        if (IsBusy || !IsReceiptReview || !ShowPhotoReview) return;
+        _scanningMore = true;
+        ShowPhotoReview = false;
+        NotifyAll();
+        try
+        {
+            await PerformScan();
+        }
+        finally
+        {
+            _scanningMore = false;
+            ShowPhotoReview = DetectedPhotos.Count > 0;
+            NotifyAll();
+        }
+    }
+
+    /// <summary>The cards' numbers and Join buttons follow a receipt being kept or left out.</summary>
+    public void RefreshJoins()
+    {
+        PhotoItem.Renumber(DetectedPhotos);
+        NotifyAll();
+    }
+
+    /// <summary>Makes a receipt and the one before it one receipt of two pieces.</summary>
+    public void JoinWithPrevious(PhotoItem item)
+    {
+        int index = DetectedPhotos.IndexOf(item);
+        if (IsBusy || index < 1 || !item.CanJoin) return;
+        var previous = DetectedPhotos[index - 1];
+        Receipts.Join(previous.Photo, item.Photo);
+        previous.SecondThumbnail ??= item.Thumbnail;
+        DetectedPhotos.RemoveAt(index);
+        RefreshJoins();
+    }
+
+    /// <summary>Takes a joined receipt apart again: each piece is a receipt of its own, in place.</summary>
+    public void SplitReceipt(PhotoItem item)
+    {
+        int index = DetectedPhotos.IndexOf(item);
+        if (IsBusy || index < 0 || !item.IsJoined) return;
+        var pieces = Receipts.Split(item.Photo);
+        item.SecondThumbnail = null;
+        var added = new List<PhotoItem>();
+        for (int i = 1; i < pieces.Count; i++)
+        {
+            var card = new PhotoItem(pieces[i]) { DatesShown = item.DatesShown, IsReceipt = true };
+            DetectedPhotos.Insert(index + i, card);
+            added.Add(card);
+        }
+        PhotoItem.Renumber(DetectedPhotos);
+        if (item.DatesShown) foreach (var card in added) ReadReceiptDate(card);
+        NotifyAll();
+    }
 
     /// <summary>A receipt is turned in the review: its text and date are read again from the new image.</summary>
     public void RotateReviewPhoto(PhotoItem item)
@@ -197,6 +277,14 @@ public sealed partial class AppViewModel
             await Settled(_recropChain);
             var items = DetectedPhotos.Where(p => p.Photo.Included).ToList();
             var receipts = items.Select(p => p.Photo).ToList();
+            // A joined receipt is several pieces: its pages follow one another in the lists below.
+            var pieces = new List<DetectedPhoto>();
+            var spans = new List<(int Start, int Count)>();
+            foreach (var receipt in receipts)
+            {
+                spans.Add((pieces.Count, receipt.Pieces.Count));
+                pieces.AddRange(receipt.Pieces);
+            }
             if (receipts.Count == 0) return;
             // Receipts still being read since the review opened are waited for, not read again.
             int pending = items.FindIndex(p => p.IsReading);
@@ -210,32 +298,36 @@ public sealed partial class AppViewModel
             if (format == OutputFormat.Pdf) ProtectionFor(s);
             bool combine = Receipts.Combines(s.TaskOptions.ReceiptCombine, s.Format, receipts.Count);
 
-            // 1. Each receipt as shown, its text read once (in the review, when it was read for the date).
+            // 1. Each piece as shown, its text read once (in the review, when it was read for the date).
             var images = new List<RgbaImage>();
             var lines = new List<IReadOnlyList<OcrLine>?>();
             var dates = new List<DocumentDate?>();
             string? ocrProblem = null;
             for (int i = 0; i < receipts.Count; i++)
             {
-                token.ThrowIfCancellationRequested();
                 var receipt = receipts[i];
-                var image = await Task.Run(() => receipt.RotationQuarterTurns == 0
-                    ? receipt.Image
-                    : ImagePipeline.Rotate(receipt.Image, receipt.RotationQuarterTurns), token);
-                images.Add(image);
-                var reading = receipt.IsRead ? receipt.Reading : null;
-                if (reading is null && readsText)
+                DocumentDate? found = null;
+                for (int k = spans[i].Start; k < spans[i].Start + spans[i].Count; k++)
                 {
-                    StatusMessage = Loc.T("Reading receipt {0} of {1}…", i + 1, receipts.Count);
-                    NotifyAll();
-                    reading = await ReadReceipt(image, receipt.RotationQuarterTurns, byDate, dayFirst, OcrLanguages(s), token);
+                    token.ThrowIfCancellationRequested();
+                    var piece = pieces[k];
+                    var image = await Task.Run(() => piece.RotationQuarterTurns == 0
+                        ? piece.Image
+                        : ImagePipeline.Rotate(piece.Image, piece.RotationQuarterTurns), token);
+                    images.Add(image);
+                    var reading = piece.IsRead ? piece.Reading : null;
+                    if (reading is null && readsText)
+                    {
+                        StatusMessage = Loc.T("Reading receipt {0} of {1}…", i + 1, receipts.Count);
+                        NotifyAll();
+                        reading = await ReadReceipt(image, piece.RotationQuarterTurns, byDate, dayFirst, OcrLanguages(s), token);
+                    }
+                    if (reading?.Problem is { } problem) ocrProblem ??= problem;
+                    lines.Add(reading?.Lines);
+                    found ??= reading?.Date;
                 }
-                if (reading?.Problem is { } problem) ocrProblem ??= problem;
-                // A date typed in the review replaces the one found.
-                var date = !byDate ? null : receipt.TypedDate is not null ? receipt.ReceiptDate : reading?.Date;
-                var read = reading?.Lines;
-                lines.Add(read);
-                dates.Add(date);
+                // A receipt is named by the first date found on its pieces; a date typed in the review replaces it.
+                dates.Add(!byDate ? null : receipt.TypedDate is not null ? receipt.ReceiptDate : found);
             }
 
             // 2. The files, all or nothing.
@@ -247,7 +339,7 @@ public sealed partial class AppViewModel
                 var text = new PdfText();
                 foreach (int i in indices)
                 {
-                    if (lines[i] is { } l) text.Pages.Add(OcrPage.Of(l, images[i].Width, images[i].Height, receipts[i].Dpi));
+                    if (lines[i] is { } l) text.Pages.Add(OcrPage.Of(l, images[i].Width, images[i].Height, pieces[i].Dpi));
                     else text.Problem ??= ocrProblem ?? Loc.T("The text could not be read.");
                 }
                 // A text file that cannot be written is reported; the PDF is kept.
@@ -259,11 +351,11 @@ public sealed partial class AppViewModel
                 {
                     StatusMessage = Loc.T("Writing the PDF…");
                     NotifyAll();
-                    var pages = images.Select((image, i) => new ScannedPage(image, receipts[i].Dpi, ColorMode.Grayscale)).ToList();
+                    var pages = images.Select((image, i) => new ScannedPage(image, pieces[i].Dpi, ColorMode.Grayscale)).ToList();
                     string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates)),
                                                            token, knownLines: lines);
                     saved.Add(path);
-                    await WriteText(path, Enumerable.Range(0, receipts.Count).ToList());
+                    await WriteText(path, Enumerable.Range(0, images.Count).ToList());
                     return;
                 }
                 for (int i = 0; i < receipts.Count; i++)
@@ -272,18 +364,18 @@ public sealed partial class AppViewModel
                     StatusMessage = Loc.T("Saving receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
                     string path = await OutputPath(s, format.FileExtension(), documentDate: dates[i]);
+                    var (start, count) = spans[i];
                     if (format == OutputFormat.Pdf)
                     {
-                        var page = new ScannedPage(images[i], receipts[i].Dpi, ColorMode.Grayscale);
-                        path = await WritePdfAtomically([page], s, path, token, knownLines: [lines[i]]);
+                        var pages = Enumerable.Range(start, count).Select(k => new ScannedPage(images[k], pieces[k].Dpi, ColorMode.Grayscale)).ToList();
+                        path = await WritePdfAtomically(pages, s, path, token, knownLines: lines.GetRange(start, count));
                         saved.Add(path);
-                        await WriteText(path, [i]);
+                        await WriteText(path, Enumerable.Range(start, count).ToList());
                     }
                     else
                     {
-                        var image = images[i];
-                        int dpi = receipts[i].Dpi;
-                        saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(image, path, format, dpi, s.JpegQuality)));
+                        int dpi = pieces[start].Dpi;
+                        saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(Receipts.Stack(images.GetRange(start, count)), path, format, dpi, s.JpegQuality)));
                     }
                 }
             }, alsoWritten: textFiles);

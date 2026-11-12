@@ -304,16 +304,58 @@ public sealed class PhotoItem : INotifyPropertyChanged
     public int Number { get; set; }
     public int Count { get; set; }
 
-    public static void Renumber(List<PhotoItem> items)
+    /// <summary>Numbers the cards and works out which of them can join the one before.</summary>
+    public static void Renumber(IReadOnlyList<PhotoItem> items)
     {
         for (int i = 0; i < items.Count; i++)
         {
-            items[i].Number = i + 1;
-            items[i].Count = items.Count;
+            var item = items[i];
+            item.Number = i + 1;
+            item.Count = items.Count;
+            item.CanJoin = i > 0 && item.Included && items[i - 1].Included;
+            item.NotifyPosition();
         }
     }
 
-    public string CardName => Loc.T("Photo {0} of {1}, {2} × {3} px", Number, Count, Photo.Image.Width, Photo.Image.Height);
+    /// <summary>The card is a receipt of the receipts review: it can be joined to the one before.</summary>
+    public bool IsReceipt { get; set; }
+
+    /// <summary>The card and the one before it are both kept, so they can be joined.</summary>
+    public bool CanJoin { get; private set; }
+
+    /// <summary>Set when this receipt was joined to the one before it: the second piece, for the stacked picture.</summary>
+    public BitmapSource? SecondThumbnail { get; set; }
+
+    public double SecondRotationDegrees => Photo.Joined.Count > 0 ? Photo.Joined[0].RotationQuarterTurns * 90 : 0;
+
+    public bool IsJoined => Photo.Joined.Count > 0;
+    public bool JoinShown => IsReceipt && !IsJoined && Number > 1;
+    public bool SplitShown => IsReceipt && IsJoined;
+    public bool CropEnabled => !IsJoined;
+    public string PiecesCaption => Receipts.PiecesCaption(Photo.Pieces.Count);
+    public string JoinTip => CanJoin
+        ? Loc.T("Make this and the receipt before it one receipt, as consecutive pages")
+        : Loc.T("Both receipts must be included to join them");
+    public string CropTip => IsJoined ? Loc.T("Split apart to fix the crop") : Loc.T("Fix crop");
+
+    private void NotifyPosition()
+    {
+        foreach (var name in (string[])[nameof(CardName), nameof(KeepName), nameof(CropName), nameof(RotateName), nameof(CanJoin),
+                                        nameof(JoinShown), nameof(SplitShown), nameof(IsJoined), nameof(CropEnabled), nameof(CropTip),
+                                        nameof(JoinTip), nameof(PiecesCaption), nameof(SecondThumbnail), nameof(SecondRotationDegrees)])
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public string CardName
+    {
+        get
+        {
+            string name = Loc.T("Photo {0} of {1}, {2} × {3} px", Number, Count, Photo.Image.Width, Photo.Image.Height);
+            return IsJoined ? Loc.T("{0}, {1}", name, PiecesCaption) : name;
+        }
+    }
     public string KeepName => Loc.T("Keep photo {0}", Number);
     public string CropName => Loc.T("Fix crop of photo {0}", Number);
     public string RotateName => Loc.T("Rotate photo {0} clockwise", Number);
@@ -330,8 +372,9 @@ public sealed class PhotoItem : INotifyPropertyChanged
 
     public void RotateClockwise()
     {
-        Photo.RotationQuarterTurns = (Photo.RotationQuarterTurns + 1) % 4;
+        foreach (var piece in Photo.Pieces) piece.RotationQuarterTurns = (piece.RotationQuarterTurns + 1) % 4;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RotationDegrees)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SecondRotationDegrees)));
     }
 
     /// <summary>The review shows a date field on the card (receipts named by their date).</summary>
@@ -2470,7 +2513,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (IsBusy) return Task.FromResult(false);
         var item = DetectedPhotos.FirstOrDefault(p => p.Photo.Id == id);
-        if (item is null || PhotoSource(item.Photo) is not { } source) return Task.FromResult(false);
+        if (item is null || item.IsJoined || PhotoSource(item.Photo) is not { } source) return Task.FromResult(false);
         // Defensive cap (the editor already keeps crops on the page): a region far larger
         // than the page would only allocate a huge, mostly blank image.
         double diagonal = Math.Sqrt((double)source.Width * source.Width + (double)source.Height * source.Height);
@@ -2534,8 +2577,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 Number = current.Number,
                 Count = current.Count,
                 DatesShown = current.DatesShown,
+                IsReceipt = current.IsReceipt,
             };
             DetectedPhotos[index] = recropped;
+            PhotoItem.Renumber(DetectedPhotos);
             if (receipt && recropped.DatesShown) ReadReceiptDate(recropped);
             StatusMessage = Loc.T("Crop updated.");
             NotifyAll();

@@ -1333,6 +1333,20 @@
     "other": "Found {0} receipts."
   },
   "Found no receipts in that scan.": {},
+  "Scan more": {},
+  "Scan again and add the receipts to this review": {},
+  "Scan more receipts": {},
+  "Scans again and adds the receipts to this review": {},
+  "Scan more adds to these. Lay the next receipts on the glass first.": {},
+  "Scan more adds to these. Put the next receipts in the feeder first.": {},
+  "Join with previous": {},
+  "Join with previous receipt": {},
+  "Makes this and the previous receipt one receipt with two pieces": {},
+  "Make this and the receipt before it one receipt, as consecutive pages": {},
+  "Both receipts must be included to join them": {},
+  "Split apart": {},
+  "Split apart to fix the crop": {},
+  "Split the joined receipt": {},
   "{0} piece": {
     "other": "{0} pieces"
   },

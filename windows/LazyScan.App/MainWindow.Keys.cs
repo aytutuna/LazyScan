@@ -59,7 +59,8 @@ public partial class MainWindow
     {
         Button[] targets = (key, modifiers) switch
         {
-            (Key.Enter, ModifierKeys.Control) or (Key.F5, ModifierKeys.None) => [ScanButton],
+            (Key.Enter, ModifierKeys.Control) => [ScanButton, ReviewScanMoreButton],
+            (Key.F5, ModifierKeys.None) => [ScanButton],
             (Key.Enter, ModifierKeys.Control | ModifierKeys.Shift) => [PreviewButton],
             (Key.S, ModifierKeys.Control) => [SavePdfButton, ReviewSaveButton, IdCardSaveButton],
             (Key.O, ModifierKeys.Control) => [ImportPhotosButton],

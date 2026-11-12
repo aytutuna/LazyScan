@@ -49,7 +49,7 @@ UI per platform** architecture:
   zip package, written by hand so both platforms write the same bytes), receipts
   (`ReceiptProcessing.cs`: finding several receipts on the glass, turning each upright by
   reading its text with the review's Rotate undoing it, cleaning up faded thermal
-  print, and reading the receipt's date from its text for the `{docdate}` file name, shown and editable in the review), splitting a
+  print, and reading the receipt's date from its text for the `{docdate}` file name, shown and editable in the review; Scan more in the review adds the next scan's receipts, and Join with previous makes two pieces one receipt), splitting a
   stack into documents (`DocumentSplitter.cs`; `PatchCode.cs`: separator sheets with patch codes,
   read and drawn for printing; `Barcodes.cs`: barcode and QR separator sheets, the name a code gives
   a document, the QR sheet drawn for printing and Code 39 for the demo, with the reading itself left

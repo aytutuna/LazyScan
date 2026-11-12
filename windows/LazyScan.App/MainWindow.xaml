@@ -1617,10 +1617,20 @@
                 <DockPanel>
                     <Border DockPanel.Dock="Bottom" Padding="24,16">
                         <DockPanel>
+                            <!-- Receipts only: what to put in the scanner before Scan more. -->
+                            <TextBlock x:Name="ReviewHint" DockPanel.Dock="Top" Style="{StaticResource SecondaryBodyText}"
+                                       TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                 <Button x:Name="ReviewDiscardButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74D;" Content="{loc:T Discard}" MinWidth="120"
                                         Click="ReviewCancel_Click" />
+                                <Button x:Name="ReviewScanMoreButton" Style="{StaticResource IconTextButtonStyle}"
+                                        local:Icon.Glyph="&#xE8FE;" Content="{loc:T Scan more}" MinWidth="120" Margin="8,0,0,0"
+                                        ToolTip="{loc:T Scan again and add the receipts to this review}"
+                                        AutomationProperties.Name="{loc:T Scan more receipts}"
+                                        AutomationProperties.HelpText="{loc:T Scans again and adds the receipts to this review}"
+                                        AutomationProperties.AcceleratorKey="Ctrl+Enter"
+                                        Visibility="Collapsed" Click="ReviewScanMore_Click" />
                                 <Button x:Name="ReviewSaveButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE74E;" Content="{loc:T Save Photos}" MinWidth="120"
                                         HorizontalAlignment="Right" Margin="8,0,0,0"
@@ -1661,24 +1671,38 @@
                                                             <RowDefinition Height="Auto" />
                                                             <RowDefinition Height="Auto" />
                                                             <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
                                                         </Grid.RowDefinitions>
                                                         <Border x:Name="Well" Style="{StaticResource ImageWellStyle}" Height="160">
                                                             <Viewbox StretchDirection="DownOnly" Margin="5">
-                                                                <Image Source="{Binding Thumbnail}" MaxHeight="150" MaxWidth="190" FlowDirection="LeftToRight"
-                                                                       RenderOptions.BitmapScalingMode="HighQuality">
-                                                                    <Image.LayoutTransform>
-                                                                        <RotateTransform Angle="{Binding RotationDegrees}" />
-                                                                    </Image.LayoutTransform>
-                                                                </Image>
+                                                                <Grid>
+                                                                    <Image x:Name="SecondPiece" Source="{Binding SecondThumbnail}" MaxHeight="150" MaxWidth="190"
+                                                                           FlowDirection="LeftToRight" Margin="6,6,0,0" Visibility="Collapsed"
+                                                                           RenderOptions.BitmapScalingMode="HighQuality">
+                                                                        <Image.LayoutTransform>
+                                                                            <RotateTransform Angle="{Binding SecondRotationDegrees}" />
+                                                                        </Image.LayoutTransform>
+                                                                    </Image>
+                                                                    <Image x:Name="FirstPiece" Source="{Binding Thumbnail}" MaxHeight="150" MaxWidth="190" FlowDirection="LeftToRight"
+                                                                           RenderOptions.BitmapScalingMode="HighQuality">
+                                                                        <Image.LayoutTransform>
+                                                                            <RotateTransform Angle="{Binding RotationDegrees}" />
+                                                                        </Image.LayoutTransform>
+                                                                    </Image>
+                                                                </Grid>
                                                             </Viewbox>
                                                         </Border>
-                                                        <DockPanel Grid.Row="2" Margin="0,8,0,0">
+                                                        <TextBlock Grid.Row="1" Style="{StaticResource CaptionText}" Text="{Binding PiecesCaption}"
+                                                                   Margin="0,6,0,0" Visibility="{Binding IsJoined, Converter={StaticResource BoolToVisibility}}" />
+                                                        <DockPanel Grid.Row="3" Margin="0,8,0,0">
                                                             <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
                                                                     Content="&#xE7AD;" ToolTip="{loc:T Rotate}"
                                                                     AutomationProperties.Name="{Binding RotateName}"
                                                                     Click="ReviewRotate_Click" />
                                                             <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
-                                                                    Content="&#xE7A8;" ToolTip="{loc:T Fix crop}"
+                                                                    Content="&#xE7A8;" ToolTip="{Binding CropTip}" IsEnabled="{Binding CropEnabled}"
+                                                                    ToolTipService.ShowOnDisabled="True"
                                                                     AutomationProperties.Name="{Binding CropName}"
                                                                     Click="ReviewCrop_Click" />
                                                             <CheckBox Content="{loc:T Keep}" IsChecked="{Binding Included}" Click="ReviewKeep_Click"
@@ -1686,7 +1710,7 @@
                                                                       VerticalAlignment="Center" />
                                                         </DockPanel>
                                                         <!-- After the Keep row in the file so Tab reaches it last; Grid.Row puts it above. -->
-                                                        <DockPanel Grid.Row="1" Margin="0,8,0,0"
+                                                        <DockPanel Grid.Row="2" Margin="0,8,0,0"
                                                                    Visibility="{Binding DatesShown, Converter={StaticResource BoolToVisibility}}">
                                                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="6,0,0,0"
                                                                         VerticalAlignment="Center"
@@ -1715,6 +1739,19 @@
                                                                 <TextBlock Style="{StaticResource CaptionText}" Text="{loc:T Reading…}" VerticalAlignment="Center" />
                                                             </StackPanel>
                                                         </DockPanel>
+                                                        <Button Grid.Row="4" Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Stretch"
+                                                                Content="{loc:T Join with previous}" ToolTip="{Binding JoinTip}"
+                                                                ToolTipService.ShowOnDisabled="True"
+                                                                IsEnabled="{Binding CanJoin}"
+                                                                Visibility="{Binding JoinShown, Converter={StaticResource BoolToVisibility}}"
+                                                                AutomationProperties.Name="{loc:T Join with previous receipt}"
+                                                                AutomationProperties.HelpText="{loc:T Makes this and the previous receipt one receipt with two pieces}"
+                                                                Click="ReviewJoin_Click" />
+                                                        <Button Grid.Row="4" Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Stretch"
+                                                                Content="{loc:T Split apart}"
+                                                                Visibility="{Binding SplitShown, Converter={StaticResource BoolToVisibility}}"
+                                                                AutomationProperties.Name="{loc:T Split the joined receipt}"
+                                                                Click="ReviewSplit_Click" />
                                                     </Grid>
                                                 </Border>
                                                 <Border x:Name="Ring" CornerRadius="{StaticResource CardCornerRadius}" BorderThickness="2"
@@ -1724,6 +1761,10 @@
                                             <DataTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding Included}" Value="True">
                                                     <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsJoined}" Value="True">
+                                                    <Setter TargetName="SecondPiece" Property="Visibility" Value="Visible" />
+                                                    <Setter TargetName="FirstPiece" Property="Margin" Value="0,0,6,6" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding Included}" Value="False">
                                                     <Setter TargetName="Well" Property="Opacity" Value="0.45" />

@@ -816,6 +816,52 @@ public static class Receipts
             ? Loc.T("Save as One PDF")
             : Loc.Plural(included, "Save {0} Receipt", "Save {0} Receipts");
 
+    /// <summary>The caption of a joined receipt: "2 pieces".</summary>
+    public static string PiecesCaption(int pieces) => Loc.Plural(pieces, "{0} piece", "{0} pieces");
+
+    /// <summary>The review's hint under the receipts: what to put in the scanner before Scan more.</summary>
+    public static string ScanMoreHint(ScanSource source) => source == ScanSource.DocumentFeeder
+        ? Loc.T("Scan more adds to these. Put the next receipts in the feeder first.")
+        : Loc.T("Scan more adds to these. Lay the next receipts on the glass first.");
+
+    /// <summary>Makes <paramref name="next"/>, and the pieces joined to it, pieces of <paramref name="previous"/>, after its own.</summary>
+    public static void Join(DetectedPhoto previous, DetectedPhoto next)
+    {
+        previous.Joined.AddRange(next.Pieces);
+        next.Joined.Clear();
+    }
+
+    /// <summary>
+    /// Takes a joined receipt apart: its pieces, each a receipt again, in order, kept as the receipt was.
+    /// A single piece comes back alone.
+    /// </summary>
+    public static IReadOnlyList<DetectedPhoto> Split(DetectedPhoto receipt)
+    {
+        var pieces = receipt.Pieces;
+        receipt.Joined.Clear();
+        foreach (var piece in pieces) piece.Included = receipt.Included;
+        return pieces;
+    }
+
+    /// <summary>
+    /// The pieces of a receipt one under the other as a single image at the widest piece's width: how a
+    /// joined receipt is saved in an image format, which has one page.
+    /// </summary>
+    public static RgbaImage Stack(IReadOnlyList<RgbaImage> pieces)
+    {
+        if (pieces.Count == 1) return pieces[0];
+        int width = pieces.Max(p => p.Width);
+        var scaled = pieces.Select(p => p.Resized(width, Math.Max(1, (int)((long)p.Height * width / p.Width)))).ToList();
+        var result = RgbaImage.Filled(width, scaled.Sum(p => p.Height), 255, 255, 255);
+        int offset = 0;
+        foreach (var piece in scaled)
+        {
+            Buffer.BlockCopy(piece.Pixels, 0, result.Pixels, offset, piece.Pixels.Length);
+            offset += piece.Pixels.Length;
+        }
+        return result;
+    }
+
     /// <summary>The receipts go into one PDF: asked for, saved as PDF, and more than one.</summary>
     public static bool Combines(bool combine, OutputFormat format, int count) =>
         combine && OutputFormats.PageFormat(format) == OutputFormat.Pdf && count > 1;

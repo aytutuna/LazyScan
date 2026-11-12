@@ -335,7 +335,7 @@ public partial class MainWindow : Window
         {
             return Loc.Plural(pages, "{0} scanned page is still in the queue and not saved.", "{0} scanned pages are still in the queue and not saved.");
         }
-        if (ViewModel.ShowPhotoReview)
+        if (ViewModel.ShowPhotoReview || ViewModel.IsScanningMore)
         {
             return ViewModel.IsReceiptReview
                 ? Loc.T("The receipts found have not been saved.")
@@ -494,6 +494,12 @@ public partial class MainWindow : Window
             // Saving nothing would discard the batch: discarding is the Discard button's job.
             ReviewSaveButton.IsEnabled = !ViewModel.IsBusy && included > 0;
             ReviewDiscardButton.IsEnabled = !ViewModel.IsBusy;
+            bool receipts = ViewModel.IsReceiptReview;
+            var receiptsOnly = receipts ? Visibility.Visible : Visibility.Collapsed;
+            ReviewScanMoreButton.Visibility = receiptsOnly;
+            ReviewScanMoreButton.IsEnabled = !ViewModel.IsBusy && ViewModel.IsConnected;
+            ReviewHint.Visibility = receiptsOnly;
+            ReviewHint.Text = Receipts.ScanMoreHint(ViewModel.Settings.Source);
         }
 
         // The Saved tab re-reads the folder after every save (lazily, once it is visible).
@@ -2536,7 +2542,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Keep toggled: the "Save N Photos" count follows.</summary>
-    private void ReviewKeep_Click(object sender, RoutedEventArgs e) => RefreshFromViewModel();
+    private void ReviewKeep_Click(object sender, RoutedEventArgs e) => ViewModel.RefreshJoins();
+
+    private void ReviewScanMore_Click(object sender, RoutedEventArgs e) => _ = ViewModel.ScanMoreReceipts();
+
+    private void ReviewJoin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoItem item }) ViewModel.JoinWithPrevious(item);
+    }
+
+    private void ReviewSplit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoItem item }) ViewModel.SplitReceipt(item);
+    }
 
     private void ReviewRotate_Click(object sender, RoutedEventArgs e)
     {

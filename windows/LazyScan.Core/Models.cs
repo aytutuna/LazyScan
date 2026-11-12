@@ -1604,6 +1604,15 @@ public sealed class DetectedPhoto
     /// <summary>The date as typed in the receipt review; null until the user edits it, and then it replaces the one found.</summary>
     public string? TypedDate { get; set; }
 
+    /// <summary>
+    /// The pieces joined to this receipt after it, in order: a slip longer than the glass, scanned in
+    /// parts. The receipt is saved as this piece and then these, as consecutive pages under one name.
+    /// </summary>
+    public List<DetectedPhoto> Joined { get; } = [];
+
+    /// <summary>This piece and the ones joined to it.</summary>
+    public IReadOnlyList<DetectedPhoto> Pieces => [this, .. Joined];
+
     /// <summary>The reading is of the image as it is turned now.</summary>
     public bool IsRead => Reading?.QuarterTurns == RotationQuarterTurns;
 
