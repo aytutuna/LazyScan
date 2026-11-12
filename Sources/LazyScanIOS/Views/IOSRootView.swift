@@ -605,7 +605,6 @@ private struct CameraIntroCard: View {
             .accessibilityHint(Text(IOSCameraText.notNowHint))
             .accessibilityIdentifier("camera.intro.notNow")
         }
-        }
         .padding(24)
         .background(RoundedRectangle(cornerRadius: 20).fill(Color(uiColor: .systemBackground)))
         .padding(24)
