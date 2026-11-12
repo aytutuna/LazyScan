@@ -251,6 +251,27 @@ public sealed class CompanionRouterTests : IDisposable
     }
 
     [Fact]
+    public void Inbox_PendingDeletesAnInvalidPackageButKeepsAnUnreadableOne()
+    {
+        string folder = Path.Combine(_directory, "Inbox", "phone-0001");
+        Directory.CreateDirectory(folder);
+        string valid = Path.Combine(folder, "package-0001.lsdoc");
+        string corrupt = Path.Combine(folder, "package-0002.lsdoc");
+        string locked = Path.Combine(folder, "package-0003.lsdoc");
+        File.WriteAllBytes(valid, CompanionPackage.Make(CompanionFixtures.Minimal));
+        File.WriteAllBytes(corrupt, Encoding.ASCII.GetBytes("not a zip"));
+        File.WriteAllBytes(locked, CompanionPackage.Make(CompanionFixtures.Minimal));
+
+        using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.Equal(["package-0001"], _inbox.Pending().Select(p => p.PackageId));
+        }
+
+        Assert.False(File.Exists(corrupt));
+        Assert.True(File.Exists(locked));
+    }
+
+    [Fact]
     public async Task Inbox_RefusesAnOversizeUploadBeforeReadingIt()
     {
         string secret = await PairPhone();

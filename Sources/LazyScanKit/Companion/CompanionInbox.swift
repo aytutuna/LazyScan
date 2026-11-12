@@ -1,8 +1,11 @@
 import Foundation
+import os
 
 // Twin of windows/LazyScan.Core/Companion/CompanionInbox.cs: where uploads from paired phones
 // land on the desktop, with the same checks, the same received.json per phone and the same
 // idempotence by package id.
+
+private let inboxLog = Logger(subsystem: "LazyScan", category: "Companion")
 
 /// A package a paired phone sent, checked and waiting to be added to the queue. `url` is the package
 /// file in the inbox; `CompanionInbox.release` deletes it once imported.
@@ -172,7 +175,8 @@ public final class CompanionInbox: @unchecked Sendable {
     }
 
     /// The packages received but not released (the app ended before adding them), oldest first, each
-    /// read again; a file that no longer reads is deleted.
+    /// read again; a file that is no longer a valid package is deleted, one that cannot be read stays for
+    /// the next start.
     public func pending() -> [ReceivedPackage] {
         var pending: [ReceivedPackage] = []
         let manager = FileManager.default
@@ -190,8 +194,10 @@ public final class CompanionInbox: @unchecked Sendable {
                     let values = try? file.resourceValues(forKeys: [.contentModificationDateKey])
                     pending.append(ReceivedPackage(deviceId: deviceId, packageId: packageId, url: file, document: document,
                                                    target: .new, received: values?.contentModificationDate ?? Date.distantPast))
-                } catch {
+                } catch is CompanionPackageError {
                     CompanionInbox.tryDelete(file)
+                } catch {
+                    inboxLog.error("Could not read \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
         }

@@ -299,6 +299,23 @@ final class CompanionRouterTests: XCTestCase {
         XCTAssertTrue(inbox.pending().isEmpty)
     }
 
+    func testInbox_PendingDeletesAnInvalidPackageButKeepsAnUnreadableOne() throws {
+        let folder = directory.appendingPathComponent("Inbox/phone-0001", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let valid = folder.appendingPathComponent("package-0001.lsdoc")
+        let corrupt = folder.appendingPathComponent("package-0002.lsdoc")
+        let locked = folder.appendingPathComponent("package-0003.lsdoc")
+        try CompanionPackage.make(CompanionFixtures.minimal).write(to: valid)
+        try Data("not a zip".utf8).write(to: corrupt)
+        try CompanionPackage.make(CompanionFixtures.minimal).write(to: locked)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: locked.path) }
+
+        XCTAssertEqual(inbox.pending().map(\.packageId), ["package-0001"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: corrupt.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: locked.path))
+    }
+
     func testInbox_RefusesAnOversizeUploadBeforeReadingIt() async throws {
         let secret = try await pairPhone()
         let length = Int64(CompanionProtocol.maxUploadBytes) + 1

@@ -130,7 +130,8 @@ public sealed class CompanionInbox
 
     /// <summary>
     /// The packages received but not released (the app ended before adding them), oldest first,
-    /// each read again; a file that no longer reads is deleted.
+    /// each read again; a file that is no longer a valid package is deleted, one that cannot be read stays for
+    /// the next start.
     /// </summary>
     public IReadOnlyList<ReceivedPackage> Pending()
     {
@@ -150,9 +151,13 @@ public sealed class CompanionInbox
                     pending.Add(new ReceivedPackage(deviceId, packageId, path, document, CompanionTarget.New,
                                                     new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)));
                 }
-                catch (IOException)
+                catch (CompanionPackageException)
                 {
                     TryDelete(path);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Could not read {System.IO.Path.GetFileName(path)}: {e.Message}");
                 }
             }
         }
