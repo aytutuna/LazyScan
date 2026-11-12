@@ -20,7 +20,12 @@ public struct PageThumbnail: Equatable, Sendable {
     /// The look at `page` (pixels of `frame`); the whole frame when nil.
     public init(_ frame: RgbaImage, page: Quad?) {
         let gray: GrayImage = GrayImage.luma(frame)
-        let box: FrameQualityArea = FrameQuality.area(page, width: gray.width, height: gray.height)
+        var box: FrameQualityArea = FrameQuality.area(page, width: gray.width, height: gray.height)
+        // The page's edges are only found to a pixel or two. Cells that reach out over the table by more
+        // than that keep the look the same when the edge moves.
+        let reach: Int = FrameQuality.margin
+        box = FrameQualityArea(x0: max(box.x0 - reach, 0), y0: max(box.y0 - reach, 0),
+                               x1: min(box.x1 + reach, gray.width), y1: min(box.y1 + reach, gray.height))
         let side: Int = PageThumbnail.side
         let boxWidth: Int = box.x1 - box.x0
         let boxHeight: Int = box.y1 - box.y0
