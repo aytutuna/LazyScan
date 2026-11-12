@@ -104,6 +104,9 @@ public struct IOSRootView: View {
         .onChange(of: state.devices) { (_: [ScannerInfo], _: [ScannerInfo]) in
             followMode()
         }
+        .onChange(of: isSearching) { (_: Bool, _: Bool) in
+            followMode()
+        }
         .onChange(of: state.capabilities != nil) { (_: Bool, _: Bool) in
             followMode()
         }
@@ -329,7 +332,12 @@ public struct IOSRootView: View {
     /// The selection follows the mode: in printer mode the remembered scanner once it is listed (at launch,
     /// and once it has dropped off the list, the state waits for it too, `AppState.start(onlySelecting:)`;
     /// one the app moved to another connection stays the one remembered), else no scanner. Picked again
-    /// while connected, so a scanner found later does not take its place.
+    /// while connected, so a scanner found later does not take its place. With none remembered, the only
+    /// scanner listed is picked.
+    private var isSearching: Bool {
+        picker.network?.backend.isSearching ?? false
+    }
+
     private func followMode() {
         guard selectionCanMove else { return }
         if let listed = IOSShell.followedScanner(mode, scanner: scanner, devices: state.devices,
@@ -340,6 +348,10 @@ public struct IOSRootView: View {
             if listed != state.selectedDeviceID || state.capabilities != nil {
                 state.userSelectDevice(listed)
             }
+        } else if let lone = IOSShell.loneScanner(mode, scanner: scanner, selected: state.selectedDeviceID,
+                                                  groups: state.deviceGroups, searching: isSearching) {
+            scanner = lone
+            state.userSelectDevice(lone)
         } else if state.selectedDeviceID != nil {
             state.userSelectNoDevice(resetsManualSides: false)
         }

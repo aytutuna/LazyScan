@@ -816,7 +816,7 @@ struct ScanScreen: View {
     private func optionsSheet(_ group: ScanOptionGroup) -> some View {
         sheetContent(group)
             .modifier(ScannerPickerSheets(picker: picker, showsAdd: $showsAdd, showsTroubleshooter: $showsTroubleshooter,
-                                          asksAboutCard: $cardAskedInOptions))
+                                          asksAboutCard: $cardAskedInOptions, onPicked: closeOptions))
             .modifier(IdCardDiscardQuestion(state: state, asked: $cardAskedInOptions))
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -875,7 +875,7 @@ struct ScanScreen: View {
             }
         } else {
             ScannerPickerSections(picker: picker, onAdd: openAdd, onTroubleshoot: openPickerTroubleshooter,
-                                  asksAboutCard: $cardAskedInOptions)
+                                  asksAboutCard: $cardAskedInOptions, onPicked: closeOptions)
         }
         if sourceDevice != nil && usesFlatbed {
             Section {

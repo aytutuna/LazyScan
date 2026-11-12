@@ -422,6 +422,16 @@ public enum IOSShell {
         return nil
     }
 
+    /// The scanner printer mode picks on its own: with none remembered and none selected, the only scanner
+    /// listed (the demo scanner is never one) once the search has settled, since discovery lists scanners
+    /// one at a time. A remembered scanner, once listed, is `followedScanner`.
+    public static func loneScanner(_ mode: IOSScanMode, scanner: String, selected: String?,
+                                   groups: [DeviceGroup], searching: Bool) -> String? {
+        guard mode == .printer, scanner.isEmpty, selected == nil, !searching else { return nil }
+        let found: [DeviceGroup] = groups.filter { (group: DeviceGroup) -> Bool in !group.primary.isDemo }
+        return found.count == 1 ? found[0].primary.id : nil
+    }
+
     /// The scanner the selection follows in `mode`: the remembered one's listed row in printer mode
     /// (`listedScanner`); none with the camera, or while that scanner is not listed.
     public static func followedScanner(_ mode: IOSScanMode, scanner: String, devices: [ScannerInfo],

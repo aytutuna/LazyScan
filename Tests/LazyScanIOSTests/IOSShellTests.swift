@@ -489,6 +489,22 @@ final class IOSShellTests: XCTestCase {
         XCTAssertNil(IOSShell.followedScanner(.printer, scanner: "escl:y", devices: [direct], groups: groups))
     }
 
+    func test_loneScanner_isTheOnlyRealScannerListed_whenNoneIsRememberedOrSelected() {
+        let office: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
+        let other: ScannerInfo = ScannerInfo(id: "escl:y", name: "Hall MFP", transport: "Network", backend: "escl")
+        let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")
+        let officeGroup: DeviceGroup = DeviceGroup(key: "x", primary: office, members: [office])
+        let otherGroup: DeviceGroup = DeviceGroup(key: "y", primary: other, members: [other])
+        let demoGroup: DeviceGroup = DeviceGroup(key: "demo", primary: demo, members: [demo])
+        XCTAssertEqual(IOSShell.loneScanner(.printer, scanner: "", selected: nil, groups: [officeGroup, demoGroup], searching: false), "escl:x")
+        XCTAssertNil(IOSShell.loneScanner(.printer, scanner: "", selected: nil, groups: [officeGroup, otherGroup, demoGroup], searching: false))
+        XCTAssertNil(IOSShell.loneScanner(.printer, scanner: "", selected: nil, groups: [demoGroup], searching: false))
+        XCTAssertNil(IOSShell.loneScanner(.camera, scanner: "", selected: nil, groups: [officeGroup], searching: false))
+        XCTAssertNil(IOSShell.loneScanner(.printer, scanner: "escl:y", selected: nil, groups: [officeGroup], searching: false))
+        XCTAssertNil(IOSShell.loneScanner(.printer, scanner: "", selected: "mock:demo", groups: [officeGroup, demoGroup], searching: false))
+        XCTAssertNil(IOSShell.loneScanner(.printer, scanner: "", selected: nil, groups: [officeGroup], searching: true))
+    }
+
     func test_rightToLeft_isShownWhileTheSourceInUseCutsSpreads() {
         let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
         let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")

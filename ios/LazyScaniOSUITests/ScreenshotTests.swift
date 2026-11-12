@@ -466,10 +466,13 @@ final class ScreenshotTests: XCTestCase {
         if tapIfThere(app, "options.row.scanner", for: "05-scanner-sheet") {
             let demo: XCUIElement = element(app, "scanner.row.mock:demo")
             if demo.waitForExistence(timeout: 5) {
-                demo.tap()
                 Thread.sleep(forTimeInterval: 1)
                 shot("05-scanner-sheet")
-                flatbedScreens(app)
+                demo.tap()
+                Thread.sleep(forTimeInterval: 1)
+                if tapIfThere(app, "options.row.scanner", for: "05a-flatbed") {
+                    flatbedScreens(app)
+                }
             } else {
                 shot("skipped-05-scanner-sheet")
             }

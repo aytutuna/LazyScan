@@ -55,8 +55,6 @@ final class ScannerPickerTests: XCTestCase {
         app.switchToPrinter()
         app.pickTask("document")
         app.pickScanner("scanner.row.mock:demo")
-        XCTAssertFalse(app.switches["options.bothSides"].exists, "Both sides is the camera's")
-        app.closeOptions()
         let scan: XCUIElement = app.buttons["scan.button"]
         XCTAssertTrue(scan.waitForExistence(timeout: 30), "Scan with the demo scanner")
         XCTAssertTrue(app.buttons["save.button"].exists, "Save beside Scan")

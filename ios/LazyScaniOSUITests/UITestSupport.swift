@@ -204,29 +204,30 @@ extension XCUIApplication {
     }
 
     /// In printer mode, opens the Scanner options and picks the scanner there by its row
-    /// ("scanner.row.mock:demo" for the demo scanner). The sheet stays open, at full height. The app keeps
-    /// the scanner from run to run.
+    /// ("scanner.row.mock:demo" for the demo scanner). The sheet closes on the pick. The app keeps the
+    /// scanner from run to run.
     @MainActor
     func pickScanner(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
         openOptions("Scanner", file: file, line: line)
         let row: XCUIElement = descendants(matching: .any)[id].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 30), "The \(id) row in the Scanner options", file: file, line: line)
+        let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
         // Right after launch a pick may not take (the app busy for a moment, or the selection still following
-        // the mode as the scanners are listed), so the row is tapped again until it does, three times at most.
+        // the mode as the scanners are listed), so the row is tapped again until the sheet closes, three
+        // times at most.
         var taps: Int = 0
         repeat {
             waitUntilEnabled(row, "The \(id) row", file: file, line: line)
             row.tap()
             taps += 1
-        } while !becomesSelected(row, timeout: 10) && taps < 3
-        waitUntilSelected(row, "\(id) picked", file: file, line: line)
-        growOptions()
+        } while !closes(done, timeout: 10) && taps < 3
+        waitUntilGone(done, "The Scanner options closed on the pick", file: file, line: line)
     }
 
     @MainActor
-    private func becomesSelected(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
-        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: element)
-        return XCTWaiter.wait(for: [picked], timeout: timeout) == .completed
+    private func closes(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
+        return XCTWaiter.wait(for: [gone], timeout: timeout) == .completed
     }
 
     /// Drags a sheet from half height to full: the scanner's settings sit below the list, and the list makes

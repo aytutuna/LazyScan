@@ -377,7 +377,8 @@ does so after a refused certificate, or for a scanner whose certificate is alrea
 Application Support/Lazy Scan/Network, out of backups. Launched with `-demoScanner` (the UI
 tests), the app has the Demo Scanner alone and never searches the network; otherwise the Demo
 Scanner is a row of its own below the scanners found ("Try scanning without a scanner"), never
-selected on its own and kept once picked. The search itself is
+selected on its own and kept once picked. With no scanner picked before, the only scanner found is
+picked on its own (the Demo Scanner never is), and the Scanner options close after a pick. The search itself is
 checked with stand-ins for the system's browsers, and the prompt, a denial, client-isolated Wi-Fi,
 IPv6 and a feeder batch while the app goes to the background need a real iPhone and scanner.
 

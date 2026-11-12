@@ -20,7 +20,6 @@ final class SmokeTests: XCTestCase {
         app.switchToPrinter()
         app.pickTask("document")
         app.pickScanner("scanner.row.mock:demo")
-        app.closeOptions()
 
         let scan: XCUIElement = app.buttons["scan.button"]
         XCTAssertTrue(scan.waitForExistence(timeout: 30), "The scan screen's Scan button")
@@ -63,7 +62,6 @@ final class SmokeTests: XCTestCase {
         app.switchToPrinter()
         app.pickTask("document")
         app.pickScanner("scanner.row.mock:demo")
-        app.closeOptions()
         let scan: XCUIElement = app.buttons["scan.button"]
         XCTAssertTrue(scan.waitForExistence(timeout: 30), "The scan screen's Scan button")
         waitUntilEnabled(scan, timeout: 60)
