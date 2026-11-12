@@ -341,6 +341,13 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertEqual(IOSCameraLens.megapixelsKey, "camera.megapixels")
     }
 
+    func test_theZoomReadout_hasOneDecimalBelowTen_andNoneFromTen() {
+        XCTAssertEqual(IOSCameraText.zoomLabel(1), "1.0x")
+        XCTAssertEqual(IOSCameraText.zoomLabel(2.4), "2.4x")
+        XCTAssertEqual(IOSCameraText.zoomLabel(10), "10x")
+        XCTAssertEqual(IOSCameraText.zoomLabel(12.6), "13x")
+    }
+
     func test_aSizePicked_isTaken_andTheDefaultWhereThisPhoneDoesNotOfferIt() {
         let twelve = IOSPhotoSize(width: 4032, height: 3024)
         let twentyFour = IOSPhotoSize(width: 5712, height: 4284)

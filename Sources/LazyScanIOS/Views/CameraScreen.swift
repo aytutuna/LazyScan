@@ -43,6 +43,9 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
     /// The size just picked here that may not fit in this phone's memory, for its alert.
     @State private var memoryWarned: IOSPhotoSize?
+    /// The preview's zoom, 1 at the wide lens's view, and whether its readout is up (while pinching and a moment after).
+    @State private var zoomValue: Double = 1
+    @State private var showsZoom: Bool = false
     private let resting: Bool
     private let holdsAuto: Bool
     private let waitsForIntro: Bool
@@ -253,10 +256,19 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         ZStack {
             Color.black
             if model.showsPreview, let controller = model.driver as? IOSCameraController {
+                let zoomText: String = IOSCameraText.zoomLabel(controller.zoom)
                 CameraPreview(controller: controller, outline: model.live?.outline,
-                              steady: model.live?.isSteady ?? false, look: filterLook)
+                              steady: model.live?.isSteady ?? false, look: filterLook, active: model.canShoot,
+                              onZoom: showZoom)
                     .environment(\.layoutDirection, .leftToRight)
-                    .accessibilityHidden(true)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityHidden(!model.canShoot)
+                    .accessibilityLabel(Text(IOSCameraText.zoomLabel))
+                    .accessibilityValue(Text(zoomText))
+                    .accessibilityAdjustableAction { (direction: AccessibilityAdjustmentDirection) in
+                        stepZoom(controller, up: direction == .increment)
+                    }
+                    .accessibilityIdentifier("camera.zoom")
             }
             if shownMessage == nil, let prompt = cardPrompt {
                 IdCardGuide(prompt: prompt)
@@ -274,8 +286,30 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+        .onChange(of: model.canShoot) { (_: Bool, can: Bool) in
+            // The camera starts afresh at its start zoom once it runs again.
+            if !can {
+                showsZoom = false
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("camera.screen")
+    }
+
+    private func showZoom(_ zoom: Double, shown: Bool) {
+        zoomValue = zoom
+        if shown {
+            showsZoom = true
+        } else {
+            withAnimation(.easeOut(duration: 0.3)) {
+                showsZoom = false
+            }
+        }
+    }
+
+    private func stepZoom(_ controller: IOSCameraController, up: Bool) {
+        let step: Double = up ? 0.5 : -0.5
+        zoomValue = controller.setZoom(controller.zoom + step)
     }
 
     /// The status line at the top; at the foot the notices and the task's buttons.
@@ -284,6 +318,11 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             if shownMessage == nil, let status = statusLine {
                 StatusPill(text: status.text, hint: status.hint, action: status.action)
                     .accessibilityIdentifier(status.identifier)
+            }
+            if showsZoom {
+                StatusPill(text: IOSCameraText.zoomLabel(zoomValue), hint: nil)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("camera.zoomReadout")
             }
             Spacer(minLength: 0)
             notices()
@@ -616,14 +655,21 @@ struct CameraPreview: UIViewRepresentable {
     let outline: Quad?
     let steady: Bool
     let look: LiveLook?
+    /// A tap focuses and a pinch zooms only while this is true (the camera is live and no photo is being taken).
+    let active: Bool
+    /// Told the zoom (1 at the wide lens's view) while pinching, and once more, shown false, a second after the fingers lift.
+    let onZoom: (Double, Bool) -> Void
 
     func makeUIView(context: Context) -> CameraPreviewView {
         let view = CameraPreviewView()
+        view.controller = controller
         controller.attach(previewLayer: view.previewLayer, viewfinder: view.viewfinder)
         return view
     }
 
     func updateUIView(_ uiView: CameraPreviewView, context: Context) {
+        uiView.onZoom = onZoom
+        uiView.active = active
         uiView.show(outline: outline, steady: steady)
         uiView.viewfinder?.show(look)
     }
@@ -634,9 +680,28 @@ struct CameraPreview: UIViewRepresentable {
 }
 
 /// A view whose layer is the session's preview, with the filtered picture in a Metal layer over it and the
-/// outline in a shape layer over that.
+/// outline in a shape layer over that. A tap on it focuses and meters there (a white square marks the spot for
+/// a second) and a pinch zooms; both are recognizers of this view, so nothing drawn above it loses a touch.
 final class CameraPreviewView: UIView {
     private let outlineLayer = CAShapeLayer()
+    private let focusSquare = UIView()
+    private var pinchStart: Double = 1
+    private var hideZoom: Task<Void, Never>?
+    weak var controller: IOSCameraController?
+    var onZoom: (Double, Bool) -> Void = { (_: Double, _: Bool) -> Void in }
+    var active: Bool = true {
+        didSet {
+            guard active != oldValue else { return }
+            for recognizer in gestureRecognizers ?? [] {
+                recognizer.isEnabled = active
+            }
+            if !active {
+                hideZoom?.cancel()
+                focusSquare.layer.removeAllAnimations()
+                focusSquare.alpha = 0
+            }
+        }
+    }
     let viewfinder: LiveViewfinder? = LiveViewfinder()
     private var outline: Quad?
     private var steady: Bool = false
@@ -659,11 +724,74 @@ final class CameraPreviewView: UIView {
             layer.addSublayer(finder.layer)
         }
         layer.addSublayer(outlineLayer)
+        addTouchHandling()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         layer.addSublayer(outlineLayer)
+        addTouchHandling()
+    }
+
+    private func addTouchHandling() {
+        focusSquare.frame = CGRect(x: 0, y: 0, width: 72, height: 72)
+        focusSquare.layer.borderWidth = 1.5
+        focusSquare.layer.cornerRadius = 4
+        focusSquare.layer.borderColor = UIColor.white.cgColor
+        focusSquare.alpha = 0
+        focusSquare.isUserInteractionEnabled = false
+        focusSquare.accessibilityIdentifier = "camera.focusSquare"
+        addSubview(focusSquare)
+        layer.insertSublayer(focusSquare.layer, below: outlineLayer)
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
+        addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:))))
+    }
+
+    @objc private func tapped(_ tap: UITapGestureRecognizer) {
+        let point: CGPoint = tap.location(in: self)
+        let spot: CGPoint = previewLayer.captureDevicePointConverted(fromLayerPoint: point)
+        // Outside the frame is a black band.
+        guard (0...1).contains(spot.x), (0...1).contains(spot.y), let camera = controller,
+              camera.focus(at: spot) else { return }
+        showSquare(at: point)
+    }
+
+    private func showSquare(at point: CGPoint) {
+        focusSquare.layer.removeAllAnimations()
+        focusSquare.center = point
+        focusSquare.alpha = 1
+        if UIAccessibility.isReduceMotionEnabled {
+            focusSquare.transform = CGAffineTransform.identity
+        } else {
+            focusSquare.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
+            UIView.animate(withDuration: 0.2) {
+                self.focusSquare.transform = CGAffineTransform.identity
+            }
+        }
+        UIView.animate(withDuration: 0.3, delay: 1, options: [.allowUserInteraction]) {
+            self.focusSquare.alpha = 0
+        }
+    }
+
+    @objc private func pinched(_ pinch: UIPinchGestureRecognizer) {
+        guard let camera = controller else { return }
+        switch pinch.state {
+        case .began:
+            hideZoom?.cancel()
+            pinchStart = camera.zoom
+        case .changed:
+            let zoom: Double = camera.setZoom(pinchStart * Double(pinch.scale))
+            onZoom(zoom, true)
+        case .ended, .cancelled, .failed:
+            hideZoom?.cancel()
+            hideZoom = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled, let view = self else { return }
+                view.onZoom(view.controller?.zoom ?? 1, false)
+            }
+        default:
+            break
+        }
     }
 
     override func layoutSubviews() {

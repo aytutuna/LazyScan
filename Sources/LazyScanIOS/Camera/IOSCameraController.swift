@@ -283,15 +283,7 @@ final class IOSCaptureSession: @unchecked Sendable {
     /// The wide lens's view on a virtual camera whose zoom 1 is the ultra wide lens (`IOSCameraLens.startZoom`);
     /// its lens switching stays automatic, so a page held close still gets the lens that can focus on it.
     static func zoomForPages(_ camera: AVCaptureDevice) {
-        var factors: [Double] = []
-        for factor in camera.virtualDeviceSwitchOverVideoZoomFactors {
-            factors.append(factor.doubleValue)
-        }
-        let lowest: Double = Double(camera.minAvailableVideoZoomFactor)
-        let highest: Double = min(Double(camera.maxAvailableVideoZoomFactor), Double(camera.activeFormat.videoMaxZoomFactor))
-        let zoom: Double = IOSCameraLens.startZoom(kind: IOSCameraLens.kind(camera.deviceType), switchOverFactors: factors,
-                                                   minZoom: lowest, maxZoom: highest)
-        let wanted: CGFloat = CGFloat(zoom)
+        let wanted: CGFloat = CGFloat(startZoom(camera))
         guard wanted != camera.videoZoomFactor else { return }
         do {
             try camera.lockForConfiguration()
@@ -302,12 +294,33 @@ final class IOSCaptureSession: @unchecked Sendable {
         camera.unlockForConfiguration()
     }
 
-    /// Focus that keeps adjusting, kept to near things where the camera allows it (a page held over).
+    /// The zoom the camera starts at and the pinch never goes below.
+    static func startZoom(_ camera: AVCaptureDevice) -> Double {
+        var factors: [Double] = []
+        for factor in camera.virtualDeviceSwitchOverVideoZoomFactors {
+            factors.append(factor.doubleValue)
+        }
+        let lowest: Double = Double(camera.minAvailableVideoZoomFactor)
+        return IOSCameraLens.startZoom(kind: IOSCameraLens.kind(camera.deviceType), switchOverFactors: factors,
+                                       minZoom: lowest, maxZoom: highestZoom(camera))
+    }
+
+    /// The most the camera zooms in with the format in use.
+    static func highestZoom(_ camera: AVCaptureDevice) -> Double {
+        min(Double(camera.maxAvailableVideoZoomFactor), Double(camera.activeFormat.videoMaxZoomFactor))
+    }
+
+    /// Focus that keeps adjusting, kept to near things where the camera allows it (a page held over), on
+    /// the middle of the frame.
     static func focusForPages(_ camera: AVCaptureDevice) {
         do {
             try camera.lockForConfiguration()
         } catch {
             return
+        }
+        let middle = CGPoint(x: 0.5, y: 0.5)
+        if camera.isFocusPointOfInterestSupported {
+            camera.focusPointOfInterest = middle
         }
         if camera.isFocusModeSupported(.continuousAutoFocus) {
             camera.focusMode = .continuousAutoFocus
@@ -315,6 +328,57 @@ final class IOSCaptureSession: @unchecked Sendable {
         if camera.isAutoFocusRangeRestrictionSupported {
             camera.autoFocusRangeRestriction = .near
         }
+        if camera.isExposurePointOfInterestSupported {
+            camera.exposurePointOfInterest = middle
+        }
+        if camera.isExposureModeSupported(.continuousAutoExposure) {
+            camera.exposureMode = .continuousAutoExposure
+        }
+        camera.isSubjectAreaChangeMonitoringEnabled = false
+        camera.unlockForConfiguration()
+    }
+
+    /// Focus and exposure on `point` (the camera's own 0 to 1 frame), with no near limit so a far subject can
+    /// focus; they go back to `focusForPages` when the camera reports the subject area changed.
+    func focus(at point: CGPoint) {
+        guard let camera = device else { return }
+        do {
+            try camera.lockForConfiguration()
+        } catch {
+            return
+        }
+        if camera.isFocusPointOfInterestSupported {
+            camera.focusPointOfInterest = point
+            if camera.isFocusModeSupported(.continuousAutoFocus) {
+                camera.focusMode = .continuousAutoFocus
+            }
+        }
+        if camera.isAutoFocusRangeRestrictionSupported {
+            camera.autoFocusRangeRestriction = .none
+        }
+        if camera.isExposurePointOfInterestSupported {
+            camera.exposurePointOfInterest = point
+            if camera.isExposureModeSupported(.continuousAutoExposure) {
+                camera.exposureMode = .continuousAutoExposure
+            }
+        }
+        camera.isSubjectAreaChangeMonitoringEnabled = true
+        camera.unlockForConfiguration()
+    }
+
+    func resetFocus() {
+        guard let camera = device else { return }
+        IOSCaptureSession.focusForPages(camera)
+    }
+
+    func setZoom(_ factor: Double) {
+        guard let camera = device else { return }
+        do {
+            try camera.lockForConfiguration()
+        } catch {
+            return
+        }
+        camera.videoZoomFactor = CGFloat(factor)
         camera.unlockForConfiguration()
     }
 
@@ -324,6 +388,7 @@ final class IOSCaptureSession: @unchecked Sendable {
             // Set again once running, in case the session chose the camera's format afresh on starting.
             if let camera = device {
                 IOSCaptureSession.zoomForPages(camera)
+                IOSCaptureSession.focusForPages(camera)
             }
         }
     }
@@ -427,6 +492,8 @@ public final class IOSCameraController: IOSCameraDriving {
     private weak var previewLayer: AVCaptureVideoPreviewLayer?
     private var viewfinder: LiveViewfinder?
     private var prepared: Bool = false
+    /// The zoom last asked for, until the session starts afresh: the camera takes it a moment later.
+    private var wantedZoom: Double?
 
     public init(center: NotificationCenter = .default) {
         self.center = center
@@ -457,6 +524,7 @@ public final class IOSCameraController: IOSCameraDriving {
 
     public func startRunning() {
         let box: IOSCaptureSession = capture
+        wantedZoom = nil
         box.queue.async {
             box.start()
             DispatchQueue.main.async {
@@ -477,6 +545,7 @@ public final class IOSCameraController: IOSCameraDriving {
     /// Photos of `megapixels` (as kept under `IOSCameraLens.megapixelsKey`) from the next one on; nothing
     /// before the session is set up, which reads the size kept itself.
     public func usePhotoSize(megapixels: Int) {
+        wantedZoom = nil
         let box: IOSCaptureSession = capture
         box.queue.async {
             box.usePhotoSize(megapixels)
@@ -530,6 +599,41 @@ public final class IOSCameraController: IOSCameraDriving {
         // The whole 4:3 frame, as the photo will be, rather than a crop that looks zoomed in.
         layer.videoGravity = .resizeAspect
         attachRotation()
+    }
+
+    // MARK: Focus and zoom
+
+    /// Focuses and meters at `point` in the camera's 0 to 1 frame (`captureDevicePointConverted`); false
+    /// where the camera cannot focus on a point.
+    func focus(at point: CGPoint) -> Bool {
+        guard let camera = capture.device, camera.isFocusPointOfInterestSupported else { return false }
+        let box: IOSCaptureSession = capture
+        box.queue.async {
+            box.focus(at: point)
+        }
+        return true
+    }
+
+    /// The zoom now, 1 at the wide lens's view (the lowest the pinch goes to).
+    var zoom: Double {
+        guard let camera = capture.device else { return 1 }
+        let base: Double = IOSCaptureSession.startZoom(camera)
+        return (wantedZoom ?? Double(camera.videoZoomFactor)) / base
+    }
+
+    /// Zooms to `zoom` (1 at the wide lens's view), kept between that and the most the camera offers;
+    /// the zoom set.
+    func setZoom(_ zoom: Double) -> Double {
+        guard let camera = capture.device else { return 1 }
+        let base: Double = IOSCaptureSession.startZoom(camera)
+        let highest: Double = max(base, IOSCaptureSession.highestZoom(camera))
+        let wanted: Double = min(max(zoom * base, base), highest)
+        wantedZoom = wanted
+        let box: IOSCaptureSession = capture
+        box.queue.async {
+            box.setZoom(wanted)
+        }
+        return wanted / base
     }
 
     // MARK: Turning
@@ -591,6 +695,17 @@ public final class IOSCameraController: IOSCameraDriving {
         observers.add(interrupted)
         observers.add(ended)
         observers.add(failed)
+        if let camera = capture.device {
+            let box: IOSCaptureSession = capture
+            let moved: NSObjectProtocol = center.addObserver(forName: AVCaptureDevice.subjectAreaDidChangeNotification,
+                                                             object: camera, queue: nil) {
+                (_: Notification) -> Void in
+                box.queue.async {
+                    box.resetFocus()
+                }
+            }
+            observers.add(moved)
+        }
     }
 
     /// The interruption a session's notification reports.

@@ -248,6 +248,19 @@ public enum IOSCameraText {
 
     /// The top bar's button that steps through the photo sizes, for VoiceOver; its value is the size.
     public static var resolutionLabel: String { String(localized: "Camera resolution") }
+    /// The preview's zoom for VoiceOver (its value is `zoomLabel`).
+    public static var zoomLabel: String { String(localized: "Camera zoom") }
+
+    /// A zoom as the readout shows it, relative to the wide lens: "1.0x", "2.4x", "10x".
+    public static func zoomLabel(_ zoom: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        let digits: Int = zoom < 10 ? 1 : 0
+        formatter.minimumFractionDigits = digits
+        formatter.maximumFractionDigits = digits
+        let number: String = formatter.string(from: NSNumber(value: zoom)) ?? String(Int(zoom))
+        return String(localized: "\(number)x")
+    }
     /// The alert over the camera when a size picked there `warns`.
     public static var memoryTitle: String { String(localized: "Not much memory for this size") }
 
