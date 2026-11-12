@@ -890,8 +890,8 @@ final class CameraTaskTests: XCTestCase {
         state.applyBookReorder()
         try await waitUntil(timeout: 60) { !state.isBusy }
         XCTAssertTrue(state.canUndoRemove)
-        let spreadID: UUID = try XCTUnwrap(state.scannedPages.first?.spreadID)
-        state.joinSpread(id: spreadID)
+        let pageID: UUID = try XCTUnwrap(state.scannedPages.first?.id)
+        state.joinSpread(id: pageID)
         try await waitUntil(timeout: 60) { !state.isBusy }
         XCTAssertFalse(state.canUndoRemove)
     }
