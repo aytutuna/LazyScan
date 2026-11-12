@@ -4,6 +4,7 @@ using Xunit;
 
 namespace LazyScan.App.Tests;
 
+[Collection(WallClockCollection.Name)]
 public sealed class WiaApartmentTests
 {
     [Fact]
