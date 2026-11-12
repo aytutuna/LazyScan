@@ -3,7 +3,7 @@ import XCTest
 @testable import LazyScanKit
 
 // How AppState keeps its scanner as the list changes and connections fail: the phone waits for its scanner
-// when it drops off the list (the Mac moves on to another), Refresh opens a scanner that could not be
+// when it drops off the list (the Mac keeps it selected, not connected), Refresh opens a scanner that could not be
 // connected to, and a scanner left while it was connecting fails without a word. No scanner counts as connected
 // while a switch runs, nor one that could not be connected to until it is picked again; Scan and Preview then
 // say why. Windows: the same rules in `AppViewModel.RefreshScanners`, `SwitchSession`, `IsConnected`, `NoDevice`
@@ -61,7 +61,12 @@ final class AppStateDeviceTests: XCTestCase {
     private let library: ScannerInfo = ScannerInfo(id: "test:library", name: "Library MFP", transport: "Network",
                                                    backend: "test")
 
+    private var defaults: UserDefaults!
+    private var suiteName: String!
+
     override func setUpWithError() throws {
+        suiteName = "AppStateDeviceTests-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
         folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("AppStateDeviceTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -71,11 +76,15 @@ final class AppStateDeviceTests: XCTestCase {
         // The settings are written 0.4 s after they change: let that write land before the folder goes.
         try await Task.sleep(nanoseconds: 600_000_000)
         try? FileManager.default.removeItem(at: folder)
+        defaults.removePersistentDomain(forName: suiteName)
     }
 
     @MainActor
     private func makeState(_ backends: [any ScannerBackend]) -> AppState {
-        AppState(backends: backends, presetStore: PresetStore(directory: folder), files: AppStateFiles.all(in: folder))
+        let state: AppState = AppState(backends: backends, presetStore: PresetStore(directory: folder),
+                                       files: AppStateFiles.all(in: folder))
+        state.deviceDefaults = defaults
+        return state
     }
 
     /// Waits until `condition` holds, failing after `timeout` seconds.
@@ -119,22 +128,68 @@ final class AppStateDeviceTests: XCTestCase {
         XCTAssertNil(state.errorMessage)
     }
 
-    /// The Mac's rule stays: a scanner gone from the list is left for the preferred one, named at once.
+    /// The Mac keeps a scanner gone from the list selected, named and not connected, with its settings, and
+    /// opens it again once it is listed; the other scanner is not opened meanwhile.
     @MainActor
-    func test_theMacsScannerGoneFromTheList_isLeftForAnother() async throws {
+    func test_theMacsScannerGoneFromTheList_staysSelectedWithItsSettings_andIsOpenedAgain() async throws {
         let backend: ListedScannersBackend = ListedScannersBackend()
-        backend.list([office])
+        backend.list([office, library])
         let state: AppState = makeState([backend])
         state.start()
         try await waitFor(10) { state.capabilities != nil }
         XCTAssertEqual(state.selectedDeviceID, office.id)
+        state.settings.source = .documentFeeder
+        state.settings.duplex = .both
+        let settings: ScanSettings = state.settings
 
         backend.list([library])
-        XCTAssertEqual(state.selectedDeviceID, library.id)
-        XCTAssertEqual(state.statusMessage, "Connecting to Library MFP…")
-        try await waitFor(10) { backend.opened.count == 2 && state.statusMessage.hasPrefix("Ready — ") }
-        XCTAssertEqual(backend.opened, [office.id, library.id])
-        XCTAssertNotNil(state.capabilities)
+        try await waitFor(10) { state.capabilities == nil && !state.isConnecting }
+        XCTAssertEqual(state.selectedDeviceID, office.id)
+        XCTAssertFalse(state.isConnected)
+        XCTAssertEqual(Set(state.devices.map { $0.id }), [library.id, office.id])
+        XCTAssertEqual(state.settings, settings)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(state.selectedDeviceID, office.id)
+        XCTAssertEqual(backend.opened, [office.id])
+
+        state.userSelectDevice(office.id)
+        XCTAssertEqual(state.selectedDeviceID, office.id)
+        XCTAssertTrue(state.devices.contains(where: { $0.id == office.id }))
+
+        backend.list([office, library])
+        try await waitFor(10) { state.capabilities != nil }
+        XCTAssertEqual(state.selectedDeviceID, office.id)
+        XCTAssertEqual(backend.opened, [office.id, office.id])
+        XCTAssertEqual(state.settings, settings)
+        XCTAssertEqual(Set(state.devices.map { $0.id }), [office.id, library.id])
+    }
+
+    /// The Mac remembers the scanner picked last and waits for it at launch instead of opening the first
+    /// one found; a scanner never picked is the first one found.
+    @MainActor
+    func test_theMacWaitsAtLaunchForTheScannerPickedLast() async throws {
+        let backend: ListedScannersBackend = ListedScannersBackend()
+        backend.list([office, library])
+        let first: AppState = makeState([backend])
+        first.start()
+        try await waitFor(10) { first.capabilities != nil }
+        XCTAssertEqual(first.selectedDeviceID, office.id)
+        XCTAssertNil(defaults.string(forKey: AppState.lastDeviceKey))
+        first.userSelectDevice(library.id)
+        XCTAssertEqual(defaults.string(forKey: AppState.lastDeviceKey), library.id)
+
+        let laterBackend: ListedScannersBackend = ListedScannersBackend()
+        laterBackend.list([office])
+        let second: AppState = makeState([laterBackend])
+        second.startWithLastScanner()
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertNil(second.selectedDeviceID)
+        XCTAssertEqual(laterBackend.opened, [])
+
+        laterBackend.list([office, library])
+        try await waitFor(10) { second.capabilities != nil }
+        XCTAssertEqual(second.selectedDeviceID, library.id)
+        XCTAssertEqual(laterBackend.opened, [library.id])
     }
 
     /// After "Could not connect", the troubleshooter's Refresh opens the scanner again; not while a photo

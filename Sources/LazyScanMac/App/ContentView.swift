@@ -140,7 +140,7 @@ struct ContentView: View {
             if state.isFirstRun { detailTab = .start }
         }
         .focusedSceneValue(\.scanSettingsShown, settingsBinding)
-        .task { state.start() }
+        .task { state.startWithLastScanner() }
     }
 
     /// Offered to View > Show Scan Settings only while the Scanner tab, which has the column, is up.

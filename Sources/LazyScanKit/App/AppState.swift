@@ -601,6 +601,7 @@ public final class AppState: ObservableObject {
     private var keepsNoDevice = false
     /// The phone's printer mode at launch: the scanner picked last time, selected once it is listed
     /// (`start(onlySelecting:)`); likewise the scanner in use once it has dropped off the list (`mergeDevices`).
+    /// On the Mac the dropped scanner stays selected, not connected, and this marks it for opening again.
     private var awaitedDeviceID: String?
     /// The user's no scanner also turns the sides turned over by hand back to both, once the session that
     /// decided them has closed (`userSelectNoDevice(resetsManualSides:)`).
@@ -764,12 +765,26 @@ public final class AppState: ObservableObject {
 
     /// The phone's start: no scanner is selected on its own, only `remembered` (printer mode's scanner from
     /// last time; nil in camera mode) once it is listed, as if the user picked it again. A first scanner
-    /// found meanwhile is never opened. The Mac calls `start()`.
+    /// found meanwhile is never opened.
     public func start(onlySelecting remembered: String?) {
         userPickedDevice = true
         keepsNoDevice = true
         awaitedDeviceID = remembered
         start()
+    }
+
+    /// Where the Mac keeps the id of the scanner picked last.
+    public static let lastDeviceKey = "scan.lastDevice"
+    var deviceDefaults: UserDefaults = .standard
+
+    /// The Mac's start: waits for the scanner picked last time; with none picked yet, the first scanner
+    /// found is selected, as `start()` does.
+    public func startWithLastScanner() {
+        if let remembered = deviceDefaults.string(forKey: AppState.lastDeviceKey) {
+            start(onlySelecting: remembered)
+        } else {
+            start()
+        }
     }
 
     public func start() {
@@ -809,10 +824,19 @@ public final class AppState: ObservableObject {
                     // Same scanner, another connection. Switching would discard a running
                     // operation, an open photo review or an ID card's sides, so wait for those
                     // to end (endOfWork re-runs this merge).
+                    if awaitedDeviceID == sel { awaitedDeviceID = nil }
                     if autoSwitchMustWait {
                         connectionSwitchDeferred = true
                     } else {
                         selectDevice(group.primary.id)
+                    }
+                } else if awaitedDeviceID == sel {
+                    // The scanner the Mac kept selected is listed again: open it again.
+                    if autoSwitchMustWait {
+                        connectionSwitchDeferred = true
+                    } else {
+                        awaitedDeviceID = nil
+                        selectDevice(sel, interactive: true, reopening: true)
                     }
                 } else if !userPickedDevice, let real = preferredDefaultDevice(), group.primary.isDemo,
                           deviceGroups.first(where: { $0.primary.id == real })?.primary.isDemo == false {
@@ -832,9 +856,11 @@ public final class AppState: ObservableObject {
                 awaitedDeviceID = sel
                 keepsNoDevice = true
                 selectDevice(nil)
-            } else {
-                userPickedDevice = false
-                selectDevice(preferredDefaultDevice())
+            } else if awaitedDeviceID != sel {
+                // The Mac keeps the scanner selected, not connected, with its settings, and opens it
+                // again once it is listed; another scanner or the demo scanner only on the user's pick.
+                awaitedDeviceID = sel
+                selectDevice(sel, reopening: true)
             }
         } else if let awaited = awaitedDeviceID {
             if deviceGroups.contains(where: { group in group.members.contains(where: { $0.id == awaited }) }) {
@@ -889,8 +915,13 @@ public final class AppState: ObservableObject {
     /// deferred switch moves it), the others the connection they would use.
     private func refreshDeviceRows() {
         let sel = selectedDeviceID
-        let rows = deviceGroups.map { group in
+        var rows = deviceGroups.map { group in
             group.members.first(where: { $0.id == sel }) ?? group.primary
+        }
+        // A selected scanner that dropped off the list stays in it, named, until it is listed again.
+        if let sel, sel == awaitedDeviceID, let entry = selectedEntry, entry.id == sel,
+           !rows.contains(where: { $0.id == sel }) {
+            rows.append(entry)
         }
         if rows != devices { devices = rows }
     }
@@ -1013,6 +1044,7 @@ public final class AppState: ObservableObject {
         keepsNoDevice = false
         awaitedDeviceID = nil
         resetsManualSides = false
+        if platform == .mac, let id { deviceDefaults.set(id, forKey: AppState.lastDeviceKey) }
         selectDevice(id, interactive: true)
     }
 
@@ -1042,9 +1074,9 @@ public final class AppState: ObservableObject {
         if settings.duplex == .manual { settings.duplex = .both }
     }
 
-    private func selectDevice(_ id: String?, interactive: Bool = false) {
+    private func selectDevice(_ id: String?, interactive: Bool = false, reopening: Bool = false) {
         // Ignore re-clicks on a device that is already connected or connecting.
-        guard id != selectedDeviceID || (session == nil && switchTask == nil) else { return }
+        guard reopening || id != selectedDeviceID || (session == nil && switchTask == nil) else { return }
         selectedDeviceID = id
         if let id {
             selectedEntry = deviceGroups.flatMap { $0.members }.first(where: { $0.id == id }) ?? selectedEntry
@@ -1100,6 +1132,10 @@ public final class AppState: ObservableObject {
             return
         }
         guard let backend = backends.first(where: { b in b.devices.contains { $0.id == id } }) else {
+            if platform == .mac {
+                awaitedDeviceID = id
+                refreshDeviceRows()
+            }
             statusMessage = L10n.t("Scanner is no longer available.")
             return
         }
