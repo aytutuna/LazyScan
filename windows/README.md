@@ -411,14 +411,14 @@ with a black or grey backing, and very thin or translucent paper.
 
 No scanner at hand: a phone photo of a page becomes a page of the queue. **Import photos of
 documents…** (the button under **Preview** and **Scan**, and a link on the empty stage) picks one
-or more JPEG, PNG, HEIC, TIFF, BMP or WebP files; photos dragged from Explorer onto the window are
+or more JPEG, PNG, HEIC, TIFF, BMP, WebP or PDF files; photos dragged from Explorer onto the window are
 taken too, as a copy (other files dragged over the window get the no-drop pointer; photos dropped in
 Photos mode are answered with why they are not imported). Each page of a TIFF of several pages (a
 fax, a scan) becomes a page; a photo of more than 150 megapixels is turned down from its header,
 before its pixels are decoded, and the other photos go on. It is offered wherever the queue
 collects pages (Document mode and the document tasks, also with **Collect pages** off, where the
 pages are then saved at once, as a scan's are); not in Photos mode or the ID card, copy and receipt tasks, nor while
-a stack turned over by hand is under way (between stacks it is, and photos never count as its sides). A PDF is accepted by the import but its pages are not drawn yet, so it is listed as not imported.
+a stack turned over by hand is under way (between stacks it is, and photos never count as its sides). A PDF is imported page by page: each page is drawn with Windows.Data.Pdf at 300 dpi (a poster at a lower resolution that keeps its long side within 7000 pixels, recorded on the page) and goes through the clean-up stage as a scan, with no corner editor. A password-protected PDF is not imported; it is listed with the other files that could not be read.
 
 Each photo is read once into memory and never changed, moved or locked: the spool gets the page and
 the photo as the app made them, never the file itself. The photo is turned upright by its

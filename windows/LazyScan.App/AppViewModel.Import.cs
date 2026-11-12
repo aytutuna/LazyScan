@@ -49,8 +49,9 @@ public sealed partial class AppViewModel
     /// added. With Collect pages before saving off the pages are held instead, after a scan's clean-up
     /// stage (<see cref="PageProcessor.ForScan"/>), and saved together once the last photo is in, as a
     /// scan's are; a Cancel puts the pages held so far in the queue. Each page of a TIFF of several pages
-    /// is imported as a photo of its own. Photos that cannot be read (too large ones too) are listed in
-    /// one error at the end; the others are imported.
+    /// is imported as a photo of its own; the pages of a PDF are drawn (<see cref="PdfPages"/>) and go in
+    /// as scans, with no corner editor. Photos that cannot be read (too large ones too) are listed in one
+    /// error at the end; the others are imported.
     /// </summary>
     public Task ImportPhotos(IReadOnlyList<string> paths)
     {
@@ -98,6 +99,11 @@ public sealed partial class AppViewModel
                     catch (PhotoUnreadableException e)
                     {
                         problems.Add(e.Message);
+                        continue;
+                    }
+                    if (PhotoImport.IsPdf(path))
+                    {
+                        await ImportPdf(bytes, path, fileNumber);
                         continue;
                     }
                     // A TIFF may hold several pages: each is imported in turn. Their count is read from the
@@ -200,7 +206,49 @@ public sealed partial class AppViewModel
                         return;
                     }
                 }
-                var cleaned = page;
+                await BringIn(page);
+            }
+
+            // A PDF's pages are drawn one at a time and go in as scans: no corner editor. A protected PDF
+            // is refused, as is a page that cannot be drawn; the other pages are imported.
+            async Task ImportPdf(byte[] bytes, string path, int fileNumber)
+            {
+                PdfPages pdf;
+                try
+                {
+                    pdf = await PdfPages.OpenAsync(bytes, System.IO.Path.GetFileName(path));
+                }
+                catch (PhotoUnreadableException e)
+                {
+                    problems.Add(e.Message);
+                    return;
+                }
+                using (pdf)
+                {
+                    int pageCount = pdf.PageCount;
+                    for (int index = 0; index < pageCount; index++)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        StatusMessage = PhotoImport.ProgressMessage(fileNumber, files.Count, index + 1, pageCount);
+                        NotifyAll();
+                        ScannedPage drawn;
+                        try
+                        {
+                            drawn = await pdf.RenderAsync(index);
+                        }
+                        catch (PhotoUnreadableException e)
+                        {
+                            problems.Add(e.Message);
+                            continue;
+                        }
+                        await BringIn(drawn);
+                    }
+                }
+            }
+
+            // A page ready to be cleaned up: spooled and added to the queue, or held to be saved at once.
+            async Task BringIn(ScannedPage cleaned)
+            {
                 var (processed, preview) = await Task.Run(() =>
                 {
                     var pages = processor.Process([cleaned], token).Pages.ToList();
