@@ -2159,6 +2159,18 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         NotifyAll();
     }
 
+    /// <summary>Move a page to a place in the queue (the place it ends up at, counting from 0).</summary>
+    public void MovePageTo(Guid id, int index)
+    {
+        if (IsBusy) return;
+        var item = ScannedPages.FirstOrDefault(p => p.Page.Id == id);
+        if (item is null) return;
+        int from = ScannedPages.IndexOf(item);
+        if (index < 0 || index >= ScannedPages.Count || index == from) return;
+        ScannedPages.Move(from, index);
+        NotifyAll();
+    }
+
     /// <summary>
     /// Rotate a queued page 90° clockwise. The in-memory preview (and its strip thumbnail)
     /// turns right away; the full-resolution spool file stays untouched and the accumulated
