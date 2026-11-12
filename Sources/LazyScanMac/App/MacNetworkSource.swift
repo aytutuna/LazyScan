@@ -128,7 +128,7 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
     }
 
     /// The NetworkSignature of each IPv4 service by BSD name (the router's address and hardware address);
-    /// missing until the router is known, and on a network without one.
+    /// missing until the router and its hardware address are known, and on a network without a router.
     private static func signatures() -> [String: String] {
         var found: [String: String] = [:]
         guard let store = SCDynamicStoreCreate(nil, "LazyScan" as CFString, nil, nil) else { return found }
@@ -136,7 +136,8 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
         guard let values = SCDynamicStoreCopyMultiple(store, nil, [pattern] as CFArray) as? [String: Any] else { return found }
         for value in values.values {
             guard let entity = value as? [String: Any], let bsdName = entity[kSCPropInterfaceName as String] as? String,
-                  let signature = entity["NetworkSignature"] as? String, !signature.isEmpty else { continue }
+                  let signature = entity["NetworkSignature"] as? String,
+                  signature.contains("IPv4.RouterHardwareAddress") else { continue }
             found[bsdName] = signature
         }
         return found
