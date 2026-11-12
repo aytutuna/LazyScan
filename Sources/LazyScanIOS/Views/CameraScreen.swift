@@ -105,7 +105,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             }
         }
         .onChange(of: canShoot) { (_: Bool, can: Bool) in
-            // A page Auto decided on while no photo could be taken (an import, a save) is judged again now.
+            // A page Auto decided on while no photo could be taken (the shot queue full, a save) is judged again now.
             if can {
                 model.rearm()
             }
@@ -378,7 +378,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         let session: IOSImportSession = importer
         let held: Bool = holdsAuto
         model.canTakePage = { () -> Bool in
-            !session.isImporting && session.canImport && !held
+            session.canQueueShot && (!session.isImporting || session.importsShot) && !held
         }
     }
 
@@ -392,9 +392,9 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         picking = shown
     }
 
-    /// The camera is live, no photo is being taken or read, and the queue can take a page.
+    /// The camera is live, no photo is being taken, and the queue can take another shot.
     private var canShoot: Bool {
-        model.canShoot && !importer.isImporting && importer.canImport
+        model.canShoot && importer.canQueueShot && (!importer.isImporting || importer.importsShot)
     }
 
     private func shoot() {

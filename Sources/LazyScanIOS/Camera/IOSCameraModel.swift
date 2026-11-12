@@ -63,7 +63,7 @@ public protocol IOSCameraDriving: AnyObject {
 /// shutter (`autoShutter`, on unless turned off; remembered in `UserDefaults`) takes the photo itself when
 /// a live update says so (`LiveQuadUpdate.shouldCapture`: the page held still on a sharp, lit frame) and
 /// hands it to `onAutoShot`; a decision that comes while a photo is being taken has the page judged again,
-/// and one that comes while the queue cannot take a page (`canTakePage` false: a photo being read, a save)
+/// and one that comes while the queue cannot take a page (`canTakePage` false: the shot queue full, a save)
 /// stands without a photo until the screen calls `rearm()` once a photo can be taken, so the page is judged
 /// again then rather than over and over meanwhile. After every photo the page in view counts as taken
 /// (`LiveQuadTracker.markCaptured`), so the next photo waits for the next page.
@@ -89,8 +89,8 @@ public final class IOSCameraModel: ObservableObject {
     /// Where the automatic shutter's photos go (the scan screen: `IOSImportSession.importShot`); nil: the
     /// automatic shutter takes nothing.
     public var onAutoShot: (@MainActor (IOSCameraShot) async -> Void)?
-    /// Whether a page can be taken now besides the camera being live (no photo being read, the queue takes
-    /// pages); nil: always.
+    /// Whether a page can be taken now besides the camera being live (the import can queue another shot);
+    /// nil: always.
     public var canTakePage: (@MainActor () -> Bool)?
 
     /// Where the automatic shutter's setting is remembered.
