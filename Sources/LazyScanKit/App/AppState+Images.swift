@@ -58,8 +58,9 @@ extension AppState {
                     let url: URL = try self.outputURL(fileExtension: format.fileExtension,
                                                       index: pages.count > 1 ? number : nil)
                     let quality: Double = s.jpegQuality
+                    let pageNumber: Int = number
                     try await Task.detached(priority: .userInitiated) {
-                        let full: CGImage = Self.fullImage(of: page)
+                        let full: CGImage = try Self.fullImage(of: page, number: pageNumber)
                         try ImageExporter.write(full, to: url, format: format, dpi: page.dpi,
                                                 jpegQuality: quality, colorMode: page.colorMode)
                     }.value
@@ -81,9 +82,15 @@ extension AppState {
     }
 
     /// The full pixels of `page` as it is shown: its spool file turned by the page's rotation (the file
-    /// stays unturned until it is saved), or the pixels in memory, which show the rotation already.
-    public nonisolated static func fullImage(of page: ScannedPage) -> CGImage {
-        guard let spooled = spoolImage(of: page) else { return page.image }
+    /// stays unturned until it is saved), or the pixels in memory, which show the rotation already. A spooled
+    /// page whose file cannot be read throws, naming page `number`.
+    public nonisolated static func fullImage(of page: ScannedPage, number: Int) throws -> CGImage {
+        guard let spooled = spoolImage(of: page) else {
+            if page.fileURL != nil {
+                throw ScanError.exportFailed(L10n.t("The picture of page {0} could not be written.", number))
+            }
+            return page.image
+        }
         let turns: Int = ((page.rotationQuarterTurns % 4) + 4) % 4
         if turns == 0 { return spooled }
         return ImagePipeline.rotate(spooled, quarterTurns: turns)

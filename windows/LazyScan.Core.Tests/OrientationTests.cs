@@ -463,11 +463,11 @@ public class OrientationTests
         Assert.Null(undone.FilePath);
         Assert.Equal(page.Alternate, undone.Alternate);
         // Saved from memory, the rotation is not applied again: as scanned.
-        Assert.Equal(scanned.Pixels, PdfBuilder.PreparePage(undone, null).Image.Pixels);
+        Assert.Equal(scanned.Pixels, PdfBuilder.PreparePage(undone, null, 1).Image.Pixels);
         // The other version, read from its file and turned like the page: as scanned too, shown and saved.
         var swapped = undone.WithVersionsSwapped(TextImage.RotatedQuarterTurns(undone.RotationQuarterTurns));
         Assert.Equal(scanned.Pixels, swapped.Image.Pixels);
-        Assert.Equal(scanned.Pixels, PdfBuilder.PreparePage(swapped, TextImage).Image.Pixels);
+        Assert.Equal(scanned.Pixels, PdfBuilder.PreparePage(swapped, TextImage, 1).Image.Pixels);
         // Turned upright again: both back upright.
         var again = undone.WithUprightToggled();
         Assert.Equal(0, again.RotationQuarterTurns);

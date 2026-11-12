@@ -287,7 +287,7 @@ final class AppStatePackageTests: XCTestCase {
         XCTAssertEqual(read.pages.map(\.image.format), [.jpeg, .jpeg])
         XCTAssertEqual(read.pages.map(\.image.dpi), pages.map(\.dpi))
         for (page, packaged) in zip(pages, read.pages) {
-            let full = AppState.fullImage(of: page)
+            let full = try AppState.fullImage(of: page, number: 1)
             XCTAssertEqual(packaged.image.pixelWidth, full.width)
             XCTAssertEqual(packaged.image.pixelHeight, full.height)
         }

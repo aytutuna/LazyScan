@@ -436,6 +436,28 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_save_withAPageWhoseSpoolFileWent_failsNamingThePage_writesNothing_andKeepsTheQueue() async throws {
+        for format in [OutputFormat.pdf, .jpeg, .word] {
+            let state = makeState()
+            XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50), seamPage(width: 300, height: 200, dpi: 50)],
+                                       source: .photo))
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            XCTAssertEqual(state.scannedPages.count, 2)
+            try FileManager.default.removeItem(at: try XCTUnwrap(state.scannedPages[1].fileURL))
+            state.settings.format = format
+            if format == .jpeg { state.saveImages() } else { state.savePDF() }
+            try await waitUntil(timeout: 60) { !state.isBusy }
+            let message: String = try XCTUnwrap(state.errorMessage, "\(format)")
+            XCTAssertTrue(message.contains("The picture of page 2 could not be written."), message)
+            XCTAssertEqual(state.scannedPages.count, 2, "\(format)")
+            XCTAssertEqual(state.lastSavedURLs, [], "\(format)")
+            let written: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
+                .filter { (name: String) -> Bool in ["pdf", "jpg", "docx"].contains((name as NSString).pathExtension) }
+            XCTAssertEqual(written, [], "\(format)")
+        }
+    }
+
+    @MainActor
     func test_savePDF_withEveryPageSkipped_keepsTheQueue_andSaysWhyUnderItsOwnTitle() async throws {
         let state = makeState()
         XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))

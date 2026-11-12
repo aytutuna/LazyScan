@@ -2529,7 +2529,7 @@ public final class AppState: ObservableObject {
             if !shouldContinue() { throw ScanError.cancelled }
             progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count),
                      StatusDetail(head: .readingPage(index + 1, of: pages.count)))
-            let prepared = PDFBuilder.preparePage(page)
+            let prepared = try PDFBuilder.preparePage(page, number: index + 1)
             let lines = try recognizeForText(prepared.image)
             ocrPages.append(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
                                        pixelHeight: prepared.pixelHeight, dpi: page.dpi))
@@ -2588,7 +2588,7 @@ public final class AppState: ObservableObject {
             let page = self.scannedPages[index]
             self.setStatus(L10n.t("Reading the text of page {0}…", index + 1), StatusDetail(head: .readingPage(index + 1, of: nil)))
             let text = try await Task.detached(priority: .userInitiated) { () throws -> String in
-                let prepared = PDFBuilder.preparePage(page)
+                let prepared = try PDFBuilder.preparePage(page, number: index + 1)
                 let lines = try Self.recognizeForText(prepared.image)
                 return OCRText.pageText(OCRPage.of(lines, pixelWidth: prepared.pixelWidth,
                                                    pixelHeight: prepared.pixelHeight, dpi: page.dpi))

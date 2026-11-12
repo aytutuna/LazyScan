@@ -209,7 +209,7 @@ public class PdfBuilderTests
     {
         var spool = Marked(40, 20);
         var page = new ScannedPage(spool, 72, ColorMode.Color) { RotationQuarterTurns = turns };
-        var prepared = PdfBuilder.PreparePage(page, spool);
+        var prepared = PdfBuilder.PreparePage(page, spool, 1);
         Assert.Equal(20, prepared.Image.Width);
         Assert.Equal(40, prepared.Image.Height);
         Assert.Equal("/MediaBox [0 0 20 40]", MediaBoxOf(prepared));
@@ -223,7 +223,7 @@ public class PdfBuilderTests
     {
         var spool = Marked(40, 20);
         var page = new ScannedPage(spool, 72, ColorMode.Color) { RotationQuarterTurns = turns };
-        var prepared = PdfBuilder.PreparePage(page, spool);
+        var prepared = PdfBuilder.PreparePage(page, spool, 1);
         Assert.Equal("/MediaBox [0 0 40 20]", MediaBoxOf(prepared));
         if (turns % 4 == 0) Assert.Same(spool, prepared.Image); // 4 turns = no rotation at all
         else Assert.True(IsRed(prepared.Image, 39, 19), "180°: top-left lands bottom-right");
@@ -239,7 +239,7 @@ public class PdfBuilderTests
                                    fullPixelSize: new SizeD(40, 20)).RotatedClockwise();
         Assert.Equal(1, page.RotationQuarterTurns);
 
-        var prepared = PdfBuilder.PreparePage(page, full);
+        var prepared = PdfBuilder.PreparePage(page, full, 1);
         Assert.Equal(20, prepared.Image.Width);
         Assert.Equal(40, prepared.Image.Height);
         Assert.True(IsRed(prepared.Image, 19, 0), "clockwise: top-left lands top-right");
@@ -247,13 +247,12 @@ public class PdfBuilderTests
     }
 
     [Fact]
-    public void MissingSpoolFallsBackWithoutDoubleRotation()
+    public void PreviewPageIsUsedWithoutDoubleRotation()
     {
         var preview = Marked(20, 10);
-        var page = new ScannedPage(preview, 72, ColorMode.Color, filePath: "missing.png",
-                                   fullPixelSize: new SizeD(40, 20)).RotatedClockwise();
+        var page = new ScannedPage(preview, 72, ColorMode.Color, fullPixelSize: new SizeD(40, 20)).RotatedClockwise();
 
-        var prepared = PdfBuilder.PreparePage(page, spoolImage: null);
+        var prepared = PdfBuilder.PreparePage(page, spoolImage: null, number: 1);
         // The in-memory image already carries the rotation: used as-is.
         Assert.Same(page.Image, prepared.Image);
         Assert.Equal(10, prepared.Image.Width);
@@ -263,11 +262,21 @@ public class PdfBuilderTests
     }
 
     [Fact]
+    public void SpooledPageWithoutItsFileFailsNamingThePage()
+    {
+        var page = new ScannedPage(Marked(20, 10), 72, ColorMode.Color, filePath: "missing.png",
+                                   fullPixelSize: new SizeD(40, 20));
+        var error = Assert.Throws<ScanException>(() => PdfBuilder.PreparePage(page, spoolImage: null, number: 2));
+        Assert.Equal(ScanErrorKind.ExportFailed, error.Kind);
+        Assert.Contains("The picture of page 2 could not be written.", error.Message);
+    }
+
+    [Fact]
     public void UnspooledPageUsesInMemoryImage()
     {
         var image = Marked(40, 20);
         var page = new ScannedPage(image, 72, ColorMode.Color).RotatedClockwise();
-        var prepared = PdfBuilder.PreparePage(page, spoolImage: null);
+        var prepared = PdfBuilder.PreparePage(page, spoolImage: null, number: 1);
         Assert.Same(page.Image, prepared.Image);
         Assert.Equal("/MediaBox [0 0 20 40]", MediaBoxOf(prepared));
     }
@@ -408,14 +417,13 @@ public class PdfBuilderTests
     }
 
     [Fact]
-    public void MissingSpoolPageDeclaresPreviewSizedImageOnFullSizePage()
+    public void PreviewPageDeclaresPreviewSizedImageOnFullSizePage()
     {
-        // The missing-spool fallback hands back the preview pixels with the FULL page size;
-        // the encoded preview's true size must be what the image XObject declares.
+        // A page held as a preview comes back with the FULL page size; the encoded preview's
+        // true size must be what the image XObject declares.
         var preview = Marked(20, 10);
-        var page = new ScannedPage(preview, 72, ColorMode.Color, filePath: "missing.png",
-                                   fullPixelSize: new SizeD(40, 20)).RotatedClockwise();
-        var prepared = PdfBuilder.PreparePage(page, spoolImage: null);
+        var page = new ScannedPage(preview, 72, ColorMode.Color, fullPixelSize: new SizeD(40, 20)).RotatedClockwise();
+        var prepared = PdfBuilder.PreparePage(page, spoolImage: null, number: 1);
         var jpeg = SyntheticJpeg(prepared.Image.Width, prepared.Image.Height);
         var input = new PdfPageInput(jpeg, prepared.PixelWidth, prepared.PixelHeight, 72, null);
         string text = Encoding.Latin1.GetString(PdfBuilder.Make([input]));

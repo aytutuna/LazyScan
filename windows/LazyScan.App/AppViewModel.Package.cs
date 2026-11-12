@@ -223,7 +223,7 @@ public sealed partial class AppViewModel
                     throw new CompanionPackageException(CompanionPackageErrorKind.InvalidDocument,
                         Loc.T("The picture of page {0} could not be written.", pages.IndexOf(page) + 1));
                 }
-                return PdfBuilder.PreparePage(page, spooled).Image;
+                return PdfBuilder.PreparePage(page, spooled, pages.IndexOf(page) + 1).Image;
             }) with
             {
                 Writer = new CompanionWriterInfo("Lazy Scan", typeof(AppViewModel).Assembly.GetName().Version?.ToString(3) ?? "", "windows"),

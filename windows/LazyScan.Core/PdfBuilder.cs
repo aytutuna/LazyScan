@@ -87,11 +87,11 @@ public static class PdfBuilder
     /// the Swift PDFBuilder loop. Spilled pages hold only a preview in memory, so the caller
     /// reloads the full-resolution UNROTATED pixels from <see cref="ScannedPage.FilePath"/>
     /// and passes them as <paramref name="spoolImage"/> (null when the page was never spooled
-    /// or the file is missing/unreadable). The media box comes from the recorded
-    /// full-resolution size, so the physical page size stays correct even when only the
-    /// preview pixels are available.
+    /// or the file is missing/unreadable). A spooled page without its pixels fails, naming page
+    /// <paramref name="number"/>, rather than being written from its preview. The media box comes from the recorded
+    /// full-resolution size, so the physical page size stays correct.
     /// </summary>
-    public static PreparedPage PreparePage(ScannedPage page, RgbaImage? spoolImage)
+    public static PreparedPage PreparePage(ScannedPage page, RgbaImage? spoolImage, int number)
     {
         int turns = ((page.RotationQuarterTurns % 4) + 4) % 4;
         bool swapsAxes = turns % 2 == 1;
@@ -105,8 +105,11 @@ public static class PdfBuilder
             return new PreparedPage(image, swapsAxes ? rawHeight : rawWidth,
                                     swapsAxes ? rawWidth : rawHeight);
         }
-        // Missing/unreadable spill file (or the page was never spooled): fall back to the
-        // in-memory image, which ALREADY carries the rotation.
+        if (page.FilePath is not null)
+        {
+            throw ScanException.ExportFailed(Loc.T("The picture of page {0} could not be written.", number));
+        }
+        // The page was never spooled: its in-memory image ALREADY carries the rotation.
         if (page.FullPixelSize is { } recorded)
         {
             // Recorded pre-rotation full-resolution size: swap for odd turns.

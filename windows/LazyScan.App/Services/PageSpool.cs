@@ -46,8 +46,8 @@ public sealed class PageSpool : IDisposable
         }
         catch
         {
-            // Without the lock another instance may sweep this folder; spooled pages then
-            // fall back to their in-memory previews. Not a reason to refuse to start.
+            // Without the lock another instance may sweep this folder; saving a spooled
+            // page then fails. Not a reason to refuse to start.
         }
     }
 

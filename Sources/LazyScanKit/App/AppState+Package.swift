@@ -204,10 +204,9 @@ extension AppState {
         -> CompanionDocument {
         var packaged: [CompanionPage] = []
         for (index, page) in pages.enumerated() {
-            let full = fullImage(of: page)
-            // A spooled page whose file went (the queue saved or cleared meanwhile) comes back as its
-            // preview: refused rather than written small.
-            guard page.fileURL == nil || full !== page.image else {
+            // A spooled page whose file went (the queue saved or cleared meanwhile) is refused rather than
+            // written from its preview.
+            guard let full = try? fullImage(of: page, number: index + 1) else {
                 throw CompanionPackageError(.invalidDocument,
                                             L10n.t("The picture of page {0} could not be written.", index + 1))
             }

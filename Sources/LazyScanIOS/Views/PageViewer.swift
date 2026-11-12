@@ -198,7 +198,7 @@ struct PageViewer: View {
     }
 
     /// The picture in the spool file `url`, at most `maxSide` pixels on its longer side and turned as
-    /// `AppState.fullImage(of:)` turns the file; nil when it cannot be read.
+    /// `AppState.fullImage(of:number:)` turns the file; nil when it cannot be read.
     nonisolated static func readPage(_ url: URL, maxSide: Int, quarterTurns: Int) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let options: [CFString: Any] = [
@@ -874,15 +874,16 @@ struct PageTextSheet: View {
         guard text == nil, problem == nil else { return }
         await state.pageEditChain?.value
         if Task.isCancelled { return }
-        guard let page = state.scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == pageID }) else {
+        guard let index = state.scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == pageID }) else {
             text = ""
             return
         }
+        let page: ScannedPage = state.scannedPages[index]
         // Closing the sheet cancels its task and the read with it: one not begun yet never starts, and the
         // text of one under way is dropped.
         let reading: Task<String, Error> = Task.detached(priority: .userInitiated) { () throws -> String in
             try Task.checkCancellation()
-            return try AppState.readText(page)
+            return try AppState.readText(page, number: index + 1)
         }
         do {
             text = try await withTaskCancellationHandler {

@@ -306,7 +306,7 @@ public class IdCardTests
         var back = SolidSide(Card, 100, 40, 90, 200);
         var composed = IdCardComposer.Compose(front, back, 100, Letter);
         Assert.Equal((850, 1100), (composed.Width, composed.Height));
-        var prepared = PdfBuilder.PreparePage(new ScannedPage(composed, 100, ColorMode.Color), null);
+        var prepared = PdfBuilder.PreparePage(new ScannedPage(composed, 100, ColorMode.Color), null, 1);
         // The page size comes from the page's pixels and resolution, whatever the JPEG holds.
         var input = new PdfPageInput([0xFF, 0xD8, 0xFF, 0xD9], prepared.PixelWidth, prepared.PixelHeight, 100, null);
         string text = Encoding.Latin1.GetString(PdfBuilder.Make([input]));

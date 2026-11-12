@@ -223,8 +223,8 @@ extension AppState {
 
     /// The text OCR reads on `page`, in reading order with a blank line between paragraphs; the iPhone's page
     /// viewer reads a queued page's with it too.
-    public nonisolated static func readText(_ page: ScannedPage) throws -> String {
-        let prepared = PDFBuilder.preparePage(page)
+    public nonisolated static func readText(_ page: ScannedPage, number: Int) throws -> String {
+        let prepared = try PDFBuilder.preparePage(page, number: number)
         let lines: [OCRLine]
         do {
             lines = try OCRService.recognizeLines(in: prepared.image)

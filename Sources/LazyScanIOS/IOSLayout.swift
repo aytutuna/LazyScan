@@ -132,7 +132,7 @@ public enum IOSPageSelection {
                     let url: URL = folder.appendingPathComponent("Page \(number).\(format.fileExtension)")
                     // One pool a page, or a long share holds every page's decoded pixels until the end.
                     try autoreleasepool {
-                        try ImageExporter.write(AppState.fullImage(of: page), to: url, format: format, dpi: page.dpi,
+                        try ImageExporter.write(AppState.fullImage(of: page, number: number), to: url, format: format, dpi: page.dpi,
                                                 jpegQuality: jpegQuality, colorMode: page.colorMode)
                     }
                     urls.append(url)

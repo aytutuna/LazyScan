@@ -467,7 +467,7 @@ final class OrientationTests: XCTestCase {
         XCTAssertEqual(page(textRgba).withImage(preview, fileURL: url).turnedUpright(2).rotationQuarterTurns, 2)
     }
 
-    func test_withUprightToggled_pageInMemory_otherVersionSpooled_turnsTheFileThroughTheRotation() {
+    func test_withUprightToggled_pageInMemory_otherVersionSpooled_turnsTheFileThroughTheRotation() throws {
         // Shown: the page as scanned, kept in memory (its spool file failed), turned upright by a
         // quarter turn; the other version (cropped and straightened, upright) has a spool file.
         let otherURL = URL(fileURLWithPath: "/tmp/page.tiff")
@@ -481,7 +481,7 @@ final class OrientationTests: XCTestCase {
         XCTAssertEqual(undone.alternate?.fileURL, otherURL)
         XCTAssertNil(undone.alternate?.image)
         // Saved from memory, the rotation is not applied again: as scanned.
-        XCTAssertEqual(turnsFromUpright(RgbaImage(cgImage: PDFBuilder.preparePage(undone).image)!), 3)
+        XCTAssertEqual(turnsFromUpright(RgbaImage(cgImage: try PDFBuilder.preparePage(undone, number: 1).image)!), 3)
         // The other version, read from its file and turned like the page: as scanned too.
         let fromFile = textRgba.rotatedQuarterTurns(undone.rotationQuarterTurns).makeCGImage()!
         let swapped = undone.withVersionsSwapped(fromFile)
@@ -491,6 +491,18 @@ final class OrientationTests: XCTestCase {
         let again = undone.withUprightToggled()
         XCTAssertEqual(again.rotationQuarterTurns, 0)
         XCTAssertEqual(turnsFromUpright(RgbaImage(cgImage: again.image)!), 0)
+    }
+
+    func test_spooledPageWithoutItsFile_failsNamingThePage() {
+        let missing = URL(fileURLWithPath: "/tmp/no-such-spool-file.tiff")
+        let spooled = page(textRgba).withImage(textRgba.makeCGImage()!, fileURL: missing)
+        let wanted = "The picture of page 2 could not be written."
+        XCTAssertThrowsError(try PDFBuilder.preparePage(spooled, number: 2)) { (error: Error) in
+            XCTAssertTrue(error.localizedDescription.contains(wanted), error.localizedDescription)
+        }
+        XCTAssertThrowsError(try AppState.fullImage(of: spooled, number: 2)) { (error: Error) in
+            XCTAssertTrue(error.localizedDescription.contains(wanted), error.localizedDescription)
+        }
     }
 
     func test_upright_survivesRebuildingThePage() {

@@ -3430,7 +3430,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var page = pages[i];
             // Spilled pages hold only a preview in memory — reload the full-resolution
             // pixels one page at a time; PreparePage applies the page's rotation.
-            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
+            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), i + 1), token);
             var image = prepared.Image;
             IReadOnlyList<OcrLine>? lines = null;
             if (knownLines is not null)
@@ -3545,7 +3545,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             token.ThrowIfCancellationRequested();
             var page = pages[i];
-            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
+            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), i + 1), token);
             SetStatus(Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count), new(new StatusHead.ReadingPage(i + 1, pages.Count)));
             NotifyAll();
             ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, token),
@@ -3617,7 +3617,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var page = ScannedPages[index].Page;
             SetStatus(Loc.T("Reading the text of page {0}…", index + 1), new(new StatusHead.ReadingPage(index + 1, null)));
             NotifyAll();
-            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page)), token);
+            var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), index + 1), token);
             var lines = await RecognizeForText(prepared.Image, token);
             string text = OcrText.PageText(OcrPage.Of(lines, prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
             if (text.Length > 0)
@@ -3658,8 +3658,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// The full-resolution UNROTATED pixels from the page's spill file, or null when the page
-    /// was never spooled (or the file is unreadable) — PdfBuilder.PreparePage then falls back
-    /// to the in-memory image, which already carries any user rotation.
+    /// was never spooled or the file is unreadable (PdfBuilder.PreparePage refuses the latter).
     /// </summary>
     private static RgbaImage? SpoolImage(ScannedPage page)
     {

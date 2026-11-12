@@ -293,13 +293,18 @@ extension AppState {
                 return
             }
             // A spooled page shows a preview; its print size comes from the full pixels at its dpi.
-            let full: [ScannedPage] = await Task.detached(priority: .userInitiated) { () -> [ScannedPage] in
-                pages.map { (page: ScannedPage) -> ScannedPage in
-                    guard page.fileURL != nil else { return page }
-                    var loaded = page.withImage(Self.fullImage(of: page))
-                    loaded.rotationQuarterTurns = 0
-                    return loaded
+            let full: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
+                var loaded: [ScannedPage] = []
+                for (index, page) in pages.enumerated() {
+                    guard page.fileURL != nil else {
+                        loaded.append(page)
+                        continue
+                    }
+                    var withFull = page.withImage(try Self.fullImage(of: page, number: index + 1))
+                    withFull.rotationQuarterTurns = 0
+                    loaded.append(withFull)
                 }
+                return loaded
             }.value
             if flag.isCancelled { throw ScanError.cancelled }
             self.refreshPrinters()

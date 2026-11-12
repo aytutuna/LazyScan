@@ -86,8 +86,9 @@ public enum PDFBuilder {
 
     /// The image and media-box size of one queued page: the full-resolution pixels from its spill
     /// file with the page's rotation applied, else the in-memory image (which already shows it).
-    /// Twin of C# `PdfBuilder.PreparePage`.
-    public static func preparePage(_ page: ScannedPage) -> PreparedPage {
+    /// A spooled page whose file cannot be read fails (naming page `number`) rather than being written from
+    /// its preview. Twin of C# `PdfBuilder.PreparePage`.
+    public static func preparePage(_ page: ScannedPage, number: Int) throws -> PreparedPage {
         // Spilled pages hold only a preview in memory — reload the full-resolution pixels one
         // page at a time. The media box comes from the recorded full-resolution size, so the
         // physical page size stays correct even when only the preview pixels are available.
@@ -102,8 +103,10 @@ public enum PDFBuilder {
             return PreparedPage(image: image, pixelWidth: swapsAxes ? rawHeight : rawWidth,
                                 pixelHeight: swapsAxes ? rawWidth : rawHeight)
         }
-        // Missing/unreadable spill file (or the page was never spooled): fall back to the
-        // in-memory image, which ALREADY carries the rotation.
+        if page.fileURL != nil {
+            throw ScanError.exportFailed(L10n.t("The picture of page {0} could not be written.", number))
+        }
+        // The page was never spooled: its in-memory image ALREADY carries the rotation.
         if let full = page.fullPixelSize {
             // Recorded pre-rotation full-resolution size: swap for odd turns.
             return PreparedPage(image: page.image,
@@ -134,7 +137,7 @@ public enum PDFBuilder {
         for index in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
             let page = pages[index]
-            let prepared = preparePage(page)
+            let prepared = try preparePage(page, number: index + 1)
             var lines: [OCRLine]? = nil
             if let textLayer {
                 progress?(L10n.t("OCR page {0} of {1}…", index + 1, pages.count))
@@ -193,8 +196,7 @@ public enum PDFBuilder {
     }
 
     /// The full-resolution UNROTATED pixels from the page's spill file, or nil when the
-    /// page was never spooled (or the file is unreadable) — the caller then falls back to
-    /// the in-memory image, which already carries any user rotation.
+    /// page was never spooled or the file is unreadable.
     private static func spoolImage(for page: ScannedPage) -> CGImage? {
         guard let url = page.fileURL,
               let source = CGImageSourceCreateWithURL(url as CFURL, nil),
