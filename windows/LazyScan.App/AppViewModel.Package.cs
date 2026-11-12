@@ -43,7 +43,7 @@ public sealed record PendingPackage(string FileName, IReadOnlyList<ScannedPage> 
         Path.GetExtension(path).Equals("." + CompanionPackage.FileExtension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The <c>.lsdoc</c> and photo files among a command line's arguments. When the first argument is a
+    /// The <c>.lsdoc</c>, photo and PDF files among a command line's arguments. When the first argument is a
     /// <c>lazyscan:</c> address the app is only being opened, and the rest is dropped: the scheme's command is
     /// <c>"exe" "%1"</c>, so an address with a quote in it can add arguments of its own.
     /// </summary>
