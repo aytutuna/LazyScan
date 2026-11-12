@@ -2909,6 +2909,8 @@ public final class AppState: ObservableObject {
             currentCancelFlag = nil
             progress = nil
             isBusy = false
+            // Pages just queued are recorded before the system's time is given back, not half a second later.
+            if queueRecordTask != nil { writeQueueRecord() }
             if let activity { background?.endActivity(activity) }
             endOfWork()
         }

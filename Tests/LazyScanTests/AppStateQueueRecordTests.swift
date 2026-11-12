@@ -259,8 +259,22 @@ final class AppStateQueueRecordTests: XCTestCase {
         XCTAssertTrue(state.ingest([recordPage()], source: .photo))
         try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
         let record: URL = spool.appendingPathComponent(QueueRecord.fileName)
+        try FileManager.default.removeItem(at: record)
+        state.scannedPages = state.scannedPages
         XCTAssertFalse(FileManager.default.fileExists(atPath: record.path), "The record waits for its delay")
         lifecycle.sendWillTerminate()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: record.path))
+    }
+
+    @MainActor
+    func test_anOperationThatQueuedPages_writesTheRecordBeforeItEnds() async throws {
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecordScorer(),
+                             barcodeReader: RecordBarcodes(), files: files(keepsQueue: true))
+        state.queueRecordDelay = 60_000_000_000
+        XCTAssertTrue(state.startTask(.document))
+        XCTAssertTrue(state.ingest([recordPage()], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
+        let record: URL = spool.appendingPathComponent(QueueRecord.fileName)
         XCTAssertTrue(FileManager.default.fileExists(atPath: record.path))
     }
 

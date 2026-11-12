@@ -84,10 +84,10 @@ final class TroubleshootingTests: XCTestCase {
         XCTAssertEqual(stop.problem, ScannerProblem.appSuspended)
         XCTAssertEqual(stop.message(pagesKept: 2),
                        "Scanning stopped after 2 pages; they were kept. The system suspended Lazy Scan in the "
-                       + "background before the scan finished. Keep the app open while scanning, then scan again.")
+                       + "background before the scan finished. Keep the app open. Put back only the unfinished sheets.")
         XCTAssertEqual(ScannerProblems.notice(stop.message(pagesKept: 2)),
                        ProblemNotice(title: "App suspended",
-                                     message: "Scanning stopped after 2 pages; they were kept. Keep the app open while scanning, then scan again."))
+                                     message: "Scanning stopped after 2 pages; they were kept. Keep the app open. Put back only the unfinished sheets."))
     }
 
     func test_scanStopWithoutAReasonStillSaysPagesWereKept() {

@@ -51,7 +51,7 @@ public static class ScannerProblems
         ScannerProblem.WarmingUp => Loc.T("The scanner is warming up. Try again in a moment."),
         ScannerProblem.NeedsAttention => Loc.T("The scanner needs attention. Check its display or control panel."),
         ScannerProblem.CommunicationError => Loc.T("The connection to the scanner was interrupted. Check the cable or network, then try again."),
-        ScannerProblem.AppSuspended => Loc.T("The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again."),
+        ScannerProblem.AppSuspended => Loc.T("The system suspended Lazy Scan in the background before the scan finished. Keep the app open. Put back only the unfinished sheets."),
         _ => Loc.T("The scanner reported a problem. Check the scanner, then try again."),
     };
 
@@ -91,7 +91,7 @@ public static class ScannerProblems
         ScannerProblem.WarmingUp => Loc.T("Try again in a moment."),
         ScannerProblem.NeedsAttention => Loc.T("Check its display or control panel."),
         ScannerProblem.CommunicationError => Loc.T("Check the cable or network, then try again."),
-        ScannerProblem.AppSuspended => Loc.T("Keep the app open while scanning, then scan again."),
+        ScannerProblem.AppSuspended => Loc.T("Keep the app open. Put back only the unfinished sheets."),
         _ => Loc.T("Check the scanner, then try again."),
     };
 

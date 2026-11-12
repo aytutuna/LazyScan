@@ -65,7 +65,7 @@ public enum ScannerProblems {
         case .communicationError:
             return L10n.t("The connection to the scanner was interrupted. Check the cable or network, then try again.")
         case .appSuspended:
-            return L10n.t("The system suspended Lazy Scan in the background before the scan finished. Keep the app open while scanning, then scan again.")
+            return L10n.t("The system suspended Lazy Scan in the background before the scan finished. Keep the app open. Put back only the unfinished sheets.")
         case .unknown:
             return L10n.t("The scanner reported a problem. Check the scanner, then try again.")
         }
@@ -106,7 +106,7 @@ public enum ScannerProblems {
         case .warmingUp: return L10n.t("Try again in a moment.")
         case .needsAttention: return L10n.t("Check its display or control panel.")
         case .communicationError: return L10n.t("Check the cable or network, then try again.")
-        case .appSuspended: return L10n.t("Keep the app open while scanning, then scan again.")
+        case .appSuspended: return L10n.t("Keep the app open. Put back only the unfinished sheets.")
         case .unknown: return L10n.t("Check the scanner, then try again.")
         }
     }

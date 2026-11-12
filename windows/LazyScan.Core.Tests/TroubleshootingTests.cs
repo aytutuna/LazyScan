@@ -113,10 +113,10 @@ public class TroubleshootingTests
         var stop = ScanStop.From(ScanException.ForProblem(ScannerProblem.AppSuspended));
         Assert.Equal(ScannerProblem.AppSuspended, stop.Problem);
         Assert.Equal("Scanning stopped after 2 pages; they were kept. The system suspended Lazy Scan in the "
-                     + "background before the scan finished. Keep the app open while scanning, then scan again.",
+                     + "background before the scan finished. Keep the app open. Put back only the unfinished sheets.",
                      stop.Message(2));
         Assert.Equal(new ProblemNotice("App suspended",
-                                       "Scanning stopped after 2 pages; they were kept. Keep the app open while scanning, then scan again."),
+                                       "Scanning stopped after 2 pages; they were kept. Keep the app open. Put back only the unfinished sheets."),
                      ScannerProblems.Notice(stop.Message(2)));
         Assert.Equal(ScanErrorKind.ScanFailed, ScanException.ForProblem(ScannerProblem.AppSuspended).Kind);
     }
