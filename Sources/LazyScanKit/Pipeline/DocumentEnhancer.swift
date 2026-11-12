@@ -131,6 +131,8 @@ public enum DocumentEnhancer {
     public static let blackPercentile: Double = 0.005
     /// Black and white makes a pixel black when it is darker than this share of the paper there.
     public static let bilevelShare: Double = 0.78
+    /// The black and white threshold setting that gives exactly `bilevelShare` and `Bilevel.threshold`.
+    public static let defaultThreshold: Double = 0.5
     /// The black point is at most this level, so a page with little print is not stretched into noise.
     public static let maxBlackPoint: Double = 0.5
     /// The steps a level is counted in.
@@ -287,8 +289,20 @@ public enum DocumentEnhancer {
         return min(Double(darkest) / Double(levels), maxBlackPoint)
     }
 
-    /// `image` cleaned up as `mode` says (see the type).
-    public static func enhance(_ image: RgbaImage, mode: DocumentEnhanceMode) -> DocumentEnhancement {
+    /// The share of the paper black and white makes black at the setting `threshold` (0 ... 1): `bilevelShare`
+    /// at `defaultThreshold`, none at 0 and all of it at 1, linear between.
+    public static func blackShare(threshold: Double) -> Double {
+        let t: Double = min(max(threshold, 0), 1)
+        if t <= defaultThreshold {
+            return bilevelShare * t / defaultThreshold
+        }
+        return bilevelShare + (1 - bilevelShare) * (t - defaultThreshold) / (1 - defaultThreshold)
+    }
+
+    /// `image` cleaned up as `mode` says (see the type); black and white cuts at `threshold`
+    /// (`blackShare(threshold:)`).
+    public static func enhance(_ image: RgbaImage, mode: DocumentEnhanceMode,
+                               threshold: Double = defaultThreshold) -> DocumentEnhancement {
         if mode == .photo {
             return DocumentEnhancement(image: photo(image), mode: .photo)
         }
@@ -296,7 +310,7 @@ public enum DocumentEnhancer {
         let h: Int = image.height
         let gray: GrayImage = GrayImage.luma(image)
         if isLightOnDark(gray) {
-            return lightOnDark(image, mode: mode)
+            return lightOnDark(image, mode: mode, threshold: threshold)
         }
         guard let paper = paperMap(gray) else {
             let resolved: DocumentEnhanceMode = mode == .auto ? DocumentEnhanceMode.color : mode
@@ -310,7 +324,7 @@ public enum DocumentEnhancer {
         }
         let src: [UInt8] = image.pixels
         let lumas: [UInt8] = gray.pixels
-        let blackBelow: Int = Int(floor(bilevelShare * Double(levels) + 0.5))
+        let blackBelow: Int = Int(floor(blackShare(threshold: threshold) * Double(levels) + 0.5))
         var output: [UInt8] = [UInt8](repeating: 0, count: w * h * 4)
         var y: Int = 0
         while y < h {
@@ -363,9 +377,10 @@ public enum DocumentEnhancer {
     }
 
     /// A light on dark page (`isLightOnDark`) in `mode`: stretched as a whole (`photo`), in color for `.color`
-    /// and for `.auto` where it has color; else its luma, thresholded at `Bilevel.threshold` for
-    /// `.blackAndWhite`.
-    private static func lightOnDark(_ image: RgbaImage, mode: DocumentEnhanceMode) -> DocumentEnhancement {
+    /// and for `.auto` where it has color; else its luma, thresholded at `threshold` of 255 (`Bilevel.threshold`
+    /// at `defaultThreshold`) for `.blackAndWhite`.
+    private static func lightOnDark(_ image: RgbaImage, mode: DocumentEnhanceMode,
+                                    threshold setting: Double) -> DocumentEnhancement {
         let stretched: RgbaImage = photo(image)
         let w: Int = stretched.width
         let h: Int = stretched.height
@@ -376,7 +391,7 @@ public enum DocumentEnhancer {
             return DocumentEnhancement(image: stretched, mode: .color)
         }
         let lumas: [UInt8] = GrayImage.luma(stretched).pixels
-        let threshold: Int = Bilevel.threshold
+        let threshold: Int = Int(floor(min(max(setting, 0), 1) * 255 + 0.5))
         var output: [UInt8] = [UInt8](repeating: 0, count: w * h * 4)
         var p: Int = 0
         while p < w * h {

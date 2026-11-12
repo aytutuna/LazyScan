@@ -123,6 +123,8 @@ public static class DocumentEnhancer
     public const double BlackPercentile = 0.005;
     /// <summary>Black and white makes a pixel black when it is darker than this share of the paper there.</summary>
     public const double BilevelShare = 0.78;
+    /// <summary>The black and white threshold setting that gives exactly <see cref="BilevelShare"/> and <see cref="Bilevel.Threshold"/>.</summary>
+    public const double DefaultThreshold = 0.5;
     /// <summary>The black point is at most this level, so a page with little print is not stretched into noise.</summary>
     public const double MaxBlackPoint = 0.5;
     /// <summary>The steps a level is counted in.</summary>
@@ -260,19 +262,33 @@ public static class DocumentEnhancer
         return Math.Min(Percentile(histogram, samples, BlackPercentile) / (double)Levels, MaxBlackPoint);
     }
 
-    /// <summary><paramref name="image"/> cleaned up as <paramref name="mode"/> says (see the type).</summary>
-    public static DocumentEnhancement Enhance(RgbaImage image, DocumentEnhanceMode mode)
+    /// <summary>
+    /// The share of the paper black and white makes black at the setting <paramref name="threshold"/> (0 to 1):
+    /// <see cref="BilevelShare"/> at <see cref="DefaultThreshold"/>, none at 0 and all of it at 1, linear between.
+    /// </summary>
+    public static double BlackShare(double threshold)
+    {
+        double t = Math.Min(Math.Max(threshold, 0), 1);
+        if (t <= DefaultThreshold) return BilevelShare * t / DefaultThreshold;
+        return BilevelShare + (1 - BilevelShare) * (t - DefaultThreshold) / (1 - DefaultThreshold);
+    }
+
+    /// <summary>
+    /// <paramref name="image"/> cleaned up as <paramref name="mode"/> says (see the type); black and white
+    /// cuts at <paramref name="threshold"/> (<see cref="BlackShare(double)"/>).
+    /// </summary>
+    public static DocumentEnhancement Enhance(RgbaImage image, DocumentEnhanceMode mode, double threshold = DefaultThreshold)
     {
         if (mode == DocumentEnhanceMode.Photo) return new DocumentEnhancement(Photo(image), DocumentEnhanceMode.Photo);
         int w = image.Width, h = image.Height;
         var gray = GrayImage.Luma(image);
-        if (IsLightOnDark(gray)) return LightOnDark(image, mode);
+        if (IsLightOnDark(gray)) return LightOnDark(image, mode, threshold);
         var paper = PaperMap(gray);
         var lut = Stretch(BlackPoint(gray, paper), WhitePoint);
         bool color = mode is DocumentEnhanceMode.Auto or DocumentEnhanceMode.Color;
         var balance = color ? WhiteBalance(image, gray, paper) : PaperWhiteBalance.Neutral;
         var src = image.Pixels;
-        int blackBelow = (int)Math.Floor(BilevelShare * Levels + 0.5);
+        int blackBelow = (int)Math.Floor(BlackShare(threshold) * Levels + 0.5);
         var output = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
         {
@@ -325,9 +341,10 @@ public static class DocumentEnhancer
     /// A light on dark page (<see cref="IsLightOnDark"/>) in <paramref name="mode"/>: stretched as a whole
     /// (<see cref="Photo"/>), in color for <see cref="DocumentEnhanceMode.Color"/> and for
     /// <see cref="DocumentEnhanceMode.Auto"/> where it has color; else its luma, thresholded at
-    /// <see cref="Bilevel.Threshold"/> for <see cref="DocumentEnhanceMode.BlackAndWhite"/>.
+    /// <paramref name="threshold"/> of 255 (<see cref="Bilevel.Threshold"/> at <see cref="DefaultThreshold"/>)
+    /// for <see cref="DocumentEnhanceMode.BlackAndWhite"/>.
     /// </summary>
-    private static DocumentEnhancement LightOnDark(RgbaImage image, DocumentEnhanceMode mode)
+    private static DocumentEnhancement LightOnDark(RgbaImage image, DocumentEnhanceMode mode, double threshold)
     {
         var stretched = Photo(image);
         int w = stretched.Width, h = stretched.Height;
@@ -337,11 +354,12 @@ public static class DocumentEnhancer
             return new DocumentEnhancement(stretched, DocumentEnhanceMode.Color);
         }
         var gray = GrayImage.Luma(stretched);
+        int cut = (int)Math.Floor(Math.Min(Math.Max(threshold, 0), 1) * 255 + 0.5);
         var output = new byte[w * h * 4];
         for (int p = 0; p < w * h; p++)
         {
             byte v = gray.Pixels[p];
-            if (mode == DocumentEnhanceMode.BlackAndWhite) v = v < Bilevel.Threshold ? (byte)0 : (byte)255;
+            if (mode == DocumentEnhanceMode.BlackAndWhite) v = v < cut ? (byte)0 : (byte)255;
             output[p * 4] = v;
             output[p * 4 + 1] = v;
             output[p * 4 + 2] = v;

@@ -64,6 +64,9 @@ struct SaveAsPage: View {
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("options.format")
+                if IOSSettingsSections.shownFormat(s) == OutputFormat.jpeg {
+                    JPEGQualityRow()
+                }
                 if IOSShell.offersSave(s, pageCount: state.scannedPages.count) && !IOSShell.separatesDocuments(s)
                     && IOSShell.exportFormat(s) == OutputFormat.pdf {
                     Toggle(IOSShell.eachPageTitle(s, camera: mode == IOSScanMode.camera), isOn: eachPage)
@@ -146,6 +149,10 @@ struct LookPage: View {
             }
             Section {
                 AdjustmentSettingsRows()
+            } footer: {
+                if AdjustmentSettingsRows.showsThreshold(state.settings) {
+                    Text("Higher makes more of the page black.")
+                }
             }
         }
     }

@@ -145,6 +145,35 @@ final class DocumentEnhancerTests: XCTestCase {
         }
     }
 
+    func testTheBlackShareFollowsTheThreshold() {
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: 0.5), DocumentEnhancer.bilevelShare)
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: 0), 0)
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: 1), 1)
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: 0.25), DocumentEnhancer.bilevelShare / 2, accuracy: 1e-12)
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: -3), 0)
+        XCTAssertEqual(DocumentEnhancer.blackShare(threshold: 7), 1)
+    }
+
+    func testBlackAndWhiteCutsAtTheThreshold() {
+        let page: RgbaImage = EnhancerPages.faint(paper: 226, ink: 158, thin: false)
+        func blackPixels(_ image: RgbaImage) -> Int {
+            var count: Int = 0
+            var i: Int = 0
+            while i < image.pixels.count {
+                if image.pixels[i] == 0 { count += 1 }
+                i += 4
+            }
+            return count
+        }
+        func black(_ threshold: Double) -> Int {
+            blackPixels(DocumentEnhancer.enhance(page, mode: .blackAndWhite, threshold: threshold).image)
+        }
+        XCTAssertEqual(black(0.5), blackPixels(DocumentEnhancer.enhance(page, mode: .blackAndWhite).image))
+        XCTAssertGreaterThan(black(0.5), 0)
+        XCTAssertEqual(black(0), 0)
+        XCTAssertGreaterThanOrEqual(black(1), black(0.5))
+    }
+
     func testBlackAndWhiteIsPrintOnPaper() {
         let result: DocumentEnhancement = DocumentEnhancer.enhance(EnhancerPages.shadowed(), mode: .blackAndWhite)
         XCTAssertEqual(result.mode, .blackAndWhite)

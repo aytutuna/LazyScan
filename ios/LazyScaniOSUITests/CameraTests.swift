@@ -86,6 +86,7 @@ final class CameraTests: XCTestCase {
         app.openPage("saveAs")
         XCTAssertTrue(app.descendants(matching: .any)["options.format"].firstMatch.waitForExistence(timeout: 10),
                       "The format for Photo")
+        XCTAssertTrue(app.descendants(matching: .any)["options.jpegQuality"].firstMatch.exists, "JPEG quality under JPEG")
         app.closeOptions()
         XCTAssertFalse(app.buttons["save.button"].isEnabled, "No Save without a page")
     }

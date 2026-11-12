@@ -44,7 +44,8 @@ public enum PageRecut {
     /// queue knows about the page (its rotation, its photo, its blank check, its codes) is kept. Nil when the
     /// corners cut nothing. `adjusting` is run on the new cut last (`adjustment(for:)`), and a receipt is then made easy to read.
     public static func recut(_ page: ScannedPage, photo: CGImage, filter: CaptureFilter?, corners: Quad? = nil,
-                             adjusting: AdjustmentStep? = nil) -> ScannedPage? {
+                             adjusting: AdjustmentStep? = nil,
+                             threshold: Double = DocumentEnhancer.defaultThreshold) -> ScannedPage? {
         guard var facts = page.capture else { return nil }
         let turns: Int = fileTurns(page)
         let taken: CGImage = turns == 0 ? photo : ImagePipeline.rotate(photo, quarterTurns: 4 - turns)
@@ -58,7 +59,7 @@ public enum PageRecut {
         facts.filter = nil
         let source = ScannedPage(image: taken, dpi: page.dpi, colorMode: .color, id: page.id, createdAt: page.createdAt)
             .withCapture(facts)
-        var cut: ScannedPage = EnhanceStep(mode: filter?.mode).apply(PerspectiveStep().apply(source))
+        var cut: ScannedPage = EnhanceStep(mode: filter?.mode, threshold: threshold).apply(PerspectiveStep().apply(source))
         if straightens { cut = ShotStraightenStep().apply(cut) }
         if let adjusting { cut = adjusting.apply(cut) }
         if facts.kind == .receipt { cut = enhancedAsReceipt(cut) }
@@ -164,11 +165,12 @@ extension AppState {
         guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
               PageRecut.canRecut(page), let url = page.alternate?.fileURL else { return [:] }
         let rotation: Int = page.rotationQuarterTurns
+        let threshold: Double = settings.adjustments.blackWhiteThreshold
         return await Task.detached(priority: .userInitiated) { () -> [CaptureFilter: CGImage] in
             guard let photo = AppState.thumbnailOfFile(url, maxSide: maxSide * 2) else { return [:] }
             var previews: [CaptureFilter: CGImage] = [:]
             for filter in CaptureFilter.displayOrder {
-                guard let cut = PageRecut.recut(page, photo: photo, filter: filter) else { continue }
+                guard let cut = PageRecut.recut(page, photo: photo, filter: filter, threshold: threshold) else { continue }
                 previews[filter] = rotation == 0 ? cut.image : ImagePipeline.rotate(cut.image, quarterTurns: rotation)
             }
             return previews
@@ -183,10 +185,12 @@ extension AppState {
               let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return }
         let spool: URL = spoolDirectory
         let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
+        let threshold: Double = settings.adjustments.blackWhiteThreshold
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
             guard let photo = AppState.imageInFile(photoURL),
-                  let cut = PageRecut.recut(page, photo: photo, filter: filter, corners: corners, adjusting: adjusting) else { return nil }
+                  let cut = PageRecut.recut(page, photo: photo, filter: filter, corners: corners, adjusting: adjusting,
+                                         threshold: threshold) else { return nil }
             return AppState.spoolRecut(cut, to: spool)
         }.value
         recuttingPages.remove(id)

@@ -135,6 +135,29 @@ final class LiveFilterTests: XCTestCase {
         XCTAssertLessThan(Double(other) / Double(240 * 180), 0.001)
     }
 
+    func test_blackAndWhite_blackensMoreOfThePageAsTheThresholdRises() {
+        let image: RgbaImage = sheet(width: 240, height: 180, colored: false)
+        let stats: LiveStats = LiveStats.measure(image, mode: .blackAndWhite)
+        func black(_ threshold: Double) -> Int {
+            var settings: ScanSettings = IOSShell.settingDrawerFilter(.blackAndWhite, in: ScanSettings())
+            settings.adjustments.blackWhiteThreshold = threshold
+            let bytes: [UInt8] = render(LiveFilter.apply(frame(image), look: LiveLook(settings: settings), stats: stats),
+                                        width: 240, height: 180)
+            var count: Int = 0
+            var i: Int = 0
+            while i < bytes.count {
+                if bytes[i] < 128 { count += 1 }
+                i += 4
+            }
+            return count
+        }
+        XCTAssertLessThanOrEqual(black(0.2), black(0.5))
+        XCTAssertLessThanOrEqual(black(0.5), black(0.8))
+        var low: ScanSettings = ScanSettings()
+        low.adjustments.blackWhiteThreshold = 0.2
+        XCTAssertNotEqual(LiveLook(settings: low), LiveLook(settings: ScanSettings()))
+    }
+
     func test_photoStretch_followsThePhotoLook() {
         let width: Int = 240
         let height: Int = 180

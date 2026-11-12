@@ -93,10 +93,12 @@ public struct PerspectiveStep: PageStep {
 /// `EnhanceStep`.
 public struct EnhanceStep: PageStep {
     public let mode: DocumentEnhanceMode?
+    public let threshold: Double
     public var name: String { "enhance" }
 
-    public init(mode: DocumentEnhanceMode?) {
+    public init(mode: DocumentEnhanceMode?, threshold: Double = DocumentEnhancer.defaultThreshold) {
         self.mode = mode
+        self.threshold = threshold
     }
 
     public func apply(_ page: ScannedPage) -> ScannedPage {
@@ -111,7 +113,7 @@ public struct EnhanceStep: PageStep {
         }
         guard let photo = RgbaImage(cgImage: page.image) else { return page }
         let applied: DocumentEnhanceMode = DocumentEnhancer.mode(mode, kind: capture.kind)
-        let result: DocumentEnhancement = DocumentEnhancer.enhance(photo, mode: applied)
+        let result: DocumentEnhancement = DocumentEnhancer.enhance(photo, mode: applied, threshold: threshold)
         guard let image = result.image.makeCGImage() else { return page }
         var colorMode: ColorMode = page.colorMode
         if result.mode == .gray {
@@ -478,7 +480,8 @@ public struct PageProcessor {
                                   straightens: Bool = false) -> PageProcessor {
         let spreads: Bool = splitsCameraSpreads(settings)
         let cut: [any PageStep] = [PerspectiveStep(spread: spreads),
-                                   EnhanceStep(mode: DocumentEnhancer.mode(for: settings))]
+                                   EnhanceStep(mode: DocumentEnhancer.mode(for: settings),
+                                               threshold: settings.adjustments.blackWhiteThreshold)]
         var steps: [any PageStep] = []
         if TaskCatalog.flow(of: settings) == .documentQueue {
             steps = forPhotoImport(settings, scorer: scorer, barcodes: barcodes).steps

@@ -95,9 +95,10 @@ public sealed class PerspectiveStep(bool spread = false) : IPageStep
 /// pages over cleaned up and whole) and pages from scanners stay as they are; the photo kept as the other
 /// version is not changed. Runs right after <see cref="PerspectiveStep"/>.
 /// </summary>
-public sealed class EnhanceStep(DocumentEnhanceMode? mode) : IPageStep
+public sealed class EnhanceStep(DocumentEnhanceMode? mode, double threshold = DocumentEnhancer.DefaultThreshold) : IPageStep
 {
     public DocumentEnhanceMode? Mode { get; } = mode;
+    public double Threshold { get; } = threshold;
     public string Name => "enhance";
 
     public ScannedPage Apply(ScannedPage page)
@@ -110,7 +111,7 @@ public sealed class EnhanceStep(DocumentEnhanceMode? mode) : IPageStep
             : null;
         if ((Mode ?? asPhoto) is not { } mode) return page.WithCapture(capture with { Filter = CaptureFilter.Original });
         var applied = DocumentEnhancer.ModeFor(mode, capture.Kind);
-        var result = DocumentEnhancer.Enhance(page.Image, applied);
+        var result = DocumentEnhancer.Enhance(page.Image, applied, Threshold);
         var colorMode = result.Mode switch
         {
             DocumentEnhanceMode.Gray => ColorMode.Grayscale,
@@ -456,7 +457,7 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
                                            ScanArrangement arrangement = ScanArrangement.AsScanned)
     {
         var spreads = SplitsCameraSpreads(settings);
-        IPageStep[] cut = [new PerspectiveStep(spread: spreads), new EnhanceStep(DocumentEnhancer.ModeFor(settings))];
+        IPageStep[] cut = [new PerspectiveStep(spread: spreads), new EnhanceStep(DocumentEnhancer.ModeFor(settings), settings.Adjustments.BlackWhiteThreshold)];
         var steps = new List<IPageStep>();
         if (TaskCatalog.FlowOf(settings) == TaskFlowKind.DocumentQueue)
         {

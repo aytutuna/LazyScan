@@ -223,6 +223,33 @@ struct AdjustmentSettingsRows: View {
         } else {
             Toggle("Restore faded colors", isOn: $state.settings.adjustments.restoreFadedColors)
         }
+        if AdjustmentSettingsRows.showsThreshold(state.settings) {
+            thresholdSlider
+        }
+    }
+
+    /// The black and white threshold has a slider while the color is Black & White.
+    static func showsThreshold(_ s: ScanSettings) -> Bool {
+        s.colorMode == .blackWhite
+    }
+
+    private var thresholdSlider: some View {
+        let level: Double = state.settings.adjustments.blackWhiteThreshold
+        let text: String = Int((level * 100).rounded()).formatted()
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text("B&W threshold")
+                Spacer(minLength: 8)
+                Text(text)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.secondary)
+            }
+            Slider(value: $state.settings.adjustments.blackWhiteThreshold, in: 0...1)
+                .accessibilityLabel(Text("B&W threshold"))
+                .accessibilityValue(Text(text))
+                .accessibilityHint(Text("Higher makes more of the page black"))
+                .accessibilityIdentifier("options.bwThreshold")
+        }
     }
 
     private func slider(_ adjustment: IOSAdjustment) -> some View {
@@ -248,6 +275,29 @@ struct AdjustmentSettingsRows: View {
             set: { (amount: Double) in
                 appState.settings.adjustments = adjustment.setting(amount, in: appState.settings.adjustments)
             })
+    }
+}
+
+/// The JPEG's quality, 50% to 100%: under the Format row while Save as shows JPEG.
+struct JPEGQualityRow: View {
+    @EnvironmentObject private var state: AppState
+
+    var body: some View {
+        let text: String = state.settings.jpegQuality.formatted(.percent.precision(.fractionLength(0)))
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text("JPEG quality")
+                Spacer(minLength: 8)
+                Text(text)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.secondary)
+            }
+            Slider(value: $state.settings.jpegQuality, in: 0.5...1)
+                .accessibilityLabel(Text("JPEG quality"))
+                .accessibilityValue(Text(text))
+                .accessibilityHint(Text("Lower makes smaller files"))
+                .accessibilityIdentifier("options.jpegQuality")
+        }
     }
 }
 

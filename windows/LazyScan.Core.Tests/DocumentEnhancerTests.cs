@@ -133,6 +133,37 @@ public class DocumentEnhancerTests
     }
 
     [Fact]
+    public void TheBlackShareFollowsTheThreshold()
+    {
+        Assert.Equal(DocumentEnhancer.BilevelShare, DocumentEnhancer.BlackShare(0.5));
+        Assert.Equal(0, DocumentEnhancer.BlackShare(0));
+        Assert.Equal(1, DocumentEnhancer.BlackShare(1));
+        Assert.Equal(DocumentEnhancer.BilevelShare / 2, DocumentEnhancer.BlackShare(0.25), 12);
+        Assert.Equal(0, DocumentEnhancer.BlackShare(-3));
+        Assert.Equal(1, DocumentEnhancer.BlackShare(7));
+    }
+
+    [Fact]
+    public void BlackAndWhiteCutsAtTheThreshold()
+    {
+        static int BlackPixels(RgbaImage image)
+        {
+            int count = 0;
+            for (int i = 0; i < image.Pixels.Length; i += 4)
+            {
+                if (image.Pixels[i] == 0) count++;
+            }
+            return count;
+        }
+        var page = EnhancerPages.Faint(226, 158, false);
+        int Black(double threshold) => BlackPixels(DocumentEnhancer.Enhance(page, DocumentEnhanceMode.BlackAndWhite, threshold).Image);
+        Assert.Equal(BlackPixels(DocumentEnhancer.Enhance(page, DocumentEnhanceMode.BlackAndWhite).Image), Black(0.5));
+        Assert.True(Black(0.5) > 0);
+        Assert.Equal(0, Black(0));
+        Assert.True(Black(1) >= Black(0.5));
+    }
+
+    [Fact]
     public void BlackAndWhiteIsPrintOnPaper()
     {
         var result = DocumentEnhancer.Enhance(EnhancerPages.Shadowed(), DocumentEnhanceMode.BlackAndWhite);
