@@ -5,6 +5,8 @@ import Foundation
 /// made easy to read (`ReceiptEnhancer`), reviewed in the photo review, which reads each one's text
 /// once with OCR for its date (the file name's {docdate}, editable in the review), the PDF's text layer and
 /// the text beside it, then saved: the receipts are written as a file each or as one PDF, all or nothing.
+/// Scan more adds the next scan's receipts to the review, and Join with previous makes two pieces
+/// consecutive pages of one receipt.
 /// Twin of the Windows `AppViewModel.Receipts.cs`.
 extension AppState {
     /// The scans of the settings are receipts (the Receipts task).
@@ -69,6 +71,43 @@ extension AppState {
         return receipts
     }
 
+    /// Scans again from the receipts review and adds what is found to the receipts there. The review is
+    /// hidden while the scan runs and comes back when it ends, with what it held if the scan found nothing,
+    /// failed or was cancelled.
+    public func scanMore() {
+        guard showPhotoReview, isReceiptReview, !isBusy else { return }
+        addsToReview = true
+        scanMoreFoundNothing = false
+        showPhotoReview = false
+        performScan()
+        if !isBusy {
+            addsToReview = false
+            showPhotoReview = true
+        }
+    }
+
+    /// Makes the receipt `id` and the one before it one receipt, as consecutive pages. Both must be kept.
+    public func joinWithPrevious(id: UUID) {
+        guard !isBusy, isReceiptReview,
+              let index = detectedPhotos.firstIndex(where: { $0.id == id }), index > 0,
+              detectedPhotos[index].included, detectedPhotos[index - 1].included else { return }
+        let later = detectedPhotos.remove(at: index)
+        detectedPhotos[index - 1].joined += later.pieces
+    }
+
+    /// Takes a joined receipt apart into its pieces again, each a receipt of its own.
+    public func splitApart(id: UUID) {
+        guard !isBusy, isReceiptReview,
+              let index = detectedPhotos.firstIndex(where: { $0.id == id }), detectedPhotos[index].pieceCount > 1 else { return }
+        let kept = detectedPhotos[index].included
+        let pieces: [DetectedPhoto] = detectedPhotos[index].pieces.map { (piece: DetectedPhoto) -> DetectedPhoto in
+            var each = piece
+            each.included = kept
+            return each
+        }
+        detectedPhotos.replaceSubrange(index...index, with: pieces)
+    }
+
     /// Opens the review on the receipts found on the pages just scanned. The pages of a scan
     /// (`generation`, the scanner choice they belong to) are dropped when another scanner is chosen
     /// meanwhile; pages that belong to no scanner (nil, `ingest`) are kept (`isCurrent`).
@@ -91,16 +130,28 @@ extension AppState {
         // Every page's full-resolution scan stays while the review is open, for Fix crop (a camera's
         // receipt: the photo it was cut from, with its corners).
         let sources: ReviewSources = Self.reviewSources(processed)
-        photoSourceImages = sources.images
-        photoCaptureFacts = sources.facts
-        detectedPhotos = found
+        if addsToReview {
+            photoSourceImages.merge(sources.images) { _, new in new }
+            photoCaptureFacts.merge(sources.facts) { _, new in new }
+            detectedPhotos += found
+        } else {
+            photoSourceImages = sources.images
+            photoCaptureFacts = sources.facts
+            detectedPhotos = found
+        }
         isReceiptReview = true
         recordCaptures(found.map(\.id))
-        showPhotoReview = !found.isEmpty
-        if found.isEmpty { photoSourceImages = [:] }
+        showPhotoReview = !detectedPhotos.isEmpty
+        if detectedPhotos.isEmpty { photoSourceImages = [:] }
+        scanMoreFoundNothing = addsToReview && found.isEmpty
         readReceipts()
-        setStatus(L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts."),
-                  StatusDetail(head: .found(found.count, .receipt)))
+        if scanMoreFoundNothing {
+            let message = L10n.t("Found no receipts in that scan.")
+            setStatus(message, StatusDetail(body: message))
+        } else {
+            let message = L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts.")
+            setStatus(message, StatusDetail(head: .found(found.count, .receipt)))
+        }
     }
 
     /// Reads the text of the receipts in the review that are not read yet (or not as they are turned now),
@@ -132,8 +183,7 @@ extension AppState {
     /// Turns a receipt in the review and reads it again.
     public func rotateReviewPhoto(id: UUID, by delta: Int) {
         guard let index = detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
-        let turns = detectedPhotos[index].rotationQuarterTurns + delta
-        detectedPhotos[index].rotationQuarterTurns = ((turns % 4) + 4) % 4
+        detectedPhotos[index].turn(by: delta)
         readReceipts()
     }
 
@@ -192,22 +242,28 @@ extension AppState {
             let read: [ReadReceipt] = try await Task.detached(priority: .userInitiated) { () throws -> [ReadReceipt] in
                 var out: [ReadReceipt] = []
                 for receipt in receipts {
-                    if flag.isCancelled { throw ScanError.cancelled }
-                    let image = receipt.rotationQuarterTurns == 0
-                        ? receipt.image
-                        : ImagePipeline.rotate(receipt.image, quarterTurns: receipt.rotationQuarterTurns)
-                    var reading: ReceiptReading? = receipt.isRead ? receipt.reading : nil
-                    if reading == nil, readsText {
-                        reading = Self.readReceipt(receipt.image, quarterTurns: receipt.rotationQuarterTurns,
-                                                   byDate: byDate, preferDayFirst: dayFirst)
+                    // A joined receipt is read piece by piece; a date typed in the review replaces the ones found.
+                    var pieces: [ReadPiece] = []
+                    var found: DocumentDate?
+                    for piece in receipt.pieces {
+                        if flag.isCancelled { throw ScanError.cancelled }
+                        let image = piece.rotationQuarterTurns == 0
+                            ? piece.image
+                            : ImagePipeline.rotate(piece.image, quarterTurns: piece.rotationQuarterTurns)
+                        var reading: ReceiptReading? = piece.isRead ? piece.reading : nil
+                        if reading == nil, readsText {
+                            reading = Self.readReceipt(piece.image, quarterTurns: piece.rotationQuarterTurns,
+                                                       byDate: byDate, preferDayFirst: dayFirst)
+                        }
+                        if found == nil { found = reading?.date }
+                        pieces.append(ReadPiece(image: image, dpi: piece.dpi, lines: reading?.lines,
+                                                problem: reading?.problem))
                     }
-                    // A date typed in the review replaces the one found.
                     var date: DocumentDate?
                     if byDate {
-                        date = receipt.typedDate != nil ? receipt.receiptDate : reading?.date
+                        date = receipt.typedDate != nil ? receipt.receiptDate : found
                     }
-                    out.append(ReadReceipt(image: image, dpi: receipt.dpi, lines: reading?.lines, date: date,
-                                           problem: reading?.problem))
+                    out.append(ReadReceipt(pieces: pieces, date: date))
                 }
                 return out
             }.value
@@ -247,8 +303,9 @@ extension AppState {
                             if let problem = text.problem { textProblem = textProblem ?? problem }
                         } else {
                             let url = try await Task.detached(priority: .userInitiated) {
-                                try ImageExporter.write(receipt.image, to: planned, format: format, dpi: receipt.dpi,
-                                                        jpegQuality: s.jpegQuality, keepingExisting: true)
+                                try ImageExporter.write(receipt.stackedImage, to: planned, format: format,
+                                                        dpi: receipt.pieces[0].dpi, jpegQuality: s.jpegQuality,
+                                                        keepingExisting: true)
                             }.value
                             saved.append(url)
                             written.append(url)
@@ -268,7 +325,7 @@ extension AppState {
             self.photoSourceImages = [:]
             self.resetFlow()
             if let textProblem { self.errorMessage = TextExport.sidecarFailed(textProblem) }
-            if textProblem == nil, let problem = read.compactMap(\.problem).first {
+            if textProblem == nil, let problem = read.flatMap(\.pieces).compactMap(\.problem).first {
                 self.errorMessage = TextExport.recognitionFailed(problem)
             }
             let undated = byDate ? read.filter { $0.date == nil }.count : 0
@@ -283,15 +340,16 @@ extension AppState {
         }
     }
 
-    /// One PDF of `receipts` (a page each, gray, at the PDF size chosen) with the text read beforehand as
+    /// One PDF of `receipts` (a page for each piece, gray, at the PDF size chosen) with the text read beforehand as
     /// its layer when searchable, and the text beside it when asked for. Returns where the PDF went (the
     /// next free name when `url` has been taken meanwhile) and the text file written
     /// (the next free name when the PDF's is taken; nil when none was), else why it was not (the PDF is kept).
     nonisolated static func writeReceiptsPDF(_ receipts: [ReadReceipt], settings s: ScanSettings, to url: URL,
                                              options: PDFWriteOptions?,
                                              shouldContinue: @escaping () -> Bool) throws -> (pdf: URL, url: URL?, problem: String?) {
-        let pages = receipts.map { ScannedPage(image: $0.image, dpi: $0.dpi, colorMode: .grayscale) }
-        let lines = receipts.map(\.lines)
+        let pieces = receipts.flatMap(\.pieces)
+        let pages = pieces.map { ScannedPage(image: $0.image, dpi: $0.dpi, colorMode: .grayscale) }
+        let lines = pieces.map(\.lines)
         var layer: PDFTextLayer?
         if s.pdfSearchable {
             layer = { index, _ in index < lines.count ? lines[index] : nil }
@@ -300,12 +358,12 @@ extension AppState {
                                          shouldContinue: shouldContinue, progress: nil)
         guard s.output.savesTextBeside else { return (pdf, nil, nil) }
         let text = PDFTextCollector()
-        for receipt in receipts {
-            if let found = receipt.lines {
-                text.pages.append(OCRPage.of(found, pixelWidth: receipt.image.width, pixelHeight: receipt.image.height,
-                                             dpi: receipt.dpi))
+        for piece in pieces {
+            if let found = piece.lines {
+                text.pages.append(OCRPage.of(found, pixelWidth: piece.image.width, pixelHeight: piece.image.height,
+                                             dpi: piece.dpi))
             } else if text.problem == nil {
-                text.problem = receipt.problem ?? L10n.t("The text could not be read.")
+                text.problem = piece.problem ?? L10n.t("The text could not be read.")
             }
         }
         let beside = writeTextBeside(pdf: pdf, text: text)
@@ -322,12 +380,38 @@ public struct ReceiptReading {
     public let date: DocumentDate?
 }
 
-/// A receipt as saved: its image turned as shown, its text (nil when it was not read or could not be),
-/// its date and why its text could not be read.
-struct ReadReceipt {
+/// One piece of a receipt as saved: its image turned as shown, its text (nil when it was not read or could
+/// not be) and why its text could not be read.
+struct ReadPiece {
     let image: CGImage
     let dpi: Int
     let lines: [OCRLine]?
-    let date: DocumentDate?
     let problem: String?
+}
+
+/// A receipt as saved: its pieces in order (one, unless pieces were joined) and its date.
+struct ReadReceipt {
+    let pieces: [ReadPiece]
+    let date: DocumentDate?
+
+    /// The pieces in one image, one under the other at the widest piece's width, for a format that has no pages.
+    var stackedImage: CGImage {
+        guard pieces.count > 1 else { return pieces[0].image }
+        let width = pieces.map(\.image.width).max() ?? 1
+        let heights: [Int] = pieces.map { $0.image.height * width / max($0.image.width, 1) }
+        let total = heights.reduce(0, +)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: width, height: total, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return pieces[0].image }
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: total))
+        context.interpolationQuality = .high
+        var top = total
+        for (piece, height) in zip(pieces, heights) {
+            top -= height
+            context.draw(piece.image, in: CGRect(x: 0, y: top, width: width, height: height))
+        }
+        return context.makeImage() ?? pieces[0].image
+    }
 }

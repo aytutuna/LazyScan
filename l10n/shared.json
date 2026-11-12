@@ -1271,6 +1271,13 @@
   "Found {0} receipt.": {
     "other": "Found {0} receipts."
   },
+  "Found no receipts in that scan.": {},
+  "{0} piece": {
+    "other": "{0} pieces"
+  },
+  "Receipt, {0} piece": {
+    "other": "Receipt, {0} pieces"
+  },
   "Page {0}: {1}.": {},
   "Page {0} is cut out again.": {},
   "The page could not be changed: its photo could not be read.": {},

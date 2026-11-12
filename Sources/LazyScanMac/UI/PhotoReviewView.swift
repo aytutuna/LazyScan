@@ -26,12 +26,12 @@ struct PhotoReviewView: View {
             : L10n.plural(includedCount, one: "Discard {0} photo?", other: "Discard {0} photos?")
     }
 
-    /// The sheet blocks Scan, so the hint is for after saving.
+    /// The sheet blocks Scan, so the hint is for after saving; for receipts it is for Scan more.
     private var footerHint: String {
         let feeder = state.settings.source == .documentFeeder
         if state.isReceiptReview {
-            return feeder ? String(localized: "After saving, put the next receipts in the feeder and scan again.")
-                          : String(localized: "After saving, lay the next receipts on the glass and scan again.")
+            return feeder ? String(localized: "Scan more adds to these. Put the next receipts in the feeder first.")
+                          : String(localized: "Scan more adds to these. Lay the next receipts on the glass first.")
         }
         return feeder ? String(localized: "After saving, put the next photos in the feeder and scan again.")
                       : String(localized: "After saving, lay the next photos on the glass and scan again.")
@@ -58,6 +58,11 @@ struct PhotoReviewView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(state.reviewTitle)
                     .font(.title2.bold())
+                if state.scanMoreFoundNothing {
+                    Text(L10n.t("Found no receipts in that scan."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
@@ -67,17 +72,7 @@ struct PhotoReviewView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 16)], spacing: 16) {
                     ForEach(Array(state.detectedPhotos.enumerated()), id: \.element.id) { index, photo in
-                        PhotoReviewCard(
-                            photo: photo,
-                            number: index + 1,
-                            total: state.detectedPhotos.count,
-                            included: includedBinding(id: photo.id),
-                            cropDisabled: state.isBusy,
-                            showsDate: showsDate,
-                            dateText: dateBinding(id: photo.id),
-                            focusedDate: $focusedDate,
-                            onRotate: { rotate(id: photo.id, by: $0) },
-                            onAdjustCrop: { editingPhoto = photo })
+                        card(index: index, photo: photo)
                     }
                 }
                 .padding()
@@ -90,6 +85,7 @@ struct PhotoReviewView: View {
                 Text(footerHint)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 // The same setting as the inspector's "After saving".
                 Picker("After saving", selection: $state.settings.output.afterSave) {
@@ -109,6 +105,17 @@ struct PhotoReviewView: View {
                     }
                 }
                 .keyboardShortcut(.cancelAction)
+
+                if state.isReceiptReview {
+                    Button("Scan more") {
+                        state.scanMore()
+                    }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(state.isBusy || !state.isConnected)
+                    .help("Scan again and add the receipts to this review")
+                    .accessibilityLabel(Text("Scan more receipts"))
+                    .accessibilityHint(Text("Scans again and adds the receipts to this review"))
+                }
 
                 Button(state.reviewSaveTitle) {
                     state.saveReviewedPhotos()
@@ -132,6 +139,25 @@ struct PhotoReviewView: View {
         } message: {
             Text("They have not been saved.")
         }
+    }
+
+    private func card(index: Int, photo: DetectedPhoto) -> some View {
+        let previousIncluded: Bool = index > 0 && state.detectedPhotos[index - 1].included
+        return PhotoReviewCard(
+            photo: photo,
+            number: index + 1,
+            total: state.detectedPhotos.count,
+            included: includedBinding(id: photo.id),
+            offersJoin: state.isReceiptReview && index > 0,
+            canJoin: photo.included && previousIncluded && !state.isBusy,
+            busy: state.isBusy,
+            showsDate: showsDate,
+            dateText: dateBinding(id: photo.id),
+            focusedDate: $focusedDate,
+            onRotate: { rotate(id: photo.id, by: $0) },
+            onAdjustCrop: { editingPhoto = photo },
+            onJoin: { state.joinWithPrevious(id: photo.id) },
+            onSplit: { state.splitApart(id: photo.id) })
     }
 
     // MARK: File-local mutation helpers
@@ -172,25 +198,43 @@ fileprivate struct PhotoReviewCard: View {
     let number: Int
     let total: Int
     @Binding var included: Bool
-    let cropDisabled: Bool
     let showsDate: Bool
     @Binding var dateText: String
     let focusedDate: FocusState<UUID?>.Binding
+    /// The card can be joined with the one before it (a receipt that is not the first).
+    let offersJoin: Bool
+    /// Joining is possible now: both receipts are kept and nothing is running.
+    let canJoin: Bool
+    let busy: Bool
     let onRotate: (Int) -> Void
     let onAdjustCrop: () -> Void
+    let onJoin: () -> Void
+    let onSplit: () -> Void
 
     @State private var thumbnail: CGImage?
+    /// The second piece of a joined receipt, drawn offset behind the first.
+    @State private var secondThumbnail: CGImage?
+
+    private var isJoined: Bool { photo.pieceCount > 1 }
+
+    private var cropHelp: LocalizedStringKey {
+        isJoined ? "Split apart to fix the crop" : "Fix crop"
+    }
+
+    private var joinHelp: LocalizedStringKey {
+        canJoin ? "Make this and the receipt before it one receipt, as consecutive pages"
+                : "Both receipts must be included to join them"
+    }
 
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
+                if let secondThumbnail, let next = photo.joined.first {
+                    thumbnailImage(secondThumbnail, turns: next.rotationQuarterTurns)
+                        .offset(x: 6, y: 6)
+                }
                 if let thumbnail {
-                    Image(decorative: thumbnail, scale: 1)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .rotationEffect(.degrees(Double(photo.rotationQuarterTurns) * 90))
-                        .animation(.easeInOut(duration: 0.15), value: photo.rotationQuarterTurns)
+                    thumbnailImage(thumbnail, turns: photo.rotationQuarterTurns)
                 } else {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.secondary.opacity(0.15))
@@ -220,8 +264,8 @@ fileprivate struct PhotoReviewCard: View {
                 Button(action: onAdjustCrop) {
                     Image(systemName: "crop")
                 }
-                .disabled(cropDisabled)
-                .help("Fix crop")
+                .disabled(busy || isJoined)
+                .help(cropHelp)
                 .accessibilityLabel(Text(String(localized: "Fix crop of photo \(number)")))
 
                 Button {
@@ -241,16 +285,66 @@ fileprivate struct PhotoReviewCard: View {
                 .accessibilityLabel(Text(String(localized: "Rotate photo \(number) clockwise")))
             }
             .buttonStyle(.borderless)
+
+            if isJoined {
+                Button("Split apart", action: onSplit)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .disabled(busy)
+                    .accessibilityLabel(Text("Split the joined receipt"))
+            }
+            if offersJoin {
+                Button("Join with previous", action: onJoin)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .disabled(!canJoin)
+                    .help(joinHelp)
+                    .accessibilityLabel(Text("Join with previous receipt"))
+                    .accessibilityHint(Text("Makes this and the previous receipt one receipt with two pieces"))
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1))
+        .contextMenu {
+            if offersJoin {
+                Button("Join with previous", action: onJoin)
+                    .disabled(!canJoin)
+            }
+            if isJoined {
+                Button("Split apart", action: onSplit)
+                    .disabled(busy)
+            }
+            Toggle("Include", isOn: $included)
+            Button("Rotate left") { onRotate(-1) }
+            Button("Rotate right") { onRotate(1) }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(groupLabel))
+        .accessibilityActions {
+            if offersJoin && canJoin {
+                Button("Join with previous receipt", action: onJoin)
+            }
+            if isJoined && !busy {
+                Button("Split the joined receipt", action: onSplit)
+            }
+        }
         // Keyed on the region so a manual re-crop re-renders the thumbnail.
         .task(id: photo.region) {
             thumbnail = reviewThumbnail(photo.image, maxDimension: 340)
         }
+        .task(id: photo.joined.first?.id) {
+            secondThumbnail = photo.joined.first.map { reviewThumbnail($0.image, maxDimension: 340) }
+        }
+    }
+
+    private func thumbnailImage(_ image: CGImage, turns: Int) -> some View {
+        Image(decorative: image, scale: 1)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .rotationEffect(.degrees(Double(turns) * 90))
+            .animation(.easeInOut(duration: 0.15), value: turns)
     }
 
     private var isReading: Bool { !photo.isRead }
@@ -308,7 +402,7 @@ fileprivate struct PhotoReviewCard: View {
                     .frame(width: 130)
                     .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.red, lineWidth: dateBorder))
                     .focused(focusedDate, equals: photo.id)
-                    .disabled(cropDisabled)
+                    .disabled(busy)
                     .help(dateHelp)
                     .accessibilityLabel(Text("Receipt date"))
                     .accessibilityValue(dateValue)
@@ -319,11 +413,13 @@ fileprivate struct PhotoReviewCard: View {
     }
 
     private var groupLabel: String {
+        if isJoined { return L10n.plural(photo.pieceCount, one: "Receipt, {0} piece", other: "Receipt, {0} pieces") }
         let w = photo.image.width, h = photo.image.height
         return String(localized: "Photo \(number) of \(total), \(w) × \(h) px")
     }
 
     private var sizeCaption: String {
+        if isJoined { return L10n.plural(photo.pieceCount, one: "{0} piece", other: "{0} pieces") }
         let w = photo.image.width, h = photo.image.height
         let dpi = Double(max(photo.dpi, 1))
         let inches = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))

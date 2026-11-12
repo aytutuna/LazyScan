@@ -256,6 +256,11 @@ public final class AppState: ObservableObject {
     public var removedByClear: Bool { removedUndo?.cleared ?? false }
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
+    /// The scan under way was started from the receipts review (`scanMore`): its receipts are added to the
+    /// review's, and the review comes back when the work ends, whatever came of it.
+    var addsToReview = false
+    /// The last Scan more found no receipts; the review says so.
+    @Published public internal(set) var scanMoreFoundNothing = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
     @Published public internal(set) var scanHistory: [ScanHistoryEntry] = []
     /// Full-resolution sources of the current photo batch, keyed by scanned-page id and
@@ -1145,6 +1150,7 @@ public final class AppState: ObservableObject {
         detectedPhotos = []
         showPhotoReview = false
         isReceiptReview = false
+        addsToReview = false
         photoSourceImages = [:]
 
         guard let id else {
@@ -2144,6 +2150,7 @@ public final class AppState: ObservableObject {
             updated.included = old.included
             updated.rotationQuarterTurns = old.rotationQuarterTurns
             updated.typedDate = old.typedDate
+            updated.joined = old.joined
             state.detectedPhotos[idx] = updated
             state.readReceipts()
         }
@@ -3238,6 +3245,10 @@ public final class AppState: ObservableObject {
             progress = nil
             rescanAnchor = nil
             isBusy = false
+            if addsToReview {
+                addsToReview = false
+                showPhotoReview = !detectedPhotos.isEmpty
+            }
             // Pages just queued are recorded before the system's time is given back, not half a second later.
             if queueRecordTask != nil { writeQueueRecord() }
             if let activity { background?.endActivity(activity) }

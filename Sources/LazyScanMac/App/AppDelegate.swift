@@ -43,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return L10n.plural(pages, one: "{0} scanned page is still in the queue and not saved.",
                                other: "{0} scanned pages are still in the queue and not saved.")
         }
-        if state.showPhotoReview {
+        if state.showPhotoReview || !state.detectedPhotos.isEmpty {
             return state.isReceiptReview
                 ? String(localized: "The receipts found have not been saved.")
                 : String(localized: "The detected photos have not been saved.")

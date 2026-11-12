@@ -46,6 +46,11 @@ struct PreviewCanvasView: View {
         .task(id: pageKey) { await loadPage() }
     }
 
+    /// Outlines are in one scan's pixels; a review that holds several scans has none to draw on the newest.
+    private var showsOutlines: Bool {
+        Set(state.detectedPhotos.map(\.sourcePageID)).count == 1
+    }
+
     private var canvas: some View {
         ZStack {
             Color(nsColor: .underPageBackgroundColor)
@@ -61,7 +66,7 @@ struct PreviewCanvasView: View {
                         if state.settings.source == .flatbed {
                             selectionLayer(frame: frame, viewSize: geo.size)
                         }
-                    } else if !state.detectedPhotos.isEmpty {
+                    } else if !state.detectedPhotos.isEmpty, showsOutlines {
                         detectedPhotosOverlay(image: image, frame: frame)
                     }
                 }

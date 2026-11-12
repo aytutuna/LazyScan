@@ -1236,6 +1236,26 @@ public struct DetectedPhoto: Identifiable {
         return found?.text ?? ""
     }
 
+    /// The pieces after the first of a receipt joined from several (a slip longer than the glass, scanned
+    /// in halves): saved as consecutive pages of one receipt. Empty for every other photo.
+    public var joined: [DetectedPhoto] = []
+
+    /// How many pieces make this photo: 1, more for a joined receipt.
+    public var pieceCount: Int { 1 + joined.count }
+
+    /// The pieces in order, each on its own.
+    public var pieces: [DetectedPhoto] {
+        var first = self
+        first.joined = []
+        return [first] + joined
+    }
+
+    /// Turns the photo, and every piece joined to it, by `delta` quarter turns clockwise.
+    public mutating func turn(by delta: Int) {
+        rotationQuarterTurns = ((rotationQuarterTurns + delta) % 4 + 4) % 4
+        for index in joined.indices { joined[index].turn(by: delta) }
+    }
+
     public init(region: DetectedPhotoRegion, image: CGImage, dpi: Int, id: UUID = UUID(),
                 sourcePageID: UUID? = nil, colorMode: ColorMode = .color) {
         self.id = id

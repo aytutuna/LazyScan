@@ -641,6 +641,120 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(state.showPhotoReview, !state.detectedPhotos.isEmpty)
     }
 
+    /// A receipts review with `count` scans in it, the later ones added as Scan more adds them.
+    @MainActor
+    private func receiptsReview(_ state: AppState, scans count: Int) async throws -> Int {
+        var settings = TaskCatalog.apply(.receipt, to: state.settings)
+        settings.destinationPath = folder.path
+        settings.taskOptions.receiptCombine = true
+        settings.taskOptions.receiptNameByDate = false
+        settings.pdfSearchable = false
+        state.settings = settings
+        XCTAssertTrue(state.ingest([seamPage(width: 600, height: 900, dpi: 100)], source: .phone))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        let perScan = state.detectedPhotos.count
+        XCTAssertGreaterThan(perScan, 0)
+        for _ in 1..<count {
+            state.addsToReview = true
+            state.showPhotoReview = false
+            XCTAssertTrue(state.ingest([seamPage(width: 600, height: 900, dpi: 100)], source: .phone))
+            try await waitUntil(timeout: 60) { !state.isBusy }
+        }
+        return perScan
+    }
+
+    @MainActor
+    func test_receiptsReview_laterScansAreAdded_andSaveAsOnePDF() async throws {
+        let state = makeState()
+        let perScan = try await receiptsReview(state, scans: 3)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertTrue(state.showPhotoReview)
+        XCTAssertFalse(state.addsToReview)
+        XCTAssertEqual(state.detectedPhotos.count, perScan * 3)
+        XCTAssertEqual(state.reviewTitle, Receipts.reviewTitle(perScan * 3))
+        state.saveReviewedPhotos()
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let pdfs = try savedPDFs()
+        XCTAssertEqual(pdfs.count, 1)
+        let document = try XCTUnwrap(PDFDocument(url: folder.appendingPathComponent(pdfs[0])))
+        XCTAssertEqual(document.pageCount, perScan * 3)
+    }
+
+    @MainActor
+    func test_receiptsReview_joinedPieces_areOneReceiptOfConsecutivePages() async throws {
+        let state = makeState()
+        let perScan = try await receiptsReview(state, scans: 2)
+        let all = perScan * 2
+        let ids = state.detectedPhotos.map(\.id)
+        // The first card has nothing before it; an unchecked one cannot be joined.
+        state.joinWithPrevious(id: ids[0])
+        XCTAssertEqual(state.detectedPhotos.count, all)
+        state.detectedPhotos[1].included = false
+        state.joinWithPrevious(id: ids[1])
+        XCTAssertEqual(state.detectedPhotos.count, all)
+        state.detectedPhotos[1].included = true
+
+        state.joinWithPrevious(id: ids[1])
+        XCTAssertEqual(state.detectedPhotos.count, all - 1)
+        XCTAssertEqual(state.detectedPhotos[0].id, ids[0])
+        XCTAssertEqual(state.detectedPhotos[0].pieceCount, 2)
+        XCTAssertEqual(state.reviewTitle, Receipts.reviewTitle(all - 1))
+        state.detectedPhotos[0].turn(by: -1)
+        XCTAssertEqual(state.detectedPhotos[0].pieces.map(\.rotationQuarterTurns), [3, 3])
+
+        state.splitApart(id: ids[0])
+        XCTAssertEqual(state.detectedPhotos.map(\.id), ids)
+        XCTAssertTrue(state.detectedPhotos.allSatisfy { $0.pieceCount == 1 })
+        state.joinWithPrevious(id: ids[1])
+
+        state.saveReviewedPhotos()
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let pdfs = try savedPDFs()
+        XCTAssertEqual(pdfs.count, 1)
+        let document = try XCTUnwrap(PDFDocument(url: folder.appendingPathComponent(pdfs[0])))
+        XCTAssertEqual(document.pageCount, all)
+    }
+
+    @MainActor
+    func test_scanMore_withoutAScanner_keepsTheReview() async throws {
+        let state = makeState()
+        _ = try await receiptsReview(state, scans: 1)
+        let held = state.detectedPhotos.map(\.id)
+        XCTAssertTrue(state.showPhotoReview)
+        state.scanMore()
+        XCTAssertTrue(state.showPhotoReview)
+        XCTAssertFalse(state.addsToReview)
+        XCTAssertNotNil(state.errorMessage)
+        XCTAssertEqual(state.detectedPhotos.map(\.id), held)
+    }
+
+    @MainActor
+    func test_scanMore_scansAgain_andAddsTheReceiptsFound() async throws {
+        let state = makeState(backends: [MockScannerBackend()])
+        var settings = TaskCatalog.apply(.receipt, to: state.settings)
+        settings.destinationPath = folder.path
+        state.settings = settings
+        state.start()
+        try await waitUntil(timeout: 30) { state.capabilities != nil && state.statusMessage.hasPrefix("Ready") }
+        state.performScan()
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        let first = state.detectedPhotos.map(\.id)
+        XCTAssertGreaterThan(first.count, 0)
+        XCTAssertTrue(state.showPhotoReview)
+        state.scanMore()
+        // The review is out of the way while the scan runs.
+        XCTAssertFalse(state.showPhotoReview)
+        XCTAssertTrue(state.isBusy)
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertTrue(state.showPhotoReview)
+        XCTAssertFalse(state.addsToReview)
+        XCTAssertEqual(state.detectedPhotos.count, first.count * 2)
+        XCTAssertEqual(Array(state.detectedPhotos.map(\.id).prefix(first.count)), first)
+    }
+
     @MainActor
     func test_scan_goesThroughIngest_twoSidedFeederJam_keepsThePagesAndSaysSo() async throws {
         let demo = MockScannerBackend()

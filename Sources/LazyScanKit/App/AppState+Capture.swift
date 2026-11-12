@@ -158,6 +158,7 @@ extension AppState {
                 updated.included = old.included
                 updated.rotationQuarterTurns = old.rotationQuarterTurns
                 updated.typedDate = old.typedDate
+                updated.joined = old.joined
                 state.photoCaptureFacts[sourceID] = cut.facts
                 state.detectedPhotos[index] = updated
                 state.readReceipts()

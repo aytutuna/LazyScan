@@ -166,7 +166,9 @@ scanners** — including the Epson Perfection V39 II.
   Chinese, Japanese and Korean, preferring a line that says "Date", "Tarih", "Datum"… and leaving
   out expiry and "valid until" dates; today's date is used when none is found. The text is read
   once per receipt, for the date, the PDF's text layer and, if you like, a .txt beside each PDF.
-  From the feeder, each sheet is one receipt.
+  From the feeder, each sheet is one receipt. On the Mac, Scan more in the review adds the next
+  scan's receipts to the ones found, and Join with previous makes a card and the one before it
+  one receipt, as consecutive pages (a slip longer than the glass, scanned in halves).
 - **Separate documents**: feed a whole stack of documents at once and get a file for
   each. Put a separator sheet in front of every document after the first: **Save sheet** saves
   one as a PDF to print at actual size on any printer, and **Print sheet** prints one at once (a Patch T sheet, the standard patch code document scanners use; any patch
