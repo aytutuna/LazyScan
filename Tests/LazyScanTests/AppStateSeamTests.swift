@@ -377,6 +377,29 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_historyEntry_saveWritesTheFullPageInTheChosenPictureFormat() async throws {
+        let state = makeState()
+        XCTAssertTrue(state.ingest([seamPage(width: 400, height: 520, dpi: 50)], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        defer { state.clearHistory() }
+        let entry = try XCTUnwrap(state.scanHistory.first)
+
+        state.settings.format = .word
+        XCTAssertEqual(state.historySaveFormat, .pdf)
+
+        state.settings.format = .png
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: url) }
+        state.saveHistoryPage(entry, to: url)
+        try await waitUntil(timeout: 60) { state.lastSavedURLs == [url] }
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        XCTAssertEqual(image.width, 400)
+        XCTAssertEqual(image.height, 520)
+        XCTAssertEqual(state.scanHistory.count, 1)
+    }
+
+    @MainActor
     func test_printQueueWithLazyPrint_opensAPDFOutsideTheSpool_leavesTheQueueAndTheStatus() async throws {
         let files = SeamFileActions()
         let state = makeState(files: files)

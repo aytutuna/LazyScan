@@ -21,6 +21,8 @@ struct ContentView: View {
     /// Photo files are dragged over the scanner view: it says where they go.
     @State private var dropTargeted = false
     @State private var openedPhotos: [URL] = []
+    /// The Scans tab's enlarged view is open: its sheet shows the error alert itself.
+    @State private var historyEnlarged: ScanHistoryEntry?
 
     var body: some View {
         NavigationSplitView {
@@ -108,7 +110,7 @@ struct ContentView: View {
                 .environmentObject(state)
         }
         // The error alert, held back while a review sheet is up: the sheet shows it itself.
-        .errorNoticeAlert(enabled: !state.showPhotoReview && !state.showIdCardReview)
+        .errorNoticeAlert(enabled: !state.showPhotoReview && !state.showIdCardReview && historyEnlarged == nil)
         // Below this the layout cannot stay usable; the inspector adds its own
         // width requirement only while shown.
         .frame(minWidth: 700, minHeight: 560)
@@ -225,7 +227,7 @@ struct ContentView: View {
 
     private var scansDetail: some View {
         VStack(spacing: 0) {
-            ScanHistoryView()
+            ScanHistoryView(enlarged: $historyEnlarged)
             runningScanBar
             Divider()
             StatusBarView()

@@ -221,7 +221,7 @@ final class ScreenshotTests: XCTestCase {
                              id: UUID(uuidString: "00000000-0000-0000-0000-00000000000\(i + 1)")!)
         }
         try await shoot("history", size: CGSize(width: 900, height: 600),
-                        ScanHistoryView().environmentObject(state))
+                        ScanHistoryView(enlarged: .constant(nil)).environmentObject(state))
     }
 
     /// The corner editor pins its stage left to right, which the drag geometry relies on: laid out right
