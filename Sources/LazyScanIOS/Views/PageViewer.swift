@@ -89,8 +89,9 @@ enum PageViewerText {
 /// menu, `DocumentMenuItems`), and deletes it once asked; the edits are off
 /// while the app is busy, and the filters, Crop and Delete also while a share or a send reads the pages
 /// (`AppState.readsQueue`).
-/// Filters (`PageRecut.canRecut`; not for a photo) and Crop (`PageRecut.canCrop`) are left out for pages that
-/// cannot be cut again: scans, imported PDFs, the pages of a book's spread taken whole.
+/// Filters (`PageRecut.canRecut`; not for a photo) and Crop (`PageRecut.canCrop`) cut a camera's page out of its
+/// photo again. A page with no capture facts (a scan, an imported PDF, the pages of a book's spread taken whole;
+/// `PageRecut.canEdit`) has Original, Grayscale and B&W, and Crop opens the rectangle crop (`RectCropView`).
 struct PageViewer: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -109,6 +110,7 @@ struct PageViewer: View {
     /// The page whose text is shown.
     @State private var textOf: PageViewerStart?
     @State private var crop: IOSCropRequest?
+    @State private var rectCrop: RectCropRequest?
     @State private var preparesCrop: Bool = false
     /// The page's rotation when the corner editor's picture was turned for it.
     @State private var cropRotation: Int = 0
@@ -245,6 +247,14 @@ struct PageViewer: View {
         current.map { (page: ScannedPage) -> Bool in PageRecut.canCrop(page) } ?? false
     }
 
+    private var canEdit: Bool {
+        current.map { (page: ScannedPage) -> Bool in PageRecut.canEdit(page) } ?? false
+    }
+
+    private var offersFilters: Bool { canRecut || canEdit }
+
+    private var offersCrop: Bool { canCrop || canEdit }
+
     /// The page shown as the grid has it, for its Keep or Skip.
     private var currentCell: PageStripCell? {
         let cells: [PageStripCell] = PageStripCell.cells(state.scannedPages, options: state.settings.document)
@@ -284,10 +294,12 @@ struct PageViewer: View {
         return SharpCache.kept(current: sharpRead(of: pages[index]), neighbours: neighbours)
     }
 
-    /// What the filter previews are made from: the page, its turn and its corners (not its filter).
+    /// What the filter previews are made from: the page, its turn and its corners (not its filter); for a page
+    /// with no capture facts the part of its picture kept.
     private var previewKey: String {
-        guard let page = current, showsFilters, canRecut else { return "" }
-        return "\(page.id.uuidString) \(page.rotationQuarterTurns) \(String(describing: page.capture?.quad))"
+        guard let page = current, showsFilters, offersFilters else { return "" }
+        let basis: String = canEdit ? String(describing: page.geometry?.edit?.rect) : String(describing: page.capture?.quad)
+        return "\(page.id.uuidString) \(page.rotationQuarterTurns) \(basis)"
     }
 
     var body: some View {
@@ -295,7 +307,7 @@ struct PageViewer: View {
             pager
                 .background(Color(uiColor: .systemGroupedBackground))
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if showsFilters, canRecut, let page = current {
+                    if showsFilters, offersFilters, let page = current {
                         filterRow(page)
                     }
                 }
@@ -331,6 +343,11 @@ struct PageViewer: View {
             CornerEditorView(request: request.request, onAnswer: { (answer: PhotoCornersAnswer) -> Void in
                 finishCrop(request, answer: answer)
             }, fixesCrop: true)
+        }
+        .fullScreenCover(item: $rectCrop) { (request: RectCropRequest) in
+            RectCropView(image: request.image, start: request.start, onAnswer: { (rect: CGRect?) -> Void in
+                finishRectCrop(request, rect: rect)
+            })
         }
         .task(id: previewKey) {
             await loadPreviews()
@@ -466,7 +483,7 @@ struct PageViewer: View {
     private var actions: some View {
         // The queue's edits do nothing while an import, a scan or a save runs.
         let blocked: Bool = state.isBusy || preparesCrop
-        if canRecut {
+        if offersFilters {
             Button(action: toggleFilters) {
                 Label(PageViewerText.filtersLabel, systemImage: "camera.filters")
             }
@@ -480,7 +497,7 @@ struct PageViewer: View {
         .disabled(blocked)
         .accessibilityIdentifier("viewer.rotate")
         Spacer()
-        if canCrop {
+        if offersCrop {
             Button(action: openCrop) {
                 Label(PageViewerText.cropLabel, systemImage: "crop")
             }
@@ -594,12 +611,14 @@ struct PageViewer: View {
 
     private func filterRow(_ page: ScannedPage) -> some View {
         let working: Bool = state.recuttingPages.contains(page.id)
-        let chosen: CaptureFilter? = (working ? requested[page.id] : nil) ?? PageRecut.filter(of: page)
+        let edits: Bool = PageRecut.canEdit(page)
+        let chosen: CaptureFilter? = chosenFilter(page, working: working, edits: edits)
+        let filters: [CaptureFilter] = edits ? PageRecut.editFilters : CaptureFilter.displayOrder
         return VStack(spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
-                    ForEach(CaptureFilter.displayOrder, id: \.self) { (filter: CaptureFilter) in
-                        filterButton(filter, page: page.id, chosen: filter == chosen)
+                    ForEach(filters, id: \.self) { (filter: CaptureFilter) in
+                        filterButton(filter, page: page, chosen: filter == chosen)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -634,10 +653,16 @@ struct PageViewer: View {
         state.setPagesFilter(ids: ids, filter)
     }
 
-    private func filterButton(_ filter: CaptureFilter, page: UUID, chosen: Bool) -> some View {
+
+    /// The filter shown as chosen: the one tapped while the page is cut again, else the page's own.
+    private func chosenFilter(_ page: ScannedPage, working: Bool, edits: Bool) -> CaptureFilter? {
+        let own: CaptureFilter? = edits ? PageRecut.editFilter(of: page) : PageRecut.filter(of: page)
+        return (working ? requested[page.id] : nil) ?? own
+    }
+
+    private func filterButton(_ filter: CaptureFilter, page: ScannedPage, chosen: Bool) -> some View {
         Button {
-            requested[page] = filter
-            state.setPageFilter(id: page, filter)
+            choose(filter, page: page)
         } label: {
             VStack(spacing: 4) {
                 filterPicture(filter)
@@ -656,6 +681,19 @@ struct PageViewer: View {
         .accessibilityLabel(Text(PageViewerText.filterName(filter)))
         .accessibilityAddTraits(chosen ? .isSelected : [])
         .accessibilityIdentifier("filter.\(filter.rawValue)")
+    }
+
+    /// A camera's page is cut again with `filter`. A page with no capture facts gets it from the picture it had
+    /// before its first edit, so one filter does not pile on another; Original takes the filter off.
+    private func choose(_ filter: CaptureFilter, page: ScannedPage) {
+        if PageRecut.canEdit(page) {
+            guard filter != PageRecut.editFilter(of: page) else { return }
+            requested[page.id] = filter
+            state.filterPage(id: page.id, filter)
+        } else {
+            requested[page.id] = filter
+            state.setPageFilter(id: page.id, filter)
+        }
     }
 
     @ViewBuilder
@@ -695,6 +733,18 @@ struct PageViewer: View {
     private func openCrop() {
         guard let id = selection, !preparesCrop else { return }
         preparesCrop = true
+        if let page = current, PageRecut.canEdit(page) {
+            Task { @MainActor in
+                let start: PageEditStart? = await state.pageEditStart(id: id)
+                preparesCrop = false
+                if let start {
+                    rectCrop = RectCropRequest(id: id, image: start.image, start: start.rect, rotation: start.rotation)
+                } else {
+                    state.errorMessage = PageRecut.failedMessage
+                }
+            }
+            return
+        }
         let name: String = PageViewerText.pageName(number)
         Task { @MainActor in
             let request: IOSCropRequest? = await cropRequest(id: id, name: name)
@@ -722,6 +772,14 @@ struct PageViewer: View {
         // One "photo": the editor's counter then shows the page's name.
         let request = PhotoCornersRequest(photo: picture, plan: plan, fileName: name, number: 1, count: 1, kind: start.kind)
         return IOSCropRequest(photoID: id, request: request)
+    }
+
+    /// Crop cuts the page to the rectangle; Cancel changes nothing.
+    private func finishRectCrop(_ request: RectCropRequest, rect: CGRect?) {
+        rectCrop = nil
+        if let rect {
+            state.cropPage(id: request.id, to: rect, rotation: request.rotation)
+        }
     }
 
     /// Use corners cuts the page again along them, Use whole photo along the whole photo; Cancel changes nothing.

@@ -2,6 +2,32 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
+/// What was cut and filtered by hand on a page with no capture facts (`PageRecut.canEdit`), kept on its geometry
+/// so a later edit starts again from the picture as it was before the first one.
+public struct PageEdit: Equatable, Codable, Sendable {
+    /// The part kept, as fractions of the unturned picture from the top left; nil: all of it.
+    public var rect: CGRect?
+    /// Grayscale or B&W; nil: the colors kept.
+    public var filter: CaptureFilter?
+    /// The color mode of the page before the first edit.
+    public var colorMode: ColorMode
+
+    public init(rect: CGRect? = nil, filter: CaptureFilter? = nil, colorMode: ColorMode) {
+        self.rect = rect
+        self.filter = filter
+        self.colorMode = colorMode
+    }
+
+    /// The color mode of the page with the edit made.
+    var editedColorMode: ColorMode {
+        switch filter {
+        case .grayscale: return .grayscale
+        case .blackAndWhite: return .blackWhite
+        default: return colorMode
+        }
+    }
+}
+
 /// A camera's queued page cut out of its photo again (the iPhone's page viewer): with another filter
 /// (`CaptureFilter`), or along corners placed again (Crop). The photo is the page's other version, in its
 /// spool file; the corners and the real size are in the page's capture facts. The cut goes through the steps
@@ -23,12 +49,33 @@ public enum PageRecut {
         canCrop(page) && filter(of: page) != nil
     }
 
-    /// Whether `page` can be cropped by a rectangle and made grayscale or black and white from its own spool
-    /// file: a page with no capture facts (a scanner's, an imported file's, a whole spread's) shown as it
-    /// is saved, not as scanned. The file the page has now stays as its other version until the page is
-    /// swapped back, so the edit can be undone.
+    /// Whether `page` can be cropped by a rectangle and made grayscale or black and white from a spool file: a
+    /// page with no capture facts (a scanner's, an imported file's, a whole spread's) shown as it is saved, or
+    /// one already edited, which can be edited again whichever version it shows. The picture as it was before
+    /// the first edit stays as its other version (`baseFile(of:)`).
     public static func canEdit(_ page: ScannedPage) -> Bool {
-        page.capture == nil && page.fileURL != nil && !page.showsOriginal
+        page.capture == nil && page.fileURL != nil && (page.geometry?.edit != nil || !page.showsOriginal)
+    }
+
+    /// The filters offered for a page `canEdit` takes: Enhanced is the camera's own clean-up.
+    public static let editFilters: [CaptureFilter] = [.original, .grayscale, .blackAndWhite]
+
+    /// The filter an edited page shows: Original for a page never edited or shown as it was.
+    public static func editFilter(of page: ScannedPage) -> CaptureFilter {
+        page.showsOriginal ? .original : (page.geometry?.edit?.filter ?? .original)
+    }
+
+    /// The spool file a page `canEdit` takes is edited from: the picture before the first edit.
+    static func baseFile(of page: ScannedPage) -> URL? {
+        guard page.geometry?.edit != nil, !page.showsOriginal else { return page.fileURL }
+        return page.alternate?.fileURL
+    }
+
+    /// The color mode an edited page is saved with: the one its edit gave it, or the one it had before when it
+    /// shows the picture before the edit; nil for a page never edited.
+    static func editColorMode(of page: ScannedPage) -> ColorMode? {
+        guard let edit = page.geometry?.edit else { return nil }
+        return page.showsOriginal ? edit.colorMode : edit.editedColorMode
     }
 
     /// The page's filter: the one recorded, or for a page queued before filters the one its clean-up stands
@@ -89,32 +136,35 @@ public enum PageRecut {
         return result
     }
 
-    /// `page` cut to `rect` (fractions of the page as shown, turned by its rotation, from the top left; nil:
-    /// all of it) and made `filter` (nil: its colors kept), from `full`, the pixels of its spool file. The
-    /// pixels come back turned as the file holds them. The page's other version stays, or else the page as
-    /// it was becomes it (swapping goes back to it); a page with no crop or straightening recorded gets
-    /// the facts of a crop, which is what lets it swap. Nil when the rectangle cuts nothing or the filter
-    /// is Original.
-    static func edit(_ page: ScannedPage, full: CGImage, rect: CGRect?, filter: CaptureFilter?) -> ScannedPage? {
-        guard var pixels = RgbaImage(cgImage: full) else { return nil }
-        if let rect {
-            let inFile: CGRect = fileRect(rect, quarterTurns: page.rotationQuarterTurns)
-            let width = CGFloat(pixels.width), height = CGFloat(pixels.height)
-            let box = CGRect(x: inFile.minX * width, y: inFile.minY * height,
-                             width: inFile.width * width, height: inFile.height * height)
-            guard let cut = pixels.cropped(box) else { return nil }
+    /// `pixels` cut to `rect` (fractions of the picture from the top left).
+    static func cropped(_ pixels: RgbaImage, to rect: CGRect) -> RgbaImage? {
+        let width = CGFloat(pixels.width), height = CGFloat(pixels.height)
+        return pixels.cropped(CGRect(x: rect.minX * width, y: rect.minY * height,
+                                     width: rect.width * width, height: rect.height * height))
+    }
+
+    /// `page` as `edit` makes it from `base`, the pixels of the picture before the first edit (spooled in
+    /// `baseFile`, which becomes the page's other version, so swapping goes back to it). The pixels come back as
+    /// the file holds them, unturned. Nil when the rectangle cuts nothing or the picture cannot be filtered.
+    static func edit(_ page: ScannedPage, base: CGImage, baseFile: URL, edit: PageEdit) -> ScannedPage? {
+        guard var pixels = RgbaImage(cgImage: base) else { return nil }
+        if let rect = edit.rect {
+            guard let cut = cropped(pixels, to: rect) else { return nil }
             pixels = cut
         }
-        if let filter {
-            guard let mode = filter.mode else { return nil }
+        if let mode = edit.filter?.mode {
             pixels = DocumentEnhancer.enhance(pixels, mode: mode).image
         }
         guard let image = pixels.makeCGImage() else { return nil }
-        var result = ScannedPage(image: image, dpi: page.dpi, colorMode: page.colorMode, id: page.id, createdAt: page.createdAt)
+        var result = ScannedPage(image: image, dpi: page.dpi, colorMode: edit.editedColorMode, id: page.id, createdAt: page.createdAt)
         result.rotationQuarterTurns = page.rotationQuarterTurns
         result = result.copyMeta(from: page)
-        result.alternate = page.alternate ?? PageVersion(image: nil, fileURL: page.fileURL, fullPixelSize: page.fullPixelSize)
-        result.geometry = page.geometry ?? PageGeometry(cropped: rect != nil, angleDegrees: 0, basis: .pageEdges)
+        result.showsOriginal = false
+        result.alternate = PageVersion(image: nil, fileURL: baseFile, fullPixelSize: CGSize(width: base.width, height: base.height))
+        let before: PageGeometry? = page.geometry
+        let wasCropped: Bool = edit.rect != nil || (before?.edit == nil && before?.cropped == true)
+        result.geometry = PageGeometry(cropped: wasCropped, angleDegrees: before?.angleDegrees ?? 0,
+                                       basis: before?.basis ?? .pageEdges, quad: before?.quad, edit: edit)
         return result
     }
 
@@ -169,6 +219,15 @@ public enum PageRecut {
     public static var failedMessage: String { L10n.t("The page could not be changed: its photo could not be read.") }
 }
 
+/// The picture the rectangle crop of an edited page starts on, turned as the page is shown, and the part of it
+/// kept so far, as fractions from the top left.
+public struct PageEditStart {
+    public let image: CGImage
+    public let rect: CGRect
+    /// The page's rotation the picture was turned for.
+    public let rotation: Int
+}
+
 extension AppState {
     /// Gives the queued page `id` another filter: the page is cut out of its photo again with it, off the main
     /// actor, and its spool file replaced (`PageRecut`). It runs behind the page swaps and turns under way,
@@ -213,26 +272,49 @@ extension AppState {
         }
     }
 
-    /// Crops the queued page `id` to `rect` (fractions of the page as shown, from the top left) while its
-    /// rotation is `rotation`, from its own spool file (`PageRecut.edit`); as `setPageFilter(id:_:)` does it.
-    /// Nothing happens once the page was turned since, or for a page `PageRecut.canEdit` refuses.
+    /// Crops the queued page `id` to `rect` (fractions of the picture `pageEditStart(id:)` gave, from the top
+    /// left; all of it undoes an earlier crop) while its rotation is `rotation`, from the picture before the
+    /// page's first edit (`PageRecut.edit`); as `setPageFilter(id:_:)` does it. Nothing happens once the page
+    /// was turned since, or for a page `PageRecut.canEdit` refuses.
     public func cropPage(id: UUID, to rect: CGRect, rotation: Int) {
         let whole = CGRect(x: 0, y: 0, width: 1, height: 1)
         guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
               page.rotationQuarterTurns == rotation, PageRecut.canEdit(page),
-              !rect.contains(whole), !rect.intersection(whole).isEmpty else { return }
+              !rect.intersection(whole).isEmpty else { return }
+        let inFile: CGRect? = rect.contains(whole) ? nil : PageRecut.fileRect(rect, quarterTurns: rotation)
         enqueuePageEdit { (state: AppState) async -> Void in
-            await state.editSpooled(id: id, rect: rect, filter: nil)
+            await state.editSpooled(id: id) { (edit: inout PageEdit) -> Void in edit.rect = inFile }
         }
     }
 
-    /// Makes the queued page `id` grayscale or black and white from its own spool file, as `cropPage(id:to:rotation:)` does.
+    /// Gives the queued page `id` Original, Grayscale or B&W from the picture before its first edit, keeping
+    /// its crop, as `cropPage(id:to:rotation:)` does; Original takes the filter off.
     public func filterPage(id: UUID, _ filter: CaptureFilter) {
         guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canEdit(page), filter.mode != nil else { return }
+              PageRecut.canEdit(page), PageRecut.editFilters.contains(filter) else { return }
+        let chosen: CaptureFilter? = filter == .original ? nil : filter
         enqueuePageEdit { (state: AppState) async -> Void in
-            await state.editSpooled(id: id, rect: nil, filter: filter)
+            await state.editSpooled(id: id) { (edit: inout PageEdit) -> Void in edit.filter = chosen }
         }
+    }
+
+    /// Where the rectangle crop starts for the queued page `id`: the picture before its first edit, read off the
+    /// main actor and turned as the page is shown, with the rectangle kept last on it (all of it for a page
+    /// never cropped), once the page edits under way have landed; nil when the page cannot be edited or its
+    /// picture cannot be read.
+    public func pageEditStart(id: UUID) async -> PageEditStart? {
+        await pageEditChain?.value
+        guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              PageRecut.canEdit(page), let url = PageRecut.baseFile(of: page) else { return nil }
+        let rotation: Int = page.rotationQuarterTurns
+        let image: CGImage? = await Task.detached(priority: .userInitiated) { () -> CGImage? in
+            AppState.previewOfSpoolFile(url, quarterTurns: rotation)
+        }.value
+        guard let image else { return nil }
+        let kept: CGRect? = page.geometry?.edit?.rect.map { (rect: CGRect) -> CGRect in
+            PageRecut.fileRect(rect, quarterTurns: (4 - rotation) % 4)
+        }
+        return PageEditStart(image: image, rect: kept ?? CGRect(x: 0, y: 0, width: 1, height: 1), rotation: rotation)
     }
 
     /// Where Crop starts for the queued page `id`: its photo read off the main actor and turned as the page is
@@ -256,10 +338,34 @@ extension AppState {
 
     /// Small pictures of the queued page `id` with each filter, cut out of a copy of its photo about
     /// `maxSide` × 2 pixels on its longer side, off the main actor, and turned as the page is shown; empty when
-    /// the page cannot be cut again or its photo cannot be read.
+    /// the page cannot be cut again or its photo cannot be read. A page `PageRecut.canEdit` takes has Original,
+    /// Grayscale and B&W, made from the picture before its first edit with its crop.
     public func filterPreviews(id: UUID, maxSide: Int) async -> [CaptureFilter: CGImage] {
-        guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canRecut(page), let url = page.alternate?.fileURL else { return [:] }
+        guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }) else { return [:] }
+        if PageRecut.canEdit(page) {
+            guard let url = PageRecut.baseFile(of: page) else { return [:] }
+            let rect: CGRect? = page.geometry?.edit?.rect
+            let rotation: Int = page.rotationQuarterTurns
+            let readSide: Int = rect.map { (kept: CGRect) -> Int in Int(Double(maxSide * 2) / Double(max(kept.width, kept.height))) } ?? maxSide * 2
+            return await Task.detached(priority: .userInitiated) { () -> [CaptureFilter: CGImage] in
+                guard let photo = AppState.thumbnailOfFile(url, maxSide: readSide), var pixels = RgbaImage(cgImage: photo) else { return [:] }
+                if let rect {
+                    guard let cut = PageRecut.cropped(pixels, to: rect) else { return [:] }
+                    pixels = cut
+                }
+                guard let plain = pixels.makeCGImage() else { return [:] }
+                var previews: [CaptureFilter: CGImage] = [:]
+                for filter in PageRecut.editFilters {
+                    var made: CGImage? = plain
+                    if let mode = filter.mode {
+                        made = DocumentEnhancer.enhance(pixels, mode: mode).image.makeCGImage()
+                    }
+                    if let made { previews[filter] = rotation == 0 ? made : ImagePipeline.rotate(made, quarterTurns: rotation) }
+                }
+                return previews
+            }.value
+        }
+        guard PageRecut.canRecut(page), let url = page.alternate?.fileURL else { return [:] }
         let rotation: Int = page.rotationQuarterTurns
         let threshold: Double = settings.adjustments.blackWhiteThreshold
         return await Task.detached(priority: .userInitiated) { () -> [CaptureFilter: CGImage] in
@@ -319,17 +425,29 @@ extension AppState {
         return true
     }
 
-    /// Edits the page from its own spool file (`PageRecut.edit`) and puts it in the queue with a spool file of
-    /// its own, if the page is still there as it was when the work started. The old file is the page's other
-    /// version now, unless the page had one already: then it goes.
-    func editSpooled(id: UUID, rect: CGRect?, filter: CaptureFilter?) async {
+    /// Edits the page as `change` says from the picture it had before its first edit (`PageRecut.edit`) and puts
+    /// it in the queue with a spool file of its own, if the page is still there as it was when the work started.
+    /// That picture is the page's other version now; the file of the earlier edit goes, and so does the other
+    /// version a page not edited before had.
+    func editSpooled(id: UUID, _ change: (inout PageEdit) -> Void) async {
         guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canEdit(page), let oldFile = page.fileURL else { return }
+              PageRecut.canEdit(page), let oldFile = page.fileURL, let baseFile = PageRecut.baseFile(of: page) else { return }
+        let before: PageEdit = page.geometry?.edit ?? PageEdit(colorMode: page.colorMode)
+        var edit: PageEdit = before
+        change(&edit)
+        guard edit != before || page.showsOriginal else { return }
+        let replaced: URL?
+        if page.geometry?.edit == nil || page.showsOriginal {
+            replaced = page.alternate?.fileURL
+        } else {
+            replaced = oldFile
+        }
         let spool: URL = spoolDirectory
+        let changed: PageEdit = edit
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
-            guard let full = AppState.imageInFile(oldFile),
-                  let edited = PageRecut.edit(page, full: full, rect: rect, filter: filter) else { return nil }
+            guard let base = AppState.imageInFile(baseFile),
+                  let edited = PageRecut.edit(page, base: base, baseFile: baseFile, edit: changed) else { return nil }
             return AppState.spoolRecut(edited, to: spool)
         }.value
         recuttingPages.remove(id)
@@ -346,10 +464,11 @@ extension AppState {
         }
         var updated: ScannedPage = made.copyMeta(from: scannedPages[index])
         updated.geometry = made.geometry
+        updated.showsOriginal = false
         scannedPages[index] = updated
-        if page.alternate != nil { try? FileManager.default.removeItem(at: oldFile) }
-        if rect == nil, let filter {
-            statusMessage = PageRecut.filterNote(filter, number: index + 1)
+        if let replaced { try? FileManager.default.removeItem(at: replaced) }
+        if changed.rect == before.rect {
+            statusMessage = PageRecut.filterNote(changed.filter ?? .original, number: index + 1)
         } else {
             statusMessage = PageRecut.rectangleNote(number: index + 1)
         }

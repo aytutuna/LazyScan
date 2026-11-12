@@ -76,12 +76,16 @@ public struct PageGeometry: Equatable, Codable, Sendable {
     /// other version (the photo) as it was taken, before any turn; nil for other pages and when they
     /// are not known.
     public let quad: Quad?
+    /// What the user cut and filtered by hand from the viewer (`PageRecut.canEdit`); nil when nothing was.
+    /// Swift only.
+    public let edit: PageEdit?
 
-    public init(cropped: Bool, angleDegrees: Double, basis: GeometryBasis, quad: Quad? = nil) {
+    public init(cropped: Bool, angleDegrees: Double, basis: GeometryBasis, quad: Quad? = nil, edit: PageEdit? = nil) {
         self.cropped = cropped
         self.angleDegrees = angleDegrees
         self.basis = basis
         self.quad = quad
+        self.edit = edit
     }
 
     /// The page was turned.

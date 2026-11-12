@@ -2443,7 +2443,10 @@ public final class AppState: ObservableObject {
         let current = scannedPages[idx]
         guard current.canSwapVersions, current.showsOriginal == page.showsOriginal,
               current.rotationQuarterTurns == page.rotationQuarterTurns else { return }
-        let swapped = current.withVersionsSwapped(shown)
+        var swapped = current.withVersionsSwapped(shown)
+        if let mode = PageRecut.editColorMode(of: swapped) {
+            swapped = swapped.withImage(swapped.image, colorMode: mode, fileURL: swapped.fileURL, fullPixelSize: swapped.fullPixelSize)
+        }
         scannedPages[idx] = swapped
         statusMessage = PageCorrections.swapNote(swapped, number: idx + 1)
     }
