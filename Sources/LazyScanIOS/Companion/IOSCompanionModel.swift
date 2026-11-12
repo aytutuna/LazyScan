@@ -168,15 +168,18 @@ public final class IOSCompanionModel: ObservableObject {
     }
 
     /// Pairs with the code in `text` under `phoneName`; once paired, what the desktop holds for the phone
-    /// is taken while the app is in front.
+    /// is taken while the app is in front. A code the desktop refused for good is cleared, so the camera
+    /// shows again; one that could not be tried (unreachable) stays for a retry.
     public func pair() async {
         guard canPair else { return }
         isPairing = true
-        await state.pairDesktop(uri: entered, phoneName: phoneName.trimmingCharacters(in: .whitespacesAndNewlines))
+        let codeUsedUp: Bool = await state.pairDesktop(uri: entered, phoneName: phoneName.trimmingCharacters(in: .whitespacesAndNewlines))
         isPairing = false
         if case .reachable = state.companionStatus {
             text = ""
             state.pullFromDesktop()
+        } else if codeUsedUp {
+            text = ""
         }
         lookAtCloudFolder()
     }

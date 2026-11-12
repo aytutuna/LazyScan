@@ -140,15 +140,17 @@ extension AppState {
     /// the one the code names. On success the desktop, its secret and its sync key (from a desktop that
     /// has the sync folder) are kept, replacing a desktop paired before; pairing the same desktop again
     /// keeps its sync folder. A refusal is said in `errorMessage` with the desktop's own message, and the
-    /// pairing kept before stays.
-    public func pairDesktop(uri: String, phoneName: String) async {
-        guard let store = companionStore else { return }
+    /// pairing kept before stays. True when the refusal used the code up (declined, expired, used or not a
+    /// code the desktop issued), so only a new one can work.
+    @discardableResult
+    public func pairDesktop(uri: String, phoneName: String) async -> Bool {
+        guard let store = companionStore else { return false }
         let code: PairingUri
         do {
             code = try PairingUri.parse(uri)
         } catch {
             errorMessage = error.localizedDescription
-            return
+            return false
         }
         var phoneId = companionDesktop?.phoneId ?? ""
         if !CompanionProtocol.isValidId(phoneId) { phoneId = PairedDesktop.makePhoneId() }
@@ -156,7 +158,7 @@ extension AppState {
                                     addresses: code.addresses, port: code.port, phoneId: phoneId)
         guard !desktop.addresses.isEmpty else {
             errorMessage = CompanionText.notOnNetworkReason(code.name)
-            return
+            return false
         }
         #if os(iOS)
         let platform = "ios"
@@ -190,7 +192,7 @@ extension AppState {
             } else {
                 errorMessage = error.localizedDescription
             }
-            return
+            return Self.usesUpCode(error)
         }
         stopPulling()
         companionDesktop = desktop
@@ -198,6 +200,14 @@ extension AppState {
         companionClient = client
         companionStatus = .reachable(desktopName: desktop.name, queuedPages: 0)
         statusMessage = CompanionText.pairedMessage(desktop.name)
+        return false
+    }
+
+    private static func usesUpCode(_ error: Error) -> Bool {
+        guard case .refused(_, let refusal)? = error as? CompanionClientError else { return false }
+        let spent = [CompanionErrorCode.declined, CompanionErrorCode.tokenExpired,
+                     CompanionErrorCode.tokenUsed, CompanionErrorCode.tokenInvalid]
+        return spent.contains(refusal.code)
     }
 
     /// Tells the desktop to forget this phone (best effort: it may be off), then forgets the desktop

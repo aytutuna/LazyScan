@@ -173,16 +173,22 @@ final class AppStateCompanionTests: XCTestCase {
         let state = try await makeState()
         let uri = try code(fake)
 
-        await state.pairDesktop(uri: uri, phoneName: "Test phone")
+        let spent = await state.pairDesktop(uri: uri, phoneName: "Test phone")
 
+        XCTAssertTrue(spent)
         XCTAssertEqual(state.errorMessage, CompanionError.declined.message)
         XCTAssertNil(state.companionDesktop)
         XCTAssertEqual(state.companionStatus, .notPaired)
         XCTAssertEqual(secrets.count, 0)
 
         state.errorMessage = nil
-        await state.pairDesktop(uri: "https://example.com", phoneName: "Test phone")
+        let notACode = await state.pairDesktop(uri: "https://example.com", phoneName: "Test phone")
+        XCTAssertFalse(notACode)
         XCTAssertEqual(state.errorMessage, PairingUri.notPairingCodeMessage)
+
+        fake.on("POST " + CompanionProtocol.pairPath, .error(409, CompanionError.tooManyDevices))
+        let full = await state.pairDesktop(uri: uri, phoneName: "Test phone")
+        XCTAssertFalse(full)
     }
 
     @MainActor
