@@ -232,7 +232,7 @@ extension AppState {
             var lastSize: CGSize?
             // The clean-up stage, then spill the page (and the photo it was taken from) to disk; keep only
             // previews, in the queue or until the pages are saved.
-            func bringIn(_ cleaned: ScannedPage) async throws {
+            @MainActor func bringIn(_ cleaned: ScannedPage) async throws {
                 let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
                     let processor: PageProcessor = savesAtOnce
                         ? PageProcessor.forScan(s)
