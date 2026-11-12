@@ -8,10 +8,9 @@ import SwiftUI
 /// for each page that applies to what is being scanned (`IOSOptionsPage.listed`: Save as, Look, Pages, Separate
 /// documents, File name and folder, After saving, and the tab's own, Scanner or Camera), each with its current
 /// value, then Presets, My computer and Help and about, and last the Start screen. Share now has a row of its
-/// own right after the Type. A page opens from its row, and the
-/// value on the row follows the setting when the page is left. The sheet opens at half height, so the picture
-/// stays in view while a setting is changed. While an import, a scan or a save runs the settings pages say so
-/// and stay as they are.
+/// own right after the Type. A page opens from its row, and the value on the row follows the setting when the
+/// page is left. The sheet opens at half height, so the picture stays in view while a setting is changed. While
+/// an import, a scan or a save runs the settings pages say so and stay as they are.
 struct OptionsScreen: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var importer: IOSImportSession
