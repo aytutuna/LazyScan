@@ -114,6 +114,7 @@
  {"key": "Delete the front; can't be undone", "comment": ""},
  {"key": "Delete the page; can't be undone", "comment": ""},
  {"key": "Delete this page?", "comment": ""},
+ {"key": "Puts the removed pages back where they were.", "comment": ""},
  {"key": "Puts the pages back in the queue, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.", "comment": ""},
  {"key": "Deletes the sides taken; can't be undone", "comment": ""},
  {"key": "Deselect All", "comment": ""},

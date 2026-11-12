@@ -395,8 +395,8 @@ final class AppStateSeamTests: XCTestCase {
     @MainActor
     func test_aPlainStatusMessage_clearsTheDetailOfTheLastOne() {
         let state = makeState()
-        state.setStatus("Queue cleared.", StatusDetail(head: .queueCleared))
-        XCTAssertEqual(state.statusDetail.head, .queueCleared)
+        state.setStatus("Queue cleared.", StatusDetail(head: .queueCleared(0)))
+        XCTAssertEqual(state.statusDetail.head, .queueCleared(0))
         state.statusMessage = "Something else."
         XCTAssertEqual(state.statusDetail, StatusDetail())
     }

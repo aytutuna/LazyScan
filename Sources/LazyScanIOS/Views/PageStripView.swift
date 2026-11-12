@@ -353,13 +353,45 @@ private struct PageTile: View {
     }
 }
 
+/// What is said of the pages taken out of the queue ("Page removed", "Cleared 12 pages") with the button that
+/// puts them back; on the Pages sheet and on the camera's cards.
+struct RemovedPagesRow: View {
+    @EnvironmentObject private var state: AppState
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(state.removedTitle)
+                .font(.footnote)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+            Button(action: onUndo) {
+                ViewThatFits(in: .horizontal) {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                        .labelStyle(.titleAndIcon)
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                        .labelStyle(.iconOnly)
+                }
+                .font(.subheadline)
+            }
+            .keyboardShortcut("z", modifiers: .command)
+            .disabled(state.isBusy || state.readsQueue)
+            .accessibilityLabel(Text("Undo"))
+            .accessibilityHint(Text("Puts the removed pages back where they were."))
+            .accessibilityIdentifier("remove.undo")
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
 /// The page grid in a sheet that opens at full height and can be pulled down to half (`detents`: not in
 /// camera mode, whose camera rests under the sheet), opened from the scan screen's pages button
 /// (`capture.pages`), with Done; a page tapped opens in the page viewer over it. Select
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
 /// start or the end, and deletes them once asked. Outside Select a bottom bar has Delete All, which empties the
-/// queue once asked; the sheet then closes, as it does whenever the pages run out. The deletes are off while
+/// queue once asked; the sheet then closes, as it does whenever the pages run out, unless the pages just taken
+/// out can still be put back (`RemovedPagesRow` under the grid). The deletes are off while
 /// a share or a send reads the pages (`AppState.readsQueue`).
 struct PageStripSheet: View {
     @EnvironmentObject private var state: AppState
@@ -378,6 +410,9 @@ struct PageStripSheet: View {
     var body: some View {
         NavigationStack {
             PageStripView(selection: selecting ? $selected : nil, onOpen: openPage)
+                .safeAreaInset(edge: .bottom) {
+                    removedCard
+                }
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -446,6 +481,22 @@ struct PageStripSheet: View {
         }
         // The root's alert cannot show over a sheet.
         .modifier(ErrorAlert(state: state))
+    }
+
+    /// The pages taken out of the queue, with Undo, until the next scan or save.
+    @ViewBuilder
+    private var removedCard: some View {
+        if state.canUndoRemove {
+            RemovedPagesRow(onUndo: undoRemoved)
+                .padding(12)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+        }
+    }
+
+    private func undoRemoved() {
+        state.undoRemove()
     }
 
     private var title: String {

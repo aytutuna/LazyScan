@@ -36,7 +36,11 @@ final class StatusLineTests: XCTestCase {
             ("Found 1 receipt.", StatusDetail(head: .found(1, .receipt)), "Found 1 receipt"),
             ("Front scanned. Turn the card over where it lies and scan the back, or skip it.", StatusDetail(), "Front scanned"),
             ("Back scanned. Check the sides, then save.", StatusDetail(), "Back scanned"),
-            ("Page queue cleared.", StatusDetail(head: .queueCleared), "Queue cleared"),
+            ("Page queue cleared.", StatusDetail(head: .queueCleared(0)), "Queue cleared"),
+            ("Cleared 12 pages.", StatusDetail(head: .queueCleared(12)), "Cleared 12 pages"),
+            ("Cleared 1 page.", StatusDetail(head: .queueCleared(1)), "Cleared 1 page"),
+            ("Page removed.", StatusDetail(head: .pagesRemoved(1)), "Page removed"),
+            ("3 pages removed.", StatusDetail(head: .pagesRemoved(3)), "3 pages removed"),
             ("Ready \u{2014} Demo Scanner", StatusDetail(), "Ready \u{2014} Demo Scanner"),
             ("Overview ready \u{2014} drag on the preview to select an area, then Scan.", StatusDetail(), "Overview ready"),
             ("Overview ready \u{2014} tap the preview to choose the scan area, then Scan.", StatusDetail(), "Overview ready"),
@@ -176,7 +180,7 @@ final class StatusLineTests: XCTestCase {
                                             StatusDetail(head: .pagesAdded(1, queue: 5, blank: 0, split: 0))), "5. sayfa eklendi")
             XCTAssertEqual(StatusLine.short("3 foto\u{011F}raf kaydedildi: /Users/me/files", StatusDetail(head: .savedFiles(3, .photo))),
                            "3 foto\u{011F}raf kaydedildi")
-            XCTAssertEqual(StatusLine.short("S\u{0131}ra temizlendi.", StatusDetail(head: .queueCleared)), "S\u{0131}ra temizlendi")
+            XCTAssertEqual(StatusLine.short("S\u{0131}ra temizlendi.", StatusDetail(head: .queueCleared(0))), "S\u{0131}ra temizlendi")
             // Under the saved files' actions: "Saved", with the warnings.
             let saved = StatusDetail(head: .saved, warnings: [.dpiUsed(600)])
             XCTAssertEqual(StatusLine.shown("Dosya kaydedildi.", saved, deviceName: nil, reviewShown: false, savedShown: true),

@@ -52,6 +52,18 @@
   "Ready": {},
   "Page {0} added": {},
   "Queue cleared": {},
+  "Page removed": {
+    "other": "{0} pages removed"
+  },
+  "Cleared {0} page": {
+    "other": "Cleared {0} pages"
+  },
+  "Page restored": {
+    "other": "{0} pages restored"
+  },
+  "{0} page could not be restored": {
+    "other": "{0} pages could not be restored"
+  },
   "Reading page {0}…": {},
   "Reading page {0} of {1}…": {},
   "Sent to the printer": {},

@@ -29,7 +29,10 @@ public enum StatusHead: Equatable, Sendable {
     case savedFiles(Int, FileKind)
     /// A review's find: "Found 3 photos".
     case found(Int, FileKind)
-    case queueCleared
+    /// The queue was cleared; the count is how many pages it held (0 when none).
+    case queueCleared(Int)
+    /// Pages left the queue (removed, or the backs left out), and can be put back.
+    case pagesRemoved(Int)
     case readingPage(Int, of: Int?)
     case addingPages(Int)
     case sentToPrinter
@@ -202,8 +205,11 @@ public enum StatusLine {
         case .found(let count, let kind)?:
             if kind == .receipt { return piece { L10n.plural(count, one: "Found {0} receipt", other: "Found {0} receipts") } }
             return piece { L10n.plural(count, one: "Found {0} photo", other: "Found {0} photos") }
-        case .queueCleared?:
-            return piece { L10n.t("Queue cleared") }
+        case .queueCleared(let count)?:
+            if count == 0 { return piece { L10n.t("Queue cleared") } }
+            return piece { L10n.plural(count, one: "Cleared {0} page", other: "Cleared {0} pages") }
+        case .pagesRemoved(let count)?:
+            return piece { L10n.plural(count, one: "Page removed", other: "{0} pages removed") }
         case .readingPage(let page, let total)?:
             if let total { return piece { L10n.t("Reading page {0} of {1}…", page, total) } }
             return piece { L10n.t("Reading page {0}…", page) }

@@ -39,6 +39,16 @@ struct SavedUndo {
     var cameraSides: CameraSides?
 }
 
+/// What `undoRemove()` puts back: the pages taken out of the queue, in the order they were taken, each with the
+/// place it had when its turn came (the queue as it was once the pages before it in this list were gone), their
+/// spool files kept, and the steps of the task as they were before the first of them.
+struct RemovedUndo {
+    var pages: [(page: ScannedPage, index: Int)]
+    var cleared: Bool
+    var taskFlow: TaskFlow?
+    var cameraSides: CameraSides?
+}
+
 extension AppState {
     /// The last save can be taken back: its files deleted (or the PDF it added to put back as it was) and
     /// its pages in the queue again.
@@ -123,6 +133,76 @@ extension AppState {
             if held.cameraSides != nil, self.cameraSides != nil { self.cameraSides = held.cameraSides }
             self.statusMessage = held.appended.map { Self.undoneAppendMessage($0.url.lastPathComponent) } ?? Self.undoneMessage
         }
+    }
+
+    /// Pages were taken out of the queue (removed, cleared, or backs left out) and can be put back.
+    public var canUndoRemove: Bool { removedUndo != nil }
+
+    /// "Page removed", "3 pages removed" or "Cleared 12 pages": what the hold is, for the Undo beside it.
+    public var removedTitle: String {
+        guard let held = removedUndo else { return "" }
+        return held.cleared ? Self.clearedMessage(held.pages.count) : Self.removedMessage(held.pages.count)
+    }
+
+    static func removedMessage(_ count: Int) -> String {
+        L10n.plural(count, one: "Page removed", other: "{0} pages removed")
+    }
+
+    static func clearedMessage(_ count: Int) -> String {
+        L10n.plural(count, one: "Cleared {0} page", other: "Cleared {0} pages")
+    }
+
+    /// Takes the pages out of the queue into the hold, keeping their spool files, and says how many went.
+    /// A hold already there grows, so one Undo puts back everything removed since the last scan, save or task
+    /// change. `flowBefore` is the task's steps when they were changed before the pages left.
+    @discardableResult
+    func holdRemoved(_ ids: Set<UUID>, cleared: Bool = false, flowBefore: TaskFlow? = nil) -> Int {
+        var hold = removedUndo ?? RemovedUndo(pages: [], cleared: false, taskFlow: flowBefore ?? taskFlow,
+                                              cameraSides: cameraSides)
+        var gone = 0
+        for (index, page) in scannedPages.enumerated() where ids.contains(page.id) {
+            hold.pages.append((page: page, index: index - gone))
+            gone += 1
+        }
+        guard gone > 0 else { return 0 }
+        hold.cleared = cleared && hold.pages.count == gone
+        removedUndo = hold
+        scannedPages.removeAll { ids.contains($0.id) }
+        return gone
+    }
+
+    /// Puts the held pages back in the queue, each where it was, with its spool files and edits, and the steps
+    /// of the task as they were. A page whose file has gone is left out and the status says so.
+    public func undoRemove() {
+        guard !isBusy, !readsQueue, let held = removedUndo else { return }
+        removedUndo = nil
+        var queue = scannedPages
+        var lost = 0
+        for (page, index) in held.pages.reversed() {
+            let files = [page.fileURL, page.alternate?.fileURL].compactMap { $0 }
+            if files.contains(where: { !FileManager.default.fileExists(atPath: $0.path) }) {
+                lost += 1
+                continue
+            }
+            queue.insert(page, at: min(index, queue.count))
+        }
+        scannedPages = queue
+        if let flow = held.taskFlow, flow.steps == taskFlow?.steps { taskFlow = flow }
+        if held.cameraSides != nil, cameraSides != nil { cameraSides = held.cameraSides }
+        let restored = held.pages.count - lost
+        var message = L10n.plural(restored, one: "Page restored", other: "{0} pages restored")
+        if lost > 0 {
+            message = L10n.plural(lost, one: "{0} page could not be restored", other: "{0} pages could not be restored")
+        }
+        statusMessage = message
+    }
+
+    /// Lets the held pages go: their spool files and the spreads only they used.
+    func discardRemovedUndo() {
+        guard let held = removedUndo else { return }
+        removedUndo = nil
+        deleteSpoolFiles(of: held.pages.map { $0.page })
+        pruneSpreads()
     }
 
     /// The error says the file is not there.

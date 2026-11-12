@@ -328,4 +328,115 @@ final class AppStateUndoTests: XCTestCase {
         let spool = try FileManager.default.contentsOfDirectory(atPath: AppStateFiles.all(in: folder).spoolDirectory.path)
         XCTAssertFalse(spool.contains { $0.hasSuffix(".pdf") })
     }
+
+    @MainActor
+    func test_undoRemove_putsAPageBackWhereItWas_withItsFile() async throws {
+        let state = try await makeState(pages: 4, undo: false)
+        let queued = state.scannedPages
+        let spool = try spoolFiles(of: queued)
+        state.removePage(id: queued[1].id)
+        XCTAssertEqual(state.scannedPages.map(\.id), [queued[0].id, queued[2].id, queued[3].id])
+        XCTAssertTrue(state.canUndoRemove)
+        XCTAssertEqual(state.removedTitle, "Page removed")
+        XCTAssertEqual(state.statusDetail.head, .pagesRemoved(1))
+        XCTAssertEqual(exists(spool), [true, true, true, true])
+
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.map(\.id), queued.map(\.id))
+        XCTAssertEqual(state.scannedPages.map(\.fileURL), queued.map(\.fileURL))
+        XCTAssertFalse(state.canUndoRemove)
+        XCTAssertEqual(state.statusMessage, "Page restored")
+    }
+
+    @MainActor
+    func test_undoRemove_afterSeveralRemovals_putsEveryPageBack() async throws {
+        let state = try await makeState(pages: 5, undo: false)
+        let queued = state.scannedPages
+        state.removePage(id: queued[1].id)
+        state.removePage(id: queued[4].id)
+        state.removePage(id: queued[0].id)
+        XCTAssertEqual(state.scannedPages.map(\.id), [queued[2].id, queued[3].id])
+        XCTAssertEqual(state.removedTitle, "3 pages removed")
+
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.map(\.id), queued.map(\.id))
+        XCTAssertEqual(state.statusMessage, "3 pages restored")
+    }
+
+    @MainActor
+    func test_undoRemove_afterClear_putsTheQueueBackInOrder() async throws {
+        let state = try await makeState(pages: 3, undo: false)
+        let queued = state.scannedPages
+        let spool = try spoolFiles(of: queued)
+        state.clearPages()
+        XCTAssertTrue(state.scannedPages.isEmpty)
+        XCTAssertEqual(state.removedTitle, "Cleared 3 pages")
+        XCTAssertEqual(state.statusDetail.head, .queueCleared(3))
+        XCTAssertEqual(exists(spool), [true, true, true])
+
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.map(\.id), queued.map(\.id))
+        XCTAssertEqual(exists(spool), [true, true, true])
+    }
+
+    @MainActor
+    func test_undoRemove_leavesOutAPageWhoseFileIsGone() async throws {
+        let state = try await makeState(pages: 3, undo: false)
+        let queued = state.scannedPages
+        state.removePage(id: queued[1].id)
+        try FileManager.default.removeItem(at: try XCTUnwrap(queued[1].fileURL))
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.map(\.id), [queued[0].id, queued[2].id])
+        XCTAssertEqual(state.statusMessage, "1 page could not be restored")
+    }
+
+    @MainActor
+    func test_aNewScan_freesTheRemovedPages() async throws {
+        let state = try await makeState(pages: 2, undo: false)
+        let removed = state.scannedPages[0]
+        let file = try XCTUnwrap(removed.fileURL)
+        state.removePage(id: removed.id)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+
+        try await ingest(state, 1)
+        XCTAssertFalse(state.canUndoRemove)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        state.undoRemove()
+        XCTAssertEqual(state.scannedPages.count, 2)
+    }
+
+    @MainActor
+    func test_aSave_freesTheRemovedPages() async throws {
+        let state = try await makeState(pages: 2, undo: true)
+        let removed = state.scannedPages[0]
+        let file = try XCTUnwrap(removed.fileURL)
+        state.removePage(id: removed.id)
+        state.savePDF()
+        try await finish(state)
+        XCTAssertFalse(state.canUndoRemove)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertTrue(state.canUndoSave)
+    }
+
+    @MainActor
+    func test_aTaskChange_freesTheRemovedPages() async throws {
+        let state = try await makeState(pages: 2, undo: false)
+        let removed = state.scannedPages[0]
+        let file = try XCTUnwrap(removed.fileURL)
+        state.removePage(id: removed.id)
+        XCTAssertTrue(state.startTask(.document))
+        XCTAssertFalse(state.canUndoRemove)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
+    @MainActor
+    func test_theEndOfTheApp_freesTheRemovedPages() async throws {
+        let lifecycle = UndoLifecycle()
+        let state = try await makeState(pages: 2, undo: false, lifecycle: lifecycle)
+        let file = try XCTUnwrap(state.scannedPages[0].fileURL)
+        state.removePage(id: state.scannedPages[0].id)
+        lifecycle.sendWillTerminate()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
 }
+

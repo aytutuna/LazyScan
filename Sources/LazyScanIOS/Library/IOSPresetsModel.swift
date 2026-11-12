@@ -136,7 +136,7 @@ public final class IOSPresetsModel {
         let userDefaults: UserDefaults = defaults
         state.leaveIdCard {
             if discardingPages {
-                appState.clearPages()
+                appState.clearPages(discarding: true)
             }
             IOSShell.rememberChoices(appState.settings, defaults: userDefaults)
             appState.applyPreset(preset)

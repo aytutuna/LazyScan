@@ -99,6 +99,7 @@ extension AppState {
             errorMessage = TaskCatalog.unavailableMessage(task, reason: availability.reason ?? "")
             return false
         }
+        discardRemovedUndo()
         // A task that keeps no queue would leave the held pages with nowhere to come back to.
         if savedUndo != nil && !carriesQueue(task) { discardSavedUndo() }
         // A feeder not asked yet whether it scans both sides is taken to (`sidesCapabilities`); the

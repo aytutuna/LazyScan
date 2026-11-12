@@ -222,6 +222,7 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var scannedPages: [ScannedPage] = [] {
         didSet {
             if savedUndo != nil && !scannedPages.isEmpty { discardSavedUndo() }
+            if removedUndo != nil && scannedPages.count > oldValue.count { discardRemovedUndo() }
             pruneSpreads()
             keepViewedPage(after: oldValue)
             companionService?.queuedPages = scannedPages.count
@@ -241,6 +242,9 @@ public final class AppState: ObservableObject {
     public var keepsSavedForUndo = false
     /// The last save, held for `undoSave()`; nil when none is, or the Mac.
     @Published var savedUndo: SavedUndo?
+    /// The pages taken out of the queue last (a removal, a clear, the backs left out), with their spool files,
+    /// for `undoRemove()` (AppState+Undo.swift). Let go on the next scan or import, save or task change.
+    @Published var removedUndo: RemovedUndo?
     /// The review holds receipts rather than photos: it is titled and saved as receipts (AppState+Receipts.swift).
     @Published public internal(set) var isReceiptReview = false
     /// This session's scans, newest first (small previews only) — the "Scans" tab.
@@ -710,6 +714,7 @@ public final class AppState: ObservableObject {
             self.settingsSaveTask?.cancel()
             SettingsStore.save(self.settings, directory: self.settingsDirectory)
             if self.keepsSavedForUndo { self.discardSavedUndo() }
+            self.discardRemovedUndo()
             if self.discardsQueueAtQuit {
                 self.queueRecordTask?.cancel()
                 QueueRecord.clear(self.spoolDirectory, keeping: nil)
@@ -2011,11 +2016,10 @@ public final class AppState: ObservableObject {
         // Never mutate the queue (or unlink spool files) while a save is
         // reading from it, or a share or a send is reading the spool files.
         guard !isBusy, !readsQueue else { return }
-        if let page = scannedPages.first(where: { $0.id == id }) {
-            deleteSpoolFiles(of: [page])
-        }
-        scannedPages.removeAll { $0.id == id }
+        let removed = holdRemoved([id])
+        guard removed > 0 else { return }
         cameraPageRemoved(id)
+        setStatus(removedTitle, StatusDetail(head: .pagesRemoved(removedUndo?.pages.count ?? removed)))
     }
 
     public func movePage(id: UUID, by offset: Int) {
@@ -2176,12 +2180,19 @@ public final class AppState: ObservableObject {
             : L10n.t("Page {0} will be saved. {1}.", idx + 1, summary)
     }
 
-    public func clearPages() {
+    /// Empties the queue; its pages wait for `undoRemove()`, or are deleted at once where `discarding` says
+    /// they are not wanted back.
+    public func clearPages(discarding: Bool = false) {
         guard !isBusy, !readsQueue else { return }
-        deleteSpoolFiles(of: scannedPages)
-        scannedPages = []
+        let cleared = holdRemoved(Set(scannedPages.map(\.id)), cleared: true)
+        if discarding { discardRemovedUndo() }
         resetFlow()
-        setStatus(L10n.t("Page queue cleared."), StatusDetail(head: .queueCleared))
+        if cleared > 0 {
+            let title = removedUndo == nil ? Self.clearedMessage(cleared) : removedTitle
+            setStatus(title, StatusDetail(head: .queueCleared(removedUndo?.pages.count ?? cleared)))
+        } else {
+            setStatus(L10n.t("Page queue cleared."), StatusDetail(head: .queueCleared(0)))
+        }
     }
 
     // MARK: Two-sided scanning
@@ -2387,8 +2398,9 @@ public final class AppState: ObservableObject {
     /// The back sides scanned so far leave the queue, to be scanned again.
     public func scanBacksAgain() {
         guard !isBusy, awaitingBacks, taskFlow != nil else { return }
+        let flowBefore = taskFlow
         let removed = taskFlow?.retake(stepID: DocumentSides.backsStepID) ?? []
-        removeQueuedPages(removed)
+        removeQueuedPages(removed, flowBefore: flowBefore)
         sidesMismatch = nil
         statusMessage = L10n.t("Load the turned-over stack in the feeder again and scan the back sides.")
     }
@@ -2414,11 +2426,8 @@ public final class AppState: ObservableObject {
         statusMessage = L10n.t("Scanning one side of each sheet.")
     }
 
-    private func removeQueuedPages(_ ids: [UUID]) {
-        guard !ids.isEmpty else { return }
-        let set = Set(ids)
-        deleteSpoolFiles(of: scannedPages.filter { set.contains($0.id) })
-        scannedPages.removeAll { set.contains($0.id) }
+    private func removeQueuedPages(_ ids: [UUID], flowBefore: TaskFlow? = nil) {
+        holdRemoved(Set(ids), flowBefore: flowBefore)
     }
 
     // MARK: Presets
@@ -2888,6 +2897,7 @@ public final class AppState: ObservableObject {
     func dropSaved(_ queued: [ScannedPage], wrote files: [URL] = [], appended: AppendedPDF? = nil,
                    undoable: Bool = true) {
         let saved: Set<UUID> = Set(queued.map(\.id))
+        discardRemovedUndo()
         if keepsSavedForUndo && undoable {
             var stamps: [URL: FileStamp] = [:]
             for url in files {

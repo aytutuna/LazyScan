@@ -119,6 +119,9 @@ struct ScanScreen: View {
     /// Pages came in since the files saved last: camera mode's card of them waits for the next save, so a
     /// queue emptied without one (discarded, deleted) does not bring it back as if those pages were saved.
     @State private var savedRowStale: Bool = false
+    /// The card of the pages taken out of the queue has been up for about ten seconds and is gone; a new removal
+    /// brings it back (`removedTitle` changes).
+    @State private var removedCardExpired: Bool = false
     /// The options drawer is open, and the group it shows.
     @State private var showsDrawer: Bool = false
     @State private var drawerGroup: DrawerGroup = .colour
@@ -144,7 +147,8 @@ struct ScanScreen: View {
             }
             .onChange(of: state.scannedPages.isEmpty) { (_: Bool, empty: Bool) in
                 if empty {
-                    pagesShown = false
+                    // The sheet stays for the Undo of the pages just taken out.
+                    pagesShown = pagesShown && state.canUndoRemove
                 } else {
                     savedRowStale = true
                 }
@@ -161,6 +165,9 @@ struct ScanScreen: View {
             }
             .onChange(of: state.lastSavedURLs) { (_: [URL], _: [URL]) in
                 savedRowStale = false
+            }
+            .onChange(of: state.removedTitle) { (_: String, _: String) in
+                removedCardExpired = false
             }
             .modifier(IdCardDiscardQuestion(state: state, asked: $askedToDiscard))
             .modifier(KeepPagesQuestion(state: state, leave: $leavingPages, blocked: saveBlocked))
@@ -397,6 +404,9 @@ struct ScanScreen: View {
         if let message = statusAfterBusy, !state.isBusy {
             statusCard(message)
         }
+        if state.canUndoRemove && !removedCardExpired && !pagesShown {
+            removedCard
+        }
         if !state.lastSavedURLs.isEmpty && state.scannedPages.isEmpty && !state.isBusy && !savedRowStale {
             SavedFilesRow()
                 .modifier(NoticeCard())
@@ -416,6 +426,25 @@ struct ScanScreen: View {
                     statusAfterBusy = nil
                 }
             }
+    }
+
+    /// The pages taken out of the queue, with Undo, on a card for about ten seconds.
+    private var removedCard: some View {
+        RemovedPagesRow(onUndo: undoRemoved)
+            .modifier(NoticeCard())
+            .task(id: state.removedTitle) {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                if !Task.isCancelled {
+                    removedCardExpired = true
+                }
+            }
+    }
+
+    private func undoRemoved() {
+        state.undoRemove()
+        if !state.canUndoRemove {
+            statusAfterBusy = state.statusMessage
+        }
     }
 
     /// The app, or a share or a send of the pages, is busy.

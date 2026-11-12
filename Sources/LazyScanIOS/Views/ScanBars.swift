@@ -264,7 +264,7 @@ struct PagesStack: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(count == 0)
+        .disabled(count == 0 && !state.canUndoRemove)
         .onChange(of: count) { (old: Int, new: Int) in
             guard new > old, !reduceMotion else { return }
             withAnimation(.spring(duration: 0.15)) {

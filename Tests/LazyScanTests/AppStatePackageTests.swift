@@ -355,8 +355,11 @@ final class AppStatePackageTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
         state.queueReaders = 0
 
+        // A page removed waits for Undo, with its file, until the hold is let go.
         state.removePage(id: ids[0])
         XCTAssertEqual(state.scannedPages.map(\.id), [ids[1]])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        state.discardRemovedUndo()
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
 

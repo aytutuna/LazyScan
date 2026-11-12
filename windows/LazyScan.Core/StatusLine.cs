@@ -41,7 +41,11 @@ public abstract record StatusHead
     /// <summary>A review's find: "Found 3 photos".</summary>
     public sealed record Found(int Count, FileKind Kind) : StatusHead;
 
-    public sealed record QueueCleared : StatusHead;
+    /// <summary>The queue was cleared; <paramref name="Count"/> is how many pages it held (0 when none).</summary>
+    public sealed record QueueCleared(int Count = 0) : StatusHead;
+
+    /// <summary>Pages left the queue (removed, or the backs left out), and can be put back.</summary>
+    public sealed record PagesRemoved(int Count) : StatusHead;
 
     public sealed record ReadingPage(int Page, int? Of) : StatusHead;
 
@@ -215,8 +219,12 @@ public static class StatusLine
                 return found.Kind == FileKind.Receipt
                     ? MakePiece(() => Loc.Plural(found.Count, "Found {0} receipt", "Found {0} receipts"))
                     : MakePiece(() => Loc.Plural(found.Count, "Found {0} photo", "Found {0} photos"));
-            case StatusHead.QueueCleared:
+            case StatusHead.QueueCleared { Count: 0 }:
                 return MakePiece(() => Loc.T("Queue cleared"));
+            case StatusHead.QueueCleared cleared:
+                return MakePiece(() => Loc.Plural(cleared.Count, "Cleared {0} page", "Cleared {0} pages"));
+            case StatusHead.PagesRemoved removed:
+                return MakePiece(() => Loc.Plural(removed.Count, "Page removed", "{0} pages removed"));
             case StatusHead.ReadingPage reading:
                 return reading.Of is int total
                     ? MakePiece(() => Loc.T("Reading page {0} of {1}…", reading.Page, total))

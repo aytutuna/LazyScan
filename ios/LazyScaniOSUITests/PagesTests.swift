@@ -111,7 +111,7 @@ final class PagesTests: XCTestCase {
     }
 
     @MainActor
-    func test_deleteAll_emptiesTheQueue_andClosesTheSheet() throws {
+    func test_deleteAll_emptiesTheQueue_andUndoPutsItBack() throws {
         let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
                                          "The fixture PDF in the test bundle")
         let app = XCUIApplication()
@@ -131,10 +131,11 @@ final class PagesTests: XCTestCase {
         XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete All")
         confirm.tap()
 
-        let done: XCUIElement = app.descendants(matching: .any)["pages.done"].firstMatch
-        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: done)
-        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 30), .completed, "The page strip closed")
+        // The sheet stays, with the Undo of the pages just cleared.
+        let undo: XCUIElement = app.descendants(matching: .any)["remove.undo"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 30), "Undo on the page strip")
         XCTAssertFalse(app.descendants(matching: .any)["page.1"].exists, "No pages left")
-        XCTAssertTrue(app.pagesButton.waitForPageCount(0, timeout: 30), "0 pages on the pages' button")
+        undo.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["page.3"].waitForExistence(timeout: 30), "The pages are back")
     }
 }
