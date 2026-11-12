@@ -697,6 +697,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private readonly PageSpool _spool;
     private IScannerSession? _session;
     private bool _userPickedDevice;
+    /// <summary>The scanner in use went away; it stays selected, not connected, until it is listed again or the user picks another.</summary>
+    private bool _connectionLost;
+    /// <summary>The user picked another connection while the switch had to wait; it overrides the keep-what-works rule.</summary>
+    private bool _switchConnection;
+    /// <summary>The scanner picked last (<see cref="AppPreferences.LastScanner"/>).</summary>
+    private string? _lastScanner;
     /// <summary>The user's connection choice per scanner (<see cref="AppPreferences.PreferredConnection"/>).</summary>
     private readonly Dictionary<string, string> _preferredConnection;
     /// <summary>Devices that scan through their driver's own window (<see cref="AppPreferences.TwainDriverWindow"/>).</summary>
@@ -806,6 +812,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             .Where(pair => pair.Value is not null)
             .ToDictionary(pair => pair.Key, pair => pair.Value);
         _driverWindowDevices = [.. preferences.TwainDriverWindow.Where(id => id is not null)];
+        _lastScanner = preferences.LastScanner;
         _ocrService = ocrService ?? new WindowsOcrService();
         _fileActions = fileActions ?? new WindowsFileActions(MainWindowHandle);
         _system = systemDiagnostics ?? new WindowsSystemDiagnostics();
@@ -957,8 +964,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>
     /// Rebuilds the scanner list from every backend: entries for the same physical scanner are
     /// grouped (<see cref="DeviceMerge.Group"/>) and the selection follows its scanner. When
-    /// another connection to the selected scanner becomes the preferred one (a better one
-    /// appeared, the user chose one, or the one in use went away), the session moves to it.
+    /// the user chose another connection to the selected scanner, or the one in use went away,
+    /// the session moves to the preferred one.
     /// </summary>
     private void MergeDevices()
     {
@@ -977,23 +984,20 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (group is not null && TwainOnly(group) && group.Members.All(m => m.Id != sel)) group = null;
             if (group is null)
             {
-                // The device went away (unplugged, powered off). Switching would discard a
-                // running operation or an open photo review, whose pixels no longer need the
-                // scanner, so wait for those to end (EndOfWork re-runs this merge).
-                if (AutoSwitchMustWait)
-                {
-                    _autoSwitchDeferred = true;
-                }
-                else
-                {
-                    _userPickedDevice = false;
-                    SelectDevice(PreferredDefaultDevice());
-                }
+                // The device went away (unplugged, powered off). It stays selected with its
+                // settings, not connected, and no other scanner takes over. Closing the session
+                // would discard a running operation or an open photo review, whose pixels no
+                // longer need the scanner, so wait for those to end (EndOfWork re-runs this merge).
+                if (AutoSwitchMustWait) _autoSwitchDeferred = true;
+                else if (_session is not null || !_switchTask.IsCompleted) SelectDevice(sel, lost: true);
+                else _connectionLost = true;
             }
-            else if (group.Primary.Id != sel)
+            else if (_connectionLost || _switchConnection || (group.Primary.Id != sel && ConnectionNotWorking(group, sel)))
             {
-                // Same scanner, another connection: the same deferral rules apply. The user's
-                // pick of this scanner stands.
+                // The scanner is back, or the connection in use went away and another one to
+                // the same scanner is left: the same deferral rules apply. The user's pick of
+                // this scanner stands. A connection that works is kept even when a better
+                // ranked one appears, since the switch would clear the preview and the area.
                 if (AutoSwitchMustWait) _autoSwitchDeferred = true;
                 else SelectDevice(group.Primary.Id);
             }
@@ -1006,6 +1010,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 // to end (EndOfWork re-runs this merge).
                 if (AutoSwitchMustWait) _autoSwitchDeferred = true;
                 else SelectDevice(real);
+            }
+            else if (!_userPickedDevice && LastScannerGroup() is { } last && last.Key != group.Key
+                     && OverviewImage is null && SelectionRect is null)
+            {
+                // The scanner picked last is listed now, after the app settled on another one.
+                if (AutoSwitchMustWait) _autoSwitchDeferred = true;
+                else SelectDevice(last.Primary.Id);
             }
         }
         else if (PreferredDefaultDevice() is { } def)
@@ -1065,7 +1076,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// The first real scanner (else the demo device), through its preferred connection. A
+    /// The scanner picked last when it is listed (<see cref="LastScannerGroup"/>), else the first real scanner (else the demo device), through its preferred connection. A
     /// scanner only TWAIN reaches is never chosen on its own: TWAIN lists installed drivers,
     /// not connected scanners, and opening the driver of one that is off or gone can show the
     /// driver's own error messages and fails anyway. It is opened only when the user picks it.
@@ -1076,8 +1087,23 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// the connection left, and it is chosen.
     /// </summary>
     private string? PreferredDefaultDevice() =>
+        LastScannerGroup()?.Primary.Id ??
         (DeviceGroups.FirstOrDefault(g => !g.Primary.IsDemo && !NotChosenOnItsOwn(g) && !_certificateRefused.Contains(g.Primary.Id))
          ?? DeviceGroups.FirstOrDefault(g => g.Primary.IsDemo))?.Primary.Id;
+
+    /// <summary>
+    /// The scanner picked last, when it is listed. Unlike the first scanner found it may be
+    /// one only TWAIN reaches, since the user chose it.
+    /// </summary>
+    private DeviceGroup? LastScannerGroup() =>
+        _lastScanner is { } key
+        && DeviceGroups.FirstOrDefault(g => g.Key == key) is { } group
+        && !_certificateRefused.Contains(group.Primary.Id) && !group.Members.All(AwaitingWia)
+            ? group : null;
+
+    /// <summary>The connection in use is no longer listed for its scanner, or never opened.</summary>
+    private bool ConnectionNotWorking(DeviceGroup group, string sel) =>
+        group.Members.All(m => m.Id != sel) || (_session is null && _switchTask.IsCompleted);
 
     private static bool TwainOnly(DeviceGroup group) => group.Members.All(m => IsTwain(m));
 
@@ -1138,8 +1164,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         bool selectedScanner = SelectedDeviceId is { } sel && GroupOfSelection(sel)?.Key == groupKey;
         if (selectedScanner && AutoSwitchMustWait)
         {
-            // MergeDevices deferred the switch; EndOfWork makes it.
+            // EndOfWork makes the switch.
             _userPickedDevice = true;
+            _switchConnection = true;
+            _autoSwitchDeferred = true;
             return;
         }
         UserSelectDevice(group.Primary.Id);
@@ -1360,23 +1388,37 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void UserSelectDevice(string? id)
     {
         _userPickedDevice = true;
+        RememberScanner(id);
         SelectDevice(id, interactive: true);
+    }
+
+    private void RememberScanner(string? id)
+    {
+        var group = DeviceGroups.FirstOrDefault(g => g.Members.Any(m => m.Id == id));
+        if (group is null || group.Primary.IsDemo || group.Key == _lastScanner) return;
+        _lastScanner = group.Key;
+        AppPreferencesStore.Update(preferences => preferences.LastScanner = group.Key);
     }
 
     /// <param name="interactive">
     /// The user chose the device just now, so opening it may ask them something (a network
     /// scanner's changed certificate). Automatic selections never ask.
     /// </param>
-    private void SelectDevice(string? id, bool interactive = false)
+    /// <param name="lost">
+    /// The device went away: its session is closed and it stays selected, not connected.
+    /// </param>
+    private void SelectDevice(string? id, bool interactive = false, bool lost = false)
     {
         // Ignore re-clicks on a device that is already connected or connecting.
-        if (id == SelectedDeviceId && (_session != null || !_switchTask.IsCompleted)) return;
+        if (!lost && id == SelectedDeviceId && (_session != null || !_switchTask.IsCompleted)) return;
+        _connectionLost = lost;
+        _switchConnection = false;
         SelectedDeviceId = id;
         _selectedEntry = id is null ? null
             : DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(m => m.Id == id) ?? _selectedEntry;
         RefreshDeviceRows();
         // Named at once: this switch waits for the one before, which may still be connecting.
-        if (id is not null && DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id) is { } chosen)
+        if (!lost && id is not null && DeviceGroups.SelectMany(g => g.Members).FirstOrDefault(d => d.Id == id) is { } chosen)
         {
             StatusMessage = Loc.T("Connecting to {0}…", chosen.Name);
         }
@@ -1391,7 +1433,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             await previous;
             if (_switchGeneration != generation) return;
-            await SwitchSession(id, interactive);
+            await SwitchSession(lost ? null : id, interactive);
             // SwitchSession's own NotifyAll can be handled before this task completes, while
             // IsConnected and IsConnecting still see the switch running.
             NotifyAll();
@@ -1421,13 +1463,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
         if (id is null)
         {
-            StatusMessage = Loc.T("No scanner selected.");
+            // A selected device with no id to open: it went away.
+            StatusMessage = SelectedDeviceId is null
+                ? Loc.T("No scanner selected.")
+                : Loc.T("Not connected to {0}. It connects again when it is found.", _selectedEntry?.Name ?? Loc.T("the scanner"));
             NotifyAll();
             return;
         }
         var backend = _backends.FirstOrDefault(b => b.Devices.Any(d => d.Id == id));
         if (backend is null)
         {
+            _connectionLost = true;
             StatusMessage = Loc.T("Scanner is no longer available.");
             NotifyAll();
             return;
@@ -1523,7 +1569,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 if (SelectedDeviceId is not { } id) return Loc.T("No scanner selected.");
                 string name = Devices.FirstOrDefault(d => d.Id == id)?.Name ?? Loc.T("the scanner");
-                return IsConnecting ? Loc.T("Connecting to {0}…", name) : Loc.T("Not connected to {0}. Choose it in the list again to retry.", name);
+                if (IsConnecting) return Loc.T("Connecting to {0}…", name);
+                return _connectionLost ? Loc.T("Not connected to {0}. It connects again when it is found.", name)
+                    : Loc.T("Not connected to {0}. Choose it in the list again to retry.", name);
             }
             if (Capabilities?.SupportsOverview == false) return Loc.T("This scanner has no preview.");
             // The preview shows the flatbed; a feeder scan would ignore a selection drawn on it.

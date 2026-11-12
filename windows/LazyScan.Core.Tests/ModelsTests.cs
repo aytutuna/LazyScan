@@ -226,6 +226,28 @@ public class ModelsTests
     }
 
     [Fact]
+    public void LastScannerIsSavedAndMissingByDefault()
+    {
+        Assert.Null(new AppPreferences().LastScanner);
+        Assert.Null(JsonSerializer.Deserialize<AppPreferences>("{}", StoreFiles.JsonOptions)!.LastScanner);
+
+        string dir = Path.Combine(Path.GetTempPath(), "LazyScan.Tests." + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            AppPreferencesStore.Update(p => p.LastScanner = "id:abc123", dir);
+            AppPreferencesStore.Update(p => p.Appearance = AppAppearance.Dark, dir);
+            var back = AppPreferencesStore.Load(dir);
+            Assert.Equal("id:abc123", back.LastScanner);
+            Assert.Equal(AppAppearance.Dark, back.Appearance);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void UnknownAppearanceFallsBackToSystemAndTheFileStaysInPlace()
     {
         const string json = """{ "appearance": "sepia" }""";

@@ -1453,6 +1453,9 @@
   "Not connected to {0}. Choose it in the list again to retry.": {
     "note": "{0} is the scanner name."
   },
+  "Not connected to {0}. It connects again when it is found.": {
+    "note": "{0} is the scanner name."
+  },
   "This scanner has no preview.": {},
   "Preview needs the flatbed. Choose Flatbed as the source to preview.": {},
   "Scanning overview…": {},

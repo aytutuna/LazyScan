@@ -259,7 +259,7 @@ scan to finish"), since a switch would cancel it. The choice is remembered while
 the scanner is reached the same ways: it is saved under the network connection's eSCL UUID
 when that connection is listed and under the model name otherwise, so a choice made while the
 eSCL host answered does not apply while it is offline, and the other way round. Choices for
-scanners no longer present stay in `preferences.json`. The names the drivers report, and how
+scanners no longer present stay in `preferences.json`. A connection that works stays in use when a better ranked one is listed later; the ranking applies at the next launch. When the scanner in use drops out it stays selected, not connected, with its settings, and the app connects again when it is listed; it never moves to another scanner by itself. The scanner picked last is saved and chosen at launch once it is listed, even when only TWAIN reaches it. The names the drivers report, and how
 they were matched, are written to `%LOCALAPPDATA%\Lazy Scan\Logs\devices.txt`, so
 missing aliases can be spotted on real hardware.
 

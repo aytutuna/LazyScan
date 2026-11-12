@@ -226,13 +226,20 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         _running = number;
         WiaApartment.Run(() => Enumerate(generation)).ContinueWith(task =>
         {
-            var result = task.IsCompletedSuccessfully ? task.Result : new EnumerationResult([], null, ServiceStatus.Unknown);
+            var result = task.IsCompletedSuccessfully ? task.Result : null;
             Post(() =>
             {
                 if (_running == number) _running = 0;
                 // A Stop/Start since this enumeration began makes its result stale.
                 if (generation != _browseGeneration) return;
                 if (number > Interlocked.Read(ref _enumerationsFinished)) Interlocked.Exchange(ref _enumerationsFinished, number);
+                // A failed enumeration says nothing about the scanners: the list stays as it was.
+                if (result is null)
+                {
+                    EnumerationFinished?.Invoke();
+                    if (_refreshAgain && _running == 0) RefreshDevices();
+                    return;
+                }
                 _service = result.Service;
                 bool noteChanged = result.Unavailable != _unavailable;
                 _unavailable = result.Unavailable;
@@ -292,7 +299,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         }
     }
 
-    /// <summary>The scanners WIA lists now. WIA thread only.</summary>
+    /// <summary>The scanners WIA lists now; throws when WIA fails. WIA thread only.</summary>
     internal static List<ScannerInfo> EnumerateScanners()
     {
         var found = new List<ScannerInfo>();
@@ -320,10 +327,6 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
                                           Model: ModelOf(TryGetProperty(info.Properties, "Manufacturer") as string,
                                                          TryGetProperty(info.Properties, "Description") as string)));
             }
-        }
-        catch
-        {
-            // WIA not available (service disabled, no devices): expose nothing.
         }
         finally
         {

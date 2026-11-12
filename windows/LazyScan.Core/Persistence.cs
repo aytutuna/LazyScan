@@ -102,6 +102,12 @@ public sealed class AppPreferences
     public Dictionary<string, string> PreferredConnection { get; set; } = [];
 
     /// <summary>
+    /// The scanner the user picked last (<see cref="DeviceGroup.Key"/>), preferred when the app
+    /// opens and the scanner is listed. null until a real scanner was picked.
+    /// </summary>
+    public string? LastScanner { get; set; }
+
+    /// <summary>
     /// TWAIN connections (<see cref="ScannerInfo.Id"/>, for example "twain:EPSON Perfection
     /// V600") that scan through the driver's own settings window instead of the app's
     /// settings. Windows only: the Mac has no TWAIN.
