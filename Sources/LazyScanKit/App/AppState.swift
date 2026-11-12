@@ -1955,18 +1955,28 @@ public final class AppState: ObservableObject {
         let format = s.format.imageFormatOrJPEG
         runExclusive { flag in
             var saved: [URL] = []
-            for (index, photo) in photos.enumerated() {
-                if flag.isCancelled { throw ScanError.cancelled }
-                let planned = try self.outputURL(fileExtension: format.fileExtension, index: index + 1)
-                let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
-                    let image = photo.rotationQuarterTurns == 0
-                        ? photo.image
-                        : ImagePipeline.rotate(photo.image, quarterTurns: photo.rotationQuarterTurns)
-                    // The mode the photo was scanned in: a black & white TIFF is G4.
-                    return try ImageExporter.write(image, to: planned, format: format, dpi: photo.dpi,
-                                                   jpegQuality: s.jpegQuality, colorMode: photo.colorMode, keepingExisting: true)
-                }.value
-                saved.append(url)
+            let counter: Int = self.counterDefaults.integer(forKey: Self.counterKey)
+            do {
+                for (index, photo) in photos.enumerated() {
+                    if flag.isCancelled { throw ScanError.cancelled }
+                    let planned = try self.outputURL(fileExtension: format.fileExtension, index: index + 1)
+                    let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
+                        let image = photo.rotationQuarterTurns == 0
+                            ? photo.image
+                            : ImagePipeline.rotate(photo.image, quarterTurns: photo.rotationQuarterTurns)
+                        // The mode the photo was scanned in: a black & white TIFF is G4.
+                        return try ImageExporter.write(image, to: planned, format: format, dpi: photo.dpi,
+                                                       jpegQuality: s.jpegQuality, colorMode: photo.colorMode, keepingExisting: true)
+                    }.value
+                    saved.append(url)
+                }
+            } catch {
+                // A failed or cancelled save leaves the review open, so Save again must write the same names.
+                for url in saved {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                self.counterDefaults.set(counter, forKey: Self.counterKey)
+                throw error
             }
             self.lastSavedURLs = saved
             self.detectedPhotos = []

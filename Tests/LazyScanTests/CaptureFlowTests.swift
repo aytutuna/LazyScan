@@ -170,6 +170,43 @@ final class CaptureFlowTests: XCTestCase {
     }
 
     @MainActor
+    func test_cancelledPhotoSave_removesWhatItWrote_andSavingAgainUsesTheSameNames() async throws {
+        let state: AppState = makeState(.photos)
+        state.settings.format = .png
+        let width: Int = 3000
+        let height: Int = 2000
+        var pixels: [UInt8] = []
+        pixels.reserveCapacity(width * height * 4)
+        for i in 0..<(width * height * 4) {
+            pixels.append(UInt8(truncatingIfNeeded: i &* 31 &+ i / 7))
+        }
+        let image: CGImage = try XCTUnwrap(RgbaImage(width: width, height: height, pixels: pixels).makeCGImage())
+        let region = DetectedPhotoRegion(center: CGPoint(x: 1500, y: 1000), size: CGSize(width: 3000, height: 2000),
+                                         angleDegrees: 0)
+        state.detectedPhotos = (0..<10).map { (_: Int) -> DetectedPhoto in
+            DetectedPhoto(region: region, image: image, dpi: 300)
+        }
+        state.showPhotoReview = true
+        let counterBefore: Int = state.counterDefaults.integer(forKey: AppState.counterKey)
+
+        state.saveReviewedPhotos()
+        try await waitFor(timeout: 60) { fileNames(saved).count >= 2 }
+        state.cancelScan()
+        try await waitFor(timeout: 60) { !state.isBusy }
+        XCTAssertTrue(fileNames(saved).isEmpty, "\(fileNames(saved))")
+        XCTAssertTrue(state.showPhotoReview)
+        XCTAssertEqual(state.detectedPhotos.count, 10)
+        XCTAssertTrue(state.lastSavedURLs.isEmpty)
+        XCTAssertEqual(state.counterDefaults.integer(forKey: AppState.counterKey), counterBefore)
+
+        state.saveReviewedPhotos()
+        try await waitFor(timeout: 120) { !state.isBusy && !state.showPhotoReview }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(fileNames(saved).count, 10)
+        XCTAssertEqual(state.counterDefaults.integer(forKey: AppState.counterKey), counterBefore + 10)
+    }
+
+    @MainActor
     func test_fixCropInRestoreOldPhotos_keepsTheRestoredColors() async throws {
         let state: AppState = makeState(.photoRestore)
         let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())
