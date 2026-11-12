@@ -2668,6 +2668,11 @@ public enum BilevelTIFF {                      // Output/BilevelTIFF.swift
 // ImageExporter.write gains `colorMode: ColorMode = .color`: a black & white TIFF is BilevelTIFF.make.
 // PDFImageData.ccittG4(data:width:height:) and PDFImageData.encodeCCITTG4(_:) are C#'s PdfCcittImage.
 ```
+
+The threshold is the app's, not the scanner driver's: in Black & White the Mac's ImageCaptureCore backend asks
+the scanner for `.gray` at 8 bits and eSCL for Grayscale8, never 1-bit (Windows' WIA and TWAIN still ask for 1 bit), and the page is thresholded by
+`blackWhiteThreshold` in the pipeline, so the slider changes the saved page; the packing to 1 bit happens
+only when the PDF or TIFF is written.
 - **The coding:** the reference row above the first is white. Each row's changing elements are
   the pixels whose color differs from the pixel before them (white before the first). a0 starts
   at −1 and white; a1 is the first changing element of the coding row right of a0, a2 the next;

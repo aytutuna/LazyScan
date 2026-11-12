@@ -434,8 +434,10 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
             unit.pixelDataType = .gray
             unit.bitDepth = .depth8Bits
         case .blackWhite:
-            unit.pixelDataType = .BW
-            unit.bitDepth = .depth1Bit
+            // 8-bit gray, thresholded by the app (ImagePipeline), so the threshold slider changes the
+            // page; a 1-bit request would have the driver pick the threshold.
+            unit.pixelDataType = .gray
+            unit.bitDepth = .depth8Bits
         }
 
         // Scan area in inches. The selection is a normalized rect of the bed

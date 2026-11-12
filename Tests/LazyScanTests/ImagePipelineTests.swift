@@ -132,6 +132,40 @@ final class ImagePipelineTests: XCTestCase {
         XCTAssertLessThanOrEqual(maxMidDistance, 6, "blackWhite output must be ~0 or ~255 everywhere")
     }
 
+    func test_blackWhite_ofAGrayScan_followsTheThresholdAndPacksToOneBit() throws {
+        // A scanner that hands over 8-bit gray in Black & White leaves the threshold to the app.
+        let width = 64, height = 8
+        let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2)!
+        let ctx = try XCTUnwrap(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width, space: gray,
+                                          bitmapInfo: CGImageAlphaInfo.none.rawValue))
+        let ptr = ctx.data!.assumingMemoryBound(to: UInt8.self)
+        for y in 0..<height {
+            for x in 0..<width { ptr[y * width + x] = UInt8(x * 255 / (width - 1)) }
+        }
+        let scan = try XCTUnwrap(ctx.makeImage())
+
+        func blackShare(_ threshold: Double) throws -> Int {
+            var settings = AdjustmentSettings()
+            settings.blackWhiteThreshold = threshold
+            let output = ImagePipeline.apply(settings, to: scan, colorMode: .blackWhite)
+            let rgba = renderRGBA(output)
+            let black = stride(from: 0, to: rgba.count, by: 4).filter { rgba[$0] < 128 }.count
+            let white = stride(from: 0, to: rgba.count, by: 4).filter { rgba[$0] > 127 }.count
+            XCTAssertEqual(black + white, width * height)
+            XCTAssertTrue(stride(from: 0, to: rgba.count, by: 4).allSatisfy { rgba[$0] <= 6 || rgba[$0] >= 249 })
+            let packed = Bilevel.pack(try XCTUnwrap(RgbaImage(cgImage: output)))
+            let packedBlack = (0..<height).reduce(0) { sum, y in
+                sum + (0..<width).filter { Bilevel.isBlack(packed, width: width, x: $0, y: y) }.count
+            }
+            XCTAssertEqual(packedBlack, black)
+            return black
+        }
+        let low = try blackShare(0.25)
+        let high = try blackShare(0.75)
+        XCTAssertLessThan(low, high)
+    }
+
     func test_rotateOneQuarterTurnClockwise() {
         let input = makeMarkerImage(width: 64, height: 32)
         let output = ImagePipeline.rotate(input, quarterTurns: 1)
