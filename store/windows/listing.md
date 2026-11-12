@@ -48,7 +48,7 @@ Lazy Scan is new. If your scanner does not show up or a scan does not come out a
 
 **Privacy policy URL:** https://alazy.app/scan/privacy.html
 
-**Screenshots:** none in this folder yet. Take them from a neutral folder with the Demo Scanner or public-domain scans, at 1920x1080, light, so that no local path or personal file name shows.
+**Screenshots:** `Listing/start.png`, `Listing/queue.png`, `Listing/photo-review.png` and `Listing/saved.png`, 1920x1080, light, on the Demo Scanner in a temporary profile and save folder so that no local path or personal file name shows. Written by `scripts/make_store_shots.ps1`; run it again after a UI change.
 
 **Store logos:** `Listing/Logo-300x300.png` (1:1 app tile icon), `Listing/Box-1080x1080.png` (1:1 box art) and `Listing/Poster-720x1080.png` (2:3 poster art). Drawn by `scripts/make_store_assets.py`.
 
