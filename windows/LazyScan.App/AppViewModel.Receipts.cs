@@ -182,7 +182,7 @@ public sealed partial class AppViewModel
                     StatusMessage = Loc.T("Writing the PDF…");
                     NotifyAll();
                     var pages = images.Select((image, i) => new ScannedPage(image, receipts[i].Dpi, ColorMode.Grayscale)).ToList();
-                    string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates)),
+                    string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates)),
                                                            token, knownLines: lines);
                     saved.Add(path);
                     await WriteText(path, Enumerable.Range(0, receipts.Count).ToList());
@@ -193,7 +193,7 @@ public sealed partial class AppViewModel
                     token.ThrowIfCancellationRequested();
                     StatusMessage = Loc.T("Saving receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
-                    string path = OutputPath(s, format.FileExtension(), documentDate: dates[i]);
+                    string path = await OutputPath(s, format.FileExtension(), documentDate: dates[i]);
                     if (format == OutputFormat.Pdf)
                     {
                         var page = new ScannedPage(images[i], receipts[i].Dpi, ColorMode.Grayscale);

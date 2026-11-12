@@ -1820,7 +1820,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             {
                 StatusMessage = Loc.T("Reading the text of the pages…");
                 NotifyAll();
-                var (written, hasText) = await WriteTextDocument(pages, format, OutputPath(s, format.FileExtension(), label: document.Label), s, token);
+                var (written, hasText) = await WriteTextDocument(pages, format, await OutputPath(s, format.FileExtension(), label: document.Label), s, token);
                 MarkSaved([written]);
                 DeleteSpoolFiles(queued);
                 ScannedPages.Clear();
@@ -1836,7 +1836,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             StatusMessage = s.PdfSearchable || text is not null ? Loc.T("Running OCR and building PDF…") : Loc.T("Building PDF…");
             NotifyAll();
             var failures = new PdfTextFailures();
-            string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", label: document.Label), token, text, failures: failures);
+            string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", label: document.Label), token, text, failures: failures);
             string? textPath = text is null ? null : await WriteTextBeside(path, text);
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             MarkSaved([path]);
@@ -1866,7 +1866,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             bool hasText;
             try
             {
-                (written, hasText) = await WriteTextDocument(pages, s.Format, OutputPath(s, s.Format.FileExtension()), s, token);
+                (written, hasText) = await WriteTextDocument(pages, s.Format, await OutputPath(s, s.Format.FileExtension()), s, token);
             }
             catch (Exception e)
             {
@@ -1898,7 +1898,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var failures = new PdfTextFailures();
             try
             {
-                saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text, failures: failures)];
+                saved = [await WritePdfAtomically(pages, s, await OutputPath(s, "pdf"), token, text, failures: failures)];
             }
             catch (Exception e)
             {
@@ -1920,7 +1920,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 foreach (var page in pages)
                 {
                     token.ThrowIfCancellationRequested();
-                    string path = OutputPath(s, s.Format.FileExtension());
+                    string path = await OutputPath(s, s.Format.FileExtension());
                     saved.Add(await Task.Run(() =>
                         WpfImageCodec.SaveAsNew(page.Image, path, s.Format, page.Dpi, s.JpegQuality, page.ColorMode)));
                 }
@@ -1970,7 +1970,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 {
                     token.ThrowIfCancellationRequested();
                     var photo = photos[index];
-                    string path = OutputPath(s, format.FileExtension(), index + 1);
+                    string path = await OutputPath(s, format.FileExtension(), index + 1);
                     StatusMessage = Loc.T("Saving photo {0} of {1}…", index + 1, photos.Count);
                     NotifyAll();
                     saved.Add(await Task.Run(() =>
@@ -3005,11 +3005,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 {
                     // The password before the file is named, which takes the running number.
                     ProtectionFor(s);
-                    saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, OutputPath(s, "pdf"), token, failures: failures));
+                    saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, await OutputPath(s, "pdf"), token, failures: failures));
                 }
                 else
                 {
-                    string path = OutputPath(s, pageFormat.FileExtension());
+                    string path = await OutputPath(s, pageFormat.FileExtension());
                     saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(page, path, pageFormat, dpi, s.JpegQuality, pageMode), token));
                 }
                 if (!s.TaskOptions.IdCardSaveSidesAsImages) return;
@@ -3799,9 +3799,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// writers move into place without replacing and pick the next free name if another
     /// file took this one meanwhile.
     /// </summary>
-    private string OutputPath(ScanSettings s, string fileExtension, int? index = null, DocumentDate? documentDate = null,
-                              string? label = null)
+    private Task<string> OutputPath(ScanSettings s, string fileExtension, int? index = null, DocumentDate? documentDate = null,
+                                    string? label = null) => Task.Run(() =>
     {
+        // On a network folder these calls can block for the network timeout.
         string dir = Environment.ExpandEnvironmentVariables(s.DestinationPath);
         Directory.CreateDirectory(dir);
         string baseName = new NamingTemplate(s.NamingTemplate)
@@ -3813,7 +3814,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 Label = label,
             });
         return NamingTemplate.UniquePath(dir, baseName, fileExtension);
-    }
+    });
 
     private static bool IsCancellation(Exception e) =>
         e is OperationCanceledException || e is ScanException { Kind: ScanErrorKind.Cancelled };

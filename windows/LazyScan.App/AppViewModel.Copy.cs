@@ -277,7 +277,7 @@ public sealed partial class AppViewModel
         var failures = new PdfTextFailures();
         try
         {
-            path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, failures: failures);
+            path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf"), token, failures: failures);
         }
         catch (Exception e) when (IsCancellation(e))
         {

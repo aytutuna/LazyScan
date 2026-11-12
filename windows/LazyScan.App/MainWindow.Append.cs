@@ -27,14 +27,14 @@ public partial class MainWindow
                             MessageBoxResult.No, App.BoxOptions) == MessageBoxResult.Yes;
     }
 
-    private void AddToPdf_Click(object sender, RoutedEventArgs e)
+    private async void AddToPdf_Click(object sender, RoutedEventArgs e)
     {
-        if (PickPdfToAddTo() is { } path) _ = ViewModel.AppendToPdf(path);
+        if (await PickPdfToAddTo() is { } path) _ = ViewModel.AppendToPdf(path);
     }
 
-    private void StartAddingToPdf()
+    private async void StartAddingToPdf()
     {
-        if (ViewModel.IsBusy || PickPdfToAddTo() is not { } path) return;
+        if (ViewModel.IsBusy || await PickPdfToAddTo() is not { } path) return;
         if (!ConfirmDropIdCard() || !ViewModel.StartTask(ScanTask.Document)) return;
         ViewModel.SetAppendTarget(path);
         OpenSectionFor(ScanTask.Document);
@@ -50,7 +50,7 @@ public partial class MainWindow
         else FocusMainAction();
     }
 
-    private string? PickPdfToAddTo()
+    private async Task<string?> PickPdfToAddTo()
     {
         var dialog = new OpenFileDialog
         {
@@ -59,8 +59,11 @@ public partial class MainWindow
             CheckFileExists = true,
             Multiselect = false,
         };
-        // Start where the app saves, where the PDF the pages belong to most likely is.
-        if (Directory.Exists(ViewModel.DestinationFolder)) dialog.InitialDirectory = ViewModel.DestinationFolder;
+        // Start where the app saves, where the PDF the pages belong to most likely is. The probe
+        // has a time limit: on an unreachable network folder it can block for the network timeout.
+        string folder = ViewModel.DestinationFolder;
+        var exists = Task.Run(() => Directory.Exists(folder));
+        if (await Task.WhenAny(exists, Task.Delay(1500)) == exists && exists.Result) dialog.InitialDirectory = folder;
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 }
