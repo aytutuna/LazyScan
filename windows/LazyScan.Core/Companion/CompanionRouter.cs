@@ -388,7 +388,7 @@ public sealed class CompanionRouter
             if (await DuplicateAsync().ConfigureAwait(false) is { } late) return late;
             var package = await _inbox.ReceiveAsync(device.Id, packageId, target, request.Body, length, now, cancellation).ConfigureAwait(false);
             PackageReceived?.Invoke(this, new CompanionPackageReceivedEventArgs(package, device));
-            return CompanionResponse.Json(201, new InboxResponse(packageId, package.Document.Pages.Count, false).ToJson());
+            return CompanionResponse.Json(201, new InboxResponse(packageId, package.PageCount, false).ToJson());
         }
         catch (CompanionPackageException error)
         {

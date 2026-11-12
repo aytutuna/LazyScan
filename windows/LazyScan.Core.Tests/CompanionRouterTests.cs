@@ -215,7 +215,7 @@ public sealed class CompanionRouterTests : IDisposable
         Assert.Equal(CompanionTarget.Current, e.Package.Target);
         Assert.Equal("phone-0001", e.Device.Id);
         Assert.True(File.Exists(e.Package.Path));
-        Assert.Equal("Scan", e.Package.Document.Title);
+        Assert.Equal(CompanionFixtures.Minimal.Pages.Count, e.Package.PageCount);
 
         // A retry, even after the package was imported and released, is answered as a duplicate.
         _inbox.Release(e.Package);
@@ -265,10 +265,28 @@ public sealed class CompanionRouterTests : IDisposable
         using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.None))
         {
             Assert.Equal(["package-0001"], _inbox.Pending().Select(p => p.PackageId));
+            Assert.Equal([CompanionFixtures.Minimal.Pages.Count], _inbox.Pending().Select(p => p.PageCount));
         }
 
         Assert.False(File.Exists(corrupt));
         Assert.True(File.Exists(locked));
+    }
+
+    [Fact]
+    public void Inbox_PendingCountsPagesWithoutReadingThePictures()
+    {
+        string folder = Path.Combine(_directory, "Inbox", "phone-0001");
+        Directory.CreateDirectory(folder);
+        string file = Path.Combine(folder, "package-0001.lsdoc");
+        var bytes = CompanionPackage.Make(CompanionFixtures.Minimal);
+        int dataOffset;
+        using (var reader = ZipStoreReader.Open(bytes)) dataOffset = (int)reader.Find("pages/0001.jpg")!.DataOffset;
+        bytes[dataOffset + 100] ^= 0xFF;
+        File.WriteAllBytes(file, bytes);
+
+        Assert.Equal([CompanionFixtures.Minimal.Pages.Count], _inbox.Pending().Select(p => p.PageCount));
+        Assert.True(File.Exists(file));
+        Assert.Throws<CompanionPackageException>(() => CompanionPackage.ReadFile(file));
     }
 
     [Fact]

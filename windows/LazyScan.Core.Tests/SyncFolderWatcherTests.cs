@@ -81,7 +81,7 @@ public sealed class SyncFolderWatcherTests : IDisposable
         Assert.Equal(PhoneId, received.Device.Id);
         Assert.Equal("package-0001", received.Package.PackageId);
         Assert.Equal(CompanionTarget.Current, received.Package.Target);
-        Assert.Equal(CompanionFixtures.Minimal.Pages.Count, received.Package.Document.Pages.Count);
+        Assert.Equal(CompanionFixtures.Minimal.Pages.Count, received.Package.PageCount);
         Assert.True(File.Exists(received.Package.Path));
         Assert.NotNull(_inbox.Find(PhoneId, "package-0001"));
         Assert.False(File.Exists(path));

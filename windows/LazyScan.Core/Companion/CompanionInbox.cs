@@ -4,8 +4,8 @@ namespace LazyScan.Core;
 // with its own host). C# only for now: see CONTRACTS.md, "The phone companion".
 
 /// <summary>A package a paired phone sent, checked and waiting to be added to the queue.</summary>
-/// <param name="Path">The package file in the inbox; <see cref="CompanionInbox.Release"/> deletes it once imported.</param>
-public sealed record ReceivedPackage(string DeviceId, string PackageId, string Path, CompanionDocument Document,
+/// <param name="Path">The package file in the inbox, read again when its pages are added; <see cref="CompanionInbox.Release"/> deletes it once imported.</param>
+public sealed record ReceivedPackage(string DeviceId, string PackageId, string Path, int PageCount,
                                      CompanionTarget Target, DateTimeOffset Received);
 
 /// <summary>A package received before (from received.json).</summary>
@@ -117,7 +117,7 @@ public sealed class CompanionInbox
                     throw new IOException("The list of received documents could not be saved.");
                 }
             }
-            return new ReceivedPackage(deviceId, packageId, final, document, target, now);
+            return new ReceivedPackage(deviceId, packageId, final, document.Pages.Count, target, now);
         }
         finally
         {
@@ -130,8 +130,8 @@ public sealed class CompanionInbox
 
     /// <summary>
     /// The packages received but not released (the app ended before adding them), oldest first,
-    /// each read again; a file that is no longer a valid package is deleted, one that cannot be read stays for
-    /// the next start.
+    /// known by its page count from the manifest (no picture is read); a file that is no longer a valid package
+    /// is deleted, one that cannot be read stays for the next start.
     /// </summary>
     public IReadOnlyList<ReceivedPackage> Pending()
     {
@@ -147,8 +147,8 @@ public sealed class CompanionInbox
                 if (!CompanionProtocol.IsValidId(packageId)) continue;
                 try
                 {
-                    var document = CompanionPackage.ReadFile(path);
-                    pending.Add(new ReceivedPackage(deviceId, packageId, path, document, CompanionTarget.New,
+                    int pageCount = CompanionPackage.PageCount(path);
+                    pending.Add(new ReceivedPackage(deviceId, packageId, path, pageCount, CompanionTarget.New,
                                                     new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)));
                 }
                 catch (CompanionPackageException)

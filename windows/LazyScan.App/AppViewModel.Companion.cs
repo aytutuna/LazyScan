@@ -238,7 +238,7 @@ public sealed partial class AppViewModel
 
     private string WaitingMessage()
     {
-        int pages = _phoneDocuments.Sum(d => d.Package.Document.Pages.Count);
+        int pages = _phoneDocuments.Sum(d => d.Package.PageCount);
         string from = _phoneDocuments.Select(d => d.PhoneName).Distinct().Count() == 1 ? _phoneDocuments.Peek().PhoneName : Loc.T("your phones");
         if (IsStackUnderWay)
         {
@@ -287,13 +287,32 @@ public sealed partial class AppViewModel
                 StatusMessage = Loc.T("Ready.");
                 return;
             }
+            CompanionDocument document;
+            try
+            {
+                document = await Task.Run(() => CompanionPackage.ReadFile(package.Path));
+            }
+            catch (CompanionPackageException)
+            {
+                unreadable = true;
+                problem = Loc.T("The document from {0} could not be added: one of its pictures could not be read.", phoneName);
+                StatusMessage = Loc.T("Ready.");
+                return;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.",
+                    phoneName, e.Message.TrimEnd('.'));
+                StatusMessage = Loc.T("Ready.");
+                return;
+            }
             List<ScannedPage> pages;
             var spooledSoFar = new List<ScannedPage>();
             try
             {
                 // Each picture is decoded from the package's bytes, spooled and dropped before the next, so a long
                 // document never holds all its pixels at once. A failure here is the picture's, or the memory's.
-                pages = await Task.Run(() => CompanionPages.ToScannedPages(package.Document, package.Target, queueHasPages,
+                pages = await Task.Run(() => CompanionPages.ToScannedPages(document, package.Target, queueHasPages,
                     PendingPackage.Decode, keep: page =>
                     {
                         token.ThrowIfCancellationRequested();
@@ -338,7 +357,7 @@ public sealed partial class AppViewModel
         if (added > 0) PhoneDocumentArrived?.Invoke(CompanionProtocol.AddedMessage(added, phoneName));
         if (cancelled)
         {
-            string kept = CompanionProtocol.KeptMessage(package.Document.Pages.Count, phoneName, onMac: false);
+            string kept = CompanionProtocol.KeptMessage(package.PageCount, phoneName, onMac: false);
             StatusMessage = kept;
             NotifyAll();
             PhoneDocumentArrived?.Invoke(kept);

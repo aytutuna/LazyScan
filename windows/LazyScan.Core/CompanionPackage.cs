@@ -529,6 +529,25 @@ public static class CompanionPackage
     }
 
     /// <summary>
+    /// The number of pages in the package file at <paramref name="path"/>, from its manifest alone: no
+    /// picture is read. Refuses the packages <see cref="Read(Stream, ZipReadLimits?)"/> refuses for their manifest.
+    /// </summary>
+    public static int PageCount(string path, ZipReadLimits? limits = null)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920);
+            using var reader = ZipStoreReader.Open(stream, limits, leaveOpen: true);
+            return ReadManifest(reader).Pages.Count;
+        }
+        catch (ZipReadException error)
+        {
+            throw new CompanionPackageException(CompanionPackageErrorKind.InvalidArchive,
+                                                Loc.T("This document cannot be opened: {0}", error.Message), error);
+        }
+    }
+
+    /// <summary>
     /// The document in the package in <paramref name="stream"/> (readable and seekable, left
     /// open). Throws <see cref="CompanionPackageException"/> for anything it refuses.
     /// </summary>
@@ -560,7 +579,7 @@ public static class CompanionPackage
     public static string Subject(int pageNumber, bool original) =>
         original ? Loc.T("The original picture of page {0}", pageNumber) : Loc.T("The picture of page {0}", pageNumber);
 
-    private static CompanionDocument Read(ZipStoreReader reader)
+    private static ManifestDto ReadManifest(ZipStoreReader reader)
     {
         var manifestEntry = reader.Find(ManifestName)
             ?? throw new CompanionPackageException(CompanionPackageErrorKind.NotPackage, NotPackageMessage);
@@ -582,7 +601,12 @@ public static class CompanionPackage
         {
             throw new CompanionPackageException(CompanionPackageErrorKind.TooManyPages, TooManyPagesMessage);
         }
+        return manifest;
+    }
 
+    private static CompanionDocument Read(ZipStoreReader reader)
+    {
+        var manifest = ReadManifest(reader);
         var used = new HashSet<string>(StringComparer.Ordinal);
         var pages = new List<CompanionPage>(manifest.Pages.Count);
         for (int i = 0; i < manifest.Pages.Count; i++)

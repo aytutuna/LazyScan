@@ -241,7 +241,7 @@ public sealed class CompanionLoopbackTests : IAsyncLifetime
 
         var received = Assert.Single(_received);
         Assert.Equal(CompanionTarget.Current, received.Package.Target);
-        Assert.Equal(CompanionFixtures.Sample.Title, received.Package.Document.Title);
+        Assert.Equal(CompanionFixtures.Sample.Pages.Count, received.Package.PageCount);
         Assert.Equal(package, File.ReadAllBytes(received.Package.Path));
         _service.Inbox.Release(received.Package);
         Assert.False(File.Exists(received.Package.Path));
