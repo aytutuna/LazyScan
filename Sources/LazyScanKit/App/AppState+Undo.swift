@@ -1,6 +1,6 @@
 import Foundation
 
-// Undo after a save, for the iPhone (`AppState.keepsSavedForUndo`). Swift only: the Mac and Windows delete the
+// Undo after a save, for the iPhone and the Mac (`AppState.keepsSavedForUndo`). Swift only: Windows deletes the
 // spool files of a saved queue at once. Chosen from the saved bar and held until the next scan, import or
 // save (the queue gets a page, or another file is reported as saved), when the held pages are let go.
 // Pages sent to a paired computer or a cloud folder, and files shared or emailed, are out of reach.
@@ -57,6 +57,9 @@ extension AppState {
     /// The last save can be taken back: its files deleted (or the PDF it added to put back as it was) and
     /// its pages in the queue again.
     public var canUndoSave: Bool { savedUndo != nil }
+
+    /// The held save added pages to a PDF, which Undo puts back as it was.
+    public var undoSaveRestoresPDF: Bool { savedUndo?.appended != nil }
 
     /// "Save undone: the pages are in the queue again."
     static var undoneMessage: String {

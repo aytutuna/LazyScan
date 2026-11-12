@@ -41,6 +41,8 @@ final class StatusLineTests: XCTestCase {
             ("Cleared 1 page.", StatusDetail(head: .queueCleared(1)), "Cleared 1 page"),
             ("Page removed.", StatusDetail(head: .pagesRemoved(1)), "Page removed"),
             ("3 pages removed.", StatusDetail(head: .pagesRemoved(3)), "3 pages removed"),
+            ("Save undone: the pages are in the queue again.", StatusDetail(), "Save undone"),
+            ("Save undone: Contract.pdf is as it was, and the pages are in the queue again.", StatusDetail(), "Save undone"),
             ("Ready \u{2014} Demo Scanner", StatusDetail(), "Ready \u{2014} Demo Scanner"),
             ("Overview ready \u{2014} drag on the preview to select an area, then Scan.", StatusDetail(), "Overview ready"),
             ("Overview ready \u{2014} tap the preview to choose the scan area, then Scan.", StatusDetail(), "Overview ready"),

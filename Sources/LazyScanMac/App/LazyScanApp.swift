@@ -87,6 +87,7 @@ extension AppState {
                              printService: SystemPrintService(),
                              lifecycle: AppKitLifecycle(),
                              keepsQueue: true, discardsQueueAtQuit: true)
+        state.keepsSavedForUndo = true
         // The spool earlier builds kept in the temporary folder.
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("LazyScan-pages", isDirectory: true))
         // Pictures from Continuity Camera that a crash or a quit left behind.

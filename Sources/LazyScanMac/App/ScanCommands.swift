@@ -90,6 +90,7 @@ struct UndoCommands: Commands {
     @ObservedObject var state: AppState
 
     private var title: String {
+        if state.canUndoSave { return String(localized: "Undo Save") }
         if !state.canUndoRemove { return String(localized: "Undo") }
         if state.removedByReorder { return String(localized: "Undo Spread Update") }
         return state.removedByClear ? String(localized: "Undo Clear") : String(localized: "Undo Remove Page")
@@ -97,7 +98,7 @@ struct UndoCommands: Commands {
 
     /// The menu is not re-evaluated when focus moves into a text field, so Undo and Redo stay on unless
     /// they could only do nothing: Undo while the pages cannot come back.
-    private var canUndo: Bool { !state.canUndoRemove || (!state.isBusy && !state.readsQueue) }
+    private var canUndo: Bool { !(state.canUndoSave || state.canUndoRemove) || (!state.isBusy && !state.readsQueue) }
 
     private var editsText: Bool { NSApp.keyWindow?.firstResponder is NSText }
 
@@ -107,7 +108,11 @@ struct UndoCommands: Commands {
                 if editsText {
                     NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
                 } else if NSApp.keyWindow?.sheetParent == nil {
-                    state.undoRemove()
+                    if state.canUndoSave {
+                        state.undoSave()
+                    } else {
+                        state.undoRemove()
+                    }
                 }
             }
             .keyboardShortcut("z")

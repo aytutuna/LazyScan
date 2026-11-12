@@ -277,10 +277,9 @@ public final class AppState: ObservableObject {
     /// photo review (`listObjects`). Swift only: the iPhone and iPad turn it on, the Mac keeps its review.
     public var listsFoundObjects = false
     /// A save keeps the pages it wrote, with their spool files, until the next scan, import or save so that
-    /// `undoSave()` can bring them back (AppState+Undo.swift). Swift only: the iPhone turns it on, the Mac
-    /// deletes the spool files at once.
+    /// `undoSave()` can bring them back (AppState+Undo.swift). Swift only: the iPhone and the Mac turn it on.
     public var keepsSavedForUndo = false
-    /// The last save, held for `undoSave()`; nil when none is, or the Mac.
+    /// The last save, held for `undoSave()`; nil when none is.
     @Published var savedUndo: SavedUndo?
     /// The pages taken out of the queue last (a removal, a clear, the backs left out), with their spool files,
     /// for `undoRemove()` (AppState+Undo.swift). Let go on the next scan or import, save or task change.

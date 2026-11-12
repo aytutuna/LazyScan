@@ -18,8 +18,12 @@ struct StatusBarView: View {
             statusText
             if showsUndo {
                 Button("Undo") {
-                    state.undoRemove()
-                    AccessibilityNotification.Announcement(state.statusMessage).post()
+                    if state.canUndoSave {
+                        state.undoSave()
+                    } else {
+                        state.undoRemove()
+                        AccessibilityNotification.Announcement(state.statusMessage).post()
+                    }
                 }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
@@ -27,6 +31,7 @@ struct StatusBarView: View {
                     .disabled(state.isBusy || state.readsQueue)
                     .help(undoHelp)
                     .accessibilityHint(Text(undoHint))
+                    .accessibilityIdentifier(undoIdentifier)
             }
             if showsHeldCopy {
                 heldCopyActions
@@ -53,7 +58,9 @@ struct StatusBarView: View {
         }
     }
 
-    private var showsUndo: Bool { state.canUndoRemove }
+    private var showsUndo: Bool { state.canUndoSave || state.canUndoRemove }
+
+    private var undoIdentifier: String { state.canUndoSave ? "save.undo" : "pages.undo" }
 
     private var showsHeldCopy: Bool { state.copyIsKept && !state.copyPages.isEmpty && !state.isBusy }
 
@@ -78,11 +85,17 @@ struct StatusBarView: View {
     }
 
     private var undoHelp: String {
+        if state.canUndoSave {
+            return state.undoSaveRestoresPDF
+                ? String(localized: "Put the pages back and restore the PDF as it was")
+                : String(localized: "Put the pages back and delete the saved files")
+        }
         if state.removedByReorder { return String(localized: "Put the pages back as they were") }
         return L10n.plural(state.removedCount, one: "Put the page back", other: "Put the pages back")
     }
 
     private var undoHint: String {
+        if state.canUndoSave { return String(localized: "Puts the pages back, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.") }
         if state.removedByReorder { return String(localized: "Puts back the pages as they were before the spreads were updated") }
         return L10n.plural(state.removedCount, one: "Puts back the removed page", other: "Puts back the removed pages")
     }

@@ -34,6 +34,8 @@ public class StatusLineTests
             ("Cleared 1 page.", new(new StatusHead.QueueCleared(1)), "Cleared 1 page"),
             ("Page removed.", new(new StatusHead.PagesRemoved(1)), "Page removed"),
             ("3 pages removed.", new(new StatusHead.PagesRemoved(3)), "3 pages removed"),
+            ("Save undone: the pages are in the queue again.", new(), "Save undone"),
+            ("Save undone: Contract.pdf is as it was, and the pages are in the queue again.", new(), "Save undone"),
             ("Ready — Demo Scanner", new(), "Ready — Demo Scanner"),
             ("Overview ready — drag on the preview to select an area, then Scan.", new(), "Overview ready"),
             ("Overview ready — tap the preview to choose the scan area, then Scan.", new(), "Overview ready"),
