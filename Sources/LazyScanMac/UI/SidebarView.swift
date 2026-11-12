@@ -12,7 +12,9 @@ struct SidebarView: View {
         List(selection: deviceSelection) {
             Section {
                 ForEach(state.devices) { device in
-                    DeviceRow(device: device, frozen: state.isBusy)
+                    DeviceRow(device: device, frozen: state.isBusy, status: status(of: device.id)) {
+                        state.userSelectDevice(device.id)
+                    }
                         .tag(device.id)
                         // Simultaneous, so the List still selects the row.
                         .simultaneousGesture(retryTap(device.id))
@@ -104,6 +106,14 @@ struct SidebarView: View {
         state.isBusy ? String(localized: "Wait for the scan to finish") : ""
     }
 
+    /// Only the selected scanner has a connection to report. A busy row keeps the plain look: the scan
+    /// runs on a connected scanner.
+    private func status(of id: String) -> DeviceRow.Status? {
+        guard id == state.selectedDeviceID, !state.isBusy else { return nil }
+        if state.isConnecting { return .connecting }
+        return state.isConnected ? nil : .failed
+    }
+
     /// A click on the selected scanner while it is not connected (it was off, or did not answer) opens it
     /// again: the List sets its selection only when it changes. Twin of the Windows `DeviceList_PreviewMouseDown`.
     private func retryTap(_ id: String) -> some Gesture {
@@ -132,25 +142,62 @@ struct SidebarView: View {
 private struct DeviceRow: View {
     let device: ScannerInfo
     let frozen: Bool
+    let status: Status?
+    let retry: () -> Void
+
+    enum Status { case connecting, failed }
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: device.isDemo ? "sparkles.rectangle.stack" : "scanner")
-                .foregroundStyle(.secondary)
-                .frame(width: 22)
+            icon
             VStack(alignment: .leading, spacing: 1) {
                 Text(device.name)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundStyle(nameStyle)
-                transport
+                caption
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if status == .failed {
+                    Button("Retry", action: retry)
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .help("Try to connect to this scanner again")
+                        .accessibilityLabel(Text("Retry connecting to \(device.name)"))
+                }
+            }
+            if status == .connecting {
+                Spacer(minLength: 0)
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder private var icon: some View {
+        if status == .failed {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: device.isDemo ? "sparkles.rectangle.stack" : "scanner")
+                .foregroundStyle(.secondary)
+                .frame(width: 22)
+        }
+    }
+
+    @ViewBuilder private var caption: some View {
+        switch status {
+        case .connecting: Text("Connecting…")
+        case .failed: Text("Not connected - Click to retry")
+        case nil: transport
+        }
     }
 
     private var nameStyle: HierarchicalShapeStyle { frozen ? .secondary : .primary }
