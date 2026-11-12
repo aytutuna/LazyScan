@@ -1494,8 +1494,8 @@ it had found stay listed, and those its new search does not find again are dropp
 pass), and TWAIN lists its drivers again when it was missing or would not start (while TWAIN works
 its list stays as it is). A Refresh while one is running is ignored. A selected scanner that could
 not be connected to is opened again, unless that would end a scan, a review or an ID card's sides.
-The checks are made again as the scanner list changes. **Copy diagnostics** copies the checks and
-the device list
+The checks are made again as the scanner list changes. **Copy diagnostics** copies the app's version, Windows build and architecture,
+the device list and the checks
 (the same text as `%LOCALAPPDATA%\Lazy Scan\Logs\devices.txt`, which now ends with the
 checks). The window only reads: it never starts, stops or reconfigures a service or a setting, and
 the Settings buttons only open Windows Settings. Everything is keyboard reachable (Tab goes through
