@@ -100,19 +100,40 @@ public enum PrintDocument {
         var mediaBox = CGRect(x: 0, y: 0, width: Double(size.width), height: Double(size.height))
         guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
         for page in pages {
-            context.beginPDFPage(nil)
-            let turns = ((page.placement.quarterTurns % 4) + 4) % 4
-            let image = turns == 0 ? page.image : ImagePipeline.rotate(page.image, quarterTurns: turns)
-            let rect = PrintLayout.toUnits(page.placement.rect, unitsPerInch: unitsPerInch)
-            // PDF space has its origin at the bottom left; the placement's is at the top left.
-            let drawn = CGRect(x: Double(rect.minX), y: Double(mediaBox.height) - Double(rect.maxY),
-                               width: Double(rect.width), height: Double(rect.height))
-            context.interpolationQuality = .high
-            context.draw(image, in: drawn)
-            context.endPDFPage()
+            draw(page, in: context, height: Double(mediaBox.height))
         }
         context.closePDF()
         return data as Data
+    }
+
+    /// The same, written to `url` one page at a time: `page` is asked for each index in turn and its
+    /// image is released before the next, so only one page's pixels are held.
+    public static func writePDF(to url: URL, pageCount: Int, paper: CGSize,
+                                page: (Int) throws -> PrintPage) throws {
+        let size = PrintLayout.toUnits(paper, unitsPerInch: unitsPerInch)
+        var mediaBox = CGRect(x: 0, y: 0, width: Double(size.width), height: Double(size.height))
+        guard let context = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else {
+            throw PrintError.failed(L10n.t("The copy could not be prepared for printing."))
+        }
+        for index in 0..<pageCount {
+            try autoreleasepool {
+                draw(try page(index), in: context, height: Double(mediaBox.height))
+            }
+        }
+        context.closePDF()
+    }
+
+    private static func draw(_ page: PrintPage, in context: CGContext, height: Double) {
+        context.beginPDFPage(nil)
+        let turns = ((page.placement.quarterTurns % 4) + 4) % 4
+        let image = turns == 0 ? page.image : ImagePipeline.rotate(page.image, quarterTurns: turns)
+        let rect = PrintLayout.toUnits(page.placement.rect, unitsPerInch: unitsPerInch)
+        // PDF space has its origin at the bottom left; the placement's is at the top left.
+        let drawn = CGRect(x: Double(rect.minX), y: height - Double(rect.maxY),
+                           width: Double(rect.width), height: Double(rect.height))
+        context.interpolationQuality = .high
+        context.draw(image, in: drawn)
+        context.endPDFPage()
     }
 }
 

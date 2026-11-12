@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 /// Printing: the Copy task (scan, then print at real size, like a photocopier), printing the ID
 /// card's page, and the ruler test page. Pages are placed with `PrintLayout` on a PDF the size of the
@@ -133,16 +134,27 @@ extension AppState {
         let fit = PrintLayout.copyFitsToPage(chosenFit: options.copyFitToPage, allPagesRealSize: allRealSize)
         let mode: PrintMode = fit ? .fitToPrintable : .actualSize
         let align = PrintLayout.align(hasSelection: areaSelected)
-        let printPages = pages.map { page in
-            PrintPage(image: page.image, dpi: page.dpi,
-                      placement: PrintLayout.place(pixelWidth: page.image.width, pixelHeight: page.image.height,
-                                                   dpi: page.dpi, on: setup.paper, mode: mode, align: align))
+        let placements: [PrintPlacement] = pages.map { page in
+            let size = Self.printPixelSize(of: page)
+            return PrintLayout.place(pixelWidth: Int(size.width), pixelHeight: Int(size.height),
+                                     dpi: page.dpi, on: setup.paper, mode: mode, align: align)
         }
         let paper = setup.paper.paper
-        let document: Data? = await Task.detached(priority: .userInitiated) {
-            PrintDocument.makePDF(pages: printPages, paper: paper)
+        // Each page is read inside the drawing loop and the PDF goes to a file, so a long document is
+        // never held whole: the print service gets the file's bytes mapped, not read.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("print-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let document: Data = try await Task.detached(priority: .userInitiated) { () throws -> Data in
+            try PrintDocument.writePDF(to: file, pageCount: pages.count, paper: paper) { index in
+                let page = pages[index]
+                return PrintPage(image: try Self.fullImage(of: page, number: index + 1), dpi: page.dpi,
+                                 placement: placements[index])
+            }
+            guard let mapped = try? Data(contentsOf: file, options: .mappedIfSafe) else {
+                throw PrintError.failed(L10n.t("The copy could not be prepared for printing."))
+            }
+            return mapped
         }.value
-        guard let document else { throw PrintError.failed(L10n.t("The copy could not be prepared for printing.")) }
         if flag.isCancelled { throw ScanError.cancelled }
         // A protected PDF's password is asked for before printing. No answer still prints the copy;
         // the PDF is then not written.
@@ -182,7 +194,7 @@ extension AppState {
             recordCaptures(pages.map(\.id))
         }
         let sent = PrintText.sent(pageCount: pages.count, copies: copies, printerName: printedOn(setup, s))
-        let warning = printPages.lazy.compactMap { PrintLayout.clipWarning($0.placement, paper: paper) }.first
+        let warning = placements.lazy.compactMap { PrintLayout.clipWarning($0, paper: paper) }.first
         let warningNote = warning.map { " \($0)" } ?? ""
         guard alsoPDF else {
             setStatus(sent + warningNote, StatusDetail(head: .sentToPrinter))
@@ -278,9 +290,10 @@ extension AppState {
         statusMessage = L10n.t("Copy ready to print.")
     }
 
-    /// Print… on the phone: the pages Save would write, at full resolution, held on the copy screen as a
-    /// copy's are, to print from there whatever the task. The queue keeps them; letting the copy go only
-    /// closes the screen. Nothing is copied, so the status is a print's, not `holdCopy`'s.
+    /// Print… on the phone: the pages Save would write, held on the copy screen as a copy's are, to print
+    /// from there whatever the task. A spooled page is held as its preview and read from its file when
+    /// printed. The queue keeps them; letting the copy go only closes the screen. Nothing is copied, so
+    /// the status is a print's, not `holdCopy`'s.
     public func printQueueAsCopy() {
         guard !isBusy, !scannedPages.isEmpty else { return }
         let s = settings
@@ -293,26 +306,25 @@ extension AppState {
                 self.errorTitle = PageFilter.nothingSavedTitle
                 return
             }
-            // A spooled page shows a preview; its print size comes from the full pixels at its dpi.
-            let full: [ScannedPage] = try await Task.detached(priority: .userInitiated) { () throws -> [ScannedPage] in
-                var loaded: [ScannedPage] = []
-                for (index, page) in pages.enumerated() {
-                    guard page.fileURL != nil else {
-                        loaded.append(page)
-                        continue
-                    }
-                    var withFull = page.withImage(try Self.fullImage(of: page, number: index + 1))
-                    withFull.rotationQuarterTurns = 0
-                    loaded.append(withFull)
-                }
-                return loaded
-            }.value
-            if flag.isCancelled { throw ScanError.cancelled }
             self.refreshPrinters()
-            self.holdCopy(full, areaSelected: false)
+            self.holdCopy(pages, areaSelected: false)
             self.copyIsOfQueue = true
             self.statusMessage = L10n.t("Ready to print.")
         }
+    }
+
+    /// The pixel size of `page` as printed. A spooled page's is the recorded size, or else read from the
+    /// file's header, so the pixels are not decoded to lay the page out.
+    nonisolated static func printPixelSize(of page: ScannedPage) -> CGSize {
+        guard let url = page.fileURL else { return CGSize(width: page.image.width, height: page.image.height) }
+        var full = page.fullPixelSize
+        if full == nil, let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let info = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+           let width = info[kCGImagePropertyPixelWidth] as? Int, let height = info[kCGImagePropertyPixelHeight] as? Int {
+            full = CGSize(width: width, height: height)
+        }
+        guard let full else { return CGSize(width: page.image.width, height: page.image.height) }
+        return page.rotationQuarterTurns % 2 == 0 ? full : CGSize(width: full.height, height: full.width)
     }
 
     /// Some held page has no known real size (a camera page that matched no paper size), so the copy is

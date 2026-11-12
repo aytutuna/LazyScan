@@ -129,6 +129,29 @@ final class PrintDocumentTests: XCTestCase {
         XCTAssertTrue(rendered.isRed(306, Int(top) + 4))
     }
 
+    func test_writePDF_asksForEachPageInTurn_andWritesThemToTheFile() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("print-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var asked: [Int] = []
+        try PrintDocument.writePDF(to: url, pageCount: 3, paper: letter) { index in
+            asked.append(index)
+            return page(solid(72, 72, r: 255, g: 0, b: 0), dpi: 72, paper: letter)
+        }
+        XCTAssertEqual(asked, [0, 1, 2])
+        let written = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertEqual(written.pageCount, 3)
+        let bounds = written.page(at: 0)?.bounds(for: .mediaBox)
+        XCTAssertEqual(Double(bounds?.width ?? 0), Double(letter.width) * 72, accuracy: 0.01)
+    }
+
+    func test_writePDF_stopsAtAPageThatCannotBeRead() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("print-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertThrowsError(try PrintDocument.writePDF(to: url, pageCount: 2, paper: letter) { _ in
+            throw PrintError.failed("unreadable")
+        })
+    }
+
     func test_a4Paper_isA4InPoints() throws {
         let ruler = PrintCalibration.makeRulerPage(paper: a4, dpi: 72)
         let image = try XCTUnwrap(ruler.makeCGImage())

@@ -19,6 +19,7 @@ private final class CopyPrintService: PrintService {
     /// Thrown by every print when set, as AirPrint reports a printer that is offline.
     var failure: Error?
     private(set) var jobs: [PrintJob] = []
+    private(set) var lastDocument: Data?
     private(set) var againCount = 0
 
     var printerNames: [String] { ["Office Printer"] }
@@ -32,6 +33,7 @@ private final class CopyPrintService: PrintService {
 
     func print(_ document: Data, job: PrintJob) async throws -> Bool {
         if let failure { throw failure }
+        lastDocument = document
         if answer { jobs.append(job) }
         return answer
     }
@@ -125,7 +127,7 @@ final class IOSCopyTests: XCTestCase {
     }
 
     @MainActor
-    func test_printFromSave_holdsTheQueuesPages_atFullSize_andClosingKeepsTheQueue() async throws {
+    func test_printFromSave_holdsTheQueuesPages_asPreviews_andClosingKeepsTheQueue() async throws {
         let printer = CopyPrintService()
         let state: AppState = makeState(printer)
         XCTAssertTrue(state.startTask(.document))
@@ -149,10 +151,10 @@ final class IOSCopyTests: XCTestCase {
         XCTAssertEqual(IOSCopyText.printAgainLabel, "Print again")
         XCTAssertEqual(state.activeTask, .document)
         XCTAssertEqual(state.scannedPages.count, 1)
-        // The full pixels, not the strip's preview of a spooled page.
+        // A spooled page is held as its preview, read from its file only when printed.
         let held: ScannedPage = try XCTUnwrap(state.copyPages.first)
-        let fullWidth: CGFloat = queued.fullPixelSize?.width ?? CGFloat(queued.image.width)
-        XCTAssertEqual(CGFloat(held.image.width), fullWidth)
+        XCTAssertEqual(held.fileURL, queued.fileURL)
+        XCTAssertEqual(held.image.width, queued.image.width)
 
         // The copy screen's own choices change the settings; the copy stays held outside the copy task.
         state.setCopyCount(2)
@@ -165,6 +167,8 @@ final class IOSCopyTests: XCTestCase {
         XCTAssertEqual(printer.jobs.count, 1)
         XCTAssertEqual(printer.jobs.first?.copies, 2)
         XCTAssertTrue(state.lastSavedURLs.isEmpty)
+        let document: Data = try XCTUnwrap(printer.lastDocument)
+        XCTAssertEqual(document.prefix(4), Data("%PDF".utf8))
 
         state.discardHeldCopy()
         XCTAssertTrue(state.copyPages.isEmpty)
