@@ -171,6 +171,27 @@ public enum CompanionPackage {
         ZipStore.make(try entries(document))
     }
 
+    /// Writes the package for `document` to `url`, one entry at a time, with the bytes `make` returns;
+    /// throws `CompanionPackageError` for a document it cannot hold. Pictures held as mapped files
+    /// stay out of memory, as the package is never built whole.
+    public static func write(_ document: CompanionDocument, to url: URL) throws {
+        let items = try entries(document)
+        // In the temporary folder, not beside `url`, so a part left by a killed app is cleared by the system.
+        let part = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).lsdoc.part")
+        FileManager.default.createFile(atPath: part.path, contents: nil)
+        do {
+            let handle = try FileHandle(forWritingTo: part)
+            defer { try? handle.close() }
+            let writer = ZipStore.Writer(handle: handle)
+            for item in items { try writer.add(item) }
+            try writer.finish()
+            try FileManager.default.moveItem(at: part, to: url)
+        } catch {
+            try? FileManager.default.removeItem(at: part)
+            throw error
+        }
+    }
+
     /// The entries of the package for `document`, in package order.
     public static func entries(_ document: CompanionDocument) throws -> [ZipStoreEntry] {
         try validate(document)

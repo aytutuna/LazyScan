@@ -129,6 +129,20 @@ final class CompanionPackageTests: XCTestCase {
         XCTAssertNil(page.original)
     }
 
+    func test_write_writesTheBytesMakeReturns() throws {
+        let document = CompanionDocument(title: "T", pages: [
+            CompanionPage(image: CompanionImage(data: DocxFixtures.jpeg, format: .jpeg, pixelWidth: 16, pixelHeight: 12,
+                                                dpi: 300, colorMode: .color)),
+            CompanionPage(image: CompanionImage(data: DocxFixtures.jpeg, format: .jpeg, pixelWidth: 16, pixelHeight: 12,
+                                                dpi: 150, colorMode: .color), rotationQuarterTurns: 1),
+        ])
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("write-\(UUID().uuidString).lsdoc")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try CompanionPackage.write(document, to: url)
+        XCTAssertEqual(try Data(contentsOf: url), try CompanionPackage.make(document))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.appendingPathExtension("part").path))
+    }
+
     func test_tiff_forBlackAndWhitePages() throws {
         let tiff = Data([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00])
         let document = CompanionDocument(title: "T", pages: [CompanionPage(image: CompanionImage(

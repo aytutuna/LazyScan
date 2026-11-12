@@ -45,64 +45,112 @@ public enum ZipStore {
         var output = Data()
         var central = Data()
         for entry in entries {
-            let name = Data(entry.name.utf8)
-            let utf8Name = entry.name.unicodeScalars.contains { $0.value > 0x7F }
-            let flags: UInt16 = utf8Name ? 0x0800 : 0
             let crc = crc32(entry.data)
             let offset = output.count
             precondition(offset <= Int(UInt32.max) && entry.data.count <= Int(UInt32.max),
                          "The package is too large for a zip without zip64.")
-
-            // Local file header.
-            append32(&output, 0x0403_4B50)
-            append16(&output, versionNeeded)
-            append16(&output, flags)
-            append16(&output, 0) // stored
-            append16(&output, dosTime)
-            append16(&output, dosDate)
-            append32(&output, crc)
-            append32(&output, UInt32(entry.data.count))
-            append32(&output, UInt32(entry.data.count))
-            append16(&output, UInt16(name.count))
-            append16(&output, 0) // no extra field
-            output.append(name)
+            output.append(localHeader(entry, crc: crc))
             output.append(entry.data)
-
-            // Its central directory record.
-            append32(&central, 0x0201_4B50)
-            append16(&central, versionMadeBy)
-            append16(&central, versionNeeded)
-            append16(&central, flags)
-            append16(&central, 0)
-            append16(&central, dosTime)
-            append16(&central, dosDate)
-            append32(&central, crc)
-            append32(&central, UInt32(entry.data.count))
-            append32(&central, UInt32(entry.data.count))
-            append16(&central, UInt16(name.count))
-            append16(&central, 0) // extra field
-            append16(&central, 0) // comment
-            append16(&central, 0) // disk number
-            append16(&central, 0) // internal attributes
-            append32(&central, 0) // external attributes
-            append32(&central, UInt32(offset))
-            central.append(name)
+            central.append(centralRecord(entry, crc: crc, offset: offset))
         }
 
         let centralOffset = output.count
         output.append(central)
         precondition(output.count <= Int(UInt32.max), "The package is too large for a zip without zip64.")
-
-        // End of central directory.
-        append32(&output, 0x0605_4B50)
-        append16(&output, 0) // this disk
-        append16(&output, 0) // the disk the directory starts on
-        append16(&output, UInt16(entries.count))
-        append16(&output, UInt16(entries.count))
-        append32(&output, UInt32(central.count))
-        append32(&output, UInt32(centralOffset))
-        append16(&output, 0) // no comment
+        output.append(endRecord(entries: entries.count, centralSize: central.count, centralOffset: centralOffset))
         return output
+    }
+
+    /// Writes a package to a file one entry at a time: the same bytes `make` returns for the same
+    /// entries, without a second copy of the whole package in memory.
+    public final class Writer {
+        private let handle: FileHandle
+        private var offset = 0
+        private var count = 0
+        private var central = Data()
+
+        public init(handle: FileHandle) {
+            self.handle = handle
+        }
+
+        public func add(_ entry: ZipStoreEntry) throws {
+            count += 1
+            precondition(count <= Int(UInt16.max), "Too many entries for a zip without zip64.")
+            precondition(offset <= Int(UInt32.max) && entry.data.count <= Int(UInt32.max),
+                         "The package is too large for a zip without zip64.")
+            let crc = ZipStore.crc32(entry.data)
+            let header = ZipStore.localHeader(entry, crc: crc)
+            try handle.write(contentsOf: header)
+            try handle.write(contentsOf: entry.data)
+            central.append(ZipStore.centralRecord(entry, crc: crc, offset: offset))
+            offset += header.count + entry.data.count
+        }
+
+        /// Writes the central directory and the end record. Call once, after the last entry.
+        public func finish() throws {
+            precondition(offset + central.count <= Int(UInt32.max), "The package is too large for a zip without zip64.")
+            try handle.write(contentsOf: central)
+            try handle.write(contentsOf: ZipStore.endRecord(entries: count, centralSize: central.count, centralOffset: offset))
+        }
+    }
+
+    private static func localHeader(_ entry: ZipStoreEntry, crc: UInt32) -> Data {
+        let name = Data(entry.name.utf8)
+        var header = Data()
+        append32(&header, 0x0403_4B50)
+        append16(&header, versionNeeded)
+        append16(&header, flags(entry))
+        append16(&header, 0) // stored
+        append16(&header, dosTime)
+        append16(&header, dosDate)
+        append32(&header, crc)
+        append32(&header, UInt32(entry.data.count))
+        append32(&header, UInt32(entry.data.count))
+        append16(&header, UInt16(name.count))
+        append16(&header, 0) // no extra field
+        header.append(name)
+        return header
+    }
+
+    private static func centralRecord(_ entry: ZipStoreEntry, crc: UInt32, offset: Int) -> Data {
+        let name = Data(entry.name.utf8)
+        var record = Data()
+        append32(&record, 0x0201_4B50)
+        append16(&record, versionMadeBy)
+        append16(&record, versionNeeded)
+        append16(&record, flags(entry))
+        append16(&record, 0)
+        append16(&record, dosTime)
+        append16(&record, dosDate)
+        append32(&record, crc)
+        append32(&record, UInt32(entry.data.count))
+        append32(&record, UInt32(entry.data.count))
+        append16(&record, UInt16(name.count))
+        append16(&record, 0) // extra field
+        append16(&record, 0) // comment
+        append16(&record, 0) // disk number
+        append16(&record, 0) // internal attributes
+        append32(&record, 0) // external attributes
+        append32(&record, UInt32(offset))
+        record.append(name)
+        return record
+    }
+
+    private static func endRecord(entries: Int, centralSize: Int, centralOffset: Int) -> Data {
+        var record = Data()
+        append32(&record, 0x0605_4B50)
+        append16(&record, 0) // this disk
+        append16(&record, 0) // the disk the directory starts on
+        append16(&record, UInt16(entries))
+        append16(&record, UInt16(entries))
+        append32(&record, UInt32(centralSize))
+        append32(&record, UInt32(centralOffset))
+        append16(&record, 0) // no comment
+        return record
+    }
+
+    private static func flags(_ entry: ZipStoreEntry) -> UInt16 {
+        entry.name.unicodeScalars.contains { $0.value > 0x7F } ? 0x0800 : 0
     }
 
     /// 1.0: stored entries need nothing newer.

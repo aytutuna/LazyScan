@@ -189,19 +189,25 @@ extension AppState {
             .baseFilename(NamingContext(counter: counter, date: Date(), intent: s.intent, task: TaskCatalog.infer(s),
                                         label: pages[0].documentLabel))
         let url = NamingTemplate.uniqueURL(in: folder, base: name, fileExtension: CompanionPackage.fileExtension)
+        // Each page's picture goes to a file as soon as it is encoded and is mapped back from there, so
+        // a long document is never held whole in memory.
+        let spool = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LazyScan-package-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: spool) }
         try await Task.detached(priority: .userInitiated) {
-            var document = try Self.packageDocument(pages, name: name, jpegQuality: s.jpegQuality)
+            try FileManager.default.createDirectory(at: spool, withIntermediateDirectories: true)
+            var document = try Self.packageDocument(pages, name: name, jpegQuality: s.jpegQuality, spool: spool)
             document.created = Date()
             document.taskId = s.taskId
             document.namingTemplate = s.namingTemplate
-            try CompanionPackage.make(document).write(to: url, options: .atomic)
+            try CompanionPackage.write(document, to: url)
         }.value
         return url
     }
 
     /// The pages as one package document named `name`. Twin of C# `CompanionPages.ToDocument`.
-    nonisolated static func packageDocument(_ pages: [ScannedPage], name: String, jpegQuality: Double) throws
-        -> CompanionDocument {
+    nonisolated static func packageDocument(_ pages: [ScannedPage], name: String, jpegQuality: Double,
+                                            spool: URL? = nil) throws -> CompanionDocument {
         var packaged: [CompanionPage] = []
         for (index, page) in pages.enumerated() {
             // A spooled page whose file went (the queue saved or cleared meanwhile) is refused rather than
@@ -223,7 +229,8 @@ extension AppState {
                 throw CompanionPackageError(.invalidDocument,
                                             L10n.t("The picture of page {0} could not be written.", index + 1))
             }
-            let image = CompanionImage(data: data, format: format, pixelWidth: full.width, pixelHeight: full.height,
+            let kept = try spool.map { try mappedCopy(of: data, in: $0, number: index + 1) } ?? data
+            let image = CompanionImage(data: kept, format: format, pixelWidth: full.width, pixelHeight: full.height,
                                        dpi: page.dpi, colorMode: page.colorMode)
             packaged.append(CompanionPage(image: image, side: page.side, sheetIndex: page.sheetIndex, capture: page.capture))
         }
@@ -236,5 +243,12 @@ extension AppState {
         return CompanionDocument(title: name, pages: packaged,
                                  writer: CompanionWriterInfo(app: "Lazy Scan", appVersion: version, platform: platform),
                                  suggestedName: DocumentSplitter.cleaned(pages.first?.documentLabel))
+    }
+
+    /// `data` written into `folder` and read back mapped, so it stays on disk until it is used.
+    private nonisolated static func mappedCopy(of data: Data, in folder: URL, number: Int) throws -> Data {
+        let file = folder.appendingPathComponent("\(number)")
+        try data.write(to: file)
+        return try Data(contentsOf: file, options: .alwaysMapped)
     }
 }

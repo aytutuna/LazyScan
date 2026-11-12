@@ -137,6 +137,24 @@ final class ZipStoreTests: XCTestCase {
         XCTAssertTrue(read.entries.allSatisfy { $0.date == 0x21 && $0.time == 0 })
     }
 
+    func test_writer_writesTheBytesMakeReturns() throws {
+        let entries = [
+            ZipStoreEntry(name: "[Content_Types].xml", data: Data("<x/>".utf8)),
+            ZipStoreEntry(name: "dir/empty.bin", data: Data()),
+            ZipStoreEntry(name: "dir/big.bin", data: Data((0..<70_000).map { UInt8(truncatingIfNeeded: $0 * 7) })),
+            ZipStoreEntry(name: "naïve.txt", data: Data("é".utf8)),
+        ]
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("zip-writer-\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: file) }
+        XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: file)
+        let writer = ZipStore.Writer(handle: handle)
+        for entry in entries { try writer.add(entry) }
+        try writer.finish()
+        try handle.close()
+        XCTAssertEqual(try Data(contentsOf: file), ZipStore.make(entries))
+    }
+
     func test_packageSize_isTheLengthMakeWrites() {
         let cases: [[ZipStoreEntry]] = [
             [],

@@ -323,6 +323,17 @@ final class AppStatePackageTests: XCTestCase {
         XCTAssertEqual(read.pages[0].image.pixelHeight, 32)
     }
 
+    func test_packageDocument_spooled_hasTheSameBytes() throws {
+        let page = ScannedPage(image: packagePicture(width: 64, height: 32), dpi: 300, colorMode: .grayscale)
+        let spool = FileManager.default.temporaryDirectory.appendingPathComponent("spool-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: spool, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: spool) }
+        let plain = try AppState.packageDocument([page], name: "Scan 7", jpegQuality: 0.9)
+        let spooled = try AppState.packageDocument([page], name: "Scan 7", jpegQuality: 0.9, spool: spool)
+        XCTAssertEqual(spooled.pages[0].image.data, plain.pages[0].image.data)
+        XCTAssertEqual(try CompanionPackage.make(spooled), try CompanionPackage.make(plain))
+    }
+
     @MainActor
     func test_exportPackage_refusesAPageWhoseSpoolFileWent() async throws {
         let state = try await makeState(pages: 2)
