@@ -54,7 +54,8 @@ public struct IOSImportItem: Equatable, Sendable {
 /// in hand is in memory: a photo the Photos picker hands over when asked, a file read off the main
 /// actor (`file`), or bytes already in hand (`item`). A photo from our camera also carries the outline
 /// its live preview showed (`liveOutline`, shares of the upright photo), the corner editor's start
-/// when the corner model found no page in the photo itself and the search found none clearly (`shot`), and, for a continuous-capture shot, a photo from Photos and a file, that the
+/// when the corner model found no page in the photo itself and the search found none clearly (`shot`).
+/// For a continuous-capture shot, a photo from Photos and a file, the
 /// corner editor opens only when the photo's own search is unsure (`asksOnlyWhenUnsure`). Only our camera's
 /// shots go by camera mode's Items in frame (`isShot`).
 public struct IOSImportSource {
