@@ -7,7 +7,7 @@ import SwiftUI
 /// line (`IdCardSteps.privacyNote`), each side with Rotate, Fix crop (the touch corner editor on the photo
 /// it was cut from) and Scan again, its note (what to check, or the glare hint), a missing back with Scan
 /// the back, Swap sides, the page both go on with what it holds and whether it is at real size, then Paper,
-/// Save as, Also save sides as images, Discard and Save. The card stays in memory only until it is saved or
+/// Save as and Also save sides as images in the scroll view, with Discard, Print and Save pinned. The card stays in memory only until it is saved or
 /// discarded (AppState+IdCard.swift); Print prints both sides at real size over AirPrint
 /// (`IOSPrintService`, I16). It shows the error alert itself,
 /// since the root's cannot show over it. Discard asks first.
@@ -51,6 +51,7 @@ struct IdCardReviewScreen: View {
                             .accessibilityIdentifier("idcard.swap")
                         }
                         pagePreview
+                        settingsCard
                     }
                     .padding(16)
                 }
@@ -121,34 +122,57 @@ struct IdCardReviewScreen: View {
         }
     }
 
-    /// Paper, Save as, Also save sides as images, the progress of a save, and Save.
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
+    /// Paper, Save as and the toggles, as rows of one card.
+    private var settingsCard: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(IOSReviewText.paperLabel)
+                Spacer(minLength: 8)
                 Picker(IOSReviewText.paperLabel, selection: paper) {
                     ForEach(IdCardPaper.allCases) { (choice: IdCardPaper) in
                         Text(state.idCardPaperChoiceLabel(choice)).tag(choice)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("idcard.paper")
+            }
+            .padding(.vertical, 6)
+            Divider()
+            HStack {
+                Text(IOSReviewText.saveAsLabel)
+                Spacer(minLength: 8)
                 Picker(IOSReviewText.saveAsLabel, selection: format) {
                     ForEach(pageFormats) { (choice: OutputFormat) in
                         Text(choice.label).tag(choice)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("idcard.format")
-                Spacer(minLength: 0)
             }
+            .padding(.vertical, 6)
+            Divider()
             Toggle(IOSReviewText.sidesAsImagesLabel, isOn: sidesAsImages)
+                .padding(.vertical, 6)
                 .accessibilityIdentifier("idcard.sides")
             if IOSShell.reviewOffersPassword(state.settings) {
+                Divider()
                 Toggle(PDFProtection.optionLabel, isOn: protect)
                     .disabled(IOSPDFOptions.archivalShown(state.settings.output))
+                    .padding(.vertical, 6)
                     .accessibilityHint(Text(PDFProtection.optionHint))
                     .accessibilityIdentifier("idcard.password")
             }
+        }
+        .padding(.horizontal, 12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+        .disabled(state.isBusy)
+    }
+
+    /// The progress of a save, Print and Save.
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 10) {
             if state.isBusy {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -180,7 +204,6 @@ struct IdCardReviewScreen: View {
                 .accessibilityIdentifier("idcard.save")
             }
         }
-        .disabled(state.isBusy)
         .padding(16)
     }
 
@@ -259,6 +282,7 @@ private struct SideCard: View {
     let onCrop: () -> Void
     let onRetake: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var thumbnail: CGImage?
 
     private var title: String { side == .front ? IOSReviewText.frontTitle : IOSReviewText.backTitle }
@@ -270,31 +294,41 @@ private struct SideCard: View {
     private var againLabel: String { camera ? IOSReviewText.takeAgainLabel : IOSReviewText.scanAgainLabel }
     private var missingBackLabel: String { camera ? IOSReviewText.takeBackLabel : IOSReviewText.scanBackLabel }
 
+    private var againSymbol: String { camera ? "camera" : "scanner" }
+
+    private var actions: some View {
+        let layout: AnyLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 4))
+        return layout {
+            action(IOSReviewText.rotateLabel, symbol: "rotate.right", id: "idcard.rotate.\(sideID)", run: onRotate)
+            action(IOSReviewText.fixCropLabel, symbol: "crop", id: "idcard.crop.\(sideID)", run: onCrop)
+            action(againLabel, symbol: againSymbol, id: "idcard.retake.\(sideID)", run: onRetake)
+        }
+        .disabled(busy)
+    }
+
+    private func action(_ word: String, symbol: String, id: String, run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            let stacked: AnyLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(HStackLayout(spacing: 8))
+                : AnyLayout(VStackLayout(spacing: 2))
+            stacked {
+                Image(systemName: symbol)
+                Text(word)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text(IOSReviewText.sideAction(word, side: side)))
+        .accessibilityIdentifier(id)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 14) {
-                Text(title)
-                    .font(.headline)
-                Spacer(minLength: 0)
-                if photo != nil {
-                    Button(action: onRotate) {
-                        Image(systemName: "rotate.right")
-                    }
-                    .accessibilityLabel(Text(IOSReviewText.sideAction(IOSReviewText.rotateLabel, side: side)))
-                    Button(action: onCrop) {
-                        Image(systemName: "crop")
-                    }
-                    .accessibilityLabel(Text(IOSReviewText.sideAction(IOSReviewText.fixCropLabel, side: side)))
-                    .accessibilityIdentifier("idcard.crop.\(sideID)")
-                    Button(action: onRetake) {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel(Text(IOSReviewText.sideAction(againLabel, side: side)))
-                    .accessibilityIdentifier("idcard.retake.\(sideID)")
-                }
-            }
-            .buttonStyle(.borderless)
-            .disabled(busy)
+            Text(title)
+                .font(.headline)
             if photo != nil {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6)
@@ -309,6 +343,7 @@ private struct SideCard: View {
                 }
                 .frame(height: 170)
                 .accessibilityHidden(true)
+                actions
                 if let line = note {
                     Label(line, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)

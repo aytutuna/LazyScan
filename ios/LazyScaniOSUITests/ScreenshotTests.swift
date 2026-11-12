@@ -729,11 +729,12 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Taps the element if it comes, else keeps a "skipped-" screenshot of what is there instead. The
-    /// Scanner row, the Options pages' rows and the controls of Help and about are scrolled into view first.
+    /// Scanner row, the Options pages' rows, the controls of Help and about and the ID card's pickers are
+    /// scrolled into view first.
     @MainActor
     private func tapIfThere(_ app: XCUIApplication, _ id: String, for screen: String) -> Bool {
         let inList: Bool = id.hasPrefix("options.row.") || id.hasPrefix("options.page.") || id.hasPrefix("settings.")
-            || id.hasPrefix("about.")
+            || id.hasPrefix("about.") || id == "idcard.paper" || id == "idcard.format"
         let target: XCUIElement = inList ? app.scrolledTo(id) : element(app, id)
         guard target.waitForExistence(timeout: 5) else {
             shot("skipped-\(screen)")
