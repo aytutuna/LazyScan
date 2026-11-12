@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LazyScan.Core;
 
 /// <summary>A 2D point in double precision. Replaces CGPoint from the Swift core.</summary>
@@ -23,6 +25,7 @@ public readonly record struct RectD(double X, double Y, double Width, double Hei
     public double MaxY => Height >= 0 ? Y + Height : Y;
 
     /// <summary>Equivalent of CGRect.standardized: non-negative width/height.</summary>
+    [JsonIgnore]
     public RectD Standardized => new(MinX, MinY, Math.Abs(Width), Math.Abs(Height));
 
     public bool IsEmpty => Width <= 0 || Height <= 0;
@@ -38,6 +41,7 @@ public readonly record struct RectD(double X, double Y, double Width, double Hei
     }
 
     /// <summary>Equivalent of CGRect.integral: smallest integer-aligned rect containing this one.</summary>
+    [JsonIgnore]
     public RectD Integral
     {
         get

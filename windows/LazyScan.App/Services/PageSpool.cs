@@ -1,4 +1,5 @@
 using System.IO;
+using LazyScan.Core;
 
 namespace LazyScan.App.Services;
 
@@ -7,14 +8,17 @@ namespace LazyScan.App.Services;
 /// doesn't hold gigabytes of pixels in memory.
 ///
 /// Every running instance gets its own subfolder of
-/// %TEMP%\LazyScan-pages and holds a ".lock" file in it open, unshared, for its whole
-/// lifetime. On startup the folders of instances that are gone (their lock is no longer
+/// %LOCALAPPDATA%\Lazy Scan\pages and holds a ".lock" file in it open, unshared, for its whole
+/// lifetime, and records its queue beside the pages (<see cref="QueueRecord"/>). A normal exit deletes the
+/// folder. On startup the folders of instances that are gone (their lock is no longer
 /// held, because the process exited or crashed) are deleted; the folder of an instance
-/// that is still running can't be, because its lock file can't be deleted.
+/// that is still running can't be, because its lock file can't be deleted. A folder with a
+/// queue record is left alone, as the pages in it are the user's.
 /// </summary>
 public sealed class PageSpool : IDisposable
 {
-    public static readonly string DefaultRoot = Path.Combine(Path.GetTempPath(), "LazyScan-pages");
+    public static readonly string DefaultRoot = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lazy Scan", "pages");
 
     private const string LockFileName = ".lock";
     /// <summary>A folder without a lock file may belong to an instance that is just starting up.</summary>
@@ -27,7 +31,11 @@ public sealed class PageSpool : IDisposable
 
     public PageSpool(string? root = null)
     {
-        root ??= DefaultRoot;
+        if (root == null)
+        {
+            root = DefaultRoot;
+            SweepAbandoned(Path.Combine(Path.GetTempPath(), "LazyScan-pages"));
+        }
         SweepAbandoned(root);
         Directory = Path.Combine(root, Guid.NewGuid().ToString("N"));
         System.IO.Directory.CreateDirectory(Directory);
@@ -58,6 +66,7 @@ public sealed class PageSpool : IDisposable
             {
                 try
                 {
+                    if (File.Exists(Path.Combine(folder, QueueRecord.FileName))) continue;
                     string lockPath = Path.Combine(folder, LockFileName);
                     if (File.Exists(lockPath))
                     {

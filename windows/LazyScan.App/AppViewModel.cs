@@ -762,8 +762,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             _renderTimer.Stop();
             StartCanvasRender();
         };
-        // Clears the spill files of earlier runs, never those of another running instance.
+        // Clears the spill files of earlier runs that left no queue, never those of another running instance.
         _spool = new PageSpool();
+        KeepQueueRecord();
     }
 
     /// <summary>
@@ -796,6 +797,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         ShutdownCompanion();
         FlushSettings();
+        StopQueueRecord();
         _spool.Dispose();
         foreach (var backend in _backends.OfType<IDisposable>())
         {

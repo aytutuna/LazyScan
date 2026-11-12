@@ -1721,7 +1721,7 @@ same scanners through ImageCaptureCore.
   tagged with the resolution the driver reports; a device that configures itself reports none,
   and its pages take the resolution their file records (not 72 or 96 dpi, which stand for none),
   else the one asked for. Each scan writes its files to a new folder inside the app's own
-  page spool (`%TEMP%\LazyScan-pages`), never to the user's folders, and the folder is
+  page spool (`%LOCALAPPDATA%\Lazy Scan\pages`), never to the user's folders, and the folder is
   deleted once the pages are read. A multi-page TIFF gives one page per frame.
 - **Preview, cancel and errors.** The overview is the device's own preview when it makes
   one, otherwise a 150 dpi scan. Cancel cancels the running Windows operation. Errors become
@@ -1944,6 +1944,13 @@ that setting; a file that cannot be decoded is kept next to it as
 `<name>.unreadable-<yyyyMMdd-HHmmss>.json` before defaults are written; and a file that cannot
 be read at all (for example, locked by another program) is left alone and not overwritten
 until the app restarts.
+
+The queued pages are spooled under `%LOCALAPPDATA%\Lazy Scan\pages`, a folder for each running
+copy of the app, and the queue is recorded beside them (`queue.json`: each page's spool files,
+rotation, side, sheet, kept or skipped and the other facts the queue holds, written half a second
+after it changes; a page that does not decode is left out and the rest are kept). A normal exit
+deletes the folder. The start-up sweep leaves a folder that has a record, so after a crash the
+pages are still on disk.
 
 ## Porting workflow
 
