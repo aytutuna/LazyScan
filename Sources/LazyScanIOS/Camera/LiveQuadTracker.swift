@@ -309,6 +309,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
         if decision.shouldCapture, let look = photographedLook, let page = steadied.page,
            PageThumbnail(frame.image, page: page).matches(look) {
             decision.shouldCapture = false
+            photographed = true
         }
         if decision.state != .captured {
             photographed = false
