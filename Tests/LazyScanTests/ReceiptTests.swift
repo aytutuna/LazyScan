@@ -404,6 +404,45 @@ final class ReceiptTests: XCTestCase {
                        "Saved 3 receipts in one PDF: a.pdf. No date was found on them; the PDF is named by today's date.")
     }
 
+    func test_receipts_parseDateTakesARealDayOnly() {
+        XCTAssertEqual(Receipts.parseDate("2026-11-03"), DocumentDate(year: 2026, month: 11, day: 3))
+        XCTAssertEqual(Receipts.parseDate(" 2024-02-29 "), DocumentDate(year: 2024, month: 2, day: 29))
+        XCTAssertNil(Receipts.parseDate(""))
+        XCTAssertNil(Receipts.parseDate("2026-02-30"))
+        XCTAssertNil(Receipts.parseDate("2026-13-01"))
+        XCTAssertNil(Receipts.parseDate("2026-1-3"))
+        XCTAssertNil(Receipts.parseDate("03.11.2026"))
+    }
+
+    func test_detectedPhoto_typedDateReplacesTheOneFound() throws {
+        let image = try XCTUnwrap(RgbaImage.filled(width: 4, height: 4, r: 255, g: 255, b: 255).makeCGImage())
+        let region = DetectedPhotoRegion(center: CGPoint(x: 2, y: 2), size: CGSize(width: 4, height: 4), angleDegrees: 0)
+        var photo = DetectedPhoto(region: region, image: image, dpi: 300)
+        XCTAssertFalse(photo.isRead)
+        XCTAssertNil(photo.receiptDate)
+        XCTAssertEqual(photo.dateText, "")
+
+        let found = DocumentDate(year: 2026, month: 3, day: 12)
+        photo.reading = ReceiptReading(quarterTurns: 0, lines: [], problem: nil, date: found)
+        XCTAssertTrue(photo.isRead)
+        XCTAssertEqual(photo.receiptDate, found)
+        XCTAssertEqual(photo.dateText, "2026-03-12")
+
+        photo.typedDate = "2026-03-14"
+        XCTAssertEqual(photo.receiptDate, DocumentDate(year: 2026, month: 3, day: 14))
+        photo.typedDate = "March"
+        XCTAssertNil(photo.receiptDate)
+        XCTAssertEqual(photo.dateText, "March")
+        photo.typedDate = ""
+        XCTAssertNil(photo.receiptDate)
+
+        // Turned, the reading is of another image: read again, and the typed text stays.
+        photo.typedDate = "2026-03-14"
+        photo.rotationQuarterTurns = 1
+        XCTAssertFalse(photo.isRead)
+        XCTAssertEqual(photo.dateText, "2026-03-14")
+    }
+
     func test_receipts_combinedDateIsTheEarliest() {
         XCTAssertEqual(Receipts.combinedDate([DocumentDate(year: 2026, month: 3, day: 15), nil, DocumentDate(year: 2026, month: 3, day: 2)]),
                        DocumentDate(year: 2026, month: 3, day: 2))

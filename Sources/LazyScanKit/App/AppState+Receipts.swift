@@ -2,10 +2,10 @@ import CoreGraphics
 import Foundation
 
 /// The Receipts task: the receipts on a scan are found (`ReceiptDetector`), cut out, straightened and
-/// made easy to read (`ReceiptEnhancer`), reviewed in the photo review, then saved: each one's text is
-/// read once with OCR for its date (the file name's {docdate}), the PDF's text layer and the text beside
-/// it, and the receipts are written as a file each or as one PDF, all or nothing. Twin of the Windows
-/// `AppViewModel.Receipts.cs`.
+/// made easy to read (`ReceiptEnhancer`), reviewed in the photo review, which reads each one's text
+/// once with OCR for its date (the file name's {docdate}, editable in the review), the PDF's text layer and
+/// the text beside it, then saved: the receipts are written as a file each or as one PDF, all or nothing.
+/// Twin of the Windows `AppViewModel.Receipts.cs`.
 extension AppState {
     /// The scans of the settings are receipts (the Receipts task).
     public var isReceiptFlow: Bool { TaskCatalog.flow(of: settings) == .receiptSplit }
@@ -98,8 +98,62 @@ extension AppState {
         recordCaptures(found.map(\.id))
         showPhotoReview = !found.isEmpty
         if found.isEmpty { photoSourceImages = [:] }
+        readReceipts()
         setStatus(L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts."),
                   StatusDetail(head: .found(found.count, .receipt)))
+    }
+
+    /// Reads the text of the receipts in the review that are not read yet (or not as they are turned now),
+    /// one after another off the main actor, for their date and the text layer. The reading is kept on each
+    /// receipt, so saving does not read it again. An earlier reading finishes first; a receipt that is
+    /// turned or cut again meanwhile is read once more.
+    func readReceipts() {
+        let s = settings
+        guard isReceiptReview, Receipts.readsText(s) else { return }
+        let byDate = Receipts.namesByDate(s)
+        let dayFirst = ReceiptDateExtractor.prefersDayFirst()
+        let previous = receiptReading
+        receiptReading = Task { @MainActor [weak self] in
+            await previous?.value
+            while let self, self.isReceiptReview, let receipt = self.detectedPhotos.first(where: { !$0.isRead }) {
+                let turns = receipt.rotationQuarterTurns
+                let image = receipt.image
+                let reading = await Task.detached(priority: .userInitiated) {
+                    Self.readReceipt(image, quarterTurns: turns, byDate: byDate, preferDayFirst: dayFirst)
+                }.value
+                guard let index = self.detectedPhotos.firstIndex(where: { $0.id == receipt.id }),
+                      self.detectedPhotos[index].region == receipt.region,
+                      self.detectedPhotos[index].rotationQuarterTurns == turns else { continue }
+                self.detectedPhotos[index].reading = reading
+            }
+        }
+    }
+
+    /// Turns a receipt in the review and reads it again.
+    public func rotateReviewPhoto(id: UUID, by delta: Int) {
+        guard let index = detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
+        let turns = detectedPhotos[index].rotationQuarterTurns + delta
+        detectedPhotos[index].rotationQuarterTurns = ((turns % 4) + 4) % 4
+        readReceipts()
+    }
+
+    /// The text of `image` turned `quarterTurns` quarter turns, and the date found in it when `byDate`. A
+    /// receipt whose text cannot be read is still saved: without a text layer, named by the scan date.
+    nonisolated static func readReceipt(_ image: CGImage, quarterTurns: Int, byDate: Bool,
+                                        preferDayFirst: Bool) -> ReceiptReading {
+        let turned = quarterTurns == 0 ? image : ImagePipeline.rotate(image, quarterTurns: quarterTurns)
+        do {
+            let lines = try OCRService.recognizeLines(in: turned)
+            var date: DocumentDate?
+            if byDate {
+                date = ReceiptDateExtractor.findDate(
+                    Receipts.textLines(lines, pixelWidth: turned.width, pixelHeight: turned.height),
+                    today: DocumentDate(date: Date()), preferDayFirst: preferDayFirst)
+            }
+            return ReceiptReading(quarterTurns: quarterTurns, lines: lines, problem: nil, date: date)
+        } catch {
+            return ReceiptReading(quarterTurns: quarterTurns, lines: nil, problem: error.localizedDescription, date: nil)
+        }
     }
 
     /// Fix crop on a receipt: cut out upright and cleaned up again, as it was found.
@@ -109,10 +163,10 @@ extension AppState {
         return cut.makeCGImage()
     }
 
-    /// Saves the receipts kept in the review: each turned as shown, its text read once with OCR when it
-    /// is needed (`Receipts.readsText`) for its date, the PDF's text layer and the text beside it; then a
-    /// file each, or one PDF for all (`TaskOptions.receiptCombine`), named by the receipt's date
-    /// ({docdate}; for one PDF the earliest), the scan date when none is found. All or nothing: a failed or
+    /// Saves the receipts kept in the review: each turned as shown, with the text read in the review
+    /// (`readReceipts`; read here only when it was not); then a file each, or one PDF for all
+    /// (`TaskOptions.receiptCombine`), named by the receipt's date as shown in the review ({docdate}; for
+    /// one PDF the earliest), the scan date when none is found. All or nothing: a failed or
     /// cancelled save removes what it wrote and the review stays open.
     func saveReceipts() {
         let s = settings
@@ -122,15 +176,18 @@ extension AppState {
         let dayFirst = ReceiptDateExtractor.prefersDayFirst()
         runExclusive { flag in
             await self.recropChain?.value
+            if let reading = self.receiptReading {
+                self.statusMessage = L10n.t("Reading the receipts…")
+                await reading.value
+            }
             let receipts = self.detectedPhotos.filter(\.included)
             guard !receipts.isEmpty else { return }
             // A protected PDF's password is asked for before the receipts are read.
             var protection: PDFProtection? = nil
             if format == .pdf { protection = try await self.protectionFor(s) }
             let combine = Receipts.combines(s.taskOptions.receiptCombine, format: s.format, count: receipts.count)
-            let today = DocumentDate(date: Date())
 
-            // 1. Each receipt as shown, its text read once.
+            // 1. Each receipt as shown, with the text read in the review (read now only when it was not).
             self.statusMessage = L10n.t("Reading the receipts…")
             let read: [ReadReceipt] = try await Task.detached(priority: .userInitiated) { () throws -> [ReadReceipt] in
                 var out: [ReadReceipt] = []
@@ -139,24 +196,18 @@ extension AppState {
                     let image = receipt.rotationQuarterTurns == 0
                         ? receipt.image
                         : ImagePipeline.rotate(receipt.image, quarterTurns: receipt.rotationQuarterTurns)
-                    var lines: [OCRLine]?
-                    var problem: String?
-                    if readsText {
-                        // A receipt whose text cannot be read is still saved: without a text layer,
-                        // named by the scan date.
-                        do {
-                            lines = try OCRService.recognizeLines(in: image)
-                        } catch {
-                            problem = error.localizedDescription
-                        }
+                    var reading: ReceiptReading? = receipt.isRead ? receipt.reading : nil
+                    if reading == nil, readsText {
+                        reading = Self.readReceipt(receipt.image, quarterTurns: receipt.rotationQuarterTurns,
+                                                   byDate: byDate, preferDayFirst: dayFirst)
                     }
+                    // A date typed in the review replaces the one found.
                     var date: DocumentDate?
-                    if byDate, let lines {
-                        date = ReceiptDateExtractor.findDate(
-                            Receipts.textLines(lines, pixelWidth: image.width, pixelHeight: image.height),
-                            today: today, preferDayFirst: dayFirst)
+                    if byDate {
+                        date = receipt.typedDate != nil ? receipt.receiptDate : reading?.date
                     }
-                    out.append(ReadReceipt(image: image, dpi: receipt.dpi, lines: lines, date: date, problem: problem))
+                    out.append(ReadReceipt(image: image, dpi: receipt.dpi, lines: reading?.lines, date: date,
+                                           problem: reading?.problem))
                 }
                 return out
             }.value
@@ -220,8 +271,7 @@ extension AppState {
             if textProblem == nil, let problem = read.compactMap(\.problem).first {
                 self.errorMessage = TextExport.recognitionFailed(problem)
             }
-            // No date was looked for in a receipt whose text could not be read.
-            let undated = byDate ? read.filter { $0.lines != nil && $0.date == nil }.count : 0
+            let undated = byDate ? read.filter { $0.date == nil }.count : 0
             var names: [String] = saved.map(\.lastPathComponent)
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             if pdfs, !names.isEmpty, let note = Self.pdfNote(size: nil, isProtected: protection != nil) {
@@ -261,6 +311,15 @@ extension AppState {
         let beside = writeTextBeside(pdf: pdf, text: text)
         return (pdf, beside.url, beside.problem)
     }
+}
+
+/// A receipt's text as read from its image turned `quarterTurns` quarter turns: the lines (nil when the text
+/// could not be read, and why in `problem`) and the date found in them (nil when none, or not looked for).
+public struct ReceiptReading {
+    public let quarterTurns: Int
+    public let lines: [OCRLine]?
+    public let problem: String?
+    public let date: DocumentDate?
 }
 
 /// A receipt as saved: its image turned as shown, its text (nil when it was not read or could not be),

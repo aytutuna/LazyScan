@@ -754,6 +754,14 @@ public enum Receipts {
             .map(\.text)
     }
 
+    /// A date typed as year-month-day ("2026-03-12"); nil when it is empty or not a real day.
+    public static func parseDate(_ text: String) -> DocumentDate? {
+        let parts = text.trimmingCharacters(in: .whitespaces).split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
+              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]) else { return nil }
+        return DocumentDate.make(year: year, month: month, day: day)
+    }
+
     /// The date one PDF of several receipts is named by: the earliest found; nil when none was.
     public static func combinedDate(_ dates: [DocumentDate?]) -> DocumentDate? {
         dates.compactMap { $0 }.min()

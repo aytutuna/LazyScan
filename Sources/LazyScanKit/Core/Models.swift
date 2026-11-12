@@ -1215,6 +1215,26 @@ public struct DetectedPhoto: Identifiable {
     public var included: Bool = true
     /// Extra user-requested rotation applied at save time (0...3 quarter turns clockwise).
     public var rotationQuarterTurns: Int = 0
+    /// A receipt's text and date as read from the image turned as shown (`isRead`); nil until it is read.
+    public var reading: ReceiptReading?
+    /// The date as typed in the receipt review; nil until the user edits it, and then it replaces the one found.
+    public var typedDate: String?
+
+    /// The reading is of the image as it is turned now.
+    public var isRead: Bool { reading?.quarterTurns == rotationQuarterTurns }
+
+    /// The date a receipt is named by: the typed one when it is a real day, else the one found; nil when none.
+    public var receiptDate: DocumentDate? {
+        if let typedDate { return Receipts.parseDate(typedDate) }
+        return isRead ? reading?.date : nil
+    }
+
+    /// What the review's date field shows.
+    public var dateText: String {
+        if let typedDate { return typedDate }
+        let found: DocumentDate? = isRead ? reading?.date : nil
+        return found?.text ?? ""
+    }
 
     public init(region: DetectedPhotoRegion, image: CGImage, dpi: Int, id: UUID = UUID(),
                 sourcePageID: UUID? = nil, colorMode: ColorMode = .color) {

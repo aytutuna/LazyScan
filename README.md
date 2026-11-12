@@ -158,7 +158,7 @@ scanners** — including the Epson Perfection V39 II.
   once. Each receipt is found, cut out along its paper (or, for thermal paper that hardly shows on
   a white lid, around its print), straightened, and cleaned up for faded thermal print: gray, the
   paper evened out to white, the print darkened. Check them in the review (untick, turn, fix a
-  crop), then save: a small searchable PDF each (Compact size, gray), or one PDF for all of them,
+  crop, and on the Mac fix a date), then save: a small searchable PDF each (Compact size, gray), or one PDF for all of them,
   or JPEG, PNG or TIFF. Files are named by the date printed on the receipt (`{docdate}`): it is
   read from the receipt's text in ISO, US, European and Turkish numeric forms (2026-03-12,
   03/12/2026, 12.03.2026, 12-03-26), with month names in English, Turkish, German, French,

@@ -157,8 +157,10 @@ extension AppState {
                                             sourcePageID: old.sourcePageID, colorMode: cut.colorMode)
                 updated.included = old.included
                 updated.rotationQuarterTurns = old.rotationQuarterTurns
+                updated.typedDate = old.typedDate
                 state.photoCaptureFacts[sourceID] = cut.facts
                 state.detectedPhotos[index] = updated
+                state.readReceipts()
             }
         }
     }

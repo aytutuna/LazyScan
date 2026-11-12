@@ -672,6 +672,8 @@ public final class AppState: ObservableObject {
     /// in the order they were made, and a save waits for them.
     var recropChain: Task<Void, Never>?
     private var recropCount = 0
+    /// The last reading of the receipts under way (`readReceipts`); a save waits for it.
+    var receiptReading: Task<Void, Never>?
     /// The pages being cut out of their photos again (AppState+Recut.swift), for a spinner on each.
     @Published public internal(set) var recuttingPages: Set<UUID> = []
 
@@ -2141,7 +2143,9 @@ public final class AppState: ObservableObject {
                                         id: old.id, sourcePageID: old.sourcePageID, colorMode: old.colorMode)
             updated.included = old.included
             updated.rotationQuarterTurns = old.rotationQuarterTurns
+            updated.typedDate = old.typedDate
             state.detectedPhotos[idx] = updated
+            state.readReceipts()
         }
     }
 

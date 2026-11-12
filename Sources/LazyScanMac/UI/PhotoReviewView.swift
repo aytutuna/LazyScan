@@ -13,6 +13,7 @@ struct PhotoReviewView: View {
     @State private var editingPhoto: DetectedPhoto?
     /// Discard is asking before it drops more than one kept photo.
     @State private var asksDiscard = false
+    @FocusState private var focusedDate: UUID?
 
     private var includedCount: Int {
         state.detectedPhotos.filter(\.included).count
@@ -36,6 +37,22 @@ struct PhotoReviewView: View {
                       : String(localized: "After saving, lay the next photos on the glass and scan again.")
     }
 
+    /// Each receipt card shows its date: receipts are named by it.
+    private var showsDate: Bool {
+        state.isReceiptReview && Receipts.namesByDate(state.settings)
+    }
+
+    /// Return in a date field commits the text; it only saves when no field has focus.
+    private var saveShortcut: KeyboardShortcut? {
+        focusedDate == nil ? .defaultAction : nil
+    }
+
+    private var scrollHint: Text {
+        showsDate
+            ? Text("Uncheck any false detections, rotate if needed, fix any dates, then save.")
+            : Text("Uncheck any false detections, rotate if needed, then save.")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
@@ -56,13 +73,16 @@ struct PhotoReviewView: View {
                             total: state.detectedPhotos.count,
                             included: includedBinding(id: photo.id),
                             cropDisabled: state.isBusy,
+                            showsDate: showsDate,
+                            dateText: dateBinding(id: photo.id),
+                            focusedDate: $focusedDate,
                             onRotate: { rotate(id: photo.id, by: $0) },
                             onAdjustCrop: { editingPhoto = photo })
                     }
                 }
                 .padding()
             }
-            .accessibilityHint(Text("Uncheck any false detections, rotate if needed, then save."))
+            .accessibilityHint(scrollHint)
 
             Divider()
 
@@ -94,7 +114,7 @@ struct PhotoReviewView: View {
                     state.saveReviewedPhotos()
                 }
                 .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(saveShortcut)
                 .disabled(includedCount == 0 || state.isBusy)
             }
             .padding()
@@ -128,10 +148,20 @@ struct PhotoReviewView: View {
             })
     }
 
+    /// Binding to the date field of the receipt with `id`: what is typed replaces the date found.
+    private func dateBinding(id: UUID) -> Binding<String> {
+        Binding(
+            get: {
+                state.detectedPhotos.first(where: { $0.id == id })?.dateText ?? ""
+            },
+            set: { newValue in
+                guard let idx = state.detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
+                state.detectedPhotos[idx].typedDate = newValue
+            })
+    }
+
     private func rotate(id: UUID, by delta: Int) {
-        guard let idx = state.detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
-        let turns = state.detectedPhotos[idx].rotationQuarterTurns + delta
-        state.detectedPhotos[idx].rotationQuarterTurns = ((turns % 4) + 4) % 4
+        state.rotateReviewPhoto(id: id, by: delta)
     }
 }
 
@@ -143,6 +173,9 @@ fileprivate struct PhotoReviewCard: View {
     let total: Int
     @Binding var included: Bool
     let cropDisabled: Bool
+    let showsDate: Bool
+    @Binding var dateText: String
+    let focusedDate: FocusState<UUID?>.Binding
     let onRotate: (Int) -> Void
     let onAdjustCrop: () -> Void
 
@@ -171,6 +204,10 @@ fileprivate struct PhotoReviewCard: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .accessibilityHidden(true)
+
+            if showsDate {
+                dateRow
+            }
 
             HStack(spacing: 10) {
                 Toggle("Include", isOn: $included)
@@ -214,6 +251,71 @@ fileprivate struct PhotoReviewCard: View {
         .task(id: photo.region) {
             thumbnail = reviewThumbnail(photo.image, maxDimension: 340)
         }
+    }
+
+    private var isReading: Bool { !photo.isRead }
+
+    private var noDate: Bool { !isReading && photo.receiptDate == nil }
+
+    /// Text is typed that is not a day.
+    private var invalidDate: Bool {
+        !dateText.isEmpty && Receipts.parseDate(dateText) == nil
+    }
+
+    private var dateBorder: CGFloat { invalidDate ? 1 : 0 }
+
+    private var dateHelp: Text {
+        invalidDate
+            ? Text("Enter the date as year-month-day, like 2026-11-03.")
+            : Text("The date used in the file name. Leave it empty to use today's date.")
+    }
+
+    private var noDateHint: Text {
+        noDate ? Text("No date was found on this receipt") : Text(verbatim: "")
+    }
+
+    private var dateValue: Text {
+        dateText.isEmpty ? Text("No date") : Text(verbatim: dateText)
+    }
+
+    private var dateRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Text("Date")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                if noDate {
+                    Text("No date")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
+                }
+            }
+            if isReading {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Reading…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                TextField("yyyy-mm-dd", text: $dateText)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 130)
+                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.red, lineWidth: dateBorder))
+                    .focused(focusedDate, equals: photo.id)
+                    .disabled(cropDisabled)
+                    .help(dateHelp)
+                    .accessibilityLabel(Text("Receipt date"))
+                    .accessibilityValue(dateValue)
+                    .accessibilityHint(noDateHint)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var groupLabel: String {
