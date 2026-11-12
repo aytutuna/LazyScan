@@ -165,6 +165,7 @@ public final class AppState: ObservableObject {
     @Published public private(set) var capabilities: ScannerCapabilities?
     @Published public var settings: ScanSettings {
         didSet {
+            if rescanTarget != nil && !queuesScans { rescanTarget = nil }
             // A feeder known to scan one side turns two-sided scanning into turning over by hand
             // (one not asked yet is taken to scan both: `sidesCapabilities`).
             if settings.duplex == .both,
@@ -225,6 +226,7 @@ public final class AppState: ObservableObject {
             if removedUndo != nil && scannedPages.count > oldValue.count { discardRemovedUndo() }
             pruneSpreads()
             keepViewedPage(after: oldValue)
+            if let target = rescanTarget, !scannedPages.contains(where: { $0.id == target }) { rescanTarget = nil }
             companionService?.queuedPages = scannedPages.count
             scheduleQueueRecord()
         }
@@ -321,6 +323,10 @@ public final class AppState: ObservableObject {
     private var observesActivation = false
 
     @Published public private(set) var isBusy = false
+    /// The page the next scan replaces (Scan Again), kept across a failed or cancelled scan.
+    @Published public internal(set) var rescanTarget: UUID?
+    /// The last page of a scan that replaced a page: the rest of that scan's pages go after it.
+    var rescanAnchor: UUID?
     /// The packages being written from the queue's spooled pages (`exportPackage`), which no other
     /// operation knows of: the queue must not be dropped meanwhile.
     @Published var queueReaders = 0
@@ -1276,7 +1282,7 @@ public final class AppState: ObservableObject {
     private func scanIntoQueue(_ session: any ScannerSession, settings s: ScanSettings, selection: CGRect?,
                                generation: Int, flag: CancelFlag,
                                makeIntake: @escaping @MainActor (Bool) -> PageIntake) async throws {
-        let before = scannedPages.count
+        let before = Set(scannedPages.map(\.id))
         var received = 0
         var failure: Error?
         do {
@@ -1308,7 +1314,7 @@ public final class AppState: ObservableObject {
         clearFailure()
         // Pages queued before a Cancel or an error are kept, so the stack is finished like a stopped batch.
         let stop = failure.map { ScanStop.from($0) } ?? session.lastScanStop
-        announceQueued(Array(scannedPages.dropFirst(before)), intake: makeIntake(stop != nil), scorer: orientationScorer)
+        announceQueued(scannedPages.filter { !before.contains($0.id) }, intake: makeIntake(stop != nil), scorer: orientationScorer)
         guard let stop else { return }
         let message = stop.message(pagesKept: received)
         switch failure {
@@ -1503,7 +1509,7 @@ public final class AppState: ObservableObject {
                 }
                 // The spreads first: adding the pages drops the spreads no page is cut from.
                 self.spreadSources.merge(spreadSources) { _, new in new }
-                self.scannedPages.append(contentsOf: spooled)
+                self.queueScanned(spooled, source: source)
                 // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
                 if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
                 // Only the scanner's pages are sides of a stack turned over by hand; a phone's or a photo's
@@ -3084,6 +3090,7 @@ public final class AppState: ObservableObject {
             currentCancelFlag = nil
             saveDirectory = nil
             progress = nil
+            rescanAnchor = nil
             isBusy = false
             // Pages just queued are recorded before the system's time is given back, not half a second later.
             if queueRecordTask != nil { writeQueueRecord() }

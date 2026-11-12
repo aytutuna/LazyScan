@@ -72,6 +72,11 @@ struct PagesStripView: View {
                                             && (plan.pages[index].document ?? 1) > 1,
                                          onToggle: { state.toggleDocumentBreak(id: page.id) })
                             }
+                            if state.rescanTarget == page.id {
+                                Rectangle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 3, height: 58)
+                            }
                             PageThumbnailCell(
                                 page: page,
                                 pageNumber: index + 1,
@@ -83,6 +88,11 @@ struct PagesStripView: View {
                                                    editable: state.canEditSpread(of: page)),
                                 canMoveLeft: index > 0,
                                 canMoveRight: index < state.scannedPages.count - 1,
+                                isArmed: state.rescanTarget == page.id,
+                                isBusy: state.isBusy,
+                                canScanAgain: state.canRescan,
+                                onScanAgain: { state.armRescan(id: page.id) },
+                                onCancelRescan: { state.cancelRescan() },
                                 onRemove: { state.removePage(id: page.id) },
                                 onMove: { state.movePage(id: page.id, by: $0) },
                                 onDropPage: { moving in
@@ -342,6 +352,13 @@ fileprivate struct PageThumbnailCell: View {
     let book: PageBookInfo
     let canMoveLeft: Bool
     let canMoveRight: Bool
+    /// The next scan replaces this page (`AppState.rescanTarget`).
+    let isArmed: Bool
+    let isBusy: Bool
+    let canScanAgain: Bool
+    /// Mark the page for the next scan to replace (`AppState.armRescan`).
+    let onScanAgain: () -> Void
+    let onCancelRescan: () -> Void
     let onRemove: () -> Void
     let onMove: (Int) -> Void
     /// Another page of the strip, dragged here, takes this page's place.
@@ -372,20 +389,34 @@ fileprivate struct PageThumbnailCell: View {
             thumbnailView
                 .frame(height: 58)
                 // Left out when saving: the page is dimmed.
-                .opacity(split.isExcluded ? 0.35 : 1)
-                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(borderColor, lineWidth: isViewed ? 2 : 1))
+                .opacity(thumbnailOpacity)
+                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(borderColor, lineWidth: isViewed || isArmed ? 2 : 1))
                 .clipShape(RoundedRectangle(cornerRadius: 3))
-                .overlay { if hovering { hoverControls } }
+                .overlay { if isArmed { armedMark } }
+                .overlay { if hovering && !isArmed { hoverControls } }
                 // Above the hover controls, so the pointer that shows them can still reach Keep
                 // or Skip; the button sits at the bottom edge, clear of the centred hover row.
                 .overlay(alignment: .topLeading) { blankBadge }
                 .overlay(alignment: .bottom) { blankToggle }
                 .onHover { hovering = $0 }
-                .help(String(localized: "Show page \(pageNumber) large"))
+                .help(thumbnailHelp)
 
             // Below the page, clear of the hover controls on it.
             HStack(spacing: 3) {
-                if let title = split.dividerTitle {
+                if isArmed {
+                    Text(armedCaption)
+                        .font(.caption2)
+                        .foregroundStyle(Color.accentColor)
+                        .lineLimit(1)
+                    Button(action: onCancelRescan) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isBusy)
+                    .help("Cancel Scan Again")
+                    .accessibilityLabel(Text("Don't replace this page"))
+                } else if let title = split.dividerTitle {
                     // The first page of a document when the queue is split: its title instead.
                     Text(title)
                         .font(.caption2.weight(.semibold))
@@ -425,6 +456,11 @@ fileprivate struct PageThumbnailCell: View {
             onView()
             return .handled
         }
+        .onKeyPress(.escape) {
+            guard isArmed, !isBusy else { return .ignored }
+            onCancelRescan()
+            return .handled
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)
         .accessibilityAddTraits(.isButton)
@@ -434,6 +470,9 @@ fileprivate struct PageThumbnailCell: View {
         .accessibilityActions {
             Button("Remove page", action: onRemove)
             Button("Rotate 90\u{00B0} clockwise", action: onRotate)
+            if canScanAgain {
+                Button("Scan page again", action: onScanAgain)
+            }
             if canMoveLeft {
                 Button("Move page earlier") { onMove(-1) }
             }
@@ -444,6 +483,9 @@ fileprivate struct PageThumbnailCell: View {
         .contextMenu {
             Button("Copy Text", action: onCopyText)
             Button("Rotate 90\u{00B0} Clockwise", action: onRotate)
+            Button("Scan Again", action: onScanAgain)
+                .disabled(!canScanAgain)
+            Divider()
             Button("Move Earlier") { onMove(-1) }
                 .disabled(!canMoveLeft)
             Button("Move Later") { onMove(1) }
@@ -484,7 +526,39 @@ fileprivate struct PageThumbnailCell: View {
     }
 
     private var borderColor: Color {
-        isViewed ? Color.accentColor : Color.secondary.opacity(0.4)
+        isViewed || isArmed ? Color.accentColor : Color.secondary.opacity(0.4)
+    }
+
+    private var thumbnailOpacity: Double {
+        if isArmed { return 0.5 }
+        return split.isExcluded ? 0.35 : 1
+    }
+
+    private var thumbnailHelp: String {
+        isArmed ? String(localized: "The next scan replaces this page") : String(localized: "Show page \(pageNumber) large")
+    }
+
+    private var armedCaption: String {
+        isBusy ? String(localized: "Replacing Page \(pageNumber)") : String(localized: "Replaces Page \(pageNumber)")
+    }
+
+    /// The glyph on the page marked for Scan Again, a spinner while the scan runs.
+    private var armedMark: some View {
+        ZStack {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 22, height: 22)
+            if isBusy {
+                ProgressView()
+                    .controlSize(.small)
+                    .colorScheme(.dark)
+            } else {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+            }
+        }
+        .allowsHitTesting(false)
     }
 
     /// What the thumbnail shows: the page's turn, the version shown and whether a turn upright was undone.
@@ -515,6 +589,7 @@ fileprivate struct PageThumbnailCell: View {
     /// readers; the first page of a document after the first starts with its title ("Document 2, Page 3").
     private var accessibilityName: String {
         var name = String(localized: "Page \(pageNumber)")
+        if isArmed { name = String(localized: "\(name), next scan replaces it") }
         if let title = split.dividerTitle { name = "\(title), \(name)" }
         if let label = DocumentSides.sideName(side: page.side, sheetIndex: page.sheetIndex) ?? book.help
             ?? PhotoImport.sourceLabel(page) {
