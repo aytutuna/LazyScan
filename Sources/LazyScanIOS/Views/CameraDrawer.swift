@@ -44,7 +44,7 @@ enum DrawerGroup: String, Identifiable, CaseIterable {
 /// filter new pages get, or the colour mode for the kinds that collect no pages and on the scanner tab (and
 /// Restore faded colours for Photos). Flash: the camera's light (its torch), where it has one. Camera: the
 /// automatic shutter, Both sides and how the sides or a book's pages are taken, Items in frame for Photo
-/// and Document, Straighten pages. Scanner: the scanner's Source, Sides and Resolution. `model` is the
+/// and Document, Straighten pages, the photo size. Scanner: the scanner's Source, Sides and Resolution. `model` is the
 /// camera's, nil on the scanner tab. What is saved is in the Options sheet.
 struct ScanDrawer: View {
     @EnvironmentObject private var state: AppState
@@ -52,6 +52,8 @@ struct ScanDrawer: View {
     let model: IOSCameraModel?
     let torch: Bool
     @Binding var group: DrawerGroup
+    /// Steps the camera's photo size to the next (the camera tab; nil on the scanner tab).
+    var onSizeStep: ((IOSPhotoSize, [IOSPhotoSize]) -> Void)? = nil
 
     var body: some View {
         let groups: [DrawerGroup] = DrawerGroup.shown(printer: model == nil, torch: torch)
@@ -106,7 +108,7 @@ struct ScanDrawer: View {
             }
         case .camera:
             if let model {
-                CameraControls(model: model)
+                CameraControls(model: model, onSizeStep: onSizeStep)
             }
         }
     }
@@ -140,10 +142,13 @@ private struct FlashPicker: View {
 }
 
 /// The drawer's Camera group: the automatic shutter, Both sides and how the sides or a book's pages are
-/// taken, Items in frame for Photo and Document, Straighten pages.
+/// taken, Items in frame for Photo and Document, Straighten pages, the photo size.
 private struct CameraControls: View {
     @EnvironmentObject private var state: AppState
     @ObservedObject var model: IOSCameraModel
+    let onSizeStep: ((IOSPhotoSize, [IOSPhotoSize]) -> Void)?
+    /// The photo size picked, as Options keeps it; 0 until one is.
+    @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -159,6 +164,30 @@ private struct CameraControls: View {
             }
             if IOSShell.offersStraighten(state.settings) {
                 StraightenToggle()
+            }
+            resolutionRow
+        }
+    }
+
+    /// The size the next photo is taken at, while the camera is live and offers more than one.
+    @ViewBuilder
+    private var resolutionRow: some View {
+        let choices: [IOSPhotoSize] = IOSCameraLens.choices(IOSCameraLens.offered)
+        if model.showsPreview, choices.count > 1, let step = onSizeStep,
+           let current = IOSCameraLens.photoSize(IOSCameraLens.offered, megapixels: chosenMegapixels) {
+            let label: String = IOSCameraText.sizeLabel(current)
+            HStack {
+                Text(IOSCameraText.resolutionLabel)
+                Spacer()
+                Button(label) {
+                    step(current, choices)
+                }
+                .buttonStyle(.bordered)
+                .monospacedDigit()
+                .disabled(model.isTakingPhoto)
+                .accessibilityLabel(Text(IOSCameraText.resolutionLabel))
+                .accessibilityValue(Text(label))
+                .accessibilityIdentifier("camera.resolution")
             }
         }
     }

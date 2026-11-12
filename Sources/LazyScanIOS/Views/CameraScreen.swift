@@ -7,10 +7,11 @@ import UIKit
 
 /// Camera mode, the iPhone's scan screen unless printer mode was picked (`IOSScanMode`): the viewfinder is
 /// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), a
-/// small round arrow that opens the options drawer (`ScanDrawer`) above the bottom bar, the photo size
-/// ("24 MP", where the camera offers more than one: a tap steps to the next, the first pick of a size that
-/// may not fit in the phone's memory says so once), and the scanner, which switches to printer mode
-/// (`onPrinter`). The viewfinder shows the whole photo as it will be taken (black bands where the screen is
+/// small round arrow that opens the options drawer (`ScanDrawer`) above the bottom bar, the Auto chip (on or
+/// off, a tap switches it), the flash button where the camera has a light, and the scanner, which switches
+/// to printer mode (`onPrinter`). The photo size ("24 MP", where the camera offers more than one: a tap
+/// steps to the next, the first pick of a size that may not fit in the phone's memory says so once) is in
+/// the drawer's Camera group. The viewfinder shows the whole photo as it will be taken (black bands where the screen is
 /// taller or wider), the page's outline over it (yellow, green once the page holds still), one status line at
 /// its top (the glare hint, why the automatic shutter waits, "Page found · hold still", else the task's
 /// camera line, `CameraTaskCatalog`), the ID card's guide frame, and at its foot what the scan screen hands
@@ -147,7 +148,8 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var topBar: some View {
         ScanTopBar(showsDrawer: $showsDrawer, onLibrary: onLibrary) {
             HStack(spacing: 0) {
-                resolutionButton
+                autoChip
+                flashButton
                 printerButton
             }
         }
@@ -168,28 +170,68 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         .accessibilityIdentifier("mode.printer")
     }
 
-    /// The size the next photo is taken at, while the camera is live and offers more than one (never in
-    /// the Simulator, which has no camera).
+    /// Whether the automatic shutter is on, and a switch for it, while the camera is shown (never in the
+    /// Simulator, which has no camera).
     @ViewBuilder
-    private var resolutionButton: some View {
-        let choices: [IOSPhotoSize] = IOSCameraLens.choices(IOSCameraLens.offered)
-        if model.showsPreview, choices.count > 1,
-           let current = IOSCameraLens.photoSize(IOSCameraLens.offered, megapixels: chosenMegapixels) {
-            let label: String = IOSCameraText.sizeLabel(current)
+    private var autoChip: some View {
+        if model.showsPreview {
+            let on: Bool = model.autoShutter
+            let textColour: Color = on ? Color.white : Color.primary
+            let fill: Color = on ? Color.accentColor : Color.clear
             Button {
-                stepPhotoSize(from: current, in: choices)
+                model.setAutoShutter(!on)
             } label: {
-                Text(label)
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
-                    .padding(.horizontal, 4)
-                    .frame(minWidth: 44, minHeight: 44)
+                Text(IOSCameraText.autoLabel)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(textColour)
+                    .padding(.horizontal, 12)
+                    .frame(minWidth: 64, minHeight: 32)
+                    .background(Capsule().fill(fill))
+                    .overlay(Capsule().strokeBorder(Color.accentColor, lineWidth: 1))
+                    .frame(minHeight: 44)
                     .contentShape(Rectangle())
             }
-            .disabled(model.isTakingPhoto)
-            .accessibilityLabel(Text(IOSCameraText.resolutionLabel))
-            .accessibilityValue(Text(label))
-            .accessibilityIdentifier("camera.resolution")
+            .buttonStyle(.plain)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .disabled(state.isBusy)
+            .accessibilityLabel(Text(IOSCameraText.autoShutterLabel))
+            .accessibilityValue(Text(on ? IOSCameraText.onValue : IOSCameraText.offValue))
+            .accessibilityHint(Text(IOSCameraText.autoHint))
+            .accessibilityIdentifier("camera.autoChip")
+        }
+    }
+
+    /// The camera's light, where it has one; the drawer's Flash group is the same switch.
+    @ViewBuilder
+    private var flashButton: some View {
+        if model.showsPreview, model.hasTorch {
+            let on: Bool = model.torchOn
+            let glyphColour: Color = on ? Color.yellow : Color.primary
+            let backing: Color = on ? Color.black.opacity(0.75) : Color.clear
+            Button {
+                turnLight(on: !on)
+            } label: {
+                Image(systemName: on ? "bolt.fill" : "bolt.slash")
+                    .font(.title3)
+                    .foregroundStyle(glyphColour)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(backing))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!model.lifecycle.isLive || state.isBusy)
+            .accessibilityLabel(Text(IOSCameraText.flashLabel))
+            .accessibilityValue(Text(on ? IOSCameraText.onValue : IOSCameraText.offValue))
+            .accessibilityIdentifier("camera.flash")
+        }
+    }
+
+    private func turnLight(on: Bool) {
+        let shown: IOSCameraModel = model
+        guard on != shown.torchOn else { return }
+        Task { @MainActor in
+            await shown.toggleTorch()
         }
     }
 
@@ -236,7 +278,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var overlays: some View {
         VStack(spacing: 8) {
             if shownMessage == nil, let status = statusLine {
-                StatusPill(text: status.text, hint: status.hint)
+                StatusPill(text: status.text, hint: status.hint, action: status.action)
                     .accessibilityIdentifier(status.identifier)
             }
             Spacer(minLength: 0)
@@ -302,6 +344,10 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             return CameraStatus(text: glare, hint: nil, identifier: "camera.glare")
         }
         if let reason = waitLine {
+            if offersLight {
+                return CameraStatus(text: IOSCameraText.tooDarkTapForLight, hint: IOSCameraText.tooDarkHint,
+                                    identifier: "camera.wait", action: { turnLight(on: true) })
+            }
             return CameraStatus(text: reason, hint: nil, identifier: "camera.wait")
         }
         if model.autoShutter && canShoot && model.live?.state == CaptureState.steadying {
@@ -338,6 +384,11 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         return IOSCameraText.waitReason(update.quality)
     }
 
+    /// The frame is dark and the camera has a light that is off: the wait line can turn it on.
+    private var offersLight: Bool {
+        model.hasTorch && !model.torchOn && model.lifecycle.isLive && model.live?.quality == CaptureQuality.dark
+    }
+
     /// Whether a page held still waits, and the wait line as shown (nil while a message or the glare hint
     /// is shown in its place), for VoiceOver (`IOSWaitAnnouncer`).
     private var waitCue: IOSWaitCue {
@@ -351,7 +402,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @ViewBuilder
     private var lowerRow: some View {
         if showsDrawer {
-            ScanDrawer(model: model, torch: model.hasTorch, group: $drawerGroup)
+            ScanDrawer(model: model, torch: model.hasTorch, group: $drawerGroup, onSizeStep: stepPhotoSize(from:in:))
                 .transition(.opacity)
         }
     }
@@ -463,22 +514,46 @@ private struct CameraStatus {
     let text: String
     let hint: String?
     let identifier: String
+    var action: (() -> Void)? = nil
 }
 
-/// A line on a dark capsule over a picture.
+/// A line on a dark capsule over a picture; with `action` it is a button, with a bolt before the words.
 struct StatusPill: View {
     let text: String
     let hint: String?
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        Text(text)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(Color.white)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(Color.black.opacity(0.75)))
+        if let action {
+            Button {
+                action()
+            } label: {
+                pill
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             .accessibilityHint(Text(hint ?? ""))
+        } else {
+            pill
+                .accessibilityHint(Text(hint ?? ""))
+        }
+    }
+
+    private var pill: some View {
+        HStack(spacing: 6) {
+            if action != nil {
+                Image(systemName: "bolt.fill")
+                    .accessibilityHidden(true)
+            }
+            Text(text)
+        }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(Color.white)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.black.opacity(0.75)))
     }
 }
 

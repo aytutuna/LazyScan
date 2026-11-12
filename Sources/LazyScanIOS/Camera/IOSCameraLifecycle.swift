@@ -214,6 +214,9 @@ public enum IOSCameraText {
     /// Why a page held still is not taken yet (`CaptureQuality`).
     public static var holdStill: String { String(localized: "Hold still") }
     public static var tooDark: String { String(localized: "Too dark") }
+    /// The same line when the light is off and can be turned on by tapping it.
+    public static var tooDarkTapForLight: String { String(localized: "Too dark. Tap for light") }
+    public static var tooDarkHint: String { String(localized: "Turns the light on") }
     /// The camera's light, a torch, by the name people know it by (the drawer's group and its switch).
     public static var flashLabel: String { String(localized: "Flash") }
     public static var settingsLabel: String { String(localized: "Settings") }
