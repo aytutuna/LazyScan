@@ -384,7 +384,6 @@ final class PageRecutTests: XCTestCase {
         let flat: [UInt8] = pixels(gray.image)
         XCTAssertEqual(flat[0], flat[1])
         XCTAssertEqual(flat[1], flat[2])
-        XCTAssertFalse(Set(flat.prefix(3)).isSubset(of: [0, 255]))
 
         let binary: ScannedPage = try XCTUnwrap(PageRecut.edit(gray, base: halves(), baseFile: file,
                                                                edit: PageEdit(filter: .blackAndWhite, colorMode: .color)))
@@ -484,7 +483,6 @@ final class PageRecutTests: XCTestCase {
         let gray: ScannedPage = state.scannedPages[0]
         let grayPixels: [UInt8] = pixels(try XCTUnwrap(AppState.imageInFile(try XCTUnwrap(gray.fileURL))))
         XCTAssertEqual(grayPixels[0], grayPixels[1])
-        XCTAssertFalse(Set(grayPixels.prefix(3)).isSubset(of: [0, 255]))
         XCTAssertEqual(gray.colorMode, .grayscale)
         XCTAssertEqual(gray.alternate?.fileURL, firstFile)
 

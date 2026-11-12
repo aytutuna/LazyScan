@@ -359,7 +359,8 @@ final class AppStateCompanionTests: XCTestCase {
 
         XCTAssertNil(state.errorMessage)
         XCTAssertFalse(state.companionDraining)
-        XCTAssertEqual(kept, state.companionOutboxCount > 0)
+        XCTAssertGreaterThanOrEqual(state.companionOutboxCount, 1)
+        XCTAssertEqual(kept, state.companionOutboxCount > 1)
     }
 
     @MainActor
