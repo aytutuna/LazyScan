@@ -8,6 +8,7 @@ import SwiftUI
 struct HistoryScreen: View {
     @EnvironmentObject private var state: AppState
     @State private var enlarged: UUID?
+    @State private var asksClear: Bool = false
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 140, maximum: 260), spacing: 12, alignment: .top)]
 
@@ -37,6 +38,23 @@ struct HistoryScreen: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(IOSHistory.title)
+        .toolbar {
+            if !rows.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(IOSHistory.clearButton) {
+                        asksClear = true
+                    }
+                    .accessibilityHint(Text("Empties the Scans list"))
+                    .accessibilityIdentifier("history.clear")
+                }
+            }
+        }
+        .confirmationDialog(IOSHistory.clearQuestion, isPresented: $asksClear, titleVisibility: .visible) {
+            Button(IOSHistory.clearAction, role: .destructive) {
+                state.clearHistory()
+            }
+            .accessibilityIdentifier("history.clear.confirm")
+        }
         .sheet(item: enlargedRow(rows)) { (row: IOSHistoryRow) in
             HistoryEnlarged(row: row, onClose: closeEnlarged)
         }

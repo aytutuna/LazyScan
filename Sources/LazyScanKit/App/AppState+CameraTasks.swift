@@ -216,8 +216,9 @@ extension AppState {
 
     /// Lets the held Quick scan page go, unsaved.
     public func discardQuickScan() {
-        guard !isBusy, quickScanPage != nil else { return }
+        guard !isBusy, let page = quickScanPage else { return }
         quickScanPage = nil
+        scanHistory.removeAll { $0.pageID == page.id }
         statusMessage = L10n.t("Page discarded.")
     }
 

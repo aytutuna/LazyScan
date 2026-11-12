@@ -1215,6 +1215,8 @@ public struct DetectedPhoto: Identifiable {
 /// as it happened, newest first.
 public struct ScanHistoryEntry: Identifiable {
     public let id: UUID
+    /// The page this entry shows, so deleting the page can drop it.
+    public let pageID: UUID
     public let date: Date
     public let intent: ScanIntent
     public let dpi: Int
@@ -1224,8 +1226,9 @@ public struct ScanHistoryEntry: Identifiable {
     public let pixelSize: CGSize
 
     public init(date: Date, intent: ScanIntent, dpi: Int, thumbnail: CGImage,
-                pixelSize: CGSize, id: UUID = UUID()) {
+                pixelSize: CGSize, id: UUID = UUID(), pageID: UUID = UUID()) {
         self.id = id
+        self.pageID = pageID
         self.date = date
         self.intent = intent
         self.dpi = dpi

@@ -168,6 +168,7 @@ extension AppState {
         hold.cleared = cleared && hold.pages.count == gone
         removedUndo = hold
         scannedPages.removeAll { ids.contains($0.id) }
+        scanHistory.removeAll { ids.contains($0.pageID) }
         return gone
     }
 

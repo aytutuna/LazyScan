@@ -331,6 +331,20 @@ final class IOSLibraryTests: XCTestCase {
         XCTAssertEqual(rows.first?.title, "Document \u{00B7} 60 dpi")
     }
 
+    @MainActor
+    func test_history_dropsAPageRemovedFromTheQueue_andClearEmptiesIt() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let pages: [ScannedPage] = [ScannedPage(image: libraryPicture(width: 120, height: 160), dpi: 60, colorMode: .color),
+                                    ScannedPage(image: libraryPicture(width: 120, height: 160), dpi: 60, colorMode: .color)]
+        XCTAssertTrue(state.ingest(pages, source: .photo))
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy && state.scanHistory.count == 2 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        state.removePage(id: pages[0].id)
+        XCTAssertEqual(state.scanHistory.map(\.pageID), [pages[1].id])
+        state.clearHistory()
+        XCTAssertTrue(state.scanHistory.isEmpty)
+    }
+
     // MARK: Saved files
 
     func test_savedFiles_listTheSaveFolder_newestFirst_theLastSaveMarked() throws {

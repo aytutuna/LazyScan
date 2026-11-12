@@ -20,6 +20,9 @@ public enum IOSHistory {
     public static var title: String { String(localized: "Scans") }
     public static var emptyTitle: String { String(localized: "No scans yet") }
     public static var emptyLine: String { String(localized: "Scans from this session appear here, newest first.") }
+    public static var clearButton: String { String(localized: "Clear") }
+    public static var clearQuestion: String { String(localized: "Clear this session's scans? Saved files are not touched.") }
+    public static var clearAction: String { String(localized: "Clear Scans") }
 
     /// "1 scan", "13 scans".
     public static func countText(_ count: Int) -> String {

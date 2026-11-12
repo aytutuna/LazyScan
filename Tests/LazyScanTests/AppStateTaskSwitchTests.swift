@@ -119,7 +119,7 @@ final class AppStateTaskSwitchTests: XCTestCase {
     func test_aTaskThatDoesNotCollectPages_leavesThemBehind_untilDiscarded() async throws {
         let state = try await makeState(pages: 2)
         let files: [URL] = spoolFiles(state)
-        let history: Int = state.scanHistory.count
+        XCTAssertEqual(state.scanHistory.count, 2)
         for task in [ScanTask.photos, .photoRestore, .receipt, .idCard, .quickScan, .copy] {
             XCTAssertEqual(state.pagesLeftBehind(by: task), 2, task.rawValue)
         }
@@ -137,7 +137,7 @@ final class AppStateTaskSwitchTests: XCTestCase {
         for file in files {
             XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), file.lastPathComponent)
         }
-        XCTAssertEqual(state.scanHistory.count, history)
+        XCTAssertTrue(state.scanHistory.isEmpty)
         XCTAssertEqual(state.pagesLeftBehind(by: .receipt), 0)
     }
 

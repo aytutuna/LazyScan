@@ -1638,24 +1638,28 @@ public final class AppState: ObservableObject {
     /// Puts small previews of `pages` at the top of the session history, keeping the 50 newest. False,
     /// with nothing added, when another scanner was chosen meanwhile (`generation`).
     func addToHistory(_ pages: [ScannedPage], intent: ScanIntent, generation: Int?) async -> Bool {
-        let historyThumbs: [(CGImage, CGSize, Int)] = await Task.detached(priority: .utility) {
+        let historyThumbs: [(CGImage, CGSize, Int, UUID)] = await Task.detached(priority: .utility) {
             pages.map { page in
                 (Self.makePreview(page.image, maxSide: 700) ?? page.image,
                  CGSize(width: page.image.width, height: page.image.height),
-                 page.dpi)
+                 page.dpi, page.id)
             }
         }.value
         guard isCurrent(generation) else { return false }
         let now = Date()
         let entries = historyThumbs.map {
             ScanHistoryEntry(date: now, intent: intent, dpi: $0.2,
-                             thumbnail: $0.0, pixelSize: $0.1)
+                             thumbnail: $0.0, pixelSize: $0.1, pageID: $0.3)
         }
         scanHistory.insert(contentsOf: entries.reversed(), at: 0)
         if scanHistory.count > 50 {
             scanHistory.removeSubrange(50...)
         }
         return true
+    }
+
+    public func clearHistory() {
+        scanHistory = []
     }
 
     /// The capabilities could not be read on connect (the scanner was off, say) yet a scan just
