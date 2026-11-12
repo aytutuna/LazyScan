@@ -704,6 +704,7 @@ final class PageProcessorTests: XCTestCase {
         // The steps are the usual ones: the split comes before them.
         XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["blank", "separator"])
         XCTAssertNotNil(PageProcessor.forScan(TaskCatalog.apply(.book, to: ScanSettings())).book)
+        XCTAssertEqual(PageProcessor.forScan(TaskCatalog.apply(.book, to: ScanSettings())).book?.straightens, true)
         // Pages saved at once, photos, copies and receipts are never cut unseen.
         var once = ScanSettings()
         once.documentMultiPage = false
@@ -769,6 +770,31 @@ final class PageProcessorTests: XCTestCase {
         let plain = try PageProcessor(steps: [], book: book).process([page(spreadImage)]).pages
         XCTAssertEqual(plain.map(\.side), [nil, nil])
         XCTAssertEqual(plain.map(\.sheetIndex), [nil, nil])
+    }
+
+    func test_process_aSpreadScannedCrooked_isTurnedLevelBeforeItsGutterIsFound() throws {
+        let crooked = TestPages.turned(TestPages.shadowSpread(), TestPages.plus3, fill: 245).toRgba()
+        let spread = page(crooked.makeCGImage()!)
+        let kept = try PageProcessor(steps: [], book: BookSplitOptions()).process([spread])
+        let level = try PageProcessor(steps: [], book: BookSplitOptions(straightens: true)).process([spread])
+        // The spread kept for splitting it again is the turned one, and its text lines run level.
+        let turned = try XCTUnwrap(RgbaImage(cgImage: level.arranged[0].image))
+        XCTAssertEqual(level.arranged[0].id, spread.id)
+        XCTAssertEqual(RgbaImage(cgImage: kept.arranged[0].image)?.pixels, crooked.pixels)
+        XCTAssertEqual(DocumentGeometry.estimateTextLayout(GrayImage.from(crooked, sourceDPI: 100)).skewDegrees, 3, accuracy: 0.3)
+        XCTAssertEqual(DocumentGeometry.estimateTextLayout(GrayImage.from(turned, sourceDPI: 100)).skewDegrees, 0, accuracy: 0.3)
+        XCTAssertEqual(level.pages.count, 2)
+        XCTAssertEqual(level.arranged[0].image.width, level.pages[0].image.width + level.pages[1].image.width)
+        XCTAssertEqual(level.pages[0].spread?.isWhole, false)
+    }
+
+    func test_process_aLevelSpread_isCutWhereItWasWithoutStraightening() throws {
+        let spread = page(spreadImage)
+        let kept = try PageProcessor(steps: [], book: BookSplitOptions()).process([spread])
+        let level = try PageProcessor(steps: [], book: BookSplitOptions(straightens: true)).process([spread])
+        XCTAssertEqual(RgbaImage(cgImage: level.arranged[0].image)?.pixels, RgbaImage(cgImage: spreadImage)?.pixels)
+        XCTAssertEqual(level.pages[0].spread?.gutter, kept.pages[0].spread?.gutter)
+        XCTAssertEqual(level.pages.map { $0.image.width }, kept.pages.map { $0.image.width })
     }
 
     func test_process_aSpread_becomesItsTwoPages_inReadingOrder() throws {

@@ -72,11 +72,13 @@ public sealed record SpreadPart(Guid SpreadId, int? Part, GutterResult? Gutter, 
 /// <summary>How the pages of a spread are turned and put in order (<see cref="BookSplitter.Split"/>).</summary>
 /// <param name="RotationQuarterTurns">Quarter turns clockwise every page of the book is turned (the book lay sideways or upside down on the glass).</param>
 /// <param name="RightToLeft">The book reads from right to left (Arabic, Hebrew, manga): the right page comes first.</param>
-public sealed record BookSplitOptions(int RotationQuarterTurns = 0, bool RightToLeft = false)
+/// <param name="Straightens">A scanned spread is turned level (<see cref="DocumentGeometry"/>, as the Straighten setting) before its gutter is found.</param>
+public sealed record BookSplitOptions(int RotationQuarterTurns = 0, bool RightToLeft = false, bool Straightens = false)
 {
     /// <summary>The options of <paramref name="settings"/> (<see cref="TaskOptions.BookRotationQuarterTurns"/>, <see cref="TaskOptions.BookRightToLeft"/>).</summary>
     public static BookSplitOptions Of(ScanSettings settings) =>
-        new(BookSplitter.NormalizedTurns(settings.TaskOptions.BookRotationQuarterTurns), settings.TaskOptions.BookRightToLeft);
+        new(BookSplitter.NormalizedTurns(settings.TaskOptions.BookRotationQuarterTurns), settings.TaskOptions.BookRightToLeft,
+            settings.Document.AutoStraighten);
 }
 
 /// <summary>What the search for the gutter found along one axis, in the analysis image's pixels.</summary>

@@ -564,10 +564,15 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
             }
             arranged = prepared;
         }
+        // The gutter is searched on the turned spread, and the spread kept for splitting it again is that one,
+        // so a cut placed by hand lies on the image it is shown on.
+        var spreads = new List<ScannedPage>(arranged.Count);
         var pages = new List<ScannedPage>(arranged.Count);
-        foreach (var page in arranged)
+        foreach (var scannedSpread in arranged)
         {
             token.ThrowIfCancellationRequested();
+            var page = Book is { Straightens: true } ? StraightenedSpread(scannedSpread) : scannedSpread;
+            spreads.Add(page);
             if (Book is { } book)
             {
                 pages.AddRange(ProcessSpread(page, BookSplitter.FindGutter(page.Image, page.Dpi), book, token));
@@ -575,7 +580,7 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
             }
             pages.Add(RunSteps(page, token));
         }
-        return new ProcessedScan(arranged, pages);
+        return new ProcessedScan(spreads, pages);
     }
 
     /// <summary>
@@ -616,6 +621,15 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         b = b.WithSpread(b.Spread! with { Left = !firstIsLeft });
         return firstLeads ? [a, b] : [b, a];
     }
+
+    /// <summary>
+    /// A scanner's spread turned level by the slant of its sheet or its text; a camera's, which was straightened
+    /// when it was cut out, and a spread the analysis is not sure about stay as they are.
+    /// </summary>
+    private static ScannedPage StraightenedSpread(ScannedPage page) =>
+        page.Capture is null && DocumentGeometry.Correct(page.Image, page.Dpi, crop: false, straighten: true) is { } turned
+            ? page.WithImage(turned.Image)
+            : page;
 
     /// <summary>Every step on <paramref name="page"/>, in order.</summary>
     private ScannedPage RunSteps(ScannedPage page, CancellationToken token) => Run(Steps, page, token);

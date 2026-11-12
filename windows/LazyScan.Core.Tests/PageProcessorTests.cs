@@ -647,6 +647,7 @@ public class PageProcessorTests
         // The steps are the usual ones: the split comes before them.
         Assert.Equal(["blank", "separator"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
         Assert.NotNull(PageProcessor.ForScan(TaskCatalog.Apply(ScanTask.Book, new ScanSettings())).Book);
+        Assert.True(PageProcessor.ForScan(TaskCatalog.Apply(ScanTask.Book, new ScanSettings())).Book!.Straightens);
         // Pages saved at once, photos, copies and receipts are never cut unseen.
         foreach (var other in new[]
                  {
@@ -703,6 +704,34 @@ public class PageProcessorTests
         // A spread scanned one side has none.
         Assert.All(new PageProcessor([], book: book).Process([Page(SpreadImage)]).Pages,
                    p => Assert.Equal(((PageSide?)null, (int?)null), (p.Side, p.SheetIndex)));
+    }
+
+    [Fact]
+    public void Process_ASpreadScannedCrooked_IsTurnedLevelBeforeItsGutterIsFound()
+    {
+        var crooked = TestPages.Turned(TestPages.ShadowSpread(), TestPages.Plus3, 245).ToRgba();
+        var spread = Page(crooked);
+        var kept = new PageProcessor([], book: new BookSplitOptions()).Process([spread]);
+        var level = new PageProcessor([], book: new BookSplitOptions(Straightens: true)).Process([spread]);
+        // The spread kept for splitting it again is the turned one, and its text lines run level.
+        Assert.Equal(spread.Id, level.Arranged[0].Id);
+        Assert.Equal(crooked.Pixels, kept.Arranged[0].Image.Pixels);
+        Assert.Equal(3, DocumentGeometry.EstimateTextLayout(GrayImage.From(crooked, 100)).SkewDegrees, 0.3);
+        Assert.InRange(Math.Abs(DocumentGeometry.EstimateTextLayout(GrayImage.From(level.Arranged[0].Image, 100)).SkewDegrees), 0, 0.3);
+        Assert.Equal(2, level.Pages.Count);
+        Assert.Equal(level.Arranged[0].Image.Width, level.Pages[0].Image.Width + level.Pages[1].Image.Width);
+        Assert.False(level.Pages[0].Spread!.IsWhole);
+    }
+
+    [Fact]
+    public void Process_ALevelSpread_IsCutWhereItWasWithoutStraightening()
+    {
+        var spread = Page(SpreadImage);
+        var kept = new PageProcessor([], book: new BookSplitOptions()).Process([spread]);
+        var level = new PageProcessor([], book: new BookSplitOptions(Straightens: true)).Process([spread]);
+        Assert.Equal(SpreadImage.Pixels, level.Arranged[0].Image.Pixels);
+        Assert.Equal(kept.Pages[0].Spread!.Gutter, level.Pages[0].Spread!.Gutter);
+        Assert.Equal(kept.Pages.Select(p => p.Image.Width), level.Pages.Select(p => p.Image.Width));
     }
 
     [Fact]

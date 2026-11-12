@@ -577,10 +577,17 @@ public struct PageProcessor {
             }
             arranged = prepared
         }
+        // The gutter is searched on the turned spread, and the spread kept for splitting it again is that one,
+        // so a cut placed by hand lies on the image it is shown on.
+        var spreads: [ScannedPage] = []
+        spreads.reserveCapacity(arranged.count)
         var pages: [ScannedPage] = []
         pages.reserveCapacity(arranged.count)
-        for page in arranged {
+        for scannedSpread in arranged {
             guard shouldContinue() else { throw ScanError.cancelled }
+            var page = scannedSpread
+            if let book, book.straightens { page = Self.straightenedSpread(page) }
+            spreads.append(page)
             if let book {
                 let gutter = BookSplitter.findGutter(page.image, dpi: page.dpi)
                 let spreadPages = try processSpread(page, cut: gutter, options: book, shouldContinue: shouldContinue)
@@ -590,7 +597,7 @@ public struct PageProcessor {
             let current = try runSteps(page, shouldContinue: shouldContinue)
             pages.append(current)
         }
-        return ProcessedScan(arranged: arranged, pages: pages)
+        return ProcessedScan(arranged: spreads, pages: pages)
     }
 
     /// The pages of one spread after every step: `spread` (as scanned) cut at `cut`, or kept whole when
@@ -629,6 +636,15 @@ public struct PageProcessor {
         a.spread?.left = firstIsLeft
         b.spread?.left = !firstIsLeft
         return firstLeads ? [a, b] : [b, a]
+    }
+
+    /// A scanner's spread turned level by the slant of its sheet or its text; a camera's, which was straightened
+    /// when it was cut out, and a spread the analysis is not sure about stay as they are.
+    private static func straightenedSpread(_ page: ScannedPage) -> ScannedPage {
+        guard page.capture == nil, let pixels = RgbaImage(cgImage: page.image),
+              let turned = DocumentGeometry.correct(pixels, dpi: page.dpi, crop: false, straighten: true),
+              let image = turned.image.makeCGImage() else { return page }
+        return page.withImage(image)
     }
 
     /// Every step on `page`, in order.

@@ -87,16 +87,20 @@ public struct BookSplitOptions: Equatable, Sendable {
     public var rotationQuarterTurns: Int
     /// The book reads from right to left (Arabic, Hebrew, manga): the right page comes first.
     public var rightToLeft: Bool
+    /// A scanned spread is turned level (`DocumentGeometry`, as the Straighten setting) before its gutter is found.
+    public var straightens: Bool
 
-    public init(rotationQuarterTurns: Int = 0, rightToLeft: Bool = false) {
+    public init(rotationQuarterTurns: Int = 0, rightToLeft: Bool = false, straightens: Bool = false) {
         self.rotationQuarterTurns = rotationQuarterTurns
         self.rightToLeft = rightToLeft
+        self.straightens = straightens
     }
 
     /// The options of `settings` (`TaskOptions.bookRotationQuarterTurns`, `TaskOptions.bookRightToLeft`).
     public static func of(_ settings: ScanSettings) -> BookSplitOptions {
         BookSplitOptions(rotationQuarterTurns: BookSplitter.normalizedTurns(settings.taskOptions.bookRotationQuarterTurns),
-                         rightToLeft: settings.taskOptions.bookRightToLeft)
+                         rightToLeft: settings.taskOptions.bookRightToLeft,
+                         straightens: settings.document.autoStraighten)
     }
 }
 
