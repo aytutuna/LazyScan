@@ -17,8 +17,9 @@ struct ReasonLine: View {
     }
 }
 
-/// The scanner's Source, Sides (with a feeder), Resolution and Color: for the scanner in use (a network
-/// scanner, the demo scanner), in printer mode only, since the camera measures its own pages; with no
+/// The scanner's Source, Sides (with a feeder), Paper size (not on the demo scanner, which ignores it),
+/// Resolution and Color: for the scanner in use (a network scanner, the demo scanner), in printer mode
+/// only, since the camera measures its own pages; with no
 /// scanner selected yet a line says where to pick one instead. Source is locked while a side of an ID card
 /// is held, as on the Mac: another source would end the task and drop the card. With a feeder it is locked
 /// under ID card, Book and Text too, whose tasks need the flatbed, so the feeder never ends the task under the
@@ -72,6 +73,23 @@ struct ScannerSettingsRows: View {
                 ReasonLine(text: DocumentSides.needsFeederReason)
             }
         }
+        if !demoSelected {
+            let fits: Bool = state.settings.paperSize == PaperSize.longPaper
+                ? feeder
+                : PaperSizes.fits(state.settings.paperSize, in: paperArea, custom: state.settings.customPaper)
+            LabeledContent("Paper size") {
+                Picker("Paper size", selection: $state.settings.paperSize) {
+                    ForEach(offeredPaperSizes) { (size: PaperSize) in
+                        Text(paperSizeTitle(size)).tag(size)
+                    }
+                }
+                .labelsHidden()
+            }
+            .accessibilityHint(Text(paperSizeHint))
+            if !fits {
+                ReasonLine(text: PaperSizes.doesNotFitReason(source: state.settings.source))
+            }
+        }
         LabeledContent("Resolution") {
             Picker("Resolution", selection: $state.settings.resolution) {
                 ForEach(resolutions, id: \.self) { (dpi: Int) in
@@ -114,6 +132,44 @@ struct ScannerSettingsRows: View {
                 s.duplex = mode
                 appState.settings = IOSShell.keepingKind(s)
             })
+    }
+
+    private var demoSelected: Bool {
+        let selected: String? = state.selectedDeviceID
+        return state.devices.contains { (info: ScannerInfo) -> Bool in info.id == selected && info.isDemo }
+    }
+
+    private var paperSizeHint: String {
+        let wholeGlass: Bool = state.settings.source == ScanSource.flatbed && TaskCatalog.scansWholeGlass(state.settings)
+        return PaperSizes.hint(wholeGlass ? PaperSize.auto : state.settings.paperSize, source: state.settings.source)
+    }
+
+    /// The glass or the feeder, whichever is the source; nil while the scanner's capabilities are unknown.
+    private var paperArea: CGSize? {
+        guard let caps: ScannerCapabilities = state.capabilities else { return nil }
+        return state.settings.source == ScanSource.documentFeeder ? caps.feederSizeInches : caps.flatbedSizeInches
+    }
+
+    /// Automatic, the region's usual size, then the others that fit the glass or the feeder, with the one
+    /// chosen always listed. Custom size needs width and height fields, so it is left out; Long paper is
+    /// offered only for a feeder that reports its size.
+    private var offeredPaperSizes: [PaperSize] {
+        let area: CGSize? = paperArea
+        let chosen: PaperSize = state.settings.paperSize
+        let longPaper: Bool = state.settings.source == ScanSource.documentFeeder && area != nil
+        return PaperSizes.displayOrder(region: Locale.current.region?.identifier).filter { (size: PaperSize) in
+            if size == chosen { return true }
+            if size == PaperSize.custom { return false }
+            if size == PaperSize.longPaper { return longPaper }
+            return PaperSizes.fits(size, in: area)
+        }
+    }
+
+    private func paperSizeTitle(_ size: PaperSize) -> String {
+        if size == PaperSize.auto || size == PaperSize.custom || size == PaperSize.longPaper {
+            return size.label
+        }
+        return String(localized: "\(size.label) (\(size.detail))")
     }
 
     /// The scanner's resolutions, with the one chosen always listed.

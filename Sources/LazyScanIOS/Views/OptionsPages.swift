@@ -205,7 +205,7 @@ struct SeparatePage: View {
     }
 }
 
-/// The Scanner's Source, Sides, Resolution and Color (`ScannerSettingsRows`).
+/// The Scanner's Source, Sides, Paper size, Resolution and Color (`ScannerSettingsRows`).
 struct ScannerPage: View {
     var body: some View {
         OptionsForm(title: IOSOptionsPage.scanner.title) {

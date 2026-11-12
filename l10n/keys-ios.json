@@ -1,4 +1,5 @@
 {"keys": [
+ {"key": "%@ (%@)", "comment": ""},
  {"key": "%@ (default)", "comment": ""},
  {"key": "%@ Not available: %@", "comment": ""},
  {"key": "%@ The document is in the cloud folder; the computer takes it from there.", "comment": ""},
@@ -274,6 +275,7 @@
  {"key": "Pair a computer in Options > My computer first", "comment": ""},
  {"key": "Pair with a computer", "comment": ""},
  {"key": "Paper", "comment": ""},
+ {"key": "Paper size", "comment": ""},
  {"key": "Password", "comment": ""},
  {"key": "Paused: too warm", "comment": ""},
  {"key": "Photo", "comment": ""},
