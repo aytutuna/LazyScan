@@ -45,7 +45,7 @@ public partial class MainWindow
     {
         if (_zoom is { } zoom && CanvasImage.Source is BitmapSource source)
         {
-            double dip = zoom / VisualTreeHelper.GetDpi(CanvasImage).DpiScaleX;
+            double dip = zoom / (VisualTreeHelper.GetDpi(CanvasImage).DpiScaleX * TextScale.Factor);
             CanvasImage.Width = source.PixelWidth * dip;
             CanvasImage.Height = source.PixelHeight * dip;
             CanvasImage.Effect = null;
@@ -85,7 +85,7 @@ public partial class MainWindow
         double ch = CanvasHost.ActualHeight - margin * 2;
         if (cw <= 0 || ch <= 0) return 1;
         double dip = Math.Min(cw / source.Width, ch / source.Height);
-        return dip * source.Width * VisualTreeHelper.GetDpi(CanvasImage).DpiScaleX / source.PixelWidth;
+        return dip * source.Width * VisualTreeHelper.GetDpi(CanvasImage).DpiScaleX * TextScale.Factor / source.PixelWidth;
     }
 
     private double ZoomLimit()

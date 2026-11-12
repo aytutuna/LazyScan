@@ -5,7 +5,7 @@
         xmlns:local="clr-namespace:LazyScan.App"
         xmlns:core="clr-namespace:LazyScan.Core;assembly=LazyScan.Core"
         Title="Lazy Scan"
-        Width="1200" Height="800" MinWidth="700" MinHeight="560"
+        Width="1200" Height="800" MinWidth="700" MinHeight="440"
         WindowStartupLocation="CenterScreen"
         Icon="{x:Static local:AppIcon.Image}"
         FontFamily="{StaticResource TextFontFamily}"

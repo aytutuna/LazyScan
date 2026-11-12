@@ -29,6 +29,7 @@ public partial class App : Application
         _instance?.Listen(args => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.OpenFromOtherProcess(args)));
         // Apply the saved appearance before the first window is created.
         ThemeService.Initialize();
+        TextScale.Initialize();
         // Texts come from the satellite folder of the nearest shipped language; the format culture stays.
         var shipped = Directory.GetDirectories(AppContext.BaseDirectory)
             .Where(d => File.Exists(Path.Combine(d, "LazyScan.Core.resources.dll")))

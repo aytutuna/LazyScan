@@ -27,6 +27,10 @@ public partial class MainWindow : Window
     {
         FlowDirection = App.Flow;
         InitializeComponent();
+        double available = SystemParameters.WorkArea.Height;
+        MinHeight = Math.Min(MinHeight, available);
+        Height = Math.Min(Height, available);
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width);
         CancelButton.ToolTip = Loc.T("Esc");
         if (CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft) LazyScan.App.Icon.SetGlyph(SkipStepButton, "");
         ViewModel = new AppViewModel();
@@ -2628,6 +2632,7 @@ public partial class MainWindow : Window
     {
         UpdateMarquee();
         if (_zoom is null) SyncZoomButtons();
+        else ApplyZoom();
         // In a small stage the full empty state would wrap and clip: keep just the title and text.
         bool compact = CanvasHost.ActualWidth < 300 || CanvasHost.ActualHeight < 300;
         CanvasHintGlyph.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
