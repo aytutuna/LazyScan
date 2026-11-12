@@ -54,22 +54,34 @@ public sealed class SingleInstance : IDisposable
     }
 
     /// <summary>Calls <paramref name="onArgs"/> on a pool thread for each set of arguments another process sends.</summary>
-    public void Listen(Action<string[]> onArgs) => _ = Task.Run(() => Serve(onArgs));
-
-    private async Task Serve(Action<string[]> onArgs)
+    public void Listen(Action<string[]> onArgs)
     {
+        // The first pipe exists when this returns, so a process started right after cannot find none.
+        var first = TryCreateServer();
+        if (first is not null) _ = Task.Run(() => Serve(first, onArgs));
+    }
+
+    private NamedPipeServerStream? TryCreateServer()
+    {
+        try
+        {
+            return new NamedPipeServerStream(_name, PipeDirection.In, 1,
+                PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private async Task Serve(NamedPipeServerStream first, Action<string[]> onArgs)
+    {
+        NamedPipeServerStream? next = first;
         while (!_stop.IsCancellationRequested)
         {
-            NamedPipeServerStream server;
-            try
-            {
-                server = new NamedPipeServerStream(_name, PipeDirection.In, 1,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                return;
-            }
+            var server = next ?? TryCreateServer();
+            if (server is null) return;
+            next = null;
             await using var _ = server;
             try
             {
