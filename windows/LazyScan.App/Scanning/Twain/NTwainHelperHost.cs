@@ -1,9 +1,8 @@
-using LazyScan.App.Scanning.Twain;
 using LazyScan.Core;
 
-namespace LazyScan.TwainHelper;
+namespace LazyScan.App.Scanning.Twain;
 
-/// <summary>The helper's TWAIN: NTwain against the 32-bit Data Source Manager, through the app's own session code.</summary>
+/// <summary>TWAIN in this process: NTwain against the Data Source Manager of its bitness, through <see cref="NTwainSessionHost"/>.</summary>
 internal sealed class NTwainHelperHost : ITwainHelperHost
 {
     private readonly NTwainSessionHost _session = new();

@@ -96,6 +96,8 @@ UI per platform** architecture:
 - **`LazyScan.TwainHelper`** — the 32-bit TWAIN helper (x86, .NET 10): a small console
   program without a window that the app starts when a scanner driver is installed only for
   32-bit programs (see [TWAIN](#twain)). The app's build copies it next to `LazyScan.exe`.
+- **`LazyScan.TwainHelper64`** — the same program built for x64, which runs 64-bit drivers
+  outside the app when `LAZYSCAN_TWAIN_HELPER64=1` is set (see [TWAIN](#twain)).
 - **`LazyScan.App`** — the native Windows shell (WPF, .NET 10): main window with
   sidebar/inspector/preview-canvas/page-strip/photo-review, a view-model porting the shared Swift
   `AppState` orchestration, and Windows service implementations (WIA, Windows Scan, eSCL and TWAIN
@@ -1794,6 +1796,14 @@ same scanners through ImageCaptureCore.
   - A source's resolutions cross the pipe as runs (first value, step, count), so a driver that
     reports a fine range such as 50 to 9600 dpi in 1 dpi steps offers the same resolutions as it
     would in-process.
+- **64-bit helper (experimental, off by default).** With the environment variable
+  `LAZYSCAN_TWAIN_HELPER64=1`, `TwainScannerBackend` lists and opens 64-bit drivers through
+  `LazyScan.TwainHelper64.exe` (`RemoteTwainHelperHost`, the same protocol and process handling as
+  above) instead of loading the Data Source Manager in the app, so a driver that faults or hangs
+  ends only the helper, and the next listing or scan starts a new one. Sources keep their
+  `twain:` ids. The Store package carries it for x64 in `Twain64`. Checked with the stand-in
+  scanners only (`TwainHelperTests`); no 64-bit driver has been tried, and the helper's error
+  texts still say "32-bit".
 - **Installed, not connected.** TWAIN lists installed drivers, so a scanner that is off still
   has a row (captioned "TWAIN driver" when no other connection reaches it). Connecting then
   says the scanner is offline. The app therefore never picks such a row on its own (at start,

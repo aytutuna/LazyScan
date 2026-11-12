@@ -22,6 +22,7 @@
   <ItemGroup>
     <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainDriver.cs" Link="Shared\NTwainDriver.cs" />
     <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainSessionHost.cs" Link="Shared\NTwainSessionHost.cs" />
+    <Compile Include="..\LazyScan.App\Scanning\Twain\NTwainHelperHost.cs" Link="Shared\NTwainHelperHost.cs" />
   </ItemGroup>
 
   <ItemGroup>

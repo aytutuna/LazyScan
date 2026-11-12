@@ -15,10 +15,12 @@ namespace LazyScan.App.Scanning.Twain;
 /// <param name="HelperPath">LazyScan.TwainHelper.exe; the build puts it next to the app.</param>
 /// <param name="Simulate">Start the helper with its stand-in scanners instead of TWAIN (for tests).</param>
 /// <param name="StartTimeout">How long the helper has to connect to the app's pipe.</param>
+/// <param name="Bits">The bitness the helper must report (32, or 64 for the 64-bit helper).</param>
 internal sealed record TwainHelperOptions(string HelperPath, bool Simulate = false, TimeSpan? StartTimeout = null,
-                                          TwainHelperTimeouts? Timeouts = null)
+                                          TwainHelperTimeouts? Timeouts = null, int Bits = 32)
 {
     public const string FileName = "LazyScan.TwainHelper.exe";
+    public const string FileName64 = "LazyScan.TwainHelper64.exe";
 
     // The Store package carries a self-contained copy in Twain; a build from source has the framework-dependent one beside the app.
     public static TwainHelperOptions Default
@@ -28,6 +30,18 @@ internal sealed record TwainHelperOptions(string HelperPath, bool Simulate = fal
             // "Twain" is the folder scripts/make_msix.ps1 puts the helper in.
             string packaged = Path.Combine(AppContext.BaseDirectory, "Twain", FileName);
             return new(File.Exists(packaged) ? packaged : Path.Combine(AppContext.BaseDirectory, FileName));
+        }
+    }
+
+    /// <summary>Runs 64-bit TWAIN drivers in the 64-bit helper instead of in the app (off unless LAZYSCAN_TWAIN_HELPER64 is 1).</summary>
+    public static bool Helper64Enabled => Environment.GetEnvironmentVariable("LAZYSCAN_TWAIN_HELPER64") == "1";
+
+    public static TwainHelperOptions Default64
+    {
+        get
+        {
+            string packaged = Path.Combine(AppContext.BaseDirectory, "Twain64", FileName64);
+            return new(File.Exists(packaged) ? packaged : Path.Combine(AppContext.BaseDirectory, FileName64), Bits: 64);
         }
     }
 
@@ -172,7 +186,7 @@ internal sealed class TwainHelperProcess : IDisposable
         if (!File.Exists(path))
         {
             _permanentFailure = () => Loc.T("the 32-bit TWAIN helper ({0}) is missing from Lazy Scan's folder. Reinstall Lazy Scan.",
-                                            TwainHelperOptions.FileName);
+                                            Path.GetFileName(path));
             throw ScanException.DeviceUnavailable(_permanentFailure);
         }
         string pipeName = $"LazyScan.TwainHelper.{Environment.ProcessId}.{Guid.NewGuid():N}";
@@ -197,7 +211,7 @@ internal sealed class TwainHelperProcess : IDisposable
             // helper's 32-bit host would load that runtime's host library and fail. Without it, it
             // finds the 32-bit runtime (DOTNET_ROOT_X86, DOTNET_ROOT(x86), the registered or the
             // default location).
-            start.Environment.Remove("DOTNET_ROOT");
+            if (_options.Bits == 32) start.Environment.Remove("DOTNET_ROOT");
             start.ArgumentList.Add("--pipe");
             start.ArgumentList.Add(pipeName);
             start.ArgumentList.Add("--parent");
@@ -261,7 +275,7 @@ internal sealed class TwainHelperProcess : IDisposable
         connection.Lost += _ => Kill(process);
         try
         {
-            connection.Handshake(_options.Limits.Hello);
+            connection.Handshake(_options.Limits.Hello, _options.Bits);
         }
         catch
         {

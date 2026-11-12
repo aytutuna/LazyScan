@@ -17,7 +17,8 @@ missing from the package or the helper's folders differ from the app's.
 The corner model (scripts/fetch_docaligner.sh) and THIRD-PARTY-NOTICES.txt must be in the checkout.
 
 The app is published without a reference to the 32-bit TWAIN helper (SkipTwainHelper), which is published on
-its own for win-x86 and goes into the package's Twain folder.
+its own for win-x86 and goes into the package's Twain folder. The x64 package also gets the 64-bit helper
+(win-x64, Twain64 folder), which the app uses only when LAZYSCAN_TWAIN_HELPER64=1 is set.
 #>
 param(
     [Parameter(Mandatory)] [string] $Out,
@@ -70,7 +71,7 @@ function Get-LanguageFolders([string] $folder) {
         ForEach-Object Name | Sort-Object)
 }
 
-function New-Package([string] $arch, [string] $helper) {
+function New-Package([string] $arch, [string] $helper, [string] $helper64) {
     $publish = Join-Path $work "publish-$arch"
     Publish 'windows\LazyScan.App\LazyScan.App.csproj' "win-$arch" $publish @('-p:SkipTwainHelper=true')
     if (-not (Test-Path (Join-Path $publish 'LazyScan.exe'))) { throw "LazyScan.exe is not in $publish" }
@@ -85,12 +86,20 @@ function New-Package([string] $arch, [string] $helper) {
     if (($folders -join ' ') -ne ($other -join ' ')) { throw "$publish holds the languages ($folders) but $list lists ($other)" }
     $helperFolders = Get-LanguageFolders $helper
     if (($helperFolders -join ' ') -ne ($folders -join ' ')) { throw "The TWAIN helper holds the languages ($helperFolders), the app ($folders)" }
+    if ($arch -eq 'x64') {
+        $helper64Folders = Get-LanguageFolders $helper64
+        if (($helper64Folders -join ' ') -ne ($folders -join ' ')) { throw "The 64-bit TWAIN helper holds the languages ($helper64Folders), the app ($folders)" }
+    }
 
     $stage = Join-Path $work "stage-$arch"
     robocopy $publish $stage /E /XF *.pdb *.lib /NFL /NDL /NJH /NJS /NP | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
     robocopy $helper (Join-Path $stage 'Twain') /E /XF *.pdb *.lib /NFL /NDL /NJH /NJS /NP | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+    if ($arch -eq 'x64') {
+        robocopy $helper64 (Join-Path $stage 'Twain64') /E /XF *.pdb *.lib /NFL /NDL /NJH /NJS /NP | Out-Null
+        if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+    }
     Copy-Item (Join-Path $store 'Assets') (Join-Path $stage 'Assets') -Recurse
 
     # The runtime's own third-party notices, from the runtime pack named in the publish's deps.json.
@@ -131,8 +140,10 @@ try {
     # The helper is the same for both packages.
     $helper = Join-Path $work 'twain-x86'
     Publish 'windows\LazyScan.TwainHelper\LazyScan.TwainHelper.csproj' 'win-x86' $helper
+    $helper64 = Join-Path $work 'twain-x64'
+    if ($Arch -contains 'x64') { Publish 'windows\LazyScan.TwainHelper64\LazyScan.TwainHelper64.csproj' 'win-x64' $helper64 }
 
-    $packages = @($Arch | ForEach-Object { New-Package $_ $helper })
+    $packages = @($Arch | ForEach-Object { New-Package $_ $helper $helper64 })
 
     $upload = Join-Path $work 'upload'
     New-Item -ItemType Directory -Path $upload | Out-Null

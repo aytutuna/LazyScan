@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Pipes;
+using LazyScan.App.Scanning.Twain;
 using LazyScan.Core;
 
 namespace LazyScan.TwainHelper;

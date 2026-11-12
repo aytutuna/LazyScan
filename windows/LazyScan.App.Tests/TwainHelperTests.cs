@@ -239,6 +239,50 @@ public class TwainHelperTests
         await session.CloseAsync();
     }
 
+    [Fact]
+    public async Task SixtyFourBitHelper_ListsAndScans_AndACrashOrHangEndsOnlyTheHelper()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, TwainHelperOptions.FileName64);
+        var timeouts = TwainHelperTimeouts.Default with { Request = TimeSpan.FromSeconds(10) };
+        using var host = new RemoteTwainHelperHost(new TwainHelperOptions(path, Simulate: true, Timeouts: timeouts, Bits: 64));
+        var backend = new TwainScannerBackend(host);
+        var listed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        backend.DevicesChanged += () => listed.TrySetResult();
+        backend.StartBrowsing();
+        await listed.Task.WaitAsync(TimeSpan.FromSeconds(120));
+
+        Assert.Equal(TwainAvailability.Available, backend.Availability);
+        Assert.Contains(backend.Devices, d => d.Id == "twain:" + Scanner && d.Backend == "twain");
+        int first = host.ProcessId ?? throw new Xunit.Sdk.XunitException("No helper is running.");
+        Assert.NotEqual(Environment.ProcessId, first);
+        using (var process = Process.GetProcessById(first))
+        {
+            Assert.True(IsWow64Process(process.Handle, out bool wow64));
+            Assert.False(wow64);
+        }
+
+        var session = await backend.OpenSessionAsync("twain:" + Scanner);
+        Assert.Single(await session.PerformScanAsync(Gray(ScanSource.Flatbed), null));
+        await session.CloseAsync();
+
+        var crashing = await backend.OpenSessionAsync("twain:Lazy Scan Simulated Crash");
+        await crashing.GetCapabilitiesAsync();
+        var error = await Assert.ThrowsAsync<ScanException>(() => crashing.PerformScanAsync(Gray(ScanSource.Flatbed), null));
+        Assert.Equal(ScanException.ScanFailed(TwainHelperConnection.StoppedMessage).Message, error.Message);
+        Assert.True(await ExitsWithin(first, TimeSpan.FromSeconds(15)));
+        await crashing.CloseAsync();
+
+        var hanging = await backend.OpenSessionAsync("twain:Lazy Scan Simulated Hang");
+        error = await Assert.ThrowsAsync<ScanException>(hanging.GetCapabilitiesAsync);
+        Assert.Equal(ScanException.ScanFailed(TwainHelperConnection.NotRespondingMessage).Message, error.Message);
+        await hanging.CloseAsync();
+
+        session = await backend.OpenSessionAsync("twain:" + Scanner);
+        Assert.Equal(3, (await session.PerformScanAsync(Gray(ScanSource.DocumentFeeder), null)).Count);
+        Assert.NotEqual(first, host.ProcessId);
+        await session.CloseAsync();
+    }
+
     [HelperFact]
     public async Task AHang_TimesOut_StopsTheHelper_AndTheNextScanWorks()
     {

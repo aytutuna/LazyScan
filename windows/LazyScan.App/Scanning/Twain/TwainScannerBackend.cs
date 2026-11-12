@@ -10,7 +10,9 @@ namespace LazyScan.App.Scanning.Twain;
 /// (<see cref="TwainThread"/>), so a driver that hangs never blocks the UI.
 /// 64-bit: this process can load only 64-bit data sources (C:\Windows\twain_64); drivers
 /// installed only in 32-bit form are reached through the 32-bit helper instead
-/// (<see cref="Twain32ScannerBackend"/>).
+/// (<see cref="Twain32ScannerBackend"/>). With <see cref="TwainHelperOptions.Helper64Enabled"/>
+/// the 64-bit drivers run in a 64-bit helper process as well (<see cref="RemoteTwainHelperHost"/>),
+/// so one that faults or hangs ends only the helper.
 ///
 /// TWAIN lists installed drivers, not connected scanners: a scanner that is off or unplugged
 /// is still listed, and connecting to it reports it offline (CAP_DEVICEONLINE); the app
@@ -20,7 +22,7 @@ namespace LazyScan.App.Scanning.Twain;
 ///
 /// Experimental, untested against real TWAIN drivers (see <see cref="NTwainDriver"/>).
 /// </summary>
-public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, IScannerBackendDiagnostics
+public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, IScannerBackendDiagnostics, IDisposable
 {
     /// <summary>Longest wait for the driver list (the data source manager loads every driver to ask its name).</summary>
     internal static readonly TimeSpan EnumerateTimeout = TimeSpan.FromSeconds(60);
@@ -46,8 +48,10 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     public IReadOnlyList<ScannerInfo> Devices => _devices;
 
     private readonly Lazy<TwainThread> _thread = new(() => new TwainThread());
-    /// <summary>The process-wide TWAIN session; only touched on the TWAIN thread.</summary>
-    private readonly NTwainSessionHost _host = new();
+    /// <summary>The TWAIN session, in this process or in the 64-bit helper; only touched on the TWAIN thread.</summary>
+    private readonly ITwainHelperHost _host;
+    private readonly TimeSpan _enumerateTimeout = EnumerateTimeout;
+    private readonly TimeSpan _openTimeout = OpenTimeout;
     private SynchronizationContext? _context;
     /// <summary>Bumped by every Start/StopBrowsing; results of an older enumeration are dropped.</summary>
     private int _generation;
@@ -59,6 +63,22 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     /// reports Failed twice (once on the time limit, once when it returns), and one retry covers both.
     /// </summary>
     private int? _retryPending;
+
+    public TwainScannerBackend()
+        : this(TwainHelperOptions.Helper64Enabled ? new RemoteTwainHelperHost(TwainHelperOptions.Default64) : new NTwainHelperHost(),
+               TwainHelperOptions.Helper64Enabled ? TwainHelperOptions.Default64 : null)
+    {
+    }
+
+    /// <param name="remote">The helper's options when <paramref name="host"/> runs the session in the helper; its calls may first have to start it.</param>
+    internal TwainScannerBackend(ITwainHelperHost host, TwainHelperOptions? remote = null)
+    {
+        _host = host;
+        if (remote is null) return;
+        var start = remote.ConnectTimeout + remote.Limits.Hello + TimeSpan.FromSeconds(10);
+        _enumerateTimeout = start + remote.Limits.ListSources;
+        _openTimeout = start + remote.Limits.Open;
+    }
 
     /// <summary>Whether TWAIN could be used, as of the last enumeration.</summary>
     public TwainAvailability Availability { get; private set; } = TwainAvailability.Unknown;
@@ -127,7 +147,7 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
         try
         {
             // A listing that overran is still published when it finally returns.
-            found = await Worker.RunAsync(EnumerateOnTwainThread, EnumerateTimeout,
+            found = await Worker.RunAsync(EnumerateOnTwainThread, _enumerateTimeout,
                                           whenAbandoned: late => Publish(generation, late)).ConfigureAwait(false);
         }
         catch (Exception e)
@@ -182,9 +202,10 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
     private (TwainAvailability, List<ScannerInfo>, List<string>) EnumerateOnTwainThread()
     {
         var thirtyTwoBitOnly = ThirtyTwoBitOnlySources();
-        var availability = _host.EnsureSession();
+        var listed = _host.ListSources();
+        var availability = listed.Availability;
         if (availability != TwainAvailability.Available) return (availability, [], thirtyTwoBitOnly);
-        var sources = _host.Sources()
+        var sources = listed.Sources
             .Where(source => !string.IsNullOrWhiteSpace(source.Name))
             .Select(source => new ScannerInfo($"twain:{source.Name}", source.Name.Trim(), "TWAIN", Backend: "twain",
                                               Model: WiaScannerBackend.ModelOf(source.Manufacturer, source.Name)))
@@ -225,9 +246,14 @@ public sealed class TwainScannerBackend : IScannerBackend, IBackendDiagnostics, 
         }
         string name = deviceId["twain:".Length..];
         // A source that opens after the time limit has nobody to use it: close it at once.
-        var driver = await Worker.RunAsync(() => _host.Open(name), OpenTimeout, whenAbandoned: late => late.Close());
-        return new TwainScannerSession(info, Worker, driver, driver.Close);
+        var driver = await Worker.RunAsync(() => _host.Open(name), _openTimeout, whenAbandoned: _host.Close);
+        var session = new TwainScannerSession(info, Worker, driver, () => _host.Close(driver));
+        if (driver is RemoteTwainTransport remote) remote.ProgressHandler = progress => session.ProgressHandler?.Invoke(progress);
+        return session;
     }
+
+    /// <summary>Ends the 64-bit helper, if one runs (the app is closing).</summary>
+    public void Dispose() => (_host as IDisposable)?.Dispose();
 }
 
 /// <summary>An open TWAIN data source. All driver calls are queued to the backend's <see cref="TwainThread"/>.</summary>

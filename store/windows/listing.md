@@ -81,7 +81,7 @@ The package declares `runFullTrust` and nothing else. Partner Center asks for a 
 
 ## Notes for certification
 
-> No account or sign-in is needed. To try the app without a scanner, pick Demo Scanner in the scanner list on the left, then press Scan: it produces sample pages and photos. The app listens for a phone only after a phone is paired, so nothing needs a second device. The package carries a 32-bit helper (Twain\LazyScan.TwainHelper.exe) that is started only when a scanner has a 32-bit TWAIN driver.
+> No account or sign-in is needed. To try the app without a scanner, pick Demo Scanner in the scanner list on the left, then press Scan: it produces sample pages and photos. The app listens for a phone only after a phone is paired, so nothing needs a second device. The package carries a 32-bit helper (Twain\LazyScan.TwainHelper.exe) that is started only when a scanner has a 32-bit TWAIN driver. The x64 package also carries a 64-bit copy (Twain64\LazyScan.TwainHelper64.exe), which is started only when LAZYSCAN_TWAIN_HELPER64=1 is set.
 
 ## What only the owner can do in Partner Center
 
