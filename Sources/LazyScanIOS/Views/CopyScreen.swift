@@ -8,12 +8,15 @@ import UIKit
 /// large, with how many there are when several, then Copies, Fit to page (on and fixed, with why, when a
 /// page has no known size), Also save a PDF, the printer the copy goes to and the status while it prints;
 /// Print shows AirPrint's printer picker, Copy again prints on the printer picked last without it, and
-/// Discard lets the pages go and closes the screen (Close, for the queue's pages printed from Options,
-/// which stay in the queue; the screen is then Print, with Print again). It stays open after printing, for
-/// another copy. It shows the error alert itself, since the root's cannot show over it.
+/// Add page closes the screen to shoot another page into the copy, which comes back with it; Discard lets
+/// the pages go and closes the screen (Close, for the queue's pages printed from Options, which stay in
+/// the queue; the screen is then Print, with Print again, and no Add page). It stays open after printing,
+/// for another copy, with Done instead of Discard and no Add page. It shows the error alert itself, since the root's cannot show over it.
 struct CopyScreen: View {
     @ObservedObject var model: IOSCopyModel
     @EnvironmentObject private var state: AppState
+    /// Closes the screen with the pages kept, so the camera can take another.
+    let onAddPage: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -36,6 +39,12 @@ struct CopyScreen: View {
                 ToolbarItem(placement: .cancellationAction) {
                     if state.copyIsOfQueue {
                         Button(IOSCopyText.closeLabel) {
+                            model.discard()
+                        }
+                        .disabled(!model.canAct)
+                        .accessibilityIdentifier("copy.discard")
+                    } else if model.exitIsDone {
+                        Button(IOSCopyText.doneLabel) {
                             model.discard()
                         }
                         .disabled(!model.canAct)
@@ -99,6 +108,18 @@ struct CopyScreen: View {
                 .foregroundStyle(Color.secondary)
                 .lineLimit(2)
                 .accessibilityIdentifier("copy.status")
+            if model.offersAddPage {
+                Button {
+                    onAddPage()
+                } label: {
+                    Label(IOSCopyText.addPageLabel, systemImage: "plus.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!model.canAct)
+                .accessibilityHint(Text(IOSCopyText.addPageHint))
+                .accessibilityIdentifier("copy.addPage")
+            }
             HStack(spacing: 12) {
                 if let printer = model.printerName {
                     Button {

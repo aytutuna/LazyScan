@@ -17,6 +17,9 @@ public enum IOSCopyText {
     public static var discardLabel: String { String(localized: "Discard") }
     public static var discardHint: String { String(localized: "Delete the page; can't be undone") }
     public static var closeLabel: String { String(localized: "Close") }
+    public static var doneLabel: String { String(localized: "Done") }
+    public static var addPageLabel: String { String(localized: "Add page") }
+    public static var addPageHint: String { String(localized: "Shoot another page of this copy") }
     // The queue's pages (Save's Print…, After saving's Print) are printed, not copied.
     public static var printTitle: String { String(localized: "Print") }
     public static var printPageName: String { String(localized: "Page to print") }
@@ -131,6 +134,13 @@ public final class IOSCopyModel: ObservableObject {
         guard canAct, offersCopyAgain else { return }
         state.printHeldCopyAgain()
     }
+
+    /// Another page can be shot into this copy: not the queue's pages, and not once printed, since a page
+    /// after a print starts a new copy.
+    public var offersAddPage: Bool { !state.copyIsOfQueue && !state.copyIsPrinted }
+
+    /// The exit reads Done once the copy has printed, Discard before.
+    public var exitIsDone: Bool { !state.copyIsOfQueue && state.copyIsPrinted }
 
     public func discard() {
         guard canAct else { return }

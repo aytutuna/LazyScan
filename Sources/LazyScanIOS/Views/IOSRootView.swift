@@ -551,7 +551,8 @@ public struct IOSRootView: View {
 
     /// `task` is set up when given; otherwise the task set up is kept (every task takes photos), and Document
     /// to PDF is set up when there is none or it is the photocopy, which holds one batch of pages; a copy still
-    /// held keeps its task and the import is refused, as a held Quick scan is. The share sheet, Mail
+    /// held keeps its task (the import is appended to a copy not printed yet, refused once it has printed or for
+    /// the queue's pages), as a held Quick scan's import is refused. The share sheet, Mail
     /// and Quick Look close, since the corner editor cannot show over them, and the scan screen is shown. True
     /// when it was brought to the front now (shown on the iPad, the library closed on the iPhone, or what was
     /// presented over it closed).

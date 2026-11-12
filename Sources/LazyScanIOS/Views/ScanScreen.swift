@@ -255,6 +255,12 @@ struct ScanScreen: View {
                     saveAfterCoverCloses()
                 }
             }
+            .onChange(of: state.copyPages.count) { (old: Int, count: Int) in
+                // A page added to a held copy brings the copy screen back.
+                if old > 0 && count > old {
+                    showReview(true, as: .copy)
+                }
+            }
             .onChange(of: state.isBusy) { (_: Bool, busy: Bool) in
                 if !busy && savesAfterHandoff {
                     savesAfterHandoff = false
@@ -2006,7 +2012,7 @@ struct ScanCovers: ViewModifier {
                     QuickScanScreen(model: IOSQuickScanModel(state: state))
                         .environmentObject(state)
                 case .copy:
-                    CopyScreen(model: IOSCopyModel(state: state))
+                    CopyScreen(model: IOSCopyModel(state: state), onAddPage: closeCover)
                         .environmentObject(state)
                 }
             }

@@ -194,7 +194,7 @@ public enum IOSImportText {
     }
     /// An import refused while a copy is held on the copy screen (the queue's pages after Print…, or a photocopy).
     public static var copyHeldMessage: String { String(localized: "Print or discard the copy first; nothing was imported.") }
-    /// What a photocopy's import left out once its first page was held as the copy.
+    /// What an import left out once the copy held took no more pages.
     public static func copyFullMessage(_ count: Int) -> String {
         L10n.plural(count, one: "Print or discard the copy first; the other one was not added.", other: "Print or discard the copy first; the other {0} were not added.")
     }
@@ -742,13 +742,13 @@ public final class IOSImportSession: ObservableObject {
 
     /// Waits until nothing else runs; true when the kind has taken all it takes (Text's page is held for its
     /// screen, or the ID card's steps are past its sides) or nothing comes in until the user is done (a copy
-    /// is held, or a stack is being turned over by hand). The `left` pages of the item in hand and what waits
-    /// are then left out (`leftOut`), said once at the end rather than as pages that could not be added.
+    /// is held that takes no more pages, or a stack is being turned over by hand). The `left` pages of the
+    /// item in hand and what waits are then left out (`leftOut`), said once at the end rather than as pages that could not be added.
     private func isFull(leaving left: Int) async -> Bool {
         await waitUntilIdle()
         let card: Bool = TaskCatalog.flow(of: state.settings) == .idCard && state.taskFlow != nil
         let cardIn: Bool = card && (state.showIdCardReview || IdCardSteps.sideOf(state.taskFlow?.current?.id) == nil)
-        guard cardIn || state.quickScanPage != nil || !state.copyPages.isEmpty || state.isStackUnderWay else { return false }
+        guard cardIn || state.quickScanPage != nil || copyIsFull || state.isStackUnderWay else { return false }
         leftOut += left + pending.count
         pending.removeAll()
         return true
@@ -757,13 +757,16 @@ public final class IOSImportSession: ObservableObject {
     /// The one line for what `isFull` left out of an import that added `added` pages. A copy held before
     /// anything came in refused the whole import, so its line says nothing was imported.
     private func leftOutMessage(added: Int) -> String {
-        if !state.copyPages.isEmpty {
+        if copyIsFull {
             return added > 0 ? IOSImportText.copyFullMessage(leftOut) : IOSImportText.copyHeldMessage
         }
         if state.isStackUnderWay { return IOSImportText.sidesInProgressMessage }
         if TaskCatalog.flow(of: state.settings) == .idCard { return IOSImportText.cardFullMessage(leftOut) }
         return IOSImportText.textTakesOneMessage(leftOut)
     }
+
+    /// A copy is held that takes no more pages: it has printed, or it is the queue's.
+    private var copyIsFull: Bool { !state.copyPages.isEmpty && !state.addsToHeldCopy }
 
     /// Waits until nothing else runs; true when the state can take pages then (`AppState.canIngest`).
     private func canTakePages() async -> Bool {

@@ -1546,12 +1546,19 @@ public final class AppState: ObservableObject {
     /// Pages can be brought in now (`ingest`): nothing else is running, no stack turned over by hand is
     /// under way (`isStackUnderWay`; between stacks they come in), and neither the photo or receipt
     /// review nor the ID card's review is open (new pages would replace what is being reviewed), and no
-    /// Quick scan page or copy is held on the phone. The same rule as `canImportPhotos` without its
+    /// Quick scan page is held on the phone, nor a copy that has printed or is the queue's (an unprinted
+    /// copy takes more pages, `addsToHeldCopy`). The same rule as `canImportPhotos` without its
     /// settings check, and as the Windows
     /// `AppViewModel.CanTakePhonePages`.
     public var canIngest: Bool {
         !isBusy && !isStackUnderWay && !showPhotoReview && !showIdCardReview && quickScanPage == nil
-            && (copyPages.isEmpty || copyIsKept)
+            && (copyPages.isEmpty || copyIsKept || addsToHeldCopy)
+    }
+
+    /// A copy held on the phone that has not printed yet takes more pages after the ones held (`holdCopy`);
+    /// the queue's pages held for Print… do not, nor does a copy that has printed.
+    public var addsToHeldCopy: Bool {
+        holdsCopy(settings) && !copyIsOfQueue && !copyPagesRecorded
     }
 
     /// The clean-up stage for pages from `source`: a scan's (`PageProcessor.forScan`, arranged as
@@ -1768,7 +1775,7 @@ public final class AppState: ObservableObject {
         case .copy:
             self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             if copyHeld {
-                self.holdCopy(processed, areaSelected: intake.areaSelected)
+                self.holdCopy(processed, areaSelected: intake.areaSelected, appending: true)
                 break
             }
             guard let copySetup = intake.copySetup else { throw PrintError.noPrinter }

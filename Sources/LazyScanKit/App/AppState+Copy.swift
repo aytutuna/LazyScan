@@ -313,10 +313,12 @@ extension AppState {
     }
 
     /// Holds a copy's pages, in memory only, for the copy screen; an area selected on the preview prints
-    /// centred, as on the Mac.
-    func holdCopy(_ pages: [ScannedPage], areaSelected: Bool) {
-        copyPages = pages
-        copyAreaSelected = areaSelected
+    /// centred, as on the Mac. `appending` adds them after the pages already held, in the order shot, to
+    /// print as one job.
+    func holdCopy(_ pages: [ScannedPage], areaSelected: Bool, appending: Bool = false) {
+        let kept = appending && !copyPages.isEmpty
+        copyAreaSelected = areaSelected && (!kept || copyAreaSelected)
+        copyPages = kept ? copyPages + pages : pages
         statusMessage = L10n.t("Copy ready to print.")
     }
 
@@ -384,6 +386,9 @@ extension AppState {
                                           reusePrinter: reusePrinter, flag: flag)
         }
     }
+
+    /// The held copy has been printed, so a page brought in now starts a new copy.
+    public var copyIsPrinted: Bool { copyPagesRecorded }
 
     /// Lets the held copy go.
     public func discardHeldCopy() {

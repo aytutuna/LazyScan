@@ -91,7 +91,7 @@ final class IOSCopyTests: XCTestCase {
         try await idle(state)
         XCTAssertEqual(state.copyPages.count, 1)
         XCTAssertEqual(state.statusMessage, "Copy ready to print.")
-        XCTAssertFalse(state.canIngest)
+        XCTAssertTrue(state.canIngest)
         XCTAssertFalse(state.copyNeedsFit)
         XCTAssertTrue(printer.jobs.isEmpty)
         XCTAssertTrue(state.scannedPages.isEmpty)
@@ -127,6 +127,64 @@ final class IOSCopyTests: XCTestCase {
     }
 
     @MainActor
+    func test_morePagesShot_areAppendedToTheHeldCopy_andPrintInOneJobInOrder() async throws {
+        let printer = CopyPrintService()
+        let state: AppState = makeState(printer)
+        let model = IOSCopyModel(state: state, pickedPrinter: { () -> String? in nil })
+        XCTAssertTrue(state.ingest([page(inches: 4)], source: .photo))
+        try await idle(state)
+        XCTAssertTrue(model.offersAddPage)
+        XCTAssertFalse(model.exitIsDone)
+        let first: UUID = try XCTUnwrap(state.copyPages.first?.id)
+
+        XCTAssertTrue(state.ingest([page(inches: 5)], source: .photo))
+        try await idle(state)
+        let firstTwo: [UUID] = state.copyPages.map { $0.id }
+        XCTAssertEqual(firstTwo.count, 2)
+        XCTAssertEqual(firstTwo.first, first)
+        XCTAssertTrue(state.ingest([page(inches: 6)], source: .photo))
+        try await idle(state)
+        XCTAssertEqual(state.copyPages.count, 3)
+        XCTAssertEqual(state.copyPages.prefix(2).map { $0.id }, firstTwo)
+        XCTAssertEqual(model.pageCountLine, IOSCopyText.pageCount(3))
+
+        state.printHeldCopy()
+        try await idle(state)
+        XCTAssertEqual(printer.jobs.count, 1)
+        XCTAssertEqual(state.statusMessage, PrintText.sent(pageCount: 3, copies: 1, printerName: "Office Printer"))
+        XCTAssertEqual(state.scanHistory.count, 3)
+    }
+
+    @MainActor
+    func test_afterPrinting_theExitIsDone_noPageCanBeAdded_andANewPageStartsANewCopy() async throws {
+        let printer = CopyPrintService()
+        let state: AppState = makeState(printer)
+        let model = IOSCopyModel(state: state, pickedPrinter: { () -> String? in nil })
+        XCTAssertTrue(state.ingest([page(inches: 4)], source: .photo))
+        try await idle(state)
+
+        printer.answer = false
+        state.printHeldCopy()
+        try await idle(state)
+        XCTAssertTrue(model.offersAddPage)
+        XCTAssertFalse(model.exitIsDone)
+
+        printer.answer = true
+        state.printHeldCopy()
+        try await idle(state)
+        XCTAssertTrue(state.copyIsPrinted)
+        XCTAssertFalse(model.offersAddPage)
+        XCTAssertTrue(model.exitIsDone)
+        XCTAssertFalse(state.canIngest)
+        XCTAssertEqual(IOSCopyText.doneLabel, "Done")
+
+        model.discard()
+        XCTAssertTrue(state.copyPages.isEmpty)
+        XCTAssertFalse(state.copyIsPrinted)
+        XCTAssertTrue(state.canIngest)
+    }
+
+    @MainActor
     func test_printFromSave_holdsTheQueuesPages_asPreviews_andClosingKeepsTheQueue() async throws {
         let printer = CopyPrintService()
         let state: AppState = makeState(printer)
@@ -148,6 +206,9 @@ final class IOSCopyTests: XCTestCase {
         XCTAssertEqual(model.title, "Print")
         XCTAssertEqual(model.pageName, "Page to print")
         XCTAssertEqual(model.againLabel, IOSCopyText.printAgainLabel)
+        XCTAssertFalse(model.offersAddPage)
+        XCTAssertFalse(model.exitIsDone)
+        XCTAssertFalse(state.canIngest)
         XCTAssertEqual(IOSCopyText.printAgainLabel, "Print again")
         XCTAssertEqual(state.activeTask, .document)
         XCTAssertEqual(state.scannedPages.count, 1)
@@ -268,8 +329,9 @@ final class IOSCopyTests: XCTestCase {
     }
 
     @MainActor
-    func test_anImport_holdsItsFirstPage_andSaysOnceWhatItLeftOut() async throws {
-        let state: AppState = makeState(CopyPrintService())
+    func test_anImport_addsItsPagesToTheHeldCopy_untilThatCopyIsPrinted() async throws {
+        let printer = CopyPrintService()
+        let state: AppState = makeState(printer)
         let corners: [CGPoint] = [CGPoint(x: 150, y: 80), CGPoint(x: 350, y: 80), CGPoint(x: 350, y: 363),
                                   CGPoint(x: 150, y: 363)]
         let sheet = Quad(topLeft: corners[0], topRight: corners[1], bottomRight: corners[2], bottomLeft: corners[3])
@@ -277,29 +339,32 @@ final class IOSCopyTests: XCTestCase {
         let importer = IOSImportSession(state: state, finder: { (_: RgbaImage) -> IOSFoundPage in found })
         let data: Data = ImportTestSupport.file(UTType.png,
                                                 images: [ImportTestSupport.sheetPhoto(width: 600, height: 450, corners: corners)])
-        let items: [IOSImportItem] = [IOSImportItem(name: "a.png", data: data, kind: .image),
-                                      IOSImportItem(name: "b.png", data: data, kind: .image),
-                                      IOSImportItem(name: "c.png", data: data, kind: .image)]
+        XCTAssertTrue(state.ingest([page(inches: 4)], source: .photo))
+        try await idle(state)
+        XCTAssertEqual(state.copyPages.count, 1)
+
         let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
-            await importer.importItems(items)
+            await importer.importItems([IOSImportItem(name: "a.png", data: data, kind: .image)])
         }
         try await ImportTestSupport.waitUntil(timeout: 60) { importer.cornerRequest != nil }
         importer.answer(PhotoCornersAnswer(choice: .useCorners, corners: sheet))
         let outcome: IOSImportOutcome = await importing.value
         XCTAssertEqual(outcome.added, 1)
-        XCTAssertEqual(state.copyPages.count, 1)
-        XCTAssertEqual(outcome.problems, [IOSImportText.copyFullMessage(2)])
-        XCTAssertEqual(state.errorMessage, "Print or discard the copy first; the other 2 were not added.")
-        XCTAssertNil(importer.cornerRequest)
-        XCTAssertEqual(IOSImportText.copyFullMessage(1), "Print or discard the copy first; the other one was not added.")
+        try await idle(state)
+        XCTAssertEqual(state.copyPages.count, 2)
+        XCTAssertTrue(outcome.problems.isEmpty)
 
-        // With the copy held nothing more comes in, and the line says why.
-        state.errorMessage = nil
+        // Once printed, the copy takes no more and the line says why.
+        state.printHeldCopy()
+        try await idle(state)
+        XCTAssertTrue(state.copyIsPrinted)
         let refused: IOSImportOutcome = await importer.importItems([IOSImportItem(name: "d.png", data: data, kind: .image)])
         XCTAssertEqual(refused.added, 0)
         XCTAssertEqual(refused.problems, [IOSImportText.copyHeldMessage])
         XCTAssertNil(importer.cornerRequest)
-        XCTAssertEqual(state.copyPages.count, 1)
+        XCTAssertEqual(state.copyPages.count, 2)
+        XCTAssertEqual(IOSImportText.copyFullMessage(2), "Print or discard the copy first; the other 2 were not added.")
+        XCTAssertEqual(IOSImportText.copyFullMessage(1), "Print or discard the copy first; the other one was not added.")
     }
 
     @MainActor
