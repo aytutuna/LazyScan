@@ -9,10 +9,10 @@ import ImageIO
 /// `AppViewModel.Split.cs`.
 extension AppState {
     /// The documents the queue is saved as, and what saving does with each page, under the current settings.
-    public var queuePlan: SplitPlan { DocumentSplitter.plan(scannedPages, options: settings.document) }
+    public var queuePlan: SplitPlan { queuePlans.split }
 
     /// What saving the queue writes under the current settings.
-    public var queueSavePlan: SavePlan { SavePlan.make(scannedPages, options: settings.document) }
+    public var queueSavePlan: SavePlan { queuePlans.save }
 
     /// The status after a scan's pages were queued: the blank pages among them (not counting the
     /// separators), what crop and straighten did, the pages turned upright, and the separator pages

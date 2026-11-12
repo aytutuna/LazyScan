@@ -11,7 +11,7 @@ import Foundation
 extension AppState {
     /// There are pages the queue would save, nothing else is running and Lazy Print is installed.
     public var canPrintQueueWithLazyPrint: Bool {
-        !isBusy && SavePlan.make(scannedPages, options: settings.document).pageCount > 0 && lazyPrintInstalled
+        !isBusy && queuePlans.save.pageCount > 0 && lazyPrintInstalled
     }
 
     /// Opens the pages the queue would save (the ones left out stay out) as one PDF in Lazy Print. The

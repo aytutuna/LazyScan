@@ -10,7 +10,7 @@ import Foundation
 extension AppState {
     /// There are pages to add (some are not left out), in reading order, and nothing else is running.
     public var canAppendPages: Bool {
-        !isBusy && !sidesNeedOrder && SavePlan.make(scannedPages, options: settings.document).pageCount > 0
+        !isBusy && !sidesNeedOrder && queuePlans.save.pageCount > 0
     }
 
     /// Makes Save add the queue to the PDF at `url` (read when the pages are added, not now) until the

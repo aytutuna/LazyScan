@@ -149,6 +149,14 @@ struct PageIntake {
     var firstTransfer = 0
 }
 
+/// What the page strip works out over the whole queue (`AppState.queuePlans`).
+public struct QueuePlans {
+    public let split: SplitPlan
+    public let save: SavePlan
+    public let bookLabels: [BookPageLabel?]
+    public let summary: String
+}
+
 /// Central controller: owns backends, the open scanner session, settings, scan results,
 /// and every user-triggered operation. All UI binds to this object.
 @MainActor
@@ -173,6 +181,7 @@ public final class AppState: ObservableObject {
     @Published public private(set) var capabilities: ScannerCapabilities?
     @Published public var settings: ScanSettings {
         didSet {
+            if settings.document != oldValue.document { queuePlansCache = nil }
             if rescanTarget != nil && !queuesScans { rescanTarget = nil }
             // A feeder known to scan one side turns two-sided scanning into turning over by hand
             // (one not asked yet is taken to scan both: `sidesCapabilities`).
@@ -232,6 +241,7 @@ public final class AppState: ObservableObject {
     /// (`pruneSpreads`, AppState+Book.swift), and a queue kept is recorded again (`QueueRecord`).
     @Published public internal(set) var scannedPages: [ScannedPage] = [] {
         didSet {
+            queuePlansCache = nil
             if savedUndo != nil && !scannedPages.isEmpty { discardSavedUndo() }
             if removedUndo != nil && scannedPages.count > oldValue.count { discardRemovedUndo() }
             if let held = removedUndo, held.reordered > 0, !Set(scannedPages.map(\.id)).isSuperset(of: held.replacedBy) { discardRemovedUndo() }
@@ -244,6 +254,19 @@ public final class AppState: ObservableObject {
             scheduleQueueRecord()
         }
     }
+    /// The split plan, save plan and book labels of the queue, worked out on first use after the queue or the
+    /// document options change, so a status tick does not walk the whole queue again. Not published.
+    public var queuePlans: QueuePlans {
+        if let queuePlansCache { return queuePlansCache }
+        let options = settings.document
+        let plans = QueuePlans(split: DocumentSplitter.plan(scannedPages, options: options),
+                               save: SavePlan.make(scannedPages, options: options),
+                               bookLabels: BookPages.labels(scannedPages),
+                               summary: DocumentSplitter.queueSummary(scannedPages, options: options))
+        queuePlansCache = plans
+        return plans
+    }
+    private var queuePlansCache: QueuePlans?
     /// The spreads the book pages in the queue were cut from, by spread id (AppState+Book.swift).
     var spreadSources: [UUID: SpreadSource] = [:]
     @Published public var detectedPhotos: [DetectedPhoto] = []

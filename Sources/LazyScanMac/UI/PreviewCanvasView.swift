@@ -269,8 +269,7 @@ struct PreviewCanvasView: View {
 
     private var viewedSkipped: Bool {
         guard let viewed = state.viewedPage else { return false }
-        let plan = DocumentSplitter.plan(state.scannedPages, options: state.settings.document)
-        return plan.pages[viewed.number - 1].role != .content
+        return state.queuePlans.split.pages[viewed.number - 1].role != .content
     }
 
     private func loadPage() async {

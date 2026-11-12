@@ -36,7 +36,7 @@ struct ScanCommands: Commands {
     private var canPreview: Bool { !dialogOpen && !state.isBusy && state.previewUnavailableReason == nil }
     private var canSave: Bool {
         guard !dialogOpen, !state.isBusy else { return false }
-        return SavePlan.make(state.scannedPages, options: state.settings.document).pageCount > 0
+        return state.queuePlans.save.pageCount > 0
     }
     private var canImport: Bool { !dialogOpen && state.canImportPhotos }
 

@@ -52,19 +52,19 @@ struct PagesStripView: View {
 
     var body: some View {
         let options = state.settings.document
-        let plan = DocumentSplitter.plan(state.scannedPages, options: options)
-        let savePlan = SavePlan.make(state.scannedPages, options: options)
+        let plans = state.queuePlans
+        let plan = plans.split
+        let savePlan = plans.save
         let showsBreaks = DocumentSplitter.showsBreaks(plan, options: options)
         let saveCount = savePlan.pageCount
         let target = state.appendTarget
         let showsNameField = !savePlan.isSplit && target == nil
         let saveTitle = target.map { PDFAppender.saveTitle($0.lastPathComponent) } ?? savePlan.saveTitle(state.settings.format)
         let saveHelp: String = saveCount == 0 && !state.scannedPages.isEmpty ? PageFilter.nothingToSaveMessage : ""
-        // Worked out once per refresh, in one pass over the queue.
-        let bookLabels = BookPages.labels(state.scannedPages)
+        let bookLabels = plans.bookLabels
         HStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                LazyHStack(spacing: 10) {
                     ForEach(Array(state.scannedPages.enumerated()), id: \.element.id) { index, page in
                         HStack(spacing: 4) {
                             if showsBreaks {
@@ -127,7 +127,7 @@ struct PagesStripView: View {
 
             VStack(alignment: .trailing, spacing: 6) {
                 // "24 pages · 5 blank skipped", "9 pages · 3 documents · 2 separator pages skipped"
-                Text(DocumentSplitter.queueSummary(state.scannedPages, options: options))
+                Text(plans.summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 8) {
@@ -520,7 +520,9 @@ fileprivate struct PageThumbnailCell: View {
         // Re-render when the page is rotated, shown as scanned or turned back (the cell keeps its
         // identity, so a plain run-once task would show stale pixels).
         .task(id: thumbnailKey) {
-            thumbnail = stripThumbnail(page.image, maxDimension: 200)
+            let image = page.image
+            let small = await Task.detached(priority: .utility) { stripThumbnail(image, maxDimension: 200) }.value
+            if !Task.isCancelled { thumbnail = small }
         }
     }
 
