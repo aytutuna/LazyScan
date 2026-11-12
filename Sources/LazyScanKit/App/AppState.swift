@@ -684,6 +684,7 @@ public final class AppState: ObservableObject {
             guard let self else { return }
             self.settingsSaveTask?.cancel()
             SettingsStore.save(self.settings, directory: self.settingsDirectory)
+            if self.keepsSavedForUndo { self.discardSavedUndo() }
             if self.discardsQueueAtQuit {
                 self.queueRecordTask?.cancel()
                 QueueRecord.clear(self.spoolDirectory, keeping: nil)
@@ -1683,7 +1684,7 @@ public final class AppState: ObservableObject {
             }.value
             self.lastSavedURLs = [url]
             self.notePDFSize(of: url, protected: options.isProtected)
-            self.dropSaved(queued, wrote: [url] + [textResult?.url].compactMap { $0 })
+            self.dropSaved(queued, wrote: [url] + [textResult?.url].compactMap { $0 }, undoable: !options.isProtected)
             self.resetFlow()
             if let problem = textResult?.problem { self.errorMessage = TextExport.sidecarFailed(problem) }
             let saved = TextExport.savedPDFMessage(pageCount: pages.count, fileName: url.lastPathComponent,

@@ -6,6 +6,23 @@ import XCTest
 // Undo after a save (AppState+Undo.swift): the pages and files of the last save, held while
 // `keepsSavedForUndo` is on. Swift only, as `AppStateAppendTests`.
 
+@MainActor
+private final class UndoLifecycle: PlatformLifecycle {
+    private var endHandlers: [@MainActor () -> Void] = []
+
+    func observeWillTerminate(_ handler: @escaping @MainActor () -> Void) {
+        endHandlers.append(handler)
+    }
+
+    func observeDidBecomeActive(_ handler: @escaping @MainActor () -> Void) {}
+
+    func sendWillTerminate() {
+        for handler in endHandlers {
+            handler()
+        }
+    }
+}
+
 private struct UndoScorer: OrientationScorer {
     var isAvailable: Bool { false }
 
@@ -64,9 +81,9 @@ final class AppStateUndoTests: XCTestCase {
     private var saveFolder: URL { folder.appendingPathComponent("Saved", isDirectory: true) }
 
     @MainActor
-    private func makeState(pages count: Int, undo: Bool) async throws -> AppState {
+    private func makeState(pages count: Int, undo: Bool, lifecycle: UndoLifecycle? = nil) async throws -> AppState {
         let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: UndoScorer(),
-                             barcodeReader: UndoBarcodes(), files: AppStateFiles.all(in: folder))
+                             barcodeReader: UndoBarcodes(), lifecycle: lifecycle, files: AppStateFiles.all(in: folder))
         state.keepsSavedForUndo = undo
         var settings = ScanSettings()
         settings.intent = .document
@@ -181,6 +198,34 @@ final class AppStateUndoTests: XCTestCase {
         state.lastSavedURLs = [saveFolder.appendingPathComponent("Other.pdf")]
         XCTAssertFalse(state.canUndoSave)
         XCTAssertEqual(exists(spool), [false])
+    }
+
+    @MainActor
+    func test_goingToTheBackground_dropsTheHeldSave() async throws {
+        let lifecycle = UndoLifecycle()
+        let state = try await makeState(pages: 2, undo: true, lifecycle: lifecycle)
+        let spool = try spoolFiles(of: state.scannedPages)
+        state.savePDF()
+        try await finish(state)
+        XCTAssertTrue(state.canUndoSave)
+        lifecycle.sendWillTerminate()
+        XCTAssertFalse(state.canUndoSave)
+        XCTAssertEqual(exists(spool), [false, false])
+        let saved = try XCTUnwrap(state.lastSavedURLs.first)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: saved.path))
+    }
+
+    @MainActor
+    func test_aPasswordProtectedSave_holdsNoPages() async throws {
+        let state = try await makeState(pages: 2, undo: true)
+        state.settings.output.protect = true
+        state.askPDFPassword = { try? PDFProtection("Secret 2026") }
+        let spool = try spoolFiles(of: state.scannedPages)
+        state.savePDF()
+        try await finish(state)
+        XCTAssertTrue(state.lastPDFProtected)
+        XCTAssertFalse(state.canUndoSave)
+        XCTAssertEqual(exists(spool), [false, false])
     }
 
     @MainActor

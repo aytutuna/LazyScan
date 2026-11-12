@@ -296,7 +296,7 @@ extension AppState {
         lastSavedURLs = saved
         // The last PDF's size, as after any save (the Windows inspector shows the same).
         if format == .pdf, let last = saved.last { notePDFSize(of: last, protected: protectedPDFs) }
-        dropSaved(queued, wrote: files.urls)
+        dropSaved(queued, wrote: files.urls, undoable: !protectedPDFs)
         resetFlow()
         if let textProblem { errorMessage = TextExport.sidecarFailed(textProblem) }
         if let note = failures.note { errorMessage = note }
