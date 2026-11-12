@@ -123,8 +123,12 @@ public struct IOSRootView: View {
             startOnce()
         }
         .onOpenURL { (url: URL) in
-            guard url.isFileURL else { return }
-            openFiles([url])
+            if url.isFileURL {
+                openFiles([url])
+            } else if url.absoluteString.lowercased().hasPrefix(PairingUri.prefix) {
+                openScanner()
+                state.pendingPairingCode = url.absoluteString
+            }
         }
         .modifier(FileActionPresenters(fileActions: fileActions, state: state))
         .modifier(ScanCovers(state: state, cover: $scanCover, spreadEditor: $spreadEditor))

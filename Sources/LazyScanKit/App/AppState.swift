@@ -493,6 +493,9 @@ public final class AppState: ObservableObject {
     /// too): these come while the app may be idle, from a drain or the pull in the background, so a screen
     /// without a status line (the iPhone's camera mode) shows them. Nil until the first.
     @Published public internal(set) var companionNotice: CompanionNotice?
+    /// A pairing code another app opened the app with (the system Camera scanning the computer's QR code),
+    /// waiting for My computer to take it. Nil once taken.
+    @Published public var pendingPairingCode: String?
     /// Whether the connected scanner's feeder scans both sides is known: ImageCaptureCore reports it
     /// only once the feeder has been selected (`ScannerSession.feederSupportsDuplex`). Set once the
     /// scanner has answered; one that did not answer is asked again the next time.

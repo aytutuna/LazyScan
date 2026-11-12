@@ -48,9 +48,21 @@ struct OptionsScreen: View {
                         }
                 }
         }
+        .onAppear {
+            showPendingPairing()
+        }
+        .onChange(of: state.pendingPairingCode) { (_: String?, _: String?) in
+            showPendingPairing()
+        }
         .onChange(of: path) { (_: [IOSOptionsPage], pages: [IOSOptionsPage]) in
             onPairing(pages.last == .computer)
         }
+    }
+
+    /// A pairing code is waiting: My computer opens to take it.
+    private func showPendingPairing() {
+        guard state.pendingPairingCode != nil, path != [.computer] else { return }
+        path = [.computer]
     }
 
     private var camera: Bool {

@@ -91,12 +91,24 @@ struct CompanionScreen: View {
         .navigationTitle(IOSCompanionText.title)
         .onAppear {
             model.appear()
+            takePairingCode()
+        }
+        .onChange(of: state.pendingPairingCode) { (_: String?, _: String?) in
+            takePairingCode()
         }
         .onChange(of: state.companionOutboxCount) { (_: Int, _: Int) in
             model.lookAtCloudFolder()
         }
         .onDisappear {
             model.disappear()
+        }
+    }
+
+    private func takePairingCode() {
+        guard let code = state.pendingPairingCode else { return }
+        state.pendingPairingCode = nil
+        if model.needsPairing {
+            model.scanned(code)
         }
     }
 

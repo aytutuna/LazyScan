@@ -136,6 +136,12 @@ struct ScanScreen: View {
                 PageStripSheet(onEditSpread: editSpreadFromPages, onClose: closePages, detents: sheetDetents)
                     .environmentObject(state)
             }
+            .onAppear {
+                openForPairingCode()
+            }
+            .onChange(of: state.pendingPairingCode) { (_: String?, _: String?) in
+                openForPairingCode()
+            }
             .onChange(of: state.scannedPages.isEmpty) { (_: Bool, empty: Bool) in
                 if empty {
                     pagesShown = false
@@ -1329,6 +1335,13 @@ struct ScanScreen: View {
                               canSave: offered && !saveBlocked && plan.pageCount > 0,
                               adding: state.appendTarget?.lastPathComponent,
                               onOptions: openOptions, onSave: { afterOptions(saveWithActions) })
+    }
+
+    /// A pairing code came from outside the app: Options opens, and its My computer page takes the code.
+    private func openForPairingCode() {
+        guard state.pendingPairingCode != nil, cover == nil, spreadEditor == nil, !pagesShown, !picksPDF,
+              !state.showTroubleshooter else { return }
+        openGroup = .options
     }
 
     private func openOptions() {
