@@ -69,16 +69,44 @@ struct SaveAsPage: View {
                 }
                 if IOSShell.offersSave(s, pageCount: state.scannedPages.count) && !IOSShell.separatesDocuments(s)
                     && IOSShell.exportFormat(s) == OutputFormat.pdf {
-                    Toggle(IOSShell.eachPageTitle(s, camera: mode == IOSScanMode.camera), isOn: eachPage)
-                        .accessibilityIdentifier("options.eachPage")
+                    if state.isReceiptFlow {
+                        Toggle("Save each receipt as its own PDF", isOn: eachReceipt)
+                            .accessibilityHint(Text("Writes one PDF for every receipt instead of one for all of them"))
+                            .accessibilityIdentifier("options.eachReceipt")
+                    } else {
+                        Toggle(IOSShell.eachPageTitle(s, camera: mode == IOSScanMode.camera), isOn: eachPage)
+                            .accessibilityIdentifier("options.eachPage")
+                    }
                 }
                 PDFOptionsSection()
             } footer: {
                 if hidesTextFormats {
                     Text("Word and Text need pages with text. Choose PDF and turn on Searchable PDF to offer them.")
                 }
+                if offersEachReceipt {
+                    Text(eachReceiptFooter)
+                }
             }
         }
+    }
+
+    /// The switch for a PDF each is shown where "One PDF per page" would be, for Receipts.
+    private var offersEachReceipt: Bool {
+        let s: ScanSettings = state.settings
+        return state.isReceiptFlow && IOSShell.offersSave(s, pageCount: state.scannedPages.count)
+            && !IOSShell.separatesDocuments(s) && IOSShell.exportFormat(s) == OutputFormat.pdf
+    }
+
+    private var eachReceiptFooter: String {
+        var text: String = String(localized: "Each receipt is named by the date printed on it.")
+        if state.settings.taskOptions.receiptEachFile {
+            if DocumentSplitter.cleaned(state.pendingName) != nil {
+                text += " " + String(localized: "The name you typed is used instead.")
+            } else {
+                text += " " + String(localized: "Receipts with no date get today's date.")
+            }
+        }
+        return text
     }
 
     private var hidesTextFormats: Bool {
@@ -134,6 +162,18 @@ struct SaveAsPage: View {
                 var s: ScanSettings = appState.settings
                 s.format = choice
                 appState.settings = IOSShell.keepingKind(s)
+            })
+    }
+
+    private var eachReceipt: Binding<Bool> {
+        let appState: AppState = state
+        return Binding<Bool>(
+            get: { appState.settings.taskOptions.receiptEachFile },
+            set: { (on: Bool) in
+                var s: ScanSettings = appState.settings
+                s = IOSShell.settingEachPage(false, in: s)
+                s.taskOptions.receiptEachFile = on
+                appState.settings = s
             })
     }
 

@@ -998,6 +998,61 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(resolved, 1)
     }
 
+    /// Three pages in the queue under the Receipts task, saved as one PDF unless `eachFile`.
+    @MainActor
+    private func queuedReceipts(_ state: AppState, eachFile: Bool, nameByDate: Bool) async throws {
+        try await collect(state, pages: 3)
+        var settings = TaskCatalog.apply(.receipt, to: state.settings)
+        settings.destinationPath = folder.path
+        settings.pdfSearchable = false
+        settings.taskOptions.receiptEachFile = eachFile
+        settings.taskOptions.receiptNameByDate = nameByDate
+        state.settings = settings
+        XCTAssertEqual(state.scannedPages.count, 3)
+    }
+
+    @MainActor
+    func test_savePDF_receiptsAreOnePDF_unlessEachIsAskedFor() async throws {
+        let state = makeState()
+        try await queuedReceipts(state, eachFile: false, nameByDate: true)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(try savedPDFs().count, 1)
+    }
+
+    @MainActor
+    func test_savePDF_receiptsEachAsAPDF_andNamesNoDateFoundByToday() async throws {
+        let state = makeState()
+        try await queuedReceipts(state, eachFile: true, nameByDate: true)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        let names = try savedPDFs().sorted()
+        XCTAssertEqual(names.count, 3)
+        let today = DocumentDate(date: Date()).text
+        XCTAssertTrue(names.allSatisfy { $0.hasPrefix("Receipt \(today) ") }, "\(names)")
+        XCTAssertEqual(state.statusMessage.hasPrefix("Saved 3 receipts: "), true, state.statusMessage)
+        XCTAssertTrue(state.statusMessage.contains("No date was found on them; they are named by today's date."),
+                      state.statusMessage)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    @MainActor
+    func test_savePDF_receiptsEachAsAPDF_aTypedNameNamesEveryFile() async throws {
+        let state = makeState()
+        try await queuedReceipts(state, eachFile: true, nameByDate: true)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        state.pendingName = "Trip"
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(try savedPDFs().sorted(), ["Trip 1.pdf", "Trip 2.pdf", "Trip 3.pdf"])
+        XCTAssertFalse(state.statusMessage.contains("No date was found"), state.statusMessage)
+    }
+
     @MainActor
     func test_pagesSavedAsTheyAreScanned_withoutAPassword_waitInTheQueue() async throws {
         let state = makeState()

@@ -93,6 +93,7 @@ struct IOSSidebar: View {
         let title: String = mode == .camera ? kind.cameraTitle : kind.title
         let available: Bool = tile.availability.isAvailable
         let current: Bool = tile.isCurrent && scannerShown
+        let hint: String = available ? kind.shownSubtitle(for: state.settings) : String(localized: "Not available: \(tile.availability.reason ?? "")")
         return Button {
             pick(kind.task)
         } label: {
@@ -109,7 +110,7 @@ struct IOSSidebar: View {
         }
         .disabled(!available || state.isBusy || importer.isImporting || state.readsQueue)
         .accessibilityValue(Text(tile.accessibilityValue))
-        .accessibilityHint(Text(available ? kind.subtitle : String(localized: "Not available: \(tile.availability.reason ?? "")")))
+        .accessibilityHint(Text(hint))
         .accessibilityAddTraits(current ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier("sidebar.task.\(kind.rawValue)")
     }

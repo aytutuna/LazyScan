@@ -164,7 +164,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
                               + "        \"copyAlsoSavePdf\" : true,\n        \"copyCount\" : 3,\n        \"copyFitToPage\" : true,\n"
                               + "        \"copyPrinterName\" : \"Office printer\",\n        \"idCardPaper\" : \"letter\",\n"
                               + "        \"idCardSaveSidesAsImages\" : true,\n        \"receiptCombine\" : true,\n"
-                              + "        \"receiptNameByDate\" : false\n      }")
+                              + "        \"receiptEachFile\" : false,\n        \"receiptNameByDate\" : false\n      }")
 
 // MARK: - Decoding compatibility
 
@@ -1189,7 +1189,7 @@ final class ModelsCompatTests: XCTestCase {
                 let written = try XCTUnwrap(try jsonObject(data)["taskOptions"] as? [String: Any])
                 // No printer chosen: the key is left out (C# leaves out a null too).
                 XCTAssertEqual(Set(written.keys), ["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage",
-                                                   "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine",
+                                                   "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine", "receiptEachFile",
                                                    "bookRightToLeft", "bookRotationQuarterTurns", "bookCutAt",
                                                    "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst",
                                                    "cameraSpreads"])
@@ -1242,20 +1242,25 @@ final class ModelsCompatTests: XCTestCase {
         let options = ScanSettings().taskOptions
         XCTAssertTrue(options.receiptNameByDate)
         XCTAssertFalse(options.receiptCombine)
+        XCTAssertFalse(options.receiptEachFile)
         // Files of the copy version have task options without the receipt keys.
         let copyOnly = try decode(ScanSettings.self, #"{"taskOptions": {"copyCount": 2, "copyAlsoSavePdf": true}}"#).taskOptions
         XCTAssertEqual(copyOnly.copyCount, 2)
         XCTAssertTrue(copyOnly.copyAlsoSavePdf)
         XCTAssertTrue(copyOnly.receiptNameByDate)
         XCTAssertFalse(copyOnly.receiptCombine)
+        XCTAssertFalse(copyOnly.receiptEachFile)
         var settings = ScanSettings()
         settings.taskOptions.receiptNameByDate = false
         settings.taskOptions.receiptCombine = true
+        settings.taskOptions.receiptEachFile = true
         XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: try encode(settings)).taskOptions, settings.taskOptions)
         var copy = settings
         copy.taskOptions.receiptCombine = false
+        copy.taskOptions.receiptEachFile = false
         XCTAssertFalse(copy.taskOptions.receiptCombine)
         XCTAssertTrue(settings.taskOptions.receiptCombine)
+        XCTAssertTrue(settings.taskOptions.receiptEachFile)
     }
 
     // MARK: Book or magazine (CONTRACTS.md, rule 6)

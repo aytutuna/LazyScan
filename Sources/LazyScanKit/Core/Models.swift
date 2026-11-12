@@ -597,6 +597,9 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     public var receiptNameByDate: Bool = true
     /// The Receipts task saves all the receipts of a scan as one PDF, a page each. Off: a file per receipt.
     public var receiptCombine: Bool = false
+    /// The iPhone saves the receipts it collected as a PDF each, named by the date printed on each (the scan
+    /// date when none is found). Off: one PDF for all. The Windows app keeps it as it is.
+    public var receiptEachFile: Bool = false
     /// The book reads from right to left (Arabic, Hebrew, manga): the right page of each spread comes
     /// first. Off: left to right.
     public var bookRightToLeft: Bool = false
@@ -638,6 +641,7 @@ public struct TaskOptions: Codable, Equatable, Sendable {
         case copyAlsoSavePdf
         case receiptNameByDate
         case receiptCombine
+        case receiptEachFile
         case bookRightToLeft
         case bookRotationQuarterTurns
         case bookCutAt
@@ -663,6 +667,7 @@ extension TaskOptions {
         copyAlsoSavePdf = container.decodeLenient(forKey: .copyAlsoSavePdf, default: copyAlsoSavePdf)
         receiptNameByDate = container.decodeLenient(forKey: .receiptNameByDate, default: receiptNameByDate)
         receiptCombine = container.decodeLenient(forKey: .receiptCombine, default: receiptCombine)
+        receiptEachFile = container.decodeLenient(forKey: .receiptEachFile, default: receiptEachFile)
         bookRightToLeft = container.decodeLenient(forKey: .bookRightToLeft, default: bookRightToLeft)
         bookRotationQuarterTurns = container.decodeLenient(forKey: .bookRotationQuarterTurns, default: bookRotationQuarterTurns)
         bookCutAt = container.decodeLenient(forKey: .bookCutAt, default: bookCutAt)

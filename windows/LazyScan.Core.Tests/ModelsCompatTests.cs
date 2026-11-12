@@ -157,7 +157,7 @@ internal static class CompatFixtures
         + "        \"softenSpineShadow\": true,\n        \"barcodeStartsDocument\": true,\n        \"splitBarcodePrefix\": \"DOC\"\n      },\n"
         + "      \"taskOptions\": {\n        \"idCardPaper\": \"letter\",\n        \"idCardSaveSidesAsImages\": true,\n"
         + "        \"copyCount\": 3,\n        \"copyFitToPage\": true,\n        \"copyPrinterName\": \"Office printer\",\n"
-        + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n"
+        + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n        \"receiptEachFile\": false,\n"
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
         + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
         + "        \"cameraFrontsFirst\": true,\n        \"cameraSpreads\": true,\n        \"cameraFilter\": \"original\"\n      }\n");
@@ -1296,7 +1296,7 @@ public class ModelsCompatTests
                 using var written = JsonDocument.Parse(json);
                 // No printer chosen: the key is left out, as Swift leaves out a nil.
                 Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage", "copyAlsoSavePdf",
-                              "receiptNameByDate", "receiptCombine", "bookRightToLeft", "bookRotationQuarterTurns",
+                              "receiptNameByDate", "receiptCombine", "receiptEachFile", "bookRightToLeft", "bookRotationQuarterTurns",
                               "bookCutAt", "cameraFrontsFirst", "cameraSpreads"],
                              written.RootElement.GetProperty("taskOptions").EnumerateObject().Select(p => p.Name));
                 Assert.Equal(settings.TaskOptions, Decode<ScanSettings>(json).TaskOptions);
@@ -1344,18 +1344,21 @@ public class ModelsCompatTests
     public void ReceiptOptions_NamedByDateInSeparateFiles_ByDefaultAndInFilesWithoutThem()
     {
         var options = new ScanSettings().TaskOptions;
-        Assert.Equal((true, false), (options.ReceiptNameByDate, options.ReceiptCombine));
+        Assert.Equal((true, false, false), (options.ReceiptNameByDate, options.ReceiptCombine, options.ReceiptEachFile));
         // Files of the copy version have task options without the receipt keys.
         var copyOnly = Decode<ScanSettings>("""{"taskOptions": {"copyCount": 2, "copyAlsoSavePdf": true}}""").TaskOptions;
         Assert.Equal((2, true), (copyOnly.CopyCount, copyOnly.CopyAlsoSavePdf));
-        Assert.Equal((true, false), (copyOnly.ReceiptNameByDate, copyOnly.ReceiptCombine));
+        Assert.Equal((true, false, false), (copyOnly.ReceiptNameByDate, copyOnly.ReceiptCombine, copyOnly.ReceiptEachFile));
         var settings = new ScanSettings();
         settings.TaskOptions.ReceiptNameByDate = false;
         settings.TaskOptions.ReceiptCombine = true;
+        settings.TaskOptions.ReceiptEachFile = true;
         Assert.Equal(settings.TaskOptions, Decode<ScanSettings>(CompatFixtures.Encode(settings)).TaskOptions);
         var clone = settings.Clone();
         clone.TaskOptions.ReceiptCombine = false;
+        clone.TaskOptions.ReceiptEachFile = false;
         Assert.True(settings.TaskOptions.ReceiptCombine);
+        Assert.True(settings.TaskOptions.ReceiptEachFile);
     }
 
     // MARK: - Book or magazine (CONTRACTS.md, rule 6)

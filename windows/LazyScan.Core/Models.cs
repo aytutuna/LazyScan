@@ -678,6 +678,12 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     public bool ReceiptCombine { get; set; } = false;
 
     /// <summary>
+    /// The iPhone saves the receipts it collected as a PDF each, named by the date printed on each (the scan
+    /// date when none is found). Off: one PDF for all. The Windows app keeps it as it is.
+    /// </summary>
+    public bool ReceiptEachFile { get; set; } = false;
+
+    /// <summary>
     /// The book reads from right to left (Arabic, Hebrew, manga): the right page of each spread comes
     /// first. Off: left to right.
     /// </summary>
@@ -732,6 +738,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         && CopyCount == other.CopyCount && CopyFitToPage == other.CopyFitToPage
         && CopyPrinterName == other.CopyPrinterName && CopyAlsoSavePdf == other.CopyAlsoSavePdf
         && ReceiptNameByDate == other.ReceiptNameByDate && ReceiptCombine == other.ReceiptCombine
+        && ReceiptEachFile == other.ReceiptEachFile
         && BookRightToLeft == other.BookRightToLeft && BookRotationQuarterTurns == other.BookRotationQuarterTurns
         && BookCutAt == other.BookCutAt && BookLastCut == other.BookLastCut
         && CameraFrontsFirst == other.CameraFrontsFirst && CameraSpreads == other.CameraSpreads
@@ -748,6 +755,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(CopyAlsoSavePdf);
         hash.Add(ReceiptNameByDate);
         hash.Add(ReceiptCombine);
+        hash.Add(ReceiptEachFile);
         hash.Add(BookRightToLeft);
         hash.Add(BookRotationQuarterTurns);
         hash.Add(BookCutAt);

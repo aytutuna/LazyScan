@@ -1989,18 +1989,29 @@ public final class AppState: ObservableObject {
         }
         let s = settings
         let typedName = name ?? pendingName
+        let eachReceipt = Receipts.savesEachFile(s)
         runExclusive { flag in
             // Let page swaps and turns that were clicked before the save land first.
             await self.pageEditChain?.value
             let queued = self.scannedPages
             guard !queued.isEmpty else { return }
             // Pages flagged in the strip (blank, separator sheets, or skipped by hand) are left out
-            // now, and only now; the documents are the ones the strip shows.
-            let plan = SavePlan.make(queued, options: s.document)
+            // now, and only now; the documents are the ones the strip shows. A file for each receipt is
+            // the split of one PDF per page.
+            var documentOptions = s.document
+            if eachReceipt {
+                documentOptions.splitMode = .sheetCount
+                documentOptions.splitSheetCount = 1
+            }
+            let plan = SavePlan.make(queued, options: documentOptions)
             guard !plan.isEmpty else {
                 self.errorMessage = PageFilter.nothingToSaveMessage
                 self.errorTitle = PageFilter.nothingSavedTitle
                 self.statusMessage = L10n.t("{0}.", DocumentSplitter.queueSummary(queued, options: s.document))
+                return
+            }
+            if eachReceipt {
+                try await self.saveDocuments(plan, settings: s, queued: queued, flag: flag, receipts: true, name: typedName)
                 return
             }
             if plan.isSplit {

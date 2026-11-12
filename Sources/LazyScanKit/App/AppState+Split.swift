@@ -233,9 +233,15 @@ extension AppState {
 
     /// Saves the documents of a split queue, a file each (with its text beside it when asked for),
     /// all or nothing: a failure or Cancel part-way removes every file written, and the queue stays
-    /// as it was so it can be saved again.
-    func saveDocuments(_ plan: SavePlan, settings s: ScanSettings, queued: [ScannedPage], flag: CancelFlag) async throws {
+    /// as it was so it can be saved again. With `receipts` each document is a receipt, named by the date printed
+    /// on it (`Receipts.namesByDate`) unless a `name` was typed, which names every file with the receipt's number after it.
+    func saveDocuments(_ plan: SavePlan, settings s: ScanSettings, queued: [ScannedPage], flag: CancelFlag,
+                       receipts: Bool = false, name: String? = nil) async throws {
         let format = s.format.queueFormat
+        let typed: String? = DocumentSplitter.cleaned(name)
+        let readsDates = receipts && typed == nil && Receipts.namesByDate(s)
+        let dayFirst = ReceiptDateExtractor.prefersDayFirst()
+        var undated = 0
         let files = WrittenFiles()
         var saved: [URL] = []
         var textFiles: [String] = []
@@ -250,10 +256,22 @@ extension AppState {
         do {
             for document in plan.documents {
                 if flag.isCancelled { throw ScanError.cancelled }
-                self.statusMessage = L10n.t("Saving document {0} of {1}…", document.number, plan.documents.count)
+                self.statusMessage = receipts
+                    ? L10n.t("Saving receipt {0} of {1}…", document.number, plan.documents.count)
+                    : L10n.t("Saving document {0} of {1}…", document.number, plan.documents.count)
                 let pages = document.pages
+                var printed: DocumentDate?
+                if readsDates {
+                    let receipt = pages[0]
+                    let number = document.number
+                    printed = await Task.detached(priority: .userInitiated) {
+                        Self.printedDate(of: receipt, number: number, preferDayFirst: dayFirst)
+                    }.value
+                    if printed == nil { undated += 1 }
+                }
+                let fileName: String? = receipts ? typed.map { "\($0) \(document.number)" } : name
                 let planned = try self.outputURL(fileExtension: format.fileExtension, index: plan.fileIndex(document),
-                                                 label: document.label)
+                                                 documentDate: printed, label: document.label, name: fileName)
                 if format.isTextFormat {
                     let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
                     let (url, hasText) = try await Task.detached(priority: .userInitiated) {
@@ -320,9 +338,19 @@ extension AppState {
         let size: String? = format == .pdf
             ? Self.pdfNote(size: Self.totalSizeText(of: saved), isProtected: protectedPDFs)
             : nil
-        setStatus(plan.savedMessage(format, fileNames: saved.map(\.lastPathComponent), size: size,
-                                    textFileNames: textFiles, noTextFound: noText),
-                  StatusDetail(head: plan.savedHead(format, count: saved.count)))
+        if receipts {
+            var names: [String] = saved.map(\.lastPathComponent)
+            if protectedPDFs, !names.isEmpty, let note = Self.pdfNote(size: nil, isProtected: true) {
+                names[names.count - 1] = L10n.t("{0} ({1})", names[names.count - 1], note)
+            }
+            setStatus(Receipts.savedMessage(count: saved.count, fileNames: names, combined: false, undated: undated)
+                        + plan.leftOutNote(),
+                      StatusDetail(head: .savedFiles(saved.count, .receipt)))
+        } else {
+            setStatus(plan.savedMessage(format, fileNames: saved.map(\.lastPathComponent), size: size,
+                                        textFileNames: textFiles, noTextFound: noText),
+                      StatusDetail(head: plan.savedHead(format, count: saved.count)))
+        }
         runAfterSave(s.output.afterSave, saved: saved)
     }
 

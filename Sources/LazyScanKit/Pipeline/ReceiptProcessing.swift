@@ -722,6 +722,13 @@ public enum Receipts {
         combine && format.pageFormat == .pdf && count > 1
     }
 
+    /// The iPhone saves the receipts it collected as a PDF each, named by the date printed on each
+    /// (`TaskOptions.receiptEachFile`): asked for, and saved as PDF.
+    public static func savesEachFile(_ settings: ScanSettings) -> Bool {
+        TaskCatalog.flow(of: settings) == .receiptSplit && settings.taskOptions.receiptEachFile
+            && settings.format.queueFormat == .pdf
+    }
+
     /// The quarter turns clockwise that make a receipt cut from the glass read upright, found as a page is
     /// (`OrientationDecision.check`): 0 when it already reads upright, when no way up reads clearly better,
     /// or when `scorer` cannot read text. The review presets them (`DetectedPhoto.rotationQuarterTurns`),

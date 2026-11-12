@@ -254,6 +254,8 @@ struct OptionsScreen: View {
             ForEach(tiles) { (tile: IOSKindTile) in
                 let kind: IOSScanKind = tile.kind
                 let available: Bool = tile.availability.isAvailable
+                let subtitle: String = kind.shownSubtitle(for: state.settings)
+                let hint: String = available ? subtitle : String(localized: "\(subtitle). Not available: \(tile.availability.reason ?? "")")
                 Button {
                     onType(kind)
                 } label: {
@@ -264,7 +266,7 @@ struct OptionsScreen: View {
                     }
                 }
                 .disabled(!available)
-                .accessibilityHint(Text(available ? kind.subtitle : String(localized: "\(kind.subtitle). Not available: \(tile.availability.reason ?? "")")))
+                .accessibilityHint(Text(hint))
                 .accessibilityIdentifier("type.\(kind.rawValue)")
             }
         } label: {

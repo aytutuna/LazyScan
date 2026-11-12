@@ -95,11 +95,12 @@ struct TaskStartScreen: View {
         let title: String = mode == .camera ? kind.cameraTitle : kind.title
         let available: Bool = tile.availability.isAvailable
         let reason: String = tile.availability.reason ?? ""
-        let hint: String = available ? String(localized: "\(kind.subtitle). \(tile.summary).") : String(localized: "\(kind.subtitle). Not available: \(reason)")
+        let subtitle: String = kind.shownSubtitle(for: state.settings)
+        let hint: String = available ? String(localized: "\(subtitle). \(tile.summary).") : String(localized: "\(subtitle). Not available: \(reason)")
         return Button {
             pick(kind.task)
         } label: {
-            TaskTileLabel(symbol: kind.symbol, title: title, subtitle: kind.subtitle,
+            TaskTileLabel(symbol: kind.symbol, title: title, subtitle: subtitle,
                           availability: tile.availability, isCurrent: tile.isCurrent)
         }
         .buttonStyle(TaskTileButtonStyle())

@@ -557,6 +557,14 @@ final class IOSShellTests: XCTestCase {
         }
     }
 
+    func test_receiptsKind_saysOnePDFOrAPDFEach() {
+        var settings: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        XCTAssertEqual(IOSScanKind.receipts.shownSubtitle(for: settings), "One PDF, named by the day saved")
+        settings.taskOptions.receiptEachFile = true
+        XCTAssertEqual(IOSScanKind.receipts.shownSubtitle(for: settings), "A PDF each, named by date")
+        XCTAssertEqual(IOSScanKind.document.shownSubtitle(for: settings), IOSScanKind.document.subtitle)
+    }
+
     func test_textKind_isHintedAsAScan_notAShot() {
         XCTAssertEqual(IOSScanKind.text.subtitle, "One scan, copy its text")
     }

@@ -375,6 +375,24 @@ final class IOSSettingsTests: XCTestCase {
     // MARK: The file name
 
     @MainActor
+    func test_namingEditor_docdateIsTheReceiptDate_onlyWhileEachReceiptIsAPDF() {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let model: IOSNamingModel = IOSNamingModel(state: state)
+        func docdate() -> NamingToken? {
+            model.parts.first(where: { (part: NamingToken) -> Bool in part.token == "{docdate}" })
+        }
+        XCTAssertEqual(docdate()?.label, "Day saved")
+        XCTAssertEqual(docdate()?.help, "The day the file is saved")
+        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: state.settings)
+        state.settings = receipts
+        XCTAssertEqual(docdate()?.label, "Day saved")
+        receipts.taskOptions.receiptEachFile = true
+        state.settings = receipts
+        XCTAssertEqual(docdate()?.label, "Receipt date")
+        XCTAssertEqual(docdate()?.help, "The date printed on the receipt")
+    }
+
+    @MainActor
     func test_namingEditor_putsTheTemplateInUse_showsTheNextName_andWhatIsWrong() {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let model: IOSNamingModel = IOSNamingModel(state: state)

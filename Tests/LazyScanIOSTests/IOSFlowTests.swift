@@ -471,6 +471,10 @@ final class IOSFlowTests: XCTestCase {
         var jpeg: ScanSettings = document
         jpeg.format = .jpeg
         XCTAssertEqual(IOSShell.saveDetail(jpeg, plan: plan, target: nil), "Save JPEG (3 pages)")
+        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        XCTAssertEqual(IOSShell.saveDetail(receipts, plan: plan, target: nil), "Save PDF (3 pages)")
+        receipts.taskOptions.receiptEachFile = true
+        XCTAssertEqual(IOSShell.saveDetail(receipts, plan: plan, target: nil), "Save 3 PDFs")
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
         XCTAssertEqual(IOSShell.saveTitle(target: target), "Add to Contract.pdf")
         XCTAssertEqual(IOSShell.saveDetail(document, plan: plan, target: target), "3 pages")

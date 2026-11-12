@@ -534,6 +534,9 @@ public enum IOSShell {
         if savesImages(settings) {
             return AppState.imagesSaveTitle(settings.format, pageCount: plan.pageCount)
         }
+        if Receipts.savesEachFile(settings) {
+            return L10n.plural(plan.pageCount, one: "Save {0} PDF", other: "Save {0} PDFs")
+        }
         return plan.saveTitle(settings.format)
     }
 
@@ -1203,11 +1206,19 @@ public enum IOSScanKind: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// `subtitle`, but Receipts saved as a PDF each say so.
+    public func shownSubtitle(for settings: ScanSettings) -> String {
+        if self == .receipts && settings.taskOptions.receiptEachFile {
+            return String(localized: "A PDF each, named by date")
+        }
+        return subtitle
+    }
+
     public var subtitle: String {
         switch self {
         case .document: return String(localized: "Pages into a PDF")
         case .photos: return String(localized: "Prints and pictures")
-        case .receipts: return String(localized: "Named by the day saved")
+        case .receipts: return String(localized: "One PDF, named by the day saved")
         case .idCard: return String(localized: "Front and back on one page")
         case .book: return String(localized: "Pages or whole spreads")
         case .text: return String(localized: "One scan, copy its text")

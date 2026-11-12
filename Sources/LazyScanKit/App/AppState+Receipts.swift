@@ -206,6 +206,17 @@ extension AppState {
         }
     }
 
+    /// The date printed on the receipt queued as `page`, found in its text as the page is saved; nil when it has
+    /// none or its text cannot be read. The lines are kept, so the PDF's text layer does not read them again.
+    nonisolated static func printedDate(of page: ScannedPage, number: Int, preferDayFirst: Bool) -> DocumentDate? {
+        guard let prepared = try? PDFBuilder.preparePage(page, number: number),
+              let lines = try? OCRLineCache.shared.read(page, { try OCRService.recognizeLines(in: prepared.image) })
+        else { return nil }
+        return ReceiptDateExtractor.findDate(
+            Receipts.textLines(lines, pixelWidth: prepared.pixelWidth, pixelHeight: prepared.pixelHeight),
+            today: DocumentDate(date: Date()), preferDayFirst: preferDayFirst)
+    }
+
     /// Fix crop on a receipt: cut out upright and cleaned up again, as it was found.
     nonisolated static func recutReceipt(_ source: CGImage, region: DetectedPhotoRegion, dpi: Int) -> CGImage? {
         guard let scan = RgbaImage(cgImage: source),
