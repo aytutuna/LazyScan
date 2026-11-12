@@ -148,7 +148,7 @@ internal static class CompatFixtures
     public static readonly string CurrentFormatPresetsJson = PresetsJsonBeforePdfSize.ReplaceLineEndings("\n").Replace(
         "      ],\n      \"adjustments\"", "      ],\n      \"ocrLanguage\": \"de-DE\",\n      \"adjustments\"").Replace(
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
-        "        \"blackWhiteThreshold\": 0.375\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
+        "        \"blackWhiteThreshold\": 0.375,\n        \"cleanUp\": false\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
         + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false\n      },\n"
         + "      \"duplex\": \"manual\",\n      \"backBinding\": \"shortEdge\",\n      \"paperSize\": \"a4\",\n      \"customPaperWidth\": 8.5,\n      \"customPaperHeight\": 11,\n"
         + "      \"document\": {\n        \"removeBlankPages\": true,\n        \"blankSensitivity\": \"high\",\n"
@@ -375,7 +375,7 @@ public class ModelsCompatTests
         Assert.Equal(
             [
                 "autoEnhance", "brightness", "contrast", "saturation", "sharpness",
-                "descreen", "restoreFadedColors", "blackWhiteThreshold",
+                "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp",
             ],
             adjustments.EnumerateObject().Select(p => p.Name));
         Assert.Equal("grayscale", settings.RootElement.GetProperty("colorMode").GetString());
@@ -1584,6 +1584,43 @@ public class ModelsCompatTests
         Assert.True(original.Document.SoftenSpineShadow);
         Assert.NotEqual(original.Document, clone.Document);
         Assert.NotEqual(original.Document.GetHashCode(), clone.Document.GetHashCode());
+    }
+
+    [Fact]
+    public void CleanUp_OffByDefault_AndInFilesWithoutIt()
+    {
+        Assert.False(new ScanSettings().Adjustments.CleanUp);
+        Assert.False(Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize)[0].Settings.Adjustments.CleanUp);
+        var older = Decode<ScanSettings>("""{"adjustments": {"brightness": 0.25}}""");
+        Assert.Equal((0.25, false), (older.Adjustments.Brightness, older.Adjustments.CleanUp));
+        foreach (string value in new[] { "\"yes\"", "1", "null", "{}", "[]" })
+        {
+            var settings = Decode<ScanSettings>($$"""{"adjustments": {"brightness": 0.25, "cleanUp": {{value}}}, "resolution": 150}""");
+            Assert.False(settings.Adjustments.CleanUp);
+            Assert.Equal((0.25, 150), (settings.Adjustments.Brightness, settings.Resolution));
+        }
+        Assert.True(Decode<ScanSettings>("""{"adjustments": {"cleanUp": true}}""").Adjustments.CleanUp);
+    }
+
+    [Fact]
+    public void CleanUp_RoundTrips_AndCloneIsIndependent()
+    {
+        foreach (bool on in new[] { false, true })
+        {
+            var settings = new ScanSettings();
+            settings.Adjustments.CleanUp = on;
+            var back = Decode<ScanSettings>(CompatFixtures.Encode(settings));
+            Assert.Equal(on, back.Adjustments.CleanUp);
+            Assert.Equal(settings.Adjustments, back.Adjustments);
+        }
+        var original = new ScanSettings();
+        original.Adjustments.CleanUp = true;
+        var clone = original.Clone();
+        clone.Adjustments.CleanUp = false;
+        Assert.True(original.Adjustments.CleanUp);
+        Assert.NotEqual(original.Adjustments, clone.Adjustments);
+        Assert.NotEqual(original.Adjustments.GetHashCode(), clone.Adjustments.GetHashCode());
+        Assert.True(original.Adjustments.IsIdentity);
     }
 
     [Fact]

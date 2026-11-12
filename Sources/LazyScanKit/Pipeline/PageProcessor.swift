@@ -316,6 +316,37 @@ public struct OrientationStep: CancellablePageStep {
     }
 }
 
+/// Cleans up a page from a scanner (`DocumentEnhancer`: the paper evened out to white, show-through from the
+/// back gone, the print black) in `mode`, keeping the page as it was as the other version
+/// (`ScannedPage.withCleanUp`); a mode of gray or black and white sets the page's color mode, automatic leaves
+/// it. Once only: pages cleaned up already, blank pages, separator sheets, pages a camera took
+/// (`ScannedPage.capture`, which `EnhanceStep` cleans up) and pages not from a scanner stay as they are. Runs after the blank check, crop, straighten and turning pages
+/// upright, so those see the page as scanned, before the adjustments. Twin of C# `CleanUpStep`.
+public struct CleanUpStep: PageStep {
+    public let mode: DocumentEnhanceMode
+    public let threshold: Double
+    public var name: String { "cleanUp" }
+
+    public init(mode: DocumentEnhanceMode, threshold: Double = DocumentEnhancer.defaultThreshold) {
+        self.mode = mode
+        self.threshold = threshold
+    }
+
+    public func apply(_ page: ScannedPage) -> ScannedPage {
+        guard page.cleanedUp == nil, page.source == .scanner, page.capture == nil, page.patch == nil, page.blank?.isBlank != true,
+              let pixels = RgbaImage(cgImage: page.image) else { return page }
+        let result: DocumentEnhancement = DocumentEnhancer.enhance(pixels, mode: mode, threshold: threshold)
+        guard let image = result.image.makeCGImage() else { return page }
+        var colorMode: ColorMode = page.colorMode
+        if mode == .gray {
+            colorMode = .grayscale
+        } else if mode == .blackAndWhite {
+            colorMode = .blackWhite
+        }
+        return page.withCleanUp(image, mode: result.mode, colorMode: colorMode)
+    }
+}
+
 /// The image adjustments and the color mode (`ImagePipeline.apply`), on the page and on its other
 /// version (the page as scanned, kept by crop and straighten or by softening the spine's shadow), so either
 /// can be shown. A camera page `EnhanceStep` made gray or black and white in a color task (a page without
@@ -397,7 +428,7 @@ public struct ProcessedScan {
 /// cut into its two pages when facing pages are split (`book`), then every step runs on every page in
 /// order. The order of the steps is fixed: `forScan` builds them from the settings: blank check
 /// (document pages), crop and straighten, softening the spine's shadow, separator sheets, barcodes,
-/// turning pages upright, then adjustments. `prepare` runs on each arranged page before the steps and
+/// turning pages upright, cleaning up, then adjustments. `prepare` runs on each arranged page before the steps and
 /// before it is cut: a camera's page or spread is cut out of its photo first (`forCapture`).
 /// Twin of C# `PageProcessor`.
 public struct PageProcessor {
@@ -426,8 +457,8 @@ public struct PageProcessor {
     /// spreads (`softensSpineShadow`), the separator-sheet check for those pages
     /// (whether or not the stack is split, so a split chosen later finds them), reading their barcodes
     /// when the stack is split at barcode or QR sheets (`readsBarcodes`) and `barcodes` can read them,
-    /// turning those pages upright when asked for and `scorer` can read text, then the adjustments
-    /// unless they change nothing. Facing pages are split before the steps when asked for those pages
+    /// turning those pages upright when asked for and `scorer` can read text, cleaning the pages up when asked
+    /// for (`cleanUpMode`), then the adjustments unless they change nothing. Facing pages are split before the steps when asked for those pages
     /// (`splitsFacingPages`), so each page is checked, straightened and turned on its own.
     public static func forScan(_ settings: ScanSettings, arrangement: ScanArrangement = .asScanned,
                                scorer: (any OrientationScorer)? = nil,
@@ -450,6 +481,9 @@ public struct PageProcessor {
         }
         if turnsPagesUpright(settings), let scorer, scorer.isAvailable {
             steps.append(OrientationStep(scorer: scorer, split: settings.document))
+        }
+        if let mode = cleanUpMode(settings) {
+            steps.append(CleanUpStep(mode: mode, threshold: settings.adjustments.blackWhiteThreshold))
         }
         if !(settings.adjustments.isIdentity && settings.colorMode == .color) {
             steps.append(AdjustmentStep(adjustments: settings.adjustments, colorMode: settings.colorMode))
@@ -525,6 +559,19 @@ public struct PageProcessor {
                                         adjustsAlternate: false))
         }
         return PageProcessor(steps: steps, arrangement: arrangement, prepare: cut)
+    }
+
+    /// The mode scanner pages are cleaned up in (`CleanUpStep`) with these settings: asked for
+    /// (`AdjustmentSettings.cleanUp`) and not a photo task, which keeps its pictures as scanned; the color
+    /// mode's: Enhanced (`.auto`) for color, gray, black and white. Nil: no clean-up. Twin of C#
+    /// `PageProcessor.CleanUpMode`.
+    public static func cleanUpMode(_ settings: ScanSettings) -> DocumentEnhanceMode? {
+        guard settings.adjustments.cleanUp, settings.intent != .photo else { return nil }
+        switch settings.colorMode {
+        case .color: return .auto
+        case .grayscale: return .gray
+        case .blackWhite: return .blackAndWhite
+        }
     }
 
     /// Whether a camera's book pages are drawn flat after they are cut out of their photos (`FlattenStep`):
@@ -804,12 +851,15 @@ public enum PageFilter {
 public enum PageCorrections {
     /// "Cropped and straightened 2.4°", "Straightened 1.5°" or "Cropped" for a changed page shown
     /// changed, followed by ", spine shadow softened" ("Spine shadow softened" alone) when the shadow was
-    /// softened; "As scanned" when the user went back to the page as scanned; "Corrected from photo"
-    /// and "As photographed" for a page taken from a photo; nil for other pages.
+    /// softened; "Cleaned up" for a page cleaned up and nothing else; "As scanned" when the user went back to
+    /// the page as scanned; "Corrected from photo" and "As photographed" for a page taken from a photo; nil
+    /// for other pages.
     public static func caption(_ page: ScannedPage) -> String? {
-        if page.geometry == nil && page.spineShadow == nil { return nil }
+        if page.geometry == nil && page.spineShadow == nil && page.cleanedUp == nil { return nil }
         if page.showsOriginal { return fromPhoto(page) ? PhotoImport.originalCaption : L10n.t("As scanned") }
-        guard let geometry = page.geometry else { return L10n.t("Spine shadow softened") }
+        guard let geometry = page.geometry else {
+            return page.spineShadow == nil ? L10n.t("Cleaned up") : L10n.t("Spine shadow softened")
+        }
         return page.spineShadow == nil ? geometry.caption : L10n.t("{0}, spine shadow softened", geometry.caption)
     }
 
@@ -820,7 +870,9 @@ public enum PageCorrections {
     public static func toggleLabel(_ page: ScannedPage) -> String? {
         guard page.canSwapVersions else { return nil }
         if !page.showsOriginal { return fromPhoto(page) ? L10n.t("Show as photographed") : L10n.t("Show as scanned") }
-        guard let geometry = page.geometry else { return L10n.t("Show with the spine shadow softened") }
+        guard let geometry = page.geometry else {
+            return page.spineShadow == nil ? L10n.t("Show cleaned up") : L10n.t("Show with the spine shadow softened")
+        }
         let softened = page.spineShadow != nil
         switch change(geometry) {
         case .corrected:
@@ -839,12 +891,16 @@ public enum PageCorrections {
     /// again." or "Page 3 is straightened again, with the spine shadow softened."; for a page taken from
     /// a photo "Page 3 is shown as photographed. It is saved that way." or "Page 3 is corrected again."
     public static func swapNote(_ page: ScannedPage, number: Int) -> String {
-        if page.showsOriginal || (page.geometry == nil && page.spineShadow == nil) {
+        if page.showsOriginal || (page.geometry == nil && page.spineShadow == nil && page.cleanedUp == nil) {
             return fromPhoto(page)
                 ? L10n.t("Page {0} is shown as photographed. It is saved that way.", number)
                 : L10n.t("Page {0} is shown as scanned. It is saved that way.", number)
         }
-        guard let geometry = page.geometry else { return L10n.t("Page {0} is shown with the spine shadow softened again.", number) }
+        guard let geometry = page.geometry else {
+            return page.spineShadow == nil
+                ? L10n.t("Page {0} is shown cleaned up again.", number)
+                : L10n.t("Page {0} is shown with the spine shadow softened again.", number)
+        }
         let softened = page.spineShadow != nil
         switch change(geometry) {
         case .corrected:

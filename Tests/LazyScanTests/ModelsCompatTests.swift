@@ -149,6 +149,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
             + "        \"pdfSize\" : \"compact\",\n        \"protect\" : true,\n        \"wordPageImages\" : false\n      },\n"
             + "      \"customPaperHeight\" : 11,\n      \"customPaperWidth\" : 8.5,\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
+    .replacingOccurrences(of: "\"brightness\" : 0.25,", with: "\"brightness\" : 0.25,\n        \"cleanUp\" : false,")
     .replacingOccurrences(of: "\"ocrLanguages\" : [", with: "\"ocrLanguage\" : \"de-DE\",\n      \"ocrLanguages\" : [")
     .replacingOccurrences(of: "\"colorMode\" : \"grayscale\"",
                           with: "\"backBinding\" : \"shortEdge\",\n      \"colorMode\" : \"grayscale\"")
@@ -315,7 +316,7 @@ final class ModelsCompatTests: XCTestCase {
         let adjustments = try XCTUnwrap(settings["adjustments"] as? [String: Any])
         XCTAssertEqual(Set(adjustments.keys), [
             "autoEnhance", "brightness", "contrast", "saturation", "sharpness",
-            "descreen", "restoreFadedColors", "blackWhiteThreshold",
+            "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp",
         ])
         XCTAssertEqual(settings["colorMode"] as? String, "grayscale")
         XCTAssertEqual(settings["source"] as? String, "documentFeeder")
@@ -1471,6 +1472,41 @@ final class ModelsCompatTests: XCTestCase {
         copy.document.softenSpineShadow = false
         XCTAssertTrue(original.document.softenSpineShadow)
         XCTAssertNotEqual(original.document, copy.document)
+    }
+
+    /// Twin of `CleanUp_OffByDefault_AndInFilesWithoutIt`.
+    func test_cleanUp_offByDefault_andInFilesWithoutIt() throws {
+        XCTAssertFalse(ScanSettings().adjustments.cleanUp)
+        XCTAssertFalse(try decode([Preset].self, presetsJSONBeforePDFSize)[0].settings.adjustments.cleanUp)
+        let older = try decode(ScanSettings.self, #"{"adjustments": {"brightness": 0.25}}"#)
+        XCTAssertEqual(older.adjustments.brightness, 0.25)
+        XCTAssertFalse(older.adjustments.cleanUp)
+        for value in [#""yes""#, "1", "null", "{}", "[]"] {
+            let settings = try decode(ScanSettings.self,
+                                      #"{"adjustments": {"brightness": 0.25, "cleanUp": "# + value + #"}, "resolution": 150}"#)
+            XCTAssertFalse(settings.adjustments.cleanUp, value)
+            XCTAssertEqual(settings.adjustments.brightness, 0.25, value)
+            XCTAssertEqual(settings.resolution, 150, value)
+        }
+        XCTAssertTrue(try decode(ScanSettings.self, #"{"adjustments": {"cleanUp": true}}"#).adjustments.cleanUp)
+    }
+
+    /// Twin of `CleanUp_RoundTrips_AndCloneIsIndependent`.
+    func test_cleanUp_roundTrips_andCopyIsIndependent() throws {
+        for on in [false, true] {
+            var settings = ScanSettings()
+            settings.adjustments.cleanUp = on
+            let back = try JSONDecoder().decode(ScanSettings.self, from: encode(settings))
+            XCTAssertEqual(back.adjustments.cleanUp, on)
+            XCTAssertEqual(back.adjustments, settings.adjustments)
+        }
+        var original = ScanSettings()
+        original.adjustments.cleanUp = true
+        var copy = original
+        copy.adjustments.cleanUp = false
+        XCTAssertTrue(original.adjustments.cleanUp)
+        XCTAssertNotEqual(original.adjustments, copy.adjustments)
+        XCTAssertTrue(original.adjustments.isIdentity)
     }
 
     func test_bookFlattenOptions_offByDefault_andInFilesWithoutThem() throws {

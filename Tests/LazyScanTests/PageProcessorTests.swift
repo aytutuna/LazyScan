@@ -1124,4 +1124,111 @@ final class PageProcessorTests: XCTestCase {
         }
         XCTAssertNil(page(textImage).spineShadow)
     }
+
+    // MARK: - Cleaning up scanner pages
+
+    func test_cleanUpMode_followsTheColorMode_andIsOffForPhotos() {
+        var s = ScanSettings()
+        XCTAssertNil(PageProcessor.cleanUpMode(s))
+        s.adjustments.cleanUp = true
+        XCTAssertEqual(PageProcessor.cleanUpMode(s), .auto)
+        s.colorMode = .grayscale
+        XCTAssertEqual(PageProcessor.cleanUpMode(s), .gray)
+        s.colorMode = .blackWhite
+        XCTAssertEqual(PageProcessor.cleanUpMode(s), .blackAndWhite)
+        s.intent = .photo
+        XCTAssertNil(PageProcessor.cleanUpMode(s))
+    }
+
+    func test_forScan_cleanUp_comesAfterTurningPagesUpright_beforeTheAdjustments() {
+        var s = ScanSettings()
+        s.adjustments.cleanUp = true
+        XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["blank", "separator", "cleanUp"])
+        s.adjustments.brightness = 0.25
+        XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["blank", "separator", "cleanUp", "adjust"])
+        s.adjustments.cleanUp = false
+        XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["blank", "separator", "adjust"])
+    }
+
+    func test_cleanUpStep_whitensAShadowedScan_keepingItAsTheOtherVersion() throws {
+        let shadowed = try XCTUnwrap(EnhancerPages.shadowed().makeCGImage())
+        let scanned = page(shadowed)
+        let step = CleanUpStep(mode: .gray)
+        let cleaned = step.apply(scanned)
+        XCTAssertEqual(cleaned.cleanedUp, .gray)
+        XCTAssertEqual(cleaned.colorMode, .grayscale)
+        XCTAssertEqual(cleaned.id, scanned.id)
+        XCTAssertTrue(cleaned.alternate?.image === scanned.image)
+        XCTAssertTrue(cleaned.canSwapVersions)
+        XCTAssertFalse(cleaned.showsOriginal)
+        // The paper in the shadow at the bottom right is white on the page shown, dim on the other version.
+        let after = try XCTUnwrap(RgbaImage(cgImage: cleaned.image))
+        let before = try XCTUnwrap(RgbaImage(cgImage: scanned.image))
+        let paper = (310 * after.width + 230) * 4
+        XCTAssertGreaterThanOrEqual(after.pixels[paper], 250)
+        XCTAssertLessThan(before.pixels[paper], 150)
+        // Once only.
+        XCTAssertTrue(step.apply(cleaned).image === cleaned.image)
+        XCTAssertEqual(step.name, "cleanUp")
+        let original = cleaned.withVersionsSwapped(scanned.image)
+        L10n.withTable([:], language: "en") {
+            XCTAssertEqual(PageCorrections.caption(cleaned), "Cleaned up")
+            XCTAssertEqual(PageCorrections.toggleLabel(cleaned), "Show as scanned")
+            XCTAssertEqual(PageCorrections.swapNote(cleaned, number: 2), "Page 2 is shown cleaned up again.")
+            // One click shows the page as scanned, and back.
+            XCTAssertEqual(PageCorrections.caption(original), "As scanned")
+            XCTAssertEqual(PageCorrections.toggleLabel(original), "Show cleaned up")
+            XCTAssertEqual(PageCorrections.swapNote(original, number: 2), "Page 2 is shown as scanned. It is saved that way.")
+        }
+        XCTAssertEqual(original.cleanedUp, .gray)
+        // Blank pages and separator sheets are left as scanned.
+        let blank = scanned.withBlank(BlankPageResult(inkCoverage: 0.00005, inkComponents: 1, hasLargeDarkArea: false, isBlank: true))
+        XCTAssertTrue(step.apply(blank).image === blank.image)
+        let sheet = scanned.withPatch(.patch2)
+        XCTAssertTrue(step.apply(sheet).image === sheet.image)
+        var imported = scanned
+        imported.source = .photo
+        XCTAssertTrue(step.apply(imported).image === imported.image)
+        // After crop and straighten the other version stays the page as scanned.
+        let straightened = page(sheetImage).withGeometry(shadowed, geometry: PageGeometry(cropped: false, angleDegrees: 1.5, basis: .textLines))
+        let both = CleanUpStep(mode: .auto).apply(straightened)
+        XCTAssertTrue(both.alternate?.image === sheetImage)
+        XCTAssertEqual(both.geometry, straightened.geometry)
+        XCTAssertNotNil(both.cleanedUp)
+        XCTAssertEqual(both.colorMode, .color)
+    }
+
+    func test_cleanUp_survivesRebuildingThePage() throws {
+        let cleaned = CleanUpStep(mode: .gray).apply(page(try XCTUnwrap(EnhancerPages.shadowed().makeCGImage())))
+        let softening = SpineShadowResult(edge: .left, depth: 0.2, widthInches: 0.5, maxGain: 1.4, protectedFraction: 0.1)
+        let rebuilt = [
+            cleaned.withImage(solid(3, 3, 0)),
+            cleaned.withSide(.front, sheetIndex: 0),
+            cleaned.withBlank(nil),
+            cleaned.withInclusion(.skip),
+            cleaned.withAlternate(nil),
+            cleaned.turnedUpright(1),
+            cleaned.withSpineShadow(blankImage, result: softening),
+            cleaned.withVersionsSwapped(textImage),
+            page(sheetImage).copyMeta(from: cleaned),
+        ]
+        for page in rebuilt {
+            XCTAssertEqual(page.cleanedUp, .gray)
+        }
+        XCTAssertNil(page(textImage).cleanedUp)
+    }
+
+    func test_process_cleanUpOn_cleansScannerPages_afterTheBlankCheckSawThemAsScanned() throws {
+        var s = ScanSettings()
+        s.adjustments.cleanUp = true
+        let scanned = page(try XCTUnwrap(EnhancerPages.shadowed().makeCGImage()))
+        let done = try XCTUnwrap(PageProcessor.forScan(s).process([scanned]).pages.first)
+        XCTAssertNotNil(done.cleanedUp)
+        XCTAssertNotNil(done.blank)
+        XCTAssertTrue(done.alternate?.image === scanned.image)
+        s.adjustments.cleanUp = false
+        let plain = try XCTUnwrap(PageProcessor.forScan(s).process([scanned]).pages.first)
+        XCTAssertNil(plain.cleanedUp)
+        XCTAssertNil(plain.alternate)
+    }
 }

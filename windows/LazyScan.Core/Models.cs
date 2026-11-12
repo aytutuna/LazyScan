@@ -469,6 +469,11 @@ public sealed class AdjustmentSettings : IEquatable<AdjustmentSettings>
     public bool RestoreFadedColors { get; set; } = false;
     /// <summary>0 ... 1 luminance threshold used for ColorMode.BlackWhite conversion.</summary>
     public double BlackWhiteThreshold { get; set; } = 0.5;
+    /// <summary>
+    /// Pages from a scanner are cleaned up after scanning (<see cref="CleanUpStep"/>): the paper whitened,
+    /// show-through gone, the print black. The page as scanned stays as the other version.
+    /// </summary>
+    public bool CleanUp { get; set; } = false;
 
     [JsonIgnore]
     public bool IsIdentity =>
@@ -483,12 +488,12 @@ public sealed class AdjustmentSettings : IEquatable<AdjustmentSettings>
         && Contrast == other.Contrast && Saturation == other.Saturation
         && Sharpness == other.Sharpness && Descreen == other.Descreen
         && RestoreFadedColors == other.RestoreFadedColors
-        && BlackWhiteThreshold == other.BlackWhiteThreshold;
+        && BlackWhiteThreshold == other.BlackWhiteThreshold && CleanUp == other.CleanUp;
 
     public override bool Equals(object? obj) => Equals(obj as AdjustmentSettings);
     public override int GetHashCode() =>
         HashCode.Combine(AutoEnhance, Brightness, Contrast, Saturation,
-                         Sharpness, Descreen, RestoreFadedColors, BlackWhiteThreshold);
+                         Sharpness, Descreen, RestoreFadedColors, HashCode.Combine(BlackWhiteThreshold, CleanUp));
 }
 
 /// <summary>
@@ -1015,10 +1020,10 @@ public sealed class ScannedPage
     public PageVersion? Alternate { get; init; }
 
     /// <summary>
-    /// The page was cropped, straightened or had its spine's shadow softened, and the other version is at
-    /// hand: one click swaps them.
+    /// The page was cropped, straightened, had its spine's shadow softened or was cleaned up, and the other
+    /// version is at hand: one click swaps them.
     /// </summary>
-    public bool CanSwapVersions => (Geometry is not null || SpineShadow is not null) && Alternate is not null;
+    public bool CanSwapVersions => (Geometry is not null || SpineShadow is not null || CleanedUp is not null) && Alternate is not null;
 
     /// <summary>
     /// The patch code found on the page (<see cref="PatchCodeDetector"/>), which makes it a
@@ -1063,6 +1068,9 @@ public sealed class ScannedPage
     /// did nothing (off, not cut from a spread, or no shadow found). In memory only.
     /// </summary>
     public SpineShadowResult? SpineShadow { get; init; }
+
+    /// <summary>The mode a scanner page was cleaned up in (<see cref="CleanUpStep"/>), or null when it was not. In memory only.</summary>
+    public DocumentEnhanceMode? CleanedUp { get; init; }
 
     /// <summary>
     /// Where the page came from: a scanner, or a photo imported from a file (<see cref="PhotoImport"/>),
@@ -1138,6 +1146,7 @@ public sealed class ScannedPage
             Upright = source.Upright,
             Spread = source.Spread,
             SpineShadow = source.SpineShadow,
+            CleanedUp = source.CleanedUp,
             Source = source.Source,
             Capture = source.Capture,
             Alternate = Alternate,
@@ -1161,6 +1170,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1184,6 +1194,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1207,6 +1218,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1230,6 +1242,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1253,6 +1266,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1276,6 +1290,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1299,6 +1314,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1325,6 +1341,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = new PageVersion(Image, FilePath, FullPixelSize),
@@ -1352,6 +1369,35 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = result,
+            CleanedUp = CleanedUp,
+            Source = Source,
+            Capture = Capture,
+            Alternate = Alternate ?? new PageVersion(Image, FilePath, FullPixelSize),
+        };
+
+    /// <summary>
+    /// This page cleaned up (<see cref="CleanUpStep"/>): <paramref name="cleaned"/> is shown, with the mode it was
+    /// cleaned in. The other version stays the page as scanned when crop and straighten or the spine's softening
+    /// kept one; otherwise the page as it was becomes the <see cref="Alternate"/>.
+    /// </summary>
+    public ScannedPage WithCleanUp(RgbaImage cleaned, DocumentEnhanceMode mode, ColorMode colorMode) =>
+        new(cleaned, Dpi, colorMode, Id, CreatedAt)
+        {
+            RotationQuarterTurns = RotationQuarterTurns,
+            Side = Side,
+            SheetIndex = SheetIndex,
+            Blank = Blank,
+            Inclusion = Inclusion,
+            Geometry = Geometry,
+            ShowsOriginal = false,
+            Patch = Patch,
+            Barcodes = Barcodes,
+            DocumentBreak = DocumentBreak,
+            DocumentLabel = DocumentLabel,
+            Upright = Upright,
+            Spread = Spread,
+            SpineShadow = SpineShadow,
+            CleanedUp = mode,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate ?? new PageVersion(Image, FilePath, FullPixelSize),
@@ -1375,6 +1421,7 @@ public sealed class ScannedPage
             Upright = upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1398,6 +1445,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = capture,
             Alternate = Alternate,
@@ -1421,6 +1469,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = Alternate,
@@ -1484,6 +1533,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = alternate,
@@ -1515,6 +1565,7 @@ public sealed class ScannedPage
             Upright = Upright,
             Spread = Spread,
             SpineShadow = SpineShadow,
+            CleanedUp = CleanedUp,
             Source = Source,
             Capture = Capture,
             Alternate = new PageVersion(FilePath is null ? Image : null, FilePath, FullPixelSize),

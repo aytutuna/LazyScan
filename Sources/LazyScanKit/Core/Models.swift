@@ -405,6 +405,10 @@ public struct AdjustmentSettings: Codable, Equatable, Sendable {
     public var restoreFadedColors: Bool = false
     /// 0 ... 1 luminance threshold used for ColorMode.blackWhite conversion.
     public var blackWhiteThreshold: Double = 0.5
+    /// Pages from a scanner are cleaned up after scanning (`CleanUpStep`): the paper whitened, show-through
+    /// gone, the print black. The page as scanned stays as the other version. Twin of C#
+    /// `AdjustmentSettings.CleanUp`.
+    public var cleanUp: Bool = false
 
     public init() {}
 
@@ -416,7 +420,7 @@ public struct AdjustmentSettings: Codable, Equatable, Sendable {
     /// Same keys the synthesized implementation used; `encode(to:)` stays synthesized.
     private enum CodingKeys: String, CodingKey {
         case autoEnhance, brightness, contrast, saturation, sharpness
-        case descreen, restoreFadedColors, blackWhiteThreshold
+        case descreen, restoreFadedColors, blackWhiteThreshold, cleanUp
     }
 }
 
@@ -433,6 +437,7 @@ extension AdjustmentSettings {
         descreen = container.decodeLenient(forKey: .descreen, default: descreen)
         restoreFadedColors = container.decodeLenient(forKey: .restoreFadedColors, default: restoreFadedColors)
         blackWhiteThreshold = container.decodeLenient(forKey: .blackWhiteThreshold, default: blackWhiteThreshold)
+        cleanUp = container.decodeLenient(forKey: .cleanUp, default: cleanUp)
     }
 }
 
@@ -911,6 +916,9 @@ public struct ScannedPage: Identifiable {
     /// not cut from a spread, or no shadow found). In memory only.
     public var spineShadow: SpineShadowResult?
 
+    /// The mode a scanner page was cleaned up in (`CleanUpStep`), or nil when it was not. In memory only.
+    public var cleanedUp: DocumentEnhanceMode?
+
     /// Where the page came from: a scanner, or a photo imported from a file (`PhotoImport`), which the
     /// page strip labels "Photo". In memory only.
     public var source: PageSource = .scanner
@@ -929,9 +937,9 @@ public struct ScannedPage: Identifiable {
     /// The spread this page was cut from (`spread`); nil for other pages.
     public var spreadID: UUID? { spread?.spreadID }
 
-    /// The page was cropped, straightened or had its spine's shadow softened, and the other version is at
-    /// hand: one click swaps them.
-    public var canSwapVersions: Bool { (geometry != nil || spineShadow != nil) && alternate != nil }
+    /// The page was cropped, straightened, had its spine's shadow softened or was cleaned up, and the other
+    /// version is at hand: one click swaps them.
+    public var canSwapVersions: Bool { (geometry != nil || spineShadow != nil || cleanedUp != nil) && alternate != nil }
 
     public init(image: CGImage, dpi: Int, colorMode: ColorMode, id: UUID = UUID(),
                 createdAt: Date = Date(), fileURL: URL? = nil, fullPixelSize: CGSize? = nil) {
@@ -980,6 +988,7 @@ public struct ScannedPage: Identifiable {
         page.upright = source.upright
         page.spread = source.spread
         page.spineShadow = source.spineShadow
+        page.cleanedUp = source.cleanedUp
         page.source = source.source
         page.capture = source.capture
         return page
@@ -1003,6 +1012,7 @@ public struct ScannedPage: Identifiable {
         page.upright = upright
         page.spread = spread
         page.spineShadow = spineShadow
+        page.cleanedUp = cleanedUp
         page.source = source
         page.capture = capture
         page.alternate = PageVersion(image: image, fileURL: fileURL, fullPixelSize: fullPixelSize)
@@ -1028,8 +1038,22 @@ public struct ScannedPage: Identifiable {
         page.upright = upright
         page.spread = spread
         page.spineShadow = result
+        page.cleanedUp = cleanedUp
         page.source = source
         page.capture = capture
+        page.alternate = alternate ?? PageVersion(image: image, fileURL: fileURL, fullPixelSize: fullPixelSize)
+        return page
+    }
+
+    /// This page cleaned up (`CleanUpStep`): `cleaned` is shown, with the mode it was cleaned in. The other
+    /// version stays the page as scanned when crop and straighten or the spine's softening kept one;
+    /// otherwise the page as it was becomes the `alternate`. Twin of C# `ScannedPage.WithCleanUp`.
+    public func withCleanUp(_ cleaned: CGImage, mode: DocumentEnhanceMode, colorMode: ColorMode) -> ScannedPage {
+        var page = ScannedPage(image: cleaned, dpi: dpi, colorMode: colorMode, id: id, createdAt: createdAt)
+        page.rotationQuarterTurns = rotationQuarterTurns
+        page = page.copyMeta(from: self)
+        page.cleanedUp = mode
+        page.showsOriginal = false
         page.alternate = alternate ?? PageVersion(image: image, fileURL: fileURL, fullPixelSize: fullPixelSize)
         return page
     }
@@ -1064,6 +1088,7 @@ public struct ScannedPage: Identifiable {
         page.upright = upright
         page.spread = spread
         page.spineShadow = spineShadow
+        page.cleanedUp = cleanedUp
         page.source = source
         page.capture = capture
         page.alternate = PageVersion(image: fileURL == nil ? image : nil, fileURL: fileURL, fullPixelSize: fullPixelSize)

@@ -244,6 +244,37 @@ public sealed class OrientationStep(IOrientationScorer scorer, double maxSeconds
 }
 
 /// <summary>
+/// Cleans up a page from a scanner (<see cref="DocumentEnhancer"/>: the paper evened out to white,
+/// show-through from the back gone, the print black) in <see cref="Mode"/>, keeping the page as it was as the
+/// other version (<see cref="ScannedPage.WithCleanUp"/>); a mode of gray or black and white sets the page's
+/// color mode, automatic leaves it. Once only: pages cleaned up already, blank pages, separator sheets, pages
+/// a camera took (<see cref="ScannedPage.Capture"/>, which <see cref="EnhanceStep"/> cleans up) and pages not
+/// from a scanner stay as they are. Runs after the
+/// blank check, crop, straighten and turning pages upright, so those see the page as scanned, before the
+/// adjustments.
+/// </summary>
+public sealed class CleanUpStep(DocumentEnhanceMode mode, double threshold = DocumentEnhancer.DefaultThreshold) : IPageStep
+{
+    public DocumentEnhanceMode Mode { get; } = mode;
+    public double Threshold { get; } = threshold;
+    public string Name => "cleanUp";
+
+    public ScannedPage Apply(ScannedPage page)
+    {
+        if (page.CleanedUp is not null || page.Source != PageSource.Scanner || page.Capture is not null || page.Patch is not null
+            || page.Blank is { IsBlank: true }) return page;
+        var result = DocumentEnhancer.Enhance(page.Image, Mode, Threshold);
+        var colorMode = Mode switch
+        {
+            DocumentEnhanceMode.Gray => ColorMode.Grayscale,
+            DocumentEnhanceMode.BlackAndWhite => ColorMode.BlackWhite,
+            _ => page.ColorMode,
+        };
+        return page.WithCleanUp(result.Image, result.Mode, colorMode);
+    }
+}
+
+/// <summary>
 /// The image adjustments and the color mode (<see cref="ImagePipeline.Apply"/>), on the page and on
 /// its other version (the page as scanned, kept by crop and straighten or by softening the spine's
 /// shadow), so either can be shown. A camera page <see cref="EnhanceStep"/> made gray or black and white
@@ -364,8 +395,9 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// check for those pages (whether or not the stack is split, so a split chosen later finds
     /// them), reading their barcodes when the stack is split at barcode or QR sheets
     /// (<see cref="ReadsBarcodes"/>) and <paramref name="barcodes"/> can read them, turning those pages
-    /// upright when asked for and <paramref name="scorer"/> can read text, then the adjustments unless
-    /// they change nothing. Facing pages are split before the steps when
+    /// upright when asked for and <paramref name="scorer"/> can read text, cleaning the pages up when asked
+    /// for (<see cref="CleanUpMode"/>), then the adjustments unless they change nothing. Facing pages are
+    /// split before the steps when
     /// asked for those pages (<see cref="SplitsFacingPages"/>), so each page is checked, straightened
     /// and turned on its own.
     /// </summary>
@@ -396,6 +428,10 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         if (TurnsPagesUpright(settings) && scorer is { IsAvailable: true })
         {
             steps.Add(new OrientationStep(scorer, split: settings.Document));
+        }
+        if (CleanUpMode(settings) is { } cleanUp)
+        {
+            steps.Add(new CleanUpStep(cleanUp, settings.Adjustments.BlackWhiteThreshold));
         }
         if (!(settings.Adjustments.IsIdentity && settings.ColorMode == ColorMode.Color))
         {
@@ -435,6 +471,23 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
             steps.Add(new AdjustmentStep(settings.Adjustments, settings.ColorMode));
         }
         return new PageProcessor(steps);
+    }
+
+    /// <summary>
+    /// The mode scanner pages are cleaned up in (<see cref="CleanUpStep"/>) with these settings: asked for
+    /// (<see cref="AdjustmentSettings.CleanUp"/>) and not a photo task, which keeps its pictures as scanned;
+    /// the color mode's: Enhanced (<see cref="DocumentEnhanceMode.Auto"/>) for color, gray, black and white.
+    /// Null: no clean-up.
+    /// </summary>
+    public static DocumentEnhanceMode? CleanUpMode(ScanSettings settings)
+    {
+        if (!settings.Adjustments.CleanUp || settings.Intent == ScanIntent.Photo) return null;
+        return settings.ColorMode switch
+        {
+            ColorMode.Grayscale => DocumentEnhanceMode.Gray,
+            ColorMode.BlackWhite => DocumentEnhanceMode.BlackAndWhite,
+            _ => DocumentEnhanceMode.Auto,
+        };
     }
 
     /// <summary>
@@ -777,14 +830,15 @@ public static class PageCorrections
     /// <summary>
     /// "Cropped and straightened 2.4°", "Straightened 1.5°" or "Cropped" for a changed page shown
     /// changed, followed by ", spine shadow softened" ("Spine shadow softened" alone) when the shadow was
-    /// softened; "As scanned" when the user went back to the page as scanned; "Corrected from photo"
-    /// and "As photographed" for a page taken from a photo; null for other pages.
+    /// softened; "Cleaned up" for a page cleaned up and nothing else; "As scanned" when the user went back to
+    /// the page as scanned; "Corrected from photo" and "As photographed" for a page taken from a photo; null
+    /// for other pages.
     /// </summary>
     public static string? Caption(ScannedPage page)
     {
-        if (page.Geometry is null && page.SpineShadow is null) return null;
+        if (page.Geometry is null && page.SpineShadow is null && page.CleanedUp is null) return null;
         if (page.ShowsOriginal) return FromPhoto(page) ? PhotoImport.OriginalCaption : Loc.T("As scanned");
-        if (page.Geometry is not { } geometry) return Loc.T("Spine shadow softened");
+        if (page.Geometry is not { } geometry) return page.SpineShadow is null ? Loc.T("Cleaned up") : Loc.T("Spine shadow softened");
         return page.SpineShadow is null ? geometry.Caption : Loc.T("{0}, spine shadow softened", geometry.Caption);
     }
 
@@ -798,7 +852,10 @@ public static class PageCorrections
     {
         if (!page.CanSwapVersions) return null;
         if (!page.ShowsOriginal) return FromPhoto(page) ? Loc.T("Show as photographed") : Loc.T("Show as scanned");
-        if (page.Geometry is not { } geometry) return Loc.T("Show with the spine shadow softened");
+        if (page.Geometry is not { } geometry)
+        {
+            return page.SpineShadow is null ? Loc.T("Show cleaned up") : Loc.T("Show with the spine shadow softened");
+        }
         bool softened = page.SpineShadow is not null;
         return ChangeOf(geometry) switch
         {
@@ -820,13 +877,18 @@ public static class PageCorrections
     /// </summary>
     public static string SwapNote(ScannedPage page, int number)
     {
-        if (page.ShowsOriginal || (page.Geometry is null && page.SpineShadow is null))
+        if (page.ShowsOriginal || (page.Geometry is null && page.SpineShadow is null && page.CleanedUp is null))
         {
             return FromPhoto(page)
                 ? Loc.T("Page {0} is shown as photographed. It is saved that way.", number)
                 : Loc.T("Page {0} is shown as scanned. It is saved that way.", number);
         }
-        if (page.Geometry is not { } geometry) return Loc.T("Page {0} is shown with the spine shadow softened again.", number);
+        if (page.Geometry is not { } geometry)
+        {
+            return page.SpineShadow is null
+                ? Loc.T("Page {0} is shown cleaned up again.", number)
+                : Loc.T("Page {0} is shown with the spine shadow softened again.", number);
+        }
         bool softened = page.SpineShadow is not null;
         return ChangeOf(geometry) switch
         {

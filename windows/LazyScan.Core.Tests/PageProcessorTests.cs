@@ -1060,4 +1060,116 @@ public class PageProcessorTests
         }
         Assert.Null(Page(TextImage).SpineShadow);
     }
+
+    // MARK: - Cleaning up scanner pages
+
+    [Fact]
+    public void CleanUpMode_FollowsTheColorMode_AndIsOffForPhotos()
+    {
+        var s = new ScanSettings();
+        Assert.Null(PageProcessor.CleanUpMode(s));
+        s.Adjustments.CleanUp = true;
+        Assert.Equal(DocumentEnhanceMode.Auto, PageProcessor.CleanUpMode(s));
+        s.ColorMode = ColorMode.Grayscale;
+        Assert.Equal(DocumentEnhanceMode.Gray, PageProcessor.CleanUpMode(s));
+        s.ColorMode = ColorMode.BlackWhite;
+        Assert.Equal(DocumentEnhanceMode.BlackAndWhite, PageProcessor.CleanUpMode(s));
+        s.Intent = ScanIntent.Photo;
+        Assert.Null(PageProcessor.CleanUpMode(s));
+    }
+
+    [Fact]
+    public void ForScan_CleanUp_ComesAfterTurningPagesUpright_BeforeTheAdjustments()
+    {
+        var s = new ScanSettings();
+        s.Adjustments.CleanUp = true;
+        Assert.Equal(["blank", "separator", "cleanUp"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
+        s.Adjustments.Brightness = 0.25;
+        Assert.Equal(["blank", "separator", "cleanUp", "adjust"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
+        s.Adjustments.CleanUp = false;
+        Assert.Equal(["blank", "separator", "adjust"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
+    }
+
+    [Fact]
+    public void CleanUpStep_WhitensAShadowedScan_KeepingItAsTheOtherVersion()
+    {
+        var shadowed = EnhancerPages.Shadowed();
+        var scanned = Page(shadowed);
+        var step = new CleanUpStep(DocumentEnhanceMode.Gray);
+        var cleaned = step.Apply(scanned);
+        Assert.Equal((DocumentEnhanceMode.Gray, ColorMode.Grayscale, scanned.Id), (cleaned.CleanedUp!.Value, cleaned.ColorMode, cleaned.Id));
+        Assert.Same(scanned.Image, cleaned.Alternate!.Image);
+        Assert.True(cleaned.CanSwapVersions);
+        Assert.False(cleaned.ShowsOriginal);
+        // The paper in the shadow at the bottom right is white on the page shown, dim on the other version.
+        int paper = (310 * cleaned.Image.Width + 230) * 4;
+        Assert.True(cleaned.Image.Pixels[paper] >= 250);
+        Assert.True(scanned.Image.Pixels[paper] < 150);
+        // Once only.
+        Assert.Same(cleaned, step.Apply(cleaned));
+        Assert.Equal("cleanUp", step.Name);
+        Assert.Equal("Cleaned up", PageCorrections.Caption(cleaned));
+        Assert.Equal("Show as scanned", PageCorrections.ToggleLabel(cleaned));
+        Assert.Equal("Page 2 is shown cleaned up again.", PageCorrections.SwapNote(cleaned, 2));
+        // One click shows the page as scanned, and back.
+        var original = cleaned.WithVersionsSwapped(scanned.Image);
+        Assert.Equal("As scanned", PageCorrections.Caption(original));
+        Assert.Equal("Show cleaned up", PageCorrections.ToggleLabel(original));
+        Assert.Equal("Page 2 is shown as scanned. It is saved that way.", PageCorrections.SwapNote(original, 2));
+        Assert.Equal(DocumentEnhanceMode.Gray, original.CleanedUp);
+        // Blank pages and separator sheets are left as scanned.
+        var blank = scanned.WithBlank(new BlankPageResult(0.00005, 1, false, true));
+        Assert.Same(blank, step.Apply(blank));
+        var sheet = scanned.WithPatch(PatchCode.Patch2);
+        Assert.Same(sheet, step.Apply(sheet));
+        var imported = new ScannedPage(shadowed, 100, ColorMode.Color) { Source = PageSource.Photo };
+        Assert.Same(imported, step.Apply(imported));
+        // After crop and straighten the other version stays the page as scanned.
+        var straightened = Page(SheetImage).WithGeometry(shadowed, new PageGeometry(false, 1.5, GeometryBasis.TextLines));
+        var both = new CleanUpStep(DocumentEnhanceMode.Auto).Apply(straightened);
+        Assert.Same(SheetImage, both.Alternate!.Image);
+        Assert.Equal(straightened.Geometry, both.Geometry);
+        Assert.NotNull(both.CleanedUp);
+        Assert.Equal(ColorMode.Color, both.ColorMode);
+    }
+
+    [Fact]
+    public void CleanUp_SurvivesRebuildingThePage()
+    {
+        var cleaned = new CleanUpStep(DocumentEnhanceMode.Gray).Apply(Page(EnhancerPages.Shadowed()));
+        var softening = new SpineShadowResult(PageEdge.Left, 0.2, 0.5, 1.4, 0.1);
+        var rebuilt = new[]
+        {
+            cleaned.WithImage(RgbaImage.Filled(3, 3, 0, 0, 0)),
+            cleaned.WithSide(PageSide.Front, 0),
+            cleaned.WithBlank(null),
+            cleaned.WithInclusion(PageInclusion.Skip),
+            cleaned.WithAlternate(null),
+            cleaned.TurnedUpright(1),
+            cleaned.WithSpineShadow(BlankImage, softening),
+            cleaned.WithVersionsSwapped(TextImage),
+            Page(SheetImage).CopyMeta(cleaned),
+        };
+        foreach (var page in rebuilt)
+        {
+            Assert.Equal(DocumentEnhanceMode.Gray, page.CleanedUp);
+        }
+        Assert.Null(Page(TextImage).CleanedUp);
+    }
+
+    [Fact]
+    public void Process_CleanUpOn_CleansScannerPages_AfterTheBlankCheckSawThemAsScanned()
+    {
+        var s = new ScanSettings();
+        s.Adjustments.CleanUp = true;
+        var scanned = Page(EnhancerPages.Shadowed());
+        var done = PageProcessor.ForScan(s).Process([scanned]).Pages[0];
+        Assert.NotNull(done.CleanedUp);
+        Assert.NotNull(done.Blank);
+        Assert.Same(scanned.Image, done.Alternate!.Image);
+        s.Adjustments.CleanUp = false;
+        var plain = PageProcessor.ForScan(s).Process([scanned]).Pages[0];
+        Assert.Null(plain.CleanedUp);
+        Assert.Null(plain.Alternate);
+    }
 }
