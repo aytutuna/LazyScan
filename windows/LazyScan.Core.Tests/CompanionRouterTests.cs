@@ -396,12 +396,14 @@ public sealed class CompanionRouterTests : IDisposable
     {
         _pairing = new PairingSession(_now);
         var attacker = IPAddress.Parse("192.168.1.66");
-        for (int i = 0; i < PairingSession.MaxFailedAttempts; i++)
+        for (int i = 0; i < CompanionRateLimiter.MaxFailures; i++)
         {
             await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(CompanionVectors.TokenText, "phone-0001", "P", "ios", "1")), from: attacker);
         }
-        // The session is closed now, even for the right token.
-        var closed = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
-        Assert.Equal(CompanionErrorCode.PairingClosed, CompanionError.FromJson(closed.Body)!.Code);
+        // The address is blocked, even with the right token; the session stays open for everyone else.
+        var blocked = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")), from: attacker);
+        Assert.Equal(429, blocked.Status);
+        var paired = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
+        Assert.Equal(200, paired.Status);
     }
 }

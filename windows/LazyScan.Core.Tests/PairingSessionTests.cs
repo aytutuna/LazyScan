@@ -48,19 +48,17 @@ public class PairingSessionTests
     }
 
     [Fact]
-    public void WrongTokens_CloseTheSessionAfterFive()
+    public void WrongTokens_DoNotCloseTheSession()
     {
         var session = Session();
         string almost = CompanionVectors.TokenText[..^1] + "x";
-        for (int i = 1; i < PairingSession.MaxFailedAttempts; i++)
+        for (int i = 1; i <= 6; i++)
         {
             Assert.Equal(PairingRedeemResult.WrongToken, session.Redeem(almost, Opened));
             Assert.Equal(i, session.FailedAttempts);
             Assert.Equal(PairingSessionState.Open, session.StateAt(Opened));
         }
-        Assert.Equal(PairingRedeemResult.WrongToken, session.Redeem(null, Opened));
-        Assert.Equal(PairingSessionState.Closed, session.StateAt(Opened));
-        Assert.Equal(PairingRedeemResult.Closed, session.Redeem(CompanionVectors.TokenText, Opened));
+        Assert.Equal(PairingRedeemResult.Accepted, session.Redeem(CompanionVectors.TokenText, Opened));
     }
 
     [Fact]

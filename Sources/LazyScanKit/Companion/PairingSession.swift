@@ -28,12 +28,11 @@ public enum PairingRedeemResult: Equatable, Sendable {
 public struct PairingSessionError: Error, Equatable, Sendable {}
 
 /// One pairing window on the desktop: a random 128-bit token shown in the QR code, good for one
-/// pairing within `lifetime`. Tokens are compared in constant time; after `maxFailedAttempts` wrong
-/// ones the session closes, so a token cannot be guessed. The clock is passed in, so tests control it.
-/// Safe to use from any thread.
+/// pairing within `lifetime`. Tokens are compared in constant time. Wrong ones are counted but do not
+/// close the session, so another device cannot shut the code; the router limits each address instead.
+/// The clock is passed in, so tests control it. Safe to use from any thread.
 public final class PairingSession: @unchecked Sendable {
     public static let lifetime: TimeInterval = 5 * 60
-    public static let maxFailedAttempts = 5
 
     private let lock = NSLock()
     private let tokenBytes: [UInt8]
@@ -82,7 +81,7 @@ public final class PairingSession: @unchecked Sendable {
     }
 
     /// Presents `token` at `now`. The right token while the session is open is accepted once; a wrong
-    /// one counts towards `maxFailedAttempts`, after which the session is closed.
+    /// one is counted and the session stays open.
     public func redeem(_ token: String?, now: Date) -> PairingRedeemResult {
         lock.lock()
         defer { lock.unlock() }
@@ -107,7 +106,6 @@ public final class PairingSession: @unchecked Sendable {
         }
         if !matches {
             failed += 1
-            if failed >= PairingSession.maxFailedAttempts { current = .closed }
             return .wrongToken
         }
         current = .used

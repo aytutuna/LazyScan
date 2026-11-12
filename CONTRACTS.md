@@ -1665,11 +1665,11 @@ public struct PairingUri: Equatable {
 }
 public enum PairingSessionState { case open, used, expired, closed }
 public enum PairingRedeemResult { case accepted, wrongToken, expired, alreadyUsed, closed }
-public final class PairingSession {                // lifetime 5 min, maxFailedAttempts 5; the clock is passed in
+public final class PairingSession {                // lifetime 5 min; the clock is passed in
     public init(opened: Date, token: Data? = nil) throws   // 16 random bytes unless given (C#: ArgumentException for another length)
     public let token: String; public let opened: Date; public let expires: Date; public var failedAttempts: Int
     public func state(at now: Date) -> PairingSessionState; public func remaining(at now: Date) -> TimeInterval
-    public func redeem(_ token: String?, now: Date) -> PairingRedeemResult   // constant time; once; the 5th wrong token closes it
+    public func redeem(_ token: String?, now: Date) -> PairingRedeemResult   // constant time; once; a wrong token is counted, never closes it
     public func close()
 }
 public struct PairedDevice: Codable { id, name, platform, appVersion, secretHash: String; paired, lastSeen: Date? }

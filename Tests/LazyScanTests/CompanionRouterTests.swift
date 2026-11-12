@@ -441,11 +441,13 @@ final class CompanionRouterTests: XCTestCase {
         let session = try PairingSession(opened: now)
         pairing = session
         let attacker = companionHost("192.168.1.66")
-        for _ in 0..<PairingSession.maxFailedAttempts {
+        for _ in 0..<CompanionRateLimiter.maxFailures {
             _ = await send("POST", CompanionProtocol.pairPath, body: pairRequest(CompanionVectors.tokenText), from: attacker)
         }
-        // The session is closed now, even for the right token.
-        let closed = await send("POST", CompanionProtocol.pairPath, body: pairRequest(session.token))
-        XCTAssertEqual(code(closed), CompanionErrorCode.pairingClosed)
+        // The address is blocked, even with the right token; the session stays open for everyone else.
+        let blocked = await send("POST", CompanionProtocol.pairPath, body: pairRequest(session.token), from: attacker)
+        XCTAssertEqual(blocked.status, 429)
+        let paired = await send("POST", CompanionProtocol.pairPath, body: pairRequest(session.token))
+        XCTAssertEqual(paired.status, 200)
     }
 }

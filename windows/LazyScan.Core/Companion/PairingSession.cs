@@ -30,14 +30,13 @@ public enum PairingRedeemResult
 
 /// <summary>
 /// One pairing window on the desktop: a random 128-bit token shown in the QR code, good for one
-/// pairing within <see cref="Lifetime"/>. Tokens are compared in constant time; after
-/// <see cref="MaxFailedAttempts"/> wrong ones the session closes, so a token cannot be guessed. The
-/// clock is passed in, so tests control it. Safe to use from any thread.
+/// pairing within <see cref="Lifetime"/>. Tokens are compared in constant time. Wrong ones are
+/// counted but do not close the session, so another device cannot shut the code; the router limits
+/// each address instead. The clock is passed in, so tests control it. Safe to use from any thread.
 /// </summary>
 public sealed class PairingSession
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
-    public const int MaxFailedAttempts = 5;
 
     private readonly object _gate = new();
     private readonly byte[] _token;
@@ -88,8 +87,7 @@ public sealed class PairingSession
 
     /// <summary>
     /// Presents <paramref name="token"/> at <paramref name="now"/>. The right token while the
-    /// session is open is accepted once; a wrong one counts towards <see cref="MaxFailedAttempts"/>,
-    /// after which the session is closed.
+    /// session is open is accepted once; a wrong one is counted and the session stays open.
     /// </summary>
     public PairingRedeemResult Redeem(string? token, DateTimeOffset now)
     {
@@ -114,7 +112,6 @@ public sealed class PairingSession
             if (!matches)
             {
                 _failedAttempts++;
-                if (_failedAttempts >= MaxFailedAttempts) _state = PairingSessionState.Closed;
                 return PairingRedeemResult.WrongToken;
             }
             _state = PairingSessionState.Used;

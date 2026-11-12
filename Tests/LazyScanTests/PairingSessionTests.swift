@@ -43,17 +43,15 @@ final class PairingSessionTests: XCTestCase {
         XCTAssertEqual(try makeSession().redeem(CompanionVectors.tokenText, now: minutes(5).addingTimeInterval(-0.001)), .accepted)
     }
 
-    func testWrongTokens_CloseTheSessionAfterFive() throws {
+    func testWrongTokens_DoNotCloseTheSession() throws {
         let session = try makeSession()
         let almost = String(CompanionVectors.tokenText.dropLast()) + "x"
-        for i in 1..<PairingSession.maxFailedAttempts {
+        for i in 1...6 {
             XCTAssertEqual(session.redeem(almost, now: opened), .wrongToken)
             XCTAssertEqual(session.failedAttempts, i)
             XCTAssertEqual(session.state(at: opened), .open)
         }
-        XCTAssertEqual(session.redeem(nil, now: opened), .wrongToken)
-        XCTAssertEqual(session.state(at: opened), .closed)
-        XCTAssertEqual(session.redeem(CompanionVectors.tokenText, now: opened), .closed)
+        XCTAssertEqual(session.redeem(CompanionVectors.tokenText, now: opened), .accepted)
     }
 
     func testMalformedTokens_CountAsWrong() throws {
