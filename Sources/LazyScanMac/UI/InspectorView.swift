@@ -1277,6 +1277,14 @@ struct InspectorView: View {
                     }
                 }
             }
+            Toggle("Clean up", isOn: $state.settings.adjustments.cleanUp)
+                .help("Whitens paper and removes show-through")
+                .accessibilityHint(Text("Whitens paper and removes show-through"))
+                .accessibilityIdentifier("inspector.cleanUp")
+            Text("Whitens paper and removes show-through")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
         }
     }
 

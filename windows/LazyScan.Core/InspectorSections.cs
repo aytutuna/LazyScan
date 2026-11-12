@@ -91,7 +91,7 @@ public static class InspectorSections
     public static string AdjustmentsSummary(AdjustmentSettings a)
     {
         bool edited = a.Brightness != 0 || a.Contrast != 1 || a.Saturation != 1 || a.Sharpness != 0
-                      || a.Descreen || a.RestoreFadedColors;
+                      || a.Descreen || a.RestoreFadedColors || a.CleanUp;
         return edited ? Loc.T("Edited") : a.AutoEnhance ? Loc.T("Auto|enhance") : "";
     }
 

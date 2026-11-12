@@ -79,6 +79,9 @@ final class InspectorSectionsTests: XCTestCase {
 
         s.adjustments.autoEnhance = true
         XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Auto")
+        s.adjustments.cleanUp = true
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Edited")
+        s.adjustments.cleanUp = false
         s.adjustments.brightness = 0.2
         XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Edited")
 

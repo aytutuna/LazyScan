@@ -102,7 +102,7 @@ public enum InspectorSections {
     /// alone, else "".
     public static func adjustmentsSummary(_ a: AdjustmentSettings) -> String {
         let sliders: Bool = a.brightness != 0 || a.contrast != 1 || a.saturation != 1 || a.sharpness != 0
-        let edited: Bool = sliders || a.descreen || a.restoreFadedColors
+        let edited: Bool = sliders || a.descreen || a.restoreFadedColors || a.cleanUp
         if edited { return L10n.t("Edited") }
         return a.autoEnhance ? L10n.t("Auto|enhance") : ""
     }

@@ -82,6 +82,9 @@ public class InspectorSectionsTests
 
         s.Adjustments.AutoEnhance = true;
         Assert.Equal("Auto", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        s.Adjustments.CleanUp = true;
+        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        s.Adjustments.CleanUp = false;
         s.Adjustments.Brightness = 0.2;
         Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments));
 

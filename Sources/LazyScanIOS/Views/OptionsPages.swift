@@ -202,8 +202,15 @@ struct LookPage: View {
             }
             Section {
                 AdjustmentSettingsRows()
+                if mode == IOSScanMode.printer {
+                    Toggle("Clean up", isOn: $state.settings.adjustments.cleanUp)
+                        .accessibilityHint(Text("Whitens paper and removes show-through"))
+                        .accessibilityIdentifier("options.cleanUp")
+                }
             } footer: {
-                if AdjustmentSettingsRows.showsThreshold(state.settings) {
+                if mode == IOSScanMode.printer {
+                    Text("Whitens paper and removes show-through")
+                } else if AdjustmentSettingsRows.showsThreshold(state.settings) {
                     Text("Higher makes more of the page black.")
                 }
             }
