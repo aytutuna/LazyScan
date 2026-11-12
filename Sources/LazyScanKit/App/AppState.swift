@@ -515,13 +515,22 @@ public final class AppState: ObservableObject {
     /// picture, its text copied, or discarded (AppState+CameraTasks.swift); nil otherwise.
     @Published public internal(set) var quickScanPage: ScannedPage?
     /// The Copy task on the iPhone and iPad: the pages brought in, held on the copy screen until they are
-    /// printed (as often as asked) or discarded (AppState+Copy.swift); empty otherwise.
+    /// printed (as often as asked) or discarded (AppState+Copy.swift); empty otherwise. On the Mac they
+    /// are held from the print until it went through, so a cancelled panel or a failed print keeps them.
     @Published public internal(set) var copyPages: [ScannedPage] = [] {
         didSet {
             copyPagesRecorded = false
-            if copyPages.isEmpty { copyIsOfQueue = false }
+            if copyPages.isEmpty {
+                copyIsOfQueue = false
+                copyIsKept = false
+                copyPrintFailure = nil
+            }
         }
     }
+    /// The held copy is the Mac's, kept after a print that was cancelled or failed; new pages let it go.
+    public internal(set) var copyIsKept = false
+    /// Why the Mac's held copy did not print; nil when it was not tried or only cancelled.
+    @Published public internal(set) var copyPrintFailure: String?
     /// The held copy is the queue's pages (Print… on the phone, `printQueueAsCopy`), held whatever the
     /// task; letting it go leaves the queue as it is.
     public internal(set) var copyIsOfQueue = false
@@ -1261,6 +1270,7 @@ public final class AppState: ObservableObject {
             return
         }
         let copy = TaskCatalog.flow(of: settings) == .copy
+        if copyIsKept && !isBusy { copyPages = [] }
         // A copy of an area selected on the preview is centred on the paper; of a page, it lies in the corner.
         let areaSelected = settings.source == .flatbed && selectionRect != nil
         let generation = switchGeneration
@@ -1419,6 +1429,7 @@ public final class AppState: ObservableObject {
             return false
         }
         let copy = TaskCatalog.flow(of: settings) == .copy
+        if copyIsKept { copyPages = [] }
         let s = settings
         // The two-sided task's camera pages are the side its steps are at; flip & capture knows their sheet.
         var incoming: [ScannedPage] = pages
@@ -1464,7 +1475,7 @@ public final class AppState: ObservableObject {
     /// `AppViewModel.CanTakePhonePages`.
     public var canIngest: Bool {
         !isBusy && !isStackUnderWay && !showPhotoReview && !showIdCardReview && quickScanPage == nil
-            && copyPages.isEmpty
+            && (copyPages.isEmpty || copyIsKept)
     }
 
     /// The clean-up stage for pages from `source`: a scan's (`PageProcessor.forScan`, arranged as
@@ -1683,9 +1694,10 @@ public final class AppState: ObservableObject {
                 break
             }
             guard let copySetup = intake.copySetup else { throw PrintError.noPrinter }
+            // Recorded before printing: a copy that fails stays held and is not recorded again when it prints.
+            self.recordCaptures(processed.map(\.id))
             try await self.printCopyPages(processed, settings: s, setup: copySetup, areaSelected: intake.areaSelected,
                                           flag: flag)
-            self.recordCaptures(processed.map(\.id))
         case .receiptSplit:
             self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
             try await self.showReceipts(processed, settings: s, flag: flag, generation: generation)
@@ -3184,6 +3196,7 @@ public final class AppState: ObservableObject {
     func runExclusive(stopsInBackground: Bool = true, _ operation: @escaping (CancelFlag) async throws -> Void) {
         guard !isBusy else { return }
         isBusy = true
+        copyPrintFailure = nil
         let flag = CancelFlag()
         currentCancelFlag = flag
         saveDirectory = nil
@@ -3203,7 +3216,7 @@ public final class AppState: ObservableObject {
                 statusMessage = L10n.t("Cancelled.")
             } catch {
                 errorMessage = error.localizedDescription
-                statusMessage = L10n.t("Ready.")
+                statusMessage = copyPrintFailure == nil ? L10n.t("Ready.") : L10n.t("Could not print.")
                 // A scan the scanner refused (busy, offline, ...) is what the troubleshooter explains.
                 if error is ScanError, let session = self.session {
                     self.recordFailure(deviceName: session.info.name, error: error)

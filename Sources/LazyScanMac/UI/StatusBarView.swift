@@ -28,6 +28,9 @@ struct StatusBarView: View {
                     .help(L10n.plural(state.removedCount, one: "Put the page back", other: "Put the pages back"))
                     .accessibilityHint(Text(L10n.plural(state.removedCount, one: "Puts back the removed page", other: "Puts back the removed pages")))
             }
+            if showsHeldCopy {
+                heldCopyActions
+            }
             if state.isBusy {
                 ProgressView()
                     .controlSize(.small)
@@ -52,6 +55,28 @@ struct StatusBarView: View {
 
     private var showsUndo: Bool { state.canUndoRemove }
 
+    private var showsHeldCopy: Bool { state.copyIsKept && !state.copyPages.isEmpty && !state.isBusy }
+
+    /// A copy that did not print is still here: print it again on the same printer, or pick another.
+    private var heldCopyActions: some View {
+        HStack(spacing: 8) {
+            Button("Print Again") {
+                state.printHeldCopyAgain()
+            }
+                .foregroundStyle(Color.accentColor)
+                .help(String(localized: "Print the copy again on the same printer"))
+                .accessibilityHint(Text("Prints the copy again on the same printer"))
+            Button("Choose Another Printer…") {
+                state.printHeldCopy()
+            }
+                .help(String(localized: "Pick a printer and print the copy"))
+                .accessibilityLabel(Text("Choose Another Printer"))
+                .accessibilityHint(Text("Opens the print panel to pick a printer"))
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+    }
+
     /// The status in six words at most: empty while a review shows its own title, "Saved" while the
     /// saved files' actions show (with any warning a setting changed for the scanner adds).
     private var shownStatus: String {
@@ -71,6 +96,8 @@ struct StatusBarView: View {
         let folder: URL? = urls.first?.deletingLastPathComponent()
         let plainSaved: Bool = shownStatus == L10n.t("Saved")
         let path: String = single ? urls[0].path : (folder?.path ?? "")
+        let help: String = state.copyPrintFailure ?? (showsSaved ? path : "")
+        let label: String = state.copyPrintFailure ?? state.statusMessage
         return HStack(spacing: 6) {
             if showsSaved && !single && plainSaved, let folder {
                 Text(savedFilesPhrase(urls.count, folder: folder.lastPathComponent))
@@ -93,9 +120,9 @@ struct StatusBarView: View {
                     .truncationMode(.middle)
             }
         }
-        .help(showsSaved ? path : "")
+        .help(help)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(state.statusMessage))
+        .accessibilityLabel(Text(label))
     }
 
     private func savedFilesPhrase(_ count: Int, folder: String) -> String {

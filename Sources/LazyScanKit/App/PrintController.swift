@@ -76,7 +76,8 @@ public enum PrintError: LocalizedError, Equatable {
     /// when the user cancelled.
     func print(_ document: Data, job: PrintJob) async throws -> Bool
     /// Prints `document` again on the printer picked last, without asking for one ("Copy again" on the
-    /// iPhone); the same as `print` where a printer is chosen beforehand.
+    /// iPhone); the same as `print` where a printer is chosen beforehand (the Mac skips the panel and uses the
+    /// printer it last confirmed).
     func printAgain(_ document: Data, job: PrintJob) async throws -> Bool
 }
 

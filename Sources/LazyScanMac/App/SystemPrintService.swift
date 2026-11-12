@@ -8,6 +8,9 @@ import PDFKit
 /// The macOS implementation: the printers from `NSPrinter`, the paper from `NSPrintInfo`, printing
 /// through `PDFDocument`'s print operation with the standard print panel.
 @MainActor public final class SystemPrintService: PrintService {
+    /// The printer the panel was last confirmed on, for `printAgain`.
+    private var lastPrinterName: String?
+
     public init() {}
 
     public var printerNames: [String] { NSPrinter.printerNames }
@@ -39,8 +42,17 @@ import PDFKit
     }
 
     public func print(_ document: Data, job: PrintJob) async throws -> Bool {
+        try run(document, job: job, printerName: job.printerName, showsPanel: true)
+    }
+
+    /// Prints on the printer the panel was last confirmed on (else the job's), without the panel.
+    public func printAgain(_ document: Data, job: PrintJob) async throws -> Bool {
+        try run(document, job: job, printerName: lastPrinterName ?? job.printerName, showsPanel: false)
+    }
+
+    private func run(_ document: Data, job: PrintJob, printerName: String?, showsPanel: Bool) throws -> Bool {
         guard let pdf = PDFDocument(data: document) else { throw PrintError.failed(String(localized: "The pages could not be prepared for printing.")) }
-        let info = printInfo(printerName: job.printerName, paper: job.paper.paper)
+        let info = printInfo(printerName: printerName, paper: job.paper.paper)
         info.topMargin = 0
         info.bottomMargin = 0
         info.leftMargin = 0
@@ -54,9 +66,11 @@ import PDFKit
             throw PrintError.failed(String(localized: "The print panel could not be opened."))
         }
         operation.jobTitle = job.jobName
-        operation.showsPrintPanel = true
+        operation.showsPrintPanel = showsPanel
         operation.showsProgressPanel = true
-        return operation.run()
+        let printed = operation.run()
+        if printed { lastPrinterName = operation.printInfo.printer.name }
+        return printed
     }
 
     /// A copy of the shared print info on `printerName` (the default printer when nil or no longer

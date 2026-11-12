@@ -28,6 +28,11 @@ private struct ErrorNoticeAlert: ViewModifier {
             if state.errorSuggestsTroubleshooter {
                 Button("Troubleshoot\u{2026}") { state.showTroubleshooter = true }
             }
+            // A copy that did not print is still held: print it again or on another printer.
+            if state.copyPrintFailure != nil {
+                Button("Print Again") { state.printHeldCopyAgain() }
+                Button("Choose Another Printer…") { state.printHeldCopy() }
+            }
             Button("OK", role: .cancel) {}
         } message: {
             Text(notice.message)

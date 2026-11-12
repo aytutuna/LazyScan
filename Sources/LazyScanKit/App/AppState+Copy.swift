@@ -120,6 +120,33 @@ extension AppState {
                       height: min(1, Double(paper.height) / Double(bed.height)))
     }
 
+    /// Prints a copy's pages (`sendCopyPages`). On the Mac they are held meanwhile, as the phone holds
+    /// them on its copy screen: a print panel cancelled or a print that failed leaves them for Print Again
+    /// and Choose Another Printer in the status bar, and the failure says so. A print that went through
+    /// lets them go.
+    @discardableResult
+    func printCopyPages(_ pages: [ScannedPage], settings s: ScanSettings, setup: PrinterSetup, areaSelected: Bool,
+                        reusePrinter: Bool = false, flag: CancelFlag) async throws -> Bool {
+        guard platform == .mac else {
+            return try await sendCopyPages(pages, settings: s, setup: setup, areaSelected: areaSelected,
+                                           reusePrinter: reusePrinter, flag: flag)
+        }
+        copyPages = pages
+        copyIsKept = true
+        copyAreaSelected = areaSelected
+        copyPrintFailure = nil
+        do {
+            let printed = try await sendCopyPages(pages, settings: s, setup: setup, areaSelected: areaSelected,
+                                                  reusePrinter: reusePrinter, flag: flag)
+            if printed { copyPages = [] }
+            return printed
+        } catch {
+            if AppState.isCancellation(error) || AppState.isPasswordNotGiven(error) { throw error }
+            copyPrintFailure = error.localizedDescription
+            throw PrintError.failed(error.localizedDescription + " " + L10n.t("The copy is still here."))
+        }
+    }
+
     /// Prints the pages of a copy: each at real size (or fitted, when chosen) on the printer's paper,
     /// against the corner as it lay on the glass or centred when an area was selected, as many copies
     /// as asked; then saves them as a PDF too when asked, also when printing failed (the pages are kept
@@ -128,9 +155,8 @@ extension AppState {
     /// status says where they went and what the printer's margins cut off. `reusePrinter` prints on the
     /// printer picked last without asking (`PrintService.printAgain`). False when the print panel was
     /// cancelled.
-    @discardableResult
-    func printCopyPages(_ pages: [ScannedPage], settings s: ScanSettings, setup: PrinterSetup, areaSelected: Bool,
-                        reusePrinter: Bool = false, flag: CancelFlag) async throws -> Bool {
+    private func sendCopyPages(_ pages: [ScannedPage], settings s: ScanSettings, setup: PrinterSetup, areaSelected: Bool,
+                               reusePrinter: Bool, flag: CancelFlag) async throws -> Bool {
         let options = s.taskOptions
         let alsoPDF = options.copyAlsoSavePdf && !copyIsOfQueue
         let allRealSize = pages.allSatisfy { $0.printsAtRealSize }
@@ -208,8 +234,8 @@ extension AppState {
                 setStatus("\(sent) \(PDFProtection.notSavedMessage)\(warningNote)", StatusDetail(head: .sentToPrinter))
                 return true
             }
-            // A held copy stays on its screen, so it is not queued as well.
-            if holdsCopy(s) {
+            // A held copy stays held (on its screen, or in the Mac's status bar), so it is not queued as well.
+            if holdsCopy(s) || platform == .mac {
                 throw AppState.copyNotPrinted(printError, setup: setup, pdfNote: " \(PDFProtection.notSavedMessage)")
             }
             // Neither printed nor saved: the pages wait in the queue rather than being lost.

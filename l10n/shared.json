@@ -1415,6 +1415,8 @@
     "note": "{0} is the printer name."
   },
   "Copy ready to print.": {},
+  "Could not print.": {},
+  "The copy is still here.": {},
   "Ready to print.": {},
   "Copy discarded.": {},
   "The page could not be drawn.": {},
