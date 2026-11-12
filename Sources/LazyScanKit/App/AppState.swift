@@ -719,6 +719,7 @@ public final class AppState: ObservableObject {
     }
 
     public func start() {
+        AppState.sweepHandoffs()
         for backend in backends {
             backend.onDevicesChanged = { [weak self] in self?.mergeDevices() }
             backend.startBrowsing()

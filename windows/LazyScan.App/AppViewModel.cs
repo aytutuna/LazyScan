@@ -888,6 +888,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // Remove partial files an export cut off by a crash left in the destination folder.
         string folder = DestinationFolder;
         _ = Task.Run(() => SavedFiles.SweepStaleTempFiles(folder, SavedFiles.StaleTempFileAge));
+        _ = Task.Run(SweepHandoffs);
     }
 
     /// <summary>

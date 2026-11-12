@@ -4,7 +4,7 @@ import Foundation
 // Twin of windows/LazyScan.App/AppViewModel.LazyPrint.cs: Print with Lazy Print for what is not saved yet,
 // the queue and the ID card review. The pages are written as a PDF in a folder of the temp directory and
 // that file is opened in Lazy Print, which keeps the path and reads the file again when it prints, so it is
-// not tied to the app; a day later the next hand-off deletes it. The iPhone's Lazy Print cannot read that
+// not tied to the app; a day later the launch or the next hand-off deletes it. The iPhone's Lazy Print cannot read that
 // folder: the file is copied into the app group they share (`IOSFileActions.openInLazyPrint`) and the
 // temp file is deleted at once.
 
@@ -71,9 +71,20 @@ extension AppState {
     }
 
     private func handoffURL(named name: String) throws -> URL {
+        let folder: URL = AppState.handoffFolder
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        AppState.sweepHandoffs()
+        return NamingTemplate.uniqueURL(in: folder, base: name, fileExtension: "pdf")
+    }
+
+    private static var handoffFolder: URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("LazyScan-print", isDirectory: true)
+    }
+
+    /// Deletes the hand-off files that are a day old; run at launch and before each hand-off.
+    static func sweepHandoffs() {
         let manager: FileManager = FileManager.default
-        let folder: URL = manager.temporaryDirectory.appendingPathComponent("LazyScan-print", isDirectory: true)
-        try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+        let folder: URL = handoffFolder
         let cutoff: Date = Date().addingTimeInterval(-86400)
         let old: [URL] = (try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         for url in old {
@@ -81,7 +92,6 @@ extension AppState {
                 try? manager.removeItem(at: url)
             }
         }
-        return NamingTemplate.uniqueURL(in: folder, base: name, fileExtension: "pdf")
     }
 
     private func openInLazyPrint(_ url: URL) {

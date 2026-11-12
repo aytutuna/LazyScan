@@ -85,6 +85,13 @@ public enum IOSPageSelection {
         FileManager.default.temporaryDirectory.appendingPathComponent("Shared pages", isDirectory: true)
     }
 
+    /// Deletes the folders the share sheet's files are written in (`shareFolder`, `IOSShell.packageShareFolder`),
+    /// once a share is over and at launch.
+    static func clearShareFolders() {
+        try? FileManager.default.removeItem(at: shareFolder)
+        try? FileManager.default.removeItem(at: IOSShell.packageShareFolder)
+    }
+
     /// The ids of `selected` in the order of `pages`.
     public static func ordered(_ selected: Set<UUID>, in pages: [ScannedPage]) -> [UUID] {
         var ids: [UUID] = []

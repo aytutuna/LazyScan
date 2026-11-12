@@ -91,15 +91,25 @@ public sealed partial class AppViewModel
 
     private static string HandoffPath(string name)
     {
-        string folder = Path.Combine(Path.GetTempPath(), "LazyScan-print");
+        string folder = HandoffFolder;
         Directory.CreateDirectory(folder);
+        SweepHandoffs();
+        return NamingTemplate.UniquePath(folder, name, "pdf");
+    }
+
+    private static string HandoffFolder => Path.Combine(Path.GetTempPath(), "LazyScan-print");
+
+    /// <summary>Deletes the hand-off files that are a day old; run at launch and before each hand-off.</summary>
+    private static void SweepHandoffs()
+    {
+        string folder = HandoffFolder;
+        if (!Directory.Exists(folder)) return;
         var cutoff = DateTime.UtcNow - TimeSpan.FromDays(1);
         foreach (var file in new DirectoryInfo(folder).EnumerateFiles())
         {
             try { if (file.LastWriteTimeUtc < cutoff) file.Delete(); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
-        return NamingTemplate.UniquePath(folder, name, "pdf");
     }
 
     private void OpenInLazyPrint(string path)

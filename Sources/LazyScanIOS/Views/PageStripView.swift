@@ -544,6 +544,7 @@ struct PageStripSheet: View {
 
     private func closeShare() {
         share = nil
+        IOSPageSelection.clearShareFolders()
     }
 
     private func askDelete() {

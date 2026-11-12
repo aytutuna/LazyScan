@@ -25,6 +25,7 @@ public struct LazyScanIOSApp: App {
         let options: IOSLaunchOptions = IOSLaunchOptions(arguments: process.arguments, environment: process.environment)
         let actions: IOSFileActions = IOSFileActions()
         actions.clearHandoffs()
+        IOSPageSelection.clearShareFolders()
         // The UI tests pick their mode themselves.
         if !options.demoScannerOnly {
             IOSShell.applyStartMode(UserDefaults.standard)

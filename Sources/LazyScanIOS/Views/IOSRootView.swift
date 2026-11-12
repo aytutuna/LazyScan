@@ -534,6 +534,7 @@ private struct FileActionPresenters: ViewModifier {
 
     private func closeShareSheet() {
         fileActions.shareRequest = nil
+        IOSPageSelection.clearShareFolders()
     }
 }
 
