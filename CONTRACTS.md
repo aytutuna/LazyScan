@@ -2734,7 +2734,10 @@ public enum BilevelTIFF {                      // Output/BilevelTIFF.swift
 //   saveTitle ("Save PDF", "Save Word", "Save Text"), saveTitle(pageCount:) ("Save Word (3 pages)").
 // Every switch over OutputFormat lists the new cases (ImageExporter throws ScanError.unsupported for them).
 // OutputOptions gains `alsoSaveText: Bool` ("alsoSaveText" in the "output" object; false by default and
-// for files written before it existed): a .txt with the PDF's name beside each saved PDF.
+// for files written before it existed): a .txt with the PDF's name beside each saved PDF,
+// except one with a password (`OutputOptions.savesTextBeside` is `alsoSaveText && !protect`: the text would
+// sit unprotected beside it; the Also save text switch is greyed with "Not with a password" while the
+// password is on).
 
 public struct OCRPage { lines: [OCRLine]; widthPoints: Double; heightPoints: Double     // any one unit
     public static func of(_ lines: [OCRLine], pixelWidth: Int, pixelHeight: Int, dpi: Int) -> OCRPage }

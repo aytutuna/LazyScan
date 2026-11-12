@@ -834,7 +834,7 @@ public static class Receipts
     /// </summary>
     public static bool ReadsText(ScanSettings settings) =>
         NamesByDate(settings)
-        || (OutputFormats.PageFormat(settings.Format) == OutputFormat.Pdf && (settings.PdfSearchable || settings.Output.AlsoSaveText));
+        || (OutputFormats.PageFormat(settings.Format) == OutputFormat.Pdf && (settings.PdfSearchable || settings.Output.SavesTextBeside));
 
     /// <summary>
     /// The text of a receipt as the date is looked for in it: the OCR lines in reading order, on a

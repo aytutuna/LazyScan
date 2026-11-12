@@ -508,6 +508,13 @@ public sealed class OutputOptions : IEquatable<OutputOptions>
     public bool AlsoSaveText { get; set; } = false;
 
     /// <summary>
+    /// Whether a save writes the text file: Also save text, but never beside a password-protected PDF,
+    /// where the text would be readable by anyone.
+    /// </summary>
+    [JsonIgnore]
+    public bool SavesTextBeside => AlsoSaveText && !Protect;
+
+    /// <summary>
     /// Saved PDFs are PDF/A-2b, made for keeping (<see cref="PdfWriteOptions.For"/>). A PDF/A file
     /// cannot have a password, so the password option (<see cref="Protect"/>) and this one exclude
     /// each other. Settings without it get false.

@@ -377,7 +377,7 @@ public sealed partial class AppViewModel
                         if (!hasText) noText.Add(Path.GetFileName(written));
                         continue;
                     }
-                    var text = s.Output.AlsoSaveText ? new PdfText() : null;
+                    var text = s.Output.SavesTextBeside ? new PdfText() : null;
                     string pdf = await WritePdfAtomically(pages, s, path, token, text);
                     files.Add(pdf);
                     saved.Add(pdf);

@@ -438,6 +438,9 @@ public struct OutputOptions: Codable, Equatable, Sendable {
     /// A saved PDF gets a text file beside it with the same name (`TextExport`): the recognized
     /// text of its pages, read once for both. Settings without it get false.
     public var alsoSaveText: Bool = false
+    /// Whether a save writes the text file: Also save text, but never beside a password-protected PDF,
+    /// where the text would be readable by anyone.
+    public var savesTextBeside: Bool { alsoSaveText && !protect }
     /// Saved PDFs are PDF/A-2b, made for keeping (`PDFWriteOptions.forOutput`). A PDF/A file cannot
     /// have a password, so the password option (`protect`) and this one exclude each other. Settings
     /// without it get false.

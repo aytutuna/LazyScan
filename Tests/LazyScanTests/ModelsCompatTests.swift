@@ -539,6 +539,19 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(settings.output, copy.output)
     }
 
+    func test_savesTextBeside_neverWithAPassword() throws {
+        var settings = ScanSettings()
+        XCTAssertFalse(settings.output.savesTextBeside)
+        settings.output.alsoSaveText = true
+        XCTAssertTrue(settings.output.savesTextBeside)
+        settings.output.protect = true
+        XCTAssertFalse(settings.output.savesTextBeside)
+        XCTAssertTrue(settings.output.alsoSaveText)
+        let written = try jsonObject(encode(settings))
+        let output = try XCTUnwrap(written["output"] as? [String: Any])
+        XCTAssertNil(output["savesTextBeside"])
+    }
+
     // MARK: Archival PDF (CONTRACTS.md, rule 6)
 
     func test_archival_offByDefault_andInFilesWithoutIt() throws {

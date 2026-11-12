@@ -165,7 +165,7 @@ public sealed partial class AppViewModel
             var textFiles = new List<string>();
             async Task WriteText(string pdfPath, IReadOnlyList<int> indices)
             {
-                if (!s.Output.AlsoSaveText) return;
+                if (!s.Output.SavesTextBeside) return;
                 var text = new PdfText();
                 foreach (int i in indices)
                 {

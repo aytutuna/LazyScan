@@ -599,6 +599,20 @@ public class ModelsCompatTests
         Assert.NotEqual(settings.Output, clone.Output);
     }
 
+    [Fact]
+    public void SavesTextBeside_NeverWithAPassword()
+    {
+        var settings = new ScanSettings();
+        Assert.False(settings.Output.SavesTextBeside);
+        settings.Output.AlsoSaveText = true;
+        Assert.True(settings.Output.SavesTextBeside);
+        settings.Output.Protect = true;
+        Assert.False(settings.Output.SavesTextBeside);
+        Assert.True(settings.Output.AlsoSaveText);
+        using var written = JsonDocument.Parse(CompatFixtures.Encode(settings));
+        Assert.False(written.RootElement.GetProperty("output").TryGetProperty("savesTextBeside", out _));
+    }
+
     // MARK: - Archival PDF (CONTRACTS.md, rule 6)
 
     [Fact]

@@ -259,7 +259,7 @@ extension AppState {
                     if !hasText { noText.append(url.lastPathComponent) }
                     continue
                 }
-                let text = s.output.alsoSaveText ? PDFTextCollector() : nil
+                let text = s.output.savesTextBeside ? PDFTextCollector() : nil
                 let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
                 protectedPDFs = options.isProtected
                 let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in

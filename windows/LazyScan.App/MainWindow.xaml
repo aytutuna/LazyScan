@@ -1225,8 +1225,13 @@
                                             <!-- The text of the pages in a .txt file beside each PDF; OCR reads each page once for both. -->
                                             <CheckBox x:Name="AlsoSaveTextBox" Style="{StaticResource ToggleSwitchStyle}"
                                                       Content="{loc:T Also save text (.txt)}" Margin="0,0,0,8"
+                                                      ToolTipService.ShowOnDisabled="True"
                                                       ToolTip="{loc:T Saves the text in a .txt file next to the PDF}"
                                                       Checked="Setting_Changed" Unchecked="Setting_Changed" />
+                                            <DockPanel x:Name="AlsoSaveTextReason" Margin="0,-4,0,8" Visibility="Collapsed">
+                                                <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE72E;" />
+                                                <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static core:PdfA.NotWithPasswordReason}" />
+                                            </DockPanel>
                                             <StackPanel x:Name="AfterSaveRow">
                                                 <TextBlock Text="{loc:T After saving}" Style="{StaticResource FieldLabelText}" />
                                                 <ComboBox x:Name="AfterSaveBox" HorizontalAlignment="Stretch"

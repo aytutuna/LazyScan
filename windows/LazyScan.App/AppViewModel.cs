@@ -1820,7 +1820,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 RunAfterSave(s.Output.AfterSave, [written]);
                 return;
             }
-            var text = s.Output.AlsoSaveText ? new PdfText() : null;
+            var text = s.Output.SavesTextBeside ? new PdfText() : null;
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
             ProtectionFor(s);
@@ -1883,7 +1883,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 StatusMessage = PdfProtection.KeptInQueueMessage(pages.Count);
                 return;
             }
-            var text = s.Output.AlsoSaveText ? new PdfText() : null;
+            var text = s.Output.SavesTextBeside ? new PdfText() : null;
             try
             {
                 saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text)];

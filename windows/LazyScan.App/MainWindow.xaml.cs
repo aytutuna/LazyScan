@@ -1716,7 +1716,10 @@ public partial class MainWindow : Window
         AutomationProperties.SetName(PdfSizeTrack, PdfSizeLabel.Text);
         AutomationProperties.SetHelpText(PdfSizeTrack, Loc.T("{0}. {1}", s.Output.PdfSize.Hint(), s.Output.PdfSize.Detail()));
         bool savesPdf = pageOnly ? OutputFormats.PageFormat(s.Format) == OutputFormat.Pdf : OutputFormats.SavesPdf(s.Format, s.DocumentMultiPage);
-        AlsoSaveTextBox.IsEnabled = savesPdf && (flow == TaskFlowKind.DocumentQueue || receipts);
+        bool textApplies = savesPdf && (flow == TaskFlowKind.DocumentQueue || receipts);
+        // A password-protected PDF gets no text file beside it: the text would sit there unprotected.
+        AlsoSaveTextBox.IsEnabled = textApplies && !s.Output.Protect;
+        AlsoSaveTextReason.Visibility = textApplies && s.Output.Protect ? Visibility.Visible : Visibility.Collapsed;
         // Receipts are saved from their review, the ID card from its own and a copy is printed as it is
         // scanned: collecting pages does nothing for them. The text layer of the copy's and the ID card's
         // PDF is never made.
@@ -1732,7 +1735,7 @@ public partial class MainWindow : Window
             _ when savesPdf => Loc.T("Writes the text of the pages beside each PDF, in a .txt file with the same name."),
             _ => Loc.T("Only for PDFs: Word and text files are the text already, and images have none."),
         };
-        AutomationProperties.SetHelpText(AlsoSaveTextBox, hint);
+        AutomationProperties.SetHelpText(AlsoSaveTextBox, s.Output.Protect && textApplies ? Loc.T("{0}. {1}", PdfA.NotWithPasswordReason, hint) : hint);
         SyncPdfProtectionOptions();
     }
 

@@ -420,6 +420,9 @@ final class ReceiptTests: XCTestCase {
         XCTAssertFalse(Receipts.readsText(s))
         s.output.alsoSaveText = true
         XCTAssertTrue(Receipts.readsText(s))
+        s.output.protect = true
+        XCTAssertFalse(Receipts.readsText(s))
+        s.output.protect = false
         s.format = .jpeg
         XCTAssertFalse(Receipts.readsText(s))
     }

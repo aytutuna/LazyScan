@@ -447,6 +447,9 @@ public class ReceiptTests
         Assert.False(Receipts.ReadsText(s));
         s.Output.AlsoSaveText = true;
         Assert.True(Receipts.ReadsText(s));
+        s.Output.Protect = true;
+        Assert.False(Receipts.ReadsText(s));
+        s.Output.Protect = false;
         s.Format = OutputFormat.Jpeg;
         Assert.False(Receipts.ReadsText(s));
     }

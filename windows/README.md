@@ -1032,7 +1032,8 @@ For editable text rather than a picture of the paper:
 - **Also save text (.txt)** (inspector, More options) writes a text file with the PDF's name next to
   every PDF of a document saved (the next free name when that one is taken; nothing is ever
   replaced). It is hidden when a save writes no PDF, and in the ID card and Copy tasks, whose PDFs
-  are pictures of a card or of a copy. Picking a task turns it off.
+  are pictures of a card or of a copy. Picking a task turns it off. It is greyed out, with
+  "Not with a password" beside it, while **Require a password** is on, and no text file is written then.
 - **Scan to Word** on the start screen: 300 dpi, color, pages collected, saved as a Word
   document. Choosing another format ends the task.
 - **Include page images** (inspector, Output, for Word): each page of the Word document starts

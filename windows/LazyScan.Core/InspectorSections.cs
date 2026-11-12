@@ -135,7 +135,7 @@ public static class InspectorSections
     {
         var parts = new List<string>();
         if (o.AfterSave != AfterSaveAction.None) parts.Add(Loc.T("{0} after saving", o.AfterSave.Label().TrimEnd('…')));
-        if (textShown && o.AlsoSaveText) parts.Add(".txt");
+        if (textShown && o.SavesTextBeside) parts.Add(".txt");
         return string.Join(" · ", parts);
     }
 

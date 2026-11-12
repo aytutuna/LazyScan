@@ -235,7 +235,7 @@ extension AppState {
         }
         try writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url, textLayer: layer, options: options,
                                shouldContinue: shouldContinue, progress: nil)
-        guard s.output.alsoSaveText else { return (nil, nil) }
+        guard s.output.savesTextBeside else { return (nil, nil) }
         let text = PDFTextCollector()
         for receipt in receipts {
             if let found = receipt.lines {

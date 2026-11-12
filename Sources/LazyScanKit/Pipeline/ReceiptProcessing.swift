@@ -732,7 +732,7 @@ public enum Receipts {
     /// or the text beside it.
     public static func readsText(_ settings: ScanSettings) -> Bool {
         namesByDate(settings)
-            || (settings.format.pageFormat == .pdf && (settings.pdfSearchable || settings.output.alsoSaveText))
+            || (settings.format.pageFormat == .pdf && (settings.pdfSearchable || settings.output.savesTextBeside))
     }
 
     /// The text of a receipt as the date is looked for in it: the OCR lines in reading order, on a

@@ -111,12 +111,15 @@ public class InspectorSectionsTests
         s.Output.Protect = true;
         Assert.Equal("Password on", InspectorSections.ArchiveSummary(s.Output));
 
+        s.Output.Protect = false;
         s.Output.AfterSave = AfterSaveAction.Open;
         s.Output.AlsoSaveText = true;
         Assert.Equal("Open after saving · .txt", InspectorSections.MoreSummary(s.Output, textShown: true));
         Assert.Equal("Open after saving", InspectorSections.MoreSummary(s.Output, textShown: false));
         s.Output.AfterSave = AfterSaveAction.Share;
         Assert.Equal("Share after saving · .txt", InspectorSections.MoreSummary(s.Output, textShown: true));
+        s.Output.Protect = true;
+        Assert.Equal("Share after saving", InspectorSections.MoreSummary(s.Output, textShown: true));
     }
 
     [Fact]
@@ -218,8 +221,8 @@ public class InspectorSectionsTests
         Assert.True(InspectorSections.Changed(InspectorSections.Pages, s));
         Assert.Equal("Pages, 2 options on", InspectorSections.AccessibleName(InspectorSections.Pages, s));
         Assert.True(InspectorSections.Changed(InspectorSections.Scanner, s));
-        Assert.Equal(".txt", InspectorSections.Summary(InspectorSections.More, s));
-        Assert.True(InspectorSections.Changed(InspectorSections.More, s));
+        Assert.Equal("", InspectorSections.Summary(InspectorSections.More, s));
+        Assert.False(InspectorSections.Changed(InspectorSections.More, s));
         Assert.Equal("Archive & password, Password on", InspectorSections.AccessibleName(InspectorSections.Archive, s));
         Assert.True(InspectorSections.Changed(InspectorSections.Split, s));
         s.Format = OutputFormat.Word;

@@ -152,7 +152,7 @@ public enum InspectorSections {
             while label.hasSuffix("\u{2026}") { label.removeLast() }
             parts.append(L10n.t("{0} after saving", label))
         }
-        if textShown && o.alsoSaveText { parts.append(".txt") }
+        if textShown && o.savesTextBeside { parts.append(".txt") }
         return parts.joined(separator: " \u{00B7} ")
     }
 

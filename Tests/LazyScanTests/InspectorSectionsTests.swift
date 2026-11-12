@@ -108,12 +108,15 @@ final class InspectorSectionsTests: XCTestCase {
         s.output.protect = true
         XCTAssertEqual(InspectorSections.archiveSummary(s.output), "Password on")
 
+        s.output.protect = false
         s.output.afterSave = .open
         s.output.alsoSaveText = true
         XCTAssertEqual(InspectorSections.moreSummary(s.output, textShown: true), "Open after saving \u{00B7} .txt")
         XCTAssertEqual(InspectorSections.moreSummary(s.output, textShown: false), "Open after saving")
         s.output.afterSave = .share
         XCTAssertEqual(InspectorSections.moreSummary(s.output, textShown: true), "Share after saving \u{00B7} .txt")
+        s.output.protect = true
+        XCTAssertEqual(InspectorSections.moreSummary(s.output, textShown: true), "Share after saving")
     }
 
     func test_shown_hidesWhatCannotApply_eachSectionOnce() {
@@ -217,8 +220,8 @@ final class InspectorSectionsTests: XCTestCase {
         XCTAssertTrue(InspectorSections.changed(InspectorSections.pages, for: s))
         XCTAssertEqual(InspectorSections.accessibleName(InspectorSections.pages, for: s), "Pages, 2 options on")
         XCTAssertTrue(InspectorSections.changed(InspectorSections.scanner, for: s))
-        XCTAssertEqual(InspectorSections.summary(InspectorSections.more, for: s), ".txt")
-        XCTAssertTrue(InspectorSections.changed(InspectorSections.more, for: s))
+        XCTAssertEqual(InspectorSections.summary(InspectorSections.more, for: s), "")
+        XCTAssertFalse(InspectorSections.changed(InspectorSections.more, for: s))
         XCTAssertEqual(InspectorSections.accessibleName(InspectorSections.archive, for: s), "Archive & password, Password on")
         XCTAssertTrue(InspectorSections.changed(InspectorSections.split, for: s))
         s.format = .word

@@ -1614,7 +1614,7 @@ public final class AppState: ObservableObject {
                 self.runAfterSave(s.output.afterSave, saved: [url])
                 return
             }
-            let text = s.output.alsoSaveText ? PDFTextCollector() : nil
+            let text = s.output.savesTextBeside ? PDFTextCollector() : nil
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
             _ = try await self.protectionFor(s)
@@ -1696,7 +1696,7 @@ public final class AppState: ObservableObject {
             do {
                 let url = try outputURL(fileExtension: "pdf")
                 let options: PDFWriteOptions = try await pdfOptions(s, for: url)
-                let text = s.output.alsoSaveText ? PDFTextCollector() : nil
+                let text = s.output.savesTextBeside ? PDFTextCollector() : nil
                 let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
                     try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
                                                 textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,

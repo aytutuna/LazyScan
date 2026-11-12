@@ -950,7 +950,11 @@ struct InspectorView: View {
                 changed: !moreSummary.isEmpty) {
             if alsoSaveTextShown {
                 Toggle("Also save text (.txt)", isOn: $state.settings.output.alsoSaveText)
+                    .disabled(state.settings.output.protect)
                     .help("Saves the text in a .txt file next to the PDF")
+                if state.settings.output.protect {
+                    reasonLine(PDFA.notWithPasswordReason, systemImage: "lock")
+                }
             }
             if !state.isCopyFlow {
                 afterSavePicker

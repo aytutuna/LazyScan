@@ -455,8 +455,12 @@ struct PDFOptionsSection: View {
         }
         if IOSSettingsSections.textApplies(s) {
             Toggle(IOSPDFOptions.alsoSaveTextLabel, isOn: alsoSaveText)
+                .disabled(output.protect)
                 .accessibilityHint(Text(IOSPDFOptions.alsoSaveTextHint))
                 .accessibilityIdentifier("pdf.alsoSaveText")
+            if output.protect {
+                reasonLine(PDFA.notWithPasswordReason)
+            }
         }
     }
 
