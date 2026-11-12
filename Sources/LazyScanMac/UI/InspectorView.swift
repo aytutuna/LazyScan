@@ -239,7 +239,15 @@ struct InspectorView: View {
                 .help("Uses the date printed on the receipt, or today")
             if options.receiptNameByDate && !dateUsed {
                 reasonLine(String(localized: "Needs Receipt date in the file name"))
-                    .help("The file name has no Receipt date part, so the date printed on the receipt is not used.")
+                    .help("The file name has no Receipt date, so the date printed on the receipt is not used.")
+                Button("Insert Receipt date") {
+                    let template: String = state.settings.namingTemplate
+                    state.settings.namingTemplate = NamingTokens.insert("{docdate}", into: template, at: template.count).text
+                }
+                .controlSize(.small)
+                .padding(.leading, 20)
+                .help("Adds the Receipt date to the end of the file name")
+                .accessibilityHint("Adds the Receipt date to the file name")
             }
             Toggle("One PDF for all", isOn: Binding(
                 get: { state.settings.taskOptions.receiptCombine },
@@ -1161,7 +1169,8 @@ struct InspectorView: View {
                         Image(systemName: "questionmark.circle")
                     }
                     .buttonStyle(.borderless)
-                    .help("Naming template tokens")
+                    .help("File name parts")
+                    .accessibilityLabel("File name parts")
                     .popover(isPresented: $showNamingHelp, arrowEdge: .bottom) {
                         namingHelpPopover
                     }
@@ -1190,7 +1199,7 @@ struct InspectorView: View {
 
     private var namingHelpPopover: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Naming Tokens")
+            Text("File name parts")
                 .font(.headline)
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                 ForEach(NamingTokens.all, id: \.token) { part in
