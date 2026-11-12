@@ -223,6 +223,14 @@ public enum IOSCameraText {
     public static var introLine: String { String(localized: "Lazy Scan scans with the camera.") }
     public static var introHelp: String { String(localized: "iOS asks once for access. Photos and Files work without it.") }
     public static var continueLabel: String { String(localized: "Continue") }
+    public static var useScannerLabel: String { String(localized: "Use a scanner") }
+    public static var useScannerHint: String { String(localized: "Opens the scanner tab without asking for the camera") }
+    public static var notNowLabel: String { String(localized: "Not now") }
+    public static var notNowHint: String { String(localized: "Skips the camera for now") }
+    /// The viewfinder after Not now, until the camera is allowed.
+    public static var notOnYet: String { String(localized: "Camera is not on yet") }
+    public static var allowLabel: String { String(localized: "Allow camera") }
+    public static var allowHint: String { String(localized: "Asks iOS for camera access") }
     /// The session could not be set up, or stopped with errors.
     public static var notStarted: String { String(localized: "Camera did not start") }
     public static var tooWarm: String { String(localized: "Paused: too warm") }

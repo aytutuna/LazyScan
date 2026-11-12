@@ -257,14 +257,21 @@ public enum IOSShell {
 
     /// The user's defaults key: the card saying why the camera is asked for was shown (`cameraOnOpen`).
     public static let cameraIntroKey = "camera.introShown"
+    /// The user's defaults key: the card was answered with Not now or Use a scanner, so the camera stays off
+    /// until Allow camera (`cameraOnOpen`).
+    public static let cameraDeclinedKey = "camera.introDeclined"
 
     /// What camera mode does at launch or when it is switched to: the card saying why the camera is asked
     /// for while iOS has not asked yet and the card was never shown (the viewfinder waits for it); otherwise
     /// the camera at once where it can be used. Nothing without a camera (the Simulator), with access off or
-    /// not allowed, in printer mode and under `-demoScanner` (the UI tests): the viewfinder says why itself.
+    /// not allowed, in printer mode, under `-demoScanner` (the UI tests) and while iOS has not asked and the
+    /// card was answered with Not now (`declined`): the viewfinder says why itself.
     public static func cameraOnOpen(offersCamera: Bool, camera: IOSCameraAvailability, authorization: AVAuthorizationStatus,
-                                    introShown: Bool, demo: Bool) -> IOSCameraOnOpen {
+                                    introShown: Bool, declined: Bool, demo: Bool) -> IOSCameraOnOpen {
         guard !demo, offersCamera, camera.isAvailable else { return .stay }
+        if authorization == .notDetermined && declined {
+            return .stay
+        }
         if authorization == .notDetermined && !introShown {
             return .introduce
         }

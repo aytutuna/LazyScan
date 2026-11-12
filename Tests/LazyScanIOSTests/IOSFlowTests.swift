@@ -103,17 +103,25 @@ final class IOSFlowTests: XCTestCase {
     func test_cameraOnOpen_opensWhereTheCameraCanBeUsed() {
         for status in [AVAuthorizationStatus.authorized, .notDetermined] {
             XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: true, camera: .available, authorization: status,
-                                                 introShown: true, demo: false), .open)
+                                                 introShown: true, declined: false, demo: false), .open)
         }
     }
 
     func test_cameraOnOpen_saysWhyBeforeTheFirstPrompt_once() {
         XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: true, camera: .available, authorization: .notDetermined,
-                                             introShown: false, demo: false), .introduce)
+                                             introShown: false, declined: false, demo: false), .introduce)
         // Asked already: no card, whether it was shown or not.
         XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: true, camera: .available, authorization: .authorized,
-                                             introShown: false, demo: false), .open)
+                                             introShown: false, declined: false, demo: false), .open)
         XCTAssertEqual(IOSShell.cameraIntroKey, "camera.introShown")
+    }
+
+    func test_cameraOnOpen_staysAfterNotNow_untilAccessIsAsked() {
+        XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: true, camera: .available, authorization: .notDetermined,
+                                             introShown: true, declined: true, demo: false), .stay)
+        XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: true, camera: .available, authorization: .authorized,
+                                             introShown: true, declined: true, demo: false), .open)
+        XCTAssertEqual(IOSShell.cameraDeclinedKey, "camera.introDeclined")
     }
 
     func test_cameraOnOpen_staysWithoutACamera_accessOff_orTheDemoScanner() {
@@ -127,7 +135,7 @@ final class IOSFlowTests: XCTestCase {
         ]
         for (offers, camera, status, demo) in stays {
             XCTAssertEqual(IOSShell.cameraOnOpen(offersCamera: offers, camera: camera, authorization: status,
-                                                 introShown: false, demo: demo), .stay,
+                                                 introShown: false, declined: false, demo: demo), .stay,
                            "\(offers) \(camera) \(status.rawValue) \(demo)")
         }
     }

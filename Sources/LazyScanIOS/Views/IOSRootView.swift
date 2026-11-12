@@ -40,6 +40,7 @@ public struct IOSRootView: View {
     @State private var showsScanner: Bool = false
     @State private var showsLibrary: Bool = false
     @AppStorage(IOSShell.cameraIntroKey) private var cameraIntroShown: Bool = false
+    @AppStorage(IOSShell.cameraDeclinedKey) private var cameraIntroDeclined: Bool = false
     @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
     @AppStorage(IOSShell.scannerKey) private var scanner: String = ""
     @State private var detail: IOSDetail = IOSDetail.start
@@ -146,7 +147,7 @@ public struct IOSRootView: View {
         .modifier(ScanCovers(state: state, cover: $scanCover, spreadEditor: $spreadEditor))
         .overlay {
             if cameraIntroDue && showsScanner {
-                CameraIntroCard(onContinue: continueToCamera)
+                CameraIntroCard(onContinue: continueToCamera, onScanner: useScanner, onNotNow: skipCamera)
             }
         }
         .fullScreenCover(item: cornerRequest) { (request: PhotoCornersRequest) in
@@ -169,7 +170,8 @@ public struct IOSRootView: View {
     private var stackLayout: some View {
         NavigationStack {
             ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, companion: companion,
-                       onOpenLibrary: openLibrary, waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
+                       onOpenLibrary: openLibrary, waitsForIntro: !started || cameraIntroDue || cameraAllowPending,
+                       allowPending: cameraAllowPending, onAllow: allowCamera, rests: cameraRests)
         }
         .disabled(showsLibrary)
         .accessibilityHidden(showsLibrary)
@@ -200,7 +202,8 @@ public struct IOSRootView: View {
     private var splitDetail: some View {
         if showsScanner {
             ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, pickerInSidebar: true,
-                       companion: companion, waitsForIntro: !started || cameraIntroDue, rests: cameraRests)
+                       companion: companion, waitsForIntro: !started || cameraIntroDue || cameraAllowPending,
+                       allowPending: cameraAllowPending, onAllow: allowCamera, rests: cameraRests)
         } else {
             switch detail {
             case .start:
@@ -292,16 +295,42 @@ public struct IOSRootView: View {
     /// Decided as the screen is drawn, so the viewfinder never asks before the card is up.
     private var cameraIntroDue: Bool {
         guard started else { return false }
-        let action: IOSCameraOnOpen = IOSShell.cameraOnOpen(
+        return cameraAction(declined: cameraIntroDeclined) == .introduce
+    }
+
+    /// The card was answered with Not now or Use a scanner and the camera could be used: the viewfinder
+    /// waits for Allow camera instead of asking.
+    private var cameraAllowPending: Bool {
+        guard started, cameraIntroDeclined, AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined else {
+            return false
+        }
+        return cameraAction(declined: false) == .open
+    }
+
+    private func cameraAction(declined: Bool) -> IOSCameraOnOpen {
+        IOSShell.cameraOnOpen(
             offersCamera: mode == .camera && IOSShell.offersOwnCamera(state.settings),
             camera: IOSCameraAvailability.ownCamera,
             authorization: AVCaptureDevice.authorizationStatus(for: .video), introShown: cameraIntroShown,
-            demo: demoScanner)
-        return action == .introduce
+            declined: declined, demo: demoScanner)
     }
 
     private func continueToCamera() {
         cameraIntroShown = true
+    }
+
+    private func skipCamera() {
+        cameraIntroShown = true
+        cameraIntroDeclined = true
+    }
+
+    private func useScanner() {
+        skipCamera()
+        mode = .printer
+    }
+
+    private func allowCamera() {
+        cameraIntroDeclined = false
     }
 
     /// What covers camera mode: the library, and what the root presents over it: the share sheet,
@@ -511,43 +540,75 @@ public struct IOSRootView: View {
 /// The card over the viewfinder before iOS first asks for the camera, so the question has a reason.
 private struct CameraIntroCard: View {
     let onContinue: () -> Void
+    let onScanner: () -> Void
+    let onNotNow: () -> Void
 
     var body: some View {
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
-            VStack(spacing: 14) {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 44))
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
-                Text(IOSCameraText.introLine)
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(IOSCameraText.introHelp)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button {
-                    onContinue()
-                } label: {
-                    Text(IOSCameraText.continueLabel)
-                        .frame(maxWidth: .infinity)
+            GeometryReader { proxy in
+                ScrollView {
+                    card
+                        .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .accessibilityIdentifier("camera.intro.continue")
             }
-            .padding(24)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Color(uiColor: .systemBackground)))
-            .padding(24)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("camera.intro")
         }
+    }
+
+    private var card: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 44))
+                .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
+            Text(IOSCameraText.introLine)
+                .font(.title3.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(IOSCameraText.introHelp)
+                .font(.subheadline)
+                .foregroundStyle(Color.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                onContinue()
+            } label: {
+                Text(IOSCameraText.continueLabel)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("camera.intro.continue")
+            Button {
+                onScanner()
+            } label: {
+                Text(IOSCameraText.useScannerLabel)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .accessibilityHint(Text(IOSCameraText.useScannerHint))
+            .accessibilityIdentifier("camera.intro.scanner")
+            Button {
+                onNotNow()
+            } label: {
+                Text(IOSCameraText.notNowLabel)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityHint(Text(IOSCameraText.notNowHint))
+            .accessibilityIdentifier("camera.intro.notNow")
+        }
+        }
+        .padding(24)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(uiColor: .systemBackground)))
+        .padding(24)
     }
 }
 

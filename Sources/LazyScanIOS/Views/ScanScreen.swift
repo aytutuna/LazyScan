@@ -65,6 +65,9 @@ struct ScanScreen: View {
     /// The card saying why the camera is asked for is up, or the app has not started: camera mode's camera
     /// waits for it.
     var waitsForIntro: Bool = false
+    /// The card was answered with Not now: camera mode shows Allow camera, which `onAllow` answers.
+    var allowPending: Bool = false
+    var onAllow: () -> Void = {}
     /// The root presents something over the screen (the share sheet, Mail, Quick Look): camera
     /// mode's camera rests.
     var rests: Bool = false
@@ -363,7 +366,7 @@ struct ScanScreen: View {
     /// viewfinder's foot and the Options and Save buttons.
     private var cameraLayout: some View {
         CameraScreen(resting: cameraCovered, holdsAuto: openGroup == .options, waitsForIntro: waitsForIntro,
-                     onLibrary: libraryAction, onPrinter: switchToPrinter, onPages: openPages) {
+                     allowPending: allowPending, onAllow: onAllow, onLibrary: libraryAction, onPrinter: switchToPrinter, onPages: openPages) {
             cameraNotices
         } pictureButtons: {
             pictureButtons

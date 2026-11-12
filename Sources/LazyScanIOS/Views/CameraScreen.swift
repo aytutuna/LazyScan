@@ -45,19 +45,24 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private let resting: Bool
     private let holdsAuto: Bool
     private let waitsForIntro: Bool
+    private let allowPending: Bool
+    private let onAllow: () -> Void
     private let onLibrary: (() -> Void)?
     private let onPrinter: () -> Void
     private let onPages: () -> Void
     private let notices: () -> Notices
     private let pictureButtons: () -> Buttons
 
-    init(resting: Bool, holdsAuto: Bool, waitsForIntro: Bool, onLibrary: (() -> Void)?,
+    init(resting: Bool, holdsAuto: Bool, waitsForIntro: Bool, allowPending: Bool, onAllow: @escaping () -> Void,
+         onLibrary: (() -> Void)?,
          onPrinter: @escaping () -> Void, onPages: @escaping () -> Void,
          @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder pictureButtons: @escaping () -> Buttons) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
         self.resting = resting
         self.holdsAuto = holdsAuto
         self.waitsForIntro = waitsForIntro
+        self.allowPending = allowPending
+        self.onAllow = onAllow
         self.onLibrary = onLibrary
         self.onPrinter = onPrinter
         self.onPages = onPages
@@ -207,11 +212,11 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     .environment(\.layoutDirection, .leftToRight)
                     .accessibilityHidden(true)
             }
-            if model.message == nil, let prompt = cardPrompt {
+            if shownMessage == nil, let prompt = cardPrompt {
                 IdCardGuide(prompt: prompt)
                     .padding(.bottom, PictureButtons.clearance)
             }
-            if let line = model.message {
+            if let line = shownMessage {
                 messageCard(line)
                     .padding(.bottom, PictureButtons.clearance)
             }
@@ -230,7 +235,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The status line at the top; at the foot the notices and the task's buttons.
     private var overlays: some View {
         VStack(spacing: 8) {
-            if model.message == nil, let status = statusLine {
+            if shownMessage == nil, let status = statusLine {
                 StatusPill(text: status.text, hint: status.hint)
                     .accessibilityIdentifier(status.identifier)
             }
@@ -251,7 +256,12 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         }
     }
 
-    /// Why the camera cannot be used or waits, with Settings when access is off.
+    /// The model's line, or that the camera is not on yet while it waits for Allow camera.
+    private var shownMessage: String? {
+        allowPending ? IOSCameraText.notOnYet : model.message
+    }
+
+    /// Why the camera cannot be used or waits, with Settings when access is off, or Allow camera.
     private func messageCard(_ line: String) -> some View {
         VStack(spacing: 10) {
             Image(systemName: "camera.badge.ellipsis")
@@ -269,6 +279,14 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("camera.settings")
+            }
+            if allowPending {
+                Button(IOSCameraText.allowLabel) {
+                    onAllow()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityHint(Text(IOSCameraText.allowHint))
+                .accessibilityIdentifier("camera.allow")
             }
         }
         .padding(20)
@@ -324,7 +342,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// is shown in its place), for VoiceOver (`IOSWaitAnnouncer`).
     private var waitCue: IOSWaitCue {
         let steadying: Bool = model.autoShutter && model.live?.state == CaptureState.steadying
-        let hidden: Bool = model.message != nil || glareLine != nil
+        let hidden: Bool = shownMessage != nil || glareLine != nil
         return IOSWaitCue(steadying: steadying, line: hidden ? nil : waitLine)
     }
 
