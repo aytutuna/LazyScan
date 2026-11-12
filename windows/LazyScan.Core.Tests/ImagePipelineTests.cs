@@ -315,4 +315,63 @@ public class ImagePipelineTests
         var tables = ImagePipeline.FadedColorTables([narrow, narrow, narrow]);
         for (int v = 0; v < 256; v++) Assert.Equal(v, tables[0][v]);
     }
+
+    public static IEnumerable<object[]> BandedSettings() => new[]
+    {
+        new object[] { new AdjustmentSettings { AutoEnhance = true, Brightness = 0.2, Contrast = 1.2 }, ColorMode.Color },
+        new object[] { new AdjustmentSettings { Sharpness = 0.8 }, ColorMode.Color },
+        new object[] { new AdjustmentSettings { Sharpness = -1.5 }, ColorMode.Grayscale },
+        new object[] { new AdjustmentSettings { Descreen = true, RestoreFadedColors = true }, ColorMode.Color },
+        new object[] { new AdjustmentSettings { AutoEnhance = true, Sharpness = 1, Descreen = true }, ColorMode.BlackWhite },
+        new object[] { new AdjustmentSettings(), ColorMode.BlackWhite },
+    };
+
+    [Theory]
+    [MemberData(nameof(BandedSettings))]
+    public void BandsGiveTheSameBytesAsOnePass(AdjustmentSettings settings, ColorMode mode)
+    {
+        var input = MakeGradientImage(41, 97);
+        for (int i = 0; i < input.Pixels.Length; i += 4) input.Pixels[i + 1] ^= (byte)(i * 7);
+        var whole = ImagePipeline.Apply(settings, input, mode, input.Height);
+        foreach (int rows in new[] { 1, 5, 32 })
+            Assert.Equal(whole.Pixels, ImagePipeline.Apply(settings, input, mode, rows).Pixels);
+    }
+
+    [Fact]
+    public void AutoEnhanceMatchesTheSortedPercentiles()
+    {
+        var input = MakeGradientImage(41, 97);
+        for (int i = 0; i < input.Pixels.Length; i += 4) input.Pixels[i + 1] ^= (byte)(i * 7);
+        int n = input.Width * input.Height;
+        var luma = new double[n];
+        for (int i = 0; i < n; i++)
+            luma[i] = 0.299 * input.Pixels[i * 4] / 255 + 0.587 * input.Pixels[i * 4 + 1] / 255 + 0.114 * input.Pixels[i * 4 + 2] / 255;
+        Array.Sort(luma);
+        double lo = luma[(int)(n * 0.01)];
+        double hi = luma[Math.Min(n - 1, (int)(n * 0.99))];
+        Assert.True(hi - lo >= 0.05);
+
+        var output = ImagePipeline.Apply(new AdjustmentSettings { AutoEnhance = true }, input, ColorMode.Color);
+        for (int i = 0; i < n * 4; i++)
+        {
+            if (i % 4 == 3) continue;
+            double v = (input.Pixels[i] / 255.0 - lo) / (hi - lo);
+            Assert.Equal((byte)Math.Clamp(Math.Round(v * 255), 0, 255), output.Pixels[i]);
+        }
+    }
+
+    [Fact]
+    public void AutoEnhanceStretchesTheMiddleOfTheRange()
+    {
+        var input = RgbaImage.Filled(100, 100, 100, 100, 100);
+        for (int i = 0; i < 100 * 100; i++)
+        {
+            byte v = (byte)(80 + i % 100 / 2);
+            input.Pixels[i * 4] = input.Pixels[i * 4 + 1] = input.Pixels[i * 4 + 2] = v;
+        }
+        var output = ImagePipeline.Apply(new AdjustmentSettings { AutoEnhance = true }, input, ColorMode.Color);
+        // 80...129 with the 1st/99th percentiles at 80 and 129: the ends map to 0 and 255.
+        Assert.Equal(0, Pixel(output, 0, 0).R);
+        Assert.Equal(255, Pixel(output, 98, 0).R);
+    }
 }

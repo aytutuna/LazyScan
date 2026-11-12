@@ -18,26 +18,110 @@ public static class ImagePipeline
     /// Apply adjustments + color-mode conversion. Returns the input instance unchanged when
     /// <c>settings.IsIdentity &amp;&amp; colorMode == Color</c>.
     /// </summary>
-    public static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode)
+    public static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode) =>
+        Apply(settings, image, colorMode, 0);
+
+    /// <summary><paramref name="bandRows"/> is the rows per band; 0 sizes bands to about two million pixels.</summary>
+    internal static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode, int bandRows)
     {
         if (settings.IsIdentity && colorMode == ColorMode.Color) return image;
 
-        int count = image.Width * image.Height;
+        int w = image.Width, h = image.Height;
         var src = image.Pixels;
-        // Work in doubles 0...1 per channel.
-        var r = new double[count];
-        var g = new double[count];
-        var b = new double[count];
-        for (int i = 0; i < count; i++)
+        var output = new byte[w * h * 4];
+        var levels = settings.AutoEnhance ? FindLevels(src, w * h) : null;
+
+        // The page goes through in bands of rows plus a halo of the rows the blurs reach into,
+        // so a band of doubles is alive at a time instead of three per pixel of the page.
+        int halo = HaloRows(settings);
+        int coreRows = bandRows > 0 ? bandRows : Math.Max(32, (1 << 21) / Math.Max(w, 1));
+        int capacity = Math.Min(h, coreRows + 2 * halo) * w;
+        var r = new double[capacity];
+        var g = new double[capacity];
+        var b = new double[capacity];
+        var scratch = settings.Sharpness != 0 || settings.Descreen ? new double[capacity] : null;
+        var blurred = settings.Sharpness > 0 || settings.Descreen
+            ? new[] { new double[capacity], new double[capacity], new double[capacity] }
+            : null;
+        // Restore faded colors levels the whole page, so the first sweep only counts the
+        // histograms of the values that step 5 sees and the second one writes the output.
+        byte[][]? tables = null;
+        if (settings.RestoreFadedColors && colorMode == ColorMode.Color)
         {
-            r[i] = src[i * 4] / 255.0;
-            g[i] = src[i * 4 + 1] / 255.0;
-            b[i] = src[i * 4 + 2] / 255.0;
+            var histograms = new[] { new int[256], new int[256], new int[256] };
+            Sweep(histograms);
+            tables = FadedColorTables(histograms);
         }
+        Sweep(null);
+        return new RgbaImage(w, h, output);
+
+        void Sweep(int[][]? histograms)
+        {
+            for (int y0 = 0; y0 < h; y0 += coreRows)
+            {
+                int y1 = Math.Min(h, y0 + coreRows);
+                int e0 = Math.Max(0, y0 - halo);
+                int e1 = Math.Min(h, y1 + halo);
+                int first = e0 * w * 4;
+                int count = (e1 - e0) * w;
+                for (int i = 0; i < count; i++)
+                {
+                    r[i] = src[first + i * 4] / 255.0;
+                    g[i] = src[first + i * 4 + 1] / 255.0;
+                    b[i] = src[first + i * 4 + 2] / 255.0;
+                }
+                int from = (y0 - e0) * w;
+                ApplyBand(settings, colorMode, levels, tables, histograms, from, (y1 - y0) * w,
+                          r, g, b, w, e1 - e0, scratch, blurred);
+                if (histograms is not null) continue;
+
+                int target = y0 * w * 4;
+                int pixels = (y1 - y0) * w;
+                for (int i = 0; i < pixels; i++)
+                {
+                    output[target + i * 4] = ToByte(r[from + i]);
+                    output[target + i * 4 + 1] = ToByte(g[from + i]);
+                    output[target + i * 4 + 2] = ToByte(b[from + i]);
+                    output[target + i * 4 + 3] = src[target + i * 4 + 3];
+                }
+            }
+        }
+    }
+
+    /// <summary>Rows above and below a band that the spatial steps of <paramref name="settings"/> read.</summary>
+    private static int HaloRows(AdjustmentSettings settings)
+    {
+        int halo = 0;
+        if (settings.Sharpness > 0) halo += 1;
+        else if (settings.Sharpness < 0) halo += BlurReach(settings.Sharpness);
+        if (settings.Descreen) halo += 2;
+        return halo;
+    }
+
+    private static double SoftenSigma(double sharpness) => Math.Min(-sharpness, 2) * 2;
+
+    private static int BlurReach(double sharpness)
+    {
+        double sigma = SoftenSigma(sharpness);
+        return sigma >= MinBlurSigma ? Math.Max(1, (int)Math.Ceiling(3 * sigma)) : 0;
+    }
+
+    /// <summary>
+    /// Steps 1 to 6 on one band: the first <paramref name="h"/> rows of the arrays. With
+    /// <paramref name="histograms"/> it stops before step 5 after counting the band's own pixels
+    /// (<paramref name="corePixels"/> from <paramref name="coreFrom"/>); otherwise
+    /// <paramref name="tables"/> holds the step 5 tables of a color scan.
+    /// </summary>
+    private static void ApplyBand(AdjustmentSettings settings, ColorMode colorMode, (double Lo, double Gain)? levels,
+                                  byte[][]? tables, int[][]? histograms, int coreFrom, int corePixels,
+                                  double[] r, double[] g, double[] b, int w, int h,
+                                  double[]? scratch, double[][]? blurred)
+    {
+        int count = w * h;
 
         // 1. Auto enhance — histogram auto-levels: stretch each channel so the 1st/99th
         //    luminance percentiles reach toward black/white (stand-in for CI's suggested filters).
-        if (settings.AutoEnhance) AutoLevels(r, g, b);
+        if (levels is { } stretch) ApplyLevels(r, g, b, count, stretch.Lo, stretch.Gain);
 
         // 2. Brightness (-1...1) split across exposure (±1.5 EV) and a small additive lift,
         //    plus contrast and saturation (CIExposureAdjust + CIColorControls semantics).
@@ -51,38 +135,45 @@ public static class ImagePipeline
         }
         double additive = settings.Brightness * 0.15;
         if (additive != 0 || settings.Contrast != 1 || settings.Saturation != 1)
-            ColorControls(r, g, b, additive, settings.Contrast, settings.Saturation);
+            ColorControls(r, g, b, count, additive, settings.Contrast, settings.Saturation);
 
         // 3. Sharpen (CISharpenLuminance approximation: unsharp mask) — or, for negative
         //    values, soften with a small Gaussian blur (CIGaussianBlur semantics: the radius
         //    is the standard deviation; edges are clamped, so the extent is unchanged).
         if (settings.Sharpness > 0)
         {
-            Sharpen(r, g, b, image.Width, image.Height, settings.Sharpness);
+            Sharpen(r, g, b, w, h, settings.Sharpness, blurred!, scratch!);
         }
         else if (settings.Sharpness < 0)
         {
-            double radius = Math.Min(-settings.Sharpness, 2) * 2;
-            var scratch = new double[count];
-            GaussianBlur(r, image.Width, image.Height, radius, scratch);
-            GaussianBlur(g, image.Width, image.Height, radius, scratch);
-            GaussianBlur(b, image.Width, image.Height, radius, scratch);
+            double radius = SoftenSigma(settings.Sharpness);
+            GaussianBlur(r, w, h, radius, scratch);
+            GaussianBlur(g, w, h, radius, scratch);
+            GaussianBlur(b, w, h, radius, scratch);
         }
 
         // 4. Descreen: tiny blur to break up halftone moiré, then a mild re-sharpen.
         if (settings.Descreen)
         {
-            GaussianBlur3x3(r, g, b, image.Width, image.Height);
-            Sharpen(r, g, b, image.Width, image.Height, 0.4);
+            GaussianBlur3x3(r, g, b, w, h, scratch!);
+            Sharpen(r, g, b, w, h, 0.4, blurred!, scratch!);
         }
 
         // 5. Restore faded colors: each channel stretched between its own percentiles with the
         //    midtone cast neutralized (color scans only), then a vibrance boost and slight contrast.
         if (settings.RestoreFadedColors)
         {
-            if (colorMode == ColorMode.Color) LevelChannels(r, g, b);
-            Vibrance(r, g, b, 0.5);
-            ColorControls(r, g, b, 0, 1.05, 1);
+            if (colorMode == ColorMode.Color)
+            {
+                if (histograms is not null)
+                {
+                    CountChannels(histograms, r, g, b, coreFrom, corePixels);
+                    return;
+                }
+                LevelChannels(r, g, b, count, tables!);
+            }
+            Vibrance(r, g, b, count, 0.5);
+            ColorControls(r, g, b, count, 0, 1.05, 1);
         }
 
         // 6. Color-mode conversion.
@@ -91,11 +182,11 @@ public static class ImagePipeline
             case ColorMode.Color:
                 break;
             case ColorMode.Grayscale:
-                ColorControls(r, g, b, 0, 1, 0);
+                ColorControls(r, g, b, count, 0, 1, 0);
                 break;
             case ColorMode.BlackWhite:
                 // Desaturate first so the threshold applies to luminance.
-                ColorControls(r, g, b, 0, 1, 0);
+                ColorControls(r, g, b, count, 0, 1, 0);
                 for (int i = 0; i < count; i++)
                 {
                     double v = r[i] > settings.BlackWhiteThreshold ? 1 : 0;
@@ -103,17 +194,6 @@ public static class ImagePipeline
                 }
                 break;
         }
-
-        // 7. Render back to bytes, preserving the exact pixel dimensions of the input.
-        var output = new byte[count * 4];
-        for (int i = 0; i < count; i++)
-        {
-            output[i * 4] = ToByte(r[i]);
-            output[i * 4 + 1] = ToByte(g[i]);
-            output[i * 4 + 2] = ToByte(b[i]);
-            output[i * 4 + 3] = src[i * 4 + 3];
-        }
-        return new RgbaImage(image.Width, image.Height, output);
     }
 
     /// <summary>Lossless 90° steps, clockwise. quarterTurns 0...3.</summary>
@@ -131,10 +211,10 @@ public static class ImagePipeline
     /// CIColorControls: additive brightness, contrast about mid-gray, saturation as a
     /// lerp between the pixel and its luminance.
     /// </summary>
-    private static void ColorControls(double[] r, double[] g, double[] b,
+    private static void ColorControls(double[] r, double[] g, double[] b, int count,
                                       double brightness, double contrast, double saturation)
     {
-        for (int i = 0; i < r.Length; i++)
+        for (int i = 0; i < count; i++)
         {
             double pr = r[i] + brightness;
             double pg = g[i] + brightness;
@@ -157,13 +237,18 @@ public static class ImagePipeline
     }
 
     /// <summary>Unsharp mask: out = px + amount * (px - blur3x3(px)).</summary>
-    private static void Sharpen(double[] r, double[] g, double[] b, int w, int h, double amount)
+    private static void Sharpen(double[] r, double[] g, double[] b, int w, int h, double amount,
+                                double[][] blurred, double[] scratch)
     {
-        var br = (double[])r.Clone();
-        var bg = (double[])g.Clone();
-        var bb = (double[])b.Clone();
-        GaussianBlur3x3(br, bg, bb, w, h);
-        for (int i = 0; i < r.Length; i++)
+        int count = w * h;
+        var br = blurred[0];
+        var bg = blurred[1];
+        var bb = blurred[2];
+        Array.Copy(r, br, count);
+        Array.Copy(g, bg, count);
+        Array.Copy(b, bb, count);
+        GaussianBlur3x3(br, bg, bb, w, h, scratch);
+        for (int i = 0; i < count; i++)
         {
             r[i] += amount * (r[i] - br[i]);
             g[i] += amount * (g[i] - bg[i]);
@@ -172,9 +257,8 @@ public static class ImagePipeline
     }
 
     /// <summary>Separable [1 2 1]/4 Gaussian, edge-clamped — the radius-1 blur used by descreen.</summary>
-    private static void GaussianBlur3x3(double[] r, double[] g, double[] b, int w, int h)
+    private static void GaussianBlur3x3(double[] r, double[] g, double[] b, int w, int h, double[] scratch)
     {
-        var scratch = new double[r.Length];
         BlurPass(r, w, h, scratch);
         BlurPass(g, w, h, scratch);
         BlurPass(b, w, h, scratch);
@@ -187,7 +271,7 @@ public static class ImagePipeline
     /// </summary>
     internal static void BlurPass(double[] channel, int w, int h, double[]? scratch = null)
     {
-        var tmp = scratch is not null && scratch.Length >= channel.Length ? scratch : new double[channel.Length];
+        var tmp = scratch is not null && scratch.Length >= w * h ? scratch : new double[w * h];
         // Horizontal: only the first and last column clamp; the interior reads its neighbors directly.
         ForEachRow(h, (long)w * 3, y =>
         {
@@ -277,7 +361,7 @@ public static class ImagePipeline
         }
         for (int i = 0; i < kernel.Length; i++) kernel[i] /= sum;
 
-        var tmp = scratch is not null && scratch.Length >= channel.Length ? scratch : new double[channel.Length];
+        var tmp = scratch is not null && scratch.Length >= w * h ? scratch : new double[w * h];
         long workPerRow = (long)w * kernel.Length;
         // Horizontal: clamp only where the kernel overhangs the left/right edge.
         ForEachRow(h, workPerRow, y =>
@@ -359,9 +443,9 @@ public static class ImagePipeline
     }
 
     /// <summary>CIVibrance approximation: boost saturation more for less-saturated pixels.</summary>
-    private static void Vibrance(double[] r, double[] g, double[] b, double amount)
+    private static void Vibrance(double[] r, double[] g, double[] b, int count, double amount)
     {
-        for (int i = 0; i < r.Length; i++)
+        for (int i = 0; i < count; i++)
         {
             double maxC = Math.Max(r[i], Math.Max(g[i], b[i]));
             double minC = Math.Min(r[i], Math.Min(g[i], b[i]));
@@ -437,40 +521,60 @@ public static class ImagePipeline
         return tables;
     }
 
-    /// <summary>Applies <see cref="FadedColorTables"/> to the pixels, as bytes.</summary>
-    private static void LevelChannels(double[] r, double[] g, double[] b)
+    private static void CountChannels(int[][] histograms, double[] r, double[] g, double[] b, int from, int count)
     {
         var channels = new[] { r, g, b };
-        var histograms = new int[3][];
         for (int c = 0; c < 3; c++)
         {
-            histograms[c] = new int[256];
-            foreach (double v in channels[c]) histograms[c][ToByte(v)]++;
+            var histogram = histograms[c];
+            var values = channels[c];
+            for (int i = from; i < from + count; i++) histogram[ToByte(values[i])]++;
         }
-        var tables = FadedColorTables(histograms);
+    }
+
+    /// <summary>Applies <see cref="FadedColorTables"/> to the first <paramref name="count"/> pixels, as bytes.</summary>
+    private static void LevelChannels(double[] r, double[] g, double[] b, int count, byte[][] tables)
+    {
+        var channels = new[] { r, g, b };
         for (int c = 0; c < 3; c++)
         {
             var values = channels[c];
-            for (int i = 0; i < values.Length; i++) values[i] = tables[c][ToByte(values[i])] / 255.0;
+            for (int i = 0; i < count; i++) values[i] = tables[c][ToByte(values[i])] / 255.0;
         }
     }
 
     /// <summary>
-    /// Auto-levels: linear-stretch all channels by the same gain/offset so the image's 1st/99th
-    /// luminance percentiles map toward 0/1. Conservative stand-in for CI auto-enhance.
+    /// Auto-levels: the offset and gain that linear-stretch all channels so the image's 1st/99th
+    /// luminance percentiles map toward 0/1, or null for a nearly flat image. The luminance of a
+    /// byte pixel is (299 R + 587 G + 114 B) / 255000, so a histogram of that integer gives the
+    /// percentiles exactly without sorting. Conservative stand-in for CI auto-enhance.
     /// </summary>
-    private static void AutoLevels(double[] r, double[] g, double[] b)
+    private static (double Lo, double Gain)? FindLevels(byte[] pixels, int count)
     {
-        int count = r.Length;
-        if (count == 0) return;
-        var lum = new double[count];
-        for (int i = 0; i < count; i++) lum[i] = Luma(r[i], g[i], b[i]);
-        var sorted = (double[])lum.Clone();
-        Array.Sort(sorted);
-        double lo = sorted[(int)(count * 0.01)];
-        double hi = sorted[Math.Min(count - 1, (int)(count * 0.99))];
-        if (hi - lo < 0.05) return; // nearly flat image: leave it alone
-        double gain = 1.0 / (hi - lo);
+        if (count == 0) return null;
+        var histogram = new int[255 * 1000 + 1];
+        for (int i = 0; i < count; i++)
+            histogram[299 * pixels[i * 4] + 587 * pixels[i * 4 + 1] + 114 * pixels[i * 4 + 2]]++;
+        double lo = LumaAtRank(histogram, (int)(count * 0.01));
+        double hi = LumaAtRank(histogram, Math.Min(count - 1, (int)(count * 0.99)));
+        if (hi - lo < 0.05) return null; // nearly flat image: leave it alone
+        return (lo, 1.0 / (hi - lo));
+    }
+
+    /// <summary>The luminance of the pixel at zero-based <paramref name="rank"/> in sorted order.</summary>
+    private static double LumaAtRank(int[] histogram, int rank)
+    {
+        long seen = 0;
+        for (int v = 0; v < histogram.Length; v++)
+        {
+            seen += histogram[v];
+            if (seen > rank) return v / 255000.0;
+        }
+        return 1;
+    }
+
+    private static void ApplyLevels(double[] r, double[] g, double[] b, int count, double lo, double gain)
+    {
         for (int i = 0; i < count; i++)
         {
             r[i] = (r[i] - lo) * gain;
