@@ -358,12 +358,23 @@ struct InspectorView: View {
         return feederSelected ? caps.feederSizeInches : caps.flatbedSizeInches
     }
 
-    /// Automatic, the usual size where the user lives, then the others; sizes larger than the
-    /// glass or the feeder are left out (the chosen one is always listed).
+    /// The sizes with fixed dimensions: Automatic, the usual size where the user lives, then the
+    /// others.
+    private var fixedPaperSizes: [PaperSize] {
+        PaperSizes.displayOrder(region: Locale.current.region?.identifier).filter { $0 != .custom && $0 != .longPaper }
+    }
+
+    /// The fixed sizes the glass or the feeder takes; larger ones are left out (the chosen one is
+    /// always listed).
     private var offeredPaperSizes: [PaperSize] {
-        PaperSizes.displayOrder(region: Locale.current.region?.identifier).filter { size in
+        fixedPaperSizes.filter { size in
             PaperSizes.fits(size, in: paperArea) || size == state.settings.paperSize
         }
+    }
+
+    /// Long paper is listed for the feeder, and while it is the chosen size.
+    private var offersLongPaper: Bool {
+        feederSelected || state.settings.paperSize == .longPaper
     }
 
     /// What the paper size does: for a copy, Automatic on the glass is the printer's paper.
@@ -372,6 +383,12 @@ struct InspectorView: View {
             return PrintText.copyPaperHint(state.settings.paperSize, source: state.settings.source)
         }
         let wholeGlass = state.settings.source == .flatbed && TaskCatalog.scansWholeGlass(state.settings)
+        if !wholeGlass && state.settings.paperSize == .custom {
+            return String(localized: "Scans this width and height from the top left corner.")
+        }
+        if state.settings.paperSize == .longPaper && state.settings.source != .flatbed {
+            return String(localized: "Feeds the sheet as long as the scanner allows. For receipts and long slips.")
+        }
         return PaperSizes.hint(wholeGlass ? .auto : state.settings.paperSize, source: state.settings.source)
     }
 
@@ -380,14 +397,50 @@ struct InspectorView: View {
         state.selectionRect != nil && state.settings.source == .flatbed
     }
 
+    /// Choosing Custom size starts from the size that was chosen before it.
+    private var paperSizeSelection: Binding<PaperSize> {
+        Binding(get: { state.settings.paperSize },
+                set: { (size: PaperSize) in
+                    let regional = PaperSizes.inches(PaperSizes.defaultForRegion(Locale.current.region?.identifier))
+                    let start: CGSize? = PaperSizes.inches(state.settings.paperSize)
+                        ?? (state.settings.paperSize == .custom ? nil : regional)
+                    if size == .custom, let start {
+                        state.settings.customPaperWidth = Double(start.width)
+                        state.settings.customPaperHeight = Double(start.height)
+                    }
+                    state.settings.paperSize = size
+                })
+    }
+
+    private var usesInches: Bool { Locale.current.region?.identifier == "US" }
+
+    private var customSizeInvalid: Bool {
+        state.settings.customPaperWidth <= 0 || state.settings.customPaperHeight <= 0
+    }
+
+    private var customSizeTooLarge: Bool {
+        !PaperSizes.fits(.custom, in: paperArea, custom: state.settings.customPaper)
+    }
+
     private var paperSizeRow: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Picker("Paper size", selection: $state.settings.paperSize) {
+            Picker("Paper size", selection: paperSizeSelection) {
                 ForEach(offeredPaperSizes) { size in
                     Text(size == .auto ? size.label : String(localized: "\(size.label) (\(size.detail))")).tag(size)
                 }
+                Divider()
+                Text("Custom size...").tag(PaperSize.custom)
+                if offersLongPaper {
+                    Text(PaperSize.longPaper.label).tag(PaperSize.longPaper)
+                }
             }
             .help(paperSizeHint)
+            if state.settings.paperSize == .custom {
+                customSizeFields
+            }
+            if state.settings.paperSize == .longPaper {
+                longPaperNote
+            }
             if areaSelected {
                 HStack(spacing: 4) {
                     reasonLine(PaperSizes.selectedAreaNote, systemImage: "selection.pin.in.out")
@@ -401,10 +454,61 @@ struct InspectorView: View {
                     .accessibilityLabel(Text("Clear the selected area"))
                 }
             }
-            if offeredPaperSizes.count < PaperSize.allCases.count {
+            if offeredPaperSizes.count < fixedPaperSizes.count {
                 reasonLine(String(localized: "Larger sizes left out"))
                     .help(PaperSizes.doesNotFitReason(source: state.settings.source))
             }
+        }
+    }
+
+    @ViewBuilder
+    private var longPaperNote: some View {
+        if feederSelected {
+            Text("Uses the feeder's longest sheet")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            reasonLine(String(localized: "Long paper needs the feeder."))
+        }
+    }
+
+    /// Width and height of the custom size, in inches in the US and in millimeters elsewhere (the
+    /// settings keep inches). A selection on the preview replaces the size, so the fields dim.
+    @ViewBuilder
+    private var customSizeFields: some View {
+        let widthLabel: String = usesInches ? String(localized: "Width in inches") : String(localized: "Width in millimeters")
+        let heightLabel: String = usesInches ? String(localized: "Height in inches") : String(localized: "Height in millimeters")
+        VStack(alignment: .leading, spacing: 4) {
+            customSizeField(String(localized: "Width"), accessibility: widthLabel, inches: $state.settings.customPaperWidth)
+            customSizeField(String(localized: "Height"), accessibility: heightLabel, inches: $state.settings.customPaperHeight)
+        }
+        .disabled(areaSelected)
+        if customSizeInvalid {
+            reasonLine(String(localized: "Enter a width and height larger than 0."))
+        } else if customSizeTooLarge {
+            reasonLine(String(localized: "Larger than the scanner can scan. It will be cut off."))
+        }
+    }
+
+    private func customSizeField(_ title: String, accessibility: String, inches: Binding<Double>) -> some View {
+        let perInch: Double = usesInches ? 1 : 25.4
+        let value = Binding<Double>(get: { inches.wrappedValue * perInch },
+                                    set: { (new: Double) in inches.wrappedValue = new / perInch })
+        let format: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...1))
+        let unit: String = usesInches ? String(localized: "in") : String(localized: "mm")
+        return HStack(spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 44, alignment: .leading)
+            TextField(title, value: value, format: format)
+                .labelsHidden()
+                .multilineTextAlignment(.trailing)
+                .frame(width: 64)
+                .accessibilityLabel(Text(accessibility))
+            Text(unit)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

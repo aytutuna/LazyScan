@@ -32,8 +32,8 @@ public struct AdaptedSettings: Equatable, Sendable {
 
 /// Fits settings to what a scanner offers: a source it has (the first one it lists when the
 /// chosen one is missing; the flatbed when it lists none), two-sided feeder scans by hand when
-/// its feeder scans one side, a paper size that fits the glass or the feeder (Automatic
-/// otherwise), and the nearest resolution it supports. Used whenever settings meet a scanner:
+/// its feeder scans one side, a fixed paper size that fits the glass or the feeder (Automatic
+/// otherwise; a custom size is kept and cut to the area), and the nearest resolution it supports. Used whenever settings meet a scanner:
 /// applying a preset or task, and connecting to another scanner. Twin of C# `SettingsAdapter`.
 public enum SettingsAdapter {
     /// `settings` adapted to `capabilities` (unchanged when nil: no scanner connected yet).
@@ -67,10 +67,8 @@ public enum SettingsAdapter {
                                       message: L10n.t("Long paper is scanned from the feeder, so the paper size is Automatic."),
                                       warning: .paperAutomatic))
             s.paperSize = .auto
-        } else if !PaperSizes.fits(s.paperSize, in: area, custom: s.customPaper) {
-            let name: String = s.paperSize == .custom
-                ? L10n.t("{0} × {1} in", s.customPaper.width, s.customPaper.height)
-                : s.paperSize.label
+        } else if s.paperSize != .custom && !PaperSizes.fits(s.paperSize, in: area) {
+            let name: String = s.paperSize.label
             notes.append(SettingsNote(change: .paperSize,
                                       message: feeder
                                           ? L10n.t("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", name)

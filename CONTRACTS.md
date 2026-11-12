@@ -484,8 +484,8 @@ public struct AdaptedSettings: Equatable, Sendable { public let settings: ScanSe
 public enum SettingsAdapter {
     /// A source the scanner has (its first one when the chosen one is missing, the flatbed when it
     /// lists none), `.both` turned into `.manual` for a feeder source on a scanner without
-    /// `supportsDuplex`, `.auto` for a paper size larger than the glass or the feeder (whichever is
-    /// the source; kept when that size is unknown), `.auto` for Long paper on the glass, and the nearest resolution it supports, with a
+    /// `supportsDuplex`, `.auto` for a fixed paper size larger than the glass or the feeder (whichever is
+    /// the source; kept when that size is unknown; a custom size is kept and the backends cut it to the area), `.auto` for Long paper on the glass, and the nearest resolution it supports, with a
     /// note for each change in that order; unchanged when `capabilities` is nil.
     public static func adapt(_ settings: ScanSettings, to capabilities: ScannerCapabilities?) -> AdaptedSettings
 }

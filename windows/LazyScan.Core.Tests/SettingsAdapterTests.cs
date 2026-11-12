@@ -182,7 +182,7 @@ public class SettingsAdapterTests
     }
 
     [Fact]
-    public void LongPaper_NeedsTheFeeder_CustomSizeMustFit()
+    public void LongPaper_NeedsTheFeeder_CustomSizeIsKept()
     {
         var glass = new ScannerCapabilities { FlatbedSizeInches = new SizeD(8.5, 11.7) };
         var adapted = SettingsAdapter.Adapt(new ScanSettings { PaperSize = PaperSize.LongPaper }, glass);
@@ -195,8 +195,8 @@ public class SettingsAdapterTests
         Assert.Equal(PaperSize.Custom, SettingsAdapter.Adapt(custom, feeder).Settings.PaperSize);
         custom.CustomPaperHeight = 140;
         var tooTall = SettingsAdapter.Adapt(custom, feeder);
-        Assert.Equal(PaperSize.Auto, tooTall.Settings.PaperSize);
-        Assert.Equal("4 × 140 in paper does not fit this scanner's feeder, so the paper size is Automatic.", Assert.Single(tooTall.Notes).Message);
+        Assert.Equal(PaperSize.Custom, tooTall.Settings.PaperSize);
+        Assert.Empty(tooTall.Notes);
     }
 
     [Fact]

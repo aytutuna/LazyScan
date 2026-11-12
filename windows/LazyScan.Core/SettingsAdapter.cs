@@ -20,8 +20,8 @@ public sealed record AdaptedSettings(ScanSettings Settings, IReadOnlyList<Settin
 /// <summary>
 /// Fits settings to what a scanner offers: a source it has (the first one it lists when the
 /// chosen one is missing; the flatbed when it lists none), two-sided feeder scans by hand when
-/// its feeder scans one side, a paper size that fits the glass or the feeder (Automatic
-/// otherwise), and the nearest resolution it supports. Used whenever settings meet a scanner:
+/// its feeder scans one side, a fixed paper size that fits the glass or the feeder (Automatic
+/// otherwise; a custom size is kept and cut to the area), and the nearest resolution it supports. Used whenever settings meet a scanner:
 /// applying a preset or task, and connecting to another scanner.
 /// </summary>
 public static class SettingsAdapter
@@ -67,11 +67,9 @@ public static class SettingsAdapter
                 new StatusWarning.PaperAutomatic()));
             s.PaperSize = PaperSize.Auto;
         }
-        else if (!PaperSizes.Fits(s.PaperSize, area, s.CustomPaper))
+        else if (s.PaperSize != PaperSize.Custom && !PaperSizes.Fits(s.PaperSize, area))
         {
-            string name = s.PaperSize == PaperSize.Custom
-                ? Loc.T("{0} × {1} in", s.CustomPaper.Width, s.CustomPaper.Height)
-                : s.PaperSize.Label();
+            string name = s.PaperSize.Label();
             notes.Add(new SettingsNote(SettingsChange.PaperSize,
                 feeder
                     ? Loc.T("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", name)
