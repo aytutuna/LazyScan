@@ -472,17 +472,19 @@ final class TroubleshooterTests: XCTestCase {
                        + "their maker's app.")
     }
 
-    func test_mac_hasNoWindowsChecks_andNeverOffersAddByAddress() {
+    func test_mac_hasNoWindowsChecks_andOffersAddByAddressOnlyWhileSearching() {
         let snapshot = changed(troubledWindows()) { $0.platform = .mac; $0.discovery = .running }
         let checks = Troubleshooter.diagnose(snapshot)
         XCTAssertEqual(ids(checks), ["lastFailure", "network", "discovery", "usb", "networkScanner", "sharing", "otherApps"])
-        XCTAssertFalse(checks.contains { $0.actions.contains(.addByAddress) })
+        XCTAssertEqual(checks.filter { $0.actions.contains(.addByAddress) }.map { $0.id }, ["discovery"])
         XCTAssertTrue(check(checks, "lastFailure").more.contains("Image Capture or the maker's app may be using it"))
         let discovery = check(checks, "discovery")
         XCTAssertEqual(discovery.status, .ok)
         XCTAssertEqual(discovery.title, "Looking for scanners")
         XCTAssertEqual(discovery.detail, "Scanners appear here as macOS finds them.")
         XCTAssertEqual(discovery.more, "macOS looks for scanners connected by USB, on the network and shared by other Macs.")
+        XCTAssertEqual(discovery.actions, [.addByAddress])
+        XCTAssertEqual(Troubleshooter.label(.addByAddress, platform: .mac), "Add by address…")
     }
 
     func test_macTips() {

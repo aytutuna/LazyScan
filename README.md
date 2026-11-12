@@ -215,8 +215,8 @@ scanners** — including the Epson Perfection V39 II.
   tips: a USB scanner needs its maker's driver, a network scanner must be on the same network
   and the Local Network permission allowed, and a shared scanner needs Scanner Sharing on the
   other Mac. Its headline is one line ("No scanner found · 1 warning"); each check shows one line
-  with its buttons (**Image Capture**, **Printers & Scanners**), and **More help** holds the rest;
-  **Refresh** and **Copy Diagnostics** are at the bottom. It only reads; it never changes a setting. On Windows it also checks
+  with its buttons (**Image Capture**, **Printers & Scanners**, **Add by address…**), and **More help** holds the rest;
+  **Refresh** and **Copy Diagnostics** are at the bottom. A network scanner can also be added by address from the **+** next to **Scanners**. It only reads; it never changes a setting. On Windows it also checks
   the Windows Image Acquisition service, the network profile (Public networks hide scanners),
   TWAIN and 32-bit-only TWAIN drivers, and addresses added by hand.
 - **Image adjustments**: auto-enhance, brightness / contrast / saturation / sharpness,

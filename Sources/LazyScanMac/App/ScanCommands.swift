@@ -23,7 +23,7 @@ struct ScanCommands: Commands {
     private var dialogOpen: Bool {
         state.cornerReview != nil || state.showPhotoReview || state.showIdCardReview
             || state.errorMessage != nil || state.pendingIdCardLeave != nil
-            || state.asksSidesOrder || state.showTroubleshooter
+            || state.asksSidesOrder || state.showTroubleshooter || state.showAddScanner
     }
 
     /// The menu is not re-evaluated when a view's own sheet or alert opens, so each action checks the key window too.

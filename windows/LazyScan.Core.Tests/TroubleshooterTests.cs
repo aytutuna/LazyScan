@@ -513,17 +513,19 @@ public class TroubleshooterTests
     }
 
     [Fact]
-    public void Mac_HasNoWindowsChecks_AndNeverOffersAddByAddress()
+    public void Mac_HasNoWindowsChecks_AndOffersAddByAddressOnlyWhileSearching()
     {
         var snapshot = TroubledWindows() with { Platform = TroubleshootPlatform.Mac, Discovery = DiscoveryStatus.Running };
         var checks = Troubleshooter.Diagnose(snapshot);
         Assert.Equal(["lastFailure", "network", "discovery", "usb", "networkScanner", "sharing", "otherApps"], Ids(checks));
-        Assert.DoesNotContain(checks, c => c.Actions.Contains(TroubleshootAction.AddByAddress));
+        Assert.Equal(["discovery"], Ids(checks.Where(c => c.Actions.Contains(TroubleshootAction.AddByAddress)).ToList()));
         Assert.Contains("Image Capture or the maker's app may be using it", Check(checks, "lastFailure").More);
         var discovery = Check(checks, "discovery");
         Assert.Equal((CheckStatus.Ok, "Looking for scanners"), (discovery.Status, discovery.Title));
         Assert.Equal("Scanners appear here as macOS finds them.", discovery.Detail);
         Assert.Equal("macOS looks for scanners connected by USB, on the network and shared by other Macs.", discovery.More);
+        Assert.Equal([TroubleshootAction.AddByAddress], discovery.Actions);
+        Assert.Equal("Add by address…", Troubleshooter.Label(TroubleshootAction.AddByAddress, TroubleshootPlatform.Mac));
     }
 
     [Fact]

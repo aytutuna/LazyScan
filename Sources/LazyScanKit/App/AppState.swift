@@ -511,6 +511,12 @@ public final class AppState: ObservableObject {
     /// "Why isn't my scanner listed?" is open (`TroubleshooterView`, shown from the sidebar and
     /// from an error about a scanner).
     @Published public var showTroubleshooter = false
+    /// "Add a network scanner" is open (the Mac's `AddScannerView`, shown from the sidebar).
+    @Published public var showAddScanner = false
+    /// The eSCL connection, where scanners are added by address; nil without one (the demo scanner alone).
+    public var addressBackend: EsclScannerBackend? {
+        backends.lazy.compactMap { $0 as? EsclScannerBackend }.first
+    }
     /// The last failed connection or scan, for the troubleshooter; cleared by the next one that works.
     @Published public private(set) var lastFailure: ScannerFailure?
     /// `errorMessage` is about a scanner that would not connect or scan, so its alert offers the

@@ -556,7 +556,7 @@ public static class Troubleshooter
                 DiscoveryStatus.Searching or DiscoveryStatus.Running => new TroubleshootCheck(
                     "discovery", CheckStatus.Ok, Loc.T("Looking for scanners"),
                     Loc.T("Scanners appear here as macOS finds them."),
-                    [],
+                    [TroubleshootAction.AddByAddress],
                     Loc.T("macOS looks for scanners connected by USB, on the network and shared by other Macs.")),
                 DiscoveryStatus.Off or DiscoveryStatus.Unavailable => new TroubleshootCheck(
                     "discovery", CheckStatus.Warning, Loc.T("Not looking for scanners"),

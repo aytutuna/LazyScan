@@ -617,7 +617,7 @@ public enum Troubleshooter {
                     id: "discovery", status: .ok, title: L10n.t("Looking for scanners"),
                     detail: L10n.t("Scanners appear here as macOS finds them."),
                     more: L10n.t("macOS looks for scanners connected by USB, on the network and shared by other Macs."),
-                    actions: [])
+                    actions: [.addByAddress])
             case .off, .unavailable:
                 return TroubleshootCheck(
                     id: "discovery", status: .warning, title: L10n.t("Not looking for scanners"),

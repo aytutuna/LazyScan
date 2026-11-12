@@ -12,6 +12,8 @@ import SwiftUI
 struct TroubleshooterView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) private var dismiss
+    /// Runs when Add by address is chosen; the sheet closes after it, and the caller opens the add sheet then.
+    let addByAddress: () -> Void
 
     /// What the footer says after Copy Diagnostics or a button that opens something, including
     /// why it did not work (the only place that is reported while the sheet is open).
@@ -88,8 +90,8 @@ struct TroubleshooterView: View {
         case .openScannerSettings, .openNetworkSettings, .openImageCapture, .openAppSettings:
             footerMessage = state.openTroubleshootLink(action)
         case .addByAddress:
-            // Windows only: macOS has no way to add a network scanner by its address.
-            break
+            addByAddress()
+            dismiss()
         case .removeAddress:
             // iPhone and iPad only.
             break

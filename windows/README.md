@@ -1596,8 +1596,8 @@ Known divergences from the macOS app (all documented in the source):
   hand (`WindowsSystemStatus.cs` and its `WindowsSystemStatusTests` have no Swift twin); the Mac
   reads only whether ImageCaptureCore is browsing, since macOS offers no API for its scanner
   drivers, sharing or the Local Network permission, so those are tips there. The Mac links to
-  Image Capture and to Printers & Scanners instead of adding a scanner by address, which macOS
-  cannot do.
+  Image Capture and to Printers & Scanners, and adds a scanner by address from the scanner list or
+  the troubleshooter (a sheet like the Windows dialog).
 - Only Windows offers a connection chooser: the Mac merges its USB, Bonjour and shared
   entries for one scanner by ranking alone (USB first) and has no preferences file to keep a
   choice in.

@@ -7,6 +7,10 @@ struct SidebarView: View {
     @EnvironmentObject var state: AppState
     /// "Send from your phone" is open (`PhoneView`).
     @State private var showPhone = false
+    /// Add by address was chosen in the troubleshooter; its sheet opens once the troubleshooter has closed.
+    @State private var addAfterTroubleshooter = false
+    /// The scanner just added, picked once its sheet has gone: the question about the ID card cannot show sooner.
+    @State private var addedID: String?
 
     var body: some View {
         List(selection: deviceSelection) {
@@ -36,6 +40,13 @@ struct SidebarView: View {
                         .foregroundStyle(Color(nsColor: .linkColor))
                         .font(.callout)
                         .help("Why isn't my scanner listed?")
+                        Button(L10n.t("Add by address")) {
+                            state.showAddScanner = true
+                        }
+                        .buttonStyle(.link)
+                        .foregroundStyle(Color(nsColor: .linkColor))
+                        .font(.callout)
+                        .help(L10n.t("Add a scanner by address"))
                     }
                     .padding(.vertical, 4)
                 }
@@ -43,6 +54,14 @@ struct SidebarView: View {
                 HStack {
                     Text("Scanners")
                     Spacer()
+                    Button {
+                        state.showAddScanner = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.t("Add a scanner by address"))
+                    .accessibilityLabel(L10n.t("Add a scanner by address"))
                     // Until a scanner is listed, the Troubleshoot link in the list is the one way in.
                     if state.hasRealDevices {
                         Button {
@@ -75,9 +94,12 @@ struct SidebarView: View {
             }
             .help("Send from your phone: pair a phone and see whether this Mac receives")
         }
-        .sheet(isPresented: $state.showTroubleshooter) {
-            TroubleshooterView()
+        .sheet(isPresented: $state.showTroubleshooter, onDismiss: troubleshooterClosed) {
+            TroubleshooterView(addByAddress: { addAfterTroubleshooter = true })
                 .environmentObject(state)
+        }
+        .sheet(isPresented: $state.showAddScanner, onDismiss: addClosed) {
+            addScannerSheet
         }
         .sheet(isPresented: $showPhone) {
             PhoneView()
@@ -100,6 +122,36 @@ struct SidebarView: View {
                 appState.leaveIdCard { appState.userSelectDevice(id) }
             }
         )
+    }
+
+    @ViewBuilder
+    private var addScannerSheet: some View {
+        if let backend = state.addressBackend {
+            AddScannerView(checker: backend, onAdded: added, onClose: closeAdd)
+        }
+    }
+
+    private func troubleshooterClosed() {
+        if addAfterTroubleshooter {
+            addAfterTroubleshooter = false
+            state.showAddScanner = true
+        }
+    }
+
+    private func added(_ deviceID: String) {
+        addedID = deviceID
+        state.showAddScanner = false
+    }
+
+    private func closeAdd() {
+        state.showAddScanner = false
+    }
+
+    private func addClosed() {
+        guard let id = addedID else { return }
+        addedID = nil
+        let appState = state
+        appState.leaveIdCard { appState.userSelectDevice(id) }
     }
 
     private var rowHelp: String {
