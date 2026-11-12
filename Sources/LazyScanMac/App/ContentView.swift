@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var choseOpeningView = false
     /// Photo files are dragged over the scanner view: it says where they go.
     @State private var dropTargeted = false
+    @State private var openedPhotos: [URL] = []
 
     var body: some View {
         NavigationSplitView {
@@ -116,10 +117,23 @@ struct ContentView: View {
         .importsItemProviders([.image]) { providers in
             state.importFromDevice(providers)
         }
-        // A `.lsdoc` opened from the Finder is offered on the banner, in this window rather than a new one.
+        // A `.lsdoc` opened from the Finder is offered on the banner, in this window rather than a new one;
+        // photos opened with Lazy Scan become pages. Files opened together arrive one call each, so they
+        // are gathered for a moment and imported as one batch.
         .onOpenURL { url in
-            guard url.isFileURL, url.pathExtension.lowercased() == CompanionPackage.fileExtension else { return }
-            Task { await state.openPackage(at: url) }
+            guard url.isFileURL else { return }
+            if url.pathExtension.lowercased() == CompanionPackage.fileExtension {
+                Task { await state.openPackage(at: url) }
+                return
+            }
+            openedPhotos.append(url)
+            guard openedPhotos.count == 1 else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(300))
+                let urls = openedPhotos
+                openedPhotos = []
+                state.importPhotos(urls)
+            }
         }
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         .onAppear {
