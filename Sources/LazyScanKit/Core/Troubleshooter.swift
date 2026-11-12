@@ -336,7 +336,7 @@ public enum Troubleshooter {
         case .openNetworkSettings: return L10n.t("Network settings")
         case .openImageCapture: return L10n.t("Image Capture")
         case .copyDiagnostics: return L10n.t("Copy diagnostics")
-        case .openAppSettings: return L10n.t("Open Settings")
+        case .openAppSettings: return platform == .mac ? L10n.t("Local Network settings") : L10n.t("Open Settings")
         }
     }
 

@@ -541,7 +541,7 @@ struct PhoneView: View {
         switch action {
         case .refresh:
             Task { await state.companionService?.refresh() }
-        case .openNetworkSettings:
+        case .openNetworkSettings, .openAppSettings:
             footerMessage = state.openTroubleshootLink(action)
         default:
             break

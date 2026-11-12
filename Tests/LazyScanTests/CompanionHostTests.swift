@@ -43,6 +43,7 @@ final class FakeAdvertiser: DnsSdAdvertiser, @unchecked Sendable {
     private let lock = NSLock()
     private var registered: [Int: DnsSdRegistration] = [:]
     private var entries: [String] = []
+    var onPolicyDenied: (() -> Void)?
 
     var active: [Int: DnsSdRegistration] {
         lock.lock()
@@ -275,6 +276,18 @@ final class CompanionHostTests: XCTestCase {
         for endpoint in service.status.endpoints {
             XCTAssertEqual(CompanionHostStatus.port(of: [endpoint]), code.port)
         }
+    }
+
+    func testRefusedLocalNetwork_ShowsInTheStatusUntilNothingIsAdvertised() async throws {
+        _ = await service.openPairing()
+        XCTAssertFalse(service.status.localNetworkDenied)
+        advertiser.onPolicyDenied?()
+        try await waitUntil { self.service.status.localNetworkDenied }
+        XCTAssertTrue(service.snapshot().localNetworkDenied)
+
+        networks.set([])
+        await service.refresh()
+        XCTAssertFalse(service.status.localNetworkDenied)
     }
 
     func testResetPairing_ChangesTheKeyAndUnpairsEveryone() async throws {

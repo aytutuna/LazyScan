@@ -221,6 +221,21 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertEqual(CompanionTroubleshooter.summary(checks), "1 problem found.")
     }
 
+    func testChecks_RefusedLocalNetworkIsAProblemThatOpensSettings() {
+        let snapshot = CompanionSnapshot(platform: .mac, networks: [state(TestNetworks.home(), .privateNetwork)], listen: .listening,
+                                         port: 52731, localNetworkDenied: true, pairedCount: 1)
+        let checks = CompanionTroubleshooter.diagnose(snapshot)
+        XCTAssertEqual(checks[0].id, "phoneLocalNetwork")
+        XCTAssertEqual(checks[0].status, .problem)
+        XCTAssertEqual(checks[0].title, "Local Network access is off")
+        XCTAssertEqual(checks[0].actions, [.openAppSettings])
+        XCTAssertEqual(CompanionTroubleshooter.summary(checks), "1 problem found.")
+        XCTAssertEqual(CompanionTroubleshooter.headline(snapshot), "Phones cannot find this Mac: Local Network access is off.")
+        XCTAssertEqual(Troubleshooter.label(.openAppSettings, platform: .mac), "Local Network settings")
+        let allowed = CompanionTroubleshooter.diagnose(CompanionSnapshot(platform: .mac, listen: .listening, port: 52731))
+        XCTAssertFalse(allowed.contains { $0.id == "phoneLocalNetwork" })
+    }
+
     func testChecks_SayWhyNothingListens() {
         let off = CompanionTroubleshooter.diagnose(CompanionSnapshot(listen: .off, firewall: .willAsk))
         XCTAssertEqual(off.map(\.id).sorted(), ["phoneIsolation", "phoneListening"])

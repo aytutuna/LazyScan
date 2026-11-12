@@ -58,6 +58,8 @@ public struct CompanionSnapshot: Equatable {
     public var firewall: CompanionFirewallVerdict
     /// The names of the firewall rules that block the app.
     public var blockingRules: [String]
+    /// The Mac refused to advertise because Local Network access is off for the app (Mac only).
+    public var localNetworkDenied: Bool
     public var pairedCount: Int
     public var pairingOpen: Bool
     /// A cloud sync folder is chosen (C2).
@@ -67,8 +69,9 @@ public struct CompanionSnapshot: Equatable {
 
     public init(platform: TroubleshootPlatform = .windows, networks: [CompanionNetworkState] = [],
                 listen: CompanionListenState = .off, port: Int = 0, listenError: String? = nil,
-                firewall: CompanionFirewallVerdict = .unknown, blockingRules: [String] = [], pairedCount: Int = 0,
-                pairingOpen: Bool = false, syncFolderChosen: Bool = false, phonesQuietFor: TimeInterval? = nil) {
+                firewall: CompanionFirewallVerdict = .unknown, blockingRules: [String] = [],
+                localNetworkDenied: Bool = false, pairedCount: Int = 0, pairingOpen: Bool = false,
+                syncFolderChosen: Bool = false, phonesQuietFor: TimeInterval? = nil) {
         self.platform = platform
         self.networks = networks
         self.listen = listen
@@ -76,6 +79,7 @@ public struct CompanionSnapshot: Equatable {
         self.listenError = listenError
         self.firewall = firewall
         self.blockingRules = blockingRules
+        self.localNetworkDenied = localNetworkDenied
         self.pairedCount = pairedCount
         self.pairingOpen = pairingOpen
         self.syncFolderChosen = syncFolderChosen
@@ -96,6 +100,7 @@ public enum CompanionTroubleshooter {
             checks.append(networkCheck(state, platform: snapshot.platform, pc: pc))
         }
         if let firewall = firewallCheck(snapshot) { checks.append(firewall) }
+        if snapshot.localNetworkDenied { checks.append(localNetworkCheck()) }
         if let syncFolder = syncFolderCheck(snapshot, pc: pc) { checks.append(syncFolder) }
         checks.append(TroubleshootCheck(
             id: "phoneIsolation", status: .tip, title: L10n.t("Phone cannot connect on the same Wi-Fi?"),
@@ -125,7 +130,9 @@ public enum CompanionTroubleshooter {
             }
         }
         switch snapshot.listen {
-        case .listening: return L10n.t("Receiving from phones ({0}).", joinNames(trusted))
+        case .listening:
+            if snapshot.localNetworkDenied { return L10n.t("Phones cannot find this Mac: Local Network access is off.") }
+            return L10n.t("Receiving from phones ({0}).", joinNames(trusted))
         case .off: return L10n.t("No phone is paired yet.")
         case .offline: return L10n.t("Not connected to a network.")
         case .noTrustedNetwork: return L10n.t("Not receiving from phones ({0}).", joinNames(untrusted))
@@ -240,6 +247,14 @@ public enum CompanionTroubleshooter {
         default:
             return nil
         }
+    }
+
+    private static func localNetworkCheck() -> TroubleshootCheck {
+        TroubleshootCheck(
+            id: "phoneLocalNetwork", status: .problem, title: L10n.t("Local Network access is off"),
+            detail: L10n.t("macOS stops Lazy Scan from announcing this Mac to phones. Turn on Lazy Scan in Local Network settings."),
+            more: L10n.t("Open System Settings, Privacy & Security, Local Network, turn on Lazy Scan, then quit Lazy Scan and open it again. A paired phone still reaches this Mac at its last address until that address changes."),
+            actions: [.openAppSettings])
     }
 
     private static func syncFolderCheck(_ snapshot: CompanionSnapshot, pc: Bool) -> TroubleshootCheck? {

@@ -39,10 +39,15 @@ public struct DnsSdRegistration: Equatable {
 public protocol DnsSdAdvertiser: AnyObject {
     /// Starts advertising and returns what withdraws it. Throws when the system refuses.
     func register(_ registration: DnsSdRegistration) throws -> () -> Void
+    /// Called (on any thread) when the system, after accepting a registration, refuses it because
+    /// Local Network access is off. Set by the host.
+    var onPolicyDenied: (() -> Void)? { get set }
 }
 
 /// Advertises nothing (phones use the address from the pairing code).
 public final class NoDnsSdAdvertiser: DnsSdAdvertiser {
+    public var onPolicyDenied: (() -> Void)?
+
     public init() {}
 
     public func register(_ registration: DnsSdRegistration) throws -> () -> Void {
@@ -56,14 +61,18 @@ public struct CompanionHostStatus: Equatable {
     public var networks: [CompanionNetworkState]
     public var endpoints: [NWEndpoint]
     public var error: String?
+    /// The system refused to advertise because Local Network access is off for the app (macOS).
+    public var localNetworkDenied: Bool
 
     public static let initial = CompanionHostStatus(state: .off, networks: [], endpoints: [])
 
-    public init(state: CompanionListenState, networks: [CompanionNetworkState], endpoints: [NWEndpoint], error: String? = nil) {
+    public init(state: CompanionListenState, networks: [CompanionNetworkState], endpoints: [NWEndpoint], error: String? = nil,
+                localNetworkDenied: Bool = false) {
         self.state = state
         self.networks = networks
         self.endpoints = endpoints
         self.error = error
+        self.localNetworkDenied = localNetworkDenied
     }
 
     /// The port listened on; 0 when not listening.
@@ -110,6 +119,7 @@ public final class CompanionHost: @unchecked Sendable {
     private var tail: Task<Void, Never>?
     private var current = CompanionHostStatus.initial
     private var advertisements: [Int: (registration: DnsSdRegistration, withdraw: () -> Void)] = [:]
+    private var localNetworkDenied = false
     // Touched only by the refresh running.
     private var server: CompanionServer?
     private var listening: [LocalSubnet] = []
@@ -133,6 +143,13 @@ public final class CompanionHost: @unchecked Sendable {
         self.options = options
         networks.onChange = { [weak self] in
             guard let self else { return }
+            _ = self.chain { await self.update(restart: false) }
+        }
+        advertiser.onPolicyDenied = { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            self.localNetworkDenied = true
+            self.lock.unlock()
             _ = self.chain { await self.update(restart: false) }
         }
     }
@@ -218,7 +235,11 @@ public final class CompanionHost: @unchecked Sendable {
             if error != nil { state = .failed }
         }
         updateAdvertisements(state == .listening ? states : [])
-        let status = CompanionHostStatus(state: state, networks: states, endpoints: server?.localEndpoints ?? [], error: error)
+        lock.lock()
+        let denied = localNetworkDenied
+        lock.unlock()
+        let status = CompanionHostStatus(state: state, networks: states, endpoints: server?.localEndpoints ?? [], error: error,
+                                         localNetworkDenied: denied)
         if setStatus(status) { onStatusChange?() }
     }
 
@@ -325,6 +346,7 @@ public final class CompanionHost: @unchecked Sendable {
                 advertisements[index] = (registration, withdraw)
             }
         }
+        if advertisements.isEmpty { localNetworkDenied = false }
     }
 
     private func setStatus(_ status: CompanionHostStatus) -> Bool {

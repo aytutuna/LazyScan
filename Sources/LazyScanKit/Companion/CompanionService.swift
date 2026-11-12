@@ -269,7 +269,8 @@ public final class CompanionService: @unchecked Sendable {
         }
         let lastSeen = devices.devices.compactMap(\.lastSeen).max()
         return CompanionSnapshot(platform: platform, networks: networks, listen: status.state, port: status.port,
-                                 listenError: status.error, pairedCount: devices.count,
+                                 listenError: status.error,
+                                 localNetworkDenied: status.localNetworkDenied, pairedCount: devices.count,
                                  pairingOpen: pairing != nil || awaitingApproval, syncFolderChosen: syncFolder != nil,
                                  phonesQuietFor: lastSeen.map { options.clock().timeIntervalSince($0) })
     }
