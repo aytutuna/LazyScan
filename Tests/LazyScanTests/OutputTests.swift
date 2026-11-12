@@ -174,6 +174,22 @@ final class OutputTests: XCTestCase {
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: dir.path).isEmpty)
     }
 
+    func test_writePDFAtomicallyFailsBeforeReadingPagesWhenTheFolderCannotBeWritten() throws {
+        let page = ScannedPage(image: makeSolidImage(width: 40, height: 30, red: 1, green: 1, blue: 1),
+                               dpi: 100, colorMode: .color)
+        let dir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let notAFolder = dir.appendingPathComponent("file.txt")
+        try Data("x".utf8).write(to: notAFolder)
+        var recognized = 0
+
+        XCTAssertThrowsError(try AppState.writePDFAtomically(
+            pages: [page], pdfSize: .standard, to: notAFolder.appendingPathComponent("Scan.pdf"),
+            textLayer: { _, _ in recognized += 1; return nil }, progress: nil))
+
+        XCTAssertEqual(recognized, 0)
+    }
+
     func test_writePDFAtomicallyNeverReplacesAFileThatAppeared() throws {
         let page = ScannedPage(image: makeSolidImage(width: 40, height: 30, red: 1, green: 1, blue: 1),
                                dpi: 100, colorMode: .color)

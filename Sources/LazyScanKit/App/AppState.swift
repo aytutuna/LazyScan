@@ -2862,6 +2862,10 @@ public final class AppState: ObservableObject {
         let tmp = url.deletingLastPathComponent()
             .appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
         do {
+            // Fail on a folder that cannot be written before any page is read or recognized.
+            guard FileManager.default.createFile(atPath: tmp.path, contents: nil) else {
+                throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
+            }
             try PDFBuilder.writePDF(pages: pages, pdfSize: pdfSize, to: tmp, progress: progress,
                                     shouldContinue: shouldContinue, textLayer: textLayer, options: options)
             return try NamingTemplate.moveToFreeURL(tmp, to: url)

@@ -180,6 +180,23 @@ public static class PdfBuilder
         return written;
     }
 
+    /// <summary>
+    /// Creates and deletes an empty file beside <paramref name="path"/>, so a folder that cannot be
+    /// written fails before any page is read or recognized.
+    /// </summary>
+    public static void CheckWritable(string path)
+    {
+        string probe = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, $".{Guid.NewGuid()}.pdf.tmp");
+        try
+        {
+            using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose)) { }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw ScanException.ExportFailed(Loc.T("Could not write to {0}.", path));
+        }
+    }
+
     private static string WriteThroughTempFile(IReadOnlyList<PdfPageInput> pages, string path,
                                                Action<string>? progress,
                                                CancellationToken cancellationToken,

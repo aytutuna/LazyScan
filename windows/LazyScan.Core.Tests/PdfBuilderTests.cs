@@ -578,6 +578,26 @@ public class PdfBuilderTests
     }
 
     [Fact]
+    public void CheckWritableFailsOnAFolderThatCannotBeWritten()
+    {
+        string dir = MakeTempDirectory();
+        try
+        {
+            string notAFolder = Path.Combine(dir, "file.txt");
+            File.WriteAllText(notAFolder, "x");
+            var e = Assert.Throws<ScanException>(() => PdfBuilder.CheckWritable(Path.Combine(notAFolder, "out.pdf")));
+            Assert.Contains("out.pdf", e.Message);
+
+            PdfBuilder.CheckWritable(Path.Combine(dir, "out.pdf"));
+            Assert.Equal([notAFolder], Directory.GetFiles(dir));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void WriteNewFileUsesTheFreeNameAsIs()
     {
         string dir = MakeTempDirectory();

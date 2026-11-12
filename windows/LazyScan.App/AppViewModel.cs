@@ -3923,6 +3923,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         // A protected PDF's password is asked for before any page is read or written.
         var protection = ProtectionFor(s);
+        await Task.Run(() => PdfBuilder.CheckWritable(path), token);
         var inputs = await PdfPageInputs(pages, s, token, text, knownLines, failures);
 
         StatusMessage = Loc.T("Writing PDF…");
