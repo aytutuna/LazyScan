@@ -28,6 +28,7 @@ import UIKit
 public struct IOSRootView: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.horizontalSizeClass) private var sizeClass: UserInterfaceSizeClass?
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var fileActions: IOSFileActions
     @ObservedObject private var importer: IOSImportSession
     private let launchImports: [IOSImportItem]
@@ -121,6 +122,9 @@ public struct IOSRootView: View {
         .environmentObject(importer)
         .task {
             startOnce()
+        }
+        .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
+            PrivacyCover.show(phase != .active && showsPrivateContent)
         }
         .onOpenURL { (url: URL) in
             if url.isFileURL {
@@ -256,6 +260,16 @@ public struct IOSRootView: View {
 
     private func closeLibrary() {
         showsLibrary = false
+    }
+
+    /// Whether a page, a review, the library or the saved files are on screen, which the app switcher's
+    /// snapshot must not show; the bare camera and the intro card are not.
+    private var showsPrivateContent: Bool {
+        if showsLibrary || scanCover != nil || spreadEditor != nil || !state.scannedPages.isEmpty {
+            return true
+        }
+        let listing: Bool = !showsScanner && (detail == .history || detail == .saved)
+        return cornerRequest.wrappedValue != nil || listing
     }
 
     /// In camera mode, the first time, the card saying why the camera is asked for comes before iOS asks
@@ -683,6 +697,30 @@ struct ErrorAlert: ViewModifier {
                     appState.errorSuggestsTroubleshooter = false
                 }
             })
+    }
+}
+
+/// A plain view added to the window itself, above the sheets and covers, while the app is not active, so
+/// the app switcher's snapshot shows no page.
+@MainActor
+private enum PrivacyCover {
+    private static let tag: Int = 0x4C53
+
+    static func show(_ covered: Bool) {
+        let scenes: [UIWindowScene] = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for window in scenes.flatMap({ $0.windows }) {
+            let shown: UIView? = window.viewWithTag(tag)
+            if !covered {
+                shown?.removeFromSuperview()
+            } else if shown == nil {
+                let cover = UIView(frame: window.bounds)
+                cover.tag = tag
+                cover.backgroundColor = .systemBackground
+                cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                cover.accessibilityElementsHidden = true
+                window.addSubview(cover)
+            }
+        }
     }
 }
 #endif
