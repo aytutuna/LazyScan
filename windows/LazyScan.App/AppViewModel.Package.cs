@@ -177,6 +177,7 @@ public sealed partial class AppViewModel
         return RunExclusive(async token =>
         {
             SavedBarPaths = null;
+            _heldCopy = null;
             if (asNew)
             {
                 DiscardRemoved();

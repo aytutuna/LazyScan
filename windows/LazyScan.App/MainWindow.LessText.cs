@@ -32,7 +32,10 @@ public partial class MainWindow
                                         reviewShown: idle && (ViewModel.ShowPhotoReview || ViewModel.ShowIdCardReview),
                                         savedShown: idle && ViewModel.SavedBarPaths is not null);
         StatusText.Text = shown;
-        AutomationProperties.SetName(StatusText, full);
+        // After a print that failed the line is short; the reason is its tooltip and its name.
+        string? failure = full == Loc.T("Could not print.") ? ViewModel.HeldCopyFailure : null;
+        StatusText.ToolTip = failure;
+        AutomationProperties.SetName(StatusText, failure ?? full);
         if (full != _statusShown)
         {
             _statusShown = full;

@@ -364,6 +364,9 @@ public partial class MainWindow : Window
         // A held save is undone from the saved bar; this button takes over once the bar is closed.
         bool saveUndoHere = ViewModel.CanUndoSave && ViewModel.SavedBarPaths is null;
         UndoButton.Visibility = (ViewModel.CanUndoRemove || saveUndoHere) && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+        bool heldCopy = ViewModel.HasHeldCopy && !ViewModel.IsBusy;
+        PrintAgainButton.Visibility = heldCopy ? Visibility.Visible : Visibility.Collapsed;
+        ChooseAnotherPrinterButton.Visibility = PrintAgainButton.Visibility;
         UndoButton.ToolTip = ViewModel.CanUndoSave
             ? UndoSaveTooltip()
             : WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
@@ -521,8 +524,17 @@ public partial class MainWindow : Window
             string? title = ViewModel.ErrorTitle;
             ViewModel.ErrorTitle = null;
             ShowError(error, title);
+            _infoBarAboutCopy = ViewModel.ErrorAboutCopy;
+            ViewModel.ErrorAboutCopy = false;
             if (troubleshoot) InfoBarTroubleshootButton.Visibility = Visibility.Visible;
         }
+        // The error about a copy goes when the copy is printing again or has gone.
+        if (_infoBarAboutCopy && (ViewModel.IsBusy || !ViewModel.HasHeldCopy))
+        {
+            _infoBarAboutCopy = false;
+            InfoBar.Visibility = Visibility.Collapsed;
+        }
+        InfoBarCopyActions.Visibility = _infoBarAboutCopy ? Visibility.Visible : Visibility.Collapsed;
         UpdateEmptyDevicesHint();
     }
 
@@ -565,6 +577,9 @@ public partial class MainWindow : Window
         var peer = UIElementAutomationPeer.FromElement(InfoBarText) ?? UIElementAutomationPeer.CreatePeerForElement(InfoBarText);
         peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
+
+    /// <summary>The InfoBar shows the error of a copy that did not print, with its two buttons.</summary>
+    private bool _infoBarAboutCopy;
 
     private void InfoBarClose_Click(object sender, RoutedEventArgs e) => InfoBar.Visibility = Visibility.Collapsed;
 

@@ -266,6 +266,7 @@ public sealed partial class AppViewModel
         await RunExclusive(async token =>
         {
             SavedBarPaths = null;
+            _heldCopy = null;
             StatusMessage = Loc.T("Adding pages from {0}…", phoneName);
             NotifyAll();
             bool queueHasPages = ScannedPages.Count > 0;

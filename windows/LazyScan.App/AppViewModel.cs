@@ -1359,6 +1359,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public string? ErrorTitle { get; set; }
 
     /// <summary>
+    /// <see cref="ErrorMessage"/> is about a copy that did not print, so the error bar offers Print again
+    /// and Choose another printer. The window clears it when it shows the error.
+    /// </summary>
+    public bool ErrorAboutCopy { get; set; }
+
+    /// <summary>
     /// What the troubleshooter looks at now: the scanners listed, the last failure, the WIA
     /// service and network as last read, and what each connection adds
     /// (<see cref="IScannerBackendDiagnostics"/>). Read <see cref="ReadSystemStateAsync"/> first
@@ -1743,6 +1749,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         bool areaSelected = s.Source == ScanSource.Flatbed && SelectionRect is not null;
         return RunExclusive(async token =>
         {
+            _heldCopy = null;
             PrinterSetup? copySetup = null;
             if (copy)
             {
@@ -1862,7 +1869,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     break;
                 case TaskFlowKind.Copy:
                     SetLastScan(pagePreview);
-                    await PrintCopyPages(processed, s, copySetup!, areaSelected, token);
+                    await PrintCopy(processed, s, copySetup!, areaSelected, token);
                     RecordCaptures(processed.Select(page => page.Id));
                     break;
                 case TaskFlowKind.ReceiptSplit:
@@ -2903,6 +2910,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         var adapted = SettingsAdapter.Adapt(preset.SettingsOver(Settings), Capabilities);
         Settings = adapted.Settings;
+        _heldCopy = null;
         bool wasBusy = IsBusy;
         SettingsEdited();
         string preface = Loc.T("Applied preset “{0}”.", preset.Name);
@@ -2937,6 +2945,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return false;
         }
         DiscardRemoved();
+        _heldCopy = null;
         // A task that keeps no queue would leave the held pages with nowhere to come back to.
         if (!TaskCatalog.CarriesPages(task)) DiscardSaved();
         var current = Settings;
@@ -2969,6 +2978,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (IsBusy || Settings.TaskId is null) return;
         DiscardRemoved();
+        _heldCopy = null;
         if (IsTurningOverByHand && !IsStackUnderWay) Settings.Duplex = DuplexMode.Off;
         Settings.TaskId = null;
         ShowPreview();
@@ -4442,6 +4452,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         catch (Exception e) when (IsCancellation(e))
         {
             StatusMessage = Loc.T("Cancelled.");
+        }
+        catch (Exception e) when (_heldCopy is { } held && ReferenceEquals(held.Failure, e))
+        {
+            ErrorMessage = $"{e.Message} {Loc.T("The copy is still here.")}";
+            ErrorAboutCopy = true;
+            StatusMessage = Loc.T("Could not print.");
         }
         catch (Exception e)
         {

@@ -109,6 +109,23 @@ public partial class MainWindow
         SyncPdfSizeOptions();
     }
 
+    private void PrintAgain_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintHeldCopy();
+
+    /// <summary>Shows the Printer box of the copy options, open; the copy prints when Print again is pressed.</summary>
+    private void ChooseAnotherPrinter_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedItem = ScanTab;
+        _settingSections = true;
+        try { CopyOptions.IsExpanded = true; }
+        finally { _settingSections = false; }
+        Dispatcher.BeginInvoke(() =>
+        {
+            CopyOptions.BringIntoView();
+            CopyPrinterBox.Focus();
+            CopyPrinterBox.IsDropDownOpen = true;
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
     private void RulerPage_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintRulerPage();
 
     private void IdCardPrint_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintIdCard();

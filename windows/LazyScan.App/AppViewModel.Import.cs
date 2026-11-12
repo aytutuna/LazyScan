@@ -74,6 +74,7 @@ public sealed partial class AppViewModel
         {
             // The bar of the previous save makes way for the new pages.
             SavedBarPaths = null;
+            _heldCopy = null;
             var processor = savesAtOnce ? PageProcessor.ForScan(s) : PageProcessor.ForPhotoImport(s, _orientation, _barcodes);
             string spoolDirectory = _spool.Directory;
             var added = new List<ScannedPage>();

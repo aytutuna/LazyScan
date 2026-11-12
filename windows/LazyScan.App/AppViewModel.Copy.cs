@@ -29,6 +29,24 @@ public sealed partial class AppViewModel
     /// <summary>The latest read of the printers.</summary>
     private Task? _printerRead;
 
+    /// <summary>The last copy's pages while they have not been printed: after a cancelled or failed print, until the next scan, import or task change.</summary>
+    private HeldCopy? _heldCopy;
+
+    private sealed class HeldCopy(List<ScannedPage> pages, ScanSettings settings, bool areaSelected)
+    {
+        public List<ScannedPage> Pages { get; } = pages;
+        public ScanSettings Settings { get; } = settings;
+        public bool AreaSelected { get; } = areaSelected;
+        /// <summary>Why the print failed; null when it was cancelled.</summary>
+        public Exception? Failure { get; set; }
+    }
+
+    /// <summary>A copy that did not print is held: Print again and Choose another printer are offered.</summary>
+    public bool HasHeldCopy => _heldCopy is not null;
+
+    /// <summary>Why the held copy did not print; null when it was cancelled.</summary>
+    public string? HeldCopyFailure => _heldCopy?.Failure?.Message;
+
     /// <summary>The installed printers, as last read (empty until then).</summary>
     public IReadOnlyList<PrinterInfo> Printers => _printers ?? [];
 
@@ -210,11 +228,49 @@ public sealed partial class AppViewModel
         return (setup, selection);
     }
 
+    /// <summary>Prints the pages of a copy, keeping them held until they have gone to the printer.</summary>
+    private async Task PrintCopy(List<ScannedPage> pages, ScanSettings s, PrinterSetup setup, bool areaSelected,
+                                 CancellationToken token)
+    {
+        var held = new HeldCopy(pages, s, areaSelected);
+        _heldCopy = held;
+        try
+        {
+            await PrintCopyPages(pages, s, setup, areaSelected, token);
+        }
+        catch (Exception e) when (!IsCancellation(e) && e is not OutOfMemoryException)
+        {
+            held.Failure = e;
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Prints the held copy again, on the printer now chosen for copies, with the settings the copy had.
+    /// </summary>
+    public Task PrintHeldCopy()
+    {
+        if (_heldCopy is not { } held) return Task.CompletedTask;
+        var s = held.Settings.Clone();
+        s.TaskOptions.CopyPrinterName = Settings.TaskOptions.CopyPrinterName;
+        return RunExclusive(async token =>
+        {
+            StatusMessage = Loc.T("Getting the printer ready…");
+            NotifyAll();
+            PrinterSetup setup;
+            try { setup = await SetupForAsync(s, RequestedPaper(s)) ?? throw new PrintException(PrintText.NoPrinterMessage); }
+            catch (PrintException e) { held.Failure = e; throw; }
+            token.ThrowIfCancellationRequested();
+            await PrintCopy(held.Pages, s, setup, held.AreaSelected, token);
+            RecordCaptures(held.Pages.Select(p => p.Id));
+        });
+    }
+
     /// <summary>
     /// Prints the pages of a copy: each at real size (or fitted, when chosen) on the printer's paper,
     /// against the corner as it lay on the glass or centred when an area was selected, as many copies
     /// as asked, in grey for a grey or black-and-white scan; then saves them as a PDF too when asked,
-    /// also when printing failed (the pages are kept nowhere else; the print error is reported after).
+    /// also when printing failed (the print error is reported after).
     /// A protected PDF's password is asked for before printing; with no answer and a failed print the
     /// pages go to the queue. The status says where they went and what the printer's margins cut off.
     /// </summary>
@@ -248,9 +304,10 @@ public sealed partial class AppViewModel
         }
         catch (Exception e) when (options.CopyAlsoSavePdf && !IsCancellation(e) && e is not OutOfMemoryException)
         {
-            // The PDF asked for is still written: the pages are kept nowhere else.
+            // The PDF asked for is still written.
             printError = e;
         }
+        if (printError is null) _heldCopy = null;
         string sent = PrintText.Sent(pages.Count, copies, setup.PrinterName);
         string? warning = printPages.Select(p => PrintLayout.ClipWarning(p.Placement, setup.Paper.Paper)).FirstOrDefault(w => w is not null);
         string warningNote = warning is null ? "" : $" {warning}";
@@ -267,6 +324,7 @@ public sealed partial class AppViewModel
                 return;
             }
             // Neither printed nor saved: the pages wait in the queue rather than being lost.
+            _heldCopy = null;
             await KeepInQueue(pages);
             throw CopyNotPrinted(printError, setup, $" {PdfProtection.KeptInQueueMessage(pages.Count)}");
         }

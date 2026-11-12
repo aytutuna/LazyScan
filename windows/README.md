@@ -736,7 +736,13 @@ Collect pages before saving and After saving, since a copy saves a PDF or nothin
 unless the copy is saved as a PDF too); **Also save a PDF** saves
 each copy as "Copy {date} {counter}" after it has gone to the printer, and also when printing failed
 (the error then names the PDF), so the scanned pages are not lost; a Cancel while the PDF is written
-says the copy was sent and the PDF not saved. Without a printer the section says so and has **Look
+says the copy was sent and the PDF not saved. A copy that is cancelled while printing or fails to
+print stays in memory (`HeldCopy`) until the next scan, import or task change: the status reads
+"Cancelled." or "Could not print." (the reason is its tooltip and the error bar's text, which adds "The copy
+is still here."), and the status bar and the error bar offer **Print again** (the printer now chosen,
+with the settings the copy had, no scan) and **Choose another printer** (opens the Printer box in the
+inspector; nothing prints until Print again). With **Also save a PDF** on, a failed print has already
+written the PDF, and Print again writes another. Without a printer the section says so and has **Look
 again**.
 
 Printing uses System.Printing and the XPS print path, which ship with WPF (no package), and opens no

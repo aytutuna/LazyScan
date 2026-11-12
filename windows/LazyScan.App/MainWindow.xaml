@@ -65,13 +65,27 @@
         <StackPanel Grid.Row="0">
             <!-- Errors. -->
             <Border x:Name="InfoBar" Style="{StaticResource InfoBarStyle}" Visibility="Collapsed">
-                <DockPanel>
+                <DockPanel KeyboardNavigation.TabNavigation="Local">
                     <TextBlock DockPanel.Dock="Left" x:Name="InfoBarGlyph" Style="{StaticResource GlyphText}" Text="&#xEB90;" Margin="0,0,12,0"
                                VerticalAlignment="Top" Padding="0,2,0,0"
                                Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                     <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE711;"
                             ToolTip="{loc:T Dismiss}" AutomationProperties.Name="{loc:T Dismiss}" VerticalAlignment="Top"
-                            Click="InfoBarClose_Click" />
+                            KeyboardNavigation.TabIndex="2" Click="InfoBarClose_Click" />
+                    <!-- Shown when the error is a copy that did not print: its pages are still held. -->
+                    <StackPanel DockPanel.Dock="Right" x:Name="InfoBarCopyActions" VerticalAlignment="Top" Margin="8,0,4,0"
+                                Visibility="Collapsed">
+                        <Button Style="{StaticResource SubtleButtonStyle}" local:Icon.Glyph="&#xE749;"
+                                Content="{loc:T Print again}"
+                                ToolTip="{loc:T Print the copy again on the same printer}"
+                                AutomationProperties.HelpText="{loc:T Prints the copy again on the same printer}"
+                                KeyboardNavigation.TabIndex="1" Click="PrintAgain_Click" />
+                        <Button Style="{StaticResource SubtleButtonStyle}" local:Icon.Glyph="&#xE7F7;"
+                                Content="{loc:T Choose another printer}"
+                                ToolTip="{loc:T Pick a printer for the copy}"
+                                AutomationProperties.HelpText="{loc:T Opens the printer list in the copy options}"
+                                KeyboardNavigation.TabIndex="1" Click="ChooseAnotherPrinter_Click" />
+                    </StackPanel>
                     <!-- Shown when the error is a scanner that would not connect or scan. -->
                     <Button DockPanel.Dock="Right" x:Name="InfoBarTroubleshootButton" Style="{StaticResource SubtleButtonStyle}"
                             local:Icon.Glyph="&#xE9CE;" Content="{loc:T Troubleshoot}" VerticalAlignment="Top" Margin="8,0,4,0"
@@ -1894,6 +1908,18 @@
             </StatusBar.ItemsPanel>
             <StatusBarItem DockPanel.Dock="Right">
                 <StackPanel Orientation="Horizontal">
+                    <Button x:Name="PrintAgainButton" Style="{StaticResource IconTextButtonStyle}"
+                            local:Icon.Glyph="&#xE749;" Content="{loc:T Print again}" Padding="10,3,10,4" Margin="0,0,8,0"
+                            Visibility="Collapsed"
+                            ToolTip="{loc:T Print the copy again on the same printer}"
+                            AutomationProperties.HelpText="{loc:T Prints the copy again on the same printer}"
+                            Click="PrintAgain_Click" />
+                    <Button x:Name="ChooseAnotherPrinterButton" Style="{StaticResource IconTextButtonStyle}"
+                            local:Icon.Glyph="&#xE7F7;" Content="{loc:T Choose another printer}" Padding="10,3,10,4" Margin="0,0,12,0"
+                            Visibility="Collapsed"
+                            ToolTip="{loc:T Pick a printer for the copy}"
+                            AutomationProperties.HelpText="{loc:T Opens the printer list in the copy options}"
+                            Click="ChooseAnotherPrinter_Click" />
                     <Button x:Name="UndoButton" Style="{StaticResource IconTextButtonStyle}"
                             local:Icon.Glyph="&#xE7A7;" Content="{loc:T Undo}" Padding="10,3,10,4" Margin="0,0,12,0"
                             Visibility="Collapsed" AutomationProperties.AcceleratorKey="Ctrl+Z"
