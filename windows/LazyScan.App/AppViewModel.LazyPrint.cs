@@ -4,7 +4,7 @@ using LazyScan.Core;
 namespace LazyScan.App;
 
 /// <summary>
-/// Print with Lazy Print for what is not saved yet: the queue and the ID card review. The pages are
+/// Lazy Print for what is not saved yet: the queue and the ID card review. The pages are
 /// written as a PDF in a folder of the temp directory and that file is opened in Lazy Print, which keeps
 /// the path and reads the file again when it prints, so it stays after the app ends; a day later the next
 /// hand-off deletes it. Twin of the Mac's AppState+LazyPrint.swift.

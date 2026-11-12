@@ -715,7 +715,7 @@
     "note": "Menu command followed by a choice of apps."
   },
   "Email…": {},
-  "Print with Lazy Print": {},
+  "Lazy Print": {"same": true},
   "Copy": {
     "note": "Copy to the clipboard: the file menu, the pairing text and the recognised text of a page. A verb. Not the photocopy mode."
   },

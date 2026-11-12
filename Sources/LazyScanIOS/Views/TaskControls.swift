@@ -366,6 +366,7 @@ struct AfterSaveSection: View {
 
 /// A row of After saving: a check kept in the user's defaults under the action's key.
 private struct AfterSaveRow: View {
+    @EnvironmentObject private var state: AppState
     @Environment(\.isEnabled) private var isEnabled: Bool
     let action: IOSAfterSave
     @AppStorage private var checked: Bool
@@ -380,7 +381,7 @@ private struct AfterSaveRow: View {
             checked.toggle()
         } label: {
             HStack(spacing: 8) {
-                Text(action.label)
+                Text(action.label(lazyPrintInstalled: state.lazyPrintInstalled))
                     .foregroundStyle(Color.primary)
                 Spacer(minLength: 8)
                 if checked {

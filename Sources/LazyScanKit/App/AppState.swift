@@ -2537,7 +2537,7 @@ public final class AppState: ObservableObject {
     /// Lazy Print is installed (something opens `lazyprint:`).
     public var lazyPrintInstalled: Bool { fileActions.lazyPrintInstalled() }
 
-    /// What `SaveActions.offered` gives for these files, with Print with Lazy Print when it is installed and can read them.
+    /// What `SaveActions.offered` gives for these files, with Lazy Print when it is installed and can read them.
     public func offeredFileActions(for urls: [URL]) -> [FileAction] {
         SaveActions.offered(fileCount: urls.count,
                             lazyPrint: SaveActions.canPrintWithLazyPrint(urls) && fileActions.lazyPrintInstalled())

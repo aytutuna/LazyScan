@@ -34,7 +34,7 @@ final class SaveActionsTests: XCTestCase {
             XCTAssertFalse(action.hint.isEmpty, action.rawValue)
         }
         XCTAssertEqual(FileAction.allCases.map(\.label),
-                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Email\u{2026}", "Print with Lazy Print", "Copy"])
+                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Email\u{2026}", "Lazy Print", "Copy"])
     }
 
     func test_plan_nothingToDo() {

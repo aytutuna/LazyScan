@@ -1688,13 +1688,14 @@ private struct SavedFilesRow: View {
                 .accessibilityIdentifier("save.undo")
             }
             if SaveActions.canPrintWithLazyPrint(urls) {
+                let printName: LocalizedStringKey = state.lazyPrintInstalled ? "Lazy Print" : "Print"
                 Button {
                     printSaved(urls)
                 } label: {
-                    Label("Print", systemImage: "printer")
+                    Label(printName, systemImage: "printer")
                         .labelStyle(.iconOnly)
                 }
-                .accessibilityLabel(Text("Print"))
+                .accessibilityLabel(Text(printName))
                 .accessibilityIdentifier("saved.print")
             }
             Button {

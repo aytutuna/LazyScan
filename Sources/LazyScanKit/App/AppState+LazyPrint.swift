@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-// Twin of windows/LazyScan.App/AppViewModel.LazyPrint.cs: Print with Lazy Print for what is not saved yet,
+// Twin of windows/LazyScan.App/AppViewModel.LazyPrint.cs: Lazy Print for what is not saved yet,
 // the queue and the ID card review. The pages are written as a PDF in a folder of the temp directory and
 // that file is opened in Lazy Print, which keeps the path and reads the file again when it prints, so it is
 // not tied to the app; a day later the launch or the next hand-off deletes it. The iPhone's Lazy Print cannot read that

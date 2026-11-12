@@ -107,7 +107,7 @@ public static class SaveActions
 
     /// <summary>
     /// The actions offered for <paramref name="fileCount"/> saved files, in menu order. Open
-    /// and Open with work on one file; showing, sharing, emailing and copying take several. Print with Lazy Print is
+    /// and Open with work on one file; showing, sharing, emailing and copying take several. Lazy Print is
     /// offered only when <paramref name="lazyPrint"/> says it can be.
     /// </summary>
     public static IReadOnlyList<FileAction> Offered(int fileCount, bool lazyPrint = false)

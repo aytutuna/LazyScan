@@ -55,7 +55,7 @@ public enum FileAction: String, CaseIterable, Identifiable, Sendable {
         case .reveal: return L10n.t("Show in folder")
         case .share: return L10n.t("Share…")
         case .email: return L10n.t("Email…")
-        case .lazyPrint: return L10n.t("Print with Lazy Print")
+        case .lazyPrint: return L10n.t("Lazy Print")
         case .copy: return L10n.t("Copy")
         }
     }
@@ -146,7 +146,7 @@ public enum SaveActions {
     }
 
     /// The actions offered for `fileCount` saved files, in menu order. Open and Open with work on
-    /// one file; showing, sharing, emailing and copying take several. Print with Lazy Print is
+    /// one file; showing, sharing, emailing and copying take several. Lazy Print is
     /// offered only when `lazyPrint` says it can be.
     public static func offered(fileCount: Int, lazyPrint: Bool = false) -> [FileAction] {
         let tail: [FileAction] = lazyPrint ? [.lazyPrint, .copy] : [.copy]

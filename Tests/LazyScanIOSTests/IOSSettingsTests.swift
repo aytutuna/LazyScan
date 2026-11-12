@@ -318,6 +318,9 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertEqual(IOSAfterSave.steps(defaults, paired: true), [.send, .email])
         XCTAssertEqual(IOSAfterSave.rows.map { (action: IOSAfterSave) -> String in action.label },
                        ["Email", "Print", "Send to computer"])
+        XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: true), "Lazy Print")
+        XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: false), "Print")
+        XCTAssertEqual(IOSAfterSave.email.label(lazyPrintInstalled: true), "Email")
     }
 
     func test_afterSave_saysWhenSendToPCsPagesWait() {

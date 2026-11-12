@@ -126,7 +126,7 @@ struct IdCardReviewView: View {
                          ?? String(localized: "Print at real size on the default printer"))
                       : PrintText.noPrinterMessage)
                 if state.lazyPrintInstalled {
-                    Button("Print with Lazy Print") {
+                    Button("Lazy Print") {
                         state.printIdCardWithLazyPrint()
                     }
                     .disabled(state.idCardFront == nil || state.isBusy)
