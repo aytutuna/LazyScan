@@ -86,6 +86,9 @@ public final class IOSCameraModel: ObservableObject {
     @Published public private(set) var shotCount: Int = 0
     /// The automatic shutter is on (`setAutoShutter`).
     @Published public private(set) var autoShutter: Bool = true
+    /// The kind has several objects to a shot but the live search for them is off (the phone is warm or
+    /// saving power): no outlines, no automatic shutter, the shutter is tapped.
+    @Published public private(set) var tapToTake: Bool = false
     /// Where the automatic shutter's photos go (the scan screen: `IOSImportSession.importShot`); nil: the
     /// automatic shutter takes nothing.
     public var onAutoShot: (@MainActor (IOSCameraShot) async -> Void)?
@@ -102,6 +105,7 @@ public final class IOSCameraModel: ObservableObject {
     private let authorization: @MainActor () -> AVAuthorizationStatus
     private let requestAccess: @MainActor () async -> Bool
     private let thermalState: @MainActor () -> ProcessInfo.ThermalState
+    private let lowPowerMode: @MainActor () -> Bool
     private let center: NotificationCenter
     private let defaults: UserDefaults
     private var asked: Bool = false
@@ -111,6 +115,9 @@ public final class IOSCameraModel: ObservableObject {
     /// The session is set up (the preview can show it).
     @Published private var prepared: Bool = false
     private var thermalObserver: NSObjectProtocol?
+    private var powerObserver: NSObjectProtocol?
+    private var kind: CaptureKind = .document
+    private var search: LiveSearch = .page
     /// Takes "Photo not taken" away again (`failedNoticeNanoseconds` after the photo failed).
     private var failedNoticeClear: Task<Void, Never>?
 
@@ -119,13 +126,14 @@ public final class IOSCameraModel: ObservableObject {
 
     /// `driver` runs the session. The others default to the device's own: its cameras
     /// (`IOSCameraLens.hasCamera`), the camera permission and its prompt, the thermal state with its
-    /// notifications on `center`, and the app's `UserDefaults` for the automatic shutter's setting; tests
+    /// notifications on `center`, Low Power Mode, and the app's `UserDefaults` for the automatic shutter's setting; tests
     /// pass stand-ins.
     public init(driver: any IOSCameraDriving, tracker: LiveQuadTracker? = nil,
                 hasCamera: (@MainActor () -> Bool)? = nil,
                 authorization: (@MainActor () -> AVAuthorizationStatus)? = nil,
                 requestAccess: (@MainActor () async -> Bool)? = nil,
                 thermalState: (@MainActor () -> ProcessInfo.ThermalState)? = nil,
+                lowPowerMode: (@MainActor () -> Bool)? = nil,
                 center: NotificationCenter = .default, defaults: UserDefaults = .standard) {
         self.driver = driver
         if let given = tracker {
@@ -159,6 +167,13 @@ public final class IOSCameraModel: ObservableObject {
         } else {
             self.thermalState = { () -> ProcessInfo.ThermalState in
                 ProcessInfo.processInfo.thermalState
+            }
+        }
+        if let given = lowPowerMode {
+            self.lowPowerMode = given
+        } else {
+            self.lowPowerMode = { () -> Bool in
+                ProcessInfo.processInfo.isLowPowerModeEnabled
             }
         }
         self.center = center
@@ -209,6 +224,7 @@ public final class IOSCameraModel: ObservableObject {
         startObserving()
         apply(.shown)
         apply(.thermal(thermalState()))
+        updateSearch()
         let found: Bool = hasCamera()
         var status: AVAuthorizationStatus = authorization()
         if found && status == .notDetermined && !asked {
@@ -247,6 +263,31 @@ public final class IOSCameraModel: ObservableObject {
         apply(.hidden)
         stopObserving()
         tracker.reset()
+    }
+
+    /// The kind of object the task photographs. Receipts and photos have the live frames searched for every
+    /// object in view, unless the phone is warm or saving power (`tapToTake`); the others for one page. With
+    /// `singleItem` (Items in frame set to One) only the largest object is outlined, as the shot keeps it.
+    public func setKind(_ next: CaptureKind, singleItem: Bool = false) {
+        kind = next
+        tracker.setLargestOnly(singleItem)
+        updateSearch()
+    }
+
+    private func updateSearch() {
+        let several: Bool = CaptureObjects.findsSeveral(kind)
+        let warm: Bool = thermalState().rawValue >= ProcessInfo.ThermalState.fair.rawValue
+        tapToTake = several && (warm || lowPowerMode())
+        var next: LiveSearch = .page
+        if tapToTake {
+            next = .off
+        } else if several {
+            next = .objects(kind)
+        }
+        guard next != search else { return }
+        search = next
+        tracker.setSearch(next)
+        live = nil
     }
 
     /// Turns the automatic shutter on or off, remembered for the next time. Turned on, a page in view that
@@ -371,7 +412,7 @@ public final class IOSCameraModel: ObservableObject {
     }
 
     private func show(_ update: LiveQuadUpdate) {
-        guard lifecycle.isLive else { return }
+        guard lifecycle.isLive, search != .off else { return }
         live = update
         if update.shouldCapture {
             shootAutomatically()
@@ -409,6 +450,12 @@ public final class IOSCameraModel: ObservableObject {
                 self?.thermalChanged()
             }
         }
+        powerObserver = center.addObserver(forName: Notification.Name.NSProcessInfoPowerStateDidChange, object: nil,
+                                           queue: .main) { [weak self] (_: Notification) -> Void in
+            MainActor.assumeIsolated {
+                self?.updateSearch()
+            }
+        }
     }
 
     private func stopObserving() {
@@ -416,10 +463,15 @@ public final class IOSCameraModel: ObservableObject {
             center.removeObserver(observer)
         }
         thermalObserver = nil
+        if let observer = powerObserver {
+            center.removeObserver(observer)
+        }
+        powerObserver = nil
     }
 
     private func thermalChanged() {
         apply(.thermal(thermalState()))
+        updateSearch()
     }
 }
 #endif

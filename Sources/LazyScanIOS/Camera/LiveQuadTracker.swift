@@ -37,6 +37,9 @@ public protocol FrameSource: AnyObject {
 /// enough to suggest the shutter (`suggestsShutter`).
 public struct LiveQuadUpdate: Equatable, Sendable {
     public let outline: Quad?
+    /// The outlines of every print or receipt found (`LiveSearch.objects`), as shares of the frame, in the
+    /// finder's reading order; empty for a page search, where `outline` is the one.
+    public let outlines: [Quad]
     public let state: CaptureState
     public let progress: Double
     public let timestampMs: Double
@@ -56,8 +59,9 @@ public struct LiveQuadUpdate: Equatable, Sendable {
     /// `isSteady` nil: the page holds still while `state` is `.steadying`.
     public init(outline: Quad?, state: CaptureState, progress: Double, timestampMs: Double, isSteady: Bool? = nil,
                 shouldCapture: Bool = false, quality: CaptureQuality = .good, placement: CapturePlacement = .fine,
-                suggestsShutter: Bool = false) {
+                suggestsShutter: Bool = false, outlines: [Quad] = []) {
         self.outline = outline
+        self.outlines = outlines
         self.state = state
         self.progress = progress
         self.timestampMs = timestampMs
@@ -99,6 +103,9 @@ public struct LiveQuadUpdate: Equatable, Sendable {
 /// forgets that look. Turning the automatic shutter on re-arms only a page taken without a photo
 /// (`rearm()`). Frames are searched on the source's own queue, one at a time, never on the main thread;
 /// `reset()` may be called from any thread and drops a frame being searched meanwhile.
+/// For receipts and photos (`LiveSearch.objects`) the frames are searched for every object of the kind
+/// instead, by the finder the shot uses (`IOSObjectFinder`), about four times a second (`objectIntervalMs`),
+/// and steadied as a set (`LiveObjectSet`).
 public final class LiveQuadTracker: @unchecked Sendable {
     /// About ten searches a second.
     public static let frameIntervalMs: Double = 100
@@ -109,14 +116,21 @@ public final class LiveQuadTracker: @unchecked Sendable {
     public static let analysisLongSide: Int = 480
     /// A page missed for at most this long keeps its outline.
     public static let holdMs: Double = 300
+    /// About four object searches a second.
+    public static let objectIntervalMs: Double = 250
+    /// A frame this soon after the last one searched for objects is passed over.
+    public static let minObjectGapMs: Double = 225
 
     /// The page search: a frame and the outline found in the frame before (its pixels), if any.
     public typealias Detector = @Sendable (RgbaImage, Quad?) -> PhotoDocumentDetection
     /// How sharp and bright a frame is, over the page found in it (its pixels), if any.
     public typealias QualityMeasure = @Sendable (RgbaImage, Quad?) -> FrameQualityReading
+    /// The objects of a kind in a frame (their pixels), as the shot's finder gives them.
+    public typealias ObjectFinder = @Sendable (RgbaImage, CaptureKind) -> [Quad]
 
     private let detector: Detector
     private let measure: QualityMeasure
+    private let objectFinder: ObjectFinder
     private let stabilityOptions: CaptureStabilityOptions
     private let lock = NSLock()
     private var stability: CaptureStability
@@ -143,10 +157,14 @@ public final class LiveQuadTracker: @unchecked Sendable {
     private var latestImage: RgbaImage?
     /// The look at the page last photographed; a page held still that looks the same is not decided on again.
     private var photographedLook: PageThumbnail?
+    private var search: LiveSearch = .page
+    private var objects: LiveObjectSet
+    private var largestOnly: Bool = false
 
-    /// `detector` nil: the shared page search with `liveOptions`; `quality` nil: `FrameQuality.measure` (tests
-    /// may pass their own).
-    public init(detector: Detector? = nil, stability: CaptureStabilityOptions = .default, quality: QualityMeasure? = nil) {
+    /// `detector` nil: the shared page search with `liveOptions`; `quality` nil: `FrameQuality.measure`;
+    /// `objectFinder` nil: `IOSObjectFinder.find` (tests may pass their own).
+    public init(detector: Detector? = nil, stability: CaptureStabilityOptions = .default, quality: QualityMeasure? = nil,
+                objectFinder: ObjectFinder? = nil) {
         if let given = detector {
             self.detector = given
         } else {
@@ -161,8 +179,33 @@ public final class LiveQuadTracker: @unchecked Sendable {
                 FrameQuality.measure(image, region: page)
             }
         }
+        if let given = objectFinder {
+            self.objectFinder = given
+        } else {
+            self.objectFinder = { (image: RgbaImage, kind: CaptureKind) -> [Quad] in
+                IOSObjectFinder.find(image, kind: kind)
+            }
+        }
         self.stabilityOptions = stability
         self.stability = CaptureStability(options: stability)
+        self.objects = LiveObjectSet(options: stability)
+    }
+
+    /// What the frames are searched for from now on; a change judges everything afresh.
+    public func setSearch(_ next: LiveSearch) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard next != search else { return }
+        search = next
+        clearState()
+        generation += 1
+    }
+
+    /// Only the largest object found is kept, as a shot with Items in frame set to One keeps it.
+    public func setLargestOnly(_ on: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        largestOnly = on
     }
 
     /// The page search's options for live frames: the frame searched at `analysisLongSide`.
@@ -195,10 +238,18 @@ public final class LiveQuadTracker: @unchecked Sendable {
         let width: Int = frame.image.width
         let height: Int = frame.image.height
         lock.lock()
+        if search == .off {
+            lock.unlock()
+            return nil
+        }
+        var gap: Double = LiveQuadTracker.minFrameGapMs
+        if search != .page {
+            gap = LiveQuadTracker.minObjectGapMs
+        }
         if let last = lastSearchedMs {
             if t < last {
                 clearState()
-            } else if t - last < LiveQuadTracker.minFrameGapMs {
+            } else if t - last < gap {
                 lock.unlock()
                 return nil
             }
@@ -215,7 +266,12 @@ public final class LiveQuadTracker: @unchecked Sendable {
         }
         let modelLately: Bool = t >= modelSeenMs && t - modelSeenMs <= LiveQuadTracker.holdMs
         let started: Int = generation
+        let searched: LiveSearch = search
         lock.unlock()
+
+        if case .objects(let kind) = searched {
+            return processObjects(frame, kind: kind, started: started)
+        }
 
         // A page the model is less sure of than holding still needs would never be taken: the search looks then.
         let modelFloor: Double = max(PhotoImport.minModelConfidence, stabilityOptions.enterConfidence)
@@ -283,6 +339,40 @@ public final class LiveQuadTracker: @unchecked Sendable {
                               placement: placement, suggestsShutter: decision.suggestsShutter)
     }
 
+    /// The objects of `kind` in `frame`, steadied as a set (`LiveObjectSet`).
+    private func processObjects(_ frame: IOSCameraFrame, kind: CaptureKind, started: Int) -> LiveQuadUpdate? {
+        let t: Double = frame.timestampMs
+        let width: Int = frame.image.width
+        let height: Int = frame.image.height
+        var found: [Quad] = objectFinder(frame.image, kind)
+        let reading: FrameQualityReading = measure(frame.image, nil)
+        let quality: CaptureQuality = CaptureStability.judge(sharpness: reading.sharpness, brightness: reading.brightness,
+                                                            options: stabilityOptions)
+
+        lock.lock()
+        defer { lock.unlock() }
+        guard started == generation else { return nil }
+        if largestOnly, let largest = found.max(by: { (a: Quad, b: Quad) -> Bool in a.area < b.area }) {
+            found = [largest]
+        }
+        if resuming {
+            resuming = false
+            objects.resume(atMs: t)
+        }
+        let diagonal: Double = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
+        let seen: LiveObjectSet.Output = objects.update(found, atMs: t, diagonal: diagonal, quality: quality)
+        if !objects.isTaken {
+            photographed = false
+        }
+        var outlines: [Quad] = []
+        for quad in seen.shown {
+            outlines.append(LiveQuadTracker.normalized(quad, width: width, height: height))
+        }
+        return LiveQuadUpdate(outline: nil, state: seen.state, progress: seen.progress, timestampMs: t,
+                              isSteady: seen.isSteady, shouldCapture: seen.shouldCapture, quality: quality,
+                              outlines: outlines)
+    }
+
     /// Whether the page holds still after `decision` (called with the lock held): while `.steadying`, yes;
     /// while `.captured`, as long as no corner strays `stayMovement` of the `diagonal` from where it held
     /// still, and again once no corner moved `enterMovement` since the frame before (with the confidences
@@ -333,6 +423,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
     public func markCaptured() {
         lock.lock()
         stability.markCaptured()
+        objects.markCaptured()
         if stability.state == .captured {
             heldAt = lastFound
             photographed = true
@@ -340,6 +431,8 @@ public final class LiveQuadTracker: @unchecked Sendable {
             if let image = latestImage, let page = lastFound {
                 photographedLook = PageThumbnail(image, page: page)
             }
+        } else if objects.isTaken {
+            photographed = true
         }
         lock.unlock()
     }
@@ -350,7 +443,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
     /// (`markCaptured()`) stays taken, and nothing else changes.
     public func rearm() {
         lock.lock()
-        let untaken: Bool = stability.state == .captured && !photographed
+        let untaken: Bool = (stability.state == .captured || objects.isTaken) && !photographed
         lock.unlock()
         if untaken {
             reset()
@@ -437,6 +530,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
         lastSeenMs = -Double.infinity
         filter = LiveQuadFilter()
         modelSeenMs = -Double.infinity
+        objects = LiveObjectSet(options: stabilityOptions)
     }
 
     /// Forgets how steady the page was and whether it was taken. Called with the lock held.
@@ -448,6 +542,135 @@ public final class LiveQuadTracker: @unchecked Sendable {
         resuming = false
         photographed = false
         photographedLook = nil
+        objects.rejudge()
+    }
+}
+
+/// What the live frames are searched for: the page of a document or card (the corner model and the page
+/// search), every object of a kind with several to a shot (`CaptureObjects.findsSeveral`: receipts, photos),
+/// or nothing, while the phone is too warm or saving power for the object search.
+public enum LiveSearch: Equatable, Sendable {
+    case page
+    case objects(CaptureKind)
+    case off
+}
+
+/// Steadies the objects found in successive live frames (pixels of one frame size) as a set, for the shutter
+/// and the outlines. The set holds still while it has the same number of objects and each stays within
+/// `stayMovement` of the diagonal of where it was when the set last changed; the outlines drawn are then the
+/// ones from that moment, so they do not tremble. The shutter fires once the set has held still for
+/// `steadyMs` on a sharp, lit frame and does not fire again until the set changes (an object
+/// `newPageMovement` away, another count) or is gone for `LiveQuadTracker.holdMs`. A set lost keeps its
+/// outlines for `outlineHoldMs`. Pure logic, one frame after another in time order.
+struct LiveObjectSet: Sendable {
+    /// A lost set keeps its outlines this long.
+    static let outlineHoldMs: Double = 500
+
+    struct Output: Sendable {
+        let shown: [Quad]
+        let state: CaptureState
+        let progress: Double
+        let isSteady: Bool
+        let shouldCapture: Bool
+    }
+
+    private let options: CaptureStabilityOptions
+    private var anchor: [Quad] = []
+    private var steadyFromMs: Double = 0
+    private var shown: [Quad] = []
+    private var shownMs: Double = -Double.infinity
+    private var taken: [Quad]?
+    private var missingFromMs: Double?
+
+    init(options: CaptureStabilityOptions) {
+        self.options = options
+    }
+
+    var isTaken: Bool {
+        taken != nil
+    }
+
+    /// The set found in the frame taken at `t` ms, in a frame whose diagonal is `diagonal` px.
+    mutating func update(_ found: [Quad], atMs t: Double, diagonal: Double, quality: CaptureQuality) -> Output {
+        if found.isEmpty {
+            anchor = []
+            let since: Double = missingFromMs ?? t
+            missingFromMs = since
+            if t - since > LiveQuadTracker.holdMs {
+                taken = nil
+            }
+            if t < shownMs || t - shownMs > LiveObjectSet.outlineHoldMs {
+                shown = []
+            }
+            return Output(shown: shown, state: .noPage, progress: 0, isSteady: false, shouldCapture: false)
+        }
+        missingFromMs = nil
+        if let held = taken {
+            if LiveObjectSet.matches(found, held, within: options.newPageMovement * diagonal) {
+                shown = found
+                shownMs = t
+                let still: Bool = LiveObjectSet.matches(found, held, within: options.stayMovement * diagonal)
+                return Output(shown: found, state: .captured, progress: 1, isSteady: still, shouldCapture: false)
+            }
+            taken = nil
+        }
+        let steady: Bool = LiveObjectSet.matches(found, anchor, within: options.stayMovement * diagonal)
+        if !steady {
+            anchor = found
+            steadyFromMs = t
+        }
+        shown = anchor
+        shownMs = t
+        let held: Double = t - steadyFromMs
+        let progress: Double = steady ? min(held / options.steadyMs, 1) : 0
+        if steady && held >= options.steadyMs && quality == .good {
+            taken = anchor
+            return Output(shown: anchor, state: .captured, progress: 1, isSteady: true, shouldCapture: true)
+        }
+        let state: CaptureState = steady ? .steadying : .moving
+        return Output(shown: anchor, state: state, progress: progress, isSteady: steady, shouldCapture: false)
+    }
+
+    /// The set in view counts as taken by hand.
+    mutating func markCaptured() {
+        if !anchor.isEmpty {
+            taken = anchor
+        }
+    }
+
+    /// The camera was stopped for a while: that time is neither time the set held still nor time it was missing.
+    mutating func resume(atMs t: Double) {
+        steadyFromMs = t
+        missingFromMs = nil
+        shownMs = t
+    }
+
+    /// Judges the set afresh, keeping the outlines drawn.
+    mutating func rejudge() {
+        anchor = []
+        taken = nil
+        missingFromMs = nil
+    }
+
+    /// `a` and `b` have as many objects, each of `a` within `tolerance` px of one of `b` (corner by corner,
+    /// whichever corner each names first).
+    static func matches(_ a: [Quad], _ b: [Quad], within tolerance: Double) -> Bool {
+        guard !b.isEmpty, a.count == b.count else { return false }
+        var free: [Quad] = b
+        for quad in a {
+            var index: Int?
+            var best: Double = tolerance
+            for (i, other) in free.enumerated() {
+                let distance: Double = LiveQuadFilter.aligned(quad, to: other).maxCornerDistance(other)
+                if distance <= best {
+                    best = distance
+                    index = i
+                }
+            }
+            guard let at = index else { return false }
+            free.remove(at: at)
+        }
+        return true
     }
 }
 

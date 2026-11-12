@@ -13,7 +13,7 @@ import UIKit
 /// to printer mode (`onPrinter`). The photo size ("24 MP", where the camera offers more than one: a tap
 /// steps to the next, the first pick of a size that may not fit in the phone's memory says so once) is in
 /// the drawer's Camera group. The viewfinder shows the whole photo as it will be taken (black bands where the screen is
-/// taller or wider), the page's outline over it (yellow, green once the page holds still), one status line at
+/// taller or wider), the page's outline, or every print's or receipt's, over it (yellow, green once the page holds still), one status line at
 /// its top (the glare hint, why the automatic shutter waits, "Page found · hold still", else the task's
 /// camera line, `CameraTaskCatalog`), the ID card's guide frame, and at its foot what the scan screen hands
 /// in (`notices`: the package banner, the app's progress with Cancel while it is busy, an import's progress
@@ -36,12 +36,16 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model: IOSCameraModel
     @State private var waitAnnouncer: IOSWaitAnnouncer = IOSWaitAnnouncer()
+    /// The count of prints or receipts found, waiting to be spoken once it has stayed the same for a second.
+    @State private var countAnnouncement: Task<Void, Never>?
+    @State private var announcedCount: String?
     @State private var showsDrawer: Bool = false
     @State private var drawerGroup: DrawerGroup = .colour
     /// Photos or Files is open over the camera.
     @State private var picking: Bool = false
     /// The photo size picked, as Options keeps it; 0 until one is.
     @AppStorage(IOSCameraLens.megapixelsKey) private var chosenMegapixels: Int = 0
+    @AppStorage(IOSShell.itemsInFrameKey) private var items: IOSItemsInFrame = .auto
     /// The size just picked here that may not fit in this phone's memory, for its alert.
     @State private var memoryWarned: IOSPhotoSize?
     /// The preview's zoom, 1 at the wide lens's view, and whether its readout is up (while pinching and a moment after).
@@ -118,6 +122,21 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             // A page Auto decided on while no photo could be taken (the shot queue full, a save) is judged again now.
             if can {
                 model.rearm()
+            }
+        }
+        .onChange(of: kind) { (_: CaptureKind, next: CaptureKind) in
+            announcedCount = nil
+            model.setKind(next, singleItem: singleItem)
+        }
+        .onChange(of: singleItem) { (_: Bool, single: Bool) in
+            model.setKind(kind, singleItem: single)
+        }
+        .onChange(of: countLine) { (_: String?, line: String?) in
+            announceCount(line)
+        }
+        .onChange(of: model.tapToTake) { (_: Bool, on: Bool) in
+            if on {
+                AccessibilityNotification.Announcement(IOSCameraText.tapToTake).post()
             }
         }
         .onChange(of: waitCue) { (_: IOSWaitCue, cue: IOSWaitCue) in
@@ -258,7 +277,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             Color.black
             if model.showsPreview, let controller = model.driver as? IOSCameraController {
                 let zoomText: String = IOSCameraText.zoomLabel(controller.zoom)
-                CameraPreview(controller: controller, outline: model.live?.outline,
+                CameraPreview(controller: controller, outlines: outlines,
                               steady: model.live?.isSteady ?? false, look: filterLook, active: model.canShoot,
                               onZoom: showZoom, onShutter: shootFromButton)
                     .environment(\.layoutDirection, .leftToRight)
@@ -311,6 +330,18 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private func stepZoom(_ controller: IOSCameraController, up: Bool) {
         let step: Double = up ? 0.5 : -0.5
         zoomValue = controller.setZoom(controller.zoom + step)
+    }
+
+    /// The outlines over the preview: the one page's, or every print or receipt found.
+    private var outlines: [Quad] {
+        guard let update = model.live else { return [] }
+        if !update.outlines.isEmpty {
+            return update.outlines
+        }
+        if let page = update.outline {
+            return [page]
+        }
+        return []
     }
 
     /// The status line at the top; at the foot the notices and the task's buttons.
@@ -380,13 +411,16 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// The one line at the viewfinder's top: the glare hint for the ID card's back, how the page sits in the
-    /// frame, why a page held still is not taken yet, that it is about to be (these three only while a photo
-    /// can be taken), else the task's
-    /// camera line (none under the ID card's guide, which says the side itself).
+    /// The one line at the viewfinder's top: the glare hint for the ID card's back, "Tap to take" while the
+    /// live search is off, how the page sits in the frame, the count of prints or receipts found, why a page
+    /// held still is not taken yet, that it is about to be (these three only while a photo can be taken), else
+    /// the task's camera line (none under the ID card's guide, which says the side itself).
     private var statusLine: CameraStatus? {
         if let glare = glareLine {
             return CameraStatus(text: glare, hint: nil, identifier: "camera.glare")
+        }
+        if model.tapToTake {
+            return CameraStatus(text: IOSCameraText.tapToTake, hint: nil, identifier: "camera.tap")
         }
         if let placed = placementLine {
             return CameraStatus(text: placed, hint: nil, identifier: "camera.placement")
@@ -398,12 +432,57 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             }
             return CameraStatus(text: reason, hint: nil, identifier: "camera.wait")
         }
+        if let found = objectsStatus {
+            return found
+        }
         if model.autoShutter && canShoot && model.live?.state == CaptureState.steadying {
             return CameraStatus(text: IOSCameraText.pageFound(CaptureObjects.kind(for: state.settings)), hint: nil,
                                 identifier: "camera.found")
         }
         guard cardPrompt == nil, let line = taskLine else { return nil }
         return CameraStatus(text: line.prompt, hint: line.help, identifier: "camera.prompt")
+    }
+
+    /// The count of prints or receipts outlined, as the status line says it (with "hold still" while Auto waits
+    /// for the set to settle); nil for the other kinds or with none in view.
+    private var objectsStatus: CameraStatus? {
+        let current: CaptureKind = kind
+        guard CaptureObjects.findsSeveral(current), let update = model.live, !update.outlines.isEmpty else { return nil }
+        let count: Int = update.outlines.count
+        if model.autoShutter && canShoot && update.state == CaptureState.steadying {
+            return CameraStatus(text: IOSCameraText.objectsFoundHoldStill(current, count: count), hint: nil,
+                                identifier: "camera.found")
+        }
+        return CameraStatus(text: IOSCameraText.objectsFound(current, count: count), hint: nil, identifier: "camera.count")
+    }
+
+    /// What VoiceOver says about the set found: the count, nil with none in view.
+    private var countLine: String? {
+        let current: CaptureKind = kind
+        guard CaptureObjects.findsSeveral(current), let update = model.live, !update.outlines.isEmpty else { return nil }
+        return IOSCameraText.objectsFound(current, count: update.outlines.count)
+    }
+
+    private var kind: CaptureKind {
+        CaptureObjects.kind(for: state.settings)
+    }
+
+    /// Items in frame is One for a shot of prints, which then keeps only the largest.
+    private var singleItem: Bool {
+        IOSShell.offersItemsInFrame(state.settings) && items == .one
+    }
+
+    /// Speaks the count once it has stayed the same for a second, so a count that flickers is not read out,
+    /// and not again while the same count comes back after a shot.
+    private func announceCount(_ line: String?) {
+        countAnnouncement?.cancel()
+        guard let text = line, text != announcedCount else { return }
+        countAnnouncement = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            announcedCount = text
+            AccessibilityNotification.Announcement(text).post()
+        }
     }
 
     /// The task's camera line now (`CameraTaskCatalog.current`); nil without a task.
@@ -496,6 +575,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             shown?.shotImported(outcome)
         }
         allowPages()
+        shown.setKind(kind, singleItem: singleItem)
         shown.apply(covered ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
         Task { @MainActor in
             await shown.appear()
@@ -675,7 +755,7 @@ struct AreaPill: View {
 /// preview is turned and where the whole frame sits in the view.
 struct CameraPreview: UIViewRepresentable {
     let controller: IOSCameraController
-    let outline: Quad?
+    let outlines: [Quad]
     let steady: Bool
     let look: LiveLook?
     /// A tap focuses and a pinch zooms only while this is true (the camera is live and no photo is being taken).
@@ -695,7 +775,7 @@ struct CameraPreview: UIViewRepresentable {
         uiView.onZoom = onZoom
         uiView.active = active
         uiView.onShutter = onShutter
-        uiView.show(outline: outline, steady: steady)
+        uiView.show(outlines: outlines, steady: steady)
         uiView.viewfinder?.show(look)
     }
 
@@ -728,7 +808,7 @@ final class CameraPreviewView: UIView {
         }
     }
     let viewfinder: LiveViewfinder? = LiveViewfinder()
-    private var outline: Quad?
+    private var outlines: [Quad] = []
     private var steady: Bool = false
     var onShutter: (() -> Void)?
 
@@ -835,29 +915,31 @@ final class CameraPreviewView: UIView {
         redraw()
     }
 
-    func show(outline: Quad?, steady: Bool) {
-        self.outline = outline
+    func show(outlines: [Quad], steady: Bool) {
+        self.outlines = outlines
         self.steady = steady
         redraw()
     }
 
     private func redraw() {
-        guard let quad = outline else {
+        guard !outlines.isEmpty else {
             outlineLayer.path = nil
             return
         }
         let path = UIBezierPath()
-        var index: Int = 0
-        for corner in quad.corners {
-            let point: CGPoint = previewLayer.layerPointConverted(fromCaptureDevicePoint: corner)
-            if index == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
+        for quad in outlines {
+            var index: Int = 0
+            for corner in quad.corners {
+                let point: CGPoint = previewLayer.layerPointConverted(fromCaptureDevicePoint: corner)
+                if index == 0 {
+                    path.move(to: point)
+                } else {
+                    path.addLine(to: point)
+                }
+                index += 1
             }
-            index += 1
+            path.close()
         }
-        path.close()
         let color: UIColor = steady ? UIColor.systemGreen : UIColor.systemYellow
         outlineLayer.strokeColor = color.cgColor
         outlineLayer.fillColor = color.withAlphaComponent(0.15).cgColor

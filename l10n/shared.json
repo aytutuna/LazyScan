@@ -88,6 +88,18 @@
   "Found {0} receipt": {
     "other": "Found {0} receipts"
   },
+  "{0} photo found": {
+    "other": "{0} photos found"
+  },
+  "{0} receipt found": {
+    "other": "{0} receipts found"
+  },
+  "{0} photo found · hold still": {
+    "other": "{0} photos found · hold still"
+  },
+  "{0} receipt found · hold still": {
+    "other": "{0} receipts found · hold still"
+  },
   "Adding {0} page…": {
     "other": "Adding {0} pages…"
   },

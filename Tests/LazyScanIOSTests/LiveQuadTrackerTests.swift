@@ -1175,4 +1175,174 @@ final class LiveQuadTrackerTests: XCTestCase {
         }
     }
 }
+
+/// The finder of the live object search, scripted: call `n` answers `sets[n]` (the last one after that).
+private final class ObjectScript: @unchecked Sendable {
+    private let lock = NSLock()
+    private let sets: [[Quad]]
+    private var calls: Int = 0
+
+    init(_ sets: [[Quad]]) {
+        self.sets = sets
+    }
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return calls
+    }
+
+    var finder: LiveQuadTracker.ObjectFinder {
+        { (_: RgbaImage, _: CaptureKind) -> [Quad] in
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            let answer: [Quad] = self.sets[min(self.calls, self.sets.count - 1)]
+            self.calls += 1
+            return answer
+        }
+    }
+}
+
+/// Three prints in a 64 x 48 frame.
+private let threePrints: [Quad] = [
+    Quad(topLeft: CGPoint(x: 2, y: 2), topRight: CGPoint(x: 20, y: 2), bottomRight: CGPoint(x: 20, y: 14),
+         bottomLeft: CGPoint(x: 2, y: 14)),
+    Quad(topLeft: CGPoint(x: 30, y: 2), topRight: CGPoint(x: 48, y: 2), bottomRight: CGPoint(x: 48, y: 14),
+         bottomLeft: CGPoint(x: 30, y: 14)),
+    Quad(topLeft: CGPoint(x: 2, y: 24), topRight: CGPoint(x: 20, y: 24), bottomRight: CGPoint(x: 20, y: 36),
+         bottomLeft: CGPoint(x: 2, y: 36))
+]
+
+private func shifted(_ quads: [Quad], by dx: Double) -> [Quad] {
+    quads.map { (quad: Quad) -> Quad in
+        Quad.fromCorners(quad.corners.map { (corner: CGPoint) -> CGPoint in
+            CGPoint(x: Double(corner.x) + dx, y: Double(corner.y))
+        })
+    }
+}
+
+// The live search for every print or receipt (`LiveSearch.objects`): the set outlined, steadied as a
+// set, taken once, and nothing searched while the search is off.
+final class LiveObjectSearchTests: XCTestCase {
+    private func tracker(_ script: ObjectScript, search: LiveSearch = .objects(.photo)) -> LiveQuadTracker {
+        let tracker = LiveQuadTracker(detector: countingDetector(SearchCount()), quality: goodReadings,
+                                      objectFinder: script.finder)
+        tracker.setSearch(search)
+        return tracker
+    }
+
+    func test_everyPrintFound_isOutlinedAsShares_andTheShutterWaitsForTheSetToHoldStill() throws {
+        let script = ObjectScript([threePrints])
+        let live = tracker(script)
+        var fired: [Double] = []
+        var counts: [Int] = []
+        var steady: [Bool] = []
+        for t in stride(from: 0.0, through: 1250.0, by: 250.0) {
+            let update = try XCTUnwrap(live.process(plainFrame(t)))
+            counts.append(update.outlines.count)
+            steady.append(update.isSteady)
+            if update.shouldCapture {
+                fired.append(t)
+            }
+        }
+        XCTAssertEqual(counts, [3, 3, 3, 3, 3, 3])
+        XCTAssertEqual(steady, [false, true, true, true, true, true])
+        // First seen at 0, held still from 250, 600 ms of it at 750; not taken again while it stays.
+        XCTAssertEqual(fired, [750])
+        let first = try XCTUnwrap(live.process(plainFrame(1500)))
+        assertQuad(first.outlines.first, LiveQuadTracker.normalized(threePrints[0], width: 64, height: 48), accuracy: 0.0001)
+        XCTAssertNil(first.outline)
+    }
+
+    func test_aSetThatMoves_isNeverTaken_andACountThatChanges_startsOver() throws {
+        let moving: [[Quad]] = (0..<8).map { (i: Int) -> [Quad] in shifted(threePrints, by: Double(i) * 4) }
+        let live = tracker(ObjectScript(moving))
+        for (i, t) in stride(from: 0.0, through: 1750.0, by: 250.0).enumerated() {
+            let update = try XCTUnwrap(live.process(plainFrame(t)))
+            XCTAssertFalse(update.shouldCapture, "frame \(i)")
+            XCTAssertFalse(update.isSteady, "frame \(i)")
+        }
+        let script = ObjectScript([threePrints, threePrints, threePrints, Array(threePrints.prefix(2)),
+                                   Array(threePrints.prefix(2)), Array(threePrints.prefix(2)), Array(threePrints.prefix(2))])
+        let counted = tracker(script)
+        var fired: [Double] = []
+        for t in stride(from: 0.0, through: 1500.0, by: 250.0) {
+            if let update = counted.process(plainFrame(t)), update.shouldCapture {
+                fired.append(t)
+            }
+        }
+        // The third print leaves at 750: the two left are first seen then and taken once held 600 ms, at 1500.
+        XCTAssertEqual(fired, [1500])
+    }
+
+    func test_frames_areSearchedFourTimesASecond_andNotAtAllWhileOff() throws {
+        let script = ObjectScript([threePrints])
+        let live = tracker(script)
+        XCTAssertNotNil(live.process(plainFrame(0)))
+        XCTAssertNil(live.process(plainFrame(100)))
+        XCTAssertNil(live.process(plainFrame(200)))
+        XCTAssertNotNil(live.process(plainFrame(250)))
+        XCTAssertEqual(script.count, 2)
+        live.setSearch(.off)
+        XCTAssertNil(live.process(plainFrame(1000)))
+        XCTAssertEqual(script.count, 2)
+    }
+
+    func test_aLostSet_keepsItsOutlinesForHalfASecond_andAPhotoTakenIsNotTakenAgain() throws {
+        let script = ObjectScript([threePrints, threePrints, threePrints, threePrints, [], [], [], threePrints])
+        let live = tracker(script)
+        for t in stride(from: 0.0, through: 500.0, by: 250.0) {
+            XCTAssertNotNil(live.process(plainFrame(t)))
+        }
+        live.markCaptured()
+        let held = try XCTUnwrap(live.process(plainFrame(750)))
+        XCTAssertFalse(held.shouldCapture)
+        XCTAssertEqual(held.state, .captured)
+        let lost = try XCTUnwrap(live.process(plainFrame(1000)))
+        XCTAssertEqual(lost.outlines.count, 3)
+        XCTAssertEqual(lost.state, .noPage)
+        XCTAssertEqual(try XCTUnwrap(live.process(plainFrame(1250))).outlines.count, 3)
+        XCTAssertEqual(try XCTUnwrap(live.process(plainFrame(1500))).outlines.count, 0)
+        // The prints come back after the set was gone for 500 ms: a new set, judged from its first sighting.
+        let back = try XCTUnwrap(live.process(plainFrame(1750)))
+        XCTAssertFalse(back.shouldCapture)
+        XCTAssertEqual(back.state, .moving)
+    }
+
+    func test_rearm_judgesASetDecidedOnWithoutAPhotoAgain() throws {
+        let live = tracker(ObjectScript([threePrints]))
+        var fired: Int = 0
+        for t in stride(from: 0.0, through: 750.0, by: 250.0) {
+            if let update = live.process(plainFrame(t)), update.shouldCapture {
+                fired += 1
+            }
+        }
+        XCTAssertEqual(fired, 1)
+        live.rearm()
+        for t in stride(from: 1000.0, through: 1750.0, by: 250.0) {
+            if let update = live.process(plainFrame(t)), update.shouldCapture {
+                fired += 1
+            }
+        }
+        XCTAssertEqual(fired, 2)
+    }
+
+    func test_withLargestOnly_theOneBiggestPrintIsOutlined() throws {
+        let live = tracker(ObjectScript([threePrints]))
+        live.setLargestOnly(true)
+        let update = try XCTUnwrap(live.process(plainFrame(0)))
+        XCTAssertEqual(update.outlines.count, 1)
+        let biggest = try XCTUnwrap(threePrints.max(by: { (a: Quad, b: Quad) -> Bool in a.area < b.area }))
+        assertQuad(update.outlines.first, LiveQuadTracker.normalized(biggest, width: 64, height: 48), accuracy: 0.0001)
+    }
+
+    func test_aSearchForOneKindDoesNotRunTheObjectFinder() throws {
+        let script = ObjectScript([threePrints])
+        let live = tracker(script, search: .page)
+        for t in stride(from: 0.0, through: 500.0, by: 250.0) {
+            _ = live.process(plainFrame(t))
+        }
+        XCTAssertEqual(script.count, 0)
+    }
+}
 #endif

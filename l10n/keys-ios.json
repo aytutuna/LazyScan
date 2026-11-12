@@ -424,6 +424,7 @@
  {"key": "Take the back", "comment": ""},
  {"key": "Take the back again", "comment": ""},
  {"key": "Take the front again", "comment": ""},
+ {"key": "Tap to take", "comment": ""},
  {"key": "Takes each page once it holds still", "comment": ""},
  {"key": "Takes the front and back of each sheet", "comment": ""},
  {"key": "Takes the pages with the camera", "comment": ""},

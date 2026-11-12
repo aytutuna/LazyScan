@@ -320,6 +320,28 @@ public enum IOSCameraText {
         }
     }
 
+    /// The status line while the prints or receipts of `kind` found are outlined: "3 photos found", "1 receipt found".
+    public static func objectsFound(_ kind: CaptureKind, count: Int) -> String {
+        if kind == .receipt {
+            return L10n.plural(count, one: "{0} receipt found", other: "{0} receipts found")
+        }
+        return L10n.plural(count, one: "{0} photo found", other: "{0} photos found")
+    }
+
+    /// `objectsFound` while the automatic shutter waits for the set to hold still; one object reads as `pageFound`.
+    public static func objectsFoundHoldStill(_ kind: CaptureKind, count: Int) -> String {
+        if count == 1 {
+            return pageFound(kind)
+        }
+        if kind == .receipt {
+            return L10n.plural(count, one: "{0} receipt found · hold still", other: "{0} receipts found · hold still")
+        }
+        return L10n.plural(count, one: "{0} photo found · hold still", other: "{0} photos found · hold still")
+    }
+
+    /// The status line for receipts and photos while the live search is off (the phone is warm or saving power).
+    public static var tapToTake: String { String(localized: "Tap to take") }
+
     /// The line under the outline while a page held still waits (`CaptureQuality`): "Not sharp yet" (once it
     /// has lasted, "Tap the shutter") or "Too dark"; nil for a good frame.
     public static func waitReason(_ quality: CaptureQuality, suggestsShutter: Bool = false) -> String? {

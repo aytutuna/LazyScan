@@ -528,6 +528,13 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertEqual(IOSCameraText.pageFound(.document), "Page found \u{00B7} hold still")
         XCTAssertEqual(IOSCameraText.pageFound(.idCard), "Card found \u{00B7} hold still")
         XCTAssertEqual(Set(CaptureKind.allCases.map(IOSCameraText.pageFound)).count, CaptureKind.allCases.count)
+        // Prints and receipts outlined are counted; one found while Auto waits reads as the single-object line.
+        XCTAssertEqual(IOSCameraText.objectsFound(.photo, count: 3), "3 photos found")
+        XCTAssertEqual(IOSCameraText.objectsFound(.photo, count: 1), "1 photo found")
+        XCTAssertEqual(IOSCameraText.objectsFound(.receipt, count: 4), "4 receipts found")
+        XCTAssertEqual(IOSCameraText.objectsFoundHoldStill(.receipt, count: 1), "Receipt found \u{00B7} hold still")
+        XCTAssertEqual(IOSCameraText.objectsFoundHoldStill(.photo, count: 3), "3 photos found \u{00B7} hold still")
+        XCTAssertEqual(IOSCameraText.tapToTake, "Tap to take")
         XCTAssertLessThanOrEqual(words(IOSCameraText.autoHint), 15)
         // The scan screen's Camera button promises nothing about Auto, which may be off.
         XCTAssertLessThanOrEqual(words(IOSCameraText.cameraHint), 15)
@@ -707,6 +714,31 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertEqual(access.asks, 1)
         XCTAssertEqual(driver.starts, 5)
         model.disappear()
+    }
+
+    @MainActor
+    func test_photosAndReceipts_giveWayToTapToTakeWhileThePhoneIsWarmOrSavingPower() throws {
+        var warm: Bool = false
+        var saving: Bool = false
+        let model = IOSCameraModel(driver: FakeCameraDriver(),
+                                   thermalState: { () -> ProcessInfo.ThermalState in warm ? .fair : .nominal },
+                                   lowPowerMode: { () -> Bool in saving },
+                                   center: NotificationCenter(), defaults: try freshDefaults())
+        model.setKind(.photo)
+        XCTAssertFalse(model.tapToTake)
+        warm = true
+        model.setKind(.receipt)
+        XCTAssertTrue(model.tapToTake)
+        // One page to a shot is searched whatever the phone's state.
+        model.setKind(.document)
+        XCTAssertFalse(model.tapToTake)
+        warm = false
+        saving = true
+        model.setKind(.photo)
+        XCTAssertTrue(model.tapToTake)
+        saving = false
+        model.setKind(.photo)
+        XCTAssertFalse(model.tapToTake)
     }
 
     @MainActor
