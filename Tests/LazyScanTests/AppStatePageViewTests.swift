@@ -124,4 +124,23 @@ final class AppStatePageViewTests: XCTestCase {
         XCTAssertEqual(state.viewedPageID, ids[0])
         XCTAssertTrue(state.viewsPage)
     }
+
+    @MainActor
+    func test_stepViewedPage_movesByOne_andStopsAtTheEnds() {
+        let state = makeState(pages: 3)
+        let ids = state.scannedPages.map(\.id)
+
+        state.stepViewedPage(by: 1)
+        XCTAssertNil(state.viewedPageID)
+
+        state.viewPage(id: ids[0])
+        state.stepViewedPage(by: -1)
+        XCTAssertEqual(state.viewedPageID, ids[0])
+        state.stepViewedPage(by: 1)
+        XCTAssertEqual(state.viewedPageID, ids[1])
+        state.stepViewedPage(by: 1)
+        state.stepViewedPage(by: 1)
+        XCTAssertEqual(state.viewedPageID, ids[2])
+        XCTAssertTrue(state.viewsPage)
+    }
 }

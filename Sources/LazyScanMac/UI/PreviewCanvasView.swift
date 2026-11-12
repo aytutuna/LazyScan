@@ -22,7 +22,18 @@ struct PreviewCanvasView: View {
     @State private var pageSize: CGSize?
     @State private var pageLoading = false
     @State private var pageFailed = false
+    /// The page `pageSize` and `pageFull` belong to.
+    @State private var pageID: UUID?
+    /// The page at its true size, drawn instead of `pageImage` once it is zoomed past that copy.
+    @State private var pageFull: CGImage?
+    @State private var zoom = PageZoom()
+    @State private var viewport = CGSize.zero
+    /// The zoom a drag or a pinch started from.
+    @State private var panStart: PageZoom?
+    @State private var magnifyStart: PageZoom?
     @FocusState private var canvasFocused: Bool
+    @Environment(\.displayScale) private var displayScale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -90,7 +101,7 @@ struct PreviewCanvasView: View {
     // MARK: Page view
 
     private var modeBar: some View {
-        HStack {
+        HStack(spacing: 10) {
             Picker("Canvas view", selection: showsPage) {
                 Text("Preview").tag(false)
                 Text("Page").tag(true)
@@ -98,16 +109,137 @@ struct PreviewCanvasView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()
+            if state.viewsPage {
+                stepButtons
+            }
             Spacer()
             if let caption = pageCaption {
                 Text(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if state.viewsPage {
+                zoomControls
+            }
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
         .background(.bar)
+    }
+
+    /// The arrow keys' symbols: left goes back in a left-to-right language and forward in a right-to-left one.
+    private var previousKey: String { direction == .rightToLeft ? "\u{2192}" : "\u{2190}" }
+    private var nextKey: String { direction == .rightToLeft ? "\u{2190}" : "\u{2192}" }
+
+    private var stepButtons: some View {
+        HStack(spacing: 2) {
+            Button { state.stepViewedPage(by: -1) } label: {
+                Label("Previous Page", systemImage: "chevron.backward")
+            }
+            .disabled(!canStep(-1))
+            .help(String(localized: "Previous page (\(previousKey))"))
+            Button { state.stepViewedPage(by: 1) } label: {
+                Label("Next Page", systemImage: "chevron.forward")
+            }
+            .disabled(!canStep(1))
+            .help(String(localized: "Next page (\(nextKey))"))
+        }
+        .labelStyle(.iconOnly)
+    }
+
+    private func canStep(_ offset: Int) -> Bool {
+        guard let viewed = state.viewedPage else { return false }
+        return (1...state.scannedPages.count).contains(viewed.number + offset)
+    }
+
+    private var zoomControls: some View {
+        let zoomOutOff = !(geometry?.canZoomOut(zoom) ?? false)
+        let zoomInOff = !(geometry?.canZoomIn(zoom) ?? false)
+        return HStack(spacing: 6) {
+            Toggle(isOn: fitSelected) { Text("Fit") }
+                .toggleStyle(.button)
+                .disabled(geometry == nil)
+                .help("Fit the page in the window (\u{2318}9)")
+            Toggle(isOn: actualSizeSelected) { Text(1.0, format: .percent) }
+                .toggleStyle(.button)
+                .disabled(geometry == nil)
+                .help("Show the page at actual size (\u{2318}0)")
+            Button { zoomOut() } label: { Label("Zoom Out", systemImage: "minus.magnifyingglass") }
+                .labelStyle(.iconOnly)
+                .disabled(zoomOutOff)
+                .help("Zoom out (\u{2318}\u{2212})")
+            Button { zoomIn() } label: { Label("Zoom In", systemImage: "plus.magnifyingglass") }
+                .labelStyle(.iconOnly)
+                .disabled(zoomInOff)
+                .help("Zoom in (\u{2318}+)")
+            zoomReadout
+        }
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private var zoomReadout: some View {
+        if pageFailed {
+            Text("Full size not available")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if let geometry {
+            Text(Double(geometry.percent(of: zoom)), format: .percent.precision(.fractionLength(0)))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 40, alignment: .trailing)
+                .accessibilityLabel("Zoom")
+        }
+    }
+
+    private var fitSelected: Binding<Bool> {
+        Binding(get: { geometry?.isFit(zoom) ?? true }, set: { _ in setZoom(PageZoom()) })
+    }
+
+    private var actualSizeSelected: Binding<Bool> {
+        Binding(get: { geometry?.isActualSize(zoom) ?? false }, set: { _ in actualSize() })
+    }
+
+    /// The viewed page's geometry once its size is known; nil while it loads or cannot be read.
+    private var geometry: PageZoomGeometry? {
+        guard let pixels = pageSize, !pageFailed, viewport.width > 0, viewport.height > 0 else { return nil }
+        return PageZoomGeometry(pixels: pixels, viewport: viewport, displayScale: displayScale)
+    }
+
+    /// Buttons, menu items and a double-click ease to the new zoom unless Reduce Motion is on.
+    private func setZoom(_ new: PageZoom) {
+        if reduceMotion {
+            zoom = new
+        } else {
+            withAnimation(.easeOut(duration: 0.15)) { zoom = new }
+        }
+    }
+
+    private func actualSize() {
+        guard let geometry else { return }
+        setZoom(geometry.actualSize(zoom))
+    }
+
+    private func zoomIn() {
+        guard let geometry else { return }
+        setZoom(geometry.zoomedIn(zoom))
+    }
+
+    private func zoomOut() {
+        guard let geometry else { return }
+        setZoom(geometry.zoomedOut(zoom))
+    }
+
+    private var zoomActions: PageZoomActions {
+        PageZoomActions(fit: { setZoom(PageZoom()) },
+                        actualSize: { actualSize() },
+                        zoomIn: { zoomIn() },
+                        zoomOut: { zoomOut() })
+    }
+
+    /// A point of the canvas relative to its center, which the zoom keeps still.
+    private func anchor(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: point.x - viewport.width / 2, y: point.y - viewport.height / 2)
     }
 
     private var showsPage: Binding<Bool> {
@@ -139,62 +271,153 @@ struct PreviewCanvasView: View {
     private func loadPage() async {
         guard let viewed = state.viewedPage else {
             pageImage = nil
+            pageFull = nil
             pageSize = nil
+            pageID = nil
+            zoom = PageZoom()
             pageLoading = false
             pageFailed = false
             return
         }
-        pageLoading = true
-        pageFailed = false
-        pageSize = nil
         let page = viewed.page
         let number = viewed.number
-        let read: (image: CGImage, size: CGSize)? = await Task.detached(priority: .userInitiated) { () -> (image: CGImage, size: CGSize)? in
+        // The same page read again (turned, or its original shown) keeps its zoom while the shape holds.
+        if pageID != page.id {
+            pageSize = nil
+            pageFull = nil
+            zoom = PageZoom()
+        }
+        pageLoading = true
+        pageFailed = false
+        let read: (image: CGImage, full: CGImage)? = await Task.detached(priority: .userInitiated) { () -> (image: CGImage, full: CGImage)? in
             guard let full = try? AppState.fullImage(of: page, number: number) else { return nil }
-            return (canvasDownsample(full, maxDimension: 2600), CGSize(width: full.width, height: full.height))
+            return (canvasDownsample(full, maxDimension: 2600), full)
         }.value
         if Task.isCancelled { return }
         pageLoading = false
         guard let read else {
             pageImage = nil
+            pageFull = nil
+            pageSize = nil
             pageFailed = true
             return
         }
+        let size = CGSize(width: read.full.width, height: read.full.height)
+        if let old = pageSize, old != size { zoom = PageZoom() }
+        pageID = page.id
         pageImage = read.image
-        pageSize = read.size
+        pageFull = read.full
+        pageSize = size
     }
 
     private var pageLayer: some View {
         ZStack {
             GeometryReader { geo in
                 if let image = pageImage, !pageFailed {
-                    let frame = fittedImageFrame(imageSize: CGSize(width: image.width, height: image.height),
-                                                 in: canvasBounds(for: geo.size))
-                    Image(image, scale: 1, label: Text(pageLabel))
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: frame.width, height: frame.height)
-                        .overlay(alignment: .topLeading) { skippedPill }
-                        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
-                        .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
-                        .position(x: frame.midX, y: frame.midY)
+                    pageView(image, in: geo.size)
                 }
             }
-            .environment(\.layoutDirection, .leftToRight)
             if pageFailed {
                 pageError
+                    .environment(\.layoutDirection, direction)
             } else if pageLoading {
                 pageSpinner
+                    .environment(\.layoutDirection, direction)
             }
         }
+        .environment(\.layoutDirection, .leftToRight)
+        .background(GeometryReader { geo in
+            Color.clear.onChange(of: geo.size, initial: true) { _, size in viewport = size }
+        })
+        .background(PageScrollCatcher { delta, point, zooms in scrolled(by: delta, at: point, zooms: zooms) })
         .contentShape(Rectangle())
+        .gesture(doubleClick)
         .onTapGesture { canvasFocused = true }
+        .gesture(panGesture)
+        .simultaneousGesture(magnifyGesture)
         .focusable()
         .focused($canvasFocused)
         .focusEffectDisabled()
+        .onAppear { canvasFocused = true }
+        .onChange(of: state.viewedPageID) { canvasFocused = true }
+        // The arrows follow the strip: in a right-to-left language the left arrow goes to the next page.
+        .onKeyPress(.leftArrow) { stepKey(direction == .rightToLeft ? 1 : -1) }
+        .onKeyPress(.rightArrow) { stepKey(direction == .rightToLeft ? -1 : 1) }
         .onKeyPress(.escape) {
             state.showPreview()
             return .handled
+        }
+        .accessibilityAction(named: "Next Page") { state.stepViewedPage(by: 1) }
+        .accessibilityAction(named: "Previous Page") { state.stepViewedPage(by: -1) }
+        .help("Left and right arrow keys change page. Scroll to move around, pinch or Option-scroll to zoom, double-click to switch between Fit and 100%.")
+        .focusedSceneValue(\.pageZoom, zoomActions)
+    }
+
+    /// The page at the zoom's scale, moved by its pan. Once it covers more screen pixels than the downsampled
+    /// copy has, it is drawn from the full read. The shadow goes while zoomed, when the page is far larger
+    /// than the canvas.
+    private func pageView(_ image: CGImage, in size: CGSize) -> some View {
+        let pixels = pageSize ?? CGSize(width: image.width, height: image.height)
+        let geometry = PageZoomGeometry(pixels: pixels, viewport: size, displayScale: displayScale)
+        let scale = geometry.scale(of: zoom)
+        let pan = geometry.clampedPan(zoom.pan, scale: scale)
+        let shown = max(pixels.width, pixels.height) * scale * displayScale
+        let source = shown > CGFloat(max(image.width, image.height)) ? (pageFull ?? image) : image
+        let shadow: CGFloat = zoom.scale == nil ? 10 : 0
+        return Image(source, scale: 1, label: Text(pageLabel))
+            .resizable()
+            .interpolation(.high)
+            .frame(width: pixels.width * scale, height: pixels.height * scale)
+            .overlay(alignment: .topLeading) { skippedPill }
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
+            .shadow(color: .black.opacity(0.4), radius: shadow, y: shadow / 2.5)
+            .position(x: size.width / 2 + pan.width, y: size.height / 2 + pan.height)
+            .accessibilityValue(Text(Double(geometry.percent(of: zoom)), format: .percent.precision(.fractionLength(0))))
+    }
+
+    private func stepKey(_ offset: Int) -> KeyPress.Result {
+        state.stepViewedPage(by: offset)
+        return .handled
+    }
+
+    private var doubleClick: some Gesture {
+        SpatialTapGesture(count: 2).onEnded { value in
+            guard let geometry else { return }
+            setZoom(geometry.toggled(zoom, about: anchor(value.location)))
+        }
+    }
+
+    private var panGesture: some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { value in
+                guard let geometry, zoom.scale != nil else { return }
+                let start = panStart ?? zoom
+                panStart = start
+                zoom = geometry.panned(start, by: value.translation)
+            }
+            .onEnded { _ in panStart = nil }
+    }
+
+    private var magnifyGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                guard let geometry else { return }
+                let start = magnifyStart ?? zoom
+                magnifyStart = start
+                zoom = geometry.zoomed(start, to: geometry.scale(of: start) * value.magnification,
+                                       about: anchor(value.startLocation))
+            }
+            .onEnded { _ in magnifyStart = nil }
+    }
+
+    /// Scrolling pans a zoomed page; with Option held it zooms around the pointer.
+    private func scrolled(by delta: CGSize, at point: CGPoint, zooms: Bool) {
+        guard let geometry else { return }
+        if zooms {
+            zoom = geometry.zoomed(zoom, to: geometry.scale(of: zoom) * exp(delta.height * 0.01),
+                                   about: anchor(point))
+        } else {
+            zoom = geometry.panned(zoom, by: delta)
         }
     }
 
@@ -547,7 +770,7 @@ fileprivate enum SelectionHandle: CaseIterable, Hashable {
 }
 
 /// Bounds the image is fitted into: the canvas with a comfortable margin.
-fileprivate func canvasBounds(for size: CGSize) -> CGRect {
+func canvasBounds(for size: CGSize) -> CGRect {
     let inset = CGRect(origin: .zero, size: size).insetBy(dx: 24, dy: 24)
     return (inset.isNull || inset.isEmpty) ? CGRect(origin: .zero, size: size) : inset
 }

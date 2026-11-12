@@ -19,6 +19,15 @@ extension AppState {
         viewPage(id: id)
     }
 
+    /// Moves the canvas to the page `offset` places on in the queue (negative goes back); it stays on the
+    /// first or last page rather than wrapping.
+    public func stepViewedPage(by offset: Int) {
+        guard let viewed = viewedPage else { return }
+        let index = viewed.number - 1 + offset
+        guard scannedPages.indices.contains(index) else { return }
+        viewedPageID = scannedPages[index].id
+    }
+
     /// The viewed page, and its place in the queue (1 for the first), while the canvas shows a page.
     public var viewedPage: (page: ScannedPage, number: Int)? {
         guard viewsPage, let id = viewedPageID,
