@@ -139,7 +139,14 @@ struct ContentView: View {
             choseOpeningView = true
             if state.isFirstRun { detailTab = .start }
         }
+        .focusedSceneValue(\.scanSettingsShown, settingsBinding)
         .task { state.start() }
+    }
+
+    /// Offered to View > Show Scan Settings only while the Scanner tab, which has the column, is up.
+    private var settingsBinding: Binding<Bool>? {
+        guard detailTab == .scanner else { return nil }
+        return $showInspector
     }
 
     /// The error the alert shows, as its title and message; a refusal under its own title.
