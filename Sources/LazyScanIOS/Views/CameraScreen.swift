@@ -44,6 +44,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     @State private var countAnnouncement: Task<Void, Never>?
     @State private var announcedCount: String?
     @State private var showsDrawer: Bool = false
+    @State private var retakenNote: String?
     @State private var drawerGroup: DrawerGroup = .colour
     /// Photos or Files is open over the camera.
     @State private var picking: Bool = false
@@ -141,6 +142,14 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 // taken yet without hearing it again each time a frame flips it.
                 if let reason = waitAnnouncer.next(cue) {
                     AccessibilityNotification.Announcement(reason).post()
+                }
+            }
+            .onChange(of: state.retakenNumber) { (_: Int?, number: Int?) in
+                if let number { noteRetaken(number) }
+            }
+            .onChange(of: state.retakingID) { (_: UUID?, _: UUID?) in
+                if let number = state.retakingNumber {
+                    AccessibilityNotification.Announcement(IOSCameraText.retaking(number)).post()
                 }
             }
             .onChange(of: chosenMegapixels) { (_: Int, megapixels: Int) in
@@ -339,7 +348,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .disabled(state.isBusy)
+        .disabled(state.isBusy || state.retakingID != nil)
         .accessibilityLabel(Text(IOSCameraText.printerLabel))
         .accessibilityHint(Text(IOSCameraText.printerHint))
         .accessibilityIdentifier("mode.printer")
@@ -499,6 +508,13 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The status line at the top; at the foot the notices and the task's buttons.
     private var overlays: some View {
         VStack(spacing: 8) {
+            if let number = state.retakingNumber {
+                RetakeBanner(number: number, onCancel: cancelRetake)
+            }
+            if let note = retakenNote {
+                StatusPill(text: note, hint: nil)
+                    .accessibilityIdentifier("camera.retaken")
+            }
             if shownMessage == nil, let status = statusLine {
                 StatusPill(text: status.text, hint: status.hint, action: status.action)
                     .accessibilityIdentifier(status.identifier)
@@ -591,7 +607,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             return CameraStatus(text: IOSCameraText.pageFound(CaptureObjects.kind(for: state.settings)), hint: nil,
                                 identifier: "camera.found")
         }
-        guard cardPrompt == nil, let line = taskLine else { return nil }
+        guard state.retakingID == nil, cardPrompt == nil, let line = taskLine else { return nil }
         return CameraStatus(text: line.prompt, hint: line.help, identifier: "camera.prompt")
     }
 
@@ -801,6 +817,21 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             })
     }
 
+    private func noteRetaken(_ number: Int) {
+        let note: String = IOSCameraText.retaken(number)
+        retakenNote = note
+        AccessibilityNotification.Announcement(note).post()
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if retakenNote == note { retakenNote = nil }
+            state.retakenNumber = nil
+        }
+    }
+
+    private func cancelRetake() {
+        state.cancelRetake()
+    }
+
     private func openSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
@@ -852,6 +883,37 @@ struct StatusPill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Capsule().fill(Color.black.opacity(0.75)))
+    }
+}
+
+/// Says which queued page the next photo replaces, with Cancel, on a dark capsule over the viewfinder.
+struct RetakeBanner: View {
+    let number: Int
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(IOSCameraText.retaking(number))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.white)
+                .lineLimit(2)
+                .padding(.leading, 16)
+                .padding(.vertical, 6)
+                .accessibilityIdentifier("camera.retakeBanner")
+            Button(action: onCancel) {
+                Text(PageViewerText.cancelLabel)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .keyboardShortcut(.cancelAction)
+            .accessibilityHint(Text(IOSCameraText.retakeCancelHint))
+            .accessibilityIdentifier("camera.retakeCancel")
+        }
+        .frame(minHeight: 44)
+        .background(Capsule().fill(Color.black.opacity(0.65)))
+        .accessibilityElement(children: .contain)
     }
 }
 

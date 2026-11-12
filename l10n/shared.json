@@ -1559,6 +1559,7 @@
   "The page could not be switched: its file could not be read.": {},
   "Page {0} will be left out when you save. {1}.": {},
   "Page {0} will be saved. {1}.": {},
+  "Page {0} retaken": {},
   "Page queue cleared.": {},
   "Lazy Scan found {0} page from a session that did not close properly. Restore it? If you choose No, it is deleted.": {
     "other": "Lazy Scan found {0} pages from a session that did not close properly. Restore them? If you choose No, they are deleted."

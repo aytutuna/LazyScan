@@ -143,7 +143,8 @@ struct ScanScreen: View {
                     .environmentObject(importer)
             }
             .sheet(isPresented: $pagesShown, onDismiss: pagesClosed) {
-                PageStripSheet(onEditSpread: editSpreadFromPages, onClose: closePages, detents: sheetDetents)
+                PageStripSheet(onEditSpread: editSpreadFromPages, onRetake: retakeAction, onClose: closePages,
+                               detents: sheetDetents)
                     .environmentObject(state)
             }
             .onAppear {
@@ -1029,6 +1030,14 @@ struct ScanScreen: View {
         pagesShown = false
     }
 
+    /// The page viewer's Retake, offered in camera mode only: the printer mode has no camera to show.
+    private var retakeAction: (@MainActor (UUID) -> Void)? {
+        guard cameraMode else { return nil }
+        return { (_: UUID) -> Void in
+            pagesShown = false
+        }
+    }
+
     /// The root view presents the split sheet, which it cannot while the strip's sheet is up.
     private func editSpreadFromPages(_ pageID: UUID) {
         spreadAfterPages = pageID
@@ -1056,7 +1065,7 @@ struct ScanScreen: View {
     /// PDFs and pictures dropped on the screen come in as files picked in Files do, while this task takes
     /// photos and nothing else is being brought in.
     private func importDropped(_ items: [IOSDroppedFile]) -> Bool {
-        guard !items.isEmpty, importer.canImport, IOSShell.takesPhotos(state.settings) else { return false }
+        guard !items.isEmpty, importer.canImport, state.retakingID == nil, IOSShell.takesPhotos(state.settings) else { return false }
         var imports: [IOSImportItem] = []
         for dropped in items {
             imports.append(dropped.item)

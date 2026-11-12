@@ -19,6 +19,8 @@ enum PageViewerText {
     static var documentLabel: String { String(localized: "Document") }
     static var nameDocumentLabel: String { String(localized: "Name document\u{2026}") }
     static var nameDocumentTitle: String { String(localized: "Name this document") }
+    static var retakeLabel: String { String(localized: "Retake") }
+    static var retakeHint: String { String(localized: "Takes this page again with the camera") }
     static var textLabel: String { String(localized: "Text") }
     static var textTitle: String { String(localized: "Text on this page") }
     static var readingText: String { String(localized: "Reading the text\u{2026}") }
@@ -83,7 +85,8 @@ enum PageViewerText {
 /// swipe to the next page, "3 of 7" over it and Done, and the grid's note on a page saving leaves out (or
 /// may) on a badge in its corner. Its toolbar shows the filters of a camera's page (a row of small pictures
 /// of this page with each, `AppState.filterPreviews`), turns it a quarter, opens the corner editor on its
-/// photo for Crop (`AppState.pageCropStart`, `recropPage`), shows the text on it (`PageTextSheet`), keeps or
+/// photo for Crop (`AppState.pageCropStart`, `recropPage`), takes it again with the camera (Retake, `onRetake`, for a page
+/// from a photo), shows the text on it (`PageTextSheet`), keeps or
 /// skips it (`PageStripCell.toggle`), for a book's page splits its spread again (`onEditSpread`) or joins its
 /// two pages, starts a new document at it, joins it to the one before and names its document (the Document
 /// menu, `DocumentMenuItems`), and deletes it once asked; the edits are off
@@ -98,6 +101,8 @@ struct PageViewer: View {
     @Environment(\.displayScale) private var displayScale
     /// Opens the split sheet for the spread the page shown was cut from; nil where the viewer cannot.
     let onEditSpread: (@MainActor (UUID) -> Void)?
+    /// Shows the camera to take a page again (the page's id); nil where the viewer cannot, as in the scanner's mode.
+    let onRetake: (@MainActor (UUID) -> Void)?
     let onClose: () -> Void
     @State private var selection: UUID?
     @State private var showsFilters: Bool = false
@@ -185,8 +190,10 @@ struct PageViewer: View {
         }
     }
 
-    init(startID: UUID, onEditSpread: (@MainActor (UUID) -> Void)? = nil, onClose: @escaping () -> Void) {
+    init(startID: UUID, onEditSpread: (@MainActor (UUID) -> Void)? = nil, onRetake: (@MainActor (UUID) -> Void)? = nil,
+         onClose: @escaping () -> Void) {
         self.onEditSpread = onEditSpread
+        self.onRetake = onRetake
         self.onClose = onClose
         _selection = State(initialValue: startID)
     }
@@ -254,6 +261,11 @@ struct PageViewer: View {
     private var offersFilters: Bool { canRecut || canEdit }
 
     private var offersCrop: Bool { canCrop || canEdit }
+
+    private var canRetake: Bool {
+        guard onRetake != nil, let page = current else { return false }
+        return AppState.canRetake(page)
+    }
 
     /// The page shown as the grid has it, for its Keep or Skip.
     private var currentCell: PageStripCell? {
@@ -505,6 +517,15 @@ struct PageViewer: View {
             .accessibilityIdentifier("viewer.crop")
             Spacer()
         }
+        if canRetake {
+            Button(action: retakeCurrent) {
+                Label(PageViewerText.retakeLabel, systemImage: "camera")
+            }
+            .disabled(blocked || state.readsQueue)
+            .accessibilityHint(Text(PageViewerText.retakeHint))
+            .accessibilityIdentifier("viewer.retake")
+            Spacer()
+        }
         Button(action: showText) {
             Label(PageViewerText.textLabel, systemImage: "text.viewfinder")
         }
@@ -552,6 +573,13 @@ struct PageViewer: View {
         }
         .disabled(state.isBusy || state.readsQueue)
         .accessibilityIdentifier("viewer.delete")
+    }
+
+    private func retakeCurrent() {
+        guard let id = selection else { return }
+        state.startRetake(id: id)
+        guard state.retakingID == id else { return }
+        onRetake?(id)
     }
 
     private func splitCurrent() {

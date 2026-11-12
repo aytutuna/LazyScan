@@ -446,6 +446,7 @@ public struct IOSRootView: View {
         }
         if !launchImports.isEmpty {
             let items: [IOSImportItem] = launchImports
+            state.cancelRetake()
             let pushed: Bool = prepareForImport(launchTask)
             let session: IOSImportSession = importer
             Task { @MainActor in

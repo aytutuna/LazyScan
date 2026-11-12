@@ -183,6 +183,7 @@ public final class AppState: ObservableObject {
         didSet {
             if settings.document != oldValue.document { queuePlansCache = nil }
             if rescanTarget != nil && !queuesScans { rescanTarget = nil }
+            if retakingID != nil && !queuesScans { retakingID = nil }
             // A feeder known to scan one side turns two-sided scanning into turning over by hand
             // (one not asked yet is taken to scan both: `sidesCapabilities`).
             if settings.duplex == .both,
@@ -249,6 +250,7 @@ public final class AppState: ObservableObject {
             pruneSpreads()
             keepViewedPage(after: oldValue)
             if let target = rescanTarget, !scannedPages.contains(where: { $0.id == target }) { rescanTarget = nil }
+            if let target = retakingID, !scannedPages.contains(where: { $0.id == target }) { retakingID = nil }
             companionService?.queuedPages = scannedPages.count
             OCRLineCache.shared.keep(Set(scannedPages.map(\.id)))
             scheduleQueueRecord()
@@ -372,6 +374,10 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var rescanTarget: UUID?
     /// The last page of a scan that replaced a page: the rest of that scan's pages go after it.
     var rescanAnchor: UUID?
+    /// The queued page the next photo from the camera replaces (`startRetake`); nil when none.
+    @Published public internal(set) var retakingID: UUID?
+    /// The place, from 1, of the page the last retake replaced; the camera says so for a moment.
+    @Published public internal(set) var retakenNumber: Int?
     /// The packages being written from the queue's spooled pages (`exportPackage`), which no other
     /// operation knows of: the queue must not be dropped meanwhile.
     @Published var queueReaders = 0
@@ -1665,13 +1671,14 @@ public final class AppState: ObservableObject {
                 // The spreads first: adding the pages drops the spreads no page is cut from.
                 self.spreadSources.merge(spreadSources) { _, new in new }
                 self.queueScanned(spooled, source: source)
+                let retaken: Bool = source == .photo && self.replaceRetaken(with: spooled)
                 // Pages queued earlier and never read (a reading stopped) are read once the scan is done.
                 if PageProcessor.readsBarcodes(self.settings) { self.readBarcodesAfterWork = true }
                 // Only the scanner's pages are sides of a stack turned over by hand; a phone's or a photo's
                 // come in between stacks.
                 if source == .scanner || !self.isTurningOverByHand { self.recordCaptures(spooled.map(\.id)) }
                 self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
-                if !intake.streaming { self.announceQueued(spooled, intake: intake, scorer: scorer) }
+                if !intake.streaming && !retaken { self.announceQueued(spooled, intake: intake, scorer: scorer) }
             } else if Self.holdsQuickScan(s, source: source, platform: self.platform) {
                 self.setLastScan(preview: pagePreview, pixelSize: shownPixelSize)
                 self.holdQuickScan(processed)
@@ -2320,6 +2327,7 @@ public final class AppState: ObservableObject {
         guard let idx = scannedPages.firstIndex(where: { $0.id == id }) else { return }
         let newIdx = idx + offset
         guard newIdx >= 0 && newIdx < scannedPages.count else { return }
+        if retakingID == id { retakingID = nil }
         scannedPages.swapAt(idx, newIdx)
     }
 
@@ -2328,6 +2336,7 @@ public final class AppState: ObservableObject {
         guard !isBusy else { return }
         guard let idx = scannedPages.firstIndex(where: { $0.id == id }),
               index >= 0 && index < scannedPages.count, index != idx else { return }
+        if retakingID == id { retakingID = nil }
         var pages = scannedPages
         let page = pages.remove(at: idx)
         pages.insert(page, at: index)

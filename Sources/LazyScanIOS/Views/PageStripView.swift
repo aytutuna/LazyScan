@@ -511,6 +511,8 @@ struct RemovedPagesRow: View {
 struct PageStripSheet: View {
     @EnvironmentObject private var state: AppState
     var onEditSpread: (@MainActor (UUID) -> Void)?
+    /// Shows the camera to take a page again once this sheet and the viewer are closed; nil in the scanner's mode.
+    var onRetake: (@MainActor (UUID) -> Void)?
     let onClose: () -> Void
     var detents: Set<PresentationDetent> = [.medium, .large]
     @State private var detent: PresentationDetent = .large
@@ -591,7 +593,7 @@ struct PageStripSheet: View {
             ActivityView(items: request.urls, onDone: closeShare)
         }
         .fullScreenCover(item: $viewing) { (start: PageViewerStart) in
-            PageViewer(startID: start.id, onEditSpread: editSpread, onClose: closeViewer)
+            PageViewer(startID: start.id, onEditSpread: editSpread, onRetake: retakeAction, onClose: closeViewer)
                 .environmentObject(state)
         }
         // The root's alert cannot show over a sheet.
@@ -756,6 +758,16 @@ struct PageStripSheet: View {
 
     private func closeViewer() {
         viewing = nil
+    }
+
+    /// Retake as the viewer is to offer it: closes the viewer, then hands the page on; nil where the sheet's
+    /// owner takes no retake.
+    private var retakeAction: (@MainActor (UUID) -> Void)? {
+        guard onRetake != nil else { return nil }
+        return { (id: UUID) -> Void in
+            viewing = nil
+            onRetake?(id)
+        }
     }
 
     private func editSpread(_ id: UUID) {

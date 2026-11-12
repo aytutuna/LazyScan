@@ -208,6 +208,15 @@ public enum IOSCameraText {
     public static var cameraModeHint: String { String(localized: "Takes the pages with the camera") }
     /// The scan screen's Camera button, whether Auto is on or off.
     public static var cameraHint: String { String(localized: "Opens the camera to take pages") }
+    /// The banner over the viewfinder while the next photo replaces a queued page: "Retaking page 3".
+    public static func retaking(_ number: Int) -> String {
+        String(localized: "Retaking page \(number)")
+    }
+    /// The camera's word for a moment after the shot has taken its place: "Page 3 retaken".
+    public static func retaken(_ number: Int) -> String {
+        String(localized: "Page \(number) retaken")
+    }
+    public static var retakeCancelHint: String { String(localized: "Keeps the page as it is") }
     /// A toggle's spoken value (Auto, the flash).
     public static var onValue: String { String(localized: "On") }
     public static var offValue: String { String(localized: "Off") }

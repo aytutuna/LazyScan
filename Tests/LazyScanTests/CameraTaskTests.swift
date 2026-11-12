@@ -350,6 +350,29 @@ final class CameraTaskTests: XCTestCase {
         XCTAssertEqual(frontsFirst.fronts, [f1])
     }
 
+    func test_sides_aPageTakenAgain_keepsTheStepsAndTakesTheOldPagesPlace() {
+        var flip = CameraSides(mode: .flip)
+        let front: UUID = UUID()
+        let again: UUID = UUID()
+        flip.took([front])
+        flip.replaced(front, with: again)
+        XCTAssertEqual(flip.next, .back)
+        // The new page is the last shot now: removing it steps back.
+        flip.removed(again)
+        XCTAssertEqual(flip.next, .front)
+
+        var frontsFirst = CameraSides(mode: .frontsFirst)
+        let f0: UUID = UUID()
+        let f1: UUID = UUID()
+        let f2: UUID = UUID()
+        frontsFirst.took([f0])
+        frontsFirst.took([f1])
+        frontsFirst.replaced(f0, with: f2)
+        XCTAssertEqual(frontsFirst.fronts, [f2, f1])
+        frontsFirst.replaced(UUID(), with: UUID())
+        XCTAssertEqual(frontsFirst.fronts, [f2, f1])
+    }
+
     @MainActor
     func test_twoSided_flipAndCapture_marksEachSide_andSavesOnePDF() async throws {
         let state: AppState = makeState(.twoSided)
@@ -405,6 +428,83 @@ final class CameraTaskTests: XCTestCase {
         XCTAssertEqual(state.scannedPages.map(\.sheetIndex), [0, 0])
         XCTAssertEqual(state.cameraSides?.next, .front)
         XCTAssertEqual(state.cameraSides?.sheetForNext, 1)
+    }
+
+    /// Marks the queued page `index` as a camera's, so it can be taken again.
+    @MainActor
+    private func markShot(_ state: AppState, _ index: Int) {
+        let quad: Quad = Quad(topLeft: CGPoint(x: 0, y: 0), topRight: CGPoint(x: 10, y: 0),
+                              bottomRight: CGPoint(x: 10, y: 10), bottomLeft: CGPoint(x: 0, y: 10))
+        state.scannedPages[index].capture = CaptureFacts(quad: quad, sourceWidth: 10, sourceHeight: 10)
+    }
+
+    @MainActor
+    func test_retake_replacesThePageInPlace_keepingItsSideSheetAndTheStepsOfTheStack() async throws {
+        let state: AppState = makeState(.twoSided)
+        let page: ScannedPage = try printedPage()
+        for _ in 0..<3 {
+            try await bringIn(state, page)
+        }
+        markShot(state, 1)
+        state.scannedPages[1].documentBreak = .split
+        let old: ScannedPage = state.scannedPages[1]
+        let oldFile: URL = try XCTUnwrap(old.fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: oldFile.path))
+        let steps: CameraSides? = state.cameraSides
+
+        state.startRetake(id: old.id)
+        XCTAssertEqual(state.retakingID, old.id)
+        XCTAssertEqual(state.retakingNumber, 2)
+        try await bringIn(state, page)
+
+        XCTAssertEqual(state.scannedPages.count, 3)
+        XCTAssertNil(state.retakingID)
+        let fresh: ScannedPage = state.scannedPages[1]
+        XCTAssertNotEqual(fresh.id, old.id)
+        XCTAssertEqual(fresh.side, old.side)
+        XCTAssertEqual(fresh.sheetIndex, old.sheetIndex)
+        XCTAssertEqual(fresh.documentBreak, .split)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldFile.path))
+        XCTAssertEqual(state.statusMessage, "Page 2 retaken")
+        XCTAssertEqual(state.retakenNumber, 2)
+        // The steps did not move on, and the next shot goes after the stack as before.
+        XCTAssertEqual(state.cameraSides?.next, steps?.next)
+        XCTAssertEqual(state.cameraSides?.sheetForNext, steps?.sheetForNext)
+        try await bringIn(state, page)
+        XCTAssertEqual(state.scannedPages.count, 4)
+        XCTAssertEqual(state.scannedPages[1].id, fresh.id)
+    }
+
+    @MainActor
+    func test_retake_cancelled_orMadeMoot_leavesThePagesAlone() async throws {
+        let state: AppState = makeState(.batch)
+        let page: ScannedPage = try printedPage()
+        for _ in 0..<2 {
+            try await bringIn(state, page)
+        }
+        let ids: [UUID] = state.scannedPages.map(\.id)
+        // A page with no camera facts (a PDF's) cannot be taken again.
+        state.startRetake(id: ids[0])
+        XCTAssertNil(state.retakingID)
+        markShot(state, 0)
+        markShot(state, 1)
+
+        state.startRetake(id: ids[0])
+        state.cancelRetake()
+        XCTAssertNil(state.retakingID)
+        try await bringIn(state, page)
+        XCTAssertEqual(state.scannedPages.count, 3)
+        XCTAssertEqual(Array(state.scannedPages.map(\.id).prefix(2)), ids)
+
+        state.startRetake(id: ids[1])
+        state.movePage(id: ids[1], to: 0)
+        XCTAssertNil(state.retakingID)
+
+        state.startRetake(id: ids[1])
+        state.removePage(id: ids[1])
+        XCTAssertNil(state.retakingID)
+        try await bringIn(state, page)
+        XCTAssertEqual(state.scannedPages.count, 3)
     }
 
     @MainActor

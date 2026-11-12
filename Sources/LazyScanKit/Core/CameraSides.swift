@@ -103,6 +103,17 @@ public struct CameraSides: Equatable, Codable, Sendable {
         }
     }
 
+    /// The page `old` was taken again as `new`: the new page is the one the steps know in its place, and they
+    /// stay where they were.
+    public mutating func replaced(_ old: UUID, with new: UUID) {
+        func put(_ ids: inout [UUID]) {
+            if let index = ids.firstIndex(of: old) { ids[index] = new }
+        }
+        put(&lastShot)
+        put(&fronts)
+        put(&backs)
+    }
+
     /// Fronts first, with fronts taken and the backs not started.
     public var canStartBacks: Bool {
         mode == .frontsFirst && next == .front && !fronts.isEmpty

@@ -107,8 +107,8 @@ struct ImportButtons: View {
             .accessibilityIdentifier("import.files")
         }
         .buttonStyle(.plain)
-        .disabled(!importer.canImport)
-        .opacity(importer.canImport ? 1 : 0.4)
+        .disabled(!available)
+        .opacity(available ? 1 : 0.4)
         .photosPicker(isPresented: $showsPhotos, selection: $picked, maxSelectionCount: CaptureBar.maxPicked,
                       selectionBehavior: .ordered, matching: .images, preferredItemEncoding: .current)
         .fileImporter(isPresented: $showsFiles,
@@ -148,6 +148,11 @@ struct ImportButtons: View {
                 await session.importSources(sources)
             }
         }
+    }
+
+    /// Photos and Files are off while a page waits to be retaken: the camera's next photo is the one that replaces it.
+    private var available: Bool {
+        importer.canImport && state.retakingID == nil
     }
 
     private func label(_ title: String, symbol: String) -> some View {
