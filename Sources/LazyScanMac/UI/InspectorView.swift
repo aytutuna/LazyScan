@@ -3,8 +3,8 @@ import AppKit
 import LazyScanKit
 import SwiftUI
 
-/// Right column: the scan settings in sections (`InspectorSections`), presets, and the Preview / Scan /
-/// Cancel actions pinned at the bottom. The task's own section (Photocopy or Receipts), Scanner and
+/// Right column: the scan settings in sections (`InspectorSections`) and presets; Preview, Scan and
+/// Cancel are in `ScanActionBar`. The task's own section (Photocopy or Receipts), Scanner and
 /// Output start open; Adjustments, Pages, Split into documents, Archive & password and More options
 /// start collapsed, and a
 /// collapsed header shows what is on in it (with a dot when something differs from the default), so a
@@ -30,16 +30,7 @@ struct InspectorView: View {
     @AppStorage("inspector.section.more") private var moreOpen: Bool = InspectorSections.openByDefault(InspectorSections.more)
 
     var body: some View {
-        // The action area is pinned as a bottom safe-area inset: the form scrolls
-        // above it, so Preview/Scan can never be pushed off-window no matter how
-        // small the window or how long the form gets.
         settingsForm
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                VStack(spacing: 0) {
-                    Divider()
-                    actionArea
-                }
-            }
         .alert("Save Preset", isPresented: $showSavePresetAlert) {
             TextField("Preset name", text: $newPresetName)
             Button("Save") { state.saveCurrentAsPreset(named: newPresetName) }
@@ -1208,73 +1199,6 @@ struct InspectorView: View {
                 Label("Presets", systemImage: "slider.horizontal.3")
             }
         }
-    }
-
-    // MARK: Actions
-
-    private var actionArea: some View {
-        VStack(spacing: 10) {
-            if state.isBusy {
-                HStack(spacing: 10) {
-                    ProgressView(value: state.progress?.fraction)
-                        .progressViewStyle(.linear)
-                    Button("Cancel") { state.cancelScan() }
-                }
-            }
-            HStack(spacing: 10) {
-                Button {
-                    state.performOverview()
-                } label: {
-                    Label("Preview", systemImage: "viewfinder")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(state.isBusy || state.previewUnavailableReason != nil)
-                .help(state.previewUnavailableReason ?? String(localized: "Quick look at the whole glass"))
-
-                Button {
-                    state.performScan()
-                } label: {
-                    Label(state.primaryActionLabel, systemImage: "scanner")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(state.isBusy || !state.isConnected)
-                .help(scanHelp)
-            }
-            .controlSize(.large)
-            // Photos of documents become pages of the queue too, with no scanner (AppState+Import.swift).
-            if PhotoImport.isOffered(state.settings) {
-                Button {
-                    state.chooseAndImportPhotos()
-                } label: {
-                    Label(PhotoImport.buttonLabel, systemImage: "photo.on.rectangle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(!state.canImportPhotos)
-                .help(state.isStackUnderWay ? DocumentSides.notWhileTurningOverReason : PhotoImport.buttonHint)
-                .accessibilityHint(Text(PhotoImport.buttonHelp))
-            }
-        }
-        .padding(12)
-        .background(.bar)
-    }
-
-    /// Scan has help only while it waits for the scanner.
-    private var scanHelp: String { notConnectedHelp ?? "" }
-
-    /// Why Scan is off while no scanner is connected (Preview gives `AppState.previewUnavailableReason`): the selected one is still connecting, it would
-    /// not connect, or none is selected; nil once it is connected. Twin of the Windows window's `NotConnectedHint`.
-    private var notConnectedHelp: String? {
-        guard !state.isConnected else { return nil }
-        guard let id = state.selectedDeviceID else { return String(localized: "No scanner selected.") }
-        let name: String? = state.devices.first(where: { $0.id == id })?.name
-        if state.isConnecting {
-            return name.map { String(localized: "Connecting to \($0)…") } ?? String(localized: "Connecting to the scanner…")
-        }
-        return name.map { String(localized: "Not connected to \($0). Choose it in the list again to retry.") }
-            ?? String(localized: "Not connected to the scanner. Choose it in the list again to retry.")
     }
 }
 

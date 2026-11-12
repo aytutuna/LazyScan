@@ -493,12 +493,12 @@ struct PreviewCanvasView: View {
         if state.activeTaskDefinition != nil || state.isTurningOverByHand { return nil }
         let action: String = state.primaryActionLabel
         if state.previewUnavailableReason == nil {
-            return String(localized: "Press Preview to see the flatbed, or \(action) to go straight ahead")
+            return String(localized: "Click Preview below to see the flatbed, or \(action) to go straight ahead")
         }
         if state.settings.source == .documentFeeder {
-            return String(localized: "Load the pages in the feeder and press \(action)")
+            return String(localized: "Load the pages in the feeder and click \(action) below")
         }
-        return String(localized: "Press \(action) to start")
+        return String(localized: "Click \(action) below to start")
     }
 
     private var demoSelected: Bool {

@@ -153,6 +153,7 @@ struct ContentView: View {
                 Divider()
                 PagesStripView()
             }
+            ScanActionBar(showsScanButtons: true)
             Divider()
             StatusBarView()
         }
@@ -191,9 +192,18 @@ struct ContentView: View {
         }
     }
 
+    /// A scan started on the Scanner tab goes on when another tab is up: its progress and Cancel stay in reach.
+    @ViewBuilder
+    private var runningScanBar: some View {
+        if state.isBusy {
+            ScanActionBar(showsScanButtons: false)
+        }
+    }
+
     private var startDetail: some View {
         VStack(spacing: 0) {
             TaskStartView(onOpenScanner: { detailTab = .scanner })
+            runningScanBar
             Divider()
             StatusBarView()
         }
@@ -202,6 +212,7 @@ struct ContentView: View {
     private var scansDetail: some View {
         VStack(spacing: 0) {
             ScanHistoryView()
+            runningScanBar
             Divider()
             StatusBarView()
         }
@@ -210,6 +221,7 @@ struct ContentView: View {
     private var savedDetail: some View {
         VStack(spacing: 0) {
             SavedFilesView()
+            runningScanBar
             Divider()
             StatusBarView()
         }
