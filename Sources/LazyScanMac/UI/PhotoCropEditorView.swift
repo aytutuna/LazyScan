@@ -19,6 +19,7 @@ struct PhotoCropEditorView: View {
     /// Downsampled bed image for display.
     @State private var display: CGImage?
     @State private var dragMode: DragMode?
+    @FocusState private var frameFocused: Bool
 
     init(photo: DetectedPhoto) {
         self.photo = photo
@@ -36,8 +37,10 @@ struct PhotoCropEditorView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Adjust Crop")
                         .font(.title3.bold())
-                    // No keyboard help here: unlike the Windows editor, this view has no arrow-key handling.
                     Text("Drag corners to resize, or inside to move.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Arrow keys move the crop, Shift and arrow keys resize it, Option takes bigger steps.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -69,6 +72,17 @@ struct PhotoCropEditorView: View {
                 .gesture(cropDrag(frame: frame))
                 .environment(\.layoutDirection, .leftToRight)
             }
+            .focusable()
+            .focusEffectDisabled()
+            .focused($frameFocused)
+            .onAppear { frameFocused = true }
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                nudge(press.key, resize: press.modifiers.contains(.shift), bigger: press.modifiers.contains(.option))
+                return .handled
+            }
+            .accessibilityLabel(Text("Crop frame"))
+            .accessibilityValue(Text(sizeCaption))
+            .accessibilityHint(Text("Arrow keys move the crop, Shift and arrow keys resize it, Option takes bigger steps."))
 
             Divider()
 
@@ -157,6 +171,33 @@ struct PhotoCropEditorView: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    // MARK: - Keys
+
+    /// One display pixel of the bed shown at about 800 points across; Shift changes the size instead of the place.
+    private func nudge(_ key: KeyEquivalent, resize: Bool, bigger: Bool) {
+        var dx = 0.0, dy = 0.0
+        switch key {
+        case .leftArrow: dx = -1
+        case .rightArrow: dx = 1
+        case .upArrow: dy = -1
+        case .downArrow: dy = 1
+        default: return
+        }
+        let pixel = sourcePixelSize
+        var step = max(1, Double(pixel.width) / 800)
+        if bigger { step *= 10 }
+        if resize {
+            let limit = Double(max(pixel.width, pixel.height))
+            let width = min(max(Double(region.size.width) + dx * step, 24), limit)
+            let height = min(max(Double(region.size.height) + dy * step, 24), limit)
+            region.size = CGSize(width: width, height: height)
+        } else {
+            let x = min(max(Double(region.center.x) + dx * step, 0), Double(pixel.width))
+            let y = min(max(Double(region.center.y) + dy * step, 0), Double(pixel.height))
+            region.center = CGPoint(x: x, y: y)
+        }
     }
 
     // MARK: - Dragging

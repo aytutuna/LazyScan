@@ -464,6 +464,15 @@ fileprivate struct PageThumbnailCell: View {
             onCancelRescan()
             return .handled
         }
+        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+            onRemove()
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
+            guard press.modifiers.isDisjoint(with: [.command, .option, .control]) else { return .ignored }
+            onRotate()
+            return .handled
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)
         .accessibilityAddTraits(.isButton)

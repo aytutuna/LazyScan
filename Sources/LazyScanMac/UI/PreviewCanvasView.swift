@@ -32,6 +32,7 @@ struct PreviewCanvasView: View {
     @State private var panStart: PageZoom?
     @State private var magnifyStart: PageZoom?
     @FocusState private var canvasFocused: Bool
+    @FocusState private var areaFocused: Bool
     @Environment(\.displayScale) private var displayScale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -549,6 +550,56 @@ struct PreviewCanvasView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { state.selectionRect = nil }
         .gesture(selectionDrag(frame: frame))
+        .simultaneousGesture(TapGesture().onEnded { areaFocused = true })
+        .focusable()
+        .focused($areaFocused)
+        .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+            nudgeSelection(press.key, resize: press.modifiers.contains(.shift))
+            return .handled
+        }
+        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+            guard state.selectionRect != nil else { return .ignored }
+            state.selectionRect = nil
+            return .handled
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Scan area"))
+        .accessibilityValue(Text(selectionValue))
+        .accessibilityHint(Text("Arrow keys start or move the scan area, Shift and arrow keys resize it, Delete clears it."))
+    }
+
+    /// Where the scan area lies on the glass, as VoiceOver reads it.
+    private var selectionValue: String {
+        guard let area = state.selectionRect else { return String(localized: "Whole glass") }
+        let style: FloatingPointFormatStyle<Double>.Percent = .percent.precision(.fractionLength(0))
+        let left = Double(area.minX).formatted(style)
+        let top = Double(area.minY).formatted(style)
+        let width = Double(area.width).formatted(style)
+        let height = Double(area.height).formatted(style)
+        return String(localized: "\(width) wide, \(height) high, \(left) from the left, \(top) from the top")
+    }
+
+    /// A press moves the area by 1% of the glass, or with Shift changes its size. With no area yet, the
+    /// first press starts one in the middle.
+    private func nudgeSelection(_ key: KeyEquivalent, resize: Bool) {
+        var dx: CGFloat = 0, dy: CGFloat = 0
+        switch key {
+        case .leftArrow: dx = -0.01
+        case .rightArrow: dx = 0.01
+        case .upArrow: dy = -0.01
+        case .downArrow: dy = 0.01
+        default: return
+        }
+        let area = state.selectionRect ?? CGRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5)
+        if resize {
+            let width = clampUnit(area.width + dx, 0.04, 1 - area.minX)
+            let height = clampUnit(area.height + dy, 0.04, 1 - area.minY)
+            state.selectionRect = CGRect(x: area.minX, y: area.minY, width: width, height: height)
+        } else {
+            let x = clampUnit(area.minX + dx, 0, max(0, 1 - area.width))
+            let y = clampUnit(area.minY + dy, 0, max(0, 1 - area.height))
+            state.selectionRect = CGRect(x: x, y: y, width: area.width, height: area.height)
+        }
     }
 
     /// Four rects dimming everything outside the selection.
@@ -616,6 +667,7 @@ struct PreviewCanvasView: View {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
                 if dragState == nil {
+                    areaFocused = true
                     dragState = beginDrag(at: value.startLocation, frame: frame)
                 }
                 if let dragState {
