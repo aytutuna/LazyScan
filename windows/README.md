@@ -152,6 +152,8 @@ The main window has four tabs, like the macOS app:
   in a review where each crop can be corrected by hand. Scan (Ctrl+Enter or F5), Preview
   (Ctrl+Shift+Enter), Save (Ctrl+S), Import (Ctrl+O) and Cancel (Esc) have shortcuts, shown in their
   tooltips, that work exactly when the button does; Delete removes the page the keyboard is on.
+  Removing a page or clearing the queue is held until the next scan, import, save or task change
+  and put back by Undo in the status bar or Ctrl+Z (newest first; a text box keeps its own Ctrl+Z).
   **Cancel** works in every busy phase
   (scanning, processing, photo detection, OCR, PDF writing, exports) and never leaves a
   partial file behind.

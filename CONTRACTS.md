@@ -3630,7 +3630,10 @@ extension AppState {
 // place it had once the pages before it in the hold were gone, and the task's steps and the camera's sides as they were
 // before the first. A second removal adds to the hold, so one Undo restores all. The hold is let go (files deleted) when the
 // queue gets a page (a scan or an import), a save ends, a task is started, or the app ends; clearPages(discarding: true)
-// deletes at once. A page whose spool file is gone is left out and the status says so.
+// deletes at once. A page whose spool file is gone is left out and the status says so. On Windows AppViewModel holds
+// the same (RemovePage, ClearPages, KeepFrontsOnly and ScanBacksAgain; CanUndoRemove, UndoRemoval, Ctrl+Z and an Undo
+// button in the status bar, hidden while busy); the hold is let go in NotifyAll once the queue has grown, in MarkSaved,
+// StartTask and ExitTask; the task's steps come back with the pages when they still match.
 extension AppState {
     public var canUndoRemove: Bool                                 // pages are held
     public var removedTitle: String                                // "Page removed", "3 pages removed", "Cleared 12 pages"; "" when none

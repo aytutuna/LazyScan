@@ -155,6 +155,15 @@ public sealed class TaskFlow
         StepIndex = 0;
     }
 
+    /// <summary>A copy at the same point, to put back after a step that changes the flow is undone.</summary>
+    public TaskFlow Copy()
+    {
+        var copy = new TaskFlow(_steps) { StepIndex = StepIndex };
+        foreach (var (id, ids) in _captures) copy._captures[id] = [.. ids];
+        copy._skipped.UnionWith(_skipped);
+        return copy;
+    }
+
     private int? IndexOf(string stepId)
     {
         int index = _steps.FindIndex(step => string.Equals(step.Id, stepId, StringComparison.Ordinal));

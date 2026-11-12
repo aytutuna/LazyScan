@@ -1751,6 +1751,10 @@
             </StatusBar.ItemsPanel>
             <StatusBarItem DockPanel.Dock="Right">
                 <StackPanel Orientation="Horizontal">
+                    <Button x:Name="UndoButton" Style="{StaticResource IconTextButtonStyle}"
+                            local:Icon.Glyph="&#xE7A7;" Content="{loc:T Undo}" Padding="10,3,10,4" Margin="0,0,12,0"
+                            Visibility="Collapsed" AutomationProperties.AcceleratorKey="Ctrl+Z"
+                            Click="Undo_Click" />
                     <ProgressBar x:Name="BusyBar" Width="160" VerticalAlignment="Center" Margin="0,0,12,0"
                                  AutomationProperties.Name="{loc:T Progress}" Visibility="Collapsed" />
                     <Button x:Name="CancelButton" Style="{StaticResource IconTextButtonStyle}"

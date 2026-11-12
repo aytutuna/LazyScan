@@ -178,6 +178,7 @@ public sealed partial class AppViewModel
             SavedBarPaths = null;
             if (asNew)
             {
+                DiscardRemoved();
                 DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
                 ScannedPages.Clear();
                 ResetFlow();

@@ -844,6 +844,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     private void NotifyAll()
     {
+        // A page that joined the queue since the last refresh is a new scan or import.
+        if (ScannedPages.Count > _queueLength) DiscardRemoved();
+        _queueLength = ScannedPages.Count;
         SyncPageOptions();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
@@ -2272,11 +2275,101 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         // Never mutate the queue (or unlink spool files) while a save is reading from it.
         if (IsBusy) return;
-        var item = ScannedPages.FirstOrDefault(p => p.Page.Id == id);
-        if (item is null) return;
-        DeleteSpoolFiles([item.Page]);
-        ScannedPages.Remove(item);
+        if (HoldRemoved([id]) == 0) return;
+        SetStatus(RemovedTitle(), new(new StatusHead.PagesRemoved(_removed.Count)));
         NotifyAll();
+    }
+
+    /// <summary>
+    /// The pages taken out of the queue last (a removal, a clear, the backs left out), each with the place it had
+    /// when its turn came, for <see cref="UndoRemoval"/>. Their spool files stay until the next scan or import,
+    /// save or task change lets them go.
+    /// </summary>
+    private readonly List<(PageItem Item, int Index)> _removed = [];
+
+    private bool _removedByClear;
+
+    /// <summary>The task's steps before the first removal in the hold, put back with the pages when they still match.</summary>
+    private TaskFlow? _flowBefore;
+
+    /// <summary>Pages held, for the Undo button's tooltip.</summary>
+    public int RemovedCount => _removed.Count;
+
+    /// <summary>The queue's length at the last refresh, to see pages join it.</summary>
+    private int _queueLength;
+
+    /// <summary>Pages were taken out of the queue and can be put back.</summary>
+    public bool CanUndoRemove => _removed.Count > 0;
+
+    private string RemovedTitle() => _removedByClear
+        ? Loc.Plural(_removed.Count, "Cleared {0} page", "Cleared {0} pages")
+        : Loc.Plural(_removed.Count, "Page removed", "{0} pages removed");
+
+    /// <summary>
+    /// Takes the pages out of the queue into the hold, keeping their spool files. A hold already there grows, so one
+    /// Undo puts back everything removed since the last scan, save or task change, newest first.
+    /// </summary>
+    private int HoldRemoved(ICollection<Guid> ids, bool cleared = false, TaskFlow? flowBefore = null)
+    {
+        var taken = new List<(PageItem Item, int Index)>();
+        for (int i = 0; i < ScannedPages.Count; i++)
+        {
+            if (ids.Contains(ScannedPages[i].Page.Id)) taken.Add((ScannedPages[i], i - taken.Count));
+        }
+        if (taken.Count == 0) return 0;
+        if (_removed.Count == 0)
+        {
+            _removedByClear = cleared;
+            _flowBefore = flowBefore ?? Flow?.Copy();
+        }
+        _removed.AddRange(taken);
+        foreach (var (item, _) in taken) ScannedPages.Remove(item);
+        _queueLength = ScannedPages.Count;
+        return taken.Count;
+    }
+
+    /// <summary>
+    /// Puts the held pages back in the queue, each where it was, with its spool files and edits. A page whose file
+    /// has gone is left out and the status says so. Returns the first page back in the queue, null when none came.
+    /// </summary>
+    public Guid? UndoRemoval()
+    {
+        if (IsBusy || _removed.Count == 0) return null;
+        var held = _removed.ToList();
+        _removed.Clear();
+        if (_flowBefore is { } before && Flow is { } flow && flow.Steps.SequenceEqual(before.Steps)) Flow = before;
+        _flowBefore = null;
+        var back = new HashSet<Guid>();
+        var lost = new List<ScannedPage>();
+        for (int i = held.Count - 1; i >= 0; i--)
+        {
+            var (item, index) = held[i];
+            if (new[] { item.Page.FilePath, item.Page.Alternate?.FilePath }.Any(path => path is not null && !File.Exists(path)))
+            {
+                lost.Add(item.Page);
+                continue;
+            }
+            ScannedPages.Insert(Math.Min(index, ScannedPages.Count), item);
+            back.Add(item.Page.Id);
+        }
+        DeleteSpoolFiles(lost);
+        _queueLength = ScannedPages.Count;
+        StatusMessage = lost.Count > 0
+            ? Loc.Plural(lost.Count, "{0} page could not be restored", "{0} pages could not be restored")
+            : Loc.Plural(back.Count, "Page restored", "{0} pages restored");
+        NotifyAll();
+        return ScannedPages.FirstOrDefault(item => back.Contains(item.Page.Id))?.Page.Id;
+    }
+
+    /// <summary>Lets the held pages go: their spool files, and the spreads only they used.</summary>
+    private void DiscardRemoved()
+    {
+        if (_removed.Count == 0) return;
+        var pages = _removed.Select(r => r.Item.Page).ToList();
+        _removed.Clear();
+        _flowBefore = null;
+        DeleteSpoolFiles(pages);
+        PruneSpreads();
     }
 
     public void MovePage(Guid id, int offset)
@@ -2504,11 +2597,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ClearPages()
     {
         if (IsBusy) return;
-        DeleteSpoolFiles(ScannedPages.Select(p => p.Page));
-        ScannedPages.Clear();
+        int cleared = HoldRemoved(ScannedPages.Select(p => p.Page.Id).ToHashSet(), cleared: true);
         ResetFlow();
         SaveName = "";
-        SetStatus(Loc.T("Page queue cleared."), new(new StatusHead.QueueCleared()));
+        if (cleared > 0) SetStatus(RemovedTitle(), new(new StatusHead.QueueCleared(_removed.Count)));
+        else SetStatus(Loc.T("Page queue cleared."), new(new StatusHead.QueueCleared()));
         NotifyAll();
     }
 
@@ -2553,6 +2646,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             NotifyAll();
             return false;
         }
+        DiscardRemoved();
         var adapted = SettingsAdapter.Adapt(TaskCatalog.Apply(task, Settings), Capabilities);
         Settings = adapted.Settings;
         // Fresh steps, even for the same task: nothing of an ID card is kept, on the stage either.
@@ -2577,6 +2671,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ExitTask()
     {
         if (IsBusy || Settings.TaskId is null) return;
+        DiscardRemoved();
         if (IsTurningOverByHand && !IsStackUnderWay) Settings.Duplex = DuplexMode.Off;
         Settings.TaskId = null;
         ShowPreview();
@@ -2762,7 +2857,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ScanBacksAgain()
     {
         if (IsBusy || !AwaitingBacks || Flow is null) return;
-        RemoveQueuedPages(Flow.Retake(DocumentSides.BacksStepId));
+        var before = Flow.Copy();
+        RemoveQueuedPages(Flow.Retake(DocumentSides.BacksStepId), before);
         SidesMismatch = null;
         StatusMessage = Loc.T("Load the turned-over stack in the feeder again and scan the back sides.");
         NotifyAll();
@@ -2783,13 +2879,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         NotifyAll();
     }
 
-    private void RemoveQueuedPages(IReadOnlyCollection<Guid> ids)
+    private void RemoveQueuedPages(IReadOnlyCollection<Guid> ids, TaskFlow? flowBefore = null)
     {
-        if (ids.Count == 0) return;
-        var set = ids.ToHashSet();
-        var removed = ScannedPages.Where(item => set.Contains(item.Page.Id)).ToList();
-        DeleteSpoolFiles(removed.Select(item => item.Page));
-        foreach (var item in removed) ScannedPages.Remove(item);
+        HoldRemoved(ids.ToHashSet(), flowBefore: flowBefore);
     }
 
     /// <summary>Notes the current step of the active task what a scan produced (page or photo ids).</summary>
@@ -3361,6 +3453,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     private void MarkSaved(List<string> paths)
     {
+        DiscardRemoved();
         LastSavedPaths = paths;
         SavedRevision++;
         SavedBarPaths = paths.Count > 0 ? [.. paths] : null;

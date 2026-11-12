@@ -2628,6 +2628,8 @@
   "Ctrl+Shift+Enter": {},
   "Ctrl+S": {},
   "Ctrl+O": {},
+  "Ctrl+Z": {},
+  "Undo": {},
   "Esc": {},
   "Page {0} can't be opened": {},
   "Its saved scan is missing or unreadable. Scan the page again.": {},

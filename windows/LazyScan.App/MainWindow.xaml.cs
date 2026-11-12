@@ -352,6 +352,8 @@ public partial class MainWindow : Window
         BusyBar.Visibility = ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.Visibility = ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = ViewModel.IsBusy;
+        UndoButton.Visibility = ViewModel.CanUndoRemove && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+        UndoButton.ToolTip = WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
         if (ViewModel.Progress?.Fraction is { } fraction)
         {
             BusyBar.IsIndeterminate = false;
@@ -2056,6 +2058,16 @@ public partial class MainWindow : Window
         ViewModel.ClearPages();
     }
     private void Cancel_Click(object sender, RoutedEventArgs e) => ViewModel.CancelScan();
+
+    private void Undo_Click(object sender, RoutedEventArgs e)
+    {
+        // The button goes once the pages are back, so a keyboard user's focus moves to the first of them.
+        bool byKeyboard = InputManager.Current.MostRecentInputDevice is KeyboardDevice;
+        if (ViewModel.UndoRemoval() is not { } id || !byKeyboard) return;
+        int index = ViewModel.ScannedPages.ToList().FindIndex(item => item.Page.Id == id);
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+            () => (PageList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus());
+    }
 
     private void DeviceList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

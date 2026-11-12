@@ -96,6 +96,22 @@ public class TaskFlowTests
     }
 
     [Fact]
+    public void Copy_KeepsTheStateApartFromTheOriginal()
+    {
+        var flow = CardFlow();
+        flow.Record("front", A);
+        flow.Advance();
+        flow.Skip();
+        var copy = flow.Copy();
+
+        flow.Reset();
+        Assert.Equal("review", copy.Current?.Id);
+        Assert.Equal([A], copy.Captures("front"));
+        Assert.Equal("front", flow.Current?.Id);
+        Assert.Empty(flow.Captures("front"));
+    }
+
+    [Fact]
     public void Retake_TheFront_FromTheReview()
     {
         var flow = CardFlow();
