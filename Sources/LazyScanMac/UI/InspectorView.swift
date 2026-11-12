@@ -1069,11 +1069,19 @@ struct InspectorView: View {
     // center. The bindings below map that UI scale onto the underlying parameter ranges
     // (settings/presets keep their original semantics on disk).
 
+    /// A scanned page is on the canvas, already adjusted as saved, so the sliders no longer change it.
+    private var scannedPageShown: Bool {
+        state.overviewImage == nil && state.lastScanImage != nil
+    }
+
     private var adjustmentsSection: some View {
         let summary: String = InspectorSections.adjustmentsSummary(state.settings.adjustments)
         let color: Bool = state.settings.colorMode == .color
         let colorHelp: String = color ? "" : Self.colorOnlyHelp
         return section(InspectorSections.adjustments, title: InspectorSections.title(InspectorSections.adjustments), summary: summary, changed: !summary.isEmpty) {
+            if scannedPageShown {
+                reasonLine(String(localized: "These sliders apply to the next scan."))
+            }
             Toggle("Auto-enhance", isOn: $state.settings.adjustments.autoEnhance)
             amountSlider("Brightness", value: brightnessAmount)
             amountSlider("Contrast", value: contrastAmount)
