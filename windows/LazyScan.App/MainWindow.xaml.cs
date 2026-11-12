@@ -1486,34 +1486,163 @@ public partial class MainWindow : Window
         SizeD? area = caps is null ? null
             : s.Source == ScanSource.DocumentFeeder ? caps.FeederSizeInches : caps.FlatbedSizeInches;
         bool wholeGlass = s.Source == ScanSource.Flatbed && TaskCatalog.ScansWholeGlass(s);
-        string signature = $"{s.Source}\u001f{area}\u001f{ViewModel.IsCopyFlow}\u001f{wholeGlass}";
+        bool feeder = s.Source == ScanSource.DocumentFeeder;
+        bool keptChoice = ViewModel.IsCopyFlow && s.PaperSize is PaperSize.Custom or PaperSize.LongPaper;
+        string signature = $"{s.Source}\u001f{area}\u001f{ViewModel.IsCopyFlow}\u001f{wholeGlass}\u001f{(keptChoice ? s.PaperSize : PaperSize.Auto)}";
         if (signature != _paperSignature)
         {
             _paperSignature = signature;
             PaperSizeBox.Items.Clear();
             foreach (var size in PaperSizes.DisplayOrder(RegionInfo.CurrentRegion.TwoLetterISORegionName))
             {
+                if (size is PaperSize.Custom or PaperSize.LongPaper) continue;
                 bool fits = PaperSizes.Fits(size, area);
                 string tip = !fits ? PaperSizes.DoesNotFitReason(s.Source)
                     : size == PaperSize.Auto && ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(size, s.Source)
-                    : PaperSizes.Hint(wholeGlass ? PaperSize.Auto : size, s.Source);
+                    : PaperTip(size, s.Source, wholeGlass);
                 // A size larger than the glass or the feeder stays listed, greyed out with why after its name.
                 string content = size == PaperSize.Auto ? size.Label() : Loc.T("{0}  ({1})", size.Label(), size.Detail());
-                var item = new ComboBoxItem
-                {
-                    Content = fits ? content : Loc.T("{0} · {1}", content, tip),
-                    Tag = size,
-                    IsEnabled = fits,
-                    ToolTip = fits ? tip : null,
-                };
-                ToolTipService.SetShowOnDisabled(item, true);
-                AutomationProperties.SetHelpText(item, tip);
-                PaperSizeBox.Items.Add(item);
+                AddPaperSizeItem(size, fits ? content : Loc.T("{0} · {1}", content, tip), fits, fits ? tip : null, tip);
+            }
+            // The copy flow takes its paper from the printer, so it lists these only while one is chosen.
+            if (!ViewModel.IsCopyFlow || keptChoice)
+            {
+                PaperSizeBox.Items.Add(new Separator());
+                string customTip = PaperTip(PaperSize.Custom, s.Source, wholeGlass);
+                AddPaperSizeItem(PaperSize.Custom, Loc.T("Custom size..."), true, customTip, customTip);
+                string longTip = feeder ? PaperTip(PaperSize.LongPaper, s.Source, wholeGlass) : Loc.T("Needs the feeder");
+                string longContent = feeder ? PaperSize.LongPaper.Label() : Loc.T("{0} · {1}", PaperSize.LongPaper.Label(), longTip);
+                AddPaperSizeItem(PaperSize.LongPaper, longContent, feeder, feeder ? longTip : null, longTip);
             }
         }
         PaperSizeBox.SelectedItem = PaperSizeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (PaperSize)i.Tag == s.PaperSize);
         AutomationProperties.SetHelpText(PaperSizeBox,
-            ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(s.PaperSize, s.Source) : PaperSizes.Hint(wholeGlass ? PaperSize.Auto : s.PaperSize, s.Source));
+            ViewModel.IsCopyFlow ? PrintText.CopyPaperHint(s.PaperSize, s.Source) : PaperTip(s.PaperSize, s.Source, wholeGlass));
+        SyncCustomSize(s, area, feeder);
+    }
+
+    private void AddPaperSizeItem(PaperSize size, string content, bool enabled, string? tooltip, string help)
+    {
+        var item = new ComboBoxItem { Content = content, Tag = size, IsEnabled = enabled, ToolTip = tooltip };
+        ToolTipService.SetShowOnDisabled(item, true);
+        AutomationProperties.SetHelpText(item, help);
+        PaperSizeBox.Items.Add(item);
+    }
+
+    /// <summary>What a size does, in a line: the tooltip of its item and the help text of the picker.</summary>
+    private static string PaperTip(PaperSize size, ScanSource source, bool wholeGlass)
+    {
+        if (wholeGlass) return PaperSizes.Hint(PaperSize.Auto, source);
+        return size switch
+        {
+            PaperSize.Custom => Loc.T("Scans this width and height from the top left corner."),
+            PaperSize.LongPaper when source == ScanSource.DocumentFeeder =>
+                Loc.T("Feeds the sheet as long as the scanner allows. For receipts and long slips."),
+            _ => PaperSizes.Hint(size, source),
+        };
+    }
+
+    /// <summary>Inches in the US, millimeters everywhere else; the settings keep inches.</summary>
+    private static bool UsesInches => RegionInfo.CurrentRegion.TwoLetterISORegionName == "US";
+
+    private static double CustomUnitsPerInch => UsesInches ? 1 : 25.4;
+
+    private static string CustomSizeText(double inches) =>
+        (inches * CustomUnitsPerInch).ToString("0.#", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// The width and height boxes of the custom size, and the note under the picker (Long paper's, or
+    /// what is wrong with a custom size). A selection on the preview replaces the size, so the boxes dim.
+    /// </summary>
+    private void SyncCustomSize(ScanSettings s, SizeD? area, bool feeder)
+    {
+        bool custom = s.PaperSize == PaperSize.Custom;
+        CustomSizeRow.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+        if (custom)
+        {
+            string unit = UsesInches ? Loc.T("in") : Loc.T("mm");
+            CustomWidthUnit.Text = unit;
+            CustomHeightUnit.Text = unit;
+            AutomationProperties.SetName(CustomWidthBox, UsesInches ? Loc.T("Width in inches") : Loc.T("Width in millimeters"));
+            AutomationProperties.SetName(CustomHeightBox, UsesInches ? Loc.T("Height in inches") : Loc.T("Height in millimeters"));
+            // A box that is being typed in is left alone.
+            if (!CustomWidthBox.IsKeyboardFocused) CustomWidthBox.Text = CustomSizeText(s.CustomPaperWidth);
+            if (!CustomHeightBox.IsKeyboardFocused) CustomHeightBox.Text = CustomSizeText(s.CustomPaperHeight);
+            CustomSizeRow.IsEnabled = ViewModel.SelectionRect is null || s.Source != ScanSource.Flatbed;
+        }
+
+        string? note = null;
+        bool glyph = true;
+        if (custom)
+        {
+            if (s.CustomPaperWidth <= 0 || s.CustomPaperHeight <= 0) note = Loc.T("Enter a width and height larger than 0.");
+            else if (!PaperSizes.Fits(PaperSize.Custom, area, s.CustomPaper)) note = Loc.T("Larger than the scanner can scan. It will be cut off.");
+        }
+        else if (s.PaperSize == PaperSize.LongPaper)
+        {
+            note = feeder ? Loc.T("Uses the feeder's longest sheet") : Loc.T("Long paper needs the feeder.");
+            glyph = !feeder;
+        }
+        PaperSizeNoteRow.Visibility = note is null ? Visibility.Collapsed : Visibility.Visible;
+        PaperSizeNoteGlyph.Visibility = glyph ? Visibility.Visible : Visibility.Collapsed;
+        PaperSizeNote.Text = note ?? "";
+        if (note is not null && note != _lastPaperSizeNote && PaperSizeNote.IsVisible)
+        {
+            var peer = UIElementAutomationPeer.FromElement(PaperSizeNote) ?? UIElementAutomationPeer.CreatePeerForElement(PaperSizeNote);
+            peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        }
+        _lastPaperSizeNote = note;
+    }
+
+    private string? _lastPaperSizeNote;
+
+    private void CustomSize_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        var box = (TextBox)sender;
+        string separator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+        bool hasSeparator = box.Text.Remove(box.SelectionStart, box.SelectionLength).Contains(separator);
+        e.Handled = !e.Text.All(c => char.IsAsciiDigit(c) || separator.Contains(c))
+                    || (hasSeparator && e.Text.Contains(separator));
+    }
+
+    private void CustomSize_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        var box = (TextBox)sender;
+        if (e.Key == Key.Enter)
+        {
+            CommitCustomSize(box);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            var s = ViewModel.Settings;
+            box.Text = CustomSizeText(box == CustomWidthBox ? s.CustomPaperWidth : s.CustomPaperHeight);
+            box.SelectAll();
+            e.Handled = true;
+        }
+    }
+
+    private void CustomSize_LostFocus(object sender, KeyboardFocusChangedEventArgs e) => CommitCustomSize((TextBox)sender);
+
+    /// <summary>An empty box counts as 0, which the line under the picker asks to be fixed.</summary>
+    private void CommitCustomSize(TextBox box)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        var s = ViewModel.Settings;
+        bool width = box == CustomWidthBox;
+        if (box.Text == CustomSizeText(width ? s.CustomPaperWidth : s.CustomPaperHeight)) return;
+        double inches = double.TryParse(box.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value)
+            ? value / CustomUnitsPerInch : 0;
+        if (Math.Abs(inches - (width ? s.CustomPaperWidth : s.CustomPaperHeight)) < 1e-9)
+        {
+            box.Text = CustomSizeText(inches);
+            return;
+        }
+        if (width) s.CustomPaperWidth = inches;
+        else s.CustomPaperHeight = inches;
+        box.Text = CustomSizeText(inches);
+        ViewModel.SettingsEdited();
+        RefreshFromViewModel();
     }
 
     private void Sides_Changed(object sender, SelectionChangedEventArgs e)
@@ -1529,7 +1658,18 @@ public partial class MainWindow : Window
     private void PaperSize_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingUi || !IsLoaded) return;
-        if (PaperSizeBox.SelectedItem is ComboBoxItem { Tag: PaperSize size }) ViewModel.Settings.PaperSize = size;
+        if (PaperSizeBox.SelectedItem is ComboBoxItem { Tag: PaperSize size })
+        {
+            var s = ViewModel.Settings;
+            // Custom size starts from the size chosen before it.
+            if (size == PaperSize.Custom && s.PaperSize != PaperSize.Custom
+                && (PaperSizes.Inches(s.PaperSize) ?? PaperSizes.Inches(PaperSizes.DefaultForRegion(RegionInfo.CurrentRegion.TwoLetterISORegionName))) is { } start)
+            {
+                s.CustomPaperWidth = start.Width;
+                s.CustomPaperHeight = start.Height;
+            }
+            s.PaperSize = size;
+        }
         ViewModel.SettingsEdited();
         RefreshFromViewModel();
     }

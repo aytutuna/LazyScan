@@ -1043,6 +1043,38 @@
                                             <ComboBox x:Name="PaperSizeBox" HorizontalAlignment="Stretch"
                                                       AutomationProperties.Name="{loc:T Paper size}"
                                                       SelectionChanged="PaperSize_Changed" />
+                                            <!-- Custom size only: the width and height, in inches in the US and in millimeters elsewhere. -->
+                                            <Grid x:Name="CustomSizeRow" Margin="0,6,0,0" Visibility="Collapsed">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="52" />
+                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Style="{StaticResource CaptionText}" Text="{loc:T Width}" VerticalAlignment="Center" />
+                                                <TextBox x:Name="CustomWidthBox" Grid.Row="0" Grid.Column="1" Height="28" TextAlignment="Right"
+                                                         FlowDirection="LeftToRight" VerticalContentAlignment="Center"
+                                                         PreviewTextInput="CustomSize_PreviewTextInput" PreviewKeyDown="CustomSize_PreviewKeyDown"
+                                                         LostKeyboardFocus="CustomSize_LostFocus" />
+                                                <TextBlock x:Name="CustomWidthUnit" Grid.Row="0" Grid.Column="2" Style="{StaticResource CaptionText}"
+                                                           Margin="6,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource CaptionText}" Text="{loc:T Height}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                                <TextBox x:Name="CustomHeightBox" Grid.Row="1" Grid.Column="1" Height="28" TextAlignment="Right" Margin="0,4,0,0"
+                                                         FlowDirection="LeftToRight" VerticalContentAlignment="Center"
+                                                         PreviewTextInput="CustomSize_PreviewTextInput" PreviewKeyDown="CustomSize_PreviewKeyDown"
+                                                         LostKeyboardFocus="CustomSize_LostFocus" />
+                                                <TextBlock x:Name="CustomHeightUnit" Grid.Row="1" Grid.Column="2" Style="{StaticResource CaptionText}"
+                                                           Margin="6,4,0,0" VerticalAlignment="Center" />
+                                            </Grid>
+                                            <!-- Long paper's note, and what is wrong with a custom size. -->
+                                            <DockPanel x:Name="PaperSizeNoteRow" Margin="0,2,0,0" Visibility="Collapsed">
+                                                <TextBlock x:Name="PaperSizeNoteGlyph" DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE8B3;" />
+                                                <TextBlock x:Name="PaperSizeNote" Style="{StaticResource ReasonText}"
+                                                           AutomationProperties.LiveSetting="Polite" />
+                                            </DockPanel>
                                             <!-- Live state: an area selected on the preview is scanned instead of the paper size. -->
                                             <DockPanel x:Name="SelectedAreaRow" Margin="0,2,0,0" Visibility="Collapsed">
                                                 <Button DockPanel.Dock="Right" x:Name="ClearSelectionButton" Style="{StaticResource SmallIconButtonStyle}"
