@@ -2656,6 +2656,7 @@
   "Patch T": {},
   "the Windows device watcher stopped ({0})": {},
   "Pages back from last time: {0} of {1}.": {},
+  "Bringing back pages: {0} of {1}…": {},
   "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.": {
     "other": "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}."
   },

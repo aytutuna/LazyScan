@@ -78,9 +78,13 @@ struct QueueRecord: Codable, Sendable {
         appendBookmark = try? container.decodeIfPresent(Data.self, forKey: .appendBookmark)
     }
 
-    /// "Bringing back 3 pages…"
+    /// "Bringing back 3 pages…", or "Bringing back pages: 2 of 3…" once the pages come back one by one.
     static func restoringMessage(_ count: Int) -> String {
         L10n.plural(count, one: "Bringing back {0} page…", other: "Bringing back {0} pages…")
+    }
+
+    static func restoringMessage(_ done: Int, of count: Int) -> String {
+        L10n.t("Bringing back pages: {0} of {1}…", done, count)
     }
 
     /// "3 pages are back from last time.", or "Pages back from last time: 3 of 4." when fewer came back
@@ -265,12 +269,15 @@ extension AppState {
         let spool = spoolDirectory
         statusMessage = QueueRecord.restoringMessage(record.pages.count)
         runExclusive { _ in
-            let previews: [CGImage?] = await Task.detached(priority: .userInitiated) {
-                record.pages.map { (page: QueueRecord.Page) -> CGImage? in
+            var previews: [CGImage?] = []
+            for (index, page) in record.pages.enumerated() {
+                let preview: CGImage? = await Task.detached(priority: .userInitiated) {
                     AppState.previewOfSpoolFile(spool.appendingPathComponent(page.file),
                                                 quarterTurns: page.rotationQuarterTurns)
-                }
-            }.value
+                }.value
+                previews.append(preview)
+                self.statusMessage = QueueRecord.restoringMessage(index + 1, of: record.pages.count)
+            }
             var pages: [ScannedPage] = []
             for (page, preview) in zip(record.pages, previews) {
                 if let preview {

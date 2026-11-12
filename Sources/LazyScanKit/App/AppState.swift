@@ -2465,9 +2465,18 @@ public final class AppState: ObservableObject {
 
     /// A preview of a spooled page version as the queue shows a page, turned by `quarterTurns`.
     nonisolated static func previewOfSpoolFile(_ url: URL, quarterTurns: Int) -> CGImage? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let full = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
-        let preview = makePreview(full, maxSide: 1600) ?? full
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width = (properties?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
+        let height = (properties?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
+        let preview: CGImage?
+        if max(width, height) > 1600 {
+            // A thumbnail, so no full-size copy of the page is kept.
+            preview = thumbnailOfFile(url, maxSide: 1600)
+        } else {
+            preview = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        }
+        guard let preview else { return nil }
         return quarterTurns == 0 ? preview : ImagePipeline.rotate(preview, quarterTurns: quarterTurns)
     }
 

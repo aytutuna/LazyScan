@@ -27,12 +27,12 @@ private struct RecordBarcodes: BarcodeReader {
 }
 
 /// A light page with a dark bar across it.
-private func recordPage() -> ScannedPage {
+private func recordPage(width: Int = 300, height: Int = 400) -> ScannedPage {
     let space: CGColorSpace = CGColorSpaceCreateDeviceRGB()
-    let context = CGContext(data: nil, width: 300, height: 400, bitsPerComponent: 8, bytesPerRow: 0,
+    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                             space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
     context.setFillColor(CGColor(red: 0.95, green: 0.95, blue: 0.93, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: 300, height: 400))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     context.setFillColor(CGColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1))
     context.fill(CGRect(x: 50, y: 200, width: 200, height: 16))
     return ScannedPage(image: context.makeImage()!, dpi: 50, colorMode: .color)
@@ -157,6 +157,28 @@ final class AppStateQueueRecordTests: XCTestCase {
         try await waitUntil(timeout: 5) {
             !FileManager.default.fileExists(atPath: spool.appendingPathComponent(QueueRecord.fileName).path)
         }
+    }
+
+    @MainActor
+    func test_aLargeKeptPage_comesBackAsThePreviewItWas() async throws {
+        let before = makeState()
+        XCTAssertTrue(before.startTask(.document))
+        before.settings.destinationPath = folder.path
+        XCTAssertTrue(before.ingest([recordPage(width: 1000, height: 2000), recordPage(width: 1000, height: 2000)],
+                                    source: .photo))
+        try await waitUntil(timeout: 60) { !before.isBusy && before.scannedPages.count == 2 }
+        before.scannedPages[1].rotationQuarterTurns = 1
+        before.writeQueueRecord()
+        try await Task.sleep(nanoseconds: 600_000_000)
+        SettingsStore.save(before.settings, directory: folder)
+
+        let after = makeState()
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.count, 2)
+        XCTAssertEqual(after.scannedPages[0].image.width, before.scannedPages[0].image.width)
+        XCTAssertEqual(after.scannedPages[0].image.height, before.scannedPages[0].image.height)
+        XCTAssertEqual(after.scannedPages[1].image.width, before.scannedPages[1].image.height)
+        XCTAssertEqual(after.scannedPages[1].image.height, before.scannedPages[1].image.width)
     }
 
     @MainActor
