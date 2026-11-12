@@ -658,6 +658,7 @@ struct PageStripSheet: View {
         let none: Bool = selected.isEmpty
         // The queue's edits do nothing while an import, a scan or a save runs.
         let blocked: Bool = none || state.isBusy
+        let recuttable: Bool = state.scannedPages.contains { (page: ScannedPage) -> Bool in selected.contains(page.id) && PageRecut.canRecut(page) }
         Button(action: rotateSelected) {
             Label(PageViewerText.rotateLabel, systemImage: "rotate.right")
         }
