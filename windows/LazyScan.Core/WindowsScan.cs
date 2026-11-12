@@ -297,14 +297,11 @@ public static class WindowsScanRequest
         bool duplex = settings.Duplex == DuplexMode.Both && facts.CanScanDuplex;
         var size = settings.PaperSize;
         bool knownSize = WindowsScanCapabilities.Positive(facts.MaxScanAreaInches);
-        // The whole feeder (FeederRegionInches of Automatic is its largest sheet), no taller than
+        // The whole feeder: FeederRegionInches of Automatic is its largest sheet, no taller than
         // a long-paper feeder's reported length would make sense for ordinary sheets.
-        RectD? whole = null;
-        if (knownSize)
-        {
-            var all = PaperSizes.FeederRegionInches(PaperSize.Auto, facts.MaxScanAreaInches);
-            whole = new RectD(0, 0, all.Width, Math.Min(all.Height, EsclScanRequest.MaxFeederHeightInches));
-        }
+        RectD? whole = knownSize
+            ? PaperSizes.FeederRegionInches(PaperSize.Auto, settings.CustomPaper, facts.MaxScanAreaInches)
+            : null;
         if (size == PaperSize.Auto)
         {
             return new WindowsScanPlan(WindowsScanSource.Feeder, dpi, color, format, whole, duplex,
@@ -315,7 +312,7 @@ public static class WindowsScanRequest
         {
             return new WindowsScanPlan(WindowsScanSource.Feeder, dpi, color, format, whole, duplex, size, autoDetect);
         }
-        RectD? region = knownSize ? PaperSizes.FeederRegionInches(size, facts.MaxScanAreaInches) : null;
+        RectD? region = knownSize ? PaperSizes.FeederRegionInches(size, settings.CustomPaper, facts.MaxScanAreaInches) : null;
         return new WindowsScanPlan(WindowsScanSource.Feeder, dpi, color, format, region, duplex, AutoDetectPageSize: autoDetect);
     }
 

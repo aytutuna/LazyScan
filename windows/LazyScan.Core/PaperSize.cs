@@ -27,6 +27,10 @@ public enum PaperSize
     BusinessCard,
     Photo4x6,
     Photo5x7,
+    /// <summary>A size set in the scan settings (<see cref="ScanSettings.CustomPaperWidth"/> and <see cref="ScanSettings.CustomPaperHeight"/>).</summary>
+    Custom,
+    /// <summary>A sheet of any length: the feeder's full width and the longest height it reports. Feeder only.</summary>
+    LongPaper,
 }
 
 /// <summary>Dimensions of the paper sizes and where they apply.</summary>
@@ -34,6 +38,9 @@ public static class PaperSizes
 {
     /// <summary>A size fits an area when it is at most this much larger (in inches): A4's 11.69 in on an 11.7 in glass, rounding in drivers.</summary>
     public const double FitTolerance = 0.05;
+
+    /// <summary>The shortest side a custom size can have, in inches.</summary>
+    public const double CustomMinInches = 1;
 
     /// <summary>
     /// Countries and territories that use US Letter (the ICU paper-size list): everywhere else
@@ -45,7 +52,7 @@ public static class PaperSizes
     /// <summary>Every size, in declaration order (Automatic first).</summary>
     public static IReadOnlyList<PaperSize> All { get; } = Enum.GetValues<PaperSize>();
 
-    /// <summary>Portrait width × height in inches; null for <see cref="PaperSize.Auto"/>.</summary>
+    /// <summary>Portrait width × height in inches; null for <see cref="PaperSize.Auto"/>, <see cref="PaperSize.Custom"/> (it is in the settings) and <see cref="PaperSize.LongPaper"/>.</summary>
     public static SizeD? Inches(PaperSize size) => size switch
     {
         PaperSize.Letter => new SizeD(8.5, 11),
@@ -81,6 +88,8 @@ public static class PaperSizes
         PaperSize.BusinessCard => "businessCard",
         PaperSize.Photo4x6 => "photo4x6",
         PaperSize.Photo5x7 => "photo5x7",
+        PaperSize.Custom => "custom",
+        PaperSize.LongPaper => "longPaper",
         _ => throw new ArgumentOutOfRangeException(nameof(size), size, null),
     };
 
@@ -134,33 +143,41 @@ public static class PaperSizes
 
     /// <summary>
     /// The size fits <paramref name="area"/> (portrait, within <see cref="FitTolerance"/>).
-    /// Automatic always fits, and so does every size when the area is unknown.
+    /// Automatic and Long paper always fit, and so does every size when the area is unknown.
+    /// <paramref name="custom"/> is the size <see cref="PaperSize.Custom"/> stands for.
     /// </summary>
-    public static bool Fits(PaperSize size, SizeD? area)
+    public static bool Fits(PaperSize size, SizeD? area, SizeD? custom = null)
     {
-        if (Inches(size) is not { } paper || area is not { } a || a.Width <= 0 || a.Height <= 0) return true;
+        if ((size == PaperSize.Custom ? custom : Inches(size)) is not { } paper || area is not { } a || a.Width <= 0 || a.Height <= 0) return true;
         return paper.Width <= a.Width + FitTolerance && paper.Height <= a.Height + FitTolerance;
     }
 
     /// <summary>
     /// The part of the glass a paper size covers, as a selection (normalized 0...1, origin
     /// top-left, where sheets are laid against the corner), clamped to the glass; null for
-    /// Automatic (the whole glass) and for an unknown glass size.
+    /// Automatic and Long paper (the whole glass) and for an unknown glass size.
+    /// <paramref name="custom"/> is the size <see cref="PaperSize.Custom"/> stands for.
     /// </summary>
-    public static RectD? FlatbedSelection(PaperSize size, SizeD bed)
+    public static RectD? FlatbedSelection(PaperSize size, SizeD custom, SizeD bed)
     {
-        if (Inches(size) is not { } paper || bed.Width <= 0 || bed.Height <= 0) return null;
+        if ((size == PaperSize.Custom ? custom : Inches(size)) is not { } paper || bed.Width <= 0 || bed.Height <= 0) return null;
         return new RectD(0, 0, Math.Min(1, paper.Width / bed.Width), Math.Min(1, paper.Height / bed.Height));
     }
 
     /// <summary>
     /// The area a feeder scan asks for, in inches from the top-left corner: the paper size,
-    /// clamped to the feeder's largest sheet <paramref name="max"/>; the largest sheet itself
-    /// for Automatic.
+    /// clamped to the feeder's largest sheet <paramref name="max"/> (<paramref name="custom"/> is the
+    /// size <see cref="PaperSize.Custom"/> stands for); the largest sheet itself for Automatic, no
+    /// taller than <see cref="EsclScanRequest.MaxFeederHeightInches"/>, and for Long paper at the
+    /// height the feeder reports.
     /// </summary>
-    public static RectD FeederRegionInches(PaperSize size, SizeD max)
+    public static RectD FeederRegionInches(PaperSize size, SizeD custom, SizeD max)
     {
-        if (Inches(size) is not { } paper) return new RectD(0, 0, max.Width, max.Height);
+        if (size == PaperSize.LongPaper) return new RectD(0, 0, max.Width, max.Height);
+        if ((size == PaperSize.Custom ? custom : Inches(size)) is not { } paper)
+        {
+            return new RectD(0, 0, max.Width, Math.Min(max.Height, EsclScanRequest.MaxFeederHeightInches));
+        }
         return new RectD(0, 0, Math.Min(paper.Width, max.Width), Math.Min(paper.Height, max.Height));
     }
 
@@ -168,6 +185,7 @@ public static class PaperSizes
     public static string Hint(PaperSize size, ScanSource source)
     {
         bool feeder = source == ScanSource.DocumentFeeder;
+        if (size == PaperSize.LongPaper) return Loc.T("Takes the longest sheet the feeder reports.");
         if (size == PaperSize.Auto)
         {
             return feeder ? Loc.T("The sheet size the feeder takes.") : Loc.T("The whole glass, or the area selected on the preview.");
@@ -207,6 +225,8 @@ public static class PaperSizes
         PaperSize.BusinessCard => Loc.T("Business card"),
         PaperSize.Photo4x6 => Loc.T("4x6 photo"),
         PaperSize.Photo5x7 => Loc.T("5x7 photo"),
+        PaperSize.Custom => Loc.T("Custom size"),
+        PaperSize.LongPaper => Loc.T("Long paper"),
         _ => size.ToString(),
     };
 
@@ -220,6 +240,8 @@ public static class PaperSizes
         PaperSize.BusinessCard => "Business card",
         PaperSize.Photo4x6 => "4x6 photo",
         PaperSize.Photo5x7 => "5x7 photo",
+        PaperSize.Custom => "Custom size",
+        PaperSize.LongPaper => "Long paper",
         _ => size.Label(),
     };
 
@@ -240,6 +262,8 @@ public static class PaperSizes
         PaperSize.BusinessCard => Loc.T("{0} × {1} mm", 90, 55),
         PaperSize.Photo4x6 => Loc.T("{0} × {1} in", 4, 6),
         PaperSize.Photo5x7 => Loc.T("{0} × {1} in", 5, 7),
+        PaperSize.Custom => Loc.T("Set the width and height"),
+        PaperSize.LongPaper => Loc.T("As long as the feeder takes"),
         _ => "",
     };
 

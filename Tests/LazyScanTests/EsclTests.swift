@@ -190,6 +190,18 @@ final class EsclTests: XCTestCase {
         XCTAssertEqual(EsclScanRequest.create(longPaper, source: .documentFeeder, colorMode: .color, dpi: 300,
                                               selection: nil, paperSize: .letter).region,
                        region(0, 0, 2550, 3300))
+        // Long paper takes the feeder's whole reported height; a custom size is not capped either.
+        XCTAssertEqual(EsclScanRequest.create(longPaper, source: .documentFeeder, colorMode: .color, dpi: 300,
+                                              selection: nil, paperSize: .longPaper).region,
+                       region(0, 0, 2580, 35400))
+        XCTAssertEqual(EsclScanRequest.create(longPaper, source: .documentFeeder, colorMode: .color, dpi: 300,
+                                              selection: nil, paperSize: .custom,
+                                              customPaper: CGSize(width: 5, height: 40)).region,
+                       region(0, 0, 1500, 12000))
+        XCTAssertEqual(EsclScanRequest.create(longPaper, source: .documentFeeder, colorMode: .color, dpi: 300,
+                                              selection: nil, paperSize: .custom,
+                                              customPaper: CGSize(width: 12, height: 200)).region,
+                       region(0, 0, 2580, 35400))
         // The flatbed takes the paper size as a selection (the app's job), not here.
         XCTAssertEqual(EsclScanRequest.create(caps, source: .flatbed, colorMode: .color, dpi: 300, selection: nil,
                                               paperSize: .a5).region,

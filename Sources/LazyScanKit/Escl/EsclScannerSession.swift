@@ -71,7 +71,8 @@ public final class EsclScannerSession: ScannerSession {
         let flatbedSelection: CGRect? = settings.source == .flatbed ? selection : nil
         let result: EsclJobResult = try await runJob(dpi: settings.resolution, colorMode: settings.colorMode,
                                                      source: settings.source, selection: flatbedSelection,
-                                                     duplex: settings.duplex == .both, paperSize: settings.paperSize)
+                                                     duplex: settings.duplex == .both, paperSize: settings.paperSize,
+                                                     customPaper: settings.customPaper)
         if result.pages.isEmpty {
             throw ScanError.scanFailed(reason: { L10n.t("The scanner did not return any image data.") })
         }
@@ -113,10 +114,11 @@ public final class EsclScannerSession: ScannerSession {
     }
 
     private func runJob(dpi: Int, colorMode: ColorMode, source: ScanSource, selection: CGRect?,
-                        duplex: Bool = false, paperSize: PaperSize = .auto) async throws -> EsclJobResult {
+                        duplex: Bool = false, paperSize: PaperSize = .auto,
+                        customPaper: CGSize = ScanSettings().customPaper) async throws -> EsclJobResult {
         let request: EsclScanRequest = EsclScanRequest.create(esclCapabilities, source: source, colorMode: colorMode,
                                                               dpi: dpi, selection: selection, duplex: duplex,
-                                                              paperSize: paperSize)
+                                                              paperSize: paperSize, customPaper: customPaper)
         let client: EsclClient = self.client
         let flag: CancelFlag = CancelFlag()
         suspension = flag

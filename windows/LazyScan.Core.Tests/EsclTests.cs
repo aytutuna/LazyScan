@@ -250,6 +250,26 @@ public class EsclTests
     }
 
     [Fact]
+    public void LongPaperAsksForTheFeedersFullReportedHeight()
+    {
+        var caps = EsclCapabilitiesParser.Parse(FeederOnly);
+        var request = EsclScanRequest.Create(caps, ScanSource.DocumentFeeder, ColorMode.Color, 300, null, paperSize: PaperSize.LongPaper);
+        Assert.Equal(new EsclRegion(0, 0, 2580, 35400), request.Region);
+    }
+
+    [Fact]
+    public void CustomSizeIsNotCappedButStaysWithinTheFeeder()
+    {
+        var caps = EsclCapabilitiesParser.Parse(FeederOnly);
+        var request = EsclScanRequest.Create(caps, ScanSource.DocumentFeeder, ColorMode.Color, 300, null,
+                                             paperSize: PaperSize.Custom, customPaper: new SizeD(5, 40));
+        Assert.Equal(new EsclRegion(0, 0, 1500, 12000), request.Region);
+        request = EsclScanRequest.Create(caps, ScanSource.DocumentFeeder, ColorMode.Color, 300, null,
+                                         paperSize: PaperSize.Custom, customPaper: new SizeD(12, 200));
+        Assert.Equal(new EsclRegion(0, 0, 2580, 35400), request.Region);
+    }
+
+    [Fact]
     public void ResolutionSnapsToTheInputsOwnList()
     {
         var caps = EsclCapabilitiesParser.Parse(PlatenAndDuplexAdf);

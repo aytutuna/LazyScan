@@ -286,9 +286,11 @@ turning over by hand is greyed out for photos and when each scan is saved at onc
 needs the page queue. With both sides, **Flip on** says how the sheets turn: on the **Long
 edge** like a book (backs come out upright) or on the **Short edge** like a calendar (backs come
 out upside down and are turned upright). **Paper size** (Automatic, then the usual size where
-the user lives, Letter or A4, then the others) sets the sheet the feeder is asked for, and on the
-glass the area scanned from its corner when nothing is selected on the preview; sizes larger
-than the glass or the feeder are greyed out with the reason. Each page in the strip is badged
+the user lives, Letter or A4, then the others, a custom width and height, and Long paper) sets the
+sheet the feeder is asked for, and on the glass the area scanned from its corner when nothing is
+selected on the preview; sizes larger than the glass or the feeder are greyed out with the reason.
+Long paper (feeder only) asks for the feeder's full reported height, where Automatic stops at 17
+inches; a custom size is not held to 17 inches either, only to the feeder's own limit. Each page in the strip is badged
 with its sheet and side ("2 · back").
 
 - **Both sides in one pass**: one scan; the pages come front, back, front, back… and are queued
@@ -1974,7 +1976,8 @@ PDF size, the after-save action, the text beside a PDF, PDF/A and the password s
 "protect": false}`; never a password); a file without them, or with a value this version does not
 know, reads as Standard, Do nothing, no text file and a plain PDF without a password.
 Two-sided scanning and the paper size are top-level keys (`"duplex": "off"`, `"backBinding":
-"longEdge"`, `"paperSize": "auto"`); a file without them, or with a value this version does not
+"longEdge"`, `"paperSize": "auto"`, and the custom size `"customPaperWidth": 8.5`,
+`"customPaperHeight": 11`, in inches); a file without them, or with a value this version does not
 know, scans one side on the whole area. Blank pages are in a `"document"` object
 (`"document": {"removeBlankPages": false, "blankSensitivity": "medium", "autoCrop": false,
 "autoStraighten": false, "autoRotate": false}`); a file without it keeps every page and leaves pages as scanned, and a

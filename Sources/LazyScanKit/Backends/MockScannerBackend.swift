@@ -240,7 +240,7 @@ private final class MockScannerSession: ScannerSession {
         let twoSided = settings.duplex == .both && backend.feederDuplex
         let turnedOver = backend.feederStackTurnedOver
         let blankBacks = backend.feederBlankBackSheets
-        let region = PaperSizes.feederRegionInches(settings.paperSize, max: MockBedRenderer.feederMaxInches)
+        let region = PaperSizes.feederRegionInches(settings.paperSize, custom: settings.customPaper, max: MockBedRenderer.feederMaxInches)
         let sheetInches = settings.paperSize == .auto ? MockBedRenderer.sheetInches : region.size
         progressHandler?(ScanProgress(fraction: 0.1, message: L10n.t("Warming up…")))
         try await sleepCheckingCancellation(seconds: 0.25)

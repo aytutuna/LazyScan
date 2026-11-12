@@ -319,7 +319,7 @@ public class WindowsScanTests
         var a5 = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.A5), null, feeder);
         var auto = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder), null, feeder);
         var letter = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.Letter), null, feeder);
-        Assert.Equal(PaperSizes.FeederRegionInches(PaperSize.A5, new SizeD(8.5, 14)), a5.RegionInches);
+        Assert.Equal(PaperSizes.FeederRegionInches(PaperSize.A5, new SizeD(8.5, 11), new SizeD(8.5, 14)), a5.RegionInches);
         Assert.False(a5.RegionFirst);
         Assert.Equal(new RectD(0, 0, 8.5, 14), auto.RegionInches);
         Assert.Equal(new RectD(0, 0, 8.5, 14), letter.RegionInches);
@@ -348,12 +348,34 @@ public class WindowsScanTests
     }
 
     [Fact]
+    public void Plan_LongPaperAsksForTheFeedersFullReportedHeight()
+    {
+        var plan = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.LongPaper), null,
+                                           Feeder with { MaxScanAreaInches = new SizeD(8.5, 196) });
+        Assert.Null(plan.PageSize);
+        Assert.False(plan.AutoDetectPageSize);
+        Assert.Equal(new RectD(0, 0, 8.5, 196), plan.RegionInches);
+    }
+
+    [Fact]
+    public void Plan_CustomSizeAsAnAreaClampedToTheFeeder()
+    {
+        var settings = Settings(ScanSource.DocumentFeeder, paper: PaperSize.Custom);
+        settings.CustomPaperWidth = 4;
+        settings.CustomPaperHeight = 40;
+        var plan = WindowsScanRequest.Plan(settings, null, Feeder with { MaxScanAreaInches = new SizeD(8.5, 196) });
+        Assert.Null(plan.PageSize);
+        Assert.Equal(new RectD(0, 0, 4, 40), plan.RegionInches);
+        Assert.Equal(new RectD(0, 0, 4, 14), WindowsScanRequest.Plan(settings, null, Feeder).RegionInches);
+    }
+
+    [Fact]
     public void Plan_FeederPaperSizeAsAnAreaWhenItDoesNotTakeItsName()
     {
         var plan = WindowsScanRequest.Plan(Settings(ScanSource.DocumentFeeder, paper: PaperSize.A5), null, Feeder);
         Assert.Null(plan.PageSize);
         Assert.False(plan.AutoDetectPageSize);
-        Assert.Equal(PaperSizes.FeederRegionInches(PaperSize.A5, new SizeD(8.5, 14)), plan.RegionInches);
+        Assert.Equal(PaperSizes.FeederRegionInches(PaperSize.A5, new SizeD(8.5, 11), new SizeD(8.5, 14)), plan.RegionInches);
         // The paper's area is set last, after measuring is turned off.
         Assert.False(plan.RegionFirst);
         // Without the feeder's size there is no area to ask for either.
@@ -426,10 +448,13 @@ public class WindowsScanTests
     }
 
     [Fact]
-    public void MediaSizeName_EverySizeButAutomatic()
+    public void MediaSizeName_EveryNamedSize()
     {
         Assert.Null(WindowsScanRequest.MediaSizeName(PaperSize.Auto));
-        var names = PaperSizes.All.Where(size => size != PaperSize.Auto).Select(WindowsScanRequest.MediaSizeName).ToList();
+        Assert.Null(WindowsScanRequest.MediaSizeName(PaperSize.Custom));
+        Assert.Null(WindowsScanRequest.MediaSizeName(PaperSize.LongPaper));
+        var names = PaperSizes.All.Where(size => size is not (PaperSize.Auto or PaperSize.Custom or PaperSize.LongPaper))
+            .Select(WindowsScanRequest.MediaSizeName).ToList();
         Assert.All(names, Assert.NotNull);
         Assert.Equal(names.Count, names.Distinct().Count());
         Assert.Equal("NorthAmericaLetter", WindowsScanRequest.MediaSizeName(PaperSize.Letter));

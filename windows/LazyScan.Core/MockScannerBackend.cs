@@ -228,7 +228,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
         bool twoSided = settings.Duplex == DuplexMode.Both && backend.FeederDuplex;
         bool turnedOver = backend.FeederStackTurnedOver;
         var blankBacks = backend.FeederBlankBackSheets.ToHashSet();
-        var region = PaperSizes.FeederRegionInches(settings.PaperSize, MockBedRenderer.FeederMaxInches);
+        var region = PaperSizes.FeederRegionInches(settings.PaperSize, settings.CustomPaper, MockBedRenderer.FeederMaxInches);
         var sheetInches = settings.PaperSize == PaperSize.Auto
             ? MockBedRenderer.SheetInches
             : new SizeD(region.Width, region.Height);

@@ -199,6 +199,10 @@ public class WiaErrorsTests
         Assert.Equal((2, 2125, 3370), WiaDocumentHandling.PageSize(PaperSize.IdCard));
         Assert.Equal((2, 11693, 16535), WiaDocumentHandling.PageSize(PaperSize.A3));
         Assert.Equal((2, 4000, 6000), WiaDocumentHandling.PageSize(PaperSize.Photo4x6));
+        Assert.Equal((2, 4000, 40000), WiaDocumentHandling.PageSize(PaperSize.Custom, new SizeD(4, 40)));
+        Assert.Null(WiaDocumentHandling.PageSize(PaperSize.Custom));
+        Assert.Null(WiaDocumentHandling.PageSize(PaperSize.LongPaper));
+        Assert.Equal((2, 8500, 14000), WiaDocumentHandling.PageSize(PaperSize.LongPaper, new SizeD(8.5, 14)));
     }
 
     [Fact]

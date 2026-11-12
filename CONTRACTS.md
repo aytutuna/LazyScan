@@ -484,7 +484,7 @@ public enum SettingsAdapter {
     /// A source the scanner has (its first one when the chosen one is missing, the flatbed when it
     /// lists none), `.both` turned into `.manual` for a feeder source on a scanner without
     /// `supportsDuplex`, `.auto` for a paper size larger than the glass or the feeder (whichever is
-    /// the source; kept when that size is unknown), and the nearest resolution it supports, with a
+    /// the source; kept when that size is unknown), `.auto` for Long paper on the glass, and the nearest resolution it supports, with a
     /// note for each change in that order; unchanged when `capabilities` is nil.
     public static func adapt(_ settings: ScanSettings, to capabilities: ScannerCapabilities?) -> AdaptedSettings
 }
@@ -495,8 +495,9 @@ Twin of `windows/LazyScan.Core/SettingsAdapter.cs` (same note texts); `SettingsA
 
 ```swift
 // ScanSettings gains `duplex: DuplexMode` (.off), `backBinding: DuplexBinding` (.longEdge) and
-// `paperSize: PaperSize` (.auto): top-level keys "duplex", "backBinding", "paperSize", read by the
-// backends. ScannedPage gains `side: PageSide?` and `sheetIndex: Int?` (nil for one-sided pages).
+// `paperSize: PaperSize` (.auto) and the custom size `customPaperWidth: Double` (8.5) and
+// `customPaperHeight: Double` (11), in inches: top-level keys "duplex", "backBinding", "paperSize",
+// "customPaperWidth", "customPaperHeight", read by the backends. ScannedPage gains `side: PageSide?` and `sheetIndex: Int?` (nil for one-sided pages).
 public enum DuplexMode: String, Codable, CaseIterable, Identifiable, Sendable { case off, both, manual }   // label, hint
 public enum DuplexBinding: String, Codable, CaseIterable, Identifiable, Sendable { case longEdge, shortEdge } // label
 public enum PageSide: String, Sendable { case front, back }
@@ -558,21 +559,22 @@ public enum DocumentSides {
 }
 
 public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
-    case auto, letter, legal, executive, a4, a5, a6, b5Jis, idCard, a3, tabloid, businessCard, photo4x6, photo5x7   // first case = default and fallback; new sizes go last
+    case auto, letter, legal, executive, a4, a5, a6, b5Jis, idCard, a3, tabloid, businessCard, photo4x6, photo5x7, custom, longPaper   // first case = default and fallback; new sizes go last. .custom is ScanSettings.customPaper (each side at least customMinInches); .longPaper is feeder only: the feeder's full width and the height it reports
     public var label: String       // "Automatic", "Letter", "B5 (JIS)", "ID card"
     public var detail: String      // "8.5 × 11 in", "210 × 297 mm"
 }
 public enum PaperSizes {
     public static let fitTolerance: Double                 // 0.05 in
+    public static let customMinInches: Double              // 1 in: the shortest side of a custom size
     public static let letterRegions: [String]              // the ICU Letter list (14 codes)
-    public static func inches(_ size: PaperSize) -> CGSize?    // portrait; nil for .auto
+    public static func inches(_ size: PaperSize) -> CGSize?    // portrait; nil for .auto, .custom and .longPaper
     public static func parse(_ text: String?) -> PaperSize    // case-insensitive raw value, else .auto
     public static func defaultForRegion(_ regionCode: String?) -> PaperSize   // .letter or .a4
     public static func match(_ inches: CGSize) -> PaperSize?   // a printer's paper, either way round, within fitTolerance
     public static func displayOrder(region: String?) -> [PaperSize]           // auto, the usual size, the rest
-    public static func fits(_ size: PaperSize, in area: CGSize?) -> Bool
-    public static func flatbedSelection(_ size: PaperSize, bed: CGSize) -> CGRect?   // normalized, top-left
-    public static func feederRegionInches(_ size: PaperSize, max: CGSize) -> CGRect
+    public static func fits(_ size: PaperSize, in area: CGSize?, custom: CGSize? = nil) -> Bool   // .longPaper always fits
+    public static func flatbedSelection(_ size: PaperSize, custom: CGSize, bed: CGSize) -> CGRect?   // normalized, top-left; nil for .auto and .longPaper
+    public static func feederRegionInches(_ size: PaperSize, custom: CGSize, max: CGSize) -> CGRect   // .auto: no taller than maxFeederHeightInches; .longPaper: all of max; .custom clamped to max
     public static func hint(_ size: PaperSize, source: ScanSource) -> String   // an item's help: "From the glass corner. A preview selection replaces it."
     public static func doesNotFitReason(source: ScanSource) -> String         // "Too big for this glass" / "… feeder"
     public static let selectedAreaNote: String                                // "Using the selected area"
@@ -2028,10 +2030,11 @@ public enum EsclCapabilitiesParser {               // XMLParser (XMLDocument is 
     public static func parse(_ xml: String) throws -> EsclCapabilities; public static func parse(data: Data) throws -> EsclCapabilities
 }
 public struct EsclRegion: Hashable { xOffset, yOffset, width, height: Int }   // 1/300 inch, top-left
-public struct EsclScanRequest: Equatable {         // maxFeederHeightInches 17
+public struct EsclScanRequest: Equatable {         // maxFeederHeightInches 17: Automatic only, not Long paper or a custom size
     public var inputSource, colorMode, documentFormat: String; public var resolution: Int; public var region: EsclRegion; public var duplex: Bool
     public static func create(_ caps: EsclCapabilities, source: ScanSource, colorMode: ColorMode, dpi: Int, selection: CGRect?,
-                              duplex: Bool = false, paperSize: PaperSize = .auto) -> EsclScanRequest   // C#'s Math.Round: halves to even
+                              duplex: Bool = false, paperSize: PaperSize = .auto,
+                              customPaper: CGSize = ScanSettings().customPaper) -> EsclScanRequest   // C#'s Math.Round: halves to even
     public func toXml() -> String                  // the same bytes as C# ToXml ("\n" line breaks, Duplex after the resolutions)
 }
 public enum EsclJob {

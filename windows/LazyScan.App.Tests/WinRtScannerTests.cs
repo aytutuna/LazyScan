@@ -85,7 +85,9 @@ public class WinRtScannerTests
         Assert.Equal(PrintMediaSize.IsoA6, WinRtScannerSession.MediaSize(PaperSize.A6));
         Assert.Equal(PrintMediaSize.JisB5, WinRtScannerSession.MediaSize(PaperSize.B5Jis));
         Assert.Equal(PrintMediaSize.CreditCard, WinRtScannerSession.MediaSize(PaperSize.IdCard));
-        Assert.All(PaperSizes.All.Where(size => size != PaperSize.Auto),
+        Assert.Null(WinRtScannerSession.MediaSize(PaperSize.Custom));
+        Assert.Null(WinRtScannerSession.MediaSize(PaperSize.LongPaper));
+        Assert.All(PaperSizes.All.Where(size => size is not (PaperSize.Auto or PaperSize.Custom or PaperSize.LongPaper)),
                    size => Assert.NotNull(WinRtScannerSession.MediaSize(size)));
     }
 

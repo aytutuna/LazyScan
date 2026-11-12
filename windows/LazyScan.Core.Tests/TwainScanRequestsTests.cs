@@ -125,12 +125,29 @@ public class TwainScanRequestsTests
     }
 
     [Fact]
+    public void ForScan_Feeder_LongPaperIsNotCappedAndCustomIsClampedToTheSheet()
+    {
+        var tall = new TwainDeviceCaps { HasFlatbed = false, HasFeeder = true, FeederSizeInches = new SizeD(8.5, 100) };
+        var settings = Settings(ScanSource.DocumentFeeder);
+        settings.PaperSize = PaperSize.LongPaper;
+        Assert.Equal(new RectD(0, 0, 8.5, 100), TwainScanRequests.ForScan(settings, null, tall).FrameInches);
+        settings.PaperSize = PaperSize.Custom;
+        settings.CustomPaperWidth = 4;
+        settings.CustomPaperHeight = 40;
+        var custom = TwainScanRequests.ForScan(settings, null, tall);
+        Assert.Equal(new RectD(0, 0, 4, 40), custom.FrameInches);
+        Assert.Equal(TwainSizes.None, custom.SupportedSize);
+        settings.CustomPaperHeight = 140;
+        Assert.Equal(new RectD(0, 0, 4, 100), TwainScanRequests.ForScan(settings, null, tall).FrameInches);
+    }
+
+    [Fact]
     public void TwainSizes_FromPaperSize()
     {
         Assert.Equal(
             [TwainSizes.None, TwainSizes.UsLetter, TwainSizes.UsLegal, TwainSizes.UsExecutive, TwainSizes.A4,
              TwainSizes.A5, TwainSizes.A6, TwainSizes.JisB5, TwainSizes.None, TwainSizes.A3, TwainSizes.UsLedger,
-             TwainSizes.BusinessCard, TwainSizes.None, TwainSizes.None],
+             TwainSizes.BusinessCard, TwainSizes.None, TwainSizes.None, TwainSizes.None, TwainSizes.None],
             PaperSizes.All.Select(TwainSizes.FromPaperSize));
         foreach (var size in PaperSizes.All.Where(s => TwainSizes.FromPaperSize(s) != TwainSizes.None))
         {

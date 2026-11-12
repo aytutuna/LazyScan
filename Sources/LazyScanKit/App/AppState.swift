@@ -1284,7 +1284,7 @@ public final class AppState: ObservableObject {
             // A copy with Automatic paper scans the part the printer's paper covers.
             let wholeGlass = TaskCatalog.scansWholeGlass(s)
             var paperArea: CGRect? = wholeGlass ? nil : self.capabilities.flatMap {
-                PaperSizes.flatbedSelection(s.paperSize, bed: $0.flatbedSizeInches)
+                PaperSizes.flatbedSelection(s.paperSize, custom: s.customPaper, bed: $0.flatbedSizeInches)
             }
             if let copySetup, let area = self.copyScanArea(s, setup: copySetup) { paperArea = area }
             let selection: CGRect? = s.source == .flatbed ? (self.selectionRect ?? paperArea) : nil

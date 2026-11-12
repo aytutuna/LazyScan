@@ -23,8 +23,9 @@ public struct EsclRegion: Equatable, Hashable, Sendable {
 /// The settings of one eSCL scan job, chosen from what the device offers, and the ScanSettings
 /// document that requests them.
 public struct EsclScanRequest: Equatable, Sendable {
-    /// Tallest default feeder region, in inches (tabloid / ledger). Feeders that also take long paper
+    /// Tallest feeder region Automatic asks for, in inches (tabloid / ledger). Feeders that also take long paper
     /// report heights of several feet; asking for that much could produce one enormous image per sheet.
+    /// Long paper and a custom size are not held to it.
     public static let maxFeederHeightInches: Double = 17
 
     /// "Platen" or "Feeder".
@@ -50,8 +51,8 @@ public struct EsclScanRequest: Equatable, Sendable {
     /// Chooses the job settings for a scan.
     /// - Flatbed: the whole platen, or `selection` (normalized 0...1, top-left origin) of it.
     /// - Feeder: `paperSize` from the top-left corner, clamped to the feeder's largest sheet; for
-    ///   Automatic the feeder's own maximum sheet size (height capped at `maxFeederHeightInches`). The
-    ///   selection is ignored.
+    ///   Automatic the feeder's own maximum sheet size (height capped at `maxFeederHeightInches`); for
+    ///   Long paper its full reported size. The selection is ignored.
     /// - Two-sided (`duplex`): only for feeder jobs on a device that lists two-sided feeding; the job
     ///   then uses the feeder's two-sided capabilities when it lists them separately.
     /// - Black & white is requested as 8-bit grayscale: most devices reject 1-bit JPEG, and the app's
@@ -60,7 +61,8 @@ public struct EsclScanRequest: Equatable, Sendable {
     /// - The format is JPEG, else PNG, else TIFF, whichever the input offers first.
     public static func create(_ caps: EsclCapabilities, source: ScanSource, colorMode: ColorMode, dpi: Int,
                               selection: CGRect?, duplex: Bool = false,
-                              paperSize: PaperSize = .auto) -> EsclScanRequest {
+                              paperSize: PaperSize = .auto,
+                              customPaper: CGSize = ScanSettings().customPaper) -> EsclScanRequest {
         let feeder: Bool = source == .documentFeeder
         let twoSided: Bool = feeder && duplex && caps.supportsDuplex
         var input: EsclInputCaps? = caps.inputCaps(source)
@@ -78,9 +80,8 @@ public struct EsclScanRequest: Equatable, Sendable {
             } else if let size = caps.platen?.maxSizeInches {
                 maxSheet = size
             }
-            let paper: CGRect = PaperSizes.feederRegionInches(paperSize, max: maxSheet)
-            let height: Double = Swift.min(Double(paper.height), maxFeederHeightInches)
-            area = CGSize(width: Double(paper.width), height: height)
+            let paper: CGRect = PaperSizes.feederRegionInches(paperSize, custom: customPaper, max: maxSheet)
+            area = CGSize(width: Double(paper.width), height: Double(paper.height))
         } else {
             area = caps.platen?.maxSizeInches ?? EsclCapabilities.defaultAreaInches
         }

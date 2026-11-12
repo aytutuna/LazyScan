@@ -148,7 +148,7 @@ internal static class CompatFixtures
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
         "        \"blackWhiteThreshold\": 0.375\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
         + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false\n      },\n"
-        + "      \"duplex\": \"manual\",\n      \"backBinding\": \"shortEdge\",\n      \"paperSize\": \"a4\",\n"
+        + "      \"duplex\": \"manual\",\n      \"backBinding\": \"shortEdge\",\n      \"paperSize\": \"a4\",\n      \"customPaperWidth\": 8.5,\n      \"customPaperHeight\": 11,\n"
         + "      \"document\": {\n        \"removeBlankPages\": true,\n        \"blankSensitivity\": \"high\",\n"
         + "        \"autoCrop\": true,\n        \"autoStraighten\": true,\n        \"splitMode\": \"sheetCount\",\n"
         + "        \"splitSheetCount\": 3,\n        \"autoRotate\": true,\n        \"splitFacingPages\": true,\n"
@@ -363,7 +363,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions",
             ],
             settings.RootElement.EnumerateObject().Select(p => p.Name));
@@ -456,7 +456,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
@@ -483,7 +483,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
@@ -764,11 +764,27 @@ public class ModelsCompatTests
         Assert.Equal(["off", "both", "manual"], Enum.GetValues<DuplexMode>().Select(Name));
         Assert.Equal(["longEdge", "shortEdge"], Enum.GetValues<DuplexBinding>().Select(Name));
         Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
-                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"],
+                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7", "custom", "longPaper"],
                      Enum.GetValues<PaperSize>().Select(Name));
         var settings = new ScanSettings();
         Assert.Equal((DuplexMode.Off, DuplexBinding.LongEdge, PaperSize.Auto),
                      (settings.Duplex, settings.BackBinding, settings.PaperSize));
+        Assert.Equal((8.5, 11), (settings.CustomPaperWidth, settings.CustomPaperHeight));
+    }
+
+    [Fact]
+    public void CustomPaperSize_DefaultsWhenMissingOrCorrupt_RoundTripsOtherwise()
+    {
+        var older = Decode<ScanSettings>("""{"resolution": 150, "paperSize": "a4"}""");
+        Assert.Equal((8.5, 11), (older.CustomPaperWidth, older.CustomPaperHeight));
+        var corrupt = Decode<ScanSettings>("""{"customPaperWidth": "wide", "customPaperHeight": null, "resolution": 150}""");
+        Assert.Equal((8.5, 11, 150), (corrupt.CustomPaperWidth, corrupt.CustomPaperHeight, corrupt.Resolution));
+        var settings = new ScanSettings { PaperSize = PaperSize.Custom, CustomPaperWidth = 4.5, CustomPaperHeight = 40 };
+        var back = Decode<ScanSettings>(CompatFixtures.Encode(settings));
+        Assert.Equal((PaperSize.Custom, 4.5, 40), (back.PaperSize, back.CustomPaperWidth, back.CustomPaperHeight));
+        Assert.Equal(new SizeD(4.5, 40), back.CustomPaper);
+        Assert.Equal(new SizeD(PaperSizes.CustomMinInches, PaperSizes.CustomMinInches),
+                     new ScanSettings { CustomPaperWidth = 0, CustomPaperHeight = -3 }.CustomPaper);
     }
 
     [Fact]

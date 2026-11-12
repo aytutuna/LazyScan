@@ -540,7 +540,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             object item = PrepareItem(device, settings.Resolution, settings.Source, settings.ColorMode,
                                        feeder ? null : selection,
                                        askedBoth && _supportsDuplex != false,
-                                       feeder ? settings.PaperSize : PaperSize.Auto);
+                                       feeder ? settings.PaperSize : PaperSize.Auto, settings.CustomPaper);
             // Whether the driver took two-sided feeding, so the app knows what the pages are.
             if (askedBoth) _lastScanDuplex = _preparedTwoSided ? 1 : 0;
             try
@@ -614,11 +614,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         if (settings.Source == ScanSource.DocumentFeeder)
         {
             if (_feederInches is not { } feederMax) return SizeD.Zero;
-            var region = PaperSizes.FeederRegionInches(settings.PaperSize, feederMax);
-            double height = settings.PaperSize == PaperSize.Auto
-                ? Math.Min(region.Height, EsclScanRequest.MaxFeederHeightInches)
-                : region.Height;
-            return new SizeD(region.Width, height);
+            var region = PaperSizes.FeederRegionInches(settings.PaperSize, settings.CustomPaper, feederMax);
+            return new SizeD(region.Width, region.Height);
         }
         if (selection is { } sel)
         {
@@ -636,11 +633,11 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// (a busy or offline device, ...) become <see cref="ScanException"/>s via <see cref="WiaErrors"/>.
     /// </summary>
     private dynamic PrepareItem(dynamic device, int dpi, ScanSource source, ColorMode colorMode, RectD? selection,
-                                bool duplex, PaperSize paperSize)
+                                bool duplex, PaperSize paperSize, SizeD customPaper = default)
     {
         try
         {
-            return PrepareItemCore(device, dpi, source, colorMode, selection, duplex, paperSize);
+            return PrepareItemCore(device, dpi, source, colorMode, selection, duplex, paperSize, customPaper);
         }
         catch (COMException e)
         {
@@ -649,7 +646,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     }
 
     private dynamic PrepareItemCore(dynamic device, int dpi, ScanSource source, ColorMode colorMode, RectD? selection,
-                                    bool duplex, PaperSize paperSize)
+                                    bool duplex, PaperSize paperSize, SizeD customPaper)
     {
         // The first value the driver accepts: two-sided drivers that refuse FRONT_FIRST get
         // FEEDER | DUPLEX, and drivers that refuse two-sided feeding the feeder alone.
@@ -670,7 +667,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         // Two-sided: every sheet in the feeder, both of its sides; one-sided feeding keeps the
         // driver's own page count, as before.
         if (_preparedTwoSided) WiaScannerBackend.TrySetProperty(device.Properties, WiaScannerBackend.Pages, WiaDocumentHandling.AllPages);
-        var page = source == ScanSource.DocumentFeeder ? WiaDocumentHandling.PageSize(paperSize) : null;
+        var page = source == ScanSource.DocumentFeeder ? WiaDocumentHandling.PageSize(paperSize, paperSize == PaperSize.LongPaper ? _feederInches : customPaper) : null;
         if (page is not null)
         {
             WiaScannerBackend.TrySetProperty(device.Properties, WiaScannerBackend.PageSize, page.Value.PageSize);
@@ -706,9 +703,10 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
 
         // The paper's area on the feeder, in pixels at the chosen resolution, for drivers that
         // take the extents rather than the page size.
-        if (page is not null && _feederInches is { } feederMax)
+        if ((page is not null || (source == ScanSource.DocumentFeeder && paperSize == PaperSize.LongPaper))
+            && _feederInches is { } feederMax)
         {
-            var region = PaperSizes.FeederRegionInches(paperSize, feederMax);
+            var region = PaperSizes.FeederRegionInches(paperSize, customPaper, feederMax);
             WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.XPos, 0);
             WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.YPos, 0);
             WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.XExtent, (int)Math.Round(region.Width * dpi));

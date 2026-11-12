@@ -182,6 +182,24 @@ public class SettingsAdapterTests
     }
 
     [Fact]
+    public void LongPaper_NeedsTheFeeder_CustomSizeMustFit()
+    {
+        var glass = new ScannerCapabilities { FlatbedSizeInches = new SizeD(8.5, 11.7) };
+        var adapted = SettingsAdapter.Adapt(new ScanSettings { PaperSize = PaperSize.LongPaper }, glass);
+        Assert.Equal(PaperSize.Auto, adapted.Settings.PaperSize);
+        Assert.Equal("Long paper is scanned from the feeder, so the paper size is Automatic.", Assert.Single(adapted.Notes).Message);
+        var feeder = FeederScanner(duplex: true, new SizeD(8.5, 118));
+        Assert.Equal(PaperSize.LongPaper,
+                     SettingsAdapter.Adapt(new ScanSettings { Source = ScanSource.DocumentFeeder, PaperSize = PaperSize.LongPaper }, feeder).Settings.PaperSize);
+        var custom = new ScanSettings { Source = ScanSource.DocumentFeeder, PaperSize = PaperSize.Custom, CustomPaperWidth = 4, CustomPaperHeight = 40 };
+        Assert.Equal(PaperSize.Custom, SettingsAdapter.Adapt(custom, feeder).Settings.PaperSize);
+        custom.CustomPaperHeight = 140;
+        var tooTall = SettingsAdapter.Adapt(custom, feeder);
+        Assert.Equal(PaperSize.Auto, tooTall.Settings.PaperSize);
+        Assert.Equal("4 × 140 in paper does not fit this scanner's feeder, so the paper size is Automatic.", Assert.Single(tooTall.Notes).Message);
+    }
+
+    [Fact]
     public void TwoSidedTask_OnAOneSidedFeeder_StillFits()
     {
         var adapted = SettingsAdapter.Adapt(TaskCatalog.Apply(ScanTask.TwoSided, new ScanSettings()), FeederScanner(duplex: false));

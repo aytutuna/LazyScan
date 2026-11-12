@@ -69,9 +69,12 @@ extension AppState {
     }
 
     /// The paper asked of the printer for copies: the paper size chosen in the inspector; nil (the
-    /// printer's own) for Automatic.
+    /// printer's own) for Automatic, a custom size and Long paper.
     static func requestedPaper(_ s: ScanSettings) -> PaperSize? {
-        s.paperSize == .auto || s.paperSize == .idCard ? nil : s.paperSize
+        switch s.paperSize {
+        case .auto, .idCard, .custom, .longPaper: return nil
+        default: return s.paperSize
+        }
     }
 
     /// The printer for copies (and for the ID card): nil for the default printer. Saved with the settings.

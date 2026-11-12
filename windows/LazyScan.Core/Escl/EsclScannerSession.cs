@@ -49,7 +49,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         // delivers front, back, front, back…, as the app expects.
         var result = await RunJob(settings.Resolution, settings.ColorMode, settings.Source,
                                   settings.Source == ScanSource.Flatbed ? selection : null,
-                                  settings.Duplex == DuplexMode.Both, settings.PaperSize).ConfigureAwait(true);
+                                  settings.Duplex == DuplexMode.Both, settings.PaperSize, settings.CustomPaper).ConfigureAwait(true);
         if (result.Pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
         LastScanStop = result.Stop;
         // A device that does not list two-sided feeding scans one side (EsclScanRequest.Create).
@@ -103,9 +103,9 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
     }
 
     private async Task<EsclJobResult> RunJob(int dpi, ColorMode colorMode, ScanSource source, RectD? selection,
-                                             bool duplex = false, PaperSize paperSize = PaperSize.Auto)
+                                             bool duplex = false, PaperSize paperSize = PaperSize.Auto, SizeD? customPaper = null)
     {
-        var request = EsclScanRequest.Create(EsclCapabilities, source, colorMode, dpi, selection, duplex, paperSize);
+        var request = EsclScanRequest.Create(EsclCapabilities, source, colorMode, dpi, selection, duplex, paperSize, customPaper);
         using var cancellation = new CancellationTokenSource();
         _jobCancellation = cancellation;
         if (_cancelRequested) cancellation.Cancel();

@@ -62,11 +62,19 @@ public enum SettingsAdapter {
 
         let feeder = s.source == .documentFeeder
         let area: CGSize? = feeder ? capabilities.feederSizeInches : capabilities.flatbedSizeInches
-        if !PaperSizes.fits(s.paperSize, in: area) {
+        if s.paperSize == .longPaper && !feeder {
+            notes.append(SettingsNote(change: .paperSize,
+                                      message: L10n.t("Long paper is scanned from the feeder, so the paper size is Automatic."),
+                                      warning: .paperAutomatic))
+            s.paperSize = .auto
+        } else if !PaperSizes.fits(s.paperSize, in: area, custom: s.customPaper) {
+            let name: String = s.paperSize == .custom
+                ? L10n.t("{0} × {1} in", s.customPaper.width, s.customPaper.height)
+                : s.paperSize.label
             notes.append(SettingsNote(change: .paperSize,
                                       message: feeder
-                                          ? L10n.t("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", s.paperSize.label)
-                                          : L10n.t("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", s.paperSize.label),
+                                          ? L10n.t("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", name)
+                                          : L10n.t("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", name),
                                       warning: .paperAutomatic))
             s.paperSize = .auto
         }

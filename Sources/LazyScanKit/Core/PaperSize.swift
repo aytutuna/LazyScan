@@ -25,6 +25,10 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
     case businessCard
     case photo4x6
     case photo5x7
+    /// A size set in the scan settings (`ScanSettings.customPaperWidth` and `customPaperHeight`).
+    case custom
+    /// A sheet of any length: the feeder's full width and the longest height it reports. Feeder only.
+    case longPaper
 
     public var id: String { rawValue }
 
@@ -45,6 +49,8 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .businessCard: return L10n.t("Business card")
         case .photo4x6: return L10n.t("4x6 photo")
         case .photo5x7: return L10n.t("5x7 photo")
+        case .custom: return L10n.t("Custom size")
+        case .longPaper: return L10n.t("Long paper")
         }
     }
 
@@ -58,6 +64,8 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .businessCard: return "Business card"
         case .photo4x6: return "4x6 photo"
         case .photo5x7: return "5x7 photo"
+        case .custom: return "Custom size"
+        case .longPaper: return "Long paper"
         default: return label
         }
     }
@@ -79,6 +87,8 @@ public enum PaperSize: String, Codable, CaseIterable, Identifiable, Sendable {
         case .businessCard: return L10n.t("{0} × {1} mm", 90, 55)
         case .photo4x6: return L10n.t("{0} × {1} in", 4, 6)
         case .photo5x7: return L10n.t("{0} × {1} in", 5, 7)
+        case .custom: return L10n.t("Set the width and height")
+        case .longPaper: return L10n.t("As long as the feeder takes")
         }
     }
 }
@@ -93,10 +103,13 @@ public enum PaperSizes {
     /// uses A4.
     public static let letterRegions = ["US", "CA", "MX", "PH", "CL", "CO", "CR", "DO", "GT", "NI", "PA", "PR", "SV", "VE"]
 
-    /// Portrait width × height in inches; nil for `.auto`.
+    /// The shortest side a custom size can have, in inches.
+    public static let customMinInches = 1.0
+
+    /// Portrait width × height in inches; nil for `.auto`, `.custom` (it is in the settings) and `.longPaper`.
     public static func inches(_ size: PaperSize) -> CGSize? {
         switch size {
-        case .auto: return nil
+        case .auto, .custom, .longPaper: return nil
         case .letter: return CGSize(width: 8.5, height: 11)
         case .legal: return CGSize(width: 8.5, height: 14)
         case .executive: return CGSize(width: 7.25, height: 10.5)
@@ -149,27 +162,34 @@ public enum PaperSizes {
         return [.auto, usual] + PaperSize.allCases.filter { $0 != .auto && $0 != usual }
     }
 
-    /// The size fits `area` (portrait, within `fitTolerance`). Automatic always fits, and so does
-    /// every size when the area is unknown.
-    public static func fits(_ size: PaperSize, in area: CGSize?) -> Bool {
-        guard let paper = inches(size), let area, area.width > 0, area.height > 0 else { return true }
+    /// The size fits `area` (portrait, within `fitTolerance`). Automatic and Long paper always fit, and
+    /// so does every size when the area is unknown. `custom` is the size `.custom` stands for.
+    public static func fits(_ size: PaperSize, in area: CGSize?, custom: CGSize? = nil) -> Bool {
+        guard let paper = (size == .custom ? custom : inches(size)), let area, area.width > 0, area.height > 0 else { return true }
         return Double(paper.width) <= Double(area.width) + fitTolerance
             && Double(paper.height) <= Double(area.height) + fitTolerance
     }
 
     /// The part of the glass a paper size covers, as a selection (normalized 0...1, origin
     /// top-left, where sheets are laid against the corner), clamped to the glass; nil for
-    /// Automatic (the whole glass) and for an unknown glass size.
-    public static func flatbedSelection(_ size: PaperSize, bed: CGSize) -> CGRect? {
-        guard let paper = inches(size), bed.width > 0, bed.height > 0 else { return nil }
+    /// Automatic and Long paper (the whole glass) and for an unknown glass size. `custom` is the
+    /// size `.custom` stands for.
+    public static func flatbedSelection(_ size: PaperSize, custom: CGSize, bed: CGSize) -> CGRect? {
+        guard let paper = (size == .custom ? custom : inches(size)), bed.width > 0, bed.height > 0 else { return nil }
         return CGRect(x: 0, y: 0, width: min(1, paper.width / bed.width), height: min(1, paper.height / bed.height))
     }
 
-    /// The area a feeder scan asks for, in inches from the top-left corner: the paper size,
-    /// clamped to the feeder's largest sheet `max`; the largest sheet itself for Automatic.
-    public static func feederRegionInches(_ size: PaperSize, max maxSheet: CGSize) -> CGRect {
-        guard let paper = inches(size) else {
+    /// The area a feeder scan asks for, in inches from the top-left corner: the paper size (`custom`
+    /// for `.custom`), clamped to the feeder's largest sheet `max`; the largest sheet itself for
+    /// Automatic, no taller than `EsclScanRequest.maxFeederHeightInches`, and for Long paper, at the
+    /// height the feeder reports.
+    public static func feederRegionInches(_ size: PaperSize, custom: CGSize, max maxSheet: CGSize) -> CGRect {
+        if size == .longPaper {
             return CGRect(x: 0, y: 0, width: maxSheet.width, height: maxSheet.height)
+        }
+        guard let paper = (size == .custom ? custom : inches(size)) else {
+            return CGRect(x: 0, y: 0, width: maxSheet.width,
+                          height: min(maxSheet.height, CGFloat(EsclScanRequest.maxFeederHeightInches)))
         }
         return CGRect(x: 0, y: 0, width: min(paper.width, maxSheet.width), height: min(paper.height, maxSheet.height))
     }
@@ -177,6 +197,9 @@ public enum PaperSizes {
     /// What a size scans from `source`, in a line: its item's tooltip in the paper size picker.
     public static func hint(_ size: PaperSize, source: ScanSource) -> String {
         let feeder = source == .documentFeeder
+        if size == .longPaper {
+            return L10n.t("Takes the longest sheet the feeder reports.")
+        }
         if size == .auto {
             return feeder ? L10n.t("The sheet size the feeder takes.") : L10n.t("The whole glass, or the area selected on the preview.")
         }

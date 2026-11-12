@@ -145,6 +145,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
         of: "\"pdfSearchable\" : false",
         with: "\"output\" : {\n        \"afterSave\" : \"share\",\n        \"alsoSaveText\" : true,\n        \"archival\" : true,\n"
             + "        \"pdfSize\" : \"compact\",\n        \"protect\" : true,\n        \"wordPageImages\" : false\n      },\n"
+            + "      \"customPaperHeight\" : 11,\n      \"customPaperWidth\" : 8.5,\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
     .replacingOccurrences(of: "\"ocrLanguages\" : [", with: "\"ocrLanguage\" : \"de-DE\",\n      \"ocrLanguages\" : [")
     .replacingOccurrences(of: "\"colorMode\" : \"grayscale\"",
@@ -304,7 +305,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions",
         ])
         let adjustments = try XCTUnwrap(settings["adjustments"] as? [String: Any])
@@ -389,7 +390,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions",
         ])
         XCTAssertEqual(written["taskId"] as? String, "document")
@@ -410,7 +411,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions",
         ])
         XCTAssertEqual(written["destinationBookmark"] as? String, "AAEC+vv/")
@@ -690,11 +691,33 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(DuplexBinding.allCases.map(\.rawValue), ["longEdge", "shortEdge"])
         XCTAssertEqual(PaperSize.allCases.map(\.rawValue),
                        ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
-                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"])
+                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7", "custom", "longPaper"])
         let settings = ScanSettings()
         XCTAssertEqual(settings.duplex, .off)
         XCTAssertEqual(settings.backBinding, .longEdge)
         XCTAssertEqual(settings.paperSize, .auto)
+        XCTAssertEqual(settings.customPaperWidth, 8.5)
+        XCTAssertEqual(settings.customPaperHeight, 11)
+    }
+
+    func test_customPaperSize_defaultsWhenMissingOrCorrupt_roundTripsOtherwise() throws {
+        let older = try decode(ScanSettings.self, #"{"resolution": 150, "paperSize": "a4"}"#)
+        XCTAssertEqual(older.customPaperWidth, 8.5)
+        XCTAssertEqual(older.customPaperHeight, 11)
+        let corrupt = try decode(ScanSettings.self, #"{"customPaperWidth": "wide", "customPaperHeight": null, "resolution": 150}"#)
+        XCTAssertEqual(corrupt.customPaperWidth, 8.5)
+        XCTAssertEqual(corrupt.customPaperHeight, 11)
+        XCTAssertEqual(corrupt.resolution, 150)
+        var settings = ScanSettings()
+        settings.paperSize = .custom
+        settings.customPaperWidth = 4.5
+        settings.customPaperHeight = 40
+        let back = try JSONDecoder().decode(ScanSettings.self, from: encode(settings))
+        XCTAssertEqual(back, settings)
+        XCTAssertEqual(back.customPaper, CGSize(width: 4.5, height: 40))
+        settings.customPaperWidth = 0
+        settings.customPaperHeight = -3
+        XCTAssertEqual(settings.customPaper, CGSize(width: PaperSizes.customMinInches, height: PaperSizes.customMinInches))
     }
 
     func test_settingsWithoutSides_scanOneSideOnTheWholeArea() throws {

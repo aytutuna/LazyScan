@@ -154,7 +154,7 @@ package enum PrinterPapers {
         case .tabloid: return ["Tabloid", "11x17", "na-ledger", "na_ledger_11x17in"]
         case .photo4x6: return ["4x6", "na-index-4x6", "na_index-4x6_4x6in"]
         case .photo5x7: return ["5x7", "na-5x7", "na_5x7_5x7in"]
-        case .auto, .idCard, .businessCard: return []
+        case .auto, .idCard, .businessCard, .custom, .longPaper: return []
         }
     }
 

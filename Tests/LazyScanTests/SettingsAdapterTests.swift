@@ -184,6 +184,27 @@ final class SettingsAdapterTests: XCTestCase {
         XCTAssertEqual(SettingsAdapter.adapt(settings, to: feederScanner(duplex: true)).settings.paperSize, .legal)
     }
 
+    func test_longPaper_needsTheFeeder_customSizeMustFit() {
+        let glass = ScannerCapabilities(flatbedSizeInches: CGSize(width: 8.5, height: 11.7))
+        var settings = ScanSettings()
+        settings.paperSize = .longPaper
+        let adapted = SettingsAdapter.adapt(settings, to: glass)
+        XCTAssertEqual(adapted.settings.paperSize, .auto)
+        XCTAssertEqual(adapted.notes.map(\.message), ["Long paper is scanned from the feeder, so the paper size is Automatic."])
+        settings.source = .documentFeeder
+        let feeder = feederScanner(duplex: true, feederSize: CGSize(width: 8.5, height: 118))
+        XCTAssertEqual(SettingsAdapter.adapt(settings, to: feeder).settings.paperSize, .longPaper)
+        settings.paperSize = .custom
+        settings.customPaperWidth = 4
+        settings.customPaperHeight = 40
+        XCTAssertEqual(SettingsAdapter.adapt(settings, to: feeder).settings.paperSize, .custom)
+        settings.customPaperHeight = 140
+        let tooTall = SettingsAdapter.adapt(settings, to: feeder)
+        XCTAssertEqual(tooTall.settings.paperSize, .auto)
+        XCTAssertEqual(tooTall.notes.map(\.message),
+                       ["4 \u{00D7} 140 in paper does not fit this scanner's feeder, so the paper size is Automatic."])
+    }
+
     func test_twoSidedTask_onAOneSidedFeeder_stillFits() {
         let adapted = SettingsAdapter.adapt(TaskCatalog.apply(.twoSided, to: ScanSettings()), to: feederScanner(duplex: false))
         XCTAssertEqual(adapted.settings.duplex, .manual)

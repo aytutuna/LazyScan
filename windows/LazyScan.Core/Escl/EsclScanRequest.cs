@@ -15,9 +15,9 @@ public readonly record struct EsclRegion(int XOffset, int YOffset, int Width, in
 public sealed class EsclScanRequest
 {
     /// <summary>
-    /// Tallest default feeder region, in inches (tabloid / ledger). Feeders that also take long
-    /// paper report heights of several feet; asking for that much could produce one enormous
-    /// image per sheet.
+    /// Tallest feeder region Automatic asks for, in inches (tabloid / ledger). Feeders that also
+    /// take long paper report heights of several feet; asking for that much could produce one
+    /// enormous image per sheet. Long paper and a custom size are not held to it.
     /// </summary>
     public const double MaxFeederHeightInches = 17;
 
@@ -38,7 +38,8 @@ public sealed class EsclScanRequest
     /// top-left origin) of it.</item>
     /// <item>Feeder: <paramref name="paperSize"/> from the top-left corner, clamped to the
     /// feeder's largest sheet; for Automatic the feeder's own maximum sheet size (height capped
-    /// at <see cref="MaxFeederHeightInches"/>). The selection is ignored.</item>
+    /// at <see cref="MaxFeederHeightInches"/>); for Long paper its full reported size. The
+    /// selection is ignored.</item>
     /// <item>Two-sided (<paramref name="duplex"/>): only for feeder jobs on a device that lists
     /// two-sided feeding; the job then uses the feeder's two-sided capabilities when it lists
     /// them separately.</item>
@@ -51,7 +52,7 @@ public sealed class EsclScanRequest
     /// </summary>
     public static EsclScanRequest Create(EsclCapabilities caps, ScanSource source, ColorMode colorMode,
                                          int dpi, RectD? selection, bool duplex = false,
-                                         PaperSize paperSize = PaperSize.Auto)
+                                         PaperSize paperSize = PaperSize.Auto, SizeD? customPaper = null)
     {
         bool feeder = source == ScanSource.DocumentFeeder;
         bool twoSided = feeder && duplex && caps.SupportsDuplex;
@@ -62,8 +63,8 @@ public sealed class EsclScanRequest
         {
             var max = input?.MaxSizeInches ?? caps.Feeder?.MaxSizeInches ?? caps.Platen?.MaxSizeInches
                       ?? EsclCapabilities.DefaultAreaInches;
-            var paper = PaperSizes.FeederRegionInches(paperSize, max);
-            area = new SizeD(paper.Width, Math.Min(paper.Height, MaxFeederHeightInches));
+            var paper = PaperSizes.FeederRegionInches(paperSize, customPaper ?? new ScanSettings().CustomPaper, max);
+            area = new SizeD(paper.Width, paper.Height);
         }
         else
         {

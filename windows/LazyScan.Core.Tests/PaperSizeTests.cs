@@ -36,7 +36,7 @@ public class PaperSizeTests
     public void RawValues_AreTheStoredNames()
     {
         Assert.Equal(["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
-                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"],
+                      "a3", "tabloid", "businessCard", "photo4x6", "photo5x7", "custom", "longPaper"],
                      PaperSizes.All.Select(size => size.RawValue()));
         Assert.All(PaperSizes.All, size =>
             Assert.Equal($"\"{size.RawValue()}\"", JsonSerializer.Serialize(size, StoreFiles.JsonOptions)));
@@ -58,6 +58,8 @@ public class PaperSizeTests
         AssertSize(2.1654, 3.5433, PaperSizes.Inches(PaperSize.BusinessCard));
         AssertSize(4, 6, PaperSizes.Inches(PaperSize.Photo4x6));
         AssertSize(5, 7, PaperSizes.Inches(PaperSize.Photo5x7));
+        Assert.Null(PaperSizes.Inches(PaperSize.Custom));
+        Assert.Null(PaperSizes.Inches(PaperSize.LongPaper));
         // 210 × 297 mm.
         Assert.Equal(210, PaperSizes.Inches(PaperSize.A4)!.Value.Width * 25.4, 0);
         Assert.Equal(297, PaperSizes.Inches(PaperSize.A4)!.Value.Height * 25.4, 0);
@@ -117,12 +119,12 @@ public class PaperSizeTests
         Assert.Equal(
             [PaperSize.Auto, PaperSize.Letter, PaperSize.Legal, PaperSize.Executive, PaperSize.A4, PaperSize.A5,
              PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard, PaperSize.A3, PaperSize.Tabloid, PaperSize.BusinessCard,
-             PaperSize.Photo4x6, PaperSize.Photo5x7],
+             PaperSize.Photo4x6, PaperSize.Photo5x7, PaperSize.Custom, PaperSize.LongPaper],
             PaperSizes.DisplayOrder("US"));
         Assert.Equal(
             [PaperSize.Auto, PaperSize.A4, PaperSize.Letter, PaperSize.Legal, PaperSize.Executive, PaperSize.A5,
              PaperSize.A6, PaperSize.B5Jis, PaperSize.IdCard, PaperSize.A3, PaperSize.Tabloid, PaperSize.BusinessCard,
-             PaperSize.Photo4x6, PaperSize.Photo5x7],
+             PaperSize.Photo4x6, PaperSize.Photo5x7, PaperSize.Custom, PaperSize.LongPaper],
             PaperSizes.DisplayOrder("DE"));
     }
 
@@ -138,34 +140,61 @@ public class PaperSizeTests
         Assert.True(PaperSizes.Fits(PaperSize.Auto, new SizeD(1, 1)));
         Assert.True(PaperSizes.Fits(PaperSize.Legal, null));
         Assert.True(PaperSizes.Fits(PaperSize.Legal, new SizeD(0, 0)));
+        Assert.False(PaperSizes.Fits(PaperSize.Custom, letterGlass, new SizeD(5, 40)));
+        Assert.True(PaperSizes.Fits(PaperSize.Custom, letterGlass, new SizeD(4, 6)));
+        Assert.True(PaperSizes.Fits(PaperSize.Custom, letterGlass));
+        Assert.True(PaperSizes.Fits(PaperSize.LongPaper, new SizeD(1, 1)));
     }
 
     [Fact]
     public void FlatbedSelection_FromTheCornerOfTheGlass()
     {
         var glass = new SizeD(8.5, 11.7);
-        Assert.Null(PaperSizes.FlatbedSelection(PaperSize.Auto, glass));
-        AssertRect(0, 0, 1, 11 / 11.7, PaperSizes.FlatbedSelection(PaperSize.Letter, glass));
-        AssertRect(0, 0, 5.8268 / 8.5, 8.2677 / 11.7, PaperSizes.FlatbedSelection(PaperSize.A5, glass));
+        var custom = new SizeD(4, 6);
+        Assert.Null(PaperSizes.FlatbedSelection(PaperSize.Auto, custom, glass));
+        Assert.Null(PaperSizes.FlatbedSelection(PaperSize.LongPaper, custom, glass));
+        AssertRect(0, 0, 1, 11 / 11.7, PaperSizes.FlatbedSelection(PaperSize.Letter, custom, glass));
+        AssertRect(0, 0, 5.8268 / 8.5, 8.2677 / 11.7, PaperSizes.FlatbedSelection(PaperSize.A5, custom, glass));
+        AssertRect(0, 0, 4 / 8.5, 6 / 11.7, PaperSizes.FlatbedSelection(PaperSize.Custom, custom, glass));
         // Larger than the glass: clamped to it.
-        AssertRect(0, 0, 1, 1, PaperSizes.FlatbedSelection(PaperSize.Legal, glass));
-        Assert.Null(PaperSizes.FlatbedSelection(PaperSize.A4, new SizeD(0, 11)));
+        AssertRect(0, 0, 1, 1, PaperSizes.FlatbedSelection(PaperSize.Legal, custom, glass));
+        Assert.Null(PaperSizes.FlatbedSelection(PaperSize.A4, custom, new SizeD(0, 11)));
     }
 
     [Fact]
     public void FeederRegion_ThePaperClampedToTheLargestSheet()
     {
         var legal = new SizeD(8.5, 14);
-        AssertRect(0, 0, 8.5, 14, PaperSizes.FeederRegionInches(PaperSize.Auto, legal));
-        AssertRect(0, 0, 8.2677, 11.6929, PaperSizes.FeederRegionInches(PaperSize.A4, legal));
-        AssertRect(0, 0, 8.5, 11, PaperSizes.FeederRegionInches(PaperSize.Legal, new SizeD(8.5, 11)));
+        var custom = new SizeD(4, 6);
+        AssertRect(0, 0, 8.5, 14, PaperSizes.FeederRegionInches(PaperSize.Auto, custom, legal));
+        AssertRect(0, 0, 8.2677, 11.6929, PaperSizes.FeederRegionInches(PaperSize.A4, custom, legal));
+        AssertRect(0, 0, 8.5, 11, PaperSizes.FeederRegionInches(PaperSize.Legal, custom, new SizeD(8.5, 11)));
+    }
+
+    [Fact]
+    public void FeederRegion_CustomSizeClampedToTheLargestSheet()
+    {
+        var feeder = new SizeD(8.5, 14);
+        AssertRect(0, 0, 4, 6, PaperSizes.FeederRegionInches(PaperSize.Custom, new SizeD(4, 6), feeder));
+        AssertRect(0, 0, 8.5, 14, PaperSizes.FeederRegionInches(PaperSize.Custom, new SizeD(10, 20), feeder));
+        // Taller than Automatic's cap, when the feeder takes it.
+        AssertRect(0, 0, 4, 40, PaperSizes.FeederRegionInches(PaperSize.Custom, new SizeD(4, 40), new SizeD(8.5, 196)));
+    }
+
+    [Fact]
+    public void FeederRegion_AutomaticIsCappedAndLongPaperIsNot()
+    {
+        var longFeeder = new SizeD(8.5, 196);
+        var custom = new SizeD(4, 6);
+        AssertRect(0, 0, 8.5, EsclScanRequest.MaxFeederHeightInches, PaperSizes.FeederRegionInches(PaperSize.Auto, custom, longFeeder));
+        AssertRect(0, 0, 8.5, 196, PaperSizes.FeederRegionInches(PaperSize.LongPaper, custom, longFeeder));
     }
 
     [Fact]
     public void LabelsAndHints()
     {
         Assert.Equal(["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card",
-                      "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo"],
+                      "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo", "Custom size", "Long paper"],
                      PaperSizes.All.Select(size => size.Label()));
         Assert.Equal("210 × 297 mm", PaperSize.A4.Detail());
         Assert.Equal("8.5 × 11 in", PaperSize.Letter.Detail());
@@ -176,6 +205,7 @@ public class PaperSizeTests
         Assert.Equal("Sheets of this size, from the feeder.", PaperSizes.Hint(PaperSize.A4, ScanSource.DocumentFeeder));
         Assert.Equal("From the glass corner. A preview selection replaces it.",
                      PaperSizes.Hint(PaperSize.Letter, ScanSource.Flatbed));
+        Assert.Equal("Takes the longest sheet the feeder reports.", PaperSizes.Hint(PaperSize.LongPaper, ScanSource.DocumentFeeder));
         Assert.Equal("Too big for this glass", PaperSizes.DoesNotFitReason(ScanSource.Flatbed));
         Assert.Equal("Too big for this feeder", PaperSizes.DoesNotFitReason(ScanSource.DocumentFeeder));
         Assert.Equal("Using the selected area", PaperSizes.SelectedAreaNote);

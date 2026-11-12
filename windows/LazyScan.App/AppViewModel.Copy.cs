@@ -145,9 +145,9 @@ public sealed partial class AppViewModel
         return setup ?? await _print.GetSetupAsync(null, requested);
     }
 
-    /// <summary>The paper asked of the printer for copies: the paper size chosen in the inspector; null (the printer's own) for Automatic.</summary>
+    /// <summary>The paper asked of the printer for copies: the paper size chosen in the inspector; null (the printer's own) for Automatic, a custom size and Long paper.</summary>
     private static PaperSize? RequestedPaper(ScanSettings s) =>
-        s.PaperSize is PaperSize.Auto or PaperSize.IdCard ? null : s.PaperSize;
+        s.PaperSize is PaperSize.Auto or PaperSize.IdCard or PaperSize.Custom or PaperSize.LongPaper ? null : s.PaperSize;
 
     /// <summary>The printer for copies (and for the ID card): null for the default printer. Saved with the settings.</summary>
     public void SetCopyPrinter(string? name)

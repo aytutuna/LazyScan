@@ -339,7 +339,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
     private static func documentType(for size: PaperSize) -> ICScannerDocumentType? {
         let raw: UInt
         switch size {
-        case .auto, .idCard, .photo4x6, .photo5x7: return nil
+        case .auto, .idCard, .photo4x6, .photo5x7, .custom, .longPaper: return nil
         case .a4: raw = 1
         case .b5Jis: raw = 2
         case .letter: raw = 3
@@ -449,8 +449,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         if bed.width > 0, bed.height > 0 {
             var areaInches = CGRect(x: 0, y: 0, width: bed.width, height: bed.height)
             if unitType == .documentFeeder {
-                areaInches = PaperSizes.feederRegionInches(settings.paperSize, max: bed)
-                areaInches.size.height = min(areaInches.height, EsclScanRequest.maxFeederHeightInches)
+                areaInches = PaperSizes.feederRegionInches(settings.paperSize, custom: settings.customPaper, max: bed)
             }
             if unitType == .flatbed, let selection {
                 let clamped = selection.standardized.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))

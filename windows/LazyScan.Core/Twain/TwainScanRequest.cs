@@ -73,7 +73,8 @@ public static class TwainScanRequests
     /// <item>Flatbed: the whole bed or <paramref name="selection"/> (normalized 0...1,
     /// top-left origin) of it. Feeder: the paper size, clamped to its largest sheet (as a
     /// TWSS size when the source lists that size); for Automatic its own largest sheet, at most
-    /// <see cref="EsclScanRequest.MaxFeederHeightInches"/> tall, like the other backends.</item>
+    /// <see cref="EsclScanRequest.MaxFeederHeightInches"/> tall, like the other backends; for
+    /// Long paper its largest sheet at the height it reports.</item>
     /// <item>Two-sided when asked for (<see cref="DuplexMode.Both"/>) on a feeder that can (CAP_DUPLEX).</item>
     /// <item>The source's own window is used when asked for or when the source cannot scan without it.
     /// The user may switch to the feeder there, so the app then accepts any number of images.</item>
@@ -90,17 +91,17 @@ public static class TwainScanRequests
         if (feeder)
         {
             var sheet = caps.FeederSizeInches ?? TwainSizes.Largest(caps.SupportedSizes);
-            if (PaperSizes.Inches(settings.PaperSize) is { } paper)
+            SizeD? paper = settings.PaperSize == PaperSize.Custom ? settings.CustomPaper : PaperSizes.Inches(settings.PaperSize);
+            if (paper is { } known)
             {
-                var region = PaperSizes.FeederRegionInches(settings.PaperSize, sheet ?? paper);
-                frame = new RectD(0, 0, region.Width, Math.Min(region.Height, EsclScanRequest.MaxFeederHeightInches));
+                frame = PaperSizes.FeederRegionInches(settings.PaperSize, settings.CustomPaper, sheet ?? known);
                 int listed = TwainSizes.FromPaperSize(settings.PaperSize);
                 if (listed != TwainSizes.None && caps.SupportedSizes.Contains(listed)) supportedSize = listed;
             }
             else
             {
-                frame = sheet is { } size
-                    ? new RectD(0, 0, size.Width, Math.Min(size.Height, EsclScanRequest.MaxFeederHeightInches))
+                frame = sheet is { } largest
+                    ? PaperSizes.FeederRegionInches(settings.PaperSize, settings.CustomPaper, largest)
                     : null;
             }
         }

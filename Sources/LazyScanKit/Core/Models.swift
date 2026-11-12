@@ -699,6 +699,16 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// feeder's own sheet size.
     public var paperSize: PaperSize = .auto
 
+    /// The width and height in inches of the custom paper size (`PaperSize.custom`).
+    public var customPaperWidth: Double = 8.5
+    public var customPaperHeight: Double = 11
+
+    /// The custom paper size, each side at least `PaperSizes.customMinInches`.
+    public var customPaper: CGSize {
+        CGSize(width: max(customPaperWidth, PaperSizes.customMinInches),
+               height: max(customPaperHeight, PaperSizes.customMinInches))
+    }
+
     /// Clean-up of document pages (blank pages).
     public var document: DocumentOptions = DocumentOptions()
 
@@ -754,7 +764,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
         case adjustments
         case taskId
         case output
-        case duplex, backBinding, paperSize
+        case duplex, backBinding, paperSize, customPaperWidth, customPaperHeight
         case document
         case taskOptions
     }
@@ -789,6 +799,8 @@ extension ScanSettings {
         duplex = container.decodeLenient(forKey: .duplex, default: duplex)
         backBinding = container.decodeLenient(forKey: .backBinding, default: backBinding)
         paperSize = container.decodeLenient(forKey: .paperSize, default: paperSize)
+        customPaperWidth = container.decodeLenient(forKey: .customPaperWidth, default: customPaperWidth)
+        customPaperHeight = container.decodeLenient(forKey: .customPaperHeight, default: customPaperHeight)
         document = container.decodeLenient(forKey: .document, default: document)
         taskOptions = container.decodeLenient(forKey: .taskOptions, default: taskOptions)
     }

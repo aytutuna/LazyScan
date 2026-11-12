@@ -870,6 +870,17 @@ public sealed class ScanSettings
     /// </summary>
     public PaperSize PaperSize { get; set; } = PaperSize.Auto;
 
+    /// <summary>The width in inches of the custom paper size (<see cref="PaperSize.Custom"/>).</summary>
+    public double CustomPaperWidth { get; set; } = 8.5;
+
+    /// <summary>The height in inches of the custom paper size.</summary>
+    public double CustomPaperHeight { get; set; } = 11;
+
+    /// <summary>The custom paper size, each side at least <see cref="PaperSizes.CustomMinInches"/>.</summary>
+    [JsonIgnore]
+    public SizeD CustomPaper => new(Math.Max(CustomPaperWidth, PaperSizes.CustomMinInches),
+                                    Math.Max(CustomPaperHeight, PaperSizes.CustomMinInches));
+
     /// <summary>Clean-up of document pages (blank pages). Written after the earlier keys.</summary>
     public DocumentOptions Document { get; set; } = new();
 

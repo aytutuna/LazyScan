@@ -31,7 +31,7 @@ final class PaperSizeTests: XCTestCase {
     func test_rawValues_areTheStoredNames() throws {
         XCTAssertEqual(PaperSize.allCases.map(\.rawValue),
                        ["auto", "letter", "legal", "executive", "a4", "a5", "a6", "b5Jis", "idCard",
-                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7"])
+                        "a3", "tabloid", "businessCard", "photo4x6", "photo5x7", "custom", "longPaper"])
         for size in PaperSize.allCases {
             let data = try JSONEncoder().encode([size])
             XCTAssertEqual(String(decoding: data, as: UTF8.self), "[\"\(size.rawValue)\"]")
@@ -52,6 +52,8 @@ final class PaperSizeTests: XCTestCase {
         assertSize(2.1654, 3.5433, PaperSizes.inches(.businessCard))
         assertSize(4, 6, PaperSizes.inches(.photo4x6))
         assertSize(5, 7, PaperSizes.inches(.photo5x7))
+        XCTAssertNil(PaperSizes.inches(.custom))
+        XCTAssertNil(PaperSizes.inches(.longPaper))
         // 210 × 297 mm.
         XCTAssertEqual((Double(PaperSizes.inches(.a4)!.width) * 25.4).rounded(), 210)
         XCTAssertEqual((Double(PaperSizes.inches(.a4)!.height) * 25.4).rounded(), 297)
@@ -101,10 +103,10 @@ final class PaperSizeTests: XCTestCase {
     func test_displayOrder_automaticThenTheUsualSize() {
         XCTAssertEqual(PaperSizes.displayOrder(region: "US"),
                        [.auto, .letter, .legal, .executive, .a4, .a5, .a6, .b5Jis, .idCard,
-                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7])
+                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7, .custom, .longPaper])
         XCTAssertEqual(PaperSizes.displayOrder(region: "DE"),
                        [.auto, .a4, .letter, .legal, .executive, .a5, .a6, .b5Jis, .idCard,
-                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7])
+                        .a3, .tabloid, .businessCard, .photo4x6, .photo5x7, .custom, .longPaper])
     }
 
     func test_fits_withinTheAreaAndALittleRounding() {
@@ -117,29 +119,53 @@ final class PaperSizeTests: XCTestCase {
         XCTAssertTrue(PaperSizes.fits(.auto, in: CGSize(width: 1, height: 1)))
         XCTAssertTrue(PaperSizes.fits(.legal, in: nil))
         XCTAssertTrue(PaperSizes.fits(.legal, in: CGSize(width: 0, height: 0)))
+        XCTAssertFalse(PaperSizes.fits(.custom, in: letterGlass, custom: CGSize(width: 5, height: 40)))
+        XCTAssertTrue(PaperSizes.fits(.custom, in: letterGlass, custom: CGSize(width: 4, height: 6)))
+        XCTAssertTrue(PaperSizes.fits(.custom, in: letterGlass))
+        XCTAssertTrue(PaperSizes.fits(.longPaper, in: CGSize(width: 1, height: 1)))
     }
 
     func test_flatbedSelection_fromTheCornerOfTheGlass() {
         let glass = CGSize(width: 8.5, height: 11.7)
-        XCTAssertNil(PaperSizes.flatbedSelection(.auto, bed: glass))
-        assertRect(0, 0, 1, 11 / 11.7, PaperSizes.flatbedSelection(.letter, bed: glass))
-        assertRect(0, 0, 5.8268 / 8.5, 8.2677 / 11.7, PaperSizes.flatbedSelection(.a5, bed: glass))
+        let custom = CGSize(width: 4, height: 6)
+        XCTAssertNil(PaperSizes.flatbedSelection(.auto, custom: custom, bed: glass))
+        XCTAssertNil(PaperSizes.flatbedSelection(.longPaper, custom: custom, bed: glass))
+        assertRect(0, 0, 1, 11 / 11.7, PaperSizes.flatbedSelection(.letter, custom: custom, bed: glass))
+        assertRect(0, 0, 5.8268 / 8.5, 8.2677 / 11.7, PaperSizes.flatbedSelection(.a5, custom: custom, bed: glass))
+        assertRect(0, 0, 4 / 8.5, 6 / 11.7, PaperSizes.flatbedSelection(.custom, custom: custom, bed: glass))
         // Larger than the glass: clamped to it.
-        assertRect(0, 0, 1, 1, PaperSizes.flatbedSelection(.legal, bed: glass))
-        XCTAssertNil(PaperSizes.flatbedSelection(.a4, bed: CGSize(width: 0, height: 11)))
+        assertRect(0, 0, 1, 1, PaperSizes.flatbedSelection(.legal, custom: custom, bed: glass))
+        XCTAssertNil(PaperSizes.flatbedSelection(.a4, custom: custom, bed: CGSize(width: 0, height: 11)))
     }
 
     func test_feederRegion_thePaperClampedToTheLargestSheet() {
         let legal = CGSize(width: 8.5, height: 14)
-        assertRect(0, 0, 8.5, 14, PaperSizes.feederRegionInches(.auto, max: legal))
-        assertRect(0, 0, 8.2677, 11.6929, PaperSizes.feederRegionInches(.a4, max: legal))
-        assertRect(0, 0, 8.5, 11, PaperSizes.feederRegionInches(.legal, max: CGSize(width: 8.5, height: 11)))
+        let custom = CGSize(width: 4, height: 6)
+        assertRect(0, 0, 8.5, 14, PaperSizes.feederRegionInches(.auto, custom: custom, max: legal))
+        assertRect(0, 0, 8.2677, 11.6929, PaperSizes.feederRegionInches(.a4, custom: custom, max: legal))
+        assertRect(0, 0, 8.5, 11, PaperSizes.feederRegionInches(.legal, custom: custom, max: CGSize(width: 8.5, height: 11)))
+    }
+
+    func test_feederRegion_customSizeClampedToTheLargestSheet() {
+        let feeder = CGSize(width: 8.5, height: 14)
+        assertRect(0, 0, 4, 6, PaperSizes.feederRegionInches(.custom, custom: CGSize(width: 4, height: 6), max: feeder))
+        assertRect(0, 0, 8.5, 14, PaperSizes.feederRegionInches(.custom, custom: CGSize(width: 10, height: 20), max: feeder))
+        // Taller than Automatic's cap, when the feeder takes it.
+        assertRect(0, 0, 4, 40, PaperSizes.feederRegionInches(.custom, custom: CGSize(width: 4, height: 40),
+                                                              max: CGSize(width: 8.5, height: 196)))
+    }
+
+    func test_feederRegion_automaticIsCappedAndLongPaperIsNot() {
+        let longFeeder = CGSize(width: 8.5, height: 196)
+        let custom = CGSize(width: 4, height: 6)
+        assertRect(0, 0, 8.5, EsclScanRequest.maxFeederHeightInches, PaperSizes.feederRegionInches(.auto, custom: custom, max: longFeeder))
+        assertRect(0, 0, 8.5, 196, PaperSizes.feederRegionInches(.longPaper, custom: custom, max: longFeeder))
     }
 
     func test_labelsAndHints() {
         XCTAssertEqual(PaperSize.allCases.map(\.label),
                        ["Automatic", "Letter", "Legal", "Executive", "A4", "A5", "A6", "B5 (JIS)", "ID card",
-                        "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo"])
+                        "A3", "Tabloid", "Business card", "4x6 photo", "5x7 photo", "Custom size", "Long paper"])
         XCTAssertEqual(PaperSize.a4.detail, "210 \u{00D7} 297 mm")
         XCTAssertEqual(PaperSize.a3.detail, "297 \u{00D7} 420 mm")
         XCTAssertEqual(PaperSize.tabloid.detail, "11 \u{00D7} 17 in")
@@ -148,6 +174,7 @@ final class PaperSizeTests: XCTestCase {
         XCTAssertEqual(PaperSizes.hint(.auto, source: .documentFeeder), "The sheet size the feeder takes.")
         XCTAssertEqual(PaperSizes.hint(.a4, source: .documentFeeder), "Sheets of this size, from the feeder.")
         XCTAssertEqual(PaperSizes.hint(.letter, source: .flatbed), "From the glass corner. A preview selection replaces it.")
+        XCTAssertEqual(PaperSizes.hint(.longPaper, source: .documentFeeder), "Takes the longest sheet the feeder reports.")
         XCTAssertEqual(PaperSizes.doesNotFitReason(source: .flatbed), "Too big for this glass")
         XCTAssertEqual(PaperSizes.doesNotFitReason(source: .documentFeeder), "Too big for this feeder")
         XCTAssertEqual(PaperSizes.selectedAreaNote, "Using the selected area")

@@ -144,10 +144,12 @@ public static class WiaDocumentHandling
     /// <summary>
     /// WIA_DPS_PAGE_SIZE and, for sizes WIA has no name for, the page width and height in
     /// thousandths of an inch (0 when the named size sets them); null for Automatic.
+    /// <paramref name="custom"/> is the size <see cref="PaperSize.Custom"/> stands for, or the
+    /// feeder's full size for <see cref="PaperSize.LongPaper"/>.
     /// </summary>
-    public static (int PageSize, int WidthThousandths, int HeightThousandths)? PageSize(PaperSize size)
+    public static (int PageSize, int WidthThousandths, int HeightThousandths)? PageSize(PaperSize size, SizeD? custom = null)
     {
-        if (PaperSizes.Inches(size) is not { } inches) return null;
+        if ((size is PaperSize.Custom or PaperSize.LongPaper ? custom : PaperSizes.Inches(size)) is not { } inches) return null;
         int code = size switch
         {
             PaperSize.Letter => PageLetter,

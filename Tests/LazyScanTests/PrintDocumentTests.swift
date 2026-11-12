@@ -186,7 +186,9 @@ final class PrintDocumentTests: XCTestCase {
         XCTAssertTrue(PrinterPapers.names(.auto).isEmpty)
         XCTAssertTrue(PrinterPapers.names(.idCard).isEmpty)
         XCTAssertTrue(PrinterPapers.names(.businessCard).isEmpty)
-        for size in PaperSize.allCases where size != .auto && size != .idCard && size != .businessCard {
+        XCTAssertTrue(PrinterPapers.names(.custom).isEmpty)
+        XCTAssertTrue(PrinterPapers.names(.longPaper).isEmpty)
+        for size in PaperSize.allCases where ![PaperSize.auto, .idCard, .businessCard, .custom, .longPaper].contains(size) {
             XCTAssertFalse(PrinterPapers.names(size).isEmpty, "\(size)")
         }
     }

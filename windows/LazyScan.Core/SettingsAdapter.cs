@@ -60,12 +60,22 @@ public static class SettingsAdapter
 
         bool feeder = s.Source == ScanSource.DocumentFeeder;
         var area = feeder ? capabilities.FeederSizeInches : capabilities.FlatbedSizeInches;
-        if (!PaperSizes.Fits(s.PaperSize, area))
+        if (s.PaperSize == PaperSize.LongPaper && !feeder)
         {
             notes.Add(new SettingsNote(SettingsChange.PaperSize,
+                Loc.T("Long paper is scanned from the feeder, so the paper size is Automatic."),
+                new StatusWarning.PaperAutomatic()));
+            s.PaperSize = PaperSize.Auto;
+        }
+        else if (!PaperSizes.Fits(s.PaperSize, area, s.CustomPaper))
+        {
+            string name = s.PaperSize == PaperSize.Custom
+                ? Loc.T("{0} × {1} in", s.CustomPaper.Width, s.CustomPaper.Height)
+                : s.PaperSize.Label();
+            notes.Add(new SettingsNote(SettingsChange.PaperSize,
                 feeder
-                    ? Loc.T("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", s.PaperSize.Label())
-                    : Loc.T("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", s.PaperSize.Label()),
+                    ? Loc.T("{0} paper does not fit this scanner's feeder, so the paper size is Automatic.", name)
+                    : Loc.T("{0} paper does not fit this scanner's glass, so the paper size is Automatic.", name),
                 new StatusWarning.PaperAutomatic()));
             s.PaperSize = PaperSize.Auto;
         }
