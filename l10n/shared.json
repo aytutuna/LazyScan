@@ -2478,6 +2478,8 @@
   "Remove print dots": {},
   "Smooths the dot pattern of magazines and printed photos (descreen)": {},
   "Restore faded colors": {},
+  "Clean up": {},
+  "Whitens paper and removes show-through": {},
   "Pages": {},
   "Skip blank pages": {
     "note": "Setting: pages found blank are left out when saving."

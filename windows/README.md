@@ -513,7 +513,7 @@ page it made gray keeps that through the adjustments of a color task (`Adjustmen
 `CleanUpStep` runs it on scanner pages in `PageProcessor.ForScan` when `AdjustmentSettings.CleanUp` is on
 (`PageProcessor.CleanUpMode`: Enhanced, gray or black and white by the color mode), after turning pages upright and
 before the adjustments, keeping the page as scanned as the other version (`ScannedPage.CleanedUp`); the app has
-no switch for it yet.
+a Clean up switch for it (`CleanUpBox`, off by default).
 `CaptureStability.Resume` takes the time the camera was stopped out of its clocks.
 The bytes are pinned in `DocumentEnhancerTests` (golden checksums recomputed by an independent model
 of the algorithm) and the readings in `FrameQualityTests`, the same cases as the Swift package.

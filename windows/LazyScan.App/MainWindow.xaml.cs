@@ -1697,6 +1697,7 @@ public partial class MainWindow : Window
             PushAdjustmentSliders();
             DescreenBox.IsChecked = s.Adjustments.Descreen;
             RestoreBox.IsChecked = s.Adjustments.RestoreFadedColors;
+            CleanUpBox.IsChecked = s.Adjustments.CleanUp;
             PushOutputControls();
             ShowDestination(s.ResolveDestination());
             TemplateBox.Text = s.NamingTemplate;
@@ -1769,6 +1770,7 @@ public partial class MainWindow : Window
         // -100...100 scale (and clamp out-of-range preset values) on unrelated edits.
         s.Adjustments.Descreen = DescreenBox.IsChecked == true;
         s.Adjustments.RestoreFadedColors = RestoreBox.IsChecked == true;
+        s.Adjustments.CleanUp = CleanUpBox.IsChecked == true;
         if (!string.IsNullOrWhiteSpace(DestinationBox.Text) && DestinationBox.Text != s.ResolveDestination())
         {
             s.DestinationPath = DestinationBox.Text;

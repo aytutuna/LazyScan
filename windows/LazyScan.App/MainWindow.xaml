@@ -1302,6 +1302,12 @@
                                                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
                                                 <TextBlock Style="{StaticResource ReasonText}" Text="{x:Static local:ShortText.NeedsColor}" />
                                             </DockPanel>
+                                            <CheckBox x:Name="CleanUpBox" Style="{StaticResource ToggleSwitchStyle}"
+                                                      Content="{loc:T Clean up}"
+                                                      ToolTip="{loc:T Whitens paper and removes show-through}"
+                                                      Checked="Setting_Changed" Unchecked="Setting_Changed" />
+                                            <TextBlock Style="{StaticResource ReasonText}" Margin="0,0,0,4"
+                                                       Text="{loc:T Whitens paper and removes show-through}" />
                                             <Grid x:Name="ThresholdRow" Margin="0,4,0,0" ToolTip="{loc:T Pixels lighter than this turn white\, darker turn black}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="110" />
