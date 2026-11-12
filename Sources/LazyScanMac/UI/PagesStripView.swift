@@ -61,6 +61,11 @@ struct PagesStripView: View {
                                 canMoveRight: index < state.scannedPages.count - 1,
                                 onRemove: { state.removePage(id: page.id) },
                                 onMove: { state.movePage(id: page.id, by: $0) },
+                                onDropPage: { moving in
+                                    guard !state.isBusy, let place = state.scannedPages.firstIndex(where: { $0.id == page.id }) else { return false }
+                                    state.movePage(id: moving, to: place)
+                                    return true
+                                },
                                 onRotate: { state.rotatePage(id: page.id) },
                                 onToggle: { state.togglePageInclusion(id: page.id) },
                                 onSwap: { state.togglePageGeometry(id: page.id) },
@@ -306,6 +311,8 @@ fileprivate struct PageThumbnailCell: View {
     let canMoveRight: Bool
     let onRemove: () -> Void
     let onMove: (Int) -> Void
+    /// Another page of the strip, dragged here, takes this page's place.
+    let onDropPage: (UUID) -> Bool
     let onRotate: () -> Void
     /// Keep or skip the page (`AppState.togglePageInclusion`).
     let onToggle: () -> Void
@@ -370,6 +377,11 @@ fileprivate struct PageThumbnailCell: View {
                 geometryToggle
                 uprightToggle
             }
+        }
+        .draggable(page.id.uuidString)
+        .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
+            guard let text = items.first, let moving = UUID(uuidString: text) else { return false }
+            return onDropPage(moving)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)

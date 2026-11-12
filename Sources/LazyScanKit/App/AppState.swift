@@ -1921,6 +1921,15 @@ public final class AppState: ObservableObject {
         scannedPages.swapAt(idx, newIdx)
     }
 
+    /// Moves a page to `index` in the queue, the pages between it and there shifting by one.
+    public func movePage(id: UUID, to index: Int) {
+        guard !isBusy else { return }
+        guard let idx = scannedPages.firstIndex(where: { $0.id == id }),
+              index >= 0 && index < scannedPages.count, index != idx else { return }
+        let page = scannedPages.remove(at: idx)
+        scannedPages.insert(page, at: index)
+    }
+
     func setLastScan(preview: CGImage?, pixelSize: CGSize?) {
         // On the Mac a page that lands replaces the overview on the canvas; the phone keeps it for
         // the scan area screen. The selected area stays until cleared.

@@ -361,6 +361,22 @@ final class AppStatePackageTests: XCTestCase {
     }
 
     @MainActor
+    func test_movePage_to_putsThePageAtTheIndex() async throws {
+        let state = try await makeState(pages: 5)
+        let ids = state.scannedPages.map(\.id)
+
+        state.movePage(id: ids[4], to: 1)
+        XCTAssertEqual(state.scannedPages.map(\.id), [ids[0], ids[4], ids[1], ids[2], ids[3]])
+        state.movePage(id: ids[0], to: 4)
+        XCTAssertEqual(state.scannedPages.map(\.id), [ids[4], ids[1], ids[2], ids[3], ids[0]])
+
+        state.movePage(id: ids[1], to: 9)
+        state.movePage(id: ids[1], to: -1)
+        state.movePage(id: UUID(), to: 0)
+        XCTAssertEqual(state.scannedPages.map(\.id), [ids[4], ids[1], ids[2], ids[3], ids[0]])
+    }
+
+    @MainActor
     func test_exportPackage_refusesAnEmptyQueue() async throws {
         let state = try await makeState(pages: 0)
         do {
