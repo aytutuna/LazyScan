@@ -386,7 +386,7 @@ public struct FingerFillStep: PageStep {
         guard let capture = page.capture, capture.scale != nil, capture.enhancement == nil, capture.filter == nil,
               page.geometry?.basis == .perspective,
               let pixels = RgbaImage(cgImage: page.image),
-              let filled = PageFlatten.fillFingers(pixels, dpi: page.dpi),
+              let filled = PageFlatten.fillFingers(pixels, dpi: Double(page.dpi)),
               let image = filled.makeCGImage() else { return page }
         var painted = page.withImage(image)
         painted.capture?.fingersFilled = true
