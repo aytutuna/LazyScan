@@ -252,6 +252,23 @@ public static class OcrText
     }
 
     /// <summary>
+    /// More than half of the letters in <paramref name="text"/> are from a right-to-left script
+    /// (Hebrew, Arabic, Syriac, Thaana, NKo and their presentation forms).
+    /// </summary>
+    public static bool IsRightToLeft(string text)
+    {
+        int letters = 0, rightToLeft = 0;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (!Rune.IsLetter(rune)) continue;
+            letters++;
+            int v = rune.Value;
+            if (v is >= 0x0590 and <= 0x08FF or >= 0xFB1D and <= 0xFDFF or >= 0xFE70 and <= 0xFEFF) rightToLeft++;
+        }
+        return 2 * rightToLeft > letters;
+    }
+
+    /// <summary>
     /// One line of OCR text made safe to write: line breaks and other control characters become
     /// spaces (a tab stays), runs of spaces one space, no space at either end.
     /// </summary>
@@ -310,8 +327,10 @@ public static class OcrText
             // A lone line on one side is a heading's neighbour or a cell, not a column.
             if (left.Count >= 2 && right.Count >= 2 && !IsTable(left, right, gapX))
             {
-                Cut(left, output);
-                Cut(right, output);
+                // Right-to-left text starts in the right column.
+                bool rightToLeft = IsRightToLeft(string.Join(" ", items.Select(i => i.Line.Text)));
+                Cut(rightToLeft ? right : left, output);
+                Cut(rightToLeft ? left : right, output);
                 return;
             }
         }
@@ -403,19 +422,24 @@ public static class OcrText
         return rows.OrderBy(r => r.Min(i => i.Top)).ThenBy(r => r[0].Index).ToList();
     }
 
-    /// <summary>One row's lines left to right as one line: a space between them, a tab across a wide gap.</summary>
+    /// <summary>
+    /// One row's lines left to right as one line (right to left for Arabic, Hebrew and the like):
+    /// a space between them, a tab across a wide gap.
+    /// </summary>
     private static OcrLine JoinRow(List<Item> row)
     {
         if (row.Count == 1) return row[0].Line;
-        var sorted = row.OrderBy(i => i.Left).ThenBy(i => i.Index).ToList();
+        bool rightToLeft = IsRightToLeft(string.Join(" ", row.Select(i => i.Line.Text)));
+        var sorted = (rightToLeft ? row.OrderByDescending(i => i.Right) : row.OrderBy(i => i.Left)).ThenBy(i => i.Index).ToList();
         double lineHeight = Median(sorted.Select(i => i.Height));
         var sb = new StringBuilder(sorted[0].Line.Text);
-        double reach = sorted[0].Right;
+        double reach = rightToLeft ? sorted[0].Left : sorted[0].Right;
         for (int i = 1; i < sorted.Count; i++)
         {
-            sb.Append(sorted[i].Left - reach >= ColumnGap * lineHeight ? CellSeparator : " ");
+            double gap = rightToLeft ? reach - sorted[i].Right : sorted[i].Left - reach;
+            sb.Append(gap >= ColumnGap * lineHeight ? CellSeparator : " ");
             sb.Append(sorted[i].Line.Text);
-            reach = Math.Max(reach, sorted[i].Right);
+            reach = rightToLeft ? Math.Min(reach, sorted[i].Left) : Math.Max(reach, sorted[i].Right);
         }
         double minX = sorted.Min(i => i.Line.BoundingBox.Standardized.MinX);
         double minY = sorted.Min(i => i.Line.BoundingBox.Standardized.MinY);

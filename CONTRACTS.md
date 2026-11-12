@@ -2775,10 +2775,13 @@ public enum OCRText {
     /// Recursive X-Y cut: a gap across ≥ blockGap line heights first, else a gap down ≥ columnGap
     /// between two columns of text (≥ 2 lines a side, not a table), else any gap across; a row's
     /// lines joined by " " (a tab across ≥ columnGap); empty lines dropped; ties broken by the engine's order.
+    /// Right-to-left text (isRightToLeft of the group's text) reads the right column first and the
+    /// rightmost piece of a row first.
     public static func readingOrder(_ lines: [OCRLine], pageWidth: Double = 1, pageHeight: Double = 1) -> [OCRLine]
     public static func paragraphs(_ page: OCRPage) -> [OCRParagraph]
     public static func paragraphs(_ ordered: [OCRLine], pageWidth: Double = 1, pageHeight: Double = 1) -> [OCRParagraph]
     public static func paragraphText(_ lines: [OCRLine]) -> String    // wrapped lines joined, short lines and table rows keep "\n"
+    public static func isRightToLeft(_ text: String) -> Bool    // more than half of the letters are Hebrew, Arabic, Syriac, Thaana, NKo (U+0590-08FF, FB1D-FDFF, FE70-FEFF)
     public static func joinLines(_ lines: [String]) -> String         // "forward-" + "ing" -> "forwarding"
     public static func pageText(_ page: OCRPage) -> String            // a line per line, "\n\n" between paragraphs
     public static func plainText(_ pages: [OCRPage]) -> String        // "\n\n\n" between pages, "\n" at the end; "" without text
@@ -2818,7 +2821,8 @@ public enum DocxWriter {
     public static func packageSize(_ pages: [OCRPage], pictures: [DocxPicture?] = []) -> Int
     public static let maxPackageBytes = 2_000_000_000
     public static let tooLargeMessage: String   // "The Word document would be larger than 2 GB, too large to write. …"
-    /// A w:p per paragraph, pageBreakBefore per page, w:tab, w:br; a page with a picture starts
+    /// A w:p per paragraph, pageBreakBefore per page, w:tab, w:br; a right-to-left paragraph gets
+    /// w:bidi in its pPr (after pageBreakBefore) and w:rtl in its run's rPr; a page with a picture starts
     /// with it (see below) and its text follows without a break of its own.
     public static func documentXML(_ pages: [OCRPage], pictures: [DocxPicture?] = []) -> String
     public static func pageSizeTwips(_ page: OCRPage?) -> (width: Int, height: Int)   // page 1 × 20, clamped; Letter without a page

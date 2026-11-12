@@ -264,6 +264,16 @@ final class DocxWriterTests: XCTestCase {
         #endif
     }
 
+    func test_documentXML_rightToLeftParagraphs_areBidiWithRtlRuns() {
+        let arabic = DocxWriter.documentXML([OCRFixtures.page(L("مرحبا بالعالم", 50, 100, 600))])
+        XCTAssertTrue(arabic.contains("<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/></w:rPr><w:t xml:space=\"preserve\">"))
+        let latin = DocxWriter.documentXML([OCRFixtures.page(L("hello", 50, 100, 600))])
+        XCTAssertFalse(latin.contains("w:bidi"))
+        XCTAssertFalse(latin.contains("w:rtl"))
+        let second = OCRFixtures.page(L("שלום", 50, 100, 600))
+        XCTAssertTrue(DocxWriter.documentXML([OCRFixtures.page(), second]).contains("<w:pPr><w:pageBreakBefore/><w:bidi/></w:pPr>"))
+    }
+
     func test_documentXML_escapesMarkup_andLeavesOutWhatXMLCannotHold() throws {
         let page = OCRFixtures.page(L("A & B <tag> \"q\" 'a'", 50, 100, 600))
         let xml = DocxWriter.documentXML([page])
@@ -331,8 +341,8 @@ final class DocxWriterTests: XCTestCase {
     func test_make_fingerprint_matchesWindows() {
         // The same numbers in DocxWriterTests.cs: both platforms write the same package.
         let docx = DocxWriter.make(TextExportTests.samplePages())
-        XCTAssertEqual(docx.count, 1964)
-        XCTAssertEqual(ZipStore.crc32(docx), 0x0F9B_A5A4)
+        XCTAssertEqual(docx.count, 1996)
+        XCTAssertEqual(ZipStore.crc32(docx), 0x90AB_548B)
         XCTAssertEqual(DocxWriter.make(TextExportTests.samplePages()), docx)
     }
 }
@@ -679,8 +689,8 @@ final class DocxWriterPictureTests: XCTestCase {
         // The same numbers in DocxWriterTests.cs: both platforms write the same package.
         let pictures = [DocxFixtures.jpegPicture, DocxFixtures.pngPicture]
         let docx = DocxWriter.make(TextExportTests.samplePages(), pictures: pictures)
-        XCTAssertEqual(docx.count, 5482)
-        XCTAssertEqual(ZipStore.crc32(docx), 0x8708_C7FC)
+        XCTAssertEqual(docx.count, 5529)
+        XCTAssertEqual(ZipStore.crc32(docx), 0xC8A4_BDE4)
         XCTAssertEqual(DocxWriter.make(TextExportTests.samplePages(), pictures: pictures), docx)
         // The fixtures themselves, so a change to them shows here first.
         XCTAssertEqual(DocxFixtures.jpeg.count, 421)
@@ -692,7 +702,7 @@ final class DocxWriterPictureTests: XCTestCase {
     func test_packageSize_isTheLengthMakeWrites() {
         let pages = TextExportTests.samplePages()
         XCTAssertEqual(DocxWriter.packageSize(pages), DocxWriter.make(pages).count)
-        XCTAssertEqual(DocxWriter.packageSize(pages, pictures: [DocxFixtures.jpegPicture, DocxFixtures.pngPicture]), 5482)
+        XCTAssertEqual(DocxWriter.packageSize(pages, pictures: [DocxFixtures.jpegPicture, DocxFixtures.pngPicture]), 5529)
         let three = [OCRFixtures.page(OCRFixtures.line("One", 50, 100, 200)), OCRFixtures.page(), OCRFixtures.page()]
         let some: [DocxPicture?] = [DocxFixtures.pngPicture, nil, DocxFixtures.jpegPicture]
         XCTAssertEqual(DocxWriter.packageSize(three, pictures: some), DocxWriter.make(three, pictures: some).count)

@@ -201,6 +201,28 @@ final class OCRTextTests: XCTestCase {
         XCTAssertEqual(OCRText.joinLines([]), "")
     }
 
+    func test_readingOrder_arabicTwoColumns_rightColumnFirst() {
+        let ordered = OCRFixtures.ordered([
+            L("أربعة", 50, 100, 400), L("واحد", 550, 100, 400),
+            L("خمسة", 50, 140, 400), L("اثنان", 550, 140, 400),
+            L("ستة", 50, 180, 380), L("ثلاثة", 550, 180, 300),
+        ])
+        XCTAssertEqual(ordered, ["واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة"])
+    }
+
+    func test_readingOrder_arabicRow_rightPieceFirst() {
+        XCTAssertEqual(OCRFixtures.ordered([L("اثنان", 100, 100, 100), L("واحد", 700, 100, 100)]), ["واحد\tاثنان"])
+        XCTAssertEqual(OCRFixtures.ordered([L("two", 700, 100, 100), L("one", 100, 100, 100)]), ["one\ttwo"])
+    }
+
+    func test_isRightToLeft_moreThanHalfOfTheLetters() {
+        XCTAssertTrue(OCRText.isRightToLeft("שלום עולם"))
+        XCTAssertTrue(OCRText.isRightToLeft("مرحبا 123 hi"))
+        XCTAssertFalse(OCRText.isRightToLeft("hello مرحبا world"))
+        XCTAssertFalse(OCRText.isRightToLeft("123 - 456"))
+        XCTAssertFalse(OCRText.isRightToLeft(""))
+    }
+
     func test_plainText_linesParagraphsAndPages() {
         let first = OCRFixtures.page(
             L("Title", 400, 50, 200, 30),

@@ -211,16 +211,24 @@ public static class DocxWriter
 
     /// <summary>
     /// One paragraph: its text in one run, a line break (between the rows of a table) as
-    /// <c>w:br</c>, a tab (between the pieces of a row) as <c>w:tab</c>.
+    /// <c>w:br</c>, a tab (between the pieces of a row) as <c>w:tab</c>. Right-to-left text gets
+    /// <c>w:bidi</c> and <c>w:rtl</c>.
     /// </summary>
     private static void AppendParagraph(StringBuilder sb, string text, bool pageBreakBefore)
     {
+        bool rightToLeft = OcrText.IsRightToLeft(text);
         sb.Append("<w:p>");
-        if (pageBreakBefore) sb.Append("<w:pPr><w:pageBreakBefore/></w:pPr>");
+        if (pageBreakBefore || rightToLeft)
+        {
+            sb.Append("<w:pPr>");
+            if (pageBreakBefore) sb.Append("<w:pageBreakBefore/>");
+            if (rightToLeft) sb.Append("<w:bidi/>");
+            sb.Append("</w:pPr>");
+        }
         string clean = EscapeXml(text).Replace("\r", "");
         if (clean.Length > 0)
         {
-            sb.Append("<w:r>");
+            sb.Append(rightToLeft ? "<w:r><w:rPr><w:rtl/></w:rPr>" : "<w:r>");
             string[] lines = clean.Split('\n');
             for (int l = 0; l < lines.Length; l++)
             {

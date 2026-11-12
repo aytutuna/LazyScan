@@ -302,13 +302,19 @@ public enum DocxWriter {
     }
 
     /// One paragraph: its text in one run, a line break (between the rows of a table) as `w:br`, a
-    /// tab (between the pieces of a row) as `w:tab`.
+    /// tab (between the pieces of a row) as `w:tab`. Right-to-left text gets `w:bidi` and `w:rtl`.
     private static func appendParagraph(_ xml: inout String, text: String, pageBreakBefore: Bool) {
+        let rightToLeft = OCRText.isRightToLeft(text)
         xml += "<w:p>"
-        if pageBreakBefore { xml += "<w:pPr><w:pageBreakBefore/></w:pPr>" }
+        if pageBreakBefore || rightToLeft {
+            xml += "<w:pPr>"
+            if pageBreakBefore { xml += "<w:pageBreakBefore/>" }
+            if rightToLeft { xml += "<w:bidi/>" }
+            xml += "</w:pPr>"
+        }
         let clean = escapeXML(text).replacingOccurrences(of: "\r", with: "")
         if !clean.isEmpty {
-            xml += "<w:r>"
+            xml += rightToLeft ? "<w:r><w:rPr><w:rtl/></w:rPr>" : "<w:r>"
             let lines = clean.components(separatedBy: "\n")
             for (l, line) in lines.enumerated() {
                 if l > 0 { xml += "<w:br/>" }

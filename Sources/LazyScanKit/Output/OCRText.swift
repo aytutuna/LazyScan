@@ -221,6 +221,26 @@ public enum OCRText {
         return texts.joined(separator: "\n\n\n") + "\n"
     }
 
+    /// More than half of the letters in `text` are from a right-to-left script (Hebrew, Arabic,
+    /// Syriac, Thaana, NKo and their presentation forms).
+    public static func isRightToLeft(_ text: String) -> Bool {
+        var letters = 0
+        var rightToLeft = 0
+        for scalar in text.unicodeScalars {
+            switch scalar.properties.generalCategory {
+            case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter:
+                letters += 1
+                let v = scalar.value
+                if (0x0590...0x08FF).contains(v) || (0xFB1D...0xFDFF).contains(v) || (0xFE70...0xFEFF).contains(v) {
+                    rightToLeft += 1
+                }
+            default:
+                break
+            }
+        }
+        return 2 * rightToLeft > letters
+    }
+
     /// One line of OCR text made safe to write: line breaks and other control characters become
     /// spaces (a tab stays), runs of spaces one space, no space at either end.
     public static func cleanLine(_ text: String) -> String {
@@ -311,8 +331,10 @@ public enum OCRText {
             let right = Array(byLeft[splitX...])
             // A lone line on one side is a heading's neighbour or a cell, not a column.
             if left.count >= 2 && right.count >= 2 && !isTable(left, right, gap: gapX) {
-                cut(left, into: &output)
-                cut(right, into: &output)
+                // Right-to-left text starts in the right column.
+                let rightToLeft = isRightToLeft(items.map(\.line.text).joined(separator: " "))
+                cut(rightToLeft ? right : left, into: &output)
+                cut(rightToLeft ? left : right, into: &output)
                 return
             }
         }
@@ -395,20 +417,27 @@ public enum OCRText {
         }
     }
 
-    /// One row's lines left to right as one line: a space between them, a tab across a wide gap.
+    /// One row's lines left to right as one line (right to left for Arabic, Hebrew and the like):
+    /// a space between them, a tab across a wide gap.
     private static func joinRow(_ row: [TextItem]) -> OCRLine {
         if row.count == 1 { return row[0].line }
+        let rightToLeft = isRightToLeft(row.map(\.line.text).joined(separator: " "))
         let sorted = row.sorted { a, b in
-            if a.left != b.left { return a.left < b.left }
+            if rightToLeft {
+                if a.right != b.right { return a.right > b.right }
+            } else if a.left != b.left {
+                return a.left < b.left
+            }
             return a.index < b.index
         }
         let lineHeight = median(sorted.map(\.height))
         var text = sorted[0].line.text
-        var reach = sorted[0].right
+        var reach = rightToLeft ? sorted[0].left : sorted[0].right
         for item in sorted.dropFirst() {
-            text += item.left - reach >= columnGap * lineHeight ? cellSeparator : " "
+            let gap = rightToLeft ? reach - item.right : item.left - reach
+            text += gap >= columnGap * lineHeight ? cellSeparator : " "
             text += item.line.text
-            reach = max(reach, item.right)
+            reach = rightToLeft ? min(reach, item.left) : max(reach, item.right)
         }
         let boxes = sorted.map { $0.line.boundingBox.standardized }
         let minX = boxes.map(\.minX).min() ?? 0

@@ -223,6 +223,33 @@ public class OcrTextTests
     }
 
     [Fact]
+    public void ReadingOrder_ArabicTwoColumns_RightColumnFirst()
+    {
+        var ordered = OcrFixtures.Ordered(
+            L("أربعة", 50, 100, 400), L("واحد", 550, 100, 400),
+            L("خمسة", 50, 140, 400), L("اثنان", 550, 140, 400),
+            L("ستة", 50, 180, 380), L("ثلاثة", 550, 180, 300));
+        Assert.Equal(["واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة"], ordered);
+    }
+
+    [Fact]
+    public void ReadingOrder_ArabicRow_RightPieceFirst()
+    {
+        Assert.Equal(["واحد\tاثنان"], OcrFixtures.Ordered(L("اثنان", 100, 100, 100), L("واحد", 700, 100, 100)));
+        Assert.Equal(["one\ttwo"], OcrFixtures.Ordered(L("two", 700, 100, 100), L("one", 100, 100, 100)));
+    }
+
+    [Fact]
+    public void IsRightToLeft_MoreThanHalfOfTheLetters()
+    {
+        Assert.True(OcrText.IsRightToLeft("שלום עולם"));
+        Assert.True(OcrText.IsRightToLeft("مرحبا 123 hi"));
+        Assert.False(OcrText.IsRightToLeft("hello مرحبا world"));
+        Assert.False(OcrText.IsRightToLeft("123 - 456"));
+        Assert.False(OcrText.IsRightToLeft(""));
+    }
+
+    [Fact]
     public void PlainText_LinesParagraphsAndPages()
     {
         var first = OcrFixtures.Page(

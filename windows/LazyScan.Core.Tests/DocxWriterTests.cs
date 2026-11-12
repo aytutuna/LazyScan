@@ -173,6 +173,18 @@ public class DocxWriterTests
     }
 
     [Fact]
+    public void DocumentXml_RightToLeftParagraphs_AreBidiWithRtlRuns()
+    {
+        string arabic = DocxWriter.DocumentXml([OcrFixtures.Page(L("مرحبا بالعالم", 50, 100, 600))]);
+        Assert.Contains("<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/></w:rPr><w:t xml:space=\"preserve\">", arabic);
+        string latin = DocxWriter.DocumentXml([OcrFixtures.Page(L("hello", 50, 100, 600))]);
+        Assert.DoesNotContain("w:bidi", latin);
+        Assert.DoesNotContain("w:rtl", latin);
+        var second = OcrFixtures.Page(L("שלום", 50, 100, 600));
+        Assert.Contains("<w:pPr><w:pageBreakBefore/><w:bidi/></w:pPr>", DocxWriter.DocumentXml([OcrFixtures.Page(), second]));
+    }
+
+    [Fact]
     public void DocumentXml_EscapesMarkup_AndLeavesOutWhatXmlCannotHold()
     {
         var page = OcrFixtures.Page(L("A & B <tag> \"q\" 'a'", 50, 100, 600));
@@ -240,7 +252,7 @@ public class DocxWriterTests
     {
         // The same numbers in DocxWriterTests.swift: both platforms write the same package.
         byte[] docx = DocxWriter.Make(TextExportTests.SamplePages());
-        Assert.Equal((1964, 0x0F9BA5A4u), (docx.Length, ZipStore.Crc32(docx)));
+        Assert.Equal((1996, 0x90AB548Bu), (docx.Length, ZipStore.Crc32(docx)));
         Assert.Equal(DocxWriter.Make(TextExportTests.SamplePages()), docx);
     }
 }
@@ -555,7 +567,7 @@ public class DocxWriterPictureTests
     {
         // The same numbers in DocxWriterTests.swift: both platforms write the same package.
         byte[] docx = DocxWriter.Make(TextExportTests.SamplePages(), [DocxFixtures.JpegPicture, DocxFixtures.PngPicture]);
-        Assert.Equal((5482, 0x8708C7FCu), (docx.Length, ZipStore.Crc32(docx)));
+        Assert.Equal((5529, 0xC8A4BDE4u), (docx.Length, ZipStore.Crc32(docx)));
         Assert.Equal(DocxWriter.Make(TextExportTests.SamplePages(), [DocxFixtures.JpegPicture, DocxFixtures.PngPicture]), docx);
         // The fixtures themselves, so a change to them shows here first.
         Assert.Equal((421, 127), (DocxFixtures.Jpeg.Length, DocxFixtures.Png.Length));
@@ -567,7 +579,7 @@ public class DocxWriterPictureTests
     {
         var pages = TextExportTests.SamplePages();
         Assert.Equal(DocxWriter.Make(pages).LongLength, DocxWriter.PackageSize(pages));
-        Assert.Equal(5482L, DocxWriter.PackageSize(pages, [DocxFixtures.JpegPicture, DocxFixtures.PngPicture]));
+        Assert.Equal(5529L, DocxWriter.PackageSize(pages, [DocxFixtures.JpegPicture, DocxFixtures.PngPicture]));
         var three = new[] { OcrFixtures.Page(OcrFixtures.Line("One", 50, 100, 200)), OcrFixtures.Page(), OcrFixtures.Page() };
         DocxPicture?[] some = [DocxFixtures.PngPicture, null, DocxFixtures.JpegPicture];
         Assert.Equal(DocxWriter.Make(three, some).LongLength, DocxWriter.PackageSize(three, some));
