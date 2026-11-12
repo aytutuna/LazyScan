@@ -1656,7 +1656,12 @@
                                         <DataTemplate>
                                             <Grid Width="208" Margin="6">
                                                 <Border x:Name="Card" Style="{StaticResource CardStyle}" AutomationProperties.Name="{Binding CardName}">
-                                                    <StackPanel>
+                                                    <Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
                                                         <Border x:Name="Well" Style="{StaticResource ImageWellStyle}" Height="160">
                                                             <Viewbox StretchDirection="DownOnly" Margin="5">
                                                                 <Image Source="{Binding Thumbnail}" MaxHeight="150" MaxWidth="190" FlowDirection="LeftToRight"
@@ -1667,7 +1672,7 @@
                                                                 </Image>
                                                             </Viewbox>
                                                         </Border>
-                                                        <DockPanel Margin="0,8,0,0">
+                                                        <DockPanel Grid.Row="2" Margin="0,8,0,0">
                                                             <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
                                                                     Content="&#xE7AD;" ToolTip="{loc:T Rotate}"
                                                                     AutomationProperties.Name="{Binding RotateName}"
@@ -1680,7 +1685,37 @@
                                                                       AutomationProperties.Name="{Binding KeepName}"
                                                                       VerticalAlignment="Center" />
                                                         </DockPanel>
-                                                    </StackPanel>
+                                                        <!-- After the Keep row in the file so Tab reaches it last; Grid.Row puts it above. -->
+                                                        <DockPanel Grid.Row="1" Margin="0,8,0,0"
+                                                                   Visibility="{Binding DatesShown, Converter={StaticResource BoolToVisibility}}">
+                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="6,0,0,0"
+                                                                        VerticalAlignment="Center"
+                                                                        Visibility="{Binding HasNoDate, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Style="{StaticResource GlyphText}" Text="&#xE7BA;" Margin="0,0,4,0" VerticalAlignment="Center"
+                                                                           Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                                                <TextBlock Style="{StaticResource CaptionText}" Text="{loc:T No date}" VerticalAlignment="Center"
+                                                                           Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                                            </StackPanel>
+                                                            <Grid Visibility="{Binding NotReading, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBox x:Name="DateBox" Height="28" MaxLength="10"
+                                                                         Text="{Binding DateText, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Typography.NumeralAlignment="Tabular"
+                                                                         AutomationProperties.Name="{loc:T Receipt date}"
+                                                                         AutomationProperties.HelpText="{Binding NoDateHelp}"
+                                                                         GotKeyboardFocus="ReviewDate_GotKeyboardFocus"
+                                                                         ToolTip="{loc:T The date used in the file name. Leave it empty to use today\'s date.}"
+                                                                         PreviewKeyDown="ReviewDate_PreviewKeyDown" />
+                                                                <TextBlock Style="{StaticResource CaptionText}" Text="{loc:T yyyy-mm-dd}" IsHitTestVisible="False"
+                                                                           VerticalAlignment="Center" Margin="8,0,0,0"
+                                                                           Visibility="{Binding DateHintShown, Converter={StaticResource BoolToVisibility}}" />
+                                                            </Grid>
+                                                            <StackPanel Orientation="Horizontal" Height="28"
+                                                                        Visibility="{Binding IsReading, Converter={StaticResource BoolToVisibility}}">
+                                                                <ProgressBar IsIndeterminate="True" Width="32" Height="3" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                                <TextBlock Style="{StaticResource CaptionText}" Text="{loc:T Reading…}" VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                    </Grid>
                                                 </Border>
                                                 <Border x:Name="Ring" CornerRadius="{StaticResource CardCornerRadius}" BorderThickness="2"
                                                         BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
@@ -1692,6 +1727,10 @@
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding Included}" Value="False">
                                                     <Setter TargetName="Well" Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DateInvalid}" Value="True">
+                                                    <Setter TargetName="DateBox" Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                    <Setter TargetName="DateBox" Property="ToolTip" Value="{loc:T Enter the date as year-month-day\, like 2026-11-03.}" />
                                                 </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>

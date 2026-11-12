@@ -428,6 +428,48 @@ public class ReceiptTests
     }
 
     [Fact]
+    public void Receipts_ParseDateTakesARealDayOnly()
+    {
+        Assert.Equal(new DocumentDate(2026, 11, 3), Receipts.ParseDate("2026-11-03"));
+        Assert.Equal(new DocumentDate(2024, 2, 29), Receipts.ParseDate(" 2024-02-29 "));
+        Assert.Null(Receipts.ParseDate(""));
+        Assert.Null(Receipts.ParseDate("2026-02-30"));
+        Assert.Null(Receipts.ParseDate("2026-13-01"));
+        Assert.Null(Receipts.ParseDate("2026-1-3"));
+        Assert.Null(Receipts.ParseDate("03.11.2026"));
+    }
+
+    [Fact]
+    public void DetectedPhoto_TypedDateReplacesTheOneFound()
+    {
+        var region = new DetectedPhotoRegion(new PointD(2, 2), new SizeD(4, 4), 0);
+        var photo = new DetectedPhoto(region, RgbaImage.Filled(4, 4, 255, 255, 255), 300);
+        Assert.False(photo.IsRead);
+        Assert.Null(photo.ReceiptDate);
+        Assert.Equal("", photo.DateText);
+
+        var found = new DocumentDate(2026, 3, 12);
+        photo.Reading = new ReceiptReading(0, [], null, found);
+        Assert.True(photo.IsRead);
+        Assert.Equal(found, photo.ReceiptDate);
+        Assert.Equal("2026-03-12", photo.DateText);
+
+        photo.TypedDate = "2026-03-14";
+        Assert.Equal(new DocumentDate(2026, 3, 14), photo.ReceiptDate);
+        photo.TypedDate = "March";
+        Assert.Null(photo.ReceiptDate);
+        Assert.Equal("March", photo.DateText);
+        photo.TypedDate = "";
+        Assert.Null(photo.ReceiptDate);
+
+        // Turned, the reading is of another image: read again, and the typed text stays.
+        photo.TypedDate = "2026-03-14";
+        photo.RotationQuarterTurns = 1;
+        Assert.False(photo.IsRead);
+        Assert.Equal("2026-03-14", photo.DateText);
+    }
+
+    [Fact]
     public void Receipts_CombinedDateIsTheEarliest()
     {
         Assert.Equal(new DocumentDate(2026, 3, 2),

@@ -1412,7 +1412,6 @@
     "The receipts found have not been saved.": "検出したレシートはまだ保存されていません。",
     "The detected photos have not been saved.": "検出した写真はまだ保存されていません。",
     "The ID card has not been saved.": "IDカードはまだ保存されていません。",
-    "Untick a receipt to leave it out, or fix its crop.": "チェックを外すとレシートを除外できます。切り取りの修正もできます。",
     "Untick a photo to leave it out, or fix its crop.": "チェックを外すと写真を除外できます。切り取りの修正もできます。",
     "Back side: none": "裏面: なし",
     "Save the front on one {0} page": "表面を{0}サイズの用紙に保存",

@@ -488,7 +488,7 @@ public partial class MainWindow : Window
             ReviewTitle.Text = ViewModel.ReviewTitle;
             ReviewSaveButton.Content = ViewModel.ReviewSaveTitle;
             AutomationProperties.SetHelpText(PhotoGrid, ViewModel.IsReceiptReview
-                ? Loc.T("Untick a receipt to leave it out, or fix its crop.")
+                ? Loc.T("Untick a receipt to leave it out, fix its crop, or correct its date.")
                 : Loc.T("Untick a photo to leave it out, or fix its crop."));
             PhotoGrid.IsEnabled = !ViewModel.IsBusy;
             // Saving nothing would discard the batch: discarding is the Discard button's job.
@@ -2542,7 +2542,27 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement { DataContext: PhotoItem item })
         {
-            item.RotateClockwise();
+            ViewModel.RotateReviewPhoto(item);
+        }
+    }
+
+    private void ReviewDate_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoItem item }) item.BeginDateEdit();
+    }
+
+    /// <summary>Enter keeps the typed date and does not save; Esc puts back the date the receipt held when the box got focus.</summary>
+    private void ReviewDate_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PhotoItem item }) return;
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            item.RevertDateText();
         }
     }
 

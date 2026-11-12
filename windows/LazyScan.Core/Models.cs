@@ -1599,6 +1599,19 @@ public sealed class DetectedPhoto
     public bool Included { get; set; } = true;
     /// <summary>Extra user-requested rotation applied at save time (0...3 quarter turns clockwise).</summary>
     public int RotationQuarterTurns { get; set; } = 0;
+    /// <summary>A receipt's text and date as read from the image turned as shown (<see cref="IsRead"/>); null until it is read.</summary>
+    public ReceiptReading? Reading { get; set; }
+    /// <summary>The date as typed in the receipt review; null until the user edits it, and then it replaces the one found.</summary>
+    public string? TypedDate { get; set; }
+
+    /// <summary>The reading is of the image as it is turned now.</summary>
+    public bool IsRead => Reading?.QuarterTurns == RotationQuarterTurns;
+
+    /// <summary>The date a receipt is named by: the typed one when it is a real day, else the one found; null when none.</summary>
+    public DocumentDate? ReceiptDate => TypedDate is { } typed ? Receipts.ParseDate(typed) : IsRead ? Reading!.Date : null;
+
+    /// <summary>What the review's date field shows.</summary>
+    public string DateText => TypedDate ?? (IsRead ? Reading!.Date?.ToString() : null) ?? "";
 
     public DetectedPhoto(DetectedPhotoRegion region, RgbaImage image, int dpi, Guid? id = null,
                          Guid? sourcePageId = null, ColorMode colorMode = ColorMode.Color)
@@ -1621,8 +1634,16 @@ public sealed class DetectedPhoto
         {
             Included = Included,
             RotationQuarterTurns = RotationQuarterTurns,
+            TypedDate = TypedDate,
         };
 }
+
+/// <summary>
+/// A receipt's text as read from its image turned <see cref="QuarterTurns"/> quarter turns: the lines
+/// (null when the text could not be read, and why in <see cref="Problem"/>) and the date found in them
+/// (null when none, or not looked for).
+/// </summary>
+public sealed record ReceiptReading(int QuarterTurns, IReadOnlyList<OcrLine>? Lines, string? Problem, DocumentDate? Date);
 
 /// <summary>
 /// One entry in the session's scan history ("Scans" tab): a small preview of every scan

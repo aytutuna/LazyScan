@@ -334,6 +334,66 @@ public sealed class PhotoItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RotationDegrees)));
     }
 
+    /// <summary>The review shows a date field on the card (receipts named by their date).</summary>
+    public bool DatesShown { get; set; }
+
+    private string? _typedBefore;
+
+    /// <summary>Counts the starts of reading, so a read begun before a turn does not store its result.</summary>
+    public int ReadGeneration { get; private set; }
+
+    public bool IsReading { get; private set; }
+
+    /// <summary>The date as typed: year-month-day. It is applied as it is typed, and text that is not a real day leaves the receipt undated.</summary>
+    public string DateText
+    {
+        get => Photo.DateText;
+        set
+        {
+            if (Photo.DateText == value) return;
+            Photo.TypedDate = value;
+            NotifyDateChanged();
+        }
+    }
+
+    public bool DateInvalid => Photo.TypedDate is { Length: > 0 } typed && Receipts.ParseDate(typed) is null;
+    public bool HasNoDate => !IsReading && Photo.ReceiptDate is null;
+    public bool DateHintShown => DateText.Length == 0;
+    public bool NotReading => !IsReading;
+    public string NoDateHelp => HasNoDate ? Loc.T("No date was found on this receipt") : "";
+
+    /// <summary>The date box got focus: Esc puts back what the receipt held then.</summary>
+    public void BeginDateEdit() => _typedBefore = Photo.TypedDate;
+
+    public void RevertDateText()
+    {
+        Photo.TypedDate = _typedBefore;
+        NotifyDateChanged();
+    }
+
+    /// <summary>The text is being read again, as the receipt is turned now.</summary>
+    public void BeginReading()
+    {
+        ReadGeneration++;
+        IsReading = true;
+        NotifyDateChanged();
+    }
+
+    public void EndReading(ReceiptReading reading)
+    {
+        IsReading = false;
+        Photo.Reading = reading;
+        NotifyDateChanged();
+    }
+
+    private void NotifyDateChanged()
+    {
+        foreach (var name in (string[])[nameof(DateText), nameof(DateInvalid), nameof(HasNoDate), nameof(NoDateHelp), nameof(DateHintShown), nameof(IsReading), nameof(NotReading)])
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
     public double RotationDegrees => Photo.RotationQuarterTurns * 90;
 }
 
@@ -2469,7 +2529,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             // Rebuild from the CURRENT item so Keep/rotate changes made meanwhile survive.
             var current = DetectedPhotos[index];
-            DetectedPhotos[index] = new PhotoItem(current.Photo.Recropped(edited, r.Item1), r.Item2) { Number = current.Number, Count = current.Count };
+            var recropped = new PhotoItem(current.Photo.Recropped(edited, r.Item1), r.Item2)
+            {
+                Number = current.Number,
+                Count = current.Count,
+                DatesShown = current.DatesShown,
+            };
+            DetectedPhotos[index] = recropped;
+            if (receipt && recropped.DatesShown) ReadReceiptDate(recropped);
             StatusMessage = Loc.T("Crop updated.");
             NotifyAll();
             return true;

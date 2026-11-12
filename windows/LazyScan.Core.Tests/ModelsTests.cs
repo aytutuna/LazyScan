@@ -94,6 +94,24 @@ public class ModelsTests
         Assert.Equal(70, updated.Image.Height);
     }
 
+    [Fact]
+    public void RecroppedPhotoKeepsATypedDateAndDropsAReadOne()
+    {
+        var region = new DetectedPhotoRegion(new PointD(50, 50), new SizeD(80, 60), 0);
+        var read = new DetectedPhoto(region, Gray(80, 60), 300) { Reading = new ReceiptReading(0, [], null, new DocumentDate(2026, 3, 12)) };
+        var typed = new DetectedPhoto(region, Gray(80, 60), 300) { TypedDate = "2026-04-01", Reading = new ReceiptReading(0, [], null, null) };
+
+        var afterRead = read.Recropped(region, Gray(40, 30));
+        var afterTyped = typed.Recropped(region, Gray(40, 30));
+
+        Assert.Null(afterRead.Reading);
+        Assert.Null(afterRead.TypedDate);
+        Assert.Null(afterRead.ReceiptDate);
+        Assert.Null(afterTyped.Reading);
+        Assert.Equal("2026-04-01", afterTyped.TypedDate);
+        Assert.Equal(new DocumentDate(2026, 4, 1), afterTyped.ReceiptDate);
+    }
+
     // MARK: - Page rotation
 
     [Fact]

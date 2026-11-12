@@ -857,6 +857,15 @@ public static class Receipts
     public static IReadOnlyList<string> TextLines(IReadOnlyList<OcrLine> lines, int pixelWidth, int pixelHeight) =>
         OcrText.ReadingOrder(lines, Math.Max(1, pixelWidth), Math.Max(1, pixelHeight)).Select(l => l.Text).ToList();
 
+    /// <summary>A date typed as year-month-day ("2026-03-12"); null when it is empty or not a real day.</summary>
+    public static DocumentDate? ParseDate(string text)
+    {
+        var parts = text.Trim(' ', '\t').Split('-');
+        if (parts.Length != 3 || parts[0].Length != 4 || parts[1].Length != 2 || parts[2].Length != 2
+            || !parts.All(p => p.All(char.IsAsciiDigit))) return null;
+        return DocumentDate.TryCreate(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
+    }
+
     /// <summary>The date one PDF of several receipts is named by: the earliest found; null when none was.</summary>
     public static DocumentDate? CombinedDate(IEnumerable<DocumentDate?> dates)
     {

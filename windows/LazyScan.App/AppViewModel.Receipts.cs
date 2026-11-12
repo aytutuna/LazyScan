@@ -8,9 +8,10 @@ namespace LazyScan.App;
 /// <summary>
 /// The Receipts task: the receipts on a scan are found (<see cref="ReceiptDetector"/>), cut out,
 /// straightened and made easy to read (<see cref="ReceiptEnhancer"/>), reviewed in the photo review,
-/// then saved: each one's text is read once with OCR for its date (the file name's {docdate}), the
-/// PDF's text layer and the text beside it, and the receipts are written as a file each or as one
-/// PDF, all or nothing. Twin of the Mac's AppState+Receipts.swift.
+/// then saved: each one's text is read once with OCR as the review opens for its date (the file
+/// name's {docdate}, which the review shows and lets the user correct), the PDF's text layer and the
+/// text beside it, and the receipts are written as a file each or as one PDF, all or nothing. Twin
+/// of the Mac's AppState+Receipts.swift.
 /// </summary>
 public sealed partial class AppViewModel
 {
@@ -88,13 +89,14 @@ public sealed partial class AppViewModel
     {
         StatusMessage = Loc.T("Finding receipts…");
         NotifyAll();
+        bool byDate = Receipts.NamesByDate(s);
         var found = await Task.Run(() =>
         {
             var all = new List<PhotoItem>();
             foreach (var page in processed)
             {
                 token.ThrowIfCancellationRequested();
-                all.AddRange(SplitReceipts(page, s, token).Select(p => new PhotoItem(p)));
+                all.AddRange(SplitReceipts(page, s, token).Select(p => new PhotoItem(p) { DatesShown = byDate }));
             }
             return all;
         }, token);
@@ -109,13 +111,77 @@ public sealed partial class AppViewModel
         ShowPhotoReview = found.Count > 0;
         if (!ShowPhotoReview) _photoSourceImages = [];
         SetStatus(Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts."), new(new StatusHead.Found(found.Count, FileKind.Receipt)));
+        if (byDate) foreach (var item in found) ReadReceiptDate(item);
+    }
+
+    private Task _receiptReads = Task.CompletedTask;
+
+    /// <summary>A receipt is turned in the review: its text and date are read again from the new image.</summary>
+    public void RotateReviewPhoto(PhotoItem item)
+    {
+        item.RotateClockwise();
+        if (item.DatesShown) ReadReceiptDate(item);
     }
 
     /// <summary>
-    /// Saves the receipts kept in the review: each turned as shown, its text read once with OCR when
-    /// it is needed (<see cref="Receipts.ReadsText"/>) for its date, the PDF's text layer and the text
-    /// beside it; then a file each, or one PDF for all (<see cref="TaskOptions.ReceiptCombine"/>), named
-    /// by the receipt's date ({docdate}; for one PDF the earliest), the scan date when none is found.
+    /// The text of <paramref name="turned"/>, a receipt turned <paramref name="turns"/> quarter turns, and the
+    /// date found in it when <paramref name="byDate"/>. A receipt whose text cannot be read is still saved:
+    /// without a text layer, named by the scan date.
+    /// </summary>
+    private async Task<ReceiptReading> ReadReceipt(RgbaImage turned, int turns, bool byDate, bool dayFirst,
+                                                   IReadOnlyList<string>? languages, CancellationToken token)
+    {
+        try
+        {
+            var lines = await _ocrService.RecognizeLinesAsync(turned, languages).WaitAsync(token);
+            var date = byDate
+                ? ReceiptDateExtractor.FindDate(Receipts.TextLines(lines, turned.Width, turned.Height), DocumentDate.Of(DateTime.Now), dayFirst)
+                : null;
+            return new ReceiptReading(turns, lines, null, date);
+        }
+        catch (Exception e) when (!token.IsCancellationRequested)
+        {
+            return new ReceiptReading(turns, null, e.Message, null);
+        }
+    }
+
+    /// <summary>
+    /// Reads a receipt's text and the date in it in the background, one receipt after another, so the
+    /// review shows the date and Save does not read the text again. A date the user typed is kept.
+    /// </summary>
+    private void ReadReceiptDate(PhotoItem item)
+    {
+        var languages = OcrLanguages(Settings);
+        bool dayFirst = ReceiptDateExtractor.PrefersDayFirst(CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
+        item.BeginReading();
+        int generation = item.ReadGeneration;
+        var previous = _receiptReads;
+        _receiptReads = Settled(Run());
+        NotifyAll();
+
+        async Task Run()
+        {
+            await Settled(previous);
+            // The receipt may have been turned, cropped again or discarded meanwhile.
+            if (!DetectedPhotos.Contains(item) || item.ReadGeneration != generation) return;
+            var photo = item.Photo;
+            int turns = photo.RotationQuarterTurns;
+            var reading = await Task.Run(async () =>
+            {
+                var image = turns == 0 ? photo.Image : ImagePipeline.Rotate(photo.Image, turns);
+                return await ReadReceipt(image, turns, true, dayFirst, languages, CancellationToken.None);
+            });
+            if (!DetectedPhotos.Contains(item) || item.ReadGeneration != generation) return;
+            item.EndReading(reading);
+            NotifyAll();
+        }
+    }
+
+    /// <summary>
+    /// Saves the receipts kept in the review: each turned as shown, its text as the review read it, or
+    /// read here with OCR when it is needed (<see cref="Receipts.ReadsText"/>) and was not; then a file
+    /// each, or one PDF for all (<see cref="TaskOptions.ReceiptCombine"/>), named by the receipt's date
+    /// as the review shows it ({docdate}; for one PDF the earliest), the scan date when it has none.
     /// All or nothing: a failed or cancelled save removes what it wrote and the review stays open.
     /// </summary>
     private Task SaveReceipts()
@@ -129,14 +195,22 @@ public sealed partial class AppViewModel
         {
             // A crop correction applied just before saving must be in the files.
             await Settled(_recropChain);
-            var receipts = DetectedPhotos.Where(p => p.Photo.Included).Select(p => p.Photo).ToList();
+            var items = DetectedPhotos.Where(p => p.Photo.Included).ToList();
+            var receipts = items.Select(p => p.Photo).ToList();
             if (receipts.Count == 0) return;
+            // Receipts still being read since the review opened are waited for, not read again.
+            int pending = items.FindIndex(p => p.IsReading);
+            if (pending >= 0)
+            {
+                StatusMessage = Loc.T("Reading receipt {0} of {1}…", pending + 1, items.Count);
+                NotifyAll();
+                await _receiptReads.WaitAsync(token);
+            }
             // A protected PDF's password is asked for before the receipts are read.
             if (format == OutputFormat.Pdf) ProtectionFor(s);
             bool combine = Receipts.Combines(s.TaskOptions.ReceiptCombine, s.Format, receipts.Count);
-            var today = DocumentDate.Of(DateTime.Now);
 
-            // 1. Each receipt as shown, its text read once.
+            // 1. Each receipt as shown, its text read once (in the review, when it was read for the date).
             var images = new List<RgbaImage>();
             var lines = new List<IReadOnlyList<OcrLine>?>();
             var dates = new List<DocumentDate?>();
@@ -149,21 +223,19 @@ public sealed partial class AppViewModel
                     ? receipt.Image
                     : ImagePipeline.Rotate(receipt.Image, receipt.RotationQuarterTurns), token);
                 images.Add(image);
-                IReadOnlyList<OcrLine>? read = null;
-                if (readsText)
+                var reading = receipt.IsRead ? receipt.Reading : null;
+                if (reading is null && readsText)
                 {
                     StatusMessage = Loc.T("Reading receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
-                    // A receipt whose text cannot be read is still saved: without a text layer,
-                    // named by the scan date.
-                    try { read = await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token); }
-                    catch (OperationCanceledException) { throw; }
-                    catch (Exception e) { ocrProblem ??= e.Message; }
+                    reading = await ReadReceipt(image, receipt.RotationQuarterTurns, byDate, dayFirst, OcrLanguages(s), token);
                 }
+                if (reading?.Problem is { } problem) ocrProblem ??= problem;
+                // A date typed in the review replaces the one found.
+                var date = !byDate ? null : receipt.TypedDate is not null ? receipt.ReceiptDate : reading?.Date;
+                var read = reading?.Lines;
                 lines.Add(read);
-                dates.Add(byDate && read is not null
-                    ? ReceiptDateExtractor.FindDate(Receipts.TextLines(read, image.Width, image.Height), today, dayFirst)
-                    : null);
+                dates.Add(date);
             }
 
             // 2. The files, all or nothing.
@@ -223,8 +295,7 @@ public sealed partial class AppViewModel
             ResetFlow();
             // With Also save text on, WriteTextBeside has reported the unread text already.
             if (ocrProblem is not null && ErrorMessage is null) ErrorMessage = TextExport.RecognitionFailed(ocrProblem);
-            // No date was looked for in a receipt whose text could not be read.
-            int undated = byDate ? dates.Where((d, i) => lines[i] is not null).Count(d => d is null) : 0;
+            int undated = byDate ? dates.Count(d => d is null) : 0;
             var names = saved.Select(p => Path.GetFileName(p)).ToList();
             // Protected PDFs say so after their names: "a.pdf, b.pdf (password-protected)".
             bool pdfs = combine || format == OutputFormat.Pdf;
