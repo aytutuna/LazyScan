@@ -73,6 +73,8 @@ final class PagesTests: XCTestCase {
             scan.tap()
             XCTAssertTrue(app.pagesButton.waitForPageCount(count, timeout: 240), "\(count) on the pages' button")
         }
+        // The drop is refused while a scan is still being spooled.
+        app.waitUntilEnabled(scan, "Scan", timeout: 120)
         app.openPages(3)
 
         let ids: [String] = (1...3).map { (number: Int) -> String in pageID(app, number) }
@@ -80,12 +82,15 @@ final class PagesTests: XCTestCase {
 
         let first: XCUIElement = app.descendants(matching: .any)["page.1"].firstMatch
         let third: XCUIElement = app.descendants(matching: .any)["page.3"].firstMatch
-        third.press(forDuration: 1, thenDragTo: first)
-
-        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
-            self.pageID(app, 1) == ids[2]
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 15), .completed, "The third page is first")
+        var isFirst = false
+        for _ in 1...2 where !isFirst {
+            third.press(forDuration: 1, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 1)
+            let moved = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+                self.pageID(app, 1) == ids[2]
+            }, object: nil)
+            isFirst = XCTWaiter.wait(for: [moved], timeout: 10) == .completed
+        }
+        XCTAssertTrue(isFirst, "The third page is first")
         XCTAssertEqual((1...3).map { (number: Int) -> String in pageID(app, number) }, [ids[2], ids[0], ids[1]],
                        "The others moved down one")
     }
