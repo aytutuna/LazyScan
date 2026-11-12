@@ -215,12 +215,11 @@ extension AppState {
             let target = try outputURL(fileExtension: "pdf")
             let writeOptions: PDFWriteOptions = try await self.pdfOptions(s, for: target)
             protected = writeOptions.isProtected
-            try await Task.detached(priority: .userInitiated) {
+            url = try await Task.detached(priority: .userInitiated) {
                 try AppState.writePDFAtomically(pages: pages, searchable: s.pdfSearchable, languages: s.ocrLanguages,
                                                 pdfSize: s.output.pdfSize, to: target, options: writeOptions,
                                                 shouldContinue: { !flag.isCancelled }, failures: failures, progress: nil)
             }.value
-            url = target
         } catch {
             if AppState.isCancellation(error) || AppState.isPasswordNotGiven(error) {
                 if let printError {

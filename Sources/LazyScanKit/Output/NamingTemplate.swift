@@ -98,6 +98,27 @@ public struct NamingTemplate {
         return candidate
     }
 
+    private static let maxMoveAttempts = 1000
+
+    /// Moves `source` to `url` without replacing a file: when `url` has been taken since it was
+    /// chosen, the next free " 2", " 3", … name is used. Returns where the file went. Twin of C#
+    /// `NamingTemplate.MoveToFreePath`.
+    public static func moveToFreeURL(_ source: URL, to url: URL) throws -> URL {
+        let fileManager = FileManager.default
+        var candidate = url
+        while true {
+            do {
+                try fileManager.moveItem(at: source, to: candidate)
+                return candidate
+            } catch {
+                guard attempt < maxMoveAttempts, fileManager.fileExists(atPath: candidate.path) else { throw error }
+                candidate = uniqueURL(in: url.deletingLastPathComponent(),
+                                      base: url.deletingPathExtension().lastPathComponent,
+                                      fileExtension: url.pathExtension)
+            }
+        }
+    }
+
     // MARK: - Private helpers
 
     private func formatted(_ date: Date, _ format: String) -> String {

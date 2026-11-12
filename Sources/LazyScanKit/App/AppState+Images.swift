@@ -55,14 +55,14 @@ extension AppState {
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
                     self.statusMessage = L10n.t("Saving page {0} of {1}…", number, pages.count)
-                    let url: URL = try self.outputURL(fileExtension: format.fileExtension,
-                                                      index: pages.count > 1 ? number : nil)
+                    let planned: URL = try self.outputURL(fileExtension: format.fileExtension,
+                                                          index: pages.count > 1 ? number : nil)
                     let quality: Double = s.jpegQuality
                     let pageNumber: Int = number
-                    try await Task.detached(priority: .userInitiated) {
+                    let url: URL = try await Task.detached(priority: .userInitiated) { () throws -> URL in
                         let full: CGImage = try Self.fullImage(of: page, number: pageNumber)
-                        try ImageExporter.write(full, to: url, format: format, dpi: page.dpi,
-                                                jpegQuality: quality, colorMode: page.colorMode)
+                        return try ImageExporter.write(full, to: planned, format: format, dpi: page.dpi,
+                                                       jpegQuality: quality, colorMode: page.colorMode, keepingExisting: true)
                     }.value
                     saved.append(url)
                     number += 1

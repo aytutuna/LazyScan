@@ -148,6 +148,49 @@ final class OutputTests: XCTestCase {
         XCTAssertEqual(asked, ["0: 800x600 400", "1: 200x100 200"])
     }
 
+    func test_imageExporterKeepingExistingTakesTheNextFreeName() throws {
+        let image = makeSolidImage(width: 20, height: 10, red: 0.3, green: 0.7, blue: 0.4)
+        let dir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let taken = dir.appendingPathComponent("scan.jpg")
+        try Data("other".utf8).write(to: taken)
+
+        let written = try ImageExporter.write(image, to: taken, format: .jpeg, dpi: 300, jpegQuality: 0.9,
+                                              keepingExisting: true)
+
+        XCTAssertEqual(written.lastPathComponent, "scan 2.jpg")
+        XCTAssertEqual(try String(contentsOf: taken, encoding: .utf8), "other")
+        XCTAssertEqual((try imageProperties(at: written)[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue, 20)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path).count, 2)
+    }
+
+    func test_imageExporterKeepingExistingLeavesNoFileForARejectedFormat() throws {
+        let image = makeSolidImage(width: 20, height: 10, red: 0.3, green: 0.7, blue: 0.4)
+        let dir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("scan.jpg")
+        XCTAssertThrowsError(try ImageExporter.write(image, to: url, format: .pdf, dpi: 300, jpegQuality: 0.9,
+                                                     keepingExisting: true))
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: dir.path).isEmpty)
+    }
+
+    func test_writePDFAtomicallyNeverReplacesAFileThatAppeared() throws {
+        let page = ScannedPage(image: makeSolidImage(width: 40, height: 30, red: 1, green: 1, blue: 1),
+                               dpi: 100, colorMode: .color)
+        let dir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let taken = dir.appendingPathComponent("Scan.pdf")
+        try Data("other".utf8).write(to: taken)
+
+        let written = try AppState.writePDFAtomically(pages: [page], pdfSize: .standard, to: taken, textLayer: nil,
+                                                      progress: nil)
+
+        XCTAssertEqual(written.lastPathComponent, "Scan 2.pdf")
+        XCTAssertEqual(try String(contentsOf: taken, encoding: .utf8), "other")
+        XCTAssertNotNil(PDFDocument(url: written))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path).count, 2)
+    }
+
     func test_imageExporterRejectsTextFormats() throws {
         let image = makeSolidImage(width: 20, height: 10, red: 0.3, green: 0.7, blue: 0.4)
         let dir = try makeTempDirectory()

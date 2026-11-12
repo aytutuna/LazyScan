@@ -250,12 +250,12 @@ extension AppState {
                 if pageFormat == .pdf {
                     // The password before the file is named, which takes the running number.
                     _ = try await self.protectionFor(s)
-                    url = try self.outputURL(fileExtension: "pdf")
-                    let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
+                    let planned = try self.outputURL(fileExtension: "pdf")
+                    let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                     let page = ScannedPage(image: composed.page, dpi: pageDPI, colorMode: pageMode)
-                    try await Task.detached(priority: .userInitiated) {
+                    url = try await Task.detached(priority: .userInitiated) {
                         try AppState.writePDFAtomically(pages: [page], searchable: s.pdfSearchable,
-                                                        languages: s.ocrLanguages, pdfSize: s.output.pdfSize, to: url,
+                                                        languages: s.ocrLanguages, pdfSize: s.output.pdfSize, to: planned,
                                                         options: options, shouldContinue: { !flag.isCancelled },
                                                         failures: failures) { [weak self] msg in
                             Task { @MainActor in self?.statusMessage = msg }
@@ -264,11 +264,11 @@ extension AppState {
                     saved.append(url)
                     self.notePDFSize(of: url, protected: options.isProtected)
                 } else {
-                    url = try self.outputURL(fileExtension: pageFormat.fileExtension)
+                    let planned = try self.outputURL(fileExtension: pageFormat.fileExtension)
                     let image = composed.page
-                    try await Task.detached(priority: .userInitiated) {
-                        try ImageExporter.write(image, to: url, format: pageFormat, dpi: pageDPI,
-                                                jpegQuality: s.jpegQuality, colorMode: pageMode)
+                    url = try await Task.detached(priority: .userInitiated) {
+                        try ImageExporter.write(image, to: planned, format: pageFormat, dpi: pageDPI,
+                                                jpegQuality: s.jpegQuality, colorMode: pageMode, keepingExisting: true)
                     }.value
                     saved.append(url)
                 }
@@ -289,11 +289,11 @@ extension AppState {
                         let dpi = sideImage.dpi
                         // The mode the side was scanned in: a black & white TIFF is G4.
                         let sideMode = side == .front ? front.colorMode : (back?.colorMode ?? .color)
-                        try await Task.detached(priority: .userInitiated) {
+                        let written = try await Task.detached(priority: .userInitiated) {
                             try ImageExporter.write(image, to: sideURL, format: sideFormat, dpi: dpi,
-                                                    jpegQuality: s.jpegQuality, colorMode: sideMode)
+                                                    jpegQuality: s.jpegQuality, colorMode: sideMode, keepingExisting: true)
                         }.value
-                        saved.append(sideURL)
+                        saved.append(written)
                     }
                 }
             } catch {

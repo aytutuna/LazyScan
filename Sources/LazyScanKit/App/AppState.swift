@@ -1645,10 +1645,10 @@ public final class AppState: ObservableObject {
             let format = s.format.queueFormat
             if format.isTextFormat {
                 self.statusMessage = L10n.t("Reading the text of the pages…")
-                let url = try self.outputURL(fileExtension: format.fileExtension, label: document.label)
+                let planned = try self.outputURL(fileExtension: format.fileExtension, label: document.label)
                 let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
-                let hasText = try await Task.detached(priority: .userInitiated) {
-                    try Self.writeTextDocument(pages: pages, format: format, to: url,
+                let (url, hasText) = try await Task.detached(priority: .userInitiated) {
+                    try Self.writeTextDocument(pages: pages, format: format, to: planned,
                                                pageImages: pageImages,
                                                shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
                         Task { @MainActor in self?.setStatus(msg, detail) }
@@ -1667,19 +1667,19 @@ public final class AppState: ObservableObject {
             // A protected PDF's password is asked for before the file is named (which takes the running
             // number) and any page is read or written; without it the pages stay collected.
             _ = try await self.protectionFor(s)
-            let url = try self.outputURL(fileExtension: "pdf", label: document.label)
-            let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
+            let planned = try self.outputURL(fileExtension: "pdf", label: document.label)
+            let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
             self.statusMessage = s.pdfSearchable || text != nil ? L10n.t("Running OCR and building PDF…") : L10n.t("Building PDF…")
             let failures = PDFTextFailures()
-            let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
-                try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
-                                            textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                      pages: pages, failures: failures),
-                                            options: options,
-                                            shouldContinue: { !flag.isCancelled }) { [weak self] msg in
+            let (url, textResult) = try await Task.detached(priority: .userInitiated) { () throws -> (URL, (url: URL?, problem: String?)?) in
+                let written = try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: planned,
+                                                          textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
+                                                                                    pages: pages, failures: failures),
+                                                          options: options,
+                                                          shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                     Task { @MainActor in self?.statusMessage = msg }
                 }
-                return text.map { Self.writeTextBeside(pdf: url, text: $0) }
+                return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
             }.value
             self.lastSavedURLs = [url]
             self.notePDFSize(of: url, protected: options.isProtected)
@@ -1709,14 +1709,15 @@ public final class AppState: ObservableObject {
             do {
                 let target = try outputURL(fileExtension: s.format.fileExtension)
                 let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
-                hasText = try await Task.detached(priority: .userInitiated) {
+                let written = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: s.format, to: target,
                                                pageImages: pageImages,
                                                shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
                         Task { @MainActor in self?.setStatus(msg, detail) }
                     }
                 }.value
-                url = target
+                url = written.url
+                hasText = written.hasText
             } catch {
                 // Nothing was written: the pages go to the queue rather than being lost, to be
                 // saved once the text can be read or the file written, or in another format.
@@ -1746,19 +1747,19 @@ public final class AppState: ObservableObject {
                 return
             }
             do {
-                let url = try outputURL(fileExtension: "pdf")
-                let options: PDFWriteOptions = try await pdfOptions(s, for: url)
+                let planned = try outputURL(fileExtension: "pdf")
+                let options: PDFWriteOptions = try await pdfOptions(s, for: planned)
                 let text = s.output.savesTextBeside ? PDFTextCollector() : nil
                 let failures = PDFTextFailures()
-                let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
-                    try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
-                                                textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                          pages: pages, failures: failures),
-                                                options: options,
-                                                shouldContinue: { !flag.isCancelled }) { [weak self] msg in
+                let (url, textResult) = try await Task.detached(priority: .userInitiated) { () throws -> (URL, (url: URL?, problem: String?)?) in
+                    let written = try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: planned,
+                                                              textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
+                                                                                        pages: pages, failures: failures),
+                                                              options: options,
+                                                              shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                         Task { @MainActor in self?.statusMessage = msg }
                     }
-                    return text.map { Self.writeTextBeside(pdf: url, text: $0) }
+                    return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
                 }.value
                 saved = [url]
                 notePDFSize(of: url, protected: options.isProtected)
@@ -1776,10 +1777,10 @@ public final class AppState: ObservableObject {
             do {
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
-                    let url = try outputURL(fileExtension: s.format.fileExtension)
-                    try await Task.detached(priority: .userInitiated) {
-                        try ImageExporter.write(page.image, to: url, format: s.format,
-                                                dpi: page.dpi, jpegQuality: s.jpegQuality, colorMode: page.colorMode)
+                    let planned = try outputURL(fileExtension: s.format.fileExtension)
+                    let url = try await Task.detached(priority: .userInitiated) {
+                        try ImageExporter.write(page.image, to: planned, format: s.format, dpi: page.dpi,
+                                                jpegQuality: s.jpegQuality, colorMode: page.colorMode, keepingExisting: true)
                     }.value
                     saved.append(url)
                 }
@@ -1834,14 +1835,14 @@ public final class AppState: ObservableObject {
             var saved: [URL] = []
             for (index, photo) in photos.enumerated() {
                 if flag.isCancelled { throw ScanError.cancelled }
-                let url = try self.outputURL(fileExtension: format.fileExtension, index: index + 1)
-                try await Task.detached(priority: .userInitiated) {
+                let planned = try self.outputURL(fileExtension: format.fileExtension, index: index + 1)
+                let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
                     let image = photo.rotationQuarterTurns == 0
                         ? photo.image
                         : ImagePipeline.rotate(photo.image, quarterTurns: photo.rotationQuarterTurns)
                     // The mode the photo was scanned in: a black & white TIFF is G4.
-                    try ImageExporter.write(image, to: url, format: format,
-                                            dpi: photo.dpi, jpegQuality: s.jpegQuality, colorMode: photo.colorMode)
+                    return try ImageExporter.write(image, to: planned, format: format, dpi: photo.dpi,
+                                                   jpegQuality: s.jpegQuality, colorMode: photo.colorMode, keepingExisting: true)
                 }.value
                 saved.append(url)
             }
@@ -2567,13 +2568,15 @@ public final class AppState: ObservableObject {
 
     /// Write the PDF to a hidden temp name and move it into place, so a failed
     /// or interrupted build never leaves a truncated PDF at the destination. `options`: PDF/A or a
-    /// password (`pdfOptions`); nil writes a plain PDF.
+    /// password (`pdfOptions`); nil writes a plain PDF. A file that has taken the name meanwhile is never
+    /// replaced: the PDF goes to the next free name, which is returned.
+    @discardableResult
     nonisolated static func writePDFAtomically(pages: [ScannedPage], searchable: Bool,
                                                        languages: [String], pdfSize: PDFSizePreset,
                                                        to url: URL, options: PDFWriteOptions? = nil,
                                                        shouldContinue: (() -> Bool)? = nil,
                                                        failures: PDFTextFailures? = nil,
-                                                       progress: ((String) -> Void)?) throws {
+                                                       progress: ((String) -> Void)?) throws -> URL {
         let layer: PDFTextLayer? = searchable
             ? { _, page in
                 do {
@@ -2584,22 +2587,22 @@ public final class AppState: ObservableObject {
                 }
             }
             : nil
-        try writePDFAtomically(pages: pages, pdfSize: pdfSize, to: url, textLayer: layer, options: options,
-                               shouldContinue: shouldContinue, progress: progress)
+        return try writePDFAtomically(pages: pages, pdfSize: pdfSize, to: url, textLayer: layer, options: options,
+                                      shouldContinue: shouldContinue, progress: progress)
     }
 
     /// The same, with each page's text layer from `textLayer` (none when nil).
+    @discardableResult
     nonisolated static func writePDFAtomically(pages: [ScannedPage], pdfSize: PDFSizePreset, to url: URL,
                                                textLayer: PDFTextLayer?, options: PDFWriteOptions? = nil,
                                                shouldContinue: (() -> Bool)? = nil,
-                                               progress: ((String) -> Void)?) throws {
+                                               progress: ((String) -> Void)?) throws -> URL {
         let tmp = url.deletingLastPathComponent()
             .appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
         do {
             try PDFBuilder.writePDF(pages: pages, pdfSize: pdfSize, to: tmp, progress: progress,
                                     shouldContinue: shouldContinue, textLayer: textLayer, options: options)
-            try? FileManager.default.removeItem(at: url)
-            try FileManager.default.moveItem(at: tmp, to: url)
+            return try NamingTemplate.moveToFreeURL(tmp, to: url)
         } catch {
             try? FileManager.default.removeItem(at: tmp)
             throw error
@@ -2652,11 +2655,12 @@ public final class AppState: ObservableObject {
     /// fails the save, saying why. A Word document shows each page's picture before its text when
     /// `pageImages` gives the size to store them at (`OutputOptions.wordPageImages`, stored as
     /// `pdfSize` stores a PDF page). A Word document past `DocxWriter.maxPackageBytes` fails the
-    /// save with `DocxWriter.tooLargeMessage`. Returns whether any text was found.
+    /// save with `DocxWriter.tooLargeMessage`. Returns where the file went (the next free name when `url`
+    /// has been taken meanwhile) and whether any text was found.
     nonisolated static func writeTextDocument(pages: [ScannedPage], format: OutputFormat, to url: URL,
                                                           pageImages: PDFSizePreset? = nil,
                                                           shouldContinue: () -> Bool,
-                                                          progress: (String, StatusDetail) -> Void) throws -> Bool {
+                                                          progress: (String, StatusDetail) -> Void) throws -> (url: URL, hasText: Bool) {
         var ocrPages: [OCRPage] = []
         var pictures: [DocxPicture?] = []
         var pictureBytes = 0
@@ -2693,12 +2697,16 @@ public final class AppState: ObservableObject {
         } else {
             data = TextExport.encode(ocrPages)
         }
+        let tmp = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
+        let saved: URL
         do {
-            try data.write(to: url, options: .atomic)
+            try data.write(to: tmp)
+            saved = try NamingTemplate.moveToFreeURL(tmp, to: url)
         } catch {
+            try? FileManager.default.removeItem(at: tmp)
             throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
         }
-        return TextExport.hasText(ocrPages)
+        return (saved, TextExport.hasText(ocrPages))
     }
 
     /// The lines OCR finds on `image`, for text the user asked for: a failure is an error that says

@@ -172,10 +172,10 @@ extension AppState {
         let s: ScanSettings = settings
         let format: OutputFormat = s.format.imageFormatOrJPEG
         runExclusive { flag in
-            let url: URL = try self.outputURL(fileExtension: format.fileExtension)
-            try await Task.detached(priority: .userInitiated) { () throws -> Void in
-                try ImageExporter.write(page.image, to: url, format: format, dpi: page.dpi, jpegQuality: s.jpegQuality,
-                                        colorMode: page.colorMode)
+            let planned: URL = try self.outputURL(fileExtension: format.fileExtension)
+            let url: URL = try await Task.detached(priority: .userInitiated) { () throws -> URL in
+                try ImageExporter.write(page.image, to: planned, format: format, dpi: page.dpi, jpegQuality: s.jpegQuality,
+                                        colorMode: page.colorMode, keepingExisting: true)
             }.value
             if flag.isCancelled {
                 try? FileManager.default.removeItem(at: url)

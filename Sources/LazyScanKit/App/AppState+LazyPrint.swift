@@ -36,7 +36,7 @@ extension AppState {
             }
             let pages: [ScannedPage] = collected
             let url: URL = try self.handoffURL(named: L10n.t("Scan|noun"))
-            try await Task.detached(priority: .userInitiated) {
+            _ = try await Task.detached(priority: .userInitiated) {
                 try AppState.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url, textLayer: nil,
                                                 shouldContinue: { !flag.isCancelled }, progress: nil)
             }.value
@@ -62,7 +62,7 @@ extension AppState {
             if flag.isCancelled { throw ScanError.cancelled }
             let url: URL = try self.handoffURL(named: L10n.t("ID card"))
             let page: ScannedPage = ScannedPage(image: composed, dpi: pageDPI, colorMode: pageMode)
-            try await Task.detached(priority: .userInitiated) {
+            _ = try await Task.detached(priority: .userInitiated) {
                 try AppState.writePDFAtomically(pages: [page], pdfSize: s.output.pdfSize, to: url, textLayer: nil,
                                                 shouldContinue: { !flag.isCancelled }, progress: nil)
             }.value

@@ -231,4 +231,56 @@ final class NamingTemplateTests: XCTestCase {
         let third = NamingTemplate.uniqueURL(in: dir, base: "Report", fileExtension: "pdf")
         XCTAssertEqual(third.lastPathComponent, "Report 3.pdf")
     }
+
+    func test_moveToFreeURLMovesToAFreeName() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("NamingTemplateTests-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+
+        let source = dir.appendingPathComponent(".tmp")
+        try Data("new".utf8).write(to: source)
+        let target = dir.appendingPathComponent("Report.pdf")
+        XCTAssertEqual(try NamingTemplate.moveToFreeURL(source, to: target), target)
+        XCTAssertEqual(try String(contentsOf: target, encoding: .utf8), "new")
+        XCTAssertFalse(fm.fileExists(atPath: source.path))
+    }
+
+    func test_moveToFreeURLNeverOverwritesAndTakesTheNextFreeSuffix() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("NamingTemplateTests-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+
+        // The name was free when it was picked, then two other files landed.
+        let target = dir.appendingPathComponent("Report.pdf")
+        let second = dir.appendingPathComponent("Report 2.pdf")
+        try Data("first".utf8).write(to: target)
+        try Data("second".utf8).write(to: second)
+        let source = dir.appendingPathComponent(".tmp")
+        try Data("new".utf8).write(to: source)
+
+        let written = try NamingTemplate.moveToFreeURL(source, to: target)
+
+        XCTAssertEqual(written.lastPathComponent, "Report 3.pdf")
+        XCTAssertEqual(try String(contentsOf: target, encoding: .utf8), "first")
+        XCTAssertEqual(try String(contentsOf: second, encoding: .utf8), "second")
+        XCTAssertEqual(try String(contentsOf: written, encoding: .utf8), "new")
+        XCTAssertFalse(fm.fileExists(atPath: source.path))
+    }
+
+    func test_moveToFreeURLRethrowsOtherFailures() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("NamingTemplateTests-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+
+        // A missing source is not a name collision: no retry, the error surfaces.
+        XCTAssertThrowsError(try NamingTemplate.moveToFreeURL(dir.appendingPathComponent("missing"),
+                                                              to: dir.appendingPathComponent("Report.pdf")))
+        XCTAssertTrue(try fm.contentsOfDirectory(atPath: dir.path).isEmpty)
+    }
 }

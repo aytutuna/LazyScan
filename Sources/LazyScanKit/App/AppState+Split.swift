@@ -244,12 +244,12 @@ extension AppState {
                 if flag.isCancelled { throw ScanError.cancelled }
                 self.statusMessage = L10n.t("Saving document {0} of {1}…", document.number, plan.documents.count)
                 let pages = document.pages
-                let url = try self.outputURL(fileExtension: format.fileExtension, index: plan.fileIndex(document),
-                                             label: document.label)
+                let planned = try self.outputURL(fileExtension: format.fileExtension, index: plan.fileIndex(document),
+                                                 label: document.label)
                 if format.isTextFormat {
                     let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
-                    let hasText = try await Task.detached(priority: .userInitiated) {
-                        try Self.writeTextDocument(pages: pages, format: format, to: url,
+                    let (url, hasText) = try await Task.detached(priority: .userInitiated) {
+                        try Self.writeTextDocument(pages: pages, format: format, to: planned,
                                                    pageImages: pageImages,
                                                    shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
                             Task { @MainActor in self?.setStatus(msg, detail) }
@@ -261,17 +261,17 @@ extension AppState {
                     continue
                 }
                 let text = s.output.savesTextBeside ? PDFTextCollector() : nil
-                let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
+                let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                 protectedPDFs = options.isProtected
-                let textResult = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?)? in
-                    try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url,
-                                                textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
-                                                                          pages: pages, failures: failures),
-                                                options: options,
-                                                shouldContinue: { !flag.isCancelled }) { [weak self] msg in
+                let (url, textResult) = try await Task.detached(priority: .userInitiated) { () throws -> (URL, (url: URL?, problem: String?)?) in
+                    let written = try Self.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: planned,
+                                                              textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
+                                                                                        pages: pages, failures: failures),
+                                                              options: options,
+                                                              shouldContinue: { !flag.isCancelled }) { [weak self] msg in
                         Task { @MainActor in self?.statusMessage = msg }
                     }
-                    return text.map { Self.writeTextBeside(pdf: url, text: $0) }
+                    return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
                 }.value
                 files.add(url)
                 saved.append(url)

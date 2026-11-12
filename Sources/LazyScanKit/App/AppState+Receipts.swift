@@ -156,36 +156,36 @@ extension AppState {
             var textProblem: String?
             do {
                 if combine {
-                    let url = try self.outputURL(fileExtension: "pdf", documentDate: Receipts.combinedDate(read.map(\.date)))
+                    let planned = try self.outputURL(fileExtension: "pdf", documentDate: Receipts.combinedDate(read.map(\.date)))
                     self.statusMessage = L10n.t("Writing the PDF…")
-                    let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
-                    let text = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?) in
-                        try Self.writeReceiptsPDF(read, settings: s, to: url, options: options,
+                    let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
+                    let text = try await Task.detached(priority: .userInitiated) { () throws -> (pdf: URL, url: URL?, problem: String?) in
+                        try Self.writeReceiptsPDF(read, settings: s, to: planned, options: options,
                                                   shouldContinue: { !flag.isCancelled })
                     }.value
-                    saved.append(url)
-                    written.append(url)
+                    saved.append(text.pdf)
+                    written.append(text.pdf)
                     if let textURL = text.url { written.append(textURL) }
                     if let problem = text.problem { textProblem = textProblem ?? problem }
                 } else {
                     for (index, receipt) in read.enumerated() {
                         if flag.isCancelled { throw ScanError.cancelled }
                         self.statusMessage = L10n.t("Saving receipt {0} of {1}…", index + 1, read.count)
-                        let url = try self.outputURL(fileExtension: format.fileExtension, documentDate: receipt.date)
+                        let planned = try self.outputURL(fileExtension: format.fileExtension, documentDate: receipt.date)
                         if format == .pdf {
-                            let options: PDFWriteOptions = try await self.pdfOptions(s, for: url)
-                            let text = try await Task.detached(priority: .userInitiated) { () throws -> (url: URL?, problem: String?) in
-                                try Self.writeReceiptsPDF([receipt], settings: s, to: url, options: options,
+                            let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
+                            let text = try await Task.detached(priority: .userInitiated) { () throws -> (pdf: URL, url: URL?, problem: String?) in
+                                try Self.writeReceiptsPDF([receipt], settings: s, to: planned, options: options,
                                                           shouldContinue: { !flag.isCancelled })
                             }.value
-                            saved.append(url)
-                            written.append(url)
+                            saved.append(text.pdf)
+                            written.append(text.pdf)
                             if let textURL = text.url { written.append(textURL) }
                             if let problem = text.problem { textProblem = textProblem ?? problem }
                         } else {
-                            try await Task.detached(priority: .userInitiated) {
-                                try ImageExporter.write(receipt.image, to: url, format: format, dpi: receipt.dpi,
-                                                        jpegQuality: s.jpegQuality)
+                            let url = try await Task.detached(priority: .userInitiated) {
+                                try ImageExporter.write(receipt.image, to: planned, format: format, dpi: receipt.dpi,
+                                                        jpegQuality: s.jpegQuality, keepingExisting: true)
                             }.value
                             saved.append(url)
                             written.append(url)
@@ -222,20 +222,21 @@ extension AppState {
     }
 
     /// One PDF of `receipts` (a page each, gray, at the PDF size chosen) with the text read beforehand as
-    /// its layer when searchable, and the text beside it when asked for. Returns the text file written
+    /// its layer when searchable, and the text beside it when asked for. Returns where the PDF went (the
+    /// next free name when `url` has been taken meanwhile) and the text file written
     /// (the next free name when the PDF's is taken; nil when none was), else why it was not (the PDF is kept).
     nonisolated static func writeReceiptsPDF(_ receipts: [ReadReceipt], settings s: ScanSettings, to url: URL,
                                              options: PDFWriteOptions?,
-                                             shouldContinue: @escaping () -> Bool) throws -> (url: URL?, problem: String?) {
+                                             shouldContinue: @escaping () -> Bool) throws -> (pdf: URL, url: URL?, problem: String?) {
         let pages = receipts.map { ScannedPage(image: $0.image, dpi: $0.dpi, colorMode: .grayscale) }
         let lines = receipts.map(\.lines)
         var layer: PDFTextLayer?
         if s.pdfSearchable {
             layer = { index, _ in index < lines.count ? lines[index] : nil }
         }
-        try writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url, textLayer: layer, options: options,
-                               shouldContinue: shouldContinue, progress: nil)
-        guard s.output.savesTextBeside else { return (nil, nil) }
+        let pdf = try writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url, textLayer: layer, options: options,
+                                         shouldContinue: shouldContinue, progress: nil)
+        guard s.output.savesTextBeside else { return (pdf, nil, nil) }
         let text = PDFTextCollector()
         for receipt in receipts {
             if let found = receipt.lines {
@@ -245,7 +246,8 @@ extension AppState {
                 text.problem = receipt.problem ?? L10n.t("The text could not be read.")
             }
         }
-        return writeTextBeside(pdf: url, text: text)
+        let beside = writeTextBeside(pdf: pdf, text: text)
+        return (pdf, beside.url, beside.problem)
     }
 }
 
