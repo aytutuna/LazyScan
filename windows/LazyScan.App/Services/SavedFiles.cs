@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -279,6 +280,8 @@ public static class SavedFiles
         // bilevel and 16-bit images survive the rotate unchanged.
         BitmapSource rotated;
         double quality = 0.95;
+        BitmapMetadata? metadata = null;
+        ReadOnlyCollection<ColorContext>? colorContexts = null;
         try
         {
             using var stream = OpenShared(path);
@@ -298,6 +301,8 @@ public static class SavedFiles
             double dpiY = storedSideways ? frame.DpiY : frame.DpiX;
             rotated = WithDpi(ApplyOrientation(frame, orientation, extraClockwiseDegrees: 90),
                               dpiX, dpiY, frame.Palette);
+            metadata = UprightMetadata(frame);
+            colorContexts = frame.ColorContexts;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -325,7 +330,7 @@ public static class SavedFiles
                 _ when rotated.Format == PixelFormats.BlackWhite => new TiffBitmapEncoder { Compression = TiffCompressOption.Ccitt4 },
                 _ => new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw },
             };
-            encoder.Frames.Add(BitmapFrame.Create(rotated));
+            encoder.Frames.Add(BitmapFrame.Create(rotated, null, metadata, colorContexts));
             WpfImageCodec.ReplaceAtomically(path, encoder.Save);
             return null;
         }
@@ -351,6 +356,31 @@ public static class SavedFiles
                                        dpiX > 0 ? dpiX : 96, dpiY > 0 ? dpiY : 96,
                                        source.Format, source.Palette ?? palette, buffer, stride);
         copy.Freeze();
+        return copy;
+    }
+
+    /// <summary>A copy of the frame's metadata with the orientation tag reset, since the pixels are already turned.</summary>
+    private static BitmapMetadata? UprightMetadata(BitmapFrame frame)
+    {
+        if (frame.Metadata is not BitmapMetadata source) return null;
+        var copy = source.Clone();
+        foreach (string query in new[] { "/app1/ifd/{ushort=274}", "/ifd/{ushort=274}" })
+        {
+            if (copy.ContainsQuery(query)) copy.SetQuery(query, (ushort)1);
+        }
+        foreach (string query in new[] { "/xmp/tiff:Orientation", "/ifd/xmp/tiff:Orientation" })
+        {
+            if (copy.ContainsQuery(query)) copy.SetQuery(query, "1");
+        }
+        // The embedded thumbnail and the EXIF size tags still describe the unturned picture.
+        if (copy.ContainsQuery("/app1/thumb")) copy.RemoveQuery("/app1/thumb");
+        const string width = "/app1/ifd/exif/{ushort=40962}", height = "/app1/ifd/exif/{ushort=40963}";
+        if (copy.ContainsQuery(width) && copy.ContainsQuery(height))
+        {
+            object w = copy.GetQuery(width), h = copy.GetQuery(height);
+            copy.SetQuery(width, h);
+            copy.SetQuery(height, w);
+        }
         return copy;
     }
 
