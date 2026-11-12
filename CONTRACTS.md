@@ -254,6 +254,10 @@ Twin of `windows/LazyScan.Core/DeviceMerge.cs` (`HardwareId`, `ConnectionId`): s
 // not as the enum: a task id of a newer version reads as no task and is written back unchanged.
 // ScanSettings also gains `taskOptions: TaskOptions` (the "taskOptions" object): how the user
 // wants a task done, kept when a task is picked (see Pipeline/IdCard.swift).
+// `ocrLanguage: String` (C# `OcrLanguage`; "" is Automatic, written always, kept when a task is picked) is the
+// language tag Windows OCR reads with ("en-US", "de-DE"). Only the Windows app reads it (Vision detects the
+// language itself); the Kit and the Core keep it and write it back. The older `ocrLanguages` stays as it was
+// and is ignored: files store its default ["en-US"], which would force English on every current user.
 // Since I3, `destinationBookmark: Data?` (C# `DestinationBookmark`, `byte[]?`; base64 in the file,
 // left out when nil): the iPhone's or the Mac's save folder picked outside the app (iCloud Drive, a USB drive),
 // with `destinationPath` its path. iOS and the Mac read it (`AppState.resolveDestinationBookmark`, set by

@@ -1633,7 +1633,6 @@
     "Format": "Format",
     "Searchable PDF": "Durchsuchbares PDF",
     "Lets you search and copy the text (OCR)": "Macht den Text durchsuchbar und kopierbar (OCR)",
-    "Text is recognized automatically, nothing to configure: the PDF can be searched and its text copied.": "Text wird automatisch erkannt, ohne dass du etwas einstellen musst: Das PDF ist durchsuchbar, und sein Text lässt sich kopieren.",
     "Collect pages before saving": "Seiten vor dem Sichern sammeln",
     "Save to": "Sichern in",
     "Auto enhance": "Automatisch optimieren",

@@ -40,6 +40,7 @@ private func nonDefaultSettings() -> ScanSettings {
     settings.documentMultiPage = false
     settings.pdfSearchable = false
     settings.ocrLanguages = ["de-DE", "en-US"]
+    settings.ocrLanguage = "de-DE"
     settings.adjustments.autoEnhance = true
     settings.adjustments.brightness = 0.25
     settings.adjustments.contrast = 1.5
@@ -128,8 +129,8 @@ private let presetsJSONBeforePDFSize = """
 """
 
 /// `nonDefaultSettings()` as this version writes it: `presetsJSONBeforePDFSize` with the
-/// "output" object, the sides, the paper size, the "document" object and the "taskOptions" object
-/// in their sorted places.
+/// "output" object, the sides, the paper size, the OCR language, the "document" object and the "taskOptions"
+/// object in their sorted places.
 private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
     .replacingOccurrences(
         of: "\"documentMultiPage\" : false",
@@ -145,6 +146,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
         with: "\"output\" : {\n        \"afterSave\" : \"share\",\n        \"alsoSaveText\" : true,\n        \"archival\" : true,\n"
             + "        \"pdfSize\" : \"compact\",\n        \"protect\" : true,\n        \"wordPageImages\" : false\n      },\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
+    .replacingOccurrences(of: "\"ocrLanguages\" : [", with: "\"ocrLanguage\" : \"de-DE\",\n      \"ocrLanguages\" : [")
     .replacingOccurrences(of: "\"colorMode\" : \"grayscale\"",
                           with: "\"backBinding\" : \"shortEdge\",\n      \"colorMode\" : \"grayscale\"")
     .replacingOccurrences(of: "\"format\" : \"tiff\"",
@@ -302,7 +304,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "adjustments", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
             "document", "taskOptions",
         ])
         let adjustments = try XCTUnwrap(settings["adjustments"] as? [String: Any])
@@ -323,6 +325,17 @@ final class ModelsCompatTests: XCTestCase {
             with: encode([Preset(id: sampleID, name: "Receipts", settings: nonDefaultSettings())]))
         let expected = try JSONSerialization.jsonObject(with: Data(currentFormatPresetsJSON.utf8))
         XCTAssertEqual(written as? NSArray, expected as? NSArray)
+    }
+
+    func test_ocrLanguage_isAutomaticByDefault_andInFilesWithoutIt() throws {
+        XCTAssertEqual(ScanSettings().ocrLanguage, "")
+        XCTAssertEqual(try decode([Preset].self, presetsJSONBeforePDFSize)[0].settings.ocrLanguage, "")
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"ocrLanguages": ["en-US"]}"#).ocrLanguage, "")
+    }
+
+    func test_ocrLanguage_roundTrips_andWrongTypeIsAutomatic() throws {
+        XCTAssertEqual(try decode([Preset].self, currentFormatPresetsJSON)[0].settings.ocrLanguage, "de-DE")
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"ocrLanguage": 5, "resolution": 150}"#).ocrLanguage, "")
     }
 
     // MARK: Task (CONTRACTS.md, rule 6: the task is stored as text)
@@ -376,7 +389,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
             "document", "taskOptions",
         ])
         XCTAssertEqual(written["taskId"] as? String, "document")
@@ -397,7 +410,7 @@ final class ModelsCompatTests: XCTestCase {
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-            "pdfSearchable", "ocrLanguages", "adjustments", "output", "duplex", "backBinding", "paperSize",
+            "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
             "document", "taskOptions",
         ])
         XCTAssertEqual(written["destinationBookmark"] as? String, "AAEC+vv/")
@@ -453,6 +466,7 @@ final class ModelsCompatTests: XCTestCase {
     func test_settingsWithoutPDFSize_getStandard_restIntact() throws {
         let presets = try decode([Preset].self, presetsJSONBeforePDFSize)
         var expected = nonDefaultSettings()
+        expected.ocrLanguage = ""
         expected.output.pdfSize = .standard
         expected.output.afterSave = AfterSaveAction.none
         expected.output.alsoSaveText = false

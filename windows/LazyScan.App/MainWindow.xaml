@@ -965,8 +965,19 @@
                                                 <CheckBox x:Name="SearchableBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Searchable PDF}"
                                                           ToolTip="{loc:T Lets you search and copy the text (OCR)}"
-                                                          AutomationProperties.HelpText="{loc:T Text is recognized automatically\, nothing to configure: the PDF can be searched and its text copied.}"
+                                                          AutomationProperties.HelpText="{loc:T Text is recognized so the PDF can be searched and its text copied. Pick the language below if the page is not in your Windows language.}"
                                                           Checked="SearchableBox_Checked" Unchecked="Setting_Changed" />
+                                                <StackPanel x:Name="OcrLanguageRow">
+                                                    <TextBlock Text="{loc:T OCR language}" Style="{StaticResource FieldLabelText}" />
+                                                    <ComboBox x:Name="OcrLanguageBox" HorizontalAlignment="Stretch"
+                                                              AutomationProperties.Name="{loc:T OCR language}"
+                                                              ToolTip="{loc:T Language used to read the text. Automatic tries every installed language pack.}"
+                                                              ToolTipService.ShowOnDisabled="True"
+                                                              SelectionChanged="OcrLanguage_Changed" />
+                                                    <TextBlock x:Name="OcrLanguageHint" Style="{StaticResource CaptionText}"
+                                                               Text="{loc:T No OCR language pack is installed. Add one in Settings → Time &amp; Language → Language.}"
+                                                               TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
+                                                </StackPanel>
                                                 <CheckBox x:Name="MultiPageBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Collect pages before saving}"
                                                           ToolTipService.ShowOnDisabled="True"

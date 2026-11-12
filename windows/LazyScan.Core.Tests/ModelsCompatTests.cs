@@ -48,6 +48,7 @@ internal static class CompatFixtures
 #pragma warning disable CS0618 // the legacy field is persisted and must round-trip
         settings.OcrLanguages = ["de-DE", "en-US"];
 #pragma warning restore CS0618
+        settings.OcrLanguage = "de-DE";
         settings.Adjustments.AutoEnhance = true;
         settings.Adjustments.Brightness = 0.25;
         settings.Adjustments.Contrast = 1.5;
@@ -139,10 +140,11 @@ internal static class CompatFixtures
 
     /// <summary>
     /// <see cref="NonDefaultSettings"/> as this version writes it: <see cref="PresetsJsonBeforePdfSize"/>
-    /// with the "output" object, then the sides, the paper size, the "document" object and the
-    /// "taskOptions" object, after the earlier keys.
+    /// with the OCR language after the OCR languages, then the "output" object, the sides, the paper
+    /// size, the "document" object and the "taskOptions" object, after the earlier keys.
     /// </summary>
     public static readonly string CurrentFormatPresetsJson = PresetsJsonBeforePdfSize.ReplaceLineEndings("\n").Replace(
+        "      ],\n      \"adjustments\"", "      ],\n      \"ocrLanguage\": \"de-DE\",\n      \"adjustments\"").Replace(
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
         "        \"blackWhiteThreshold\": 0.375\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
         + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false\n      },\n"
@@ -311,6 +313,23 @@ public class ModelsCompatTests
     }
 
     [Fact]
+    public void OcrLanguage_IsAutomaticByDefault_AndInFilesWithoutIt()
+    {
+        Assert.Equal("", new ScanSettings().OcrLanguage);
+        Assert.Equal("", Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize)[0].Settings.OcrLanguage);
+        Assert.Equal("", Decode<ScanSettings>("""{"ocrLanguages": ["en-US"]}""").OcrLanguage);
+    }
+
+    [Fact]
+    public void OcrLanguage_RoundTrips_AndWrongTypeIsAutomatic()
+    {
+        Assert.Equal("de-DE", Decode<List<Preset>>(CompatFixtures.CurrentFormatPresetsJson)[0].Settings.OcrLanguage);
+        var settings = Decode<ScanSettings>("""{"ocrLanguage": 5, "resolution": 150}""");
+        Assert.Equal("", settings.OcrLanguage);
+        Assert.Equal(150, settings.Resolution);
+    }
+
+    [Fact]
     public void CurrentFormatJson_DecodesIdentically()
     {
         var presets = Decode<List<Preset>>(CompatFixtures.CurrentFormatPresetsJson);
@@ -344,7 +363,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "adjustments", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
                 "document", "taskOptions",
             ],
             settings.RootElement.EnumerateObject().Select(p => p.Name));
@@ -437,7 +456,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize",
                 "document", "taskOptions",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
@@ -464,7 +483,7 @@ public class ModelsCompatTests
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
-                "pdfSearchable", "ocrLanguages", "adjustments", "output", "duplex", "backBinding", "paperSize",
+                "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize",
                 "document", "taskOptions",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
@@ -500,6 +519,7 @@ public class ModelsCompatTests
     {
         var presets = Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize);
         var expected = CompatFixtures.NonDefaultSettings();
+        expected.OcrLanguage = "";
         expected.Output.PdfSize = PdfSizePreset.Standard;
         expected.Output.AfterSave = AfterSaveAction.None;
         expected.Output.AlsoSaveText = false;

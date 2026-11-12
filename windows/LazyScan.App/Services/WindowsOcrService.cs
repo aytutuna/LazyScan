@@ -11,11 +11,13 @@ namespace LazyScan.App.Services;
 /// packs installed via Settings → Language). The Windows counterpart of the macOS app's
 /// Apple Vision OCRService.
 ///
-/// Recognition is universal, like the macOS service: no language setting is consulted.
-/// Windows OCR has no automatic language detection, so the engine for the user-profile
-/// languages runs first; when it finds next to nothing (a page in another script or
-/// language), every other installed recognizer language is tried once and the result with
-/// the most recognized text wins — bounded, and only when it clearly beats the primary result.
+/// The language chosen in the options (the first of the languages passed in) reads the page and its
+/// result is returned as it is. Automatic, and a chosen language whose pack is gone, work like the
+/// macOS service: Windows OCR has no language detection, so the engine for the user-profile
+/// languages runs first. When more than one Latin-script pack is installed, the page is also read
+/// with each of the others and the result with the most recognized text wins. When the best result
+/// finds next to nothing (a page in another script or language), every other installed recognizer
+/// language is tried once — bounded, and only when it clearly beats it.
 ///
 /// Windows OCR reports word rectangles in top-left-origin pixels; this service converts
 /// them to the Core convention (normalized, bottom-left origin) so PdfBuilder maps them
@@ -35,9 +37,12 @@ public sealed class WindowsOcrService : IOcrService
     public async Task<IReadOnlyList<OcrLine>> RecognizeLinesAsync(RgbaImage image,
                                                                   IReadOnlyList<string>? languages = null)
     {
-        _ = languages; // kept for API stability; recognition is universal
-        var primary = OcrEngine.TryCreateFromUserProfileLanguages();
-        if (primary is null && OcrEngine.AvailableRecognizerLanguages.Count == 0)
+        var installed = Installed();
+        var chosenEngine = OcrLanguagePlan.Chosen(languages?.FirstOrDefault(), installed) is { } chosenTag
+            ? EngineFor(chosenTag)
+            : null;
+        var primary = chosenEngine is null ? OcrEngine.TryCreateFromUserProfileLanguages() : null;
+        if (chosenEngine is null && primary is null && installed.Count == 0)
         {
             throw ScanException.ScanFailed(() => Loc.T("OCR failed: {0}",
                 Loc.T("no OCR language pack is installed (Settings → Time & Language → Language).")));
@@ -58,6 +63,8 @@ public sealed class WindowsOcrService : IOcrService
                                               BitmapAlphaMode.Ignore);
         bitmap.CopyFromBuffer(working.Pixels.AsBuffer());
 
+        if (chosenEngine is not null) return await Recognize(chosenEngine, bitmap, working.Width, working.Height);
+
         // The user-profile engine runs first. If it fails, that counts as "no result" so
         // the fallback recognizers still get their chance.
         List<OcrLine>? primaryLines = null;
@@ -74,6 +81,26 @@ public sealed class WindowsOcrService : IOcrService
                 primaryError = e;
             }
         }
+
+        var ran = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (primaryTag is not null) ran.Add(primaryTag);
+        var latin = OcrLanguagePlan.Automatic(primaryTag, installed, MaxFallbackEngines + 1);
+        if (latin.Count > 1)
+        {
+            foreach (var tag in latin)
+            {
+                if (!ran.Add(tag) || EngineFor(tag) is not { } engine) continue;
+                try
+                {
+                    var lines = await Recognize(engine, bitmap, working.Width, working.Height);
+                    if (primaryLines is null || Score(lines) > Score(primaryLines)) primaryLines = lines;
+                }
+                catch (ScanException)
+                {
+                    // one failing recognizer must not sink the page
+                }
+            }
+        }
         if (primaryLines is { Count: >= FewLines }) return primaryLines;
 
         // Few or no lines: the page may be in another language/script — or simply blank or
@@ -88,7 +115,7 @@ public sealed class WindowsOcrService : IOcrService
         foreach (var language in OcrEngine.AvailableRecognizerLanguages)
         {
             if (tried >= MaxFallbackEngines) break;
-            if (string.Equals(language.LanguageTag, primaryTag, StringComparison.OrdinalIgnoreCase)) continue;
+            if (ran.Contains(language.LanguageTag)) continue;
             if (OcrEngine.TryCreateFromLanguage(language) is not { } engine) continue;
             tried++;
             List<OcrLine> lines;
@@ -123,6 +150,15 @@ public sealed class WindowsOcrService : IOcrService
         // writes the page without a text layer).
         throw primaryError ?? ScanException.ScanFailed(() => Loc.T("OCR failed: {0}", Loc.T("no recognizer could process the page.")));
     }
+
+    internal static List<OcrLanguagePlan.Pack> Installed() =>
+        [.. OcrEngine.AvailableRecognizerLanguages.Select(l => new OcrLanguagePlan.Pack(l.LanguageTag, l.Script))];
+
+    internal static OcrEngine? EngineFor(string tag) =>
+        OcrEngine.AvailableRecognizerLanguages
+            .FirstOrDefault(l => string.Equals(l.LanguageTag, tag, StringComparison.OrdinalIgnoreCase)) is { } language
+            ? OcrEngine.TryCreateFromLanguage(language)
+            : null;
 
     private static async Task<List<OcrLine>> Recognize(OcrEngine engine, SoftwareBitmap bitmap,
                                                        double w, double h)

@@ -757,7 +757,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         _fileActions = fileActions ?? new WindowsFileActions(MainWindowHandle);
         _system = systemDiagnostics ?? new WindowsSystemDiagnostics();
         _print = printService ?? new WindowsPrintService();
-        _orientation = orientationScorer ?? new WindowsOrientationScorer();
+        _orientation = orientationScorer ?? new WindowsOrientationScorer(() => Settings.OcrLanguage);
         _barcodes = barcodeReader ?? new ZXingBarcodeReader();
         _qrEncoder = qrEncoder ?? new ZXingQrEncoder();
         _cornerModel = cornerModel ?? OnnxCornerModel.Load();
@@ -3534,6 +3534,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         public string? Problem { get; set; }
     }
 
+    /// <summary>The language chosen for OCR as the list the recognizer takes, or null for Automatic.</summary>
+    private static IReadOnlyList<string>? OcrLanguages(ScanSettings s) =>
+        s.OcrLanguage.Length == 0 ? null : [s.OcrLanguage];
+
     /// <summary>Says so in the status line when Searchable PDF is switched on and no text recognizer is installed.</summary>
     public void WarnIfNoTextRecognizer()
     {
@@ -3625,7 +3629,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 // If OCR fails for a page, the PDF is still produced without a text layer (and
                 // without the text file beside it). Cancel stops waiting at once (the recognizer
                 // has no cancellation of its own; its late result is simply ignored).
-                try { lines = await _ocrService.RecognizeLinesAsync(image).WaitAsync(token); }
+                try { lines = await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token); }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception e)
                 {
@@ -3729,7 +3733,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), i + 1), token);
             SetStatus(Loc.T("Reading the text of page {0} of {1}…", i + 1, pages.Count), new(new StatusHead.ReadingPage(i + 1, pages.Count)));
             NotifyAll();
-            ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, token),
+            ocrPages.Add(OcrPage.Of(await RecognizeForText(prepared.Image, s, token),
                                     prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
             if (withPictures)
             {
@@ -3759,11 +3763,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// The lines OCR finds on <paramref name="image"/>, for text the user asked for: a failure is an
     /// error that says why (not a scanner failure, so the troubleshooter does not record it).
     /// </summary>
-    private async Task<IReadOnlyList<OcrLine>> RecognizeForText(RgbaImage image, CancellationToken token)
+    private async Task<IReadOnlyList<OcrLine>> RecognizeForText(RgbaImage image, ScanSettings s, CancellationToken token)
     {
         try
         {
-            return await _ocrService.RecognizeLinesAsync(image).WaitAsync(token);
+            return await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token);
         }
         catch (OperationCanceledException)
         {
@@ -3799,7 +3803,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             SetStatus(Loc.T("Reading the text of page {0}…", index + 1), new(new StatusHead.ReadingPage(index + 1, null)));
             NotifyAll();
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), index + 1), token);
-            var lines = await RecognizeForText(prepared.Image, token);
+            var lines = await RecognizeForText(prepared.Image, Settings, token);
             string text = OcrText.PageText(OcrPage.Of(lines, prepared.PixelWidth, prepared.PixelHeight, page.Dpi));
             if (text.Length > 0)
             {

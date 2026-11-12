@@ -7,19 +7,29 @@ namespace LazyScan.App.Services;
 
 /// <summary>
 /// Reads a page for turning pages upright (<see cref="OrientationDecision"/>) with Windows OCR: the
-/// recognizer for the user's languages, else the first one installed. One recognizer only, unlike
+/// recognizer for the language chosen in the options, else the user's languages, else the first one
+/// installed. One recognizer only, unlike
 /// <see cref="WindowsOcrService"/>: the reading only has to tell which way up the page is, and runs
 /// up to four times a page. The Windows counterpart of the Mac's VisionOrientationScorer.
 /// </summary>
-public sealed class WindowsOrientationScorer : IOrientationScorer
+public sealed class WindowsOrientationScorer(Func<string> chosenLanguage) : IOrientationScorer
 {
-    private readonly Lazy<OcrEngine?> _engine = new(CreateEngine);
+    private Tuple<string, OcrEngine?>? _cached;
 
-    public bool IsAvailable => _engine.Value is not null;
+    public bool IsAvailable => Engine() is not null;
+
+    private OcrEngine? Engine()
+    {
+        string tag = chosenLanguage();
+        if (_cached is { } cached && cached.Item1 == tag) return cached.Item2;
+        var engine = CreateEngine(tag);
+        _cached = Tuple.Create(tag, engine);
+        return engine;
+    }
 
     public OrientationScore Score(RgbaImage image, CancellationToken token)
     {
-        var engine = _engine.Value
+        var engine = Engine()
             ?? throw ScanException.ScanFailed(() => Loc.T("OCR failed: {0}",
                 Loc.T("no OCR language pack is installed (Settings → Time & Language → Language).")));
         // The copy read is at most 1600 pixels long, well inside the engine's limit; a larger
@@ -38,10 +48,12 @@ public sealed class WindowsOrientationScorer : IOrientationScorer
         return OrientationScore.Of(result.Lines.Select(line => line.Text));
     }
 
-    private static OcrEngine? CreateEngine()
+    private static OcrEngine? CreateEngine(string chosen)
     {
         try
         {
+            if (OcrLanguagePlan.Chosen(chosen, WindowsOcrService.Installed()) is { } tag
+                && WindowsOcrService.EngineFor(tag) is { } chosenEngine) return chosenEngine;
             if (OcrEngine.TryCreateFromUserProfileLanguages() is { } engine) return engine;
             foreach (var language in OcrEngine.AvailableRecognizerLanguages)
             {

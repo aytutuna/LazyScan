@@ -1633,7 +1633,6 @@
     "Format": "Формат",
     "Searchable PDF": "PDF с возможностью поиска",
     "Lets you search and copy the text (OCR)": "Позволяет искать и копировать текст (OCR)",
-    "Text is recognized automatically, nothing to configure: the PDF can be searched and its text copied.": "Текст распознается автоматически, настраивать ничего не нужно: в PDF работает поиск, а текст можно скопировать.",
     "Collect pages before saving": "Собирать страницы до сохранения",
     "Save to": "Место сохранения",
     "Auto enhance": "Автоулучшение",

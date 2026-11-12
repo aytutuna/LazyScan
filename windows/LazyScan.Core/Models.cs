@@ -807,6 +807,11 @@ public sealed class ScanSettings
     /// </summary>
     [Obsolete("OCR recognizes every supported language automatically; this setting is ignored.")]
     public List<string> OcrLanguages { get; set; } = ["en-US"];
+    /// <summary>
+    /// The language tag Windows OCR reads with (<c>en-US</c>, <c>de-DE</c>); empty is Automatic. Only the
+    /// Windows app reads it: the Mac and iPhone apps keep it and ignore it.
+    /// </summary>
+    public string OcrLanguage { get; set; } = "";
 
     public AdjustmentSettings Adjustments { get; set; } = new();
 

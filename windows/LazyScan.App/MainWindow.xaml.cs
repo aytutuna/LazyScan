@@ -1790,6 +1790,7 @@ public partial class MainWindow : Window
         MultiPageBox.Visibility = receipts || idCard || flow == TaskFlowKind.Copy ? Visibility.Collapsed : Visibility.Visible;
         // Shown whenever the save writes a PDF that can carry text: a queue of JPEG pages saves one too.
         SearchableBox.Visibility = WritesPdf(s) && flow != TaskFlowKind.Copy && !idCard ? Visibility.Visible : Visibility.Collapsed;
+        SyncOcrLanguageOptions(s, flow != TaskFlowKind.Copy && !idCard);
         string hint = flow switch
         {
             TaskFlowKind.IdCard => Loc.T("Not for ID cards: the card is saved as a picture, without its text."),
@@ -1852,6 +1853,51 @@ public partial class MainWindow : Window
         {
             _updatingUi = wasUpdating;
         }
+    }
+
+    /// <summary>
+    /// The OCR language choice: Automatic, then the installed recognizers by name. Greyed out while the
+    /// text layer is off (a Word or text save reads the text whatever the switch says), and with only
+    /// Automatic and a pointer to the language settings when no recognizer is installed. A saved
+    /// language whose pack is gone shows Automatic; the setting itself is left alone.
+    /// </summary>
+    private void SyncOcrLanguageOptions(ScanSettings s, bool shown)
+    {
+        OcrLanguageRow.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        var packs = Windows.Media.Ocr.OcrEngine.AvailableRecognizerLanguages.OrderBy(l => l.DisplayName).ToList();
+        bool wasUpdating = _updatingUi;
+        _updatingUi = true;
+        try
+        {
+            var tags = new[] { "" }.Concat(packs.Select(l => l.LanguageTag));
+            if (!OcrLanguageBox.Items.Cast<ComboBoxItem>().Select(i => (string)i.Tag).SequenceEqual(tags))
+            {
+                OcrLanguageBox.Items.Clear();
+                OcrLanguageBox.Items.Add(new ComboBoxItem { Content = Loc.T("Automatic"), Tag = "" });
+                foreach (var language in packs)
+                {
+                    OcrLanguageBox.Items.Add(new ComboBoxItem { Content = language.DisplayName, Tag = language.LanguageTag });
+                }
+            }
+            var items = OcrLanguageBox.Items.Cast<ComboBoxItem>().ToList();
+            OcrLanguageBox.SelectedItem = items.FirstOrDefault(i => (string)i.Tag != "" && string.Equals((string)i.Tag, s.OcrLanguage, StringComparison.OrdinalIgnoreCase))
+                ?? items[0];
+        }
+        finally
+        {
+            _updatingUi = wasUpdating;
+        }
+        bool reads = SearchableBox.Visibility != Visibility.Visible || s.PdfSearchable;
+        OcrLanguageBox.IsEnabled = packs.Count > 0 && reads;
+        OcrLanguageHint.Visibility = packs.Count == 0 && reads ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OcrLanguage_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded || OcrLanguageBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        if (ViewModel.Settings.OcrLanguage == tag) return;
+        ViewModel.Settings.OcrLanguage = tag;
+        ViewModel.SettingsEdited();
     }
 
     /// <summary>A format picked in the inspector: the only place the setting is read from the box.</summary>

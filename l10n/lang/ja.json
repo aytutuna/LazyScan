@@ -1633,7 +1633,6 @@
     "Format": "フォーマット",
     "Searchable PDF": "検索可能なPDF",
     "Lets you search and copy the text (OCR)": "テキストの検索とコピーができます（OCR）",
-    "Text is recognized automatically, nothing to configure: the PDF can be searched and its text copied.": "テキストは自動的に認識されるため、設定は不要です。PDFを検索したり、テキストをコピーしたりできます。",
     "Collect pages before saving": "保存前にページをまとめる",
     "Save to": "保存先",
     "Auto enhance": "自動補正",

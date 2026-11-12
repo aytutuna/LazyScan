@@ -150,7 +150,7 @@ public sealed partial class AppViewModel
                     NotifyAll();
                     // A receipt whose text cannot be read is still saved: without a text layer,
                     // named by the scan date.
-                    try { read = await _ocrService.RecognizeLinesAsync(image).WaitAsync(token); }
+                    try { read = await _ocrService.RecognizeLinesAsync(image, OcrLanguages(s)).WaitAsync(token); }
                     catch (OperationCanceledException) { throw; }
                     catch (Exception e) { ocrProblem ??= e.Message; }
                 }

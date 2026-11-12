@@ -674,6 +674,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// Run OCR and embed an invisible text layer in saved PDFs.
     public var pdfSearchable: Bool = true
     public var ocrLanguages: [String] = ["en-US"]
+    public var ocrLanguage: String = ""
 
     public var adjustments: AdjustmentSettings = AdjustmentSettings()
 
@@ -749,7 +750,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
         case intent, source, resolution, colorMode, format, jpegQuality, destinationPath, namingTemplate
         case destinationBookmark
         case photoAutoSplit, photoAutoDeskew, photoMinSideInches, photoCropInsetPixels
-        case documentMultiPage, pdfSearchable, ocrLanguages
+        case documentMultiPage, pdfSearchable, ocrLanguages, ocrLanguage
         case adjustments
         case taskId
         case output
@@ -781,6 +782,7 @@ extension ScanSettings {
         documentMultiPage = container.decodeLenient(forKey: .documentMultiPage, default: documentMultiPage)
         pdfSearchable = container.decodeLenient(forKey: .pdfSearchable, default: pdfSearchable)
         ocrLanguages = container.decodeLenient(forKey: .ocrLanguages, default: ocrLanguages)
+        ocrLanguage = container.decodeLenient(forKey: .ocrLanguage, default: ocrLanguage)
         adjustments = container.decodeLenient(forKey: .adjustments, default: adjustments)
         taskId = container.decodeLenient(forKey: .taskId, default: taskId)
         output = container.decodeLenient(forKey: .output, default: output)

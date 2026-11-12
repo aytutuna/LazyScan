@@ -25,9 +25,10 @@ public interface IOcrService
     /// Run text recognition over <paramref name="image"/> and return one OcrLine per
     /// recognized line. Throws <see cref="ScanException"/> (ScanFailed) when recognition fails.
     ///
-    /// Recognition is universal: the implementation detects the language(s) on the page
-    /// itself, so no configuration is required. The <paramref name="languages"/> parameter is
-    /// kept for API stability but no longer constrains recognition.
+    /// The Mac implementation detects the language(s) on the page itself; Windows reads with the chosen
+    /// language or, for Automatic, the installed packs. <paramref name="languages"/> is the language chosen in
+    /// the options (<see cref="ScanSettings.OcrLanguage"/>), or null for Automatic; the Windows service
+    /// reads with the first one when its pack is installed, the Mac service ignores it.
     /// </summary>
     Task<IReadOnlyList<OcrLine>> RecognizeLinesAsync(RgbaImage image, IReadOnlyList<string>? languages = null);
 }
