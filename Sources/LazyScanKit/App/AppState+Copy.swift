@@ -240,8 +240,9 @@ extension AppState {
             }
             // Neither printed nor saved: the pages wait in the queue rather than being lost.
             let spool = spoolDirectory
+            let previewSide = queuePreviewSide
             let spooled: [ScannedPage] = await Task.detached(priority: .userInitiated) {
-                AppState.spoolPages(pages, to: spool)
+                AppState.spoolPages(pages, to: spool, previewSide: previewSide)
             }.value
             scannedPages.append(contentsOf: spooled)
             throw AppState.copyNotPrinted(printError, setup: setup,

@@ -182,6 +182,25 @@ final class AppStateQueueRecordTests: XCTestCase {
     }
 
     @MainActor
+    func test_aKeptQueue_comesBackAsThumbnails_onTheIPhone() async throws {
+        let before = makeState()
+        XCTAssertTrue(before.startTask(.document))
+        before.settings.destinationPath = folder.path
+        XCTAssertTrue(before.ingest([recordPage(width: 1000, height: 2000)], source: .photo))
+        try await waitUntil(timeout: 60) { !before.isBusy && before.scannedPages.count == 1 }
+        before.writeQueueRecord()
+        try await Task.sleep(nanoseconds: 600_000_000)
+        SettingsStore.save(before.settings, directory: folder)
+
+        let after = makeState()
+        after.platform = .ios
+        try await waitUntil(timeout: 30) { !after.isBusy }
+        XCTAssertEqual(after.scannedPages.count, 1)
+        let image = try XCTUnwrap(after.scannedPages.first?.image)
+        XCTAssertEqual(max(image.width, image.height), QueuePreview.thumbnailSide)
+    }
+
+    @MainActor
     func test_pagesThatCannotBeSpooled_warnOfFullStorage_once() async throws {
         let state = makeState()
         XCTAssertTrue(state.startTask(.document))

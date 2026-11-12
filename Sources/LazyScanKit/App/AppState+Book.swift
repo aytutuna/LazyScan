@@ -245,6 +245,7 @@ extension AppState {
         let scorer = orientationScorer
         let barcodes = barcodeReader
         let spool = spoolDirectory
+        let previewSide = queuePreviewSide
         runExclusive { flag in
             // Turns and swaps clicked before must not land on pages about to be replaced.
             await self.pageEditChain?.value
@@ -266,7 +267,7 @@ extension AppState {
                         spread.sheetIndex = sheetIndex
                         let processed = try PageProcessor.forScan(s, arrangement: .asScanned, scorer: scorer, barcodes: barcodes)
                             .processSpread(spread, cut: cut, options: BookSplitOptions.of(s), shouldContinue: { !flag.isCancelled })
-                        return Self.spoolPages(processed, to: spool)
+                        return Self.spoolPages(processed, to: spool, previewSide: previewSide)
                     }.value
                     if let pages, !pages.isEmpty {
                         fresh[spreadID] = pages
@@ -330,6 +331,7 @@ extension AppState {
         let scorer = orientationScorer
         let barcodes = barcodeReader
         let spool = spoolDirectory
+        let previewSide = queuePreviewSide
         // Turns and swaps clicked before must not land on pages about to be replaced.
         await self.pageEditChain?.value
         guard let page = self.scannedPages.first(where: { $0.id == id }), let spreadID = page.spreadID,
@@ -352,7 +354,7 @@ extension AppState {
             let gutter = cut.map { BookSplitter.manual($0.axis, fraction: $0.fraction, width: image.width, height: image.height) }
             let processed = try PageProcessor.forScan(s, arrangement: .asScanned, scorer: scorer, barcodes: barcodes)
                 .processSpread(spread, cut: gutter, options: BookSplitOptions.of(s), shouldContinue: { !flag.isCancelled })
-            return Self.spoolPages(processed, to: spool)
+            return Self.spoolPages(processed, to: spool, previewSide: previewSide)
         }.value
         let indices = self.scannedPages.indices.filter { self.scannedPages[$0].spreadID == spreadID }
         guard !flag.isCancelled, let firstIndex = indices.first, !pages.isEmpty else {

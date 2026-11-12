@@ -751,11 +751,8 @@ struct ScanScreen: View {
                 .accessibilityIdentifier("flatbed.preview")
             }
         case .page:
-            if let page = state.scannedPages.last?.image {
-                Image(page, scale: 1, label: Text("Last scan"))
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
+            if let page = state.scannedPages.last {
+                SharpPageImage(page: page)
                     .padding(8)
                     .accessibilityIdentifier("last.scan")
             }

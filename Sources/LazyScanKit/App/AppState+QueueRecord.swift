@@ -269,11 +269,12 @@ extension AppState {
         let spool = spoolDirectory
         statusMessage = QueueRecord.restoringMessage(record.pages.count)
         runExclusive { _ in
+            let previewSide: Int = self.queuePreviewSide
             var previews: [CGImage?] = []
             for (index, page) in record.pages.enumerated() {
                 let preview: CGImage? = await Task.detached(priority: .userInitiated) {
                     AppState.previewOfSpoolFile(spool.appendingPathComponent(page.file),
-                                                quarterTurns: page.rotationQuarterTurns)
+                                                quarterTurns: page.rotationQuarterTurns, maxSide: previewSide)
                 }.value
                 previews.append(preview)
                 self.statusMessage = QueueRecord.restoringMessage(index + 1, of: record.pages.count)

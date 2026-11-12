@@ -223,6 +223,7 @@ extension AppState {
         let model = cornerModel
         let renderer = pdfPages
         let spool = spoolDirectory
+        let previewSide = queuePreviewSide
         runExclusive(stopsInBackground: false) { flag in
             var added: [ScannedPage] = []
             var problems: [String] = []
@@ -237,7 +238,7 @@ extension AppState {
                         ? PageProcessor.forScan(s)
                         : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
                     let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
-                    let pages: [ScannedPage] = Self.spoolPages(processed, to: spool)
+                    let pages: [ScannedPage] = Self.spoolPages(processed, to: spool, previewSide: previewSide)
                     return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
                 }.value
                 if savesAtOnce {

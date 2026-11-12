@@ -390,12 +390,13 @@ extension AppState {
         let spool: URL = spoolDirectory
         let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
         let threshold: Double = settings.adjustments.blackWhiteThreshold
+        let previewSide: Int = queuePreviewSide
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
             guard let photo = AppState.imageInFile(photoURL),
                   let cut = PageRecut.recut(page, photo: photo, filter: filter, corners: corners, adjusting: adjusting,
                                          threshold: threshold) else { return nil }
-            return AppState.spoolRecut(cut, to: spool)
+            return AppState.spoolRecut(cut, to: spool, previewSide: previewSide)
         }.value
         recuttingPages.remove(id)
         guard let index = scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == id }),
@@ -444,11 +445,12 @@ extension AppState {
         }
         let spool: URL = spoolDirectory
         let changed: PageEdit = edit
+        let previewSide: Int = queuePreviewSide
         recuttingPages.insert(id)
         let made: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
             guard let base = AppState.imageInFile(baseFile),
                   let edited = PageRecut.edit(page, base: base, baseFile: baseFile, edit: changed) else { return nil }
-            return AppState.spoolRecut(edited, to: spool)
+            return AppState.spoolRecut(edited, to: spool, previewSide: previewSide)
         }.value
         recuttingPages.remove(id)
         guard let index = scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == id }),
@@ -477,14 +479,14 @@ extension AppState {
 
     /// `page` (full pixels, no file) written to a spool file of its own in `directory` and queued as a preview
     /// turned by its rotation, as `spoolPages` queues a page; nil when the file cannot be written.
-    nonisolated static func spoolRecut(_ page: ScannedPage, to directory: URL) -> ScannedPage? {
+    nonisolated static func spoolRecut(_ page: ScannedPage, to directory: URL, previewSide: Int = QueuePreview.side) -> ScannedPage? {
         let url = directory.appendingPathComponent("\(page.id.uuidString)-\(UUID().uuidString).tiff")
         do {
             try ImageExporter.write(page.image, to: url, format: .tiff, dpi: page.dpi, jpegQuality: 1.0)
         } catch {
             return nil
         }
-        let small: CGImage = makePreview(page.image, maxSide: 1600) ?? page.image
+        let small: CGImage = makePreview(page.image, maxSide: previewSide) ?? page.image
         let turns: Int = page.rotationQuarterTurns
         let preview: CGImage = turns == 0 ? small : ImagePipeline.rotate(small, quarterTurns: turns)
         return page.withImage(preview, fileURL: url, fullPixelSize: CGSize(width: page.image.width, height: page.image.height))

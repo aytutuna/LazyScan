@@ -1035,6 +1035,11 @@ public final class AppState: ObservableObject {
     /// the Mac unless the app shell says otherwise before `start()` (the iPhone's `makeForIOS`: `.ios`).
     public package(set) var platform: TroubleshootPlatform = .mac
 
+    /// The long side of the picture a spooled page keeps in the queue. The iPhone keeps a thumbnail for the
+    /// grid and the stack and reads the sharper picture from the spool file for the page on screen
+    /// (`QueuePreview`), so a long job stays small in memory; the Mac keeps the preview it shows.
+    var queuePreviewSide: Int { platform == .ios ? QueuePreview.thumbnailSide : QueuePreview.side }
+
     /// How the connections of one scanner are ranked here: the Mac's (USB, Bonjour, shared) or the
     /// iPhone's (the scanner's own network connection, then the desktop companion).
     package var rankPatterns: [String] {
@@ -1660,8 +1665,9 @@ public final class AppState: ObservableObject {
                 // spreads book pages were cut from are kept too, to join or split them again.
                 let spreads = cleaned.spreads
                 let spool = self.spoolDirectory
+                let previewSide = self.queuePreviewSide
                 let spooled = await Task.detached(priority: .userInitiated) {
-                    Self.spoolPages(processed, to: spool)
+                    Self.spoolPages(processed, to: spool, previewSide: previewSide)
                 }.value
                 let spreadSources = await Task.detached(priority: .userInitiated) {
                     Self.spoolSpreads(spreads, to: spool)
@@ -2105,8 +2111,9 @@ public final class AppState: ObservableObject {
                 _ = try await protectionFor(s)
             } catch is PDFPasswordNotGiven {
                 let spool = spoolDirectory
+                let previewSide = queuePreviewSide
                 let spooled = await Task.detached(priority: .userInitiated) {
-                    Self.spoolPages(pages, to: spool)
+                    Self.spoolPages(pages, to: spool, previewSide: previewSide)
                 }.value
                 scannedPages.append(contentsOf: spooled)
                 statusMessage = PDFProtection.keptInQueueMessage(pages.count)
@@ -2192,8 +2199,9 @@ public final class AppState: ObservableObject {
     /// cancel. Returns whether it is.
     private func keepInQueue(_ pages: [ScannedPage], after error: Error) async -> Bool {
         let spool = spoolDirectory
+        let previewSide = queuePreviewSide
         let spooled = await Task.detached(priority: .userInitiated) {
-            Self.spoolPages(pages, to: spool)
+            Self.spoolPages(pages, to: spool, previewSide: previewSide)
         }.value
         scannedPages.append(contentsOf: spooled)
         let cancelled: Bool
@@ -2440,8 +2448,9 @@ public final class AppState: ObservableObject {
         } else {
             guard let url = other.fileURL else { return }
             let turns = page.rotationQuarterTurns
+            let previewSide = queuePreviewSide
             let read: CGImage? = await Task.detached(priority: .userInitiated) {
-                Self.previewOfSpoolFile(url, quarterTurns: turns)
+                Self.previewOfSpoolFile(url, quarterTurns: turns, maxSide: previewSide)
             }.value
             // Removed while its file was read: nothing to switch, and nothing to report.
             guard scannedPages.contains(where: { $0.id == id }) else { return }
@@ -2464,15 +2473,15 @@ public final class AppState: ObservableObject {
     }
 
     /// A preview of a spooled page version as the queue shows a page, turned by `quarterTurns`.
-    nonisolated static func previewOfSpoolFile(_ url: URL, quarterTurns: Int) -> CGImage? {
+    nonisolated static func previewOfSpoolFile(_ url: URL, quarterTurns: Int, maxSide: Int = QueuePreview.side) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         let width = (properties?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
         let height = (properties?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
         let preview: CGImage?
-        if max(width, height) > 1600 {
+        if max(width, height) > maxSide {
             // A thumbnail, so no full-size copy of the page is kept.
-            preview = thumbnailOfFile(url, maxSide: 1600)
+            preview = thumbnailOfFile(url, maxSide: maxSide)
         } else {
             preview = CGImageSourceCreateImageAtIndex(source, 0, nil)
         }
@@ -2963,7 +2972,7 @@ public final class AppState: ObservableObject {
     /// fully in memory instead. The page as scanned, kept by crop and straighten, gets a spool
     /// file of its own (and keeps its pixels in memory when that fails), so one click can show it.
     /// The files go in `directory` (the app's `spoolDirectory`). A page that has its file already is kept as it is.
-    nonisolated static func spoolPages(_ pages: [ScannedPage], to directory: URL) -> [ScannedPage] {
+    nonisolated static func spoolPages(_ pages: [ScannedPage], to directory: URL, previewSide: Int = QueuePreview.side) -> [ScannedPage] {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return pages.map { page in
             if page.fileURL != nil { return page }
@@ -2974,7 +2983,7 @@ public final class AppState: ObservableObject {
             } catch {
                 return page
             }
-            let preview = makePreview(page.image, maxSide: 1600) ?? page.image
+            let preview = makePreview(page.image, maxSide: previewSide) ?? page.image
             var spooled = page.withImage(preview, fileURL: url,
                                          fullPixelSize: CGSize(width: page.image.width, height: page.image.height))
             if let other = page.alternate?.image {

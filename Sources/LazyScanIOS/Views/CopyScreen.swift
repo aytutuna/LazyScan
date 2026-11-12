@@ -20,10 +20,8 @@ struct CopyScreen: View {
             VStack(spacing: 0) {
                 ZStack {
                     Color(uiColor: .secondarySystemBackground)
-                    if let image = model.image {
-                        Image(decorative: image, scale: 1)
-                            .resizable()
-                            .scaledToFit()
+                    if let page = state.copyPages.first {
+                        SharpPageImage(page: page)
                             .padding(12)
                             .accessibilityLabel(Text(model.pageName))
                             .accessibilityIdentifier("copy.image")

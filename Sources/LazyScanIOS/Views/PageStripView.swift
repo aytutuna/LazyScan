@@ -375,7 +375,8 @@ private struct PageTile: View {
     }
 
     private var page: some View {
-        // The previews are about 1600 px tall; drawn this small they alias without a better filter.
+        // The previews are larger than the cell (a 400 px thumbnail on the iPhone, 1600 px on the Mac);
+        // drawn this small they alias without a better filter.
         Image(decorative: cell.image, scale: 1)
             .resizable()
             .interpolation(.high)
