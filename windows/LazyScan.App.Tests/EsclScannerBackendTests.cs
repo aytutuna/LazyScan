@@ -111,8 +111,9 @@ public sealed class EsclScannerBackendTests : IDisposable
     [Fact]
     public async Task AnAddressNothingListensAtIsReportedAsASentenceWithANextStep()
     {
+        // Windows retries a connection to a closed port for a few seconds before refusing it; the timeout must outlast that.
         var backend = new EsclScannerBackend(new EsclHostList(_directory), new EsclTrustStore(_directory), discover: false,
-                                             new EsclClientOptions { RequestTimeout = TimeSpan.FromSeconds(5) }, []);
+                                             new EsclClientOptions { RequestTimeout = TimeSpan.FromSeconds(30) }, []);
         var address = ScannerAddress.Create(secure: false, "127.0.0.1", ClosedPort(), "eSCL")!;
 
         var check = await backend.CheckAddressAsync(address, CancellationToken.None);
