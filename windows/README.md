@@ -1061,6 +1061,8 @@ was what failed), and the
 troubleshooter does not count it as a scanner failure; a PDF is still saved, without its text
 file ("The PDF was saved, but not its text file: …"). A page with no text gives an empty file, and the status says no text was found.
 
+A searchable PDF whose OCR failed on some pages is saved without a text layer for them, and the save (a queue, a split, a scan at once, pages added to a PDF, the ID card, a copy's PDF) shows "The PDF was saved, but the text of 2 pages could not be read: <first reason>" as the alert after it (`TextExport.LayerLost`), replacing the text-file alert when both apply. Switching Searchable PDF on with no OCR language pack installed says so in the status line.
+
 The files (`TextExport`, `DocxWriter`, `ZipStore`): the text file is UTF-8 without a byte order
 mark, "\n" line breaks, one line of text per line on the page, a blank line between paragraphs
 and two between pages. The Word document is the smallest package Word and LibreOffice open

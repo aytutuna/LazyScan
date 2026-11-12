@@ -98,6 +98,10 @@ public class TextExportTests
                      TextExport.SidecarFailed("Scan failed: OCR failed: no OCR language pack is installed."));
         Assert.Equal("The PDF was saved, but not its text file: Access to the path is denied.",
                      TextExport.SidecarFailed("Access to the path is denied."));
+        Assert.Equal("The PDF was saved, but the text of 2 pages could not be read: no OCR language pack is installed.",
+                     TextExport.LayerLost(2, "Scan failed: OCR failed: no OCR language pack is installed."));
+        Assert.Equal("The PDF was saved, but the text of 1 page could not be read: the text recognition did not work.",
+                     TextExport.LayerLost(1, "  "));
         Assert.Equal("The 3 pages are kept in the queue: press Save Word once the text can be read, or choose PDF to save them as scanned.",
                      TextExport.KeptInQueue(OutputFormat.Word, 3, cancelled: false));
         Assert.Equal("The page is kept in the queue: press Save Text once the text can be read, or choose PDF to save it as scanned.",

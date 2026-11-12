@@ -1342,6 +1342,7 @@
   "The printer's paper size, from the glass corner": {},
   "no OCR language pack is installed (Settings → Time & Language → Language).": {},
   "no recognizer could process the page.": {},
+  "No text recognizer is installed, so a searchable PDF would have no text. Add a language in Settings → Time & Language → Language.": {},
   "The new version was kept as {0}.": {
     "note": "{0} is a file name."
   },

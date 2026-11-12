@@ -274,9 +274,10 @@ public sealed partial class AppViewModel
         NotifyAll();
         // After a copy went to the printer, a PDF that cannot be written is reported, not undone.
         string path;
+        var failures = new PdfTextFailures();
         try
         {
-            path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token);
+            path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, failures: failures);
         }
         catch (Exception e) when (IsCancellation(e))
         {
@@ -293,6 +294,7 @@ public sealed partial class AppViewModel
         }
         MarkSaved([path]);
         if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The scan was saved as {0}.", Path.GetFileName(path)));
+        if (failures.Note is { } layerNote) ErrorMessage = layerNote;
         string savedText = PdfDetail() is { } detail
             ? Loc.T("Saved {0} ({1}).", Path.GetFileName(path), detail)
             : Loc.T("Saved {0}.", Path.GetFileName(path));

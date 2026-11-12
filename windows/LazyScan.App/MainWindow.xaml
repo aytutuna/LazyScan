@@ -962,7 +962,7 @@
                                                           Content="{loc:T Searchable PDF}"
                                                           ToolTip="{loc:T Lets you search and copy the text (OCR)}"
                                                           AutomationProperties.HelpText="{loc:T Text is recognized automatically\, nothing to configure: the PDF can be searched and its text copied.}"
-                                                          Checked="Setting_Changed" Unchecked="Setting_Changed" />
+                                                          Checked="SearchableBox_Checked" Unchecked="Setting_Changed" />
                                                 <CheckBox x:Name="MultiPageBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Collect pages before saving}"
                                                           ToolTipService.ShowOnDisabled="True"

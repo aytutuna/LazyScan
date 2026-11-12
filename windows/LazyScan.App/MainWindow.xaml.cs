@@ -1428,6 +1428,12 @@ public partial class MainWindow : Window
 
     // MARK: - UI → ViewModel
 
+    private void SearchableBox_Checked(object sender, RoutedEventArgs e)
+    {
+        Setting_Changed(sender, e);
+        if (!_updatingUi && IsLoaded) ViewModel.WarnIfNoTextRecognizer();
+    }
+
     private void Setting_Changed(object sender, RoutedEventArgs e)
     {
         if (_updatingUi || !IsLoaded) return;

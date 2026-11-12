@@ -78,6 +78,15 @@ public static class TextExport
     public static string SidecarFailed(string message) => Loc.T("The PDF was saved, but not its text file: {0}", Reason(message));
 
     /// <summary>
+    /// "The PDF was saved, but the text of 2 pages could not be read: …": the OCR of some pages of a
+    /// searchable PDF failed and they were saved without text (<paramref name="message"/> is the first
+    /// OCR error's).
+    /// </summary>
+    public static string LayerLost(int pageCount, string message) =>
+        Loc.Plural(pageCount, "The PDF was saved, but the text of {0} page could not be read: {1}",
+                   "The PDF was saved, but the text of {0} pages could not be read: {1}", Reason(message));
+
+    /// <summary>
     /// What the user reads when a scan to be saved at once as Word or text could not be (its text
     /// could not be read, its file could not be written, or the save was cancelled) and its pages
     /// went to the queue instead: "The 3 pages are kept in the queue: press Save Word once the text

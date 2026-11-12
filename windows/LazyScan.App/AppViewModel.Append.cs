@@ -87,7 +87,8 @@ public sealed partial class AppViewModel
             var pages = plan.Documents.SelectMany(d => d.Pages).ToList();
             StatusMessage = s.PdfSearchable ? Loc.T("Running OCR and adding pages…") : Loc.T("Adding pages…");
             NotifyAll();
-            var inputs = await PdfPageInputs(pages, s, token);
+            var failures = new PdfTextFailures();
+            var inputs = await PdfPageInputs(pages, s, token, failures: failures);
             SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
             NotifyAll();
             var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token), token);
@@ -98,6 +99,7 @@ public sealed partial class AppViewModel
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
             ResetFlow();
+            if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
                           + plan.LeftOutNote();
             SetStatus(s.Output.Protect ? Loc.T("{0}. {1}", message, PdfAppender.NoPasswordNote) : message,

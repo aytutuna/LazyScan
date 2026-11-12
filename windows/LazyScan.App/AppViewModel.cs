@@ -1841,8 +1841,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             ProtectionFor(s);
             StatusMessage = s.PdfSearchable || text is not null ? Loc.T("Running OCR and building PDF…") : Loc.T("Building PDF…");
             NotifyAll();
-            string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", label: document.Label), token, text);
+            var failures = new PdfTextFailures();
+            string path = await WritePdfAtomically(pages, s, OutputPath(s, "pdf", label: document.Label), token, text, failures: failures);
             string? textPath = text is null ? null : await WriteTextBeside(path, text);
+            if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             MarkSaved([path]);
             DeleteSpoolFiles(queued);
             ScannedPages.Clear();
@@ -1899,9 +1901,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             var text = s.Output.SavesTextBeside ? new PdfText() : null;
+            var failures = new PdfTextFailures();
             try
             {
-                saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text)];
+                saved = [await WritePdfAtomically(pages, s, OutputPath(s, "pdf"), token, text, failures: failures)];
             }
             catch (Exception e)
             {
@@ -1912,6 +1915,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return;
             }
             string? textPath = text is null ? null : await WriteTextBeside(saved[0], text);
+            if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             detail = PdfDetail();
             textFileName = textPath is null ? null : Path.GetFileName(textPath);
         }
@@ -2988,13 +2992,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 return (f, b, IdCardComposer.Compose(f, b, dpi, paperInches));
             }, token);
             var saved = new List<string>();
+            var failures = new PdfTextFailures();
             await WriteImagesRollingBack(saved, async () =>
             {
                 if (pageFormat == OutputFormat.Pdf)
                 {
                     // The password before the file is named, which takes the running number.
                     ProtectionFor(s);
-                    saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, OutputPath(s, "pdf"), token));
+                    saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, OutputPath(s, "pdf"), token, failures: failures));
                 }
                 else
                 {
@@ -3018,6 +3023,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             MarkSaved(saved);
             ClearIdCard(clearCanvas: true);
             ResetFlow();
+            if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             string? detail = pageFormat == OutputFormat.Pdf ? PdfDetail() : null;
             string name = Path.GetFileName(saved[0]);
             SetStatus((detail, saved.Count == 1) switch
@@ -3411,6 +3417,33 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         public string? Problem { get; set; }
     }
 
+    /// <summary>Says so in the status line when Searchable PDF is switched on and no text recognizer is installed.</summary>
+    public void WarnIfNoTextRecognizer()
+    {
+        if (Windows.Media.Ocr.OcrEngine.AvailableRecognizerLanguages.Count > 0) return;
+        StatusMessage = Loc.T("No text recognizer is installed, so a searchable PDF would have no text. Add a language in Settings → Time & Language → Language.");
+        NotifyAll();
+    }
+
+    /// <summary>
+    /// The pages of a searchable PDF whose text could not be read, so they were saved without a text
+    /// layer: how many, and the first reason. Filled while the PDF is written, read after it.
+    /// </summary>
+    private sealed class PdfTextFailures
+    {
+        private int _count;
+        private string? _reason;
+
+        public void Add(Exception error)
+        {
+            _count++;
+            _reason ??= error.Message;
+        }
+
+        /// <summary>What the user reads after the save when some pages lost their text; null when every page was read.</summary>
+        public string? Note => _count > 0 ? TextExport.LayerLost(_count, _reason ?? "") : null;
+    }
+
     /// <summary>
     /// OCR (when searchable, or when <paramref name="text"/> collects the text; never when the lines
     /// were read beforehand, <paramref name="knownLines"/>, one per page) + JPEG-encode each
@@ -3422,11 +3455,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private async Task<string> WritePdfAtomically(List<ScannedPage> pages, ScanSettings s, string path,
                                                   CancellationToken token, PdfText? text = null,
-                                                  IReadOnlyList<IReadOnlyList<OcrLine>?>? knownLines = null)
+                                                  IReadOnlyList<IReadOnlyList<OcrLine>?>? knownLines = null,
+                                                  PdfTextFailures? failures = null)
     {
         // A protected PDF's password is asked for before any page is read or written.
         var protection = ProtectionFor(s);
-        var inputs = await PdfPageInputs(pages, s, token, text, knownLines);
+        var inputs = await PdfPageInputs(pages, s, token, text, knownLines, failures);
 
         StatusMessage = Loc.T("Writing PDF…");
         NotifyAll();
@@ -3449,7 +3483,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private async Task<List<PdfPageInput>> PdfPageInputs(List<ScannedPage> pages, ScanSettings s, CancellationToken token,
                                                          PdfText? text = null,
-                                                         IReadOnlyList<IReadOnlyList<OcrLine>?>? knownLines = null)
+                                                         IReadOnlyList<IReadOnlyList<OcrLine>?>? knownLines = null,
+                                                         PdfTextFailures? failures = null)
     {
         var inputs = new List<PdfPageInput>();
         for (int i = 0; i < pages.Count; i++)
@@ -3479,6 +3514,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 {
                     lines = null;
                     if (text is not null) text.Problem ??= e.Message;
+                    if (s.PdfSearchable) failures?.Add(e);
                 }
                 if (lines is not null && text is { Problem: null })
                 {

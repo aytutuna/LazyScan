@@ -358,6 +358,7 @@ public sealed partial class AppViewModel
         bool lastPdfProtected = LastPdfProtected;
         // The PDFs' password is asked for before the first file is named (which takes the running number).
         if (format == OutputFormat.Pdf) ProtectionFor(s);
+        var failures = new PdfTextFailures();
         try
         {
             await SavePlan.WriteAllOrNothingAsync(files, async () =>
@@ -378,7 +379,7 @@ public sealed partial class AppViewModel
                         continue;
                     }
                     var text = s.Output.SavesTextBeside ? new PdfText() : null;
-                    string pdf = await WritePdfAtomically(pages, s, path, token, text);
+                    string pdf = await WritePdfAtomically(pages, s, path, token, text, failures: failures);
                     files.Add(pdf);
                     saved.Add(pdf);
                     totalBytes = LastPdfBytes is { } bytes ? totalBytes + bytes : null;
@@ -401,6 +402,7 @@ public sealed partial class AppViewModel
         DeleteSpoolFiles(queued);
         ScannedPages.Clear();
         ResetFlow();
+        if (failures.Note is { } layerNote) ErrorMessage = layerNote;
         // The PDFs' size together, and "password-protected" when they are, in the brackets after the page count.
         string? size = format == OutputFormat.Pdf
             ? PdfNote(totalBytes is { } total ? SavedFiles.SizeText(total) : null, LastPdfProtected)
