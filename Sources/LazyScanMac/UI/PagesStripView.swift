@@ -234,10 +234,12 @@ struct PagesStripView: View {
             Text(SidesSaveChoice.message)
         }
         .sheet(item: $editingSpread) { source in
-            SpreadSplitView(source: source) { choice in
+            SpreadSplitView(source: source, unsplitCount: state.unsplitSpreadCount) { choice in
                 switch choice {
                 case .split(let axis, let fraction):
                     state.splitSpread(id: source.pageID, axis: axis, fraction: fraction)
+                case .splitAll(let axis, let fraction):
+                    state.splitUnsplitSpreads(including: source.pageID, axis: axis, fraction: fraction)
                 case .keepWhole:
                     state.joinSpread(id: source.pageID)
                 }

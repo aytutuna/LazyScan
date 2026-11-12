@@ -893,6 +893,13 @@ struct InspectorView: View {
                 .help(BookPages.hint(state.settings))
         }
         if collecting && oneSide && state.settings.document.splitFacingPages {
+            Picker("Cut at", selection: $state.settings.taskOptions.bookCutAt) {
+                ForEach(BookCutAt.allCases, id: \.self) { (choice: BookCutAt) in
+                    Text(BookPages.cutAtLabel(choice)).tag(choice)
+                }
+            }
+            .help("Where each spread is cut. Automatic finds the spine and falls back to the middle. Same as last uses the cut you set by hand most recently.")
+            .padding(.leading, 12)
             Toggle("Reads right to left", isOn: $state.settings.taskOptions.bookRightToLeft)
                 .help("Arabic, Hebrew, manga: the right page of each spread comes first.")
                 .padding(.leading, 12)

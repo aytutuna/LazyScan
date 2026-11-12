@@ -9,6 +9,8 @@ enum SpreadSplitChoice: Equatable {
     case split(axis: GutterAxis, fraction: Double)
     /// Keep the spread as one page.
     case keepWhole
+    /// Cut this spread and every other one kept whole at `fraction` of it along `axis`.
+    case splitAll(axis: GutterAxis, fraction: Double)
 }
 
 /// Splitting a spread by hand: the spread as scanned with the cut drawn across it; a click or drag on
@@ -17,7 +19,9 @@ enum SpreadSplitChoice: Equatable {
 /// `AppState.joinSpread`). Twin of the Windows `SpreadSplitWindow`.
 struct SpreadSplitView: View {
     let source: SpreadEditorSource
-    /// Called with the user's choice when the sheet closes with Split or Keep as One Page; not on Cancel.
+    /// How many spreads in the queue are kept whole, this one included when it is whole.
+    let unsplitCount: Int
+    /// Called with the user's choice when the sheet closes with Split, Keep as One Page or Split all; not on Cancel.
     let onDone: (SpreadSplitChoice) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -32,8 +36,9 @@ struct SpreadSplitView: View {
     /// One arrow key press moves the cut this share of the spread; with Shift, ten times as much.
     private static let keyStep: Double = 0.002
 
-    init(source: SpreadEditorSource, onDone: @escaping (SpreadSplitChoice) -> Void) {
+    init(source: SpreadEditorSource, unsplitCount: Int, onDone: @escaping (SpreadSplitChoice) -> Void) {
         self.source = source
+        self.unsplitCount = unsplitCount
         self.onDone = onDone
         _axis = State(initialValue: source.axis)
         _fraction = State(initialValue: min(max(source.fraction, Self.range.lowerBound), Self.range.upperBound))
@@ -104,6 +109,14 @@ struct SpreadSplitView: View {
             }
             .accessibilityLabel("Where the spread is cut")
             .environment(\.layoutDirection, .leftToRight)
+            if hasOtherUnsplit {
+                Button("Split all unsplit spreads here") {
+                    onDone(.splitAll(axis: axis, fraction: fraction))
+                    dismiss()
+                }
+                .help("Cut every spread that is still whole at this position, then close.")
+                .accessibilityHint(Text("Cuts every whole spread at the current cut position and closes the sheet."))
+            }
             HStack {
                 if source.isSplit {
                     Button("Keep as One Page") {
@@ -126,6 +139,10 @@ struct SpreadSplitView: View {
         }
         .padding(20)
         .frame(minWidth: 560, minHeight: 520)
+    }
+
+    private var hasOtherUnsplit: Bool {
+        unsplitCount > (source.isSplit ? 0 : 1)
     }
 
     private var cutDescription: String {
