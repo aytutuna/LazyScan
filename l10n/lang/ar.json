@@ -872,7 +872,6 @@
     "Add the pages anyway?": "إضافة الصفحات على أي حال؟",
     "Save as new PDF": "حفظ كملف PDF جديد",
     "Add to {0}": "إضافة إلى الملف {0}",
-    "The file has no password, so the added pages have none either.": "الملف غير محمي بكلمة سر، لذا لن تكون الصفحات المضافة محمية أيضًا.",
     "{0} is not a PDF, so pages can't be added to it.": "الملف {0} ليس بتنسيق PDF، لذا لا يمكن إضافة صفحات إليه.",
     "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": "يبدو أن الملف {0} تالف، لذا لا يمكن إضافة صفحات إليه بأمان. يُرجى حفظها في ملف PDF جديد بدلًا منه.",
     "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": "الملف {0} محمي بكلمة سر، لذا لا يمكن إضافة صفحات إليه. يُرجى حفظها في ملف PDF جديد بدلًا منه.",

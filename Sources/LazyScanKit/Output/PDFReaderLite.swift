@@ -242,6 +242,11 @@ public final class PDFReaderLite {
         return value
     }
 
+    /// The numbers of the objects the newest revision lists as in use, in order.
+    var objectNumbers: [Int] {
+        entries.filter { $0.value.kind != .free }.keys.sorted()
+    }
+
     /// The generation the newest revision gives object `number`.
     func generationOf(_ number: Int) -> Int {
         guard let entry = entries[number], entry.kind == .inUse else { return 0 }
@@ -588,7 +593,7 @@ public final class PDFReaderLite {
     }
 
     /// A stream's bytes as stored: /Length of them, which must be followed by "endstream".
-    private func rawData(_ stream: PDFStream) throws -> [UInt8] {
+    func rawData(_ stream: PDFStream) throws -> [UInt8] {
         guard let length = try (resolve(stream.dictionary["Length"]) as? PDFNumber)?.integer, length >= 0 else {
             throw PDFReadError.damaged("A stream's /Length is not a number.")
         }

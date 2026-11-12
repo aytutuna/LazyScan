@@ -26,18 +26,19 @@ extension AppState {
     /// now; `appendToPDF` asks again only when the file has changed since.
     public func checkAppendTarget(_ url: URL) async -> Bool {
         let access = accessPDFForAppend
+        let protecting: Bool = settings.output.protect
         do {
             let (target, seen): (PDFAppendTarget, FileStamp?) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendTarget, FileStamp?) in
                 try Self.accessing(url, writing: false, through: access) { (file: URL) throws -> (PDFAppendTarget, FileStamp?) in
                     (try PDFAppender.inspect(path: file.path), FileStamp(of: file))
                 }
             }.value
-            if let question = target.confirmMessage {
+            if let question = target.confirmMessage(protecting: protecting) {
                 var yes = false
                 if let ask = confirmAppend { yes = await ask(question) }
                 if !yes { return false }
             }
-            confirmedAppend = (url: url, stamp: seen)
+            confirmedAppend = (url: url, stamp: seen, protecting: protecting)
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -54,11 +55,11 @@ extension AppState {
     /// Adds the pages the queue would save (all its documents, in order; pages left out stay out) to
     /// the end of the PDF at `url`, stored as the PDF size and the text layer settings say. The file
     /// is read first: a password-protected, damaged or unreadable file, or one that is read-only or
-    /// open in another app, is refused with what to do, and the pages stay in the queue. The file
-    /// decides the rest: no password is added (the password switch is for new files) and a PDF/A file
-    /// stays one where it can (`PDFAppender.keepsPdfA`), with a question first where it may not, or
-    /// where it is signed. Once the pages are in, the queue is cleared and the file is offered like a
-    /// saved one, with the after-save action, and the `appendTarget` is cleared.
+    /// open in another app, is refused with what to do, and the pages stay in the queue. With the
+    /// password switch on, the password is asked for after any question and the whole file is written
+    /// with it. A PDF/A file stays one where it can (`PDFAppender.keepsPdfA`), with a question first
+    /// where it may not, or where it is signed. Once the pages are in, the queue is cleared and the
+    /// file is offered like a saved one, with the after-save action, and the `appendTarget` is cleared.
     public func appendToPDF(at url: URL) {
         guard !scannedPages.isEmpty else { return }
         guard !sidesNeedOrder else {
@@ -88,8 +89,9 @@ extension AppState {
                     (try PDFAppender.inspect(path: file.path), FileStamp(of: file))
                 }
             }.value
-            let answered: Bool = url == self.appendTarget && (self.confirmedAppend.map { $0.url == url && $0.stamp == seen } ?? false)
-            if !answered, let question = target.confirmMessage {
+            let answered: Bool = url == self.appendTarget
+                && (self.confirmedAppend.map { $0.url == url && $0.stamp == seen && $0.protecting == s.output.protect } ?? false)
+            if !answered, let question = target.confirmMessage(protecting: s.output.protect) {
                 var yes = false
                 if let ask = self.confirmAppend { yes = await ask(question) }
                 if !yes {
@@ -97,6 +99,7 @@ extension AppState {
                     return
                 }
             }
+            let protection: PDFProtection? = try await self.protectionFor(s)
             var collected: [ScannedPage] = []
             for document in plan.documents {
                 collected.append(contentsOf: document.pages)
@@ -123,7 +126,8 @@ extension AppState {
                     let copied: Bool = backup.map { (try? FileManager.default.copyItem(at: file, to: $0)) != nil } ?? false
                     do {
                         let added: PDFAppendResult = try PDFAppender.appendToFile(path: file.path, pages: inputs,
-                                                                                  shouldContinue: { !flag.isCancelled })
+                                                                                  shouldContinue: { !flag.isCancelled },
+                                                                                  protection: protection)
                         return (added, copied, FileStamp(of: file))
                     } catch {
                         if copied, let backup { try? FileManager.default.removeItem(at: backup) }
@@ -132,7 +136,7 @@ extension AppState {
                 }
             }.value
             self.lastPDFByteCount = Int64(result.bytes)
-            self.lastPDFProtected = false
+            self.lastPDFProtected = protection != nil
             // The URL picked, not the result's path: on the iPhone it carries the file's security scope,
             // kept open for the file actions after the save (`scopedSavedURL`).
             self.lastSavedURLs = [url]
@@ -146,9 +150,9 @@ extension AppState {
                            undoable: kept)
             self.resetFlow()
             let size: String = ByteCountFormatter.string(fromByteCount: Int64(result.bytes), countStyle: .file)
-            var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: size)
+            let detail: String? = Self.pdfNote(size: size, isProtected: protection != nil)
+            var message: String = PDFAppender.addedMessage(count, fileName: name, pageCount: result.pageCount, size: detail)
             message += plan.leftOutNote()
-            if s.output.protect { message = L10n.t("{0}. {1}", message, PDFAppender.noPasswordNote) }
             if let note = failures.note { self.errorMessage = note }
             self.setStatus(message, StatusDetail(head: .pagesAdded(count, queue: nil, blank: 0, split: 0)))
             self.runAfterSave(s.output.afterSave, saved: [url])

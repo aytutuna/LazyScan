@@ -22,10 +22,11 @@ struct PagesStripView: View {
     /// Clear is asking before it removes more than one page.
     @State private var asksClear = false
 
-    /// The pages are saved as a PDF that gets a password (`OutputOptions.protect`). Not when they go
-    /// into a picked PDF: that file decides.
+    /// The pages are saved as a PDF that gets a password (`OutputOptions.protect`), a new one or the
+    /// picked PDF they go into, which is written again with it.
     private var lockedSave: Bool {
-        state.settings.format.queueFormat == .pdf && state.settings.output.protect && state.appendTarget == nil
+        let isPDF: Bool = state.settings.format.queueFormat == .pdf || state.appendTarget != nil
+        return isPDF && state.settings.output.protect
     }
 
     /// Names the one file the queue is saved as, for this save only; empty leaves the template in charge.
@@ -255,7 +256,7 @@ struct PagesStripView: View {
     }
 
     private func saveAccessibilityLabel(_ title: String, _ plan: SavePlan) -> String {
-        lockedSave ? plan.protectedSaveTitle : title
+        lockedSave && state.appendTarget == nil ? plan.protectedSaveTitle : title
     }
 }
 

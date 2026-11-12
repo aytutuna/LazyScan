@@ -872,7 +872,6 @@
     "Add the pages anyway?": "Seiten trotzdem anhängen?",
     "Save as new PDF": "Als neues PDF sichern",
     "Add to {0}": "An „{0}“ anhängen",
-    "The file has no password, so the added pages have none either.": "Die Datei hat kein Passwort, daher sind auch die angehängten Seiten nicht geschützt.",
     "{0} is not a PDF, so pages can't be added to it.": "„{0}“ ist kein PDF, daher können keine Seiten angehängt werden.",
     "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": "„{0}“ scheint beschädigt zu sein, daher lassen sich keine Seiten sicher anhängen. Sichere sie stattdessen als neues PDF.",
     "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": "„{0}“ ist passwortgeschützt, daher können keine Seiten angehängt werden. Sichere sie stattdessen als neues PDF.",

@@ -174,8 +174,8 @@ final class PDFAppenderTests: XCTestCase {
         let target = try describe(original, "Sözleşme.pdf")
         XCTAssertTrue(target.isPdfA)
         XCTAssertTrue(target.keepsPdfA)
-        XCTAssertEqual(target.warnings, [])
-        XCTAssertNil(target.confirmMessage)
+        XCTAssertEqual(target.warnings(), [])
+        XCTAssertNil(target.confirmMessage())
 
         let appended = try append(original, [Self.page(text: true)], Self.fixed)
         try checkAppended(original, appended, 1)
@@ -302,12 +302,12 @@ final class PDFAppenderTests: XCTestCase {
     func test_warnings_signedFiles_andPdfALevelsThatAreNotKept() throws {
         let signed = try describe(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>"), "/x/Contract.pdf")
         XCTAssertTrue(signed.isSigned)
-        XCTAssertEqual(signed.warnings, ["Contract.pdf is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed."])
-        XCTAssertEqual(signed.confirmMessage, (signed.warnings.first ?? "") + "\n\nAdd the pages anyway?")
+        XCTAssertEqual(signed.warnings(), ["Contract.pdf is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed."])
+        XCTAssertEqual(signed.confirmMessage(), (signed.warnings().first ?? "") + "\n\nAdd the pages anyway?")
 
         let a1 = try describe(PDFFixture.pdfA(part: 1, conformance: "A"), "Old.pdf")
         XCTAssertFalse(a1.keepsPdfA)
-        XCTAssertEqual(a1.warnings, ["Old.pdf is a PDF/A-1a file. The added pages may not meet that standard, so it may no longer pass as PDF/A."])
+        XCTAssertEqual(a1.warnings(), ["Old.pdf is a PDF/A-1a file. The added pages may not meet that standard, so it may no longer pass as PDF/A."])
         XCTAssertFalse(try describe(PDFFixture.pdfA(part: 2, conformance: "B", components: 4), "Print.pdf").keepsPdfA)
         XCTAssertTrue(try describe(PDFFixture.pdfA(part: 3, conformance: "U"), "Kept.pdf").keepsPdfA)
     }
@@ -318,8 +318,23 @@ final class PDFAppenderTests: XCTestCase {
         let certified = try describe(pdf, "/x/Form.pdf")
         XCTAssertTrue(certified.isSigned)
         XCTAssertTrue(certified.isCertified)
-        XCTAssertEqual(certified.warnings, ["Form.pdf is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid."])
+        XCTAssertEqual(certified.warnings(), ["Form.pdf is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid."])
         XCTAssertFalse(try describe(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>"), "a.pdf").isCertified)
+    }
+
+    func test_warnings_withAPassword_saySignaturesAndPdfAAreLost() throws {
+        let signed = try describe(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>"), "/x/Contract.pdf")
+        XCTAssertEqual(signed.warnings(protecting: true), ["Contract.pdf is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid."])
+        XCTAssertEqual(signed.confirmMessage(protecting: true),
+                       (signed.warnings(protecting: true).first ?? "") + "\n\nAdd the pages anyway?")
+
+        let kept = try describe(PDFFixture.pdfA(part: 3, conformance: "U"), "Kept.pdf")
+        XCTAssertTrue(kept.keepsPdfA)
+        XCTAssertNil(kept.confirmMessage())
+        XCTAssertEqual(kept.warnings(protecting: true), ["Kept.pdf is a PDF/A-3u file. PDF/A can't be password-protected, so it will no longer pass as PDF/A."])
+
+        let plain = try describe(PDFFixture.classic(), "Plain.pdf")
+        XCTAssertNil(plain.confirmMessage(protecting: true))
     }
 
     private func replace(_ pdf: [UInt8], _ from: String, _ to: String, line: UInt = #line) -> [UInt8] {
@@ -488,6 +503,46 @@ final class PDFAppenderTests: XCTestCase {
         XCTAssertEqual(attributes[.creationDate] as? Date, created)
         XCTAssertEqual(names(folder), ["Sözleşme.pdf"]) // no temporary file left
         XCTAssertEqual(try PDFAppender.inspect(path: path).pageCount, 4)
+    }
+
+    func test_appendToFile_withAPassword_writesTheWholeFileEncrypted() throws {
+        for (name, original) in [("Classic.pdf", PDFFixture.classic()), ("Streams.pdf", PDFFixture.objectStreams())] {
+            let folder = try makeFolder()
+            defer { removeFolder(folder) }
+            let path = try write(folder, name, original)
+            let before = try PDFAppender.inspect(path: path).pageCount
+            let protection = try PDFProtection("Şifre 2026")
+            let result = try PDFAppender.appendToFile(path: path, pages: [Self.page(text: true)], protection: protection)
+            XCTAssertEqual(result.pageCount, before + 1)
+            XCTAssertEqual(names(folder), [name])
+
+            let reader = try PDFReaderLite(data: Data(contents(path)))
+            XCTAssertTrue(reader.isEncrypted)
+            let root = try XCTUnwrap(reader.trailer["Root"] as? PDFReference)
+            let catalog = try XCTUnwrap(try reader.get(root.number) as? PDFDictionary)
+            XCTAssertNotNil(catalog["Extensions"])
+            let dictionary = try XCTUnwrap(reader.resolve(reader.trailer["Encrypt"]) as? PDFDictionary)
+            func bytes(_ key: String) -> [UInt8] { (dictionary[key] as? PDFString)?.bytes ?? [] }
+            let password = PDFProtection.preparePassword("Şifre 2026")
+            let key = try XCTUnwrap(PDFEncryption.fileKeyFor(password, o: bytes("O"), u: bytes("U"), oe: bytes("OE"),
+                                                             ue: bytes("UE")))
+            let permissions = try XCTUnwrap((dictionary["P"] as? PDFNumber)?.integer)
+            XCTAssertTrue(PDFEncryption.permsMatch(fileKey: key, perms: bytes("Perms"), p: permissions))
+            let wrong = PDFProtection.preparePassword("Başka 2026")
+            XCTAssertNil(try PDFEncryption.fileKeyFor(wrong, o: bytes("O"), u: bytes("U"), oe: bytes("OE"), ue: bytes("UE")))
+
+            var streams: [[UInt8]] = []
+            for number in reader.objectNumbers {
+                guard let stream = try reader.get(number) as? PDFStream else { continue }
+                streams.append(try PDFEncryption.decrypt(fileKey: key, stored: reader.rawData(stream)))
+            }
+            XCTAssertTrue(streams.contains([UInt8](PDFWriterTests.tinyJPEGData)))
+
+            let document = try XCTUnwrap(PDFDocument(url: URL(fileURLWithPath: path)))
+            XCTAssertTrue(document.isLocked)
+            XCTAssertTrue(document.unlock(withPassword: "Şifre 2026"))
+            XCTAssertEqual(document.pageCount, before + 1)
+        }
     }
 
     func test_appendToFile_keepsTheFilesPermissions() throws {

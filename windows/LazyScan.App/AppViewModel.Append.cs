@@ -14,7 +14,7 @@ namespace LazyScan.App;
 public sealed partial class AppViewModel
 {
     /// <summary>
-    /// Asks whether to add pages to a file despite what <see cref="PdfAppendTarget.Warnings"/> say (a
+    /// Asks whether to add pages to a file despite what <see cref="PdfAppendTarget.GetWarnings"/> say (a
     /// signed file, a PDF/A level the pages may not keep): the window shows a Yes/No question; no
     /// answer, or nobody to ask, adds nothing.
     /// </summary>
@@ -28,7 +28,7 @@ public sealed partial class AppViewModel
 
     // The file CheckAppendTarget asked its question about, as it was then; Save does not ask again
     // while it is unchanged.
-    private (string Path, long Length, DateTime Written)? _confirmedAppend;
+    private (string Path, long Length, DateTime Written, bool Protecting)? _confirmedAppend;
 
     private static (long Length, DateTime Written) StampOf(string path)
     {
@@ -44,6 +44,7 @@ public sealed partial class AppViewModel
     /// </summary>
     public async Task<bool> CheckAppendTarget(string path)
     {
+        bool protecting = Settings.Output.Protect;
         try
         {
             var (target, stamp) = await Task.Run(() =>
@@ -51,8 +52,8 @@ public sealed partial class AppViewModel
                 var inspected = PdfAppender.Inspect(path);
                 return (inspected, StampOf(path));
             });
-            if (target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true) return false;
-            _confirmedAppend = (path, stamp.Length, stamp.Written);
+            if (target.GetConfirmMessage(protecting) is { } question && ConfirmAppend?.Invoke(question) != true) return false;
+            _confirmedAppend = (path, stamp.Length, stamp.Written, protecting);
             return true;
         }
         catch (Exception e)
@@ -90,10 +91,10 @@ public sealed partial class AppViewModel
     /// the end of <paramref name="targetPath"/>, stored as the PDF size and the text layer settings
     /// say. The file is read first: a password-protected, damaged or unreadable file, or one that
     /// is read-only or open in another app, is refused with what to do, and the pages stay in the
-    /// queue. The file decides the rest: no password is added (the password switch is for new
-    /// files) and a PDF/A file stays one where it can (<see cref="PdfAppender.KeepsPdfA"/>), with a
-    /// question first where it may not, or where it is signed. Once the pages are in, the queue is
-    /// cleared and the file is offered like a saved one, with the after-save action, and the
+    /// queue. With the password switch on, the password is asked for after any question and the whole
+    /// file is written with it. A PDF/A file stays one where it can (<see cref="PdfAppender.KeepsPdfA"/>),
+    /// with a question first where it may not, or where it is signed. Once the pages are in, the queue
+    /// is cleared and the file is offered like a saved one, with the after-save action, and the
     /// <see cref="AppendTarget"/> is cleared.
     /// </summary>
     public Task AppendToPdf(string targetPath)
@@ -119,12 +120,14 @@ public sealed partial class AppViewModel
             NotifyAll();
             var (target, stamp) = await Task.Run(() => (PdfAppender.Inspect(targetPath), StampOf(targetPath)), token);
             bool answered = targetPath == AppendTarget && _confirmedAppend is { } done
-                            && done.Path == targetPath && done.Length == stamp.Length && done.Written == stamp.Written;
-            if (!answered && target.ConfirmMessage is { } question && ConfirmAppend?.Invoke(question) != true)
+                            && done.Path == targetPath && done.Length == stamp.Length && done.Written == stamp.Written
+                            && done.Protecting == s.Output.Protect;
+            if (!answered && target.GetConfirmMessage(s.Output.Protect) is { } question && ConfirmAppend?.Invoke(question) != true)
             {
                 StatusMessage = Loc.T("Nothing was added to {0}.", name);
                 return;
             }
+            var protection = ProtectionFor(s);
             var pages = plan.Documents.SelectMany(d => d.Pages).ToList();
             StatusMessage = s.PdfSearchable ? Loc.T("Running OCR and adding pages…") : Loc.T("Adding pages…");
             NotifyAll();
@@ -132,9 +135,9 @@ public sealed partial class AppViewModel
             var inputs = await PdfPageInputs(pages, s, token, failures: failures);
             SetStatus(Loc.Plural(pages.Count, "Adding {0} page to {1}…", "Adding {0} pages to {1}…", name), new(new StatusHead.AddingPages(pages.Count)));
             NotifyAll();
-            var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token), token);
+            var result = await Task.Run(() => PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection), token);
             LastPdfBytes = result.Bytes;
-            LastPdfProtected = false;
+            LastPdfProtected = protection is not null;
             MarkSaved([result.Path]);
             AppendTarget = null;
             _confirmedAppend = null;
@@ -143,10 +146,9 @@ public sealed partial class AppViewModel
             ResetFlow();
             SaveName = "";
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
-            var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, SavedFiles.SizeText(result.Bytes))
+            var message = PdfAppender.AddedMessage(pages.Count, name, result.PageCount, PdfNote(SavedFiles.SizeText(result.Bytes), protection is not null))
                           + plan.LeftOutNote();
-            SetStatus(s.Output.Protect ? Loc.T("{0}. {1}", message, PdfAppender.NoPasswordNote) : message,
-                      new(new StatusHead.PagesAdded(pages.Count, null, 0, 0)));
+            SetStatus(message, new(new StatusHead.PagesAdded(pages.Count, null, 0, 0)));
             RunAfterSave(s.Output.AfterSave, [result.Path]);
         });
     }

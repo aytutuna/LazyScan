@@ -1328,7 +1328,6 @@
   "Add to {0}": {
     "note": "{0} is the name of a PDF file."
   },
-  "The file has no password, so the added pages have none either.": {},
   "{0} is not a PDF, so pages can't be added to it.": {},
   "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": {},
   "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": {},
@@ -1351,6 +1350,8 @@
   "{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.": {},
   "{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.": {},
   "{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.": {},
+  "{0} is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid.": {},
+  "{0} is a PDF/A-{1}{2} file. PDF/A can't be password-protected, so it will no longer pass as PDF/A.": {},
   "Adding page {0} of {1}…": {},
   "Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.": {},
   "Edges may be cut by up to {0} mm (printer margins).": {},

@@ -67,12 +67,11 @@ public partial class MainWindow
                 _ => Loc.Plural(savePlan.Documents.Count, "Save {0} PDF", "Save {0} PDFs"),
             };
         bool pdf = target is not null || OutputFormats.QueueFormat(format) == OutputFormat.Pdf;
-        // The file decides: pages added to it get no password.
-        bool locked = target is null && pdf && ViewModel.Settings.Output.Protect;
+        bool locked = pdf && ViewModel.Settings.Output.Protect;
         SavePdfButton.Content = label;
         SavePdfButton.Tag = saveCount > 0 ? saveCount.ToString(System.Globalization.CultureInfo.CurrentCulture) : null;
         global::LazyScan.App.Icon.SetGlyph(SavePdfButton, locked ? "" : pdf ? "" : "");
-        string name = locked ? savePlan.ProtectedSaveTitle
+        string name = locked && target is null ? savePlan.ProtectedSaveTitle
             : saveCount > 0 ? Loc.Plural(saveCount, "{1}, {0} page", "{1}, {0} pages", label)
             : label;
         AutomationProperties.SetName(SavePdfButton, name);

@@ -88,10 +88,20 @@ public struct PDFAppendTarget: Equatable, Sendable {
     public var isPdfA: Bool { pdfAPart != nil }
 
     /// What the user should know before pages are added: the signature, a PDF/A level that may not
-    /// be kept.
-    public var warnings: [String] {
+    /// be kept. With `protecting` the whole file is written again with a password, which breaks a
+    /// signature and PDF/A whatever the pages are.
+    public func warnings(protecting: Bool = false) -> [String] {
         let name = (path as NSString).lastPathComponent
         var warnings: [String] = []
+        if protecting {
+            if isSigned || isCertified {
+                warnings.append(PDFAppender.signedProtectedWarning(name))
+            }
+            if let part = pdfAPart {
+                warnings.append(PDFAppender.pdfAProtectedWarning(name, part: part, conformance: pdfAConformance))
+            }
+            return warnings
+        }
         if isCertified {
             warnings.append(PDFAppender.certifiedWarning(name))
         } else if isSigned {
@@ -103,9 +113,9 @@ public struct PDFAppendTarget: Equatable, Sendable {
         return warnings
     }
 
-    /// The question asked before adding pages despite `warnings`; nil when there are none.
-    public var confirmMessage: String? {
-        let warnings = self.warnings
+    /// The question asked before adding pages despite `warnings(protecting:)`; nil when there are none.
+    public func confirmMessage(protecting: Bool = false) -> String? {
+        let warnings = self.warnings(protecting: protecting)
         if warnings.isEmpty { return nil }
         return warnings.joined(separator: "\n\n") + "\n\n" + PDFAppender.confirmQuestion
     }
@@ -154,6 +164,9 @@ public struct PDFAppendOptions: Sendable {
 /// read back (page count, the original bytes unchanged at its start) before it replaces the original
 /// (`FileManager.replaceItemAt`, keeping the original's creation date and permissions). Every failure
 /// is a `PDFAppendError` whose message is for the user.
+///
+/// With a `PDFProtection` the whole result is written once more, as a new file, with every string and
+/// stream encrypted (`writeProtected`): an update cannot encrypt the pages already there.
 public enum PDFAppender {
     public static var buttonLabel: String { L10n.t("Add to existing PDF…") }
     public static var buttonHint: String { L10n.t("Add the pages to the end of a PDF you choose") }
@@ -169,9 +182,6 @@ public enum PDFAppender {
     public static func saveTitle(_ fileName: String) -> String {
         L10n.t("Add to {0}", fileName)
     }
-
-    /// Said after adding pages while Protect with a password is on: the file decides, and it has none.
-    public static var noPasswordNote: String { L10n.t("The file has no password, so the added pages have none either.") }
 
     /// Why pages could not be added to `fileName`.
     public static func message(_ problem: PDFAppendProblem, _ fileName: String) -> String {
@@ -216,6 +226,11 @@ public enum PDFAppender {
         L10n.t("{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.", fileName)
     }
 
+    /// For a signed or certified file when the pages go in with a password.
+    public static func signedProtectedWarning(_ fileName: String) -> String {
+        L10n.t("{0} is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid.", fileName)
+    }
+
     /// For a certified file (`PDFReaderLite.isCertified`): no certification allows adding pages.
     public static func certifiedWarning(_ fileName: String) -> String {
         L10n.t("{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.", fileName)
@@ -224,6 +239,13 @@ public enum PDFAppender {
     public static func pdfAWarning(_ fileName: String, part: Int, conformance: String?) -> String {
         let level = conformance?.lowercased() ?? ""
         return L10n.t("{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.",
+                      fileName, String(part), level)
+    }
+
+    /// For a PDF/A file when the pages go in with a password.
+    public static func pdfAProtectedWarning(_ fileName: String, part: Int, conformance: String?) -> String {
+        let level = conformance?.lowercased() ?? ""
+        return L10n.t("{0} is a PDF/A-{1}{2} file. PDF/A can't be password-protected, so it will no longer pass as PDF/A.",
                       fileName, String(part), level)
     }
 
@@ -395,6 +417,90 @@ public enum PDFAppender {
         }
     }
 
+    /// Writes the file `reader` read to `output` as a new file with every string and stream encrypted
+    /// (`PDFEncryption`), under a new random file key and `protection`'s password. The objects keep
+    /// their numbers; the cross-reference and object streams are not carried over (what was in an
+    /// object stream is written as an object of its own), and a number left without an object is
+    /// written as null. A generation other than 0 is not supported.
+    package static func writeProtected(_ reader: PDFReaderLite, into output: @escaping (Data) throws -> Void,
+                                       protection: PDFProtection, shouldContinue: (() -> Bool)? = nil) throws {
+        if reader.isEncrypted { throw PDFReadError(.encrypted, "The file is encrypted.") }
+        guard let root = reader.root else { throw PDFReadError.damaged("The trailer names no catalog (/Root).") }
+        let encryption = try PDFEncryption.create(protection)
+        defer { encryption.dispose() }
+        let w = PDFObjectWriter(encryption: encryption, output: output)
+        try w.writeHeader("1.7")
+        var next = 1
+        for number in reader.objectNumbers where number > 0 {
+            if shouldContinue?() == false { throw ScanError.cancelled }
+            if reader.generationOf(number) != 0 {
+                throw PDFReadError(.unsupported, "Object \(number) has a generation other than 0.")
+            }
+            while next < number {
+                try w.writeObject(next, "null")
+                next += 1
+            }
+            next = number + 1
+            let value: any PDFObject = try reader.get(number) ?? PDFNull.instance
+            guard let stream = value as? PDFStream else {
+                var text = try encrypted(value, encryption).description
+                // The 1.7 header carries R6 only with the extension a new protected file declares.
+                if number == root.number, let catalog = value as? PDFDictionary, !catalog.contains("Extensions") {
+                    text = String(text.dropLast(2)) + " /Extensions <</ADBE <</BaseVersion /1.7 /ExtensionLevel 8>>>>>>"
+                }
+                try w.writeObject(number, text)
+                continue
+            }
+            let kind = (stream.dictionary["Type"] as? PDFName)?.value
+            if kind == "XRef" || kind == "ObjStm" {
+                try w.writeObject(number, "null")
+                continue
+            }
+            let dictionary = PDFDictionary()
+            for entry in stream.dictionary.entries where entry.key != "Length" {
+                dictionary.add(entry.key, try encrypted(entry.value, encryption))
+            }
+            let entries = String(dictionary.description.dropFirst(2).dropLast(2))
+            try w.writeStream(number, entries, Data(try reader.rawData(stream)))
+        }
+        let encryptObject = next
+        try w.writeObject(encryptObject, encryption.dictionary)
+
+        var firstId: [UInt8] = try PDFEncryption.randomBytes(PDFEncryption.systemRandom, 16)
+        var secondId: [UInt8] = firstId
+        if let ids = try reader.resolve(reader.trailer["ID"]) as? PDFArray, ids.items.count >= 2,
+           let first = try reader.resolve(ids.items[0]) as? PDFString,
+           let second = try reader.resolve(ids.items[1]) as? PDFString {
+            firstId = first.bytes
+            secondId = second.bytes
+        }
+        var trailer = "/Root "
+        root.write(to: &trailer)
+        if let info = reader.trailer["Info"], !(info is PDFNull) {
+            trailer += " /Info " + (try encrypted(info, encryption)).description
+        }
+        trailer += " /Encrypt \(encryptObject) 0 R /ID [<\(PDFEncryption.hex(firstId))> <\(PDFEncryption.hex(secondId))>]"
+        try w.finish(trailer)
+    }
+
+    /// `object` with every string in it encrypted (as a hex string).
+    private static func encrypted(_ object: any PDFObject, _ encryption: PDFEncryption) throws -> any PDFObject {
+        switch object {
+        case let string as PDFString:
+            return PDFString(try encryption.encrypt(string.bytes), isHex: true)
+        case let array as PDFArray:
+            return PDFArray(try array.items.map { try encrypted($0, encryption) })
+        case let dictionary as PDFDictionary:
+            let copy = PDFDictionary()
+            for entry in dictionary.entries {
+                copy.add(entry.key, try encrypted(entry.value, encryption))
+            }
+            return copy
+        default:
+            return object
+        }
+    }
+
     /// Adds `pages` to the end of the PDF at `path`. The file is held open (with a shared lock, so
     /// apps that lock files may read it, not change it) while the original and the update are written
     /// to a hidden temporary file in its folder (on the iPhone and in the sandboxed Mac app in the
@@ -404,11 +510,13 @@ public enum PDFAppender {
     /// then it takes the original's place (`replaceOriginal(_:_:)`), keeping what belongs to the file
     /// rather than to its bytes. Any failure leaves the original as it was (under its backup name in
     /// the one case `PDFAppendProblem.leftAsBackup` says), removes the temporary file and is a
-    /// `PDFAppendError`; cancelling is `ScanError.cancelled`.
+    /// `PDFAppendError`; cancelling is `ScanError.cancelled`. With a `protection` the checked file is
+    /// then written once more, encrypted (`writeProtected`), and that file takes the original's place.
     @discardableResult
     public static func appendToFile(path: String, pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
                                     shouldContinue: (() -> Bool)? = nil,
-                                    options: PDFAppendOptions? = nil) throws -> PDFAppendResult {
+                                    options: PDFAppendOptions? = nil,
+                                    protection: PDFProtection? = nil) throws -> PDFAppendResult {
         if pages.isEmpty { throw ScanError.exportFailed("There are no pages to add.") }
         let full = fullPath(path)
         let manager = FileManager.default
@@ -430,6 +538,7 @@ public enum PDFAppender {
         }
         defer { if keepsToItsOwnFile { try? manager.removeItem(atPath: directory) } }
         let tmp = (directory as NSString).appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
+        let secured = tmp + ".enc"
         do {
             let reader = try read(original, full)
             let target = try describe(reader, path: full)
@@ -443,6 +552,13 @@ public enum PDFAppender {
                                           path: full)
             try verify(tmp, originalLength: length, originalHash: hash, pageCount: target.pageCount + pages.count,
                        previousXref: reader.startXref, sections: reader.sectionCount + 1, path: full)
+            var ready = tmp
+            if let protection {
+                try writeSecured(from: tmp, to: secured, protection: protection, shouldContinue: shouldContinue, path: full)
+                try verifySecured(secured, path: full)
+                try? manager.removeItem(atPath: tmp)
+                ready = secured
+            }
 
             try? original.close()
             isOpen = false
@@ -455,13 +571,14 @@ public enum PDFAppender {
             if let created { metadata[.creationDate] = created }
             if let permissions { metadata[.posixPermissions] = permissions }
             // Cosmetic, and replaceItemAt keeps them too: the pages are what matters.
-            try? manager.setAttributes(metadata, ofItemAtPath: tmp)
-            try replaceOriginal(tmp, full)
+            try? manager.setAttributes(metadata, ofItemAtPath: ready)
+            try replaceOriginal(ready, full)
             let after = try? manager.attributesOfItem(atPath: full)
             let bytes = (after?[.size] as? NSNumber)?.intValue ?? 0
             return PDFAppendResult(path: full, pagesBefore: target.pageCount, pagesAdded: pages.count, bytes: bytes)
         } catch {
             try? manager.removeItem(atPath: tmp)
+            try? manager.removeItem(atPath: secured)
             throw error
         }
     }
@@ -611,6 +728,49 @@ public enum PDFAppender {
             throw error
         } catch {
             throw refusal(.notWritten, path, error)
+        }
+    }
+
+    /// The checked file `tmp` written again, encrypted, to the new hidden file `secured`; failures map
+    /// as in `writeTemporary`.
+    private static func writeSecured(from tmp: String, to secured: String, protection: PDFProtection,
+                                     shouldContinue: (() -> Bool)?, path: String) throws {
+        let descriptor = open(secured, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o666)
+        if descriptor < 0 {
+            let code = errno
+            if code == EACCES || code == EPERM || code == EROFS {
+                throw refusal(.readOnly, path, posixError(code))
+            }
+            throw refusal(.notWritten, path, posixError(code))
+        }
+        let output = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? output.close() }
+        do {
+            let source = try FileHandle(forReadingFrom: URL(fileURLWithPath: tmp))
+            defer { try? source.close() }
+            let reader = try fileReader(source)
+            try writeProtected(reader, into: { chunk in try output.write(contentsOf: chunk) },
+                               protection: protection, shouldContinue: shouldContinue)
+            try output.synchronize()
+        } catch let error as PDFReadError {
+            throw refusal(problemOf(error.problem), path, error)
+        } catch let error as ScanError {
+            throw error
+        } catch {
+            throw refusal(.notWritten, path, error)
+        }
+    }
+
+    /// The encrypted file read back: it must declare its encryption and its cross-reference data must hold.
+    private static func verifySecured(_ secured: String, path: String) throws {
+        do {
+            let handle = try FileHandle(forReadingFrom: URL(fileURLWithPath: secured))
+            defer { try? handle.close() }
+            guard try fileReader(handle).isEncrypted else { throw refusal(.notVerified, path) }
+        } catch let error as PDFAppendError {
+            throw error
+        } catch {
+            throw refusal(.notVerified, path, error)
         }
     }
 

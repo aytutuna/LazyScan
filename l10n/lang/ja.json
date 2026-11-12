@@ -872,7 +872,6 @@
     "Add the pages anyway?": "それでもページを追加しますか?",
     "Save as new PDF": "新規PDFとして保存",
     "Add to {0}": "{0}に追加",
-    "The file has no password, so the added pages have none either.": "このファイルにはパスワードが設定されていないため、追加したページにも設定されません。",
     "{0} is not a PDF, so pages can't be added to it.": "“{0}”はPDFではないため、ページを追加できません。",
     "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": "“{0}”は破損している可能性があるため、ページを安全に追加できません。新規PDFとして保存してください。",
     "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": "“{0}”はパスワードで保護されているため、ページを追加できません。新規PDFとして保存してください。",

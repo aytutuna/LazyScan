@@ -371,7 +371,7 @@ public final class AppState: ObservableObject {
     public var askPDFPassword: (@MainActor () async -> PDFProtection?)?
     /// The password of the save running now (`protectionFor`); nil between saves.
     var savePassword: PDFProtection?
-    /// Asks whether to add pages to a PDF despite what `PDFAppendTarget.warnings` say (a signed file, a
+    /// Asks whether to add pages to a PDF despite what `PDFAppendTarget.warnings(protecting:)` say (a signed file, a
     /// PDF/A level the pages may not keep): the Mac shows an alert, the iPhone its own; no answer, or
     /// nobody to ask, adds nothing (AppState+Append.swift). Twin of the Windows view model's `ConfirmAppend`.
     public var confirmAppend: (@MainActor (String) async -> Bool)?
@@ -387,7 +387,7 @@ public final class AppState: ObservableObject {
     }
     /// The file `checkAppendTarget` asked the signed or PDF/A question about, as it was then: Save does
     /// not ask again while it is unchanged.
-    var confirmedAppend: (url: URL, stamp: FileStamp?)?
+    var confirmedAppend: (url: URL, stamp: FileStamp?, protecting: Bool)?
     /// Makes the bookmark of `appendTarget` the queue's record keeps, and opens one again after a relaunch.
     /// Set by `makeForIOS`.
     public var bookmarkAppendTarget: (@MainActor (URL) -> Data?)?

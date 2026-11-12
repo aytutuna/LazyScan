@@ -56,22 +56,29 @@ public sealed record PdfAppendTarget(string Path, int PageCount, bool IsSigned, 
 {
     public bool IsPdfA => PdfAPart is not null;
 
-    /// <summary>What the user should know before pages are added: the signature, a PDF/A level that may not be kept.</summary>
-    public IReadOnlyList<string> Warnings
+    /// <summary>
+    /// What the user should know before pages are added: the signature, a PDF/A level that may not be kept.
+    /// With <paramref name="protecting"/> the whole file is written again with a password, which breaks
+    /// a signature and PDF/A whatever the pages are.
+    /// </summary>
+    public IReadOnlyList<string> GetWarnings(bool protecting = false)
     {
-        get
+        string name = System.IO.Path.GetFileName(Path);
+        var warnings = new List<string>();
+        if (protecting)
         {
-            string name = System.IO.Path.GetFileName(Path);
-            var warnings = new List<string>();
-            if (IsCertified) warnings.Add(PdfAppender.CertifiedWarning(name));
-            else if (IsSigned) warnings.Add(PdfAppender.SignedWarning(name));
-            if (PdfAPart is { } part && !KeepsPdfA) warnings.Add(PdfAppender.PdfAWarning(name, part, PdfAConformance));
+            if (IsSigned || IsCertified) warnings.Add(PdfAppender.SignedProtectedWarning(name));
+            if (PdfAPart is { } protectedPart) warnings.Add(PdfAppender.PdfAProtectedWarning(name, protectedPart, PdfAConformance));
             return warnings;
         }
+        if (IsCertified) warnings.Add(PdfAppender.CertifiedWarning(name));
+        else if (IsSigned) warnings.Add(PdfAppender.SignedWarning(name));
+        if (PdfAPart is { } part && !KeepsPdfA) warnings.Add(PdfAppender.PdfAWarning(name, part, PdfAConformance));
+        return warnings;
     }
 
-    /// <summary>The question asked before adding pages despite <see cref="Warnings"/>; null when there are none.</summary>
-    public string? ConfirmMessage => Warnings is { Count: > 0 } warnings
+    /// <summary>The question asked before adding pages despite <see cref="GetWarnings"/>; null when there are none.</summary>
+    public string? GetConfirmMessage(bool protecting = false) => GetWarnings(protecting) is { Count: > 0 } warnings
         ? string.Join("\n\n", warnings) + "\n\n" + PdfAppender.ConfirmQuestion
         : null;
 }
@@ -109,6 +116,11 @@ public sealed record PdfAppendOptions
 /// alternate data streams and encryption; other hard links to it keep the old content). Every failure is a <see cref="PdfAppendException"/>
 /// whose message is for the user.
 /// </para>
+/// <para>
+/// With a <see cref="PdfProtection"/> the whole result is written once more, as a new file, with
+/// every string and stream encrypted (<see cref="WriteProtected"/>): an update cannot encrypt the
+/// pages already there.
+/// </para>
 /// </summary>
 public static class PdfAppender
 {
@@ -121,9 +133,6 @@ public static class PdfAppender
 
     /// <summary>The Save button while the queue goes into a picked PDF (the app's AppendTarget).</summary>
     public static string SaveTitle(string fileName) => Loc.T("Add to {0}", fileName);
-
-    /// <summary>Said after adding pages while Protect with a password is on: the file decides, and it has none.</summary>
-    public static string NoPasswordNote => Loc.T("The file has no password, so the added pages have none either.");
 
     /// <summary>Why pages could not be added to <paramref name="fileName"/>.</summary>
     public static string Message(PdfAppendProblem problem, string fileName) => problem switch
@@ -154,12 +163,21 @@ public static class PdfAppender
     public static string SignedWarning(string fileName) =>
         Loc.T("{0} is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed.", fileName);
 
+    /// <summary>For a signed or certified file when the pages go in with a password.</summary>
+    public static string SignedProtectedWarning(string fileName) =>
+        Loc.T("{0} is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid.", fileName);
+
     /// <summary>For a certified file (<see cref="PdfReaderLite.IsCertified"/>): no certification allows adding pages.</summary>
     public static string CertifiedWarning(string fileName) =>
         Loc.T("{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.", fileName);
 
     public static string PdfAWarning(string fileName, int part, string? conformance) =>
         Loc.T("{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.",
+            fileName, part.ToString(), conformance?.ToLowerInvariant());
+
+    /// <summary>For a PDF/A file when the pages go in with a password.</summary>
+    public static string PdfAProtectedWarning(string fileName, int part, string? conformance) =>
+        Loc.T("{0} is a PDF/A-{1}{2} file. PDF/A can't be password-protected, so it will no longer pass as PDF/A.",
             fileName, part.ToString(), conformance?.ToLowerInvariant());
 
     /// <summary>"Added 2 pages to Contract.pdf (now 11 pages, 1.4 MB)", as a save says "Saved …".</summary>
@@ -306,6 +324,94 @@ public static class PdfAppender
     }
 
     /// <summary>
+    /// Writes the file <paramref name="reader"/> read to <paramref name="output"/> as a new file with
+    /// every string and stream encrypted (<see cref="PdfEncryption"/>), under a new random file key and
+    /// <paramref name="protection"/>'s password. The objects keep their numbers; the cross-reference
+    /// and object streams are not carried over (what was in an object stream is written as an object
+    /// of its own), and a number left without an object is written as null. A generation other than 0
+    /// is not supported.
+    /// </summary>
+    internal static void WriteProtected(PdfReaderLite reader, Stream output, PdfProtection protection,
+                                        CancellationToken cancellationToken = default)
+    {
+        if (reader.IsEncrypted) throw new PdfReadException(PdfReadProblem.Encrypted, "The file is encrypted.");
+        if (reader.Root is not { } root) throw PdfReadException.Damaged("The trailer names no catalog (/Root).");
+        using var encryption = PdfEncryption.Create(protection);
+        var w = new PdfObjectWriter(output, encryption);
+        w.WriteHeader("1.7");
+        int next = 1;
+        foreach (int number in reader.ObjectNumbers.Where(n => n > 0))
+        {
+            if (cancellationToken.IsCancellationRequested) throw ScanException.Cancelled();
+            if (reader.GenerationOf(number) != 0)
+            {
+                throw new PdfReadException(PdfReadProblem.Unsupported, $"Object {number} has a generation other than 0.");
+            }
+            for (; next < number; next++) w.WriteObject(next, "null");
+            next = number + 1;
+            var value = reader.Get(number) ?? PdfNull.Instance;
+            if (value is not PdfStream stream)
+            {
+                string text = Encrypted(value, encryption).ToString();
+                // The 1.7 header carries R6 only with the extension a new protected file declares.
+                if (number == root.Number && value is PdfDictionary catalog && catalog["Extensions"] is null)
+                {
+                    text = text[..^2] + " /Extensions <</ADBE <</BaseVersion /1.7 /ExtensionLevel 8>>>>>>";
+                }
+                w.WriteObject(number, text);
+                continue;
+            }
+            string? kind = (stream.Dictionary["Type"] as PdfName)?.Value;
+            if (kind is "XRef" or "ObjStm")
+            {
+                w.WriteObject(number, "null");
+                continue;
+            }
+            var dictionary = new PdfDictionary();
+            foreach (var (key, entry) in stream.Dictionary.Entries)
+            {
+                if (key != "Length") dictionary.Add(key, Encrypted(entry, encryption));
+            }
+            string entries = dictionary.ToString();
+            w.WriteStream(number, entries[2..^2], reader.RawData(stream));
+        }
+        int encryptObject = next;
+        w.WriteObject(encryptObject, encryption.Dictionary);
+
+        byte[] firstId = RandomNumberGenerator.GetBytes(16);
+        byte[] secondId = firstId;
+        if (reader.Resolve(reader.Trailer["ID"]) is PdfArray { Items.Count: >= 2 } ids
+            && reader.Resolve(ids.Items[0]) is PdfString first && reader.Resolve(ids.Items[1]) is PdfString second)
+        {
+            firstId = first.Bytes;
+            secondId = second.Bytes;
+        }
+        var trailer = new StringBuilder("/Root ");
+        root.WriteTo(trailer);
+        if (reader.Trailer["Info"] is { } info and not PdfNull) trailer.Append(" /Info ").Append(Encrypted(info, encryption));
+        trailer.Append($" /Encrypt {encryptObject} 0 R /ID [<{Convert.ToHexString(firstId)}> <{Convert.ToHexString(secondId)}>]");
+        w.Finish(trailer.ToString());
+    }
+
+    /// <summary><paramref name="value"/> with every string in it encrypted (as a hex string).</summary>
+    private static PdfObject Encrypted(PdfObject value, PdfEncryption encryption)
+    {
+        switch (value)
+        {
+            case PdfString text:
+                return new PdfString(encryption.Encrypt(text.Bytes), isHex: true);
+            case PdfArray array:
+                return new PdfArray([.. array.Items.Select(item => Encrypted(item, encryption))]);
+            case PdfDictionary dictionary:
+                var copy = new PdfDictionary();
+                foreach (var (key, entry) in dictionary.Entries) copy.Add(key, Encrypted(entry, encryption));
+                return copy;
+            default:
+                return value;
+        }
+    }
+
+    /// <summary>
     /// Adds <paramref name="pages"/> to the end of the PDF at <paramref name="path"/>. The file is
     /// held open (others may read it, not change it) while the original and the update are
     /// written to a hidden temporary file in its folder; that file is read back and must have the
@@ -313,17 +419,21 @@ public static class PdfAppender
     /// every page; then it takes the original's place (<see cref="ReplaceOriginal"/>), keeping what
     /// belongs to the file rather than to its bytes. Any failure leaves the original as it was
     /// (under its backup name in the one case <see cref="PdfAppendProblem.LeftAsBackup"/> says),
-    /// removes the temporary file and is a <see cref="PdfAppendException"/>.
+    /// removes the temporary file and is a <see cref="PdfAppendException"/>. With a
+    /// <paramref name="protection"/> the checked file is then written once more, encrypted
+    /// (<see cref="WriteProtected"/>), and that file takes the original's place.
     /// </summary>
     public static PdfAppendResult AppendToFile(string path, IReadOnlyList<PdfPageInput> pages,
                                                Action<string>? progress = null,
                                                CancellationToken cancellationToken = default,
-                                               PdfAppendOptions? options = null)
+                                               PdfAppendOptions? options = null,
+                                               PdfProtection? protection = null)
     {
         if (pages.Count == 0) throw new ArgumentException("There are no pages to add.", nameof(pages));
         string full = System.IO.Path.GetFullPath(path);
         string directory = System.IO.Path.GetDirectoryName(full)!;
         string tmp = System.IO.Path.Combine(directory, $".{Guid.NewGuid()}.pdf.tmp");
+        string secured = tmp + ".enc";
         var original = OpenForUpdate(full);
         PdfReaderLite? reader = null;
         try
@@ -338,6 +448,14 @@ public static class PdfAppender
             int sections = reader.SectionCount;
             byte[] originalHash = WriteTemporary(tmp, original, length, reader, pages, options, progress, cancellationToken, full);
             Verify(tmp, length, originalHash, target.PageCount + pages.Count, previousXref, sections + 1, full);
+            string ready = tmp;
+            if (protection is not null)
+            {
+                WriteSecured(tmp, secured, protection, cancellationToken, full);
+                VerifySecured(secured, full);
+                File.Delete(tmp);
+                ready = secured;
+            }
 
             reader.Dispose();
             reader = null;
@@ -347,22 +465,23 @@ public static class PdfAppender
             {
                 throw Refusal(PdfAppendProblem.Changed, full);
             }
-            PdfBuilder.SetHidden(tmp, false);
+            PdfBuilder.SetHidden(ready, false);
             try
             {
-                File.SetCreationTimeUtc(tmp, created);
-                File.SetAttributes(tmp, attributes == 0 ? FileAttributes.Normal : attributes);
+                File.SetCreationTimeUtc(ready, created);
+                File.SetAttributes(ready, attributes == 0 ? FileAttributes.Normal : attributes);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // Cosmetic: the pages are what matters.
             }
-            ReplaceOriginal(tmp, full);
+            ReplaceOriginal(ready, full);
             return new PdfAppendResult(full, target.PageCount, pages.Count, new FileInfo(full).Length);
         }
         catch
         {
             try { File.Delete(tmp); } catch { /* best effort */ }
+            try { File.Delete(secured); } catch { /* best effort */ }
             throw;
         }
         finally
@@ -453,6 +572,54 @@ public static class PdfAppender
         catch (IOException e)
         {
             throw Refusal(PdfAppendProblem.NotWritten, path, e);
+        }
+    }
+
+    /// <summary>
+    /// The checked file <paramref name="tmp"/> written again, encrypted, to the new hidden file
+    /// <paramref name="secured"/>; failures map as in <see cref="WriteTemporary"/>.
+    /// </summary>
+    private static void WriteSecured(string tmp, string secured, PdfProtection protection, CancellationToken cancellationToken, string path)
+    {
+        try
+        {
+            using var output = new FileStream(secured, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            PdfBuilder.SetHidden(secured, true);
+            using var source = new FileStream(tmp, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var reader = new PdfReaderLite(source, leaveOpen: true);
+            WriteProtected(reader, output, protection, cancellationToken);
+            output.Flush(flushToDisk: true);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            throw Refusal(PdfAppendProblem.ReadOnly, path, e);
+        }
+        catch (PdfReadException e)
+        {
+            throw Refusal(ProblemOf(e.Problem), path, e);
+        }
+        catch (EndOfStreamException e)
+        {
+            throw Refusal(PdfAppendProblem.Damaged, path, e);
+        }
+        catch (IOException e)
+        {
+            throw Refusal(PdfAppendProblem.NotWritten, path, e);
+        }
+    }
+
+    /// <summary>The encrypted file read back: it must declare its encryption and its cross-reference data must hold.</summary>
+    private static void VerifySecured(string secured, string path)
+    {
+        try
+        {
+            using var stream = new FileStream(secured, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var check = new PdfReaderLite(stream, leaveOpen: true);
+            if (!check.IsEncrypted) throw Refusal(PdfAppendProblem.NotVerified, path);
+        }
+        catch (Exception e) when (e is PdfReadException or IOException)
+        {
+            throw Refusal(PdfAppendProblem.NotVerified, path, e);
         }
     }
 

@@ -983,8 +983,11 @@ allows adding pages, so PDF apps show the certification as no longer valid), and
 the new pages may not keep: PDF/A-1b, -2b, -2u, -3b and -3u files with an RGB output intent stay
 PDF/A (the new pages carry an embedded font and JPEG images the intent covers, and the update
 keeps the file identifier, metadata and document information), the others are asked about. The
-password and archival switches are for new files: the file decides, so a file without a password
-gets pages without one, and the status says so when the switch is on.
+archival switch is for new files: the file decides. With the password switch on, the password is
+asked for and the whole file is written once more with it (every object encrypted, so the old pages
+are protected too, and a signed file's signature no longer holds, and a PDF/A file stops being one,
+which the question before the write says); the status says
+"password-protected" after the size.
 
 The Mac and the iPhone write the same incremental update with the Swift twins of the reader and
 the appender (`PDFReaderLite.swift`, `PDFAppender.swift`).

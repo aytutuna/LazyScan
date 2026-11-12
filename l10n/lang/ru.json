@@ -872,7 +872,6 @@
     "Add the pages anyway?": "Все равно добавить страницы?",
     "Save as new PDF": "Сохранить как новый PDF",
     "Add to {0}": "Добавить в файл «{0}»",
-    "The file has no password, so the added pages have none either.": "Файл не защищен паролем, поэтому добавленные страницы тоже будут без пароля.",
     "{0} is not a PDF, so pages can't be added to it.": "Файл «{0}» — не PDF, поэтому добавить в него страницы нельзя.",
     "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": "Похоже, файл «{0}» поврежден, поэтому добавлять в него страницы небезопасно. Сохраните их как новый PDF.",
     "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": "Файл «{0}» защищен паролем, поэтому добавить в него страницы нельзя. Сохраните их как новый PDF.",

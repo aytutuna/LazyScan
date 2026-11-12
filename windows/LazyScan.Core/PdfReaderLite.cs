@@ -225,6 +225,9 @@ public sealed class PdfReaderLite : IDisposable
         }
     }
 
+    /// <summary>The numbers of the objects the newest revision lists as in use, in order.</summary>
+    internal IEnumerable<int> ObjectNumbers => _entries.Where(e => e.Value.Kind != EntryKind.Free).Select(e => e.Key).Order();
+
     /// <summary>The generation the newest revision gives object <paramref name="number"/>.</summary>
     internal int GenerationOf(int number) => _entries.TryGetValue(number, out var e) && e.Kind == EntryKind.InUse ? e.Generation : 0;
 
@@ -526,7 +529,7 @@ public sealed class PdfReaderLite : IDisposable
     }
 
     /// <summary>A stream's bytes as stored: /Length of them, which must be followed by "endstream".</summary>
-    private byte[] RawData(PdfStream stream)
+    internal byte[] RawData(PdfStream stream)
     {
         if (Resolve(stream.Dictionary["Length"]) is not PdfNumber { Integer: { } length } || length < 0)
         {

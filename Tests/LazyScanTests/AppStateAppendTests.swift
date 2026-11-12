@@ -216,23 +216,85 @@ final class AppStateAppendTests: XCTestCase {
     }
 
     @MainActor
-    func test_appendToPDF_withThePasswordSwitchOn_addsNoPassword_andSaysSo() async throws {
+    func test_appendToPDF_withThePasswordSwitchOn_protectsTheWholeFile() async throws {
         let state = try await makeState(pages: 1)
         state.settings.output.protect = true
         var asked = 0
         state.askPDFPassword = { () async -> PDFProtection? in
             asked += 1
-            return nil
+            return try? PDFProtection("Şifre 2026")
         }
         let url = try builtPDF("Plain.pdf")
         try await append(state, to: url)
         XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(asked, 1)
+        XCTAssertTrue(state.statusMessage.contains("password-protected"), state.statusMessage)
+        XCTAssertTrue(try PDFReaderLite(data: try Data(contentsOf: url)).isEncrypted)
+        let document = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertTrue(document.isLocked)
+        XCTAssertTrue(document.unlock(withPassword: "Şifre 2026"))
+        XCTAssertEqual(document.pageCount, 2)
+        XCTAssertTrue(state.lastPDFProtected)
+    }
+
+    @MainActor
+    func test_appendToPDF_withThePasswordSwitchOn_asksAboutASignedFile_beforeThePassword() async throws {
+        let state = try await makeState(pages: 1)
+        state.settings.output.protect = true
+        let url = folder.appendingPathComponent("Contract.pdf")
+        let signed = Data(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>"))
+        try signed.write(to: url)
+        var questions: [String] = []
+        state.confirmAppend = { (question: String) async -> Bool in
+            questions.append(question)
+            return false
+        }
+        var asked = 0
+        state.askPDFPassword = { () async -> PDFProtection? in
+            asked += 1
+            return nil
+        }
+        try await append(state, to: url)
+        XCTAssertEqual(questions, [PDFAppender.signedProtectedWarning("Contract.pdf") + "\n\n" + PDFAppender.confirmQuestion])
         XCTAssertEqual(asked, 0)
-        XCTAssertTrue(state.statusMessage.hasSuffix(". " + PDFAppender.noPasswordNote), state.statusMessage)
-        let reader = try PDFReaderLite(data: try Data(contentsOf: url))
-        XCTAssertFalse(reader.isEncrypted)
-        XCTAssertEqual(reader.pageCount, 2)
-        XCTAssertFalse(state.lastPDFProtected)
+        XCTAssertEqual(try Data(contentsOf: url), signed)
+        state.deleteSpoolFiles(of: state.scannedPages)
+    }
+
+    @MainActor
+    func test_saveAsksAgain_whenThePasswordSwitchChangedSinceTheCheck() async throws {
+        let state = try await makeState(pages: 1)
+        let url = folder.appendingPathComponent("Contract.pdf")
+        try Data(PDFFixture.withCatalog("/AcroForm <</Fields [] /SigFlags 3>>")).write(to: url)
+        var questions = 0
+        state.confirmAppend = { (_: String) async -> Bool in
+            questions += 1
+            return true
+        }
+        state.askPDFPassword = { () async -> PDFProtection? in try? PDFProtection("Şifre 2026") }
+        let ok = await state.checkAppendTarget(url)
+        XCTAssertTrue(ok)
+        state.setAppendTarget(url)
+        state.settings.output.protect = true
+        state.savePDF()
+        try await waitUntil(timeout: 60) { !state.isBusy }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(questions, 2)
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    @MainActor
+    func test_appendToPDF_withThePasswordSwitchOn_andNoPassword_addsNothing_keepingTheQueue() async throws {
+        let state = try await makeState(pages: 1)
+        state.settings.output.protect = true
+        state.askPDFPassword = { () async -> PDFProtection? in nil }
+        let url = try builtPDF("Plain.pdf")
+        let original = try Data(contentsOf: url)
+        try await append(state, to: url)
+        XCTAssertEqual(state.statusMessage, PDFProtection.notSavedMessage)
+        XCTAssertEqual(try Data(contentsOf: url), original)
+        XCTAssertEqual(state.scannedPages.count, 1)
+        state.deleteSpoolFiles(of: state.scannedPages)
     }
 
     @MainActor

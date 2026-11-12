@@ -106,8 +106,8 @@ public class PdfAppenderTests
         var target = PdfAppender.Describe(new PdfReaderLite(original), "Sözleşme.pdf");
         Assert.True(target.IsPdfA);
         Assert.True(target.KeepsPdfA);
-        Assert.Empty(target.Warnings);
-        Assert.Null(target.ConfirmMessage);
+        Assert.Empty(target.GetWarnings());
+        Assert.Null(target.GetConfirmMessage());
 
         byte[] appended = PdfAppender.Append(original, [Page(text: true)], Fixed);
         CheckAppended(original, appended, 1);
@@ -239,14 +239,30 @@ public class PdfAppenderTests
     {
         var signed = PdfAppender.Describe(new PdfReaderLite(PdfFixture.WithCatalog("/AcroForm <</Fields [] /SigFlags 3>>")), @"C:\x\Contract.pdf");
         Assert.True(signed.IsSigned);
-        Assert.Equal(["Contract.pdf is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed."], signed.Warnings);
-        Assert.Equal(signed.Warnings[0] + "\n\nAdd the pages anyway?", signed.ConfirmMessage);
+        Assert.Equal(["Contract.pdf is signed. Adding pages keeps the signature, but PDF apps will show that the file was changed after it was signed."], signed.GetWarnings());
+        Assert.Equal(signed.GetWarnings()[0] + "\n\nAdd the pages anyway?", signed.GetConfirmMessage());
 
         var a1 = PdfAppender.Describe(new PdfReaderLite(PdfFixture.PdfA(1, "A")), "Old.pdf");
         Assert.False(a1.KeepsPdfA);
-        Assert.Equal(["Old.pdf is a PDF/A-1a file. The added pages may not meet that standard, so it may no longer pass as PDF/A."], a1.Warnings);
+        Assert.Equal(["Old.pdf is a PDF/A-1a file. The added pages may not meet that standard, so it may no longer pass as PDF/A."], a1.GetWarnings());
         Assert.False(PdfAppender.Describe(new PdfReaderLite(PdfFixture.PdfA(2, "B", components: 4)), "Print.pdf").KeepsPdfA);
         Assert.True(PdfAppender.Describe(new PdfReaderLite(PdfFixture.PdfA(3, "U")), "Kept.pdf").KeepsPdfA);
+    }
+
+    [Fact]
+    public void Warnings_WithAPassword_SaySignaturesAndPdfAAreLost()
+    {
+        var signed = PdfAppender.Describe(new PdfReaderLite(PdfFixture.WithCatalog("/AcroForm <</Fields [] /SigFlags 3>>")), @"C:\x\Contract.pdf");
+        Assert.Equal(["Contract.pdf is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid."], signed.GetWarnings(protecting: true));
+        Assert.Equal(signed.GetWarnings(protecting: true)[0] + "\n\nAdd the pages anyway?", signed.GetConfirmMessage(protecting: true));
+
+        var kept = PdfAppender.Describe(new PdfReaderLite(PdfFixture.PdfA(3, "U")), "Kept.pdf");
+        Assert.True(kept.KeepsPdfA);
+        Assert.Null(kept.GetConfirmMessage());
+        Assert.Equal(["Kept.pdf is a PDF/A-3u file. PDF/A can't be password-protected, so it will no longer pass as PDF/A."], kept.GetWarnings(protecting: true));
+
+        var plain = PdfAppender.Describe(new PdfReaderLite(PdfFixture.Classic()), "Plain.pdf");
+        Assert.Null(plain.GetConfirmMessage(protecting: true));
     }
 
     [Fact]
@@ -256,7 +272,7 @@ public class PdfAppenderTests
                                                                                        f => f.Obj(4, "<</Type /Sig>>"))), @"C:\x\Form.pdf");
         Assert.True(certified.IsSigned);
         Assert.True(certified.IsCertified);
-        Assert.Equal(["Form.pdf is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid."], certified.Warnings);
+        Assert.Equal(["Form.pdf is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid."], certified.GetWarnings());
         Assert.False(PdfAppender.Describe(new PdfReaderLite(PdfFixture.WithCatalog("/AcroForm <</Fields [] /SigFlags 3>>")), "a.pdf").IsCertified);
     }
 
@@ -420,6 +436,42 @@ public class PdfAppenderTests
         Assert.False(File.GetAttributes(path).HasFlag(FileAttributes.Hidden));
         Assert.Equal([path], Directory.GetFiles(folder.Path)); // no temporary file left
         Assert.Equal(4, PdfAppender.Inspect(path).PageCount);
+    }
+
+    [Theory]
+    [InlineData("Classic.pdf", false)]
+    [InlineData("Streams.pdf", true)]
+    public void AppendToFile_WithAPassword_WritesTheWholeFileEncrypted(string name, bool objectStreams)
+    {
+        using var folder = new Folder();
+        string path = folder.File(name, objectStreams ? PdfFixture.ObjectStreams() : PdfFixture.Classic());
+        int before = PdfAppender.Inspect(path).PageCount;
+        using var protection = new PdfProtection("Şifre 2026");
+        var result = PdfAppender.AppendToFile(path, [Page(text: true)], protection: protection);
+        Assert.Equal(before + 1, result.PageCount);
+        Assert.Equal([path], Directory.GetFiles(folder.Path)); // no temporary file left
+
+        using var reader = new PdfReaderLite(File.ReadAllBytes(path));
+        Assert.True(reader.IsEncrypted);
+        var root = Assert.IsType<PdfReference>(reader.Trailer["Root"]);
+        var catalog = Assert.IsType<PdfDictionary>(reader.Get(root.Number));
+        Assert.NotNull(catalog["Extensions"]);
+        var dictionary = Assert.IsType<PdfDictionary>(reader.Resolve(reader.Trailer["Encrypt"]));
+        byte[] Bytes(string key) => Assert.IsType<PdfString>(dictionary[key]).Bytes;
+        byte[] password = PdfProtection.PreparePassword("Şifre 2026");
+        byte[] key = PdfEncryption.FileKeyFor(password, Bytes("O"), Bytes("U"), Bytes("OE"), Bytes("UE"))!;
+        Assert.NotNull(key);
+        int permissions = (int)Assert.IsType<PdfNumber>(dictionary["P"]).Integer!;
+        Assert.True(PdfEncryption.PermsMatch(key, Bytes("Perms"), permissions));
+        byte[] wrong = PdfProtection.PreparePassword("Başka 2026");
+        Assert.Null(PdfEncryption.FileKeyFor(wrong, Bytes("O"), Bytes("U"), Bytes("OE"), Bytes("UE")));
+
+        var streams = new List<byte[]>();
+        foreach (int number in reader.ObjectNumbers)
+        {
+            if (reader.Get(number) is PdfStream stream) streams.Add(PdfEncryption.Decrypt(key, reader.RawData(stream)));
+        }
+        Assert.Contains(streams, s => s.AsSpan().SequenceEqual(PdfBuilderTests.TinyJpeg));
     }
 
     [Fact]

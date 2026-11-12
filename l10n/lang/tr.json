@@ -872,7 +872,6 @@
     "Add the pages anyway?": "Sayfalar yine de eklensin mi?",
     "Save as new PDF": "Yeni PDF Olarak Kaydet",
     "Add to {0}": "{0} Dosyasına Ekle",
-    "The file has no password, so the added pages have none either.": "Dosyada parola yok; bu yüzden eklenen sayfalarda da parola olmaz.",
     "{0} is not a PDF, so pages can't be added to it.": "{0} bir PDF değil; sayfa eklenemez.",
     "{0} looks damaged, so pages can't be added to it safely. Save them as a new PDF instead.": "{0} hasarlı görünüyor; sayfalar güvenle eklenemez. Bunun yerine yeni PDF olarak kaydedin.",
     "{0} is password-protected, so pages can't be added to it. Save them as a new PDF instead.": "{0} parolayla korunuyor; sayfa eklenemez. Bunun yerine yeni PDF olarak kaydedin.",
