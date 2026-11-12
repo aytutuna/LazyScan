@@ -556,6 +556,7 @@
                                     <ListBox x:Name="PageList" Height="158"
                                              AutomationProperties.Name="{loc:T Pages in queue}"
                                              KeyboardNavigation.TabNavigation="Continue"
+                                             VirtualizingPanel.ScrollUnit="Pixel"
                                              SelectionChanged="PageList_SelectionChanged"
                                              AllowDrop="True" PreviewMouseLeftButtonDown="PageList_PreviewMouseDown"
                                              PreviewMouseMove="PageList_PreviewMouseMove" PreviewMouseLeftButtonUp="PageList_PreviewMouseUp"
@@ -570,7 +571,7 @@
                                         </ListBox.ItemContainerStyle>
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
+                                                <VirtualizingStackPanel Orientation="Horizontal" VirtualizationMode="Recycling" />
                                             </ItemsPanelTemplate>
                                         </ListBox.ItemsPanel>
                                         <ListBox.ItemTemplate>

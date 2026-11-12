@@ -915,7 +915,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             item.IsRescanTarget = item.Page.Id == _rescanTarget;
             item.CanScanAgain = offered && !item.IsRescanTarget;
         }
-        SyncPageOptions();
+        if (PageOptionsStale()) SyncPageOptions();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
 
@@ -925,11 +925,25 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private void SyncPageOptions()
     {
+        _syncedPages = [.. ScannedPages.Select(item => item.Page)];
+        _syncedDocument = Settings.Document;
+        _syncedOptions = Settings.Document.Clone();
+        _syncedSpreads = _spreads.Count;
         foreach (var item in ScannedPages) item.Options = Settings.Document;
         SyncPagePlan();
         PruneSpreads();
         SyncBookLabels();
     }
+
+    private List<ScannedPage> _syncedPages = [];
+    private DocumentOptions? _syncedDocument;
+    private DocumentOptions? _syncedOptions;
+    private int _syncedSpreads;
+
+    /// <summary>The strip's options, plan and labels only change with the queue or the document options, not on every status tick.</summary>
+    private bool PageOptionsStale() =>
+        !ReferenceEquals(Settings.Document, _syncedDocument) || !Settings.Document.Equals(_syncedOptions)
+        || _spreads.Count != _syncedSpreads || !ScannedPages.Select(item => item.Page).SequenceEqual(_syncedPages, ReferenceEqualityComparer.Instance);
 
     /// <summary>Call after mutating Settings from the UI: debounced persist + live preview refresh.</summary>
     public void SettingsEdited()

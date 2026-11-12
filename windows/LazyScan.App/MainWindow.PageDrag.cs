@@ -77,14 +77,14 @@ public partial class MainWindow
     /// <summary>The place between pages (0 to the page count) that is nearest the pointer, in the strip's reading direction.</summary>
     private int InsertionIndex(Point point)
     {
-        int before = 0;
+        int? last = null;
         for (int i = 0; i < PageList.Items.Count; i++)
         {
             if (PageList.ItemContainerGenerator.ContainerFromIndex(i) is not ListBoxItem container) continue;
-            double middle = ItemBounds(container).X + container.ActualWidth / 2;
-            if (middle < point.X) before++;
+            if (ItemBounds(container).X + container.ActualWidth / 2 >= point.X) return i;
+            last = i;
         }
-        return before;
+        return last is { } l ? l + 1 : PageList.Items.Count;
     }
 
     private Rect ItemBounds(ListBoxItem container) =>
