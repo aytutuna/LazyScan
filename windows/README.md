@@ -1926,8 +1926,9 @@ use PdfPig 0.1.16 (Apache-2.0), which is never shipped.
 Presets, scan settings and app preferences are JSON files in `%APPDATA%\Lazy Scan\`
 (`presets.json`, `settings.json`, `preferences.json`; the preferences hold the appearance,
 the connection chosen per scanner and the TWAIN connections that use their driver's
-window), next to the network scanners added by address (`escl-hosts.json`) and their
-trusted certificates (`escl-trust.json`), and the phone link's paired phones
+window, and the main window's place and size), next to the network scanners added by
+address (`escl-hosts.json`) and their trusted certificates (`escl-trust.json`), and the phone link's
+paired phones
 (`companion-devices.json`: this PC's id and each phone's id, name and the SHA-256 of its secret,
 never the secret) and the networks receiving is allowed on (`companion-networks.json`); what phones
 sent and what waits for them is under `%LOCALAPPDATA%\Lazy Scan\Companion`. The scan settings and presets remember the task
