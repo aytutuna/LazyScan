@@ -113,14 +113,17 @@ public enum PDFWriter {
         } catch {
             throw ScanError.exportFailed(L10n.t("Could not write to {0}.", url.path))
         }
-        defer { try? handle.close() }
         do {
             try write(pages, progress: progress, shouldContinue: shouldContinue, options: options) { chunk in
                 try handle.write(contentsOf: chunk)
             }
+            try handle.synchronize()
+            try handle.close()
         } catch let error as ScanError {
+            try? handle.close()
             throw error
         } catch {
+            try? handle.close()
             throw ScanError.exportFailed(L10n.t("Could not write {0}: {1}", url.lastPathComponent, error.localizedDescription))
         }
     }
