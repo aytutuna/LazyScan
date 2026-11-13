@@ -216,8 +216,15 @@ extension XCUIApplication {
         if UIDevice.current.userInterfaceIdiom == .pad {
             let listed: XCUIElement = descendants(matching: .any)[id].firstMatch
             XCTAssertTrue(listed.waitForExistence(timeout: 30), "The \(id) row in the sidebar", file: file, line: line)
-            waitUntilEnabled(listed, "The \(id) row", file: file, line: line)
-            listed.tap()
+            // As on the iPhone, a pick right after launch may not take, so the row is tapped again until it
+            // shows as selected, three times at most.
+            var tries: Int = 0
+            repeat {
+                waitUntilEnabled(listed, "The \(id) row", file: file, line: line)
+                listed.tap()
+                tries += 1
+            } while !selects(listed, timeout: 10) && tries < 3
+            XCTAssertTrue(listed.isSelected, "The \(id) row is picked", file: file, line: line)
             return
         }
         openOptions("Scanner", file: file, line: line)
@@ -234,6 +241,12 @@ extension XCUIApplication {
             taps += 1
         } while !closes(done, timeout: 10) && taps < 3
         waitUntilGone(done, "The Scanner options closed on the pick", file: file, line: line)
+    }
+
+    @MainActor
+    private func selects(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: element)
+        return XCTWaiter.wait(for: [picked], timeout: timeout) == .completed
     }
 
     @MainActor
