@@ -495,16 +495,18 @@ struct PageSettingsRows: View {
             Toggle("Soften spine shadow", isOn: $state.settings.document.softenSpineShadow)
                 .accessibilityHint(Text(SpineShadow.hint(s.document.softenSpineShadow)))
         }
-        Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
-            .disabled(!(collecting && oneSide && spreads))
-            .accessibilityHint(Text("Evens out text lines that bend toward the spine."))
-            .accessibilityIdentifier("options.flattenPages")
-        Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
-            .disabled(!(collecting && oneSide && spreads))
-            .accessibilityHint(Text("Paints over fingers and thumbs at the page edges."))
-            .accessibilityIdentifier("options.removeFingers")
-        if collecting {
-            ReasonLine(text: String(localized: "Straightens pages that curve at the spine and fills thumbs at the edges with paper."))
+        if !camera || s.taskOptions.cameraSpreads {
+            Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
+                .disabled(!(collecting && oneSide && spreads))
+                .accessibilityHint(Text("Evens out text lines that bend toward the spine."))
+                .accessibilityIdentifier("options.flattenPages")
+            Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
+                .disabled(!(collecting && oneSide && spreads))
+                .accessibilityHint(Text("Paints over fingers and thumbs at the page edges."))
+                .accessibilityIdentifier("options.removeFingers")
+            if collecting {
+                ReasonLine(text: String(localized: "Straightens pages that curve at the spine and fills thumbs at the edges with paper."))
+            }
         }
     }
 
