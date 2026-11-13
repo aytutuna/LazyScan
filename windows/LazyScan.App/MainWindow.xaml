@@ -1415,12 +1415,14 @@
                                                       AutomationProperties.Name="{loc:T Flatten curved pages}"
                                                       AutomationProperties.HelpText="{loc:T Straightens text lines that bend near the spine.}"
                                                       ToolTip="{loc:T Straightens text lines that bend near the spine.}"
+                                                      ToolTipService.ShowOnDisabled="True"
                                                       Checked="BookFlattenCurves_Changed" Unchecked="BookFlattenCurves_Changed" />
                                             <CheckBox x:Name="BookFillFingersBox" Style="{StaticResource ToggleSwitchStyle}" Margin="16,8,0,0"
                                                       Content="{loc:T Remove fingers at the margins}"
                                                       AutomationProperties.Name="{loc:T Remove fingers at the margins}"
                                                       AutomationProperties.HelpText="{loc:T Fills fingers holding the book at the page edge with paper color.}"
                                                       ToolTip="{loc:T Fills fingers holding the book at the page edge with paper color.}"
+                                                      ToolTipService.ShowOnDisabled="True"
                                                       Checked="BookFillFingers_Changed" Unchecked="BookFillFingers_Changed" />
                                         </StackPanel>
                                     </Expander>

@@ -1384,8 +1384,8 @@ the Pages section is hidden. A spread whose spine was not found is cut as **Cut 
 in the middle; Middle: always there, without looking for a spine; Same as last: where the last cut by
 hand was, in the middle before any), and **Change the split…** moves the cut. While it is on, **Reads right to left**
 (Arabic, Hebrew, manga: the right page first), **Book rotation** (as scanned, 90° clockwise,
-180°, 90° counterclockwise, for a book lying sideways or upside down), **Cut at**, **Soften spine shadow**, **Flatten curved pages** and
-**Remove fingers at the margins** show beneath it; the first two are kept when a task is picked, and all of them apply from the next
+180°, 90° counterclockwise, for a book lying sideways or upside down), **Cut at** and **Soften spine shadow**
+show beneath it (**Flatten curved pages** and **Remove fingers at the margins** always show with Split facing pages and are greyed out while it is off); the first two are kept when a task is picked, and all of them apply from the next
 spread on (Reading order, Book rotation and Soften spine shadow also to a spread joined or split again). Changing the reading order or the rotation with
 split spreads queued shows "Pages already scanned keep the old order." (rotation, or order and
 rotation) under the rotation and the button **Apply to the 5 spreads already scanned**
