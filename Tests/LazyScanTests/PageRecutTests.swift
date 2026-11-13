@@ -384,11 +384,14 @@ final class PageRecutTests: XCTestCase {
         let flat: [UInt8] = pixels(gray.image)
         XCTAssertEqual(flat[0], flat[1])
         XCTAssertEqual(flat[1], flat[2])
+        let blue: Int = 19 * 40 * 4
+        XCTAssertFalse(Set(flat[blue..<blue + 3]).isSubset(of: [0, 255]))
 
         let binary: ScannedPage = try XCTUnwrap(PageRecut.edit(gray, base: halves(), baseFile: file,
                                                                edit: PageEdit(filter: .blackAndWhite, colorMode: .color)))
         XCTAssertEqual(binary.colorMode, .blackWhite)
         XCTAssertTrue(Set(pixels(binary.image).prefix(3)).isSubset(of: [0, 255]))
+        XCTAssertEqual(Array(pixels(binary.image)[blue..<blue + 3]), [0, 0, 0])
 
         let plain: ScannedPage = try XCTUnwrap(PageRecut.edit(binary, base: halves(), baseFile: file,
                                                               edit: PageEdit(colorMode: .color)))
@@ -446,7 +449,7 @@ final class PageRecutTests: XCTestCase {
         let (state, page) = try scannerState()
         defer { state.deleteSpoolFiles(of: state.scannedPages) }
         let firstFile: URL = try XCTUnwrap(page.fileURL)
-        let top = CGRect(x: 0, y: 0, width: 1, height: 0.5)
+        let top = CGRect(x: 0, y: 0.25, width: 1, height: 0.5)
 
         // A crop made while the page had another turn is not used.
         state.cropPage(id: page.id, to: top, rotation: 1)
@@ -482,7 +485,9 @@ final class PageRecutTests: XCTestCase {
         try await waitUntil(timeout: 60) { state.pageEditChain == nil }
         let gray: ScannedPage = state.scannedPages[0]
         let grayPixels: [UInt8] = pixels(try XCTUnwrap(AppState.imageInFile(try XCTUnwrap(gray.fileURL))))
-        XCTAssertEqual(grayPixels[0], grayPixels[1])
+        let blueRow: Int = 9 * 40 * 4
+        XCTAssertEqual(grayPixels[blueRow], grayPixels[blueRow + 1])
+        XCTAssertFalse(Set(grayPixels[blueRow..<blueRow + 3]).isSubset(of: [0, 255]))
         XCTAssertEqual(gray.colorMode, .grayscale)
         XCTAssertEqual(gray.alternate?.fileURL, firstFile)
 
