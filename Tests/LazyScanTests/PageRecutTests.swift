@@ -384,14 +384,14 @@ final class PageRecutTests: XCTestCase {
         let flat: [UInt8] = pixels(gray.image)
         XCTAssertEqual(flat[0], flat[1])
         XCTAssertEqual(flat[1], flat[2])
-        let blue: Int = 19 * 40 * 4
-        XCTAssertFalse(Set(flat[blue..<blue + 3]).isSubset(of: [0, 255]))
+        let edge: Int = 10 * 40 * 4
+        XCTAssertFalse(Set(flat[edge..<edge + 3]).isSubset(of: [0, 255]))
 
         let binary: ScannedPage = try XCTUnwrap(PageRecut.edit(gray, base: halves(), baseFile: file,
                                                                edit: PageEdit(filter: .blackAndWhite, colorMode: .color)))
         XCTAssertEqual(binary.colorMode, .blackWhite)
         XCTAssertTrue(Set(pixels(binary.image).prefix(3)).isSubset(of: [0, 255]))
-        XCTAssertEqual(Array(pixels(binary.image)[blue..<blue + 3]), [0, 0, 0])
+        XCTAssertEqual(Array(pixels(binary.image)[edge..<edge + 3]), [255, 255, 255])
 
         let plain: ScannedPage = try XCTUnwrap(PageRecut.edit(binary, base: halves(), baseFile: file,
                                                               edit: PageEdit(colorMode: .color)))
