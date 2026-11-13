@@ -100,6 +100,7 @@ public sealed class SingleInstance : IDisposable
                 // A client that left halfway; the next one is served.
             }
         }
+        if (next is not null) await next.DisposeAsync();
     }
 
     public void Dispose()
