@@ -7,8 +7,8 @@ import Foundation
 /// `side` × `side` cell means, without the outermost ring of cells, which the page's edges (found only to
 /// a pixel or two) and the table beside them decide. Two looks match when their cells correlate
 /// (`minCorrelation`), so another exposure or a slightly moved phone still matches while another page does
-/// not; two looks that are both nearly flat (blank paper) match when their brightness against the rest of
-/// the frame is close.
+/// not; two looks that are both nearly flat (blank paper) match when their brightness against the frame's
+/// part outside the page is close, however much of the frame the page fills.
 public struct PageThumbnail: Equatable, Sendable {
     public static let side: Int = 24
     public static let minCorrelation: Double = 0.9
@@ -17,19 +17,33 @@ public struct PageThumbnail: Equatable, Sendable {
     /// Flat looks match when their mean luma differs by at most this (when there is no frame around the
     /// page to compare against).
     public static let flatBrightness: Double = 12
-    /// Flat looks match when their brightness over the frame's mean differs by at most this share.
+    /// Flat looks match when their brightness over the surround differs by at most this share.
     public static let flatRatio: Double = 0.1
+    /// The frame outside the page counts as a surround when it is at least this share of the frame…
+    public static let minSurround: Double = 0.05
+    /// …and its mean luma is at least this.
+    public static let minSurroundLuma: Double = 16
 
     private let cells: [Double]
-    /// The frame's mean luma, when the page does not fill the frame.
+    /// The mean luma of the frame outside the page, when there is enough of it, and light enough, to go by.
     private let surround: Double?
 
     /// The look at `page` (pixels of `frame`); the whole frame when nil.
     public init(_ frame: RgbaImage, page: Quad?) {
         let gray: GrayImage = GrayImage.luma(frame)
         let box: FrameQualityArea = FrameQuality.area(page, width: gray.width, height: gray.height)
-        if box.x0 > 0 || box.y0 > 0 || box.x1 < gray.width || box.y1 < gray.height {
-            surround = Double(gray.pixels.reduce(0) { $0 + Int($1) }) / Double(max(gray.pixels.count, 1))
+        let outside: Int = gray.width * gray.height - (box.x1 - box.x0) * (box.y1 - box.y0)
+        var inside: Int = 0
+        for y in box.y0..<box.y1 {
+            for x in box.x0..<box.x1 {
+                inside += Int(gray.pixels[y * gray.width + x])
+            }
+        }
+        let total: Int = gray.pixels.reduce(0) { $0 + Int($1) }
+        let around: Double = Double(total - inside) / Double(max(outside, 1))
+        let enough: Bool = Double(outside) >= PageThumbnail.minSurround * Double(gray.width * gray.height)
+        if enough && around >= PageThumbnail.minSurroundLuma {
+            surround = around
         } else {
             surround = nil
         }
