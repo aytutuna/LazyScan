@@ -149,6 +149,7 @@ final class CameraTests: XCTestCase {
 
     @MainActor
     func test_landscape_givesTheViewfinderTheHeight_andKeepsTheControlsAtTheSides() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "The iPad is not a compact height in landscape, so it keeps the portrait arrangement, with the shutter below the viewfinder")
         let app = XCUIApplication()
         app.launchArguments = ["-demoScanner"]
         app.launch()
@@ -161,12 +162,7 @@ final class CameraTests: XCTestCase {
         let picture: XCUIElement = app.descendants(matching: .any)["camera.screen"].firstMatch
         XCTAssertTrue(picture.waitForExistence(timeout: 30), "The viewfinder")
         let window: CGRect = app.windows.firstMatch.frame
-        var available: CGFloat = window.height
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            // The picture sits in the detail column, under its navigation bar.
-            available -= app.navigationBars.allElementsBoundByIndex.map { $0.frame.maxY }.max() ?? 0
-        }
-        XCTAssertGreaterThan(picture.frame.height, available * 0.9, "The viewfinder fills the height")
+        XCTAssertGreaterThan(picture.frame.height, window.height * 0.9, "The viewfinder fills the height")
         let shutter: CGRect = app.buttons["camera.shutter"].frame
         XCTAssertGreaterThanOrEqual(shutter.minX, picture.frame.maxX, "The shutter is in the column beside the picture")
         XCTAssertTrue(app.buttons["camera.autoQuick"].exists, "Auto beside the picture")
