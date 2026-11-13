@@ -22,6 +22,14 @@ final class PageThumbnailTests: XCTestCase {
         XCTAssertFalse(text.matches(blank))
     }
 
+    func test_twoSparsePages_withTheirTextAtOtherHeights_doNotMatch() {
+        let high = PageThumbnail(textLine(at: 70), page: LiveFrames.sheet)
+        let low = PageThumbnail(textLine(at: 150), page: LiveFrames.sheet)
+        XCTAssertTrue(high.matches(PageThumbnail(textLine(at: 70), page: LiveFrames.sheetMoved(2))))
+        XCTAssertFalse(high.matches(low))
+        XCTAssertFalse(low.matches(high))
+    }
+
     func test_blankLooks_matchByBrightness() {
         let grey = PageThumbnail(RgbaImage.filled(width: 64, height: 48, r: 90, g: 90, b: 90), page: nil)
         let nearGrey = PageThumbnail(RgbaImage.filled(width: 64, height: 48, r: 96, g: 96, b: 96), page: nil)
@@ -29,5 +37,20 @@ final class PageThumbnailTests: XCTestCase {
         XCTAssertTrue(grey.matches(nearGrey))
         XCTAssertFalse(grey.matches(white))
     }
+}
+
+/// The plain sheet with one dark line of print, 4 px tall, across it at row `y`.
+private func textLine(at y: Int) -> RgbaImage {
+    let frame: RgbaImage = LiveFrames.frame()
+    var pixels: [UInt8] = frame.pixels
+    for row in y..<y + 4 {
+        for x in 100..<220 {
+            let o: Int = (row * frame.width + x) * 4
+            pixels[o] = 40
+            pixels[o + 1] = 40
+            pixels[o + 2] = 40
+        }
+    }
+    return RgbaImage(width: frame.width, height: frame.height, pixels: pixels)
 }
 #endif
