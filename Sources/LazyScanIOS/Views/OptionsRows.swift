@@ -496,11 +496,11 @@ struct PageSettingsRows: View {
                 .accessibilityHint(Text(SpineShadow.hint(s.document.softenSpineShadow)))
         }
         Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
-            .disabled(!collecting)
+            .disabled(!(collecting && oneSide && spreads))
             .accessibilityHint(Text("Evens out text lines that bend toward the spine."))
             .accessibilityIdentifier("options.flattenPages")
         Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
-            .disabled(!collecting)
+            .disabled(!(collecting && oneSide && spreads))
             .accessibilityHint(Text("Paints over fingers and thumbs at the page edges."))
             .accessibilityIdentifier("options.removeFingers")
         if collecting {

@@ -53,6 +53,9 @@ public partial class MainWindow
         }
         SplitFacingPagesBox.IsEnabled = collecting && !ViewModel.IsBusy;
         BookOptions.Visibility = collecting && s.Document.SplitFacingPages ? Visibility.Visible : Visibility.Collapsed;
+        bool splitOn = collecting && s.Document.SplitFacingPages;
+        BookFlattenCurvesBox.IsEnabled = splitOn && !ViewModel.IsBusy;
+        BookFillFingersBox.IsEnabled = splitOn && !ViewModel.IsBusy;
         BookRightToLeftBox.IsEnabled = !ViewModel.IsBusy;
         BookRotationBox.IsEnabled = !ViewModel.IsBusy;
         CutAtBox.IsEnabled = !ViewModel.IsBusy;

@@ -900,7 +900,8 @@ struct InspectorView: View {
             reasonLine(BookPages.notWithTwoSidedReason)
                 .help(BookPages.hint(state.settings))
         }
-        if collecting && oneSide && state.settings.document.splitFacingPages {
+        let splitOn: Bool = collecting && oneSide && state.settings.document.splitFacingPages
+        if splitOn {
             Picker("Cut at", selection: $state.settings.taskOptions.bookCutAt) {
                 ForEach(BookCutAt.allCases, id: \.self) { (choice: BookCutAt) in
                     Text(BookPages.cutAtLabel(choice)).tag(choice)
@@ -923,19 +924,19 @@ struct InspectorView: View {
             Toggle("Soften spine shadow", isOn: $state.settings.document.softenSpineShadow)
                 .help(SpineShadow.hint(state.settings.document.softenSpineShadow))
                 .padding(.leading, 12)
-            Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
-                .disabled(!collecting)
-                .help("Evens out text lines that bend toward the spine. Works on photographed pages.")
-                .padding(.leading, 12)
-            Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
-                .disabled(!collecting)
-                .help("Paints over fingers and thumbs holding the book at the page edges.")
-                .padding(.leading, 12)
-            if collecting {
-                reasonLine(String(localized: "Straightens pages that curve at the spine and fills thumbs at the edges with paper."))
-                    .padding(.leading, 12)
-            }
             bookReorderRows
+        }
+        Toggle("Flatten curved pages", isOn: $state.settings.taskOptions.bookFlattenCurves)
+            .disabled(!splitOn)
+            .help("Evens out text lines that bend toward the spine. Works on photographed pages.")
+            .padding(.leading, 12)
+        Toggle("Remove fingers at the margins", isOn: $state.settings.taskOptions.bookFillFingers)
+            .disabled(!splitOn)
+            .help("Paints over fingers and thumbs holding the book at the page edges.")
+            .padding(.leading, 12)
+        if collecting {
+            reasonLine(String(localized: "Straightens pages that curve at the spine and fills thumbs at the edges with paper."))
+                .padding(.leading, 12)
         }
     }
 
