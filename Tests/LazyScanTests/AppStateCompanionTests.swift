@@ -347,20 +347,47 @@ final class AppStateCompanionTests: XCTestCase {
         await state.sendQueueToDesktop(target: .new)
         XCTAssertEqual(state.companionOutboxCount, 1)
         fake.downHosts = []
+        let puts = fake.requests.filter { $0.method == "PUT" }.count
+        let release = DispatchSemaphore(value: 0)
         fake.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+            _ = release.wait(timeout: .now() + 30)
             let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
             return .json(201, InboxResponse(packageId: id, pageCount: 1, duplicate: false).toJSON())
         }
 
         let send = Task { @MainActor in await state.sendQueueToDesktop(target: .new) }
-        await Task.yield()
+        try await waitUntil(timeout: 60) { fake.requests.filter { $0.method == "PUT" }.count > puts }
+        send.cancel()
+        release.signal()
+        let kept = await send.value
+
+        XCTAssertNil(state.errorMessage)
+        XCTAssertFalse(state.companionDraining)
+        XCTAssertEqual(state.companionOutboxCount, 2)
+        XCTAssertTrue(kept)
+    }
+
+    @MainActor
+    func test_sendQueueToDesktop_cancelledWhileWriting_dropsItAndKeepsTheOneAlreadyWaiting() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: fake)
+        fake.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello())
+        fake.downHosts = [CompanionLink.address]
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        fake.downHosts = []
+        let puts = fake.requests.filter { $0.method == "PUT" }.count
+
+        let send = Task { @MainActor in await state.sendQueueToDesktop(target: .new) }
         send.cancel()
         let kept = await send.value
 
         XCTAssertNil(state.errorMessage)
         XCTAssertFalse(state.companionDraining)
-        XCTAssertGreaterThanOrEqual(state.companionOutboxCount, 1)
-        XCTAssertEqual(kept, state.companionOutboxCount > 1)
+        XCTAssertEqual(state.companionOutboxCount, 1)
+        XCTAssertFalse(kept)
+        XCTAssertEqual(fake.requests.filter { $0.method == "PUT" }.count, puts)
     }
 
     @MainActor
