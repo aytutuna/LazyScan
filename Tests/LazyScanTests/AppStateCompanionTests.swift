@@ -387,6 +387,8 @@ final class AppStateCompanionTests: XCTestCase {
         XCTAssertFalse(state.companionDraining)
         XCTAssertEqual(state.companionOutboxCount, 1)
         XCTAssertFalse(kept)
+        let left = try FileManager.default.contentsOfDirectory(atPath: companionFolder.appendingPathComponent("Outbox").path)
+        XCTAssertEqual(left.filter { $0.hasSuffix(".lsdoc") }.count, 1)
         XCTAssertEqual(fake.requests.filter { $0.method == "PUT" }.count, puts)
     }
 
