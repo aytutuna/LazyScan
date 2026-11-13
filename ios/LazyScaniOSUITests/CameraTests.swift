@@ -161,7 +161,12 @@ final class CameraTests: XCTestCase {
         let picture: XCUIElement = app.descendants(matching: .any)["camera.screen"].firstMatch
         XCTAssertTrue(picture.waitForExistence(timeout: 30), "The viewfinder")
         let window: CGRect = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(picture.frame.height, window.height * 0.9, "The viewfinder fills the height")
+        var available: CGFloat = window.height
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // The picture sits in the detail column, under its navigation bar.
+            available -= app.navigationBars.allElementsBoundByIndex.map { $0.frame.maxY }.max() ?? 0
+        }
+        XCTAssertGreaterThan(picture.frame.height, available * 0.9, "The viewfinder fills the height")
         let shutter: CGRect = app.buttons["camera.shutter"].frame
         XCTAssertGreaterThanOrEqual(shutter.minX, picture.frame.maxX, "The shutter is in the column beside the picture")
         XCTAssertTrue(app.buttons["camera.autoQuick"].exists, "Auto beside the picture")
