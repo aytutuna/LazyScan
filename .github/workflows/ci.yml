@@ -703,15 +703,23 @@ jobs:
           udid=${{ steps.ipad.outputs.udid }}
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
-          xcodebuild test-without-building \
-            -project ios/LazyScaniOS.xcodeproj \
-            -scheme LazyScaniOS \
-            -configuration Release \
-            -destination "platform=iOS Simulator,id=$udid" \
-            -derivedDataPath "$RUNNER_TEMP/app-build" \
-            -skip-testing:LazyScaniOSUITests/ScreenshotTests \
-            -resultBundlePath "$RUNNER_TEMP/ios-ipad-tests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO
+          # Right after the boot xcodebuild sometimes does not see the device yet (exit 70); once more then.
+          for attempt in 1 2; do
+            rm -rf "$RUNNER_TEMP/ios-ipad-tests.xcresult"
+            status=0
+            xcodebuild test-without-building \
+              -project ios/LazyScaniOS.xcodeproj \
+              -scheme LazyScaniOS \
+              -configuration Release \
+              -destination "platform=iOS Simulator,id=$udid" \
+              -derivedDataPath "$RUNNER_TEMP/app-build" \
+              -skip-testing:LazyScaniOSUITests/ScreenshotTests \
+              -resultBundlePath "$RUNNER_TEMP/ios-ipad-tests.xcresult" \
+              CODE_SIGNING_ALLOWED=NO || status=$?
+            [ "$status" -eq 70 ] || exit "$status"
+            sleep 30
+          done
+          exit 70
       # The screenshot walk on the iPad, for the store listing's iPad screenshots. A screen that does not
       # fit the iPad's layout is left out by the walk itself; a failure here does not fail the job.
       - name: Run the screenshots on an iPad
