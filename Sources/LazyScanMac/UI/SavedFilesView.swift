@@ -327,18 +327,48 @@ fileprivate struct SavedFileCard: View {
 
 // MARK: - File-private helpers
 
+/// Lets a few thumbnails load at a time, so a folder of many files does not render them all at once.
+fileprivate actor ThumbnailGate {
+    static let shared = ThumbnailGate(limit: 4)
+
+    private var free: Int
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    init(limit: Int) { free = limit }
+
+    func enter() async {
+        if free > 0 {
+            free -= 1
+            return
+        }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func leave() {
+        if waiting.isEmpty {
+            free += 1
+        } else {
+            waiting.removeFirst().resume()
+        }
+    }
+}
+
 /// Small preview of a saved file: CGImageSource thumbnailing for images, first-page
-/// rasterization via NSImage for PDFs; none for text files and Word documents, which show their icon.
+/// rendering through Core Graphics for PDFs; none for text files and Word documents, which show
+/// their icon. Files not downloaded from iCloud and very large PDFs show their icon too.
 fileprivate func loadThumbnail(for file: SavedFileItem) async -> CGImage? {
     if file.isTextDocument { return nil }
     let url = file.url
     let isPdf = file.isPdf
-    return await Task.detached(priority: .utility) { () -> CGImage? in
-        if isPdf {
-            guard let nsImage = NSImage(contentsOf: url) else { return nil }
-            var rect = CGRect(origin: .zero, size: nsImage.size)
-            return nsImage.cgImage(forProposedRect: &rect, context: nil, hints: nil)
-        }
+    let size = file.fileSize
+    if let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]).ubiquitousItemDownloadingStatus,
+       status != .current {
+        return nil
+    }
+    if isPdf && size > 200_000_000 { return nil }
+    await ThumbnailGate.shared.enter()
+    let image = await Task.detached(priority: .utility) { () -> CGImage? in
+        if isPdf { return pdfThumbnail(url, maxSide: 400) }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -347,5 +377,27 @@ fileprivate func loadThumbnail(for file: SavedFileItem) async -> CGImage? {
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }.value
+    await ThumbnailGate.shared.leave()
+    return image
+}
+
+fileprivate func pdfThumbnail(_ url: URL, maxSide: Int) -> CGImage? {
+    guard let document = CGPDFDocument(url as CFURL), let page = document.page(at: 1) else { return nil }
+    let box: CGRect = page.getBoxRect(.cropBox)
+    guard box.width > 0, box.height > 0 else { return nil }
+    let scale: CGFloat = CGFloat(maxSide) / max(box.width, box.height)
+    let width: Int = max(1, Int((box.width * scale).rounded()))
+    let height: Int = max(1, Int((box.height * scale).rounded()))
+    guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+          let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+        return nil
+    }
+    context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    context.scaleBy(x: scale, y: scale)
+    context.translateBy(x: -box.minX, y: -box.minY)
+    context.drawPDFPage(page)
+    return context.makeImage()
 }
 #endif
