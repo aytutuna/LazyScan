@@ -977,7 +977,7 @@ private enum MockBedRenderer {
     private static let documentTitle = "Lazy Scan Demo Document"
 
     private static let documentBody = [
-        "Lazy Scan is a native macOS application for flatbed and",
+        "Lazy Scan is a scanning application for flatbed and",
         "document scanners. It captures multi-page documents, recognizes",
         "the text with on-device optical character recognition, and saves",
         "the result as a searchable PDF file.",
