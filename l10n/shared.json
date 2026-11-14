@@ -3134,6 +3134,8 @@
   "History": {},
   "Go to Scan": {},
   "Open the Scan tab without changing your settings": {},
+  "Scan more pages and add them to this PDF": {},
+  "Returns to scanning. The next Save adds the pages to this PDF.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

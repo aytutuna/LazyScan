@@ -118,6 +118,11 @@
                                 AutomationProperties.AcceleratorKey="Ctrl+Z"
                                 AutomationProperties.HelpText="{loc:T Puts the pages back\, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went.}"
                                 Click="Undo_Click" />
+                        <Button x:Name="SavedAddPagesButton" Style="{StaticResource SubtleButtonStyle}"
+                                local:Icon.Glyph="&#xE710;" Content="{loc:T Add more pages}" Visibility="Collapsed"
+                                ToolTip="{loc:T Scan more pages and add them to this PDF}"
+                                AutomationProperties.HelpText="{loc:T Returns to scanning. The next Save adds the pages to this PDF.}"
+                                ToolTipService.ShowOnDisabled="True" Click="SavedAddPages_Click" />
                         <Button x:Name="SavedOpenButton" Style="{StaticResource SubtleButtonStyle}"
                                 local:Icon.Glyph="&#xE8A7;" Content="{loc:T Open}" Tag="Open"
                                 ToolTip="{loc:T Open with the default app}" Click="SavedBarAction_Click" />

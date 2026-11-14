@@ -100,6 +100,43 @@ public class UndoSaveTests
     }
 
     [Fact]
+    public void AddMorePages_IsOfferedForOneSavedPdfAndSetsItAsTheTarget()
+    {
+        Run(session =>
+        {
+            session.Scan();
+            session.Wait(session.Model.SavePdf());
+            string target = Assert.Single(session.Model.LastSavedPaths);
+            Assert.True(session.Model.SavedBarCanAddPages);
+            Assert.False(session.Model.AppendTargetIsLastSave);
+
+            session.Model.SetAppendTarget(target);
+
+            Assert.True(session.Model.AppendTargetIsLastSave);
+            Assert.False(session.Model.SavedBarCanAddPages);
+            Assert.True(session.Model.CanUndoSave);
+        });
+    }
+
+    [Fact]
+    public void AddMorePages_IsNotOfferedAfterSavingByAppending()
+    {
+        Run(session =>
+        {
+            session.Scan();
+            session.Wait(session.Model.SavePdf());
+            string target = Assert.Single(session.Model.LastSavedPaths);
+
+            session.Scan();
+            session.Model.SetAppendTarget(target);
+            session.Wait(session.Model.AppendToPdf(target));
+
+            Assert.Equal(target, Assert.Single(session.Model.LastSavedPaths));
+            Assert.False(session.Model.SavedBarCanAddPages);
+        });
+    }
+
+    [Fact]
     public void ASavedPasswordProtectedPdfCannotBeUndone()
     {
         Run(session =>

@@ -382,7 +382,7 @@ public partial class MainWindow : Window
         CancelButton.IsEnabled = ViewModel.IsBusy;
         ShowScannerButton.Visibility = ViewModel.CanShowScannerWindow ? Visibility.Visible : Visibility.Collapsed;
         // A held save is undone from the saved bar; this button takes over once the bar is closed.
-        bool saveUndoHere = ViewModel.CanUndoSave && ViewModel.SavedBarPaths is null;
+        bool saveUndoHere = ViewModel.CanUndoSave && ViewModel.SavedBarPaths is null && !ViewModel.AppendTargetIsLastSave;
         UndoButton.Visibility = (ViewModel.CanUndoRemove || saveUndoHere) && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         bool heldCopy = ViewModel.HasHeldCopy && !ViewModel.IsBusy;
         PrintAgainButton.Visibility = heldCopy ? Visibility.Visible : Visibility.Collapsed;
@@ -658,7 +658,9 @@ public partial class MainWindow : Window
             button.ToolTip = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, paths.Count);
         }
         SyncSendToPhoneButton(paths, offered);
-        SavedUndoButton.Visibility = ViewModel.CanUndoSave ? Visibility.Visible : Visibility.Collapsed;
+        SavedAddPagesButton.Visibility = ViewModel.SavedBarCanAddPages ? Visibility.Visible : Visibility.Collapsed;
+        SavedAddPagesButton.IsEnabled = !ViewModel.IsBusy;
+        SavedUndoButton.Visibility = ViewModel.CanUndoSave && !ViewModel.AppendTargetIsLastSave ? Visibility.Visible : Visibility.Collapsed;
         SavedUndoButton.IsEnabled = !ViewModel.IsBusy;
         SavedUndoButton.ToolTip = ViewModel.CanUndoSave ? UndoSaveTooltip() : null;
         SavedBar.Visibility = Visibility.Visible;
@@ -744,7 +746,7 @@ public partial class MainWindow : Window
     {
         if (!e.WidthChanged) return;
         bool compact = e.NewSize.Width < SavedBarCompactBelowWidth;
-        foreach (var button in SavedBarButtons.Children.OfType<Button>().Where(b => b.Tag is string || b == SavedUndoButton))
+        foreach (var button in SavedBarButtons.Children.OfType<Button>().Where(b => b.Tag is string || b == SavedUndoButton || b == SavedAddPagesButton))
         {
             if (compact)
             {

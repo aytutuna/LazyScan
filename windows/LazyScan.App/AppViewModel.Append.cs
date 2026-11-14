@@ -74,6 +74,17 @@ public sealed partial class AppViewModel
         NotifyAll();
     }
 
+    /// <summary>The saved bar offers Add more pages (<see cref="SaveActions.CanAddMorePages"/>).</summary>
+    public bool SavedBarCanAddPages =>
+        SavedBarPaths is { } paths
+        && SaveActions.CanAddMorePages(paths, LastPdfProtected, SavedBarKind == FileKind.Receipt, _savedByAppending,
+                                       AppendTarget is not null, IsBusy);
+
+    /// <summary>The PDF that takes the next save is the one the last save wrote, so Undo would delete it.</summary>
+    public bool AppendTargetIsLastSave =>
+        AppendTarget is { } target && LastSavedPaths.Count == 1
+        && string.Equals(target, LastSavedPaths[0], StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Save writes a new file again.</summary>
     public void ClearAppendTarget()
     {
@@ -163,7 +174,7 @@ public sealed partial class AppViewModel
             }
             LastPdfBytes = result.Bytes;
             LastPdfProtected = protection is not null;
-            MarkSaved([result.Path]);
+            MarkSaved([result.Path], appended: true);
             string? earlierTarget = AppendTarget;
             AppendTarget = null;
             _confirmedAppend = null;

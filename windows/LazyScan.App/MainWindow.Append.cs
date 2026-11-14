@@ -40,11 +40,26 @@ public partial class MainWindow
             ViewModel.ClearAppendTarget();
             return;
         }
-        if (!ConfirmDropIdCard() || !ViewModel.StartTask(ScanTask.Document)) return;
+        BeginAddingTo(path);
+    }
+
+    private bool BeginAddingTo(string path)
+    {
+        if (!ConfirmDropIdCard() || !ViewModel.StartTask(ScanTask.Document)) return false;
         ViewModel.SetAppendTarget(path);
         OpenSectionFor(ScanTask.Document);
         PushSettingsToUi();
         ShowScanScreen();
+        return true;
+    }
+
+    private async void SavedAddPages_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsBusy || ViewModel.SavedBarPaths is not [var path]) return;
+        if (!await ViewModel.CheckAppendTarget(path) || !BeginAddingTo(path)) return;
+        // The focused button goes away with the bar.
+        FocusMainAction();
+        ViewModel.DismissSavedBar();
     }
 
     private void ClearAppendTarget_Click(object sender, RoutedEventArgs e)

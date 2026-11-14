@@ -728,6 +728,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>What the last save's several files are, for the Saved bar: photos, receipts, else (null) files.</summary>
     public FileKind? SavedBarKind { get; private set; }
+
+    // The last save added its pages to an existing PDF, which then has no new file to add to again.
+    private bool _savedByAppending;
     /// <summary>What the bar says was saved: "Scan 2026-10-19 3.pdf (412 KB)", or "3 files in Scans".</summary>
     public string SavedBarText { get; private set; } = "";
 
@@ -4079,7 +4082,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         foreach (var entry in _history) History.Add(_historyItems[entry.Id]);
     }
 
-    private void MarkSaved(List<string> paths)
+    private void MarkSaved(List<string> paths, bool appended = false)
     {
         DiscardRemoved();
         DiscardSaved();
@@ -4088,6 +4091,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         SavedBarPaths = paths.Count > 0 ? [.. paths] : null;
         SavedBarText = SavedSummary(paths);
         SavedBarKind = Settings.Intent == ScanIntent.Photo ? FileKind.Photo : IsReceiptFlow ? FileKind.Receipt : null;
+        _savedByAppending = appended;
     }
 
     /// <summary>"Scan 3.pdf (412 KB)" for one file (the size for PDFs), "3 files in Scans" for several.</summary>
