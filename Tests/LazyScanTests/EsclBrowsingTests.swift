@@ -318,6 +318,60 @@ final class EsclBrowsingTests: XCTestCase {
     }
 
     @MainActor
+    func test_aFailedBrowser_isStartedAgainAfterADelay_uptoThreeTimes() {
+        prepare()
+        discovery.start()
+        browser(secure: false).send(.ready)
+        let delays: [TimeInterval] = EsclDiscovery.browserRetryDelays
+        var failed: DiscoveryFakeBrowser = browser(secure: true)
+        for (index, delay) in delays.enumerated() {
+            failed.send(.failed(code: -65539, detail: "BadParam."))
+            XCTAssertEqual(scheduler.delays.suffix(1), [delay])
+            XCTAssertEqual(browsers.made.count, 2 + index)
+            scheduler.fireAll()
+            XCTAssertEqual(failed.cancelCount, 1)
+            XCTAssertEqual(browsers.made.count, 3 + index)
+            XCTAssertFalse(browser(secure: true) === failed)
+            failed = browser(secure: true)
+        }
+        let scheduled: Int = scheduler.delays.count
+        failed.send(.failed(code: -65539, detail: "BadParam."))
+        XCTAssertEqual(scheduler.delays.count, scheduled)
+        XCTAssertEqual(discovery.status, .unavailable)
+
+        // A browser that is ready gives the full count back.
+        discovery.restart()
+        browser(secure: true).send(.ready)
+        browser(secure: true).send(.failed(code: -65539, detail: "BadParam."))
+        XCTAssertEqual(scheduler.delays.suffix(1), [delays[0]])
+    }
+
+    @MainActor
+    func test_bothBrowsersFailingTogether_eachGetTheFirstDelay() {
+        prepare()
+        discovery.start()
+        browser(secure: true).send(.failed(code: -65539, detail: "BadParam."))
+        browser(secure: false).send(.failed(code: -65539, detail: "BadParam."))
+        XCTAssertEqual(scheduler.delays.suffix(2), [EsclDiscovery.browserRetryDelays[0], EsclDiscovery.browserRetryDelays[0]])
+    }
+
+    @MainActor
+    func test_aFailedBrowser_isNotStartedAgainWhenRefreshedMeanwhile_orWhenDenied() {
+        prepare()
+        discovery.start()
+        let failed: DiscoveryFakeBrowser = browser(secure: true)
+        failed.send(.failed(code: -65539, detail: "BadParam."))
+        discovery.restart()
+        let count: Int = browsers.made.count
+        scheduler.fireAll()
+        XCTAssertEqual(browsers.made.count, count)
+
+        let before: Int = scheduler.delays.count
+        browser(secure: false).send(.failed(code: EsclLocalNetwork.policyDeniedCode, detail: "PolicyDenied"))
+        XCTAssertEqual(scheduler.delays.count, before)
+    }
+
+    @MainActor
     func test_pauseKeepsWhatWasFound_resumeDropsWhatIsNotReportedAgain() {
         prepare()
         resolver.answers["Epson"] = resolved("EPSON1.local", 80, ["192.168.1.30"])

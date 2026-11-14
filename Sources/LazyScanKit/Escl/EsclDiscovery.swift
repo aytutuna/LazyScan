@@ -136,6 +136,9 @@ public final class EsclDiscovery {
     public var firstSearchTime: TimeInterval = 5
     /// How long after each failed resolve of an instance the next try waits; none is made after the last.
     public static let retryDelays: [TimeInterval] = [5, 15, 60]
+    /// How long after each failure of a browser it is started again; none is made after the last, until a browser
+    /// is ready or the troubleshooter's Refresh.
+    public static let browserRetryDelays: [TimeInterval] = [3, 10, 30]
 
     private let makeBrowser: BrowserFactory
     private let resolver: any EsclServiceResolving
@@ -152,6 +155,8 @@ public final class EsclDiscovery {
     private var resolveCount: Int = 0
     /// The search started or resumed less than `firstSearchTime` ago; cleared by a pause or a stop.
     private var firstSearch: Bool = false
+    /// Browsers started again after a failure since this type's browser was last ready, by `secure`.
+    private var browserRestarts: [Bool: Int] = [:]
 
     /// One browser, for one service type.
     @MainActor
@@ -316,6 +321,7 @@ public final class EsclDiscovery {
         paused = false
         generation += 1
         deniedElsewhere = false
+        browserRestarts = [:]
         firstSearch = true
         startMissing()
         let current: Int = generation
@@ -361,6 +367,7 @@ public final class EsclDiscovery {
         paused = false
         generation += 1
         deniedElsewhere = false
+        browserRestarts = [:]
         firstSearch = true
         startMissing()
         let current: Int = generation
@@ -390,6 +397,7 @@ public final class EsclDiscovery {
         }
         browses = kept
         deniedElsewhere = false
+        browserRestarts = [:]
         startMissing()
         for entry in found where !entry.isResolving {
             entry.failures = 0
@@ -463,6 +471,7 @@ public final class EsclDiscovery {
             browse.ready = true
             browse.denied = false
             browse.failure = nil
+            browserRestarts[browse.secure] = 0
             // Access granted again (or never refused): what a resolve said about it is over.
             deniedElsewhere = false
         case .waiting(let code, _):
@@ -472,8 +481,27 @@ public final class EsclDiscovery {
             browse.ready = false
             browse.denied = EsclLocalNetwork.isPolicyDenied(code)
             browse.failure = browse.denied ? nil : detail
+            if !browse.denied {
+                scheduleBrowserRestart(browse)
+            }
         }
         changed()
+    }
+
+    private func scheduleBrowserRestart(_ browse: Browse) {
+        let restarts: Int = browserRestarts[browse.secure, default: 0]
+        guard restarts < EsclDiscovery.browserRetryDelays.count else { return }
+        let delay: TimeInterval = EsclDiscovery.browserRetryDelays[restarts]
+        browserRestarts[browse.secure] = restarts + 1
+        schedule(delay) { [weak self, weak browse] in
+            guard let self, let browse, self.isCurrent(browse), browse.failure != nil else { return }
+            self.browses.removeAll { $0 === browse }
+            browse.browser.onStatus = nil
+            browse.browser.onResults = nil
+            browse.browser.cancel()
+            self.startMissing()
+            self.changed()
+        }
     }
 
     /// A browser's full list: new instances are resolved, a changed TXT record is taken as it is, and the
