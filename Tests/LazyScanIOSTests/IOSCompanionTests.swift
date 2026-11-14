@@ -279,8 +279,8 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertEqual(IOSCompanionText.status(.reachable(desktopName: "Office PC", queuedPages: 0)), "Connected")
         XCTAssertEqual(IOSCompanionText.status(.reachable(desktopName: "Office PC", queuedPages: 3)),
                        "Connected \u{00B7} 3 pages queued there")
-        XCTAssertEqual(IOSCompanionText.status(.unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")
+        XCTAssertEqual(IOSCompanionText.status(.unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network.")),
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network.")
         XCTAssertEqual(IOSCompanionText.status(.unpaired(byDesktop: "Office PC")),
                        "This device is no longer paired with Office PC.")
         XCTAssertEqual(IOSCompanionText.pairWith("Studio iMac"), "Pair with Studio iMac")
@@ -507,11 +507,11 @@ final class IOSCompanionTests: XCTestCase {
         try await waitUntil(timeout: 5) { state.companionPull != nil }
         // The check browses while it runs, and a few seconds more when the desktop does not answer.
         try await waitUntil(timeout: 30) {
-            state.companionStatus == .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")
+            state.companionStatus == .unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network.")
         }
         XCTAssertTrue(browser.isBrowsing)
         try await waitUntil(timeout: 40) { !browser.isBrowsing }
-        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi."))
+        XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network."))
         XCTAssertEqual(browsers.made.count, 1)
 
         center.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -575,7 +575,7 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .reachable(desktopName: "Office PC", queuedPages: 0)))
         XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .checking))
         // It waits in the outbox until the computer answers.
-        XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .unreachable(reason: "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")))
+        XCTAssertTrue(IOSShell.offersSendToComputer(settings, status: .unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network.")))
         XCTAssertFalse(IOSShell.offersSendToComputer(settings, status: .notPaired))
         XCTAssertFalse(IOSShell.offersSendToComputer(settings, status: .unpaired(byDesktop: "Office PC")))
 

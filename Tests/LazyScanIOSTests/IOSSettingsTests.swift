@@ -343,16 +343,16 @@ final class IOSSettingsTests: XCTestCase {
     func test_afterSave_saysWhenSendToPCsPagesWait() {
         let reason: String = CompanionText.notOnNetworkReason("Office PC")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unreachable(reason: reason), waiting: 1),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi. The pages wait on this device and are sent once it answers.")
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network. The pages wait on this device and are sent once it answers.")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unreachable(reason: reason), waiting: 1, inFolder: 1),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi. The document is in the cloud folder; the computer takes it from there.")
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network. The document is in the cloud folder; the computer takes it from there.")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unreachable(reason: reason), waiting: 2, inFolder: 1),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi. The pages wait on this device and are sent once it answers.",
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network. The pages wait on this device and are sent once it answers.",
                        "One of them waits on this device")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unreachable(reason: reason), waiting: 1, folderHint: true),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi. The pages wait on this device and are sent once it answers. Set a cloud folder in My computer to send when the computer cannot be reached.")
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network. The pages wait on this device and are sent once it answers. Set a cloud folder in My computer to send when the computer cannot be reached.")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unreachable(reason: reason), waiting: 1, inFolder: 1, folderHint: true),
-                       "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi. The document is in the cloud folder; the computer takes it from there.",
+                       "Office PC was not found. Lazy Scan may not be open on it, or it is on another network. The document is in the cloud folder; the computer takes it from there.",
                        "The folder is set, so nothing to hint")
         XCTAssertEqual(IOSAfterSave.notSentMessage(.unpaired(byDesktop: "Office PC"), waiting: 2, folderHint: true),
                        "This device is no longer paired with Office PC. The pages were not sent.")
