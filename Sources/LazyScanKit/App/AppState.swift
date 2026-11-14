@@ -3363,10 +3363,11 @@ public final class AppState: ObservableObject {
         return resolved.folder
     }
 
-    /// Removes the hidden temporary files (`.<uuid>.pdf.tmp`) a save left in the save folder when the app
-    /// was ended before it finished. Run at launch, when no save is under way. The listing runs off the
-    /// main actor, since the folder may be on a slow or unreachable location, and leaves files changed in
-    /// the last hour, which another device syncing the folder may still be writing.
+    /// Removes the hidden temporary files (`.<uuid>.pdf.tmp`, `.<uuid>.tiff.tmp`, `.<uuid>.tmp`) a save left
+    /// in the save folder when the app was ended before it finished. Run at launch and when the Saved list
+    /// loads. The listing runs off the main actor, since the folder may be on a slow or unreachable
+    /// location, and leaves files changed in the last hour, which a save under way or another device
+    /// syncing the folder may still be writing.
     public func removeStaleSaveTemps() {
         let folder: URL = openBookmarkedFolder() ?? URL(
             fileURLWithPath: ScanSettings.rebasedDestinationPath(
@@ -3376,13 +3377,21 @@ public final class AppState: ObservableObject {
             let manager: FileManager = FileManager.default
             let names: [String] = (try? manager.contentsOfDirectory(atPath: folder.path)) ?? []
             let cutoff: Date = Date().addingTimeInterval(-3600)
-            for name in names where name.hasPrefix(".") && name.hasSuffix(".pdf.tmp") {
+            for name in names where Self.isSaveTempName(name) {
                 let url: URL = folder.appendingPathComponent(name)
                 let changed: Date? = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
                 if let changed, changed > cutoff { continue }
                 try? manager.removeItem(at: url)
             }
         }
+    }
+
+    /// ".<uuid>.tmp" or ".<uuid>.<ext>.tmp", the names a save writes beside its destination.
+    nonisolated static func isSaveTempName(_ name: String) -> Bool {
+        guard name.hasPrefix("."), name.hasSuffix(".tmp") else { return false }
+        let inner: Substring = name.dropFirst().dropLast(4)
+        guard inner.count >= 36, UUID(uuidString: String(inner.prefix(36))) != nil else { return false }
+        return inner.count == 36 || inner.dropFirst(36).first == "."
     }
 
     /// Where the running number of {counter} is kept, in the user's defaults.

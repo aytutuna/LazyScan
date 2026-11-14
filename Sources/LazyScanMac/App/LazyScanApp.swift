@@ -30,6 +30,7 @@ public struct LazyScanApp: App {
                 .environmentObject(state)
                 .onAppear {
                     delegate.state = state
+                    state.removeStaleSaveTemps()
                     NSApp.activate(ignoringOtherApps: true)
                 }
         }

@@ -42,7 +42,10 @@ struct SavedFilesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
         // Refresh whenever something new is saved, and on every appearance.
-        .task(id: state.lastSavedURLs) { reload() }
+        .task(id: state.lastSavedURLs) {
+            state.removeStaleSaveTemps()
+            reload()
+        }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {

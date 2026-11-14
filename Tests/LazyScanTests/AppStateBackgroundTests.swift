@@ -137,18 +137,22 @@ final class AppStateBackgroundTests: XCTestCase {
         let state = try await makeState(background: nil)
         try FileManager.default.createDirectory(at: saveFolder, withIntermediateDirectories: true)
         let stale = saveFolder.appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
+        let staleTIFF = saveFolder.appendingPathComponent(".\(UUID().uuidString).tiff.tmp")
+        let staleBare = saveFolder.appendingPathComponent(".\(UUID().uuidString).tmp")
         let kept = saveFolder.appendingPathComponent("Scan 1.pdf")
         let other = saveFolder.appendingPathComponent("notes.pdf.tmp")
-        for url in [stale, kept, other] {
+        for url in [stale, staleTIFF, staleBare, kept, other] {
             try Data("x".utf8).write(to: url)
         }
         let recent = saveFolder.appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
         try Data("x".utf8).write(to: recent)
         let old = Date().addingTimeInterval(-7200)
-        try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: stale.path)
+        for url in [stale, staleTIFF, staleBare] {
+            try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: url.path)
+        }
         state.removeStaleSaveTemps()
         let deadline = Date().addingTimeInterval(10)
-        while savedNames().contains(stale.lastPathComponent), Date() < deadline {
+        while savedNames().count > 3, Date() < deadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertEqual(savedNames().sorted(), ["Scan 1.pdf", "notes.pdf.tmp", recent.lastPathComponent].sorted())

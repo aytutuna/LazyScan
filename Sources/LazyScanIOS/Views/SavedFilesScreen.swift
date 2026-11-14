@@ -55,6 +55,7 @@ struct SavedFilesScreen: View {
             reload()
         }
         .task(id: state.lastSavedURLs) {
+            state.removeStaleSaveTemps()
             reload()
         }
         .onDisappear {
