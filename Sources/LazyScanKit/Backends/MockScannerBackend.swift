@@ -57,6 +57,15 @@ public final class MockScannerBackend: ScannerBackend {
     /// scanner has a blank back on its second sheet.
     public var feederBlankBackSheets: Set<Int> = []
 
+    /// The feeder is empty once a scan has delivered its stack, as a real one is: the next feeder
+    /// scan fails with `ScanError.scannerProblem(.feederEmpty)` and the one after it works again, as
+    /// if the user had reloaded the paper. Off by default; the app's demo scanner has it on. A stack
+    /// turned over by hand (`feederStackTurnedOver`) and one that jammed are still in the feeder.
+    public var feederEmptiesAfterScan: Bool = false
+
+    /// The feeder has no paper: set by a scan that emptied it, cleared by the scan that reports it.
+    public var feederNeedsPaper: Bool = false
+
     /// Sheets the demo feeder holds for the Batch task unless `batchSheetCount` is changed.
     public static let defaultBatchSheetCount = 7
 
@@ -141,7 +150,7 @@ private final class MockScannerSession: ScannerSession {
     }
 
     func capabilities() async throws -> ScannerCapabilities {
-        ScannerCapabilities(supportedResolutions: [75, 150, 200, 300, 600, 1200],
+        ScannerCapabilities(supportedResolutions: [75, 150, 200, 300, 600],
                             sources: [.flatbed, .documentFeeder],
                             flatbedSizeInches: Self.bedSizeInches,
                             supportsOverview: true,
@@ -244,7 +253,10 @@ private final class MockScannerSession: ScannerSession {
         let sheetInches = settings.paperSize == .auto ? MockBedRenderer.sheetInches : region.size
         progressHandler?(ScanProgress(fraction: 0.1, message: L10n.t("Warming up…")))
         try await sleepCheckingCancellation(seconds: 0.25)
-        guard sheets > 0 else { throw ScanError.scannerProblem(.feederEmpty) }
+        guard sheets > 0, !backend.feederNeedsPaper else {
+            backend.feederNeedsPaper = false
+            throw ScanError.scannerProblem(.feederEmpty)
+        }
         lastScanDuplex = settings.duplex == .both ? twoSided : nil
 
         var pages: [ScannedPage] = []
@@ -295,6 +307,7 @@ private final class MockScannerSession: ScannerSession {
         // it the right way up for any other scan; after a jam the rest of the same side comes next.
         if lastScanStop == nil {
             backend.feederStackTurnedOver = settings.duplex == .manual && !twoSided && !turnedOver
+            backend.feederNeedsPaper = backend.feederEmptiesAfterScan && !backend.feederStackTurnedOver
         }
         return pages
     }

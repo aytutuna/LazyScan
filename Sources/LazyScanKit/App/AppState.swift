@@ -892,10 +892,12 @@ public final class AppState: ObservableObject {
         }
     }
 
-    /// The demo scanner. Its second sheet has a blank back, to show blank pages being flagged.
+    /// The demo scanner. Its second sheet has a blank back, to show blank pages being flagged, and
+    /// its feeder is empty after a scan, to show the empty-feeder message.
     public static func makeDemoBackend() -> MockScannerBackend {
         let demo = MockScannerBackend()
         demo.feederBlankBackSheets = [1]
+        demo.feederEmptiesAfterScan = true
         return demo
     }
 

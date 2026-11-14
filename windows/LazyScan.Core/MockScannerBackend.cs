@@ -65,6 +65,18 @@ public sealed class MockScannerBackend : IScannerBackend
     /// </summary>
     public IReadOnlyCollection<int> FeederBlankBackSheets { get; set; } = [];
 
+    /// <summary>
+    /// The feeder is empty once a scan has delivered its stack, as a real one is: the next feeder
+    /// scan fails with <see cref="ScannerProblem.FeederEmpty"/> and the one after it works again, as
+    /// if the user had reloaded the paper. Off by default; the app's demo scanner has it on. A stack
+    /// turned over by hand (<see cref="FeederStackTurnedOver"/>) and one that jammed are still in
+    /// the feeder.
+    /// </summary>
+    public bool FeederEmptiesAfterScan { get; set; }
+
+    /// <summary>The feeder has no paper: set by a scan that emptied it, cleared by the scan that reports it.</summary>
+    public bool FeederNeedsPaper { get; set; }
+
     /// <summary>Sheets the demo feeder holds for the Batch task unless <see cref="BatchSheetCount"/> is changed.</summary>
     public const int DefaultBatchSheetCount = 7;
 
@@ -135,7 +147,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
     public Task<ScannerCapabilities> GetCapabilitiesAsync() =>
         Task.FromResult(new ScannerCapabilities
         {
-            SupportedResolutions = [75, 150, 200, 300, 600, 1200],
+            SupportedResolutions = [75, 150, 200, 300, 600],
             Sources = [ScanSource.Flatbed, ScanSource.DocumentFeeder],
             FlatbedSizeInches = BedSizeInches,
             SupportsOverview = true,
@@ -230,7 +242,11 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
             : new SizeD(region.Width, region.Height);
         ProgressHandler?.Invoke(new ScanProgress(0.1, Loc.T("Warming up…")));
         await SleepCheckingCancellation(0.25);
-        if (sheets <= 0) throw ScanException.ForProblem(ScannerProblem.FeederEmpty);
+        if (sheets <= 0 || backend.FeederNeedsPaper)
+        {
+            backend.FeederNeedsPaper = false;
+            throw ScanException.ForProblem(ScannerProblem.FeederEmpty);
+        }
         LastScanDuplex = settings.Duplex == DuplexMode.Both ? twoSided : null;
 
         var pages = new List<ScannedPage>();
@@ -273,6 +289,7 @@ internal sealed class MockScannerSession(ScannerInfo info, MockScannerBackend ba
         if (LastScanStop is null)
         {
             backend.FeederStackTurnedOver = settings.Duplex == DuplexMode.Manual && !twoSided && !turnedOver;
+            backend.FeederNeedsPaper = backend.FeederEmptiesAfterScan && !backend.FeederStackTurnedOver;
         }
         return pages;
     }

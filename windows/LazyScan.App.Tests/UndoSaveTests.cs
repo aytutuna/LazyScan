@@ -155,7 +155,7 @@ public class UndoSaveTests
                 Model.UserSelectDevice(Model.DeviceGroups.First(g => g.Primary.IsDemo).Primary.Id);
                 Wait(() => Model.IsConnected);
                 Model.StartTask(ScanTask.Document);
-                Model.Settings.Source = ScanSource.DocumentFeeder;
+                Model.Settings.Source = ScanSource.Flatbed;
                 Model.SettingsEdited();
                 test(this);
             }

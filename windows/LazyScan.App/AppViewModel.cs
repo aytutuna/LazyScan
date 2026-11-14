@@ -1044,8 +1044,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 twain,
                 // Drivers installed only for 32-bit programs, through the 32-bit helper.
                 new Scanning.Twain.Twain32ScannerBackend(twain),
-                // The demo's second sheet has a blank back, to show blank pages being flagged.
-                new MockScannerBackend { FeederBlankBackSheets = [1] }];
+                // The demo's second sheet has a blank back, to show blank pages being flagged, and
+                // its feeder is empty after a scan, to show the empty-feeder message.
+                new MockScannerBackend { FeederBlankBackSheets = [1], FeederEmptiesAfterScan = true }];
     }
 
     private static readonly TimeSpan SessionCloseLimit = TimeSpan.FromSeconds(4);

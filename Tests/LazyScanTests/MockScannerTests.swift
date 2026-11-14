@@ -293,6 +293,29 @@ final class MockScannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_feederThatEmptiesAfterAScan_asksForPaperOnTheNextOne_thenWorksAgain() async throws {
+        let (backend, session) = try await open()
+        backend.feederEmptiesAfterScan = true
+        let first = try await session.performScan(settings: feederSettings(), selection: nil)
+        XCTAssertEqual(first.count, 3)
+        do {
+            _ = try await session.performScan(settings: feederSettings(), selection: nil)
+            XCTFail("The emptied feeder must fail the scan.")
+        } catch let error as ScanError {
+            XCTAssertEqual(error.problem, ScannerProblem.feederEmpty)
+        }
+        let reloaded = try await session.performScan(settings: feederSettings(), selection: nil)
+        XCTAssertEqual(reloaded.count, 3)
+    }
+
+    @MainActor
+    func test_demoOffersNoResolutionAbove600() async throws {
+        let (_, session) = try await open()
+        let capabilities = try await session.capabilities()
+        XCTAssertEqual(capabilities.supportedResolutions.max(), 600)
+    }
+
+    @MainActor
     func test_aFullBatchHasNoStop() async throws {
         let (_, session) = try await open()
         _ = try await session.performScan(settings: feederSettings(), selection: nil)

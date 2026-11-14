@@ -286,6 +286,25 @@ public class MockScannerTests
     }
 
     [Fact]
+    public async Task FeederThatEmptiesAfterAScanAsksForPaperOnTheNextOneThenWorksAgain()
+    {
+        var (backend, session) = await Open();
+        backend.FeederEmptiesAfterScan = true;
+        Assert.Equal(3, (await session.PerformScanAsync(FeederSettings(), null)).Count);
+        var error = await Assert.ThrowsAsync<ScanException>(() => session.PerformScanAsync(FeederSettings(), null));
+        Assert.Equal(ScannerProblem.FeederEmpty, error.Problem);
+        Assert.Equal(3, (await session.PerformScanAsync(FeederSettings(), null)).Count);
+    }
+
+    [Fact]
+    public async Task DemoOffersNoResolutionAbove600()
+    {
+        var (_, session) = await Open();
+        var capabilities = await session.GetCapabilitiesAsync();
+        Assert.Equal(600, capabilities.SupportedResolutions.Max());
+    }
+
+    [Fact]
     public async Task AFullBatchHasNoStop()
     {
         var (_, session) = await Open();
