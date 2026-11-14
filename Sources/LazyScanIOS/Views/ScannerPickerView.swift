@@ -327,6 +327,7 @@ private struct ScannerRowView: View {
 /// Before the first search: why the system is about to ask about the local network. The troubleshooter shows
 /// it too while it is unread.
 struct ExplanationCard: View {
+    var title: String = IOSNetworkText.explanationTitle
     let onContinue: () -> Void
 
     var body: some View {
@@ -335,7 +336,7 @@ struct ExplanationCard: View {
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
                 .accessibilityHidden(true)
-            Text(IOSNetworkText.explanationTitle)
+            Text(title)
                 .font(.headline)
             Text(IOSNetworkText.explanationLine)
                 .font(.subheadline)

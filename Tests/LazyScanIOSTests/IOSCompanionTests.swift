@@ -338,6 +338,67 @@ final class IOSCompanionTests: XCTestCase {
     }
 
     @MainActor
+    func test_myComputer_browsesOnlyAfterTheExplanationCard() throws {
+        let name: String = "companion.\(UUID().uuidString)"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let scanners = StubCompanionBrowsers()
+        let discovery: EsclDiscovery = EsclDiscovery(makeBrowser: { (_: Bool) -> any EsclServiceBrowsing in
+            scanners.make()
+        }, resolver: StubCompanionResolver())
+        let backend: EsclScannerBackend = EsclScannerBackend(trust: EsclTrustStore(directory: folder),
+                                                             hosts: EsclHostList(directory: folder), discovery: discovery)
+        let network: IOSNetworkScanners = IOSNetworkScanners(backend: backend, defaults: defaults, center: NotificationCenter())
+        let browsers = StubCompanionBrowsers()
+        let browser = IOSCompanionBrowser(makeBrowser: { () -> any EsclServiceBrowsing in
+            browsers.make()
+        }, resolver: StubCompanionResolver())
+        let model = IOSCompanionModel(state: makeState(), browser: browser, network: network)
+        model.text = try pairingText()
+
+        model.appear()
+        XCTAssertTrue(model.needsExplanation)
+        XCTAssertFalse(model.canPair)
+        XCTAssertFalse(browser.isBrowsing)
+        XCTAssertTrue(browsers.made.isEmpty)
+
+        model.continueAfterExplanation()
+        XCTAssertFalse(model.needsExplanation)
+        XCTAssertTrue(model.canPair)
+        XCTAssertTrue(browser.isBrowsing)
+        XCTAssertFalse(network.needsExplanation)
+        XCTAssertTrue(defaults.bool(forKey: IOSNetworkScanners.explainedKey))
+
+        model.disappear()
+        XCTAssertFalse(browser.isBrowsing)
+    }
+
+    @MainActor
+    func test_myComputer_browsesAtOnce_whenTheCardWasReadElsewhere() throws {
+        let name: String = "companion.\(UUID().uuidString)"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(true, forKey: IOSNetworkScanners.explainedKey)
+        let scanners = StubCompanionBrowsers()
+        let discovery: EsclDiscovery = EsclDiscovery(makeBrowser: { (_: Bool) -> any EsclServiceBrowsing in
+            scanners.make()
+        }, resolver: StubCompanionResolver())
+        let backend: EsclScannerBackend = EsclScannerBackend(trust: EsclTrustStore(directory: folder),
+                                                             hosts: EsclHostList(directory: folder), discovery: discovery)
+        let network: IOSNetworkScanners = IOSNetworkScanners(backend: backend, defaults: defaults, center: NotificationCenter())
+        let browser = IOSCompanionBrowser(makeBrowser: { () -> any EsclServiceBrowsing in
+            StubCompanionBrowsers().make()
+        }, resolver: StubCompanionResolver())
+        let model = IOSCompanionModel(state: makeState(), browser: browser, network: network)
+
+        model.appear()
+        XCTAssertFalse(model.needsExplanation)
+        XCTAssertTrue(browser.isBrowsing)
+        model.disappear()
+        XCTAssertFalse(browser.isBrowsing)
+    }
+
+    @MainActor
     func test_cloudFolderRow_none_cannotBeOpened_thenThePickedFolder() throws {
         let secrets = MemorySecrets()
         let companionFolder: URL = folder.appendingPathComponent("Network", isDirectory: true)

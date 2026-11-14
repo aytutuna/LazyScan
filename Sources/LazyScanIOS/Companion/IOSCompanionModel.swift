@@ -131,12 +131,21 @@ public final class IOSCompanionModel: ObservableObject {
     /// The documents in the cloud folder the computer has not taken yet.
     @Published public private(set) var inCloudFolder: Int = 0
 
+    /// The explanation card has not been read yet: nothing is browsed or checked until it is.
+    @Published public private(set) var needsExplanation: Bool
+
     public let state: AppState
     public let browser: IOSCompanionBrowser?
+    private let network: IOSNetworkScanners?
+    private var isShown: Bool = false
+    private var isBrowsing: Bool = false
 
-    public init(state: AppState, browser: IOSCompanionBrowser?) {
+    /// `network` holds whether the explanation card was read (the scanner picker's); nil: no card.
+    public init(state: AppState, browser: IOSCompanionBrowser?, network: IOSNetworkScanners? = nil) {
         self.state = state
         self.browser = browser
+        self.network = network
+        needsExplanation = network?.needsExplanation ?? false
         phoneName = UIDevice.current.name
     }
 
@@ -170,7 +179,7 @@ public final class IOSCompanionModel: ObservableObject {
     }
 
     public var canPair: Bool {
-        code != nil && !isPairing
+        code != nil && !isPairing && !needsExplanation
     }
 
     /// The cloud folder row's value: the folder's name, "None", or "Cannot be opened" for one set that
@@ -187,19 +196,37 @@ public final class IOSCompanionModel: ObservableObject {
     }
 
     /// The screen is shown: browsing starts, and the paired desktop is checked (to the end, even when the
-    /// screen goes first).
+    /// screen goes first), once the explanation card is read.
     public func appear() {
-        browser?.begin()
+        isShown = true
+        needsExplanation = network?.needsExplanation ?? false
         lookAtCloudFolder()
+        startBrowsing()
+    }
+
+    public func disappear() {
+        isShown = false
+        guard isBrowsing else { return }
+        isBrowsing = false
+        browser?.end()
+    }
+
+    /// The card's Continue: the system's prompt follows, and the browsing the card held back starts.
+    public func continueAfterExplanation() {
+        network?.continueAfterExplanation()
+        needsExplanation = false
+        startBrowsing()
+    }
+
+    private func startBrowsing() {
+        guard isShown, !needsExplanation, !isBrowsing else { return }
+        isBrowsing = true
+        browser?.begin()
         guard state.companionDesktop != nil else { return }
         let appState: AppState = state
         Task { @MainActor in
             await appState.checkDesktop()
         }
-    }
-
-    public func disappear() {
-        browser?.end()
     }
 
     public func refresh() async {

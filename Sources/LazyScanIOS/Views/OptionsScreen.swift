@@ -25,6 +25,8 @@ struct OptionsScreen: View {
     let blocked: Bool
     /// Browses the computers on the network for My computer; nil when the app does not (`-demoScanner`).
     let companion: IOSCompanionBrowser?
+    /// Holds whether the Local Network explanation card was read; nil when the app has no network scanners.
+    let network: IOSNetworkScanners?
     let onType: (IOSScanKind) -> Void
     let onAction: (OptionsAction) -> Void
     /// Runs once a preset's settings are in use: the sheet closes.
@@ -235,7 +237,7 @@ struct OptionsScreen: View {
         case .presets:
             PresetsScreen(onApplied: onPresetApplied)
         case .computer:
-            CompanionScreen(state: state, browser: companion)
+            CompanionScreen(state: state, browser: companion, network: network)
         case .help:
             HelpPage(onTroubleshoot: onTroubleshoot)
         case .about:

@@ -8,10 +8,13 @@ import UIKit
 public enum IOSNetworkText {
     /// The explanation card shown before the first search, so the system's Local Network prompt is understood.
     public static var explanationTitle: String { String(localized: "Find scanners on your Wi-Fi") }
-    public static var explanationLine: String { String(localized: "Lazy Scan talks only to devices on your network.") }
+    public static var explanationLine: String { String(localized: "iOS will ask next. Choose Allow.") }
+    /// The same card on My computer.
+    public static var companionTitle: String { String(localized: "Find your computer") }
     public static var explanationButton: String { String(localized: "Continue") }
     /// Local Network access is off: the one-line reason, with the Settings button.
-    public static var deniedLine: String { String(localized: "Local Network access is off.") }
+    public static var deniedLine: String { String(localized: "Scanners need Local Network access.") }
+    public static var companionDeniedLine: String { String(localized: "Computers need Local Network access.") }
     public static var settingsButton: String { String(localized: "Open Settings") }
     /// The scanner picker.
     public static var pickerTitle: String { String(localized: "Scanners") }

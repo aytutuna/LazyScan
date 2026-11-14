@@ -23,12 +23,17 @@ struct CompanionScreen: View {
     @State private var confirmingRemoveOther: Bool = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    init(state: AppState, browser: IOSCompanionBrowser?) {
-        _model = StateObject(wrappedValue: IOSCompanionModel(state: state, browser: browser))
+    init(state: AppState, browser: IOSCompanionBrowser?, network: IOSNetworkScanners?) {
+        _model = StateObject(wrappedValue: IOSCompanionModel(state: state, browser: browser, network: network))
     }
 
     var body: some View {
         Form {
+            if model.needsExplanation {
+                Section {
+                    ExplanationCard(title: IOSNetworkText.companionTitle, onContinue: model.continueAfterExplanation)
+                }
+            }
             if let desktop = state.companionDesktop {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -47,7 +52,7 @@ struct CompanionScreen: View {
                         } label: {
                             Label(IOSCompanionText.refreshButton, systemImage: "arrow.clockwise")
                         }
-                        .disabled(state.companionStatus == .checking)
+                        .disabled(state.companionStatus == .checking || model.needsExplanation)
                         .accessibilityIdentifier("companion.refresh")
                     }
                     Button(role: .destructive) {
@@ -240,7 +245,7 @@ struct CompanionScreen: View {
 
     private var pairSection: some View {
         Section {
-            if model.code == nil {
+            if model.code == nil && !model.needsExplanation {
                 PairingScannerView(onCode: { (value: String) in
                     model.scanned(value)
                 })
@@ -250,7 +255,7 @@ struct CompanionScreen: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
-                .disabled(model.isPairing)
+                .disabled(model.isPairing || model.needsExplanation)
                 .accessibilityLabel(Text(IOSCompanionText.textLabel))
                 .accessibilityIdentifier("companion.text")
             if let problem = model.problem {
@@ -300,14 +305,14 @@ struct CompanionScreen: View {
     }
 }
 
-/// Local Network access is off: the one line, with Open Settings (the scanner picker's words).
+/// Local Network access is off: the one line, with Open Settings.
 private struct CompanionNetworkLine: View {
     @ObservedObject var browser: IOSCompanionBrowser
 
     var body: some View {
         if browser.accessDenied {
             Section {
-                Text(IOSNetworkText.deniedLine)
+                Text(IOSNetworkText.companionDeniedLine)
                     .accessibilityIdentifier("companion.denied")
                 Button(IOSNetworkText.settingsButton) {
                     guard let url = URL(string: UIApplication.openSettingsURLString) else { return }

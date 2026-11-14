@@ -954,7 +954,7 @@ struct ScanScreen: View {
     private func sheetContent(_ group: ScanOptionGroup) -> some View {
         switch group {
         case .options:
-            OptionsScreen(blocked: saveBlocked, companion: companion, onType: pickKind, onAction: runAction,
+            OptionsScreen(blocked: saveBlocked, companion: companion, network: picker.network, onType: pickKind, onAction: runAction,
                           onPresetApplied: closeOptions, onTroubleshoot: openPickerTroubleshooter, onDone: closeOptions,
                           onPairing: { (open: Bool) -> Void in pairing = open })
         case .scanner:

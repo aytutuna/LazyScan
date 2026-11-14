@@ -330,7 +330,7 @@ final class IOSScannerPickerTests: XCTestCase {
         let check: TroubleshootCheck? = Troubleshooter.diagnose(state.troubleshootSnapshot())
             .first(where: { (found: TroubleshootCheck) -> Bool in found.id == "localNetwork" })
         XCTAssertEqual(check?.actions, [.openAppSettings])
-        XCTAssertEqual(IOSNetworkText.deniedLine, "Local Network access is off.")
+        XCTAssertEqual(IOSNetworkText.deniedLine, "Scanners need Local Network access.")
 
         // Access turned on again in Settings: the system retries and the browsers are ready.
         browsers.made[0].onStatus?(.ready)
@@ -532,11 +532,13 @@ final class IOSScannerPickerTests: XCTestCase {
     func test_networkTexts_areShort() {
         prepare()
         let titles: [String] = [IOSNetworkText.explanationTitle, IOSNetworkText.addTitle, IOSNetworkText.certificateTitle,
-                                IOSNetworkText.pickerTitle, IOSNetworkText.noScanner, TroubleshooterScreen.title]
+                                IOSNetworkText.pickerTitle, IOSNetworkText.noScanner, IOSNetworkText.companionTitle,
+                                TroubleshooterScreen.title]
         for title in titles {
             XCTAssertTrue(StatusLine.words(title) <= 5, title)
         }
-        let lines: [String] = [IOSNetworkText.explanationLine, IOSNetworkText.deniedLine, IOSNetworkText.addLine,
+        let lines: [String] = [IOSNetworkText.explanationLine, IOSNetworkText.deniedLine, IOSNetworkText.companionDeniedLine,
+                               IOSNetworkText.addLine,
                                IOSNetworkText.certificateLine, IOSNetworkText.certificateCauses, IOSNetworkText.networkOff, IOSNetworkText.demoLine]
         for line in lines {
             XCTAssertTrue(StatusLine.words(line) <= 9, line)
