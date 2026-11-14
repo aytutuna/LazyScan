@@ -18,6 +18,8 @@ struct InspectorView: View {
     @State private var showNamingHelp = false
     @State private var showSavePresetAlert = false
     @State private var newPresetName = ""
+    @State private var presetToRename: Preset?
+    @State private var renamedPresetName = ""
     @State private var showSplitSteps = false
     @State private var customCopyPicked = false
 
@@ -40,6 +42,18 @@ struct InspectorView: View {
         } message: {
             Text("The current scan settings will be saved as a reusable preset.")
         }
+        .alert("Rename preset", isPresented: renamingPreset) {
+            TextField("Preset name", text: $renamedPresetName)
+            Button("Rename") {
+                if let preset = presetToRename { state.renamePreset(id: preset.id, to: renamedPresetName) }
+            }
+            .disabled(renamedPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private var renamingPreset: Binding<Bool> {
+        Binding(get: { presetToRename != nil }, set: { if !$0 { presetToRename = nil } })
     }
 
     // MARK: Form
@@ -1478,6 +1492,21 @@ struct InspectorView: View {
                     showSavePresetAlert = true
                 }
                 if !state.presets.isEmpty {
+                    Menu("Update preset") {
+                        ForEach(state.presets) { preset in
+                            Button(preset.name) {
+                                state.updatePreset(id: preset.id)
+                            }
+                        }
+                    }
+                    Menu("Rename preset") {
+                        ForEach(state.presets) { preset in
+                            Button(preset.name) {
+                                renamedPresetName = preset.name
+                                presetToRename = preset
+                            }
+                        }
+                    }
                     Menu("Delete preset") {
                         ForEach(state.presets) { preset in
                             Button(preset.name, role: .destructive) {

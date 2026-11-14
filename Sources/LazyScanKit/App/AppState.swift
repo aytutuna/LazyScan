@@ -2963,6 +2963,18 @@ public final class AppState: ObservableObject {
         return true
     }
 
+    /// Overwrites a preset's settings with the current ones, keeping its name. Returns whether it was
+    /// updated (false for a preset that is gone).
+    @discardableResult
+    public func updatePreset(id: UUID) -> Bool {
+        guard let index = presets.firstIndex(where: { $0.id == id }) else { return false }
+        presets[index].settings = settings
+        if !presetStore.save(presets) {
+            errorMessage = L10n.t("The preset “{0}” could not be saved.", presets[index].name)
+        }
+        return true
+    }
+
     // MARK: Helpers
 
     /// Shows the file in Finder, selected (`FileActionService.reveal`).
