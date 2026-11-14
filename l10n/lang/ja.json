@@ -2149,7 +2149,6 @@
     "%@, step %lld of %lld: %@": "%1$@、全%3$lld手順中の%2$lld番目: %4$@",
     "%@. Scan the rest of the back sides, scan them again, or combine the pages as they are.": "%@。残りの裏面をスキャンするか、裏面をスキャンし直すか、このままページを結合してください。",
     "%lld px": "%lld px",
-    "%lld × %lld px · %@ × %@ in": "%lld × %lld px · %@ × %@インチ",
     "A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.": "iCloud DriveまたはOneDriveで同期されるフォルダです。iPhoneがこのMacに接続できないとき、書類はここに置かれます。書類は、このMacとiPhoneだけが知っているキーで暗号化されます。",
     "A scan or save is still running.": "スキャンまたは保存を実行中です。",
     "Add a printer in System Settings → Printers & Scanners, then look again.": "“システム設定”＞“プリンタとスキャナ”でプリンタを追加してから、もう一度探してください。",

@@ -2149,7 +2149,6 @@
     "%@, step %lld of %lld: %@": "%@، الخطوة %lld من %lld: %@",
     "%@. Scan the rest of the back sides, scan them again, or combine the pages as they are.": "%@. يمكن مسح بقية الأوجه الخلفية ضوئيًا، أو إعادة مسحها، أو دمج الصفحات كما هي.",
     "%lld px": "%lld px",
-    "%lld × %lld px · %@ × %@ in": "%lld × %lld px · %@ × %@ بوصة",
     "A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.": "مجلد تتم مزامنته عبر iCloud Drive أو OneDrive. يضع الهاتف المستندات فيه عندما يتعذر عليه الوصول إلى جهاز Mac هذا، وتكون مشفّرة بمفتاح لا يعرفه سوى جهاز Mac هذا والهاتف.",
     "A scan or save is still running.": "لا تزال عملية مسح ضوئي أو حفظ جارية.",
     "Add a printer in System Settings → Printers & Scanners, then look again.": "يمكن إضافة طابعة من إعدادات النظام › الطابعات والماسحات الضوئية، ثم إعادة البحث.",

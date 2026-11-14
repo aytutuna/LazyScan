@@ -2149,7 +2149,6 @@
     "%@, step %lld of %lld: %@": "%@, шаг %lld из %lld: %@",
     "%@. Scan the rest of the back sides, scan them again, or combine the pages as they are.": "%@. Отсканируйте оставшиеся обратные стороны, отсканируйте их заново или объедините страницы как есть.",
     "%lld px": "%lld пикс.",
-    "%lld × %lld px · %@ × %@ in": "%lld × %lld пикс. · %@ × %@ дюйм.",
     "A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.": "Папка, которая синхронизируется через iCloud Drive или OneDrive. Если телефону не удается связаться с этим Mac, он кладет документы сюда. Они зашифрованы ключом, который есть только у этого Mac и телефона.",
     "A scan or save is still running.": "Сканирование или сохранение еще идет.",
     "Add a printer in System Settings → Printers & Scanners, then look again.": "Добавьте принтер в разделе «Принтеры и сканеры» Системных настроек и повторите поиск.",

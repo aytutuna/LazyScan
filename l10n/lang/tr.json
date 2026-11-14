@@ -2150,7 +2150,6 @@
     "%@, step %lld of %lld: %@": "%@, adım %lld / %lld: %@",
     "%@. Scan the rest of the back sides, scan them again, or combine the pages as they are.": "%@. Kalan arka yüzleri tarayın, arka yüzleri baştan tarayın ya da sayfaları olduğu gibi birleştirin.",
     "%lld px": "%lld px",
-    "%lld × %lld px · %@ × %@ in": "%lld × %lld px · %@ × %@ inç",
     "A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.": "iCloud Drive veya OneDrive ile eşzamanlanan bir klasör. Telefon bu Mac’e ulaşamadığında belgeleri buraya koyar; belgeler yalnızca bu Mac ile telefonun bildiği bir anahtarla şifrelenir.",
     "A scan or save is still running.": "Bir tarama ya da kaydetme işlemi sürüyor.",
     "Add a printer in System Settings → Printers & Scanners, then look again.": "“Sistem Ayarları → Yazıcılar ve Tarayıcılar” bölümünden bir yazıcı ekleyin, sonra yeniden arayın.",

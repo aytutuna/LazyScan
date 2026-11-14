@@ -2149,7 +2149,6 @@
     "%@, step %lld of %lld: %@": "%@, Schritt %lld von %lld: %@",
     "%@. Scan the rest of the back sides, scan them again, or combine the pages as they are.": "%@. Scanne die übrigen Rückseiten, scanne sie neu oder führe die Seiten so zusammen, wie sie sind.",
     "%lld px": "%lld px",
-    "%lld × %lld px · %@ × %@ in": "%lld × %lld px · %@ × %@ Zoll",
     "A folder synced by iCloud Drive or OneDrive. The phone puts documents here when it cannot reach this Mac; they are encrypted with a key only this Mac and the phone know.": "Ein über iCloud Drive oder OneDrive synchronisierter Ordner. Erreicht das Telefon diesen Mac nicht, legt es Dokumente hier ab, verschlüsselt mit einem Schlüssel, den nur dieser Mac und das Telefon kennen.",
     "A scan or save is still running.": "Es wird noch gescannt oder gesichert.",
     "Add a printer in System Settings → Printers & Scanners, then look again.": "Füge in „Systemeinstellungen“ → „Drucker & Scanner“ einen Drucker hinzu und suche dann erneut.",
