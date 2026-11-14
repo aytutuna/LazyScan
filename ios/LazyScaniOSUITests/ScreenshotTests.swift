@@ -134,6 +134,10 @@ final class ScreenshotTests: XCTestCase {
         let discard: XCUIElement = element(app, "copy.discard")
         if discard.waitForExistence(timeout: 5), discard.isHittable {
             discard.tap()
+            let confirm: XCUIElement = element(app, "copy.confirmDiscard")
+            if confirm.waitForExistence(timeout: 5) {
+                confirm.tap()
+            }
             waitUntilGone(printCopy)
         }
         backToDocument(app)

@@ -50,6 +50,8 @@ public final class IOSQuickScanModel: ObservableObject {
 
     public static var copyTextLabel: String { String(localized: "Copy text") }
     public static var discardLabel: String { String(localized: "Discard") }
+    public static var discardTitle: String { String(localized: "Discard the page?") }
+    public static var discardLine: String { String(localized: "The page has not been saved.") }
     public static var title: String { IOSScanKind.text.title }
 
     public func save() {

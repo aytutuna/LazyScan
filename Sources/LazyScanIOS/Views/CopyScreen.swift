@@ -8,13 +8,14 @@ import UIKit
 /// large, with how many there are when several, then Copies, Fit to page (on and fixed, with why, when a
 /// page has no known size), Also save a PDF, the printer the copy goes to and the status while it prints;
 /// Print shows AirPrint's printer picker, Copy again prints on the printer picked last without it, and
-/// Add page closes the screen to shoot another page into the copy, which comes back with it; Discard lets
+/// Add page closes the screen to shoot another page into the copy, which comes back with it; Discard asks, then lets
 /// the pages go and closes the screen (Close, for the queue's pages printed from Options, which stay in
 /// the queue; the screen is then Print, with Print again, and no Add page). It stays open after printing,
 /// for another copy, with Done instead of Discard and no Add page. It shows the error alert itself, since the root's cannot show over it.
 struct CopyScreen: View {
     @ObservedObject var model: IOSCopyModel
     @EnvironmentObject private var state: AppState
+    @State private var asksDiscard: Bool = false
     /// Closes the screen with the pages kept, so the camera can take another.
     let onAddPage: () -> Void
 
@@ -51,7 +52,7 @@ struct CopyScreen: View {
                         .accessibilityIdentifier("copy.discard")
                     } else {
                         Button(IOSCopyText.discardLabel, role: .destructive) {
-                            model.discard()
+                            asksDiscard = true
                         }
                         .disabled(!model.canAct)
                         .accessibilityHint(Text(IOSCopyText.discardHint))
@@ -64,6 +65,15 @@ struct CopyScreen: View {
                     }
                 }
             }
+        }
+        .alert(IOSCopyText.discardTitle, isPresented: $asksDiscard) {
+            Button(IOSCopyText.discardLabel, role: .destructive) {
+                model.discard()
+            }
+            .accessibilityIdentifier("copy.confirmDiscard")
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(IOSCopyText.discardLine)
         }
         .modifier(ErrorAlert(state: state))
     }

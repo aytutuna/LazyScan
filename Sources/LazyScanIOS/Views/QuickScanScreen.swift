@@ -13,6 +13,7 @@ import VisionKit
 struct QuickScanScreen: View {
     @ObservedObject var model: IOSQuickScanModel
     @EnvironmentObject private var state: AppState
+    @State private var asksDiscard: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -26,9 +27,7 @@ struct QuickScanScreen: View {
                                 .accessibilityLabel(Text("Page"))
                                 .accessibilityIdentifier("quick.image")
                         } else {
-                            Image(decorative: image, scale: 1)
-                                .resizable()
-                                .scaledToFit()
+                            ZoomablePage(image: image)
                                 .padding(12)
                                 .accessibilityLabel(Text("Page"))
                                 .accessibilityIdentifier("quick.image")
@@ -70,7 +69,7 @@ struct QuickScanScreen: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(IOSQuickScanModel.discardLabel, role: .destructive) {
-                        model.discard()
+                        asksDiscard = true
                     }
                     .disabled(!model.canAct)
                     .accessibilityIdentifier("quick.discard")
@@ -81,6 +80,14 @@ struct QuickScanScreen: View {
                     }
                 }
             }
+        }
+        .alert(IOSQuickScanModel.discardTitle, isPresented: $asksDiscard) {
+            Button(IOSQuickScanModel.discardLabel, role: .destructive) {
+                model.discard()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(IOSQuickScanModel.discardLine)
         }
         .modifier(ErrorAlert(state: state))
     }
@@ -95,20 +102,20 @@ struct LiveTextImageView: UIViewRepresentable {
         LiveTextCoordinator()
     }
 
-    func makeUIView(context: Context) -> UIImageView {
-        let view: UIImageView = UIImageView(image: UIImage(cgImage: image))
-        view.contentMode = .scaleAspectFit
-        view.isUserInteractionEnabled = true
+    func makeUIView(context: Context) -> ZoomingImageView {
+        let view: ZoomingImageView = ZoomingImageView()
+        view.show(image)
+        view.imageView.isUserInteractionEnabled = true
         let interaction: ImageAnalysisInteraction = ImageAnalysisInteraction()
         interaction.preferredInteractionTypes = .automatic
-        view.addInteraction(interaction)
+        view.imageView.addInteraction(interaction)
         context.coordinator.analyze(image, interaction: interaction)
         return view
     }
 
-    func updateUIView(_ uiView: UIImageView, context: Context) {}
+    func updateUIView(_ uiView: ZoomingImageView, context: Context) {}
 
-    static func dismantleUIView(_ uiView: UIImageView, coordinator: LiveTextCoordinator) {
+    static func dismantleUIView(_ uiView: ZoomingImageView, coordinator: LiveTextCoordinator) {
         coordinator.cancel()
     }
 }

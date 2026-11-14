@@ -16,6 +16,8 @@ public enum IOSCopyText {
     public static var againLabel: String { String(localized: "Copy again") }
     public static var discardLabel: String { String(localized: "Discard") }
     public static var discardHint: String { String(localized: "Delete the page; can't be undone") }
+    public static var discardTitle: String { String(localized: "Discard the copy?") }
+    public static var discardLine: String { String(localized: "The copy has not been printed.") }
     public static var closeLabel: String { String(localized: "Close") }
     public static var doneLabel: String { String(localized: "Done") }
     public static var addPageLabel: String { String(localized: "Add page") }

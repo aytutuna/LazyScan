@@ -832,7 +832,7 @@ struct PageViewer: View {
 
 /// A page fitted whole in the space it is given, zoomed with a pinch or a double tap (back with another), and
 /// panned while zoomed; not zoomed, a swipe goes to the page viewer's next page.
-private struct ZoomablePage: UIViewRepresentable {
+struct ZoomablePage: UIViewRepresentable {
     let image: CGImage
 
     func makeUIView(context: Context) -> ZoomingImageView {
@@ -844,8 +844,8 @@ private struct ZoomablePage: UIViewRepresentable {
     }
 }
 
-private final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
-    private let imageView: UIImageView = UIImageView()
+final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
+    let imageView: UIImageView = UIImageView()
     private var shown: CGImage?
     /// The size the page was last fitted to.
     private var fittedSize: CGSize = .zero
