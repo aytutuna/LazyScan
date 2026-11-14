@@ -55,7 +55,8 @@ scanners** — including the Epson Perfection V39 II.
   Smallest; PDF/A and password-protected ones too, and added pages) and in TIFF files
   (compression 4, one page or several). A 300 dpi letter page is 33 KB instead of a 527 KB gray
   JPEG at Standard. The encoder is the app's own code, with no library, and writes the same bytes
-  on both platforms.
+  on both platforms. At Compact and Smallest a color page is stored as a 300 dpi text mask in
+  the same G4 over a 100 dpi JPEG of the rest of the page, so small color PDFs keep sharp text.
 - **One PDF writer on both platforms**: the Mac writes every PDF with the Windows PDF writer,
   ported to Swift, so the same pages give the same file, byte for byte, on both (checked against
   the same pinned files). The invisible text layer is written in a small font embedded in the

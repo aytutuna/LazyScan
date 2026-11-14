@@ -317,6 +317,17 @@ public static class WpfImageCodec
     }
 
     /// <summary>
+    /// The background of a split page (<see cref="PdfImageEncoding.SplitPage"/>) as a JPEG: gray when it has
+    /// no color and the size stores such pages gray, else color, each at the size's quality.
+    /// </summary>
+    public static byte[] EncodeBackground(RgbaImage background, PdfSizePreset size)
+    {
+        var profile = PdfImageEncoding.Profile(size);
+        bool gray = profile.AutoGray && ColorAnalysis.IsEffectivelyGray(background);
+        return EncodeJpeg(background, TextSplit.BackgroundDpi, gray ? profile.GrayQuality : profile.ColorQuality, gray);
+    }
+
+    /// <summary>
     /// A 1-bit PNG of <paramref name="image"/> thresholded as black &amp; white pages are for G4
     /// (<see cref="Bilevel.Pack(RgbaImage)"/>): lossless and small for text.
     /// </summary>

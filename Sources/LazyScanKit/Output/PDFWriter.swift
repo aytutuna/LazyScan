@@ -19,14 +19,19 @@ public enum PDFImageData: Equatable, Sendable {
     /// image with /CCITTFaxDecode (/K -1, /BlackIs1 false: black pixels decode to 0); `width` and
     /// `height` are its /Columns and /Rows.
     case ccittG4(data: Data, width: Int, height: Int)
+    /// A color page as two images: the JPEG `background`, and over it the text `mask` (CCITT G4 data,
+    /// `maskWidth` × `maskHeight` pixels, 0 = ink) painted in black as an image mask (`TextSplit`).
+    case mixed(background: Data, mask: Data, maskWidth: Int, maskHeight: Int)
 
-    /// The stored bytes.
+    /// The stored bytes: the page's own image, the background of a mixed page.
     public var data: Data {
         switch self {
         case .jpeg(let bytes):
             return bytes
         case .ccittG4(let bytes, _, _):
             return bytes
+        case .mixed(let background, _, _, _):
+            return background
         }
     }
 
@@ -128,7 +133,8 @@ extension PDFPageSize {
 /// Objects are numbered in a fixed order: 1 Catalog, 2 Pages; when any page has text, the six
 /// objects of the text layer's font (Type0 font, CIDFont, FontDescriptor, FontFile2, CIDToGIDMap,
 /// ToUnicode); the Info dictionary; for PDF/A, the XMP Metadata and the sRGB profile; for a protected
-/// file, the Encrypt dictionary; then Page, Image and Contents for each page.
+/// file, the Encrypt dictionary; then Page, Image and Contents for each page, then the mask image of
+/// each mixed page in page order.
 ///
 /// A protected file is PDF 1.7 with Adobe's extension level 8 declared in the catalog (what AES-256
 /// readers look for), every stream and string encrypted with its own random file key
@@ -277,14 +283,21 @@ public enum PDFWriter {
 
         if let encryption { try w.writeObject(encryptObject, encryption.dictionary) }
 
+        var masks = 0
         for i in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
             progress?(ScanProgress(fraction: Double(i) / Double(pages.count),
                                   message: L10n.t("Writing page {0} of {1}…", i + 1, pages.count)))
             let pageObject = firstPageObject + i * 3
+            let page: PDFPageInput = try pages.page(i)
+            var maskObject = 0
+            if case .mixed = page.image {
+                maskObject = firstPageObject + pages.count * 3 + masks
+                masks += 1
+            }
             try writePage(w, pageObject: pageObject, imageObject: pageObject + 1, contentsObject: pageObject + 2,
-                          parent: "2 0 R", index: i, page: try pages.page(i), fontObject: fontObject, codes: codes,
-                          pageSize: settings.pageSize, extraEntries: "")
+                          maskObject: maskObject, parent: "2 0 R", index: i, page: page, fontObject: fontObject,
+                          codes: codes, pageSize: settings.pageSize, extraEntries: "")
         }
 
         let id: [UInt8]
@@ -313,10 +326,11 @@ public enum PDFWriter {
 
     /// One page's three objects: the page (child of `parent`, its image named "Im{index}", the font
     /// `fontObject` as /F1 when it has text, then `extraEntries` at the end of its dictionary), the
-    /// image XObject and the content stream. The media box is the page's own size, or `pageSize`'s with the
+    /// image XObject and the content stream; a mixed page also writes its mask as `maskObject`, named
+    /// "Mk{index}". The media box is the page's own size, or `pageSize`'s with the
     /// image scaled down to fit and centered (`PDFPageSize.placement`).
     static func writePage(_ w: PDFObjectWriter, pageObject: Int, imageObject: Int, contentsObject: Int,
-                          parent: String, index: Int, page: PDFPageInput, fontObject: Int,
+                          maskObject: Int = 0, parent: String, index: Int, page: PDFPageInput, fontObject: Int,
                           codes: GlyphlessCodes, pageSize: PDFPageSize, extraEntries: String) throws {
         // PDF media box in points: pixels / dpi × 72.
         let dpi = Double(max(page.dpi, 1))
@@ -326,8 +340,9 @@ public enum PDFWriter {
         let pageHasText = !lines.isEmpty
 
         let fontResource = pageHasText ? " /Font <</F1 \(fontObject) 0 R>>" : ""
+        let maskResource = maskObject > 0 ? " /Mk\(index) \(maskObject) 0 R" : ""
         var dictionary = "<</Type /Page /Parent \(parent) /MediaBox [0 0 \(f(place.pageWidth)) \(f(place.pageHeight))] "
-        dictionary += "/Resources <</XObject <</Im\(index) \(imageObject) 0 R>>\(fontResource)>> "
+        dictionary += "/Resources <</XObject <</Im\(index) \(imageObject) 0 R\(maskResource)>>\(fontResource)>> "
         dictionary += "/Contents \(contentsObject) 0 R\(extraEntries)>>"
         try w.writeObject(pageObject, dictionary)
 
@@ -335,8 +350,11 @@ public enum PDFWriter {
         // when only a preview was available or the image was downsampled; the content stream's cm
         // scales the unit-square image onto its place on the media box either way.
         try w.writeStream(imageObject, imageEntries(page), page.image.data)
+        if case .mixed(_, let mask, let maskWidth, let maskHeight) = page.image {
+            try w.writeStream(maskObject, maskEntries(width: maskWidth, height: maskHeight), mask)
+        }
 
-        let contents = contentStream(index, place: place, lines: lines, codes: codes)
+        let contents = contentStream(index, place: place, lines: lines, codes: codes, masked: maskObject > 0)
         if pageHasText {
             try w.writeStream(contentsObject, "/Filter /FlateDecode", Data(FlateEncoder.zlib([UInt8](contents))))
         } else {
@@ -354,7 +372,7 @@ public enum PDFWriter {
             entries += "/ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /CCITTFaxDecode "
             entries += "/DecodeParms <</K -1 /Columns \(width) /Rows \(height) /BlackIs1 false>>"
             return entries
-        case .jpeg(let jpeg):
+        case .jpeg(let jpeg), .mixed(let jpeg, _, _, _):
             var imageWidth = page.pixelWidth
             var imageHeight = page.pixelHeight
             var components = 3
@@ -368,6 +386,15 @@ public enum PDFWriter {
             entries += "/ColorSpace \(colorSpace) /BitsPerComponent 8 /Filter /DCTDecode"
             return entries
         }
+    }
+
+    /// The mask image's dictionary entries: the same G4 data as a black & white page, as an image mask
+    /// that paints its 0 pixels (the ink) in the fill color.
+    static func maskEntries(width: Int, height: Int) -> String {
+        var entries = "/Type /XObject /Subtype /Image /Width \(width) /Height \(height) "
+        entries += "/ImageMask true /BitsPerComponent 1 /Filter /CCITTFaxDecode "
+        entries += "/DecodeParms <</K -1 /Columns \(width) /Rows \(height) /BlackIs1 false>>"
+        return entries
     }
 
     /// The text layer's font, objects `first` to first + 5: a Type0 font with Identity-H encoding
@@ -412,8 +439,10 @@ public enum PDFWriter {
     // MARK: - Content stream
 
     private static func contentStream(_ pageIndex: Int, place: PDFPagePlacement,
-                                      lines: [OCRLine], codes: GlyphlessCodes) -> Data {
-        var text = "q\n\(f(place.width)) 0 0 \(f(place.height)) \(f(place.x)) \(f(place.y)) cm\n/Im\(pageIndex) Do\nQ\n"
+                                      lines: [OCRLine], codes: GlyphlessCodes, masked: Bool) -> Data {
+        var text = "q\n\(f(place.width)) 0 0 \(f(place.height)) \(f(place.x)) \(f(place.y)) cm\n/Im\(pageIndex) Do\n"
+        if masked { text += "0 g\n/Mk\(pageIndex) Do\n" }
+        text += "Q\n"
         if !lines.isEmpty {
             // Invisible text layer: mode 3 = neither fill nor stroke, but selectable/searchable.
             // OCR boxes are normalized with a bottom-left origin, the same origin as PDF user

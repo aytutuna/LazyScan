@@ -5,8 +5,8 @@ using System.Text;
 namespace LazyScan.Core;
 
 /// <summary>
-/// A page image as a PDF stores it: a JPEG (<see cref="PdfJpegImage"/>) or CCITT G4 data
-/// (<see cref="PdfCcittImage"/>). The image may be smaller than the page (a downsampled image,
+/// A page image as a PDF stores it: a JPEG (<see cref="PdfJpegImage"/>), CCITT G4 data
+/// (<see cref="PdfCcittImage"/>) or a JPEG with a text mask over it (<see cref="PdfMixedImage"/>). The image may be smaller than the page (a downsampled image,
 /// or a preview used when the full-resolution spool file is missing); it is stretched across it.
 /// The bytes are held in memory, or in a file that is read each time <see cref="Data"/> is asked
 /// for, so a long document is not held whole while it is written.
@@ -74,6 +74,21 @@ public sealed record PdfCcittImage : PdfImageData
         new(CcittG4Encoder.Encode(image), image.Width, image.Height);
 }
 
+/// <summary>
+/// A color page as two images: the JPEG background (<see cref="PdfImageData.Data"/>, embedded as a
+/// <see cref="PdfJpegImage"/> is), and over it the text <see cref="Mask"/> (G4 data, 0 = ink) painted in
+/// black as an image mask (<see cref="TextSplit"/>).
+/// </summary>
+public sealed record PdfMixedImage : PdfImageData
+{
+    public PdfMixedImage(byte[] background, PdfCcittImage mask) : base(background) => Mask = mask;
+
+    /// <summary>A background JPEG kept in <paramref name="file"/>, read when the page is written.</summary>
+    public PdfMixedImage(string file, PdfCcittImage mask) : base(file) => Mask = mask;
+
+    public PdfCcittImage Mask { get; }
+}
+
 /// <summary>One page to be written into a PDF.</summary>
 /// <param name="Image">The page image (see <see cref="PdfImageData"/>).</param>
 /// <param name="PixelWidth">Full-resolution page width in pixels (sizes the media box).</param>
@@ -92,7 +107,7 @@ public sealed record PdfPageInput(PdfImageData Image, int PixelWidth, int PixelH
     {
     }
 
-    /// <summary>The stored image bytes: the JPEG of a JPEG page, the G4 data of a CCITT page.</summary>
+    /// <summary>The stored image bytes: the JPEG of a JPEG page, the G4 data of a CCITT page, the background of a mixed page.</summary>
     public byte[] JpegData => Image.Data;
 }
 
@@ -325,7 +340,7 @@ public static class PdfBuilder
     /// objects of the text layer's font (Type0 font, CIDFont, FontDescriptor, FontFile2,
     /// CIDToGIDMap, ToUnicode); the Info dictionary; for PDF/A, the XMP Metadata and the sRGB
     /// profile; for a protected file, the Encrypt dictionary; then Page, Image and Contents for
-    /// each page.
+    /// each page, then the mask image of each mixed page in page order.
     /// </para>
     /// <para>
     /// A protected file is PDF 1.7 with Adobe's extension level 8 declared in the catalog (what
@@ -388,11 +403,13 @@ public static class PdfBuilder
 
         if (encryption is not null) w.WriteObject(encryptObject, encryption.Dictionary);
 
+        int masks = 0;
         for (int i = 0; i < pages.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested) throw ScanException.Cancelled();
             progress?.Invoke(Loc.T("Writing page {0} of {1}…", i + 1, pages.Count));
-            WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), "2 0 R", i, pages[i], fontObject, codes, options.PageSize, "");
+            int maskObject = pages[i].Image is PdfMixedImage ? firstPageObject + pages.Count * 3 + masks++ : 0;
+            WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), maskObject, "2 0 R", i, pages[i], fontObject, codes, options.PageSize, "");
         }
 
         byte[] id;
@@ -410,9 +427,10 @@ public static class PdfBuilder
     /// One page's three objects: the page (child of <paramref name="parent"/>, its image named
     /// "Im{index}", the font <paramref name="fontObject"/> as /F1 when it has text, then
     /// <paramref name="extraEntries"/> at the end of its dictionary), the image XObject and the
-    /// content stream. Shared by <see cref="Write"/> and <see cref="PdfAppender"/>.
+    /// content stream; a mixed page also writes its mask as <paramref name="maskObject"/>, named
+    /// "Mk{index}". Shared by <see cref="Write"/> and <see cref="PdfAppender"/>.
     /// </summary>
-    internal static void WritePage(PdfObjectWriter w, int pageObject, int imageObject, int contentsObject, string parent,
+    internal static void WritePage(PdfObjectWriter w, int pageObject, int imageObject, int contentsObject, int maskObject, string parent,
                                    int index, PdfPageInput page, int fontObject, GlyphlessCodes codes, PdfPageSize pageSize,
                                    string extraEntries)
     {
@@ -422,9 +440,10 @@ public static class PdfBuilder
         bool pageHasText = page.OcrLines is { Count: > 0 };
 
         string fontResource = pageHasText ? $" /Font <</F1 {fontObject} 0 R>>" : "";
+        string maskResource = maskObject > 0 ? $" /Mk{index} {maskObject} 0 R" : "";
         w.WriteObject(pageObject,
             $"<</Type /Page /Parent {parent} /MediaBox [0 0 {F(place.PageWidth)} {F(place.PageHeight)}] " +
-            $"/Resources <</XObject <</Im{index} {imageObject} 0 R>>{fontResource}>> " +
+            $"/Resources <</XObject <</Im{index} {imageObject} 0 R{maskResource}>>{fontResource}>> " +
             $"/Contents {contentsObject} 0 R{extraEntries}>>");
 
         // The XObject must declare the image's own dimensions, which differ from the page's
@@ -432,8 +451,12 @@ public static class PdfBuilder
         // content stream's cm scales the unit-square image onto its place on the media box either way.
         byte[] data = page.Image.Data;
         w.WriteStream(imageObject, ImageEntries(page, data), data);
+        if (page.Image is PdfMixedImage { Mask: var mask })
+        {
+            w.WriteStream(maskObject, MaskEntries(mask), mask.Data);
+        }
 
-        byte[] contents = BuildContentStream(index, place, page.OcrLines, codes);
+        byte[] contents = BuildContentStream(index, place, page.OcrLines, codes, maskObject > 0);
         if (pageHasText) w.WriteStream(contentsObject, "/Filter /FlateDecode", FlateEncoder.Zlib(contents));
         else w.WriteStream(contentsObject, "", contents);
     }
@@ -461,6 +484,15 @@ public static class PdfBuilder
         return $"/Type /XObject /Subtype /Image /Width {imageWidth} /Height {imageHeight} " +
                $"/ColorSpace {colorSpace} /BitsPerComponent 8 /Filter /DCTDecode";
     }
+
+    /// <summary>
+    /// The mask image's dictionary entries: the same G4 data as a black &amp; white page, as an image
+    /// mask that paints its 0 pixels (the ink) in the fill color.
+    /// </summary>
+    internal static string MaskEntries(PdfCcittImage mask) =>
+        $"/Type /XObject /Subtype /Image /Width {mask.Width} /Height {mask.Height} " +
+        "/ImageMask true /BitsPerComponent 1 /Filter /CCITTFaxDecode " +
+        $"/DecodeParms <</K -1 /Columns {mask.Width} /Rows {mask.Height} /BlackIs1 false>>";
 
     /// <summary>
     /// The text layer's font, objects <paramref name="first"/> to first + 5: a Type0 font with
@@ -552,10 +584,12 @@ public static class PdfBuilder
     // MARK: - Content stream
 
     private static byte[] BuildContentStream(int pageIndex, PdfPagePlacement place,
-                                             IReadOnlyList<OcrLine>? lines, GlyphlessCodes codes)
+                                             IReadOnlyList<OcrLine>? lines, GlyphlessCodes codes, bool masked)
     {
         var sb = new StringBuilder();
-        sb.Append($"q\n{F(place.Width)} 0 0 {F(place.Height)} {F(place.X)} {F(place.Y)} cm\n/Im{pageIndex} Do\nQ\n");
+        sb.Append($"q\n{F(place.Width)} 0 0 {F(place.Height)} {F(place.X)} {F(place.Y)} cm\n/Im{pageIndex} Do\n");
+        if (masked) sb.Append($"0 g\n/Mk{pageIndex} Do\n");
+        sb.Append("Q\n");
 
         if (lines is { Count: > 0 })
         {

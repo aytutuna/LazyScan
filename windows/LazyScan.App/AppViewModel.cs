@@ -4410,13 +4410,20 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             }
             // The PDF size decides how the page is stored (PdfImageEncoding): OCR above has
             // read the full pixels; the stored image may be downsampled and gray, and a black &
-            // white page is CCITT G4. The page keeps its physical size either way.
+            // white page is CCITT G4, a color page at the smaller sizes a text mask over a low-resolution
+            // background. The page keeps its physical size either way.
             PdfImageData stored = await Task.Run(() =>
             {
                 int imageDpi = PdfImageEncoding.EffectiveDpi(image.Width, prepared.PixelWidth, page.Dpi);
+                string file = Path.Combine(encodedFolder, (i + 1).ToString(CultureInfo.InvariantCulture));
+                if (PdfImageEncoding.SplitPage(image, imageDpi, page.ColorMode, s.Output.PdfSize) is { } mixed)
+                {
+                    File.WriteAllBytes(file, WpfImageCodec.EncodeBackground(mixed.Split.Background, s.Output.PdfSize));
+                    File.WriteAllBytes(file + "-mask", mixed.G4);
+                    return new PdfMixedImage(file, new PdfCcittImage(file + "-mask", mixed.Split.Width, mixed.Split.Height));
+                }
                 var plan = PdfImageEncoding.Plan(page.ColorMode, imageDpi, s.Output.PdfSize, image);
                 var pixels = PdfImageEncoding.Downsample(image, imageDpi, plan);
-                string file = Path.Combine(encodedFolder, (i + 1).ToString(CultureInfo.InvariantCulture));
                 if (plan.IsBilevel)
                 {
                     File.WriteAllBytes(file, CcittG4Encoder.Encode(pixels));

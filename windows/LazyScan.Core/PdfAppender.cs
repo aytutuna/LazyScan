@@ -256,7 +256,8 @@ public static class PdfAppender
         bool hasText = pages.Any(p => p.OcrLines is { Count: > 0 });
 
         // Every new object, and an update's cross-reference stream, within PDF's object numbers.
-        long lastObject = reader.NextObjectNumber + (hasText ? 6L : 0L) + pages.Count * 3L - 1 + (reader.XrefIsStream ? 1 : 0);
+        long lastObject = reader.NextObjectNumber + (hasText ? 6L : 0L) + pages.Count * 3L - 1 + (reader.XrefIsStream ? 1 : 0)
+                          + pages.Count(p => p.Image is PdfMixedImage);
         if (lastObject > PdfReaderLite.MaxObjectNumber)
         {
             throw new PdfReadException(PdfReadProblem.Unsupported, "The file has no object numbers left for the new pages.");
@@ -275,6 +276,7 @@ public static class PdfAppender
         if (hasText) next += 6;
         int firstPage = next;
         next += pages.Count * 3;
+        int masks = 0;
 
         int rootGeneration = reader.GenerationOf(root.Number);
         string parent = $"{root.Number} {rootGeneration} R";
@@ -296,9 +298,11 @@ public static class PdfAppender
                 extra += $" /CropBox [0 0 {PdfBuilder.F(place.PageWidth)} {PdfBuilder.F(place.PageHeight)}]";
             }
             int pageObject = firstPage + i * 3;
-            PdfBuilder.WritePage(w, pageObject, pageObject + 1, pageObject + 2, parent, i, page, fontObject, codes, pageSize, extra);
+            int maskObject = page.Image is PdfMixedImage ? next + masks++ : 0;
+            PdfBuilder.WritePage(w, pageObject, pageObject + 1, pageObject + 2, maskObject, parent, i, page, fontObject, codes, pageSize, extra);
             kids.Add(new PdfReference(pageObject, 0));
         }
+        next += masks;
 
         // The root again: its kids end with the new pages, its count says every page under it.
         var updatedRoot = rootDictionary.Copy();

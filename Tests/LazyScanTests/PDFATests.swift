@@ -100,6 +100,16 @@ final class PDFATests: XCTestCase {
                             pixelHeight: image.height, dpi: 100, ocrLines: scriptLines())
     }
 
+    /// A color page as a mask over a background (the Compact and Smallest sizes).
+    private static func mixedPage() -> PDFPageInput {
+        let image = EnhancerPages.shadowed(width: 240, height: 320, stamp: false, picture: false)
+        let result = PDFImageEncoding.splitPage(rgba: image.pixels, width: 240, height: 320, imageDPI: 300,
+                                                mode: .color, size: .smallest)!
+        let stored = PDFImageData.mixed(background: PDFWriterTests.tinyJPEGData, mask: Data(result.g4),
+                                        maskWidth: result.split.width, maskHeight: result.split.height)
+        return PDFPageInput(image: stored, pixelWidth: 240, pixelHeight: 320, dpi: 300, ocrLines: scriptLines())
+    }
+
     private static func has(_ pdf: Data, _ needle: String) -> Bool { PDFWriterTests.has(pdf, needle) }
 
     // MARK: - Dates, strings, titles
@@ -354,6 +364,8 @@ final class PDFATests: XCTestCase {
             (name: "pdfa-image-only.pdf", pages: [Self.page()], title: nil),
             // A black & white page: a 1-bit CCITT G4 image in /DeviceGray.
             (name: "pdfa-black-and-white.pdf", pages: [Self.blackAndWhitePage(), Self.page()], title: "Siyah beyaz"),
+            // A mixed page: an image mask painted in /DeviceGray over the background.
+            (name: "pdfa-mixed.pdf", pages: [Self.mixedPage(), Self.page()], title: "Karma sayfa"),
         ]
         for file in files {
             let url = folder.appendingPathComponent(file.name)

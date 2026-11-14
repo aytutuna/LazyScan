@@ -77,10 +77,10 @@ final class PDFImageEncodingTests: XCTestCase {
                                       bilevelMaxDPI: 600))
         XCTAssertEqual(PDFImageEncoding.profile(.compact),
                        PDFSizeProfile(maxDPI: 200, colorQuality: 0.65, grayQuality: 0.70, autoGray: true,
-                                      bilevelMaxDPI: 300))
+                                      bilevelMaxDPI: 300, textMask: true))
         XCTAssertEqual(PDFImageEncoding.profile(.smallest),
                        PDFSizeProfile(maxDPI: 150, colorQuality: 0.50, grayQuality: 0.55, autoGray: true,
-                                      bilevelMaxDPI: 300))
+                                      bilevelMaxDPI: 300, textMask: true))
     }
 
     func test_displayOrder_largestFirst_everySizeOnce() {

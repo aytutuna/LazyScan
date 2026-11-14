@@ -2536,6 +2536,7 @@ public enum PDFA {
 }
 public enum PDFImageData: Equatable, Sendable {             // Output/PDFWriter.swift
     case jpeg(Data); case ccittG4(data: Data, width: Int, height: Int)
+    case mixed(background: Data, mask: Data, maskWidth: Int, maskHeight: Int)   // C# PdfMixedImage; data = the background
     var data: Data; static func encodeCCITTG4(_ image: RgbaImage) -> PDFImageData   // C# PdfCcittImage.Encode
 }
 public struct PDFPageInput {                                // C# PdfPageInput
@@ -2765,6 +2766,18 @@ both. The plan that chooses G4 is shared (`PdfImageEncoding` above: `bilevelG4`,
 same names and the same bytes (`Output/CCITTG4Encoder.swift`, `Pipeline/Bilevel.swift`,
 `Output/BilevelTIFF.swift`, and `PDFImageData.ccittG4` in `Output/PDFWriter.swift`). No setting
 is stored: the color mode and the PDF size decide.
+
+A color page at Compact and Smallest is stored as a text mask over a background instead
+(`PdfSizeProfile.TextMask`, `PdfImageEncoding.SplitPage` / `PDFImageEncoding.splitPage`): the page
+is cut by `TextSplit` into a one-bit mask at the black & white limit (300 dpi) and a background of
+about 100 dpi, the mask is the same G4 data, and the background a JPEG (gray when it has no color).
+The PDF page has two images: the background as the page's image `Im{n}`, and the mask as an image
+mask `Mk{n}` (`/ImageMask true`, G4 with /BlackIs1 false, so the ink pixels paint) drawn over it in
+black (`0 g`). The mask objects follow the pages' objects, one for each mixed page in page order
+(`PdfMixedImage` / `PDFImageData.mixed`; a PDF/A file keeps them, a protected one encrypts them, and
+pages added to a PDF number them after the new pages). A page whose G4 mask is over a tenth of its
+1-bit size is not text and is stored as a plain JPEG page, and so is a page whose ink is colored
+(more than `ColorAnalysis` 0.1 % of the ink pixels have a chroma above 32), since the mask paints in black.
 ```csharp
 public static class Bilevel {                  // 1 bit per pixel, rows from the top, each on a byte boundary
     const int Threshold = 128;                 // luma below it is black (Rec. 601, ×1000 integer weights, +500, /1000)
@@ -2782,6 +2795,7 @@ public abstract record PdfImageData(byte[] Data);
 public sealed record PdfJpegImage(byte[] Data) : PdfImageData(Data);
 public sealed record PdfCcittImage(byte[] Data, int Width, int Height) : PdfImageData(Data)
     { static PdfCcittImage Encode(RgbaImage image); }
+public sealed record PdfMixedImage(byte[] background | string file, PdfCcittImage Mask) : PdfImageData  // the background JPEG is Data
 // PdfPageInput(PdfImageData Image, int PixelWidth, int PixelHeight, int Dpi, IReadOnlyList<OcrLine>? OcrLines);
 // the byte[] constructor (a JPEG page) and `byte[] JpegData` (= Image.Data) are kept.
 public sealed record BilevelTiffPage(RgbaImage Image, int Dpi);
@@ -3045,7 +3059,8 @@ public enum ColorAnalysis {
 
 public enum PDFImageKind: Equatable, Sendable { case jpegColor, jpegGray, bilevelG4 }
 public struct PDFSizeProfile: Equatable, Sendable {
-    maxDPI: Int?, colorQuality, grayQuality: Double, autoGray: Bool, bilevelMaxDPI: Int? /* init default nil */
+    maxDPI: Int?, colorQuality, grayQuality: Double, autoGray: Bool, bilevelMaxDPI: Int? /* init default nil */,
+    textMask: Bool /* init default false; compact and smallest only */
 }
 public struct PDFImagePlan: Equatable, Sendable {
     targetDPI: Int, kind: PDFImageKind, quality: Double
@@ -3070,6 +3085,13 @@ public enum PDFImageEncoding {
     public static func effectiveDPI(imageWidth: Int, pagePixelWidth: Int, pageDPI: Int) -> Int
     public static func targetSize(width: Int, height: Int, imageDPI: Int, targetDPI: Int) -> (width: Int, height: Int)
     public static func downsample(rgba: [UInt8], width: Int, height: Int, newWidth: Int, newHeight: Int) -> [UInt8]  // box filter
+    public static let maxMaskShare = 0.1   // a G4 mask over this share of its 1-bit page is not text
+    /// A color page (mode .color) of a size with textMask: downsampled to the black & white plan's
+    /// resolution, cut by TextSplit.split, its mask as G4; nil for any other page or a mask over maxMaskShare.
+    public static func splitPage(rgba: [UInt8], width: Int, height: Int, imageDPI: Int, mode: ColorMode,
+                                 size: PDFSizePreset) -> (split: TextSplit, g4: [UInt8])?
+    // Apple only: the split page's background as an ImageIO JPEG, gray when it has no color and the size has autoGray.
+    public static func encodedBackground(_ background: RgbaImage, size: PDFSizePreset) -> Data?
     // Apple only: the ImageIO JPEG PDFBuilder stores (and a JPEG-backed CGImage of it). A page
     // planned as G4 is given as a gray JPEG planned as a gray page (plan(mode: .grayscale, ...,
     // looksGray: true)), which is also the plan it returns; PDFBuilder never asks for one (it
@@ -3080,7 +3102,7 @@ public enum PDFImageEncoding {
     public static func readJPEGHeader(_ data: Data) -> JPEGHeader?
 }
 ```
-Twins of `windows/LazyScan.Core/PdfImageEncoding.cs` (`PdfSizePreset`, `PdfSizePresets.DisplayOrder`, `ModelLabels.Label` / `Hint`, `PdfSizeProfile`, `PdfImagePlan`, `PdfImageEncoding.Plan` / `EffectiveDpi` / `TargetSize` / `Downsample`) and `ColorAnalysis.cs` (`IsEffectivelyGray`, `GrayPixels`); `PdfImageEncodingTests` and `ColorAnalysisTests` are the same cases on both sides. `readJPEGHeader` is the twin of `PdfBuilder.TryReadJpegHeader`, which declares a one-component JPEG `/DeviceGray`. Windows encodes the planned JPEG with WIC (`WpfImageCodec.EncodeJpeg(image, dpi, quality, gray)`) and a planned G4 page with `PdfCcittImage.Encode`; the Mac encodes the JPEG with ImageIO and a planned G4 page with `PDFImageData` / `CCITTG4Encoder` through `PDFWriter` (see "CCITT G4 for black & white pages"). The size details are the same on both platforms and name the black & white (G4) limit too ("Up to 300 dpi (black & white 600), gray pages saved in gray.", "Up to 200 dpi (black & white 300), more compression.", "Up to 150 dpi (black & white 300), most compression."); the hint case of `PdfImageEncodingTests` is the same on both sides.
+Twins of `windows/LazyScan.Core/PdfImageEncoding.cs` (`PdfSizePreset`, `PdfSizePresets.DisplayOrder`, `ModelLabels.Label` / `Hint`, `PdfSizeProfile`, `PdfImagePlan`, `PdfImageEncoding.Plan` / `EffectiveDpi` / `TargetSize` / `Downsample`) and `ColorAnalysis.cs` (`IsEffectivelyGray`, `GrayPixels`); `PdfImageEncodingTests` and `ColorAnalysisTests` are the same cases on both sides. `readJPEGHeader` is the twin of `PdfBuilder.TryReadJpegHeader`, which declares a one-component JPEG `/DeviceGray`. Windows encodes the planned JPEG with WIC (`WpfImageCodec.EncodeJpeg(image, dpi, quality, gray)`, and `WpfImageCodec.EncodeBackground` as the twin of `encodedBackground`) and a planned G4 page with `PdfCcittImage.Encode`; the Mac encodes the JPEG with ImageIO and a planned G4 page with `PDFImageData` / `CCITTG4Encoder` through `PDFWriter` (see "CCITT G4 for black & white pages"). The size details are the same on both platforms and name the black & white (G4) limit too ("Up to 300 dpi (black & white 600), gray pages saved in gray.", "Up to 200 dpi (black & white 300), more compression.", "Up to 150 dpi (black & white 300), most compression."); the hint case of `PdfImageEncodingTests` is the same on both sides.
 Note: `ScannedPage.fileURL` (optional) points at a full-resolution spill TIFF; when set,
 `page.image` is only a preview and PDFBuilder reloads the full pixels from the file per page.
 

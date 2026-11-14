@@ -37,14 +37,18 @@ public struct PDFSizeProfile: Equatable, Sendable {
     /// scan resolution. 1-bit pages need more pixels than gray ones to keep text smooth, and cost
     /// far fewer bytes per pixel.
     public let bilevelMaxDPI: Int?
+    /// Color pages are stored as a text mask over a low-resolution background (`splitPage`), the
+    /// mask at the black & white limit.
+    public let textMask: Bool
 
     public init(maxDPI: Int?, colorQuality: Double, grayQuality: Double, autoGray: Bool,
-                bilevelMaxDPI: Int? = nil) {
+                bilevelMaxDPI: Int? = nil, textMask: Bool = false) {
         self.maxDPI = maxDPI
         self.colorQuality = colorQuality
         self.grayQuality = grayQuality
         self.autoGray = autoGray
         self.bilevelMaxDPI = bilevelMaxDPI
+        self.textMask = textMask
     }
 }
 
@@ -107,10 +111,10 @@ public enum PDFImageEncoding {
                                   bilevelMaxDPI: 600)
         case .compact:
             return PDFSizeProfile(maxDPI: 200, colorQuality: 0.65, grayQuality: 0.70, autoGray: true,
-                                  bilevelMaxDPI: 300)
+                                  bilevelMaxDPI: 300, textMask: true)
         case .smallest:
             return PDFSizeProfile(maxDPI: 150, colorQuality: 0.50, grayQuality: 0.55, autoGray: true,
-                                  bilevelMaxDPI: 300)
+                                  bilevelMaxDPI: 300, textMask: true)
         }
     }
 
@@ -145,6 +149,51 @@ public enum PDFImageEncoding {
         let looksGray = mode == .color && PDFImageEncoding.profile(size).autoGray
             && ColorAnalysis.isEffectivelyGray(image)
         return PDFImageEncoding.plan(mode: mode, imageDPI: imageDPI, size: size, looksGray: looksGray)
+    }
+
+    /// A mask denser than this (G4 bytes against the 1-bit page's size) means the page is not text, and
+    /// is stored as a plain page.
+    public static let maxMaskShare = 0.1
+
+    /// A color page of a size with `textMask` cut into a text mask at the black & white limit and a
+    /// background at `TextSplit.backgroundDPI`; the mask as G4 data. Nil for any other page, or when
+    /// the mask is too dense to be text (`maxMaskShare`) or its ink is colored. `rgba` holds the page's pixels at
+    /// `imageDPI`.
+    public static func splitPage(rgba: [UInt8], width: Int, height: Int, imageDPI: Int, mode: ColorMode,
+                                 size: PDFSizePreset) -> (split: TextSplit, g4: [UInt8])? {
+        guard mode == .color, profile(size).textMask else { return nil }
+        let maskPlan = plan(mode: .blackWhite, imageDPI: imageDPI, size: size, looksGray: false)
+        let target = targetSize(width: width, height: height, imageDPI: imageDPI, targetDPI: maskPlan.targetDPI)
+        var pixels = rgba
+        if target.width != width || target.height != height {
+            pixels = downsample(rgba: rgba, width: width, height: height,
+                                newWidth: target.width, newHeight: target.height)
+        }
+        let page = RgbaImage(width: target.width, height: target.height, pixels: pixels)
+        let split = TextSplit.split(page, dpi: maskPlan.targetDPI)
+        guard let g4 = try? CCITTG4Encoder.encode(split.mask, width: split.width, height: split.height),
+              Double(g4.count) <= maxMaskShare * Double(split.mask.count) else {
+            return nil
+        }
+        return (split, g4)
+    }
+
+    /// True when more than `ColorAnalysis.maxColoredFraction` of the ink pixels are colored (chroma
+    /// above `ColorAnalysis.chromaThreshold`): the mask paints in black, so such a page stays a plain
+    /// page.
+    private static func hasColoredInk(_ split: TextSplit, pixels: [UInt8]) -> Bool {
+        let stride = Bilevel.stride(split.width)
+        var ink = 0
+        var colored = 0
+        for y in 0..<split.height {
+            for x in 0..<split.width where split.mask[y * stride + (x >> 3)] & UInt8(0x80 >> (x & 7)) == 0 {
+                let i = (y * split.width + x) * 4
+                let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+                ink += 1
+                if max(r, max(g, b)) - min(r, min(g, b)) > ColorAnalysis.chromaThreshold { colored += 1 }
+            }
+        }
+        return Double(colored) > ColorAnalysis.maxColoredFraction * Double(ink)
     }
 
     /// The resolution of the pixels at hand: the page's own, or less when only a preview of the
@@ -234,6 +283,22 @@ public enum PDFImageEncoding {
             return nil
         }
         return PDFPageImage(plan: pagePlan, jpegData: jpeg, image: backed)
+    }
+
+    /// The background of a split page as a JPEG (ImageIO): gray when it has no color and the size
+    /// stores such pages gray, else color, each at the size's quality.
+    public static func encodedBackground(_ background: RgbaImage, size: PDFSizePreset) -> Data? {
+        let sizeProfile = profile(size)
+        let width = background.width
+        let height = background.height
+        let gray = sizeProfile.autoGray
+            && ColorAnalysis.isEffectivelyGray(rgba: background.pixels, width: width, height: height)
+        let bitmap = gray
+            ? grayImage(ColorAnalysis.grayPixels(rgba: background.pixels, width: width, height: height),
+                        width: width, height: height)
+            : rgbImage(background.pixels, width: width, height: height)
+        guard let bitmap else { return nil }
+        return encodeJPEG(bitmap, quality: gray ? sizeProfile.grayQuality : sizeProfile.colorQuality)
     }
 
     /// JPEG bytes of `image` at `quality` (ImageIO). A gray image gives a one-component JPEG.

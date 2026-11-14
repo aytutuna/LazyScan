@@ -348,6 +348,9 @@ public enum PDFAppender {
 
         // Every new object, and an update's cross-reference stream, within PDF's object numbers.
         var lastObject = reader.nextObjectNumber + pages.count * 3 - 1
+        for page in pages {
+            if case .mixed = page.image { lastObject += 1 }
+        }
         if hasText { lastObject += 6 }
         if reader.xrefIsStream { lastObject += 1 }
         if lastObject > PDFReaderLite.maxObjectNumber {
@@ -368,6 +371,7 @@ public enum PDFAppender {
         if hasText { next += 6 }
         let firstPage = next
         next += pages.count * 3
+        var masks = 0
 
         let rootGeneration = reader.generationOf(root.number)
         let parent = "\(root.number) \(rootGeneration) R"
@@ -388,11 +392,18 @@ public enum PDFAppender {
                 extra += " /CropBox [0 0 \(PDFWriter.f(place.pageWidth)) \(PDFWriter.f(place.pageHeight))]"
             }
             let pageObject = firstPage + i * 3
+            var maskObject = 0
+            if case .mixed = page.image {
+                maskObject = next + masks
+                masks += 1
+            }
             try PDFWriter.writePage(w, pageObject: pageObject, imageObject: pageObject + 1,
-                                    contentsObject: pageObject + 2, parent: parent, index: i, page: page,
+                                    contentsObject: pageObject + 2, maskObject: maskObject, parent: parent,
+                                    index: i, page: page,
                                     fontObject: fontObject, codes: codes, pageSize: pageSize, extraEntries: extra)
             kids.append(PDFReference(pageObject, 0))
         }
+        next += masks
 
         // The root again: its kids end with the new pages, its count says every page under it.
         let updatedRoot = rootDictionary.copy()

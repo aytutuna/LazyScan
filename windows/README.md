@@ -805,7 +805,9 @@ first. Grayscale pages are stored as one-component JPEGs (`/DeviceGray`). Black 
 (`/CCITTFaxDecode`, lossless) at every size, in every PDF the app writes (plain, PDF/A, protected,
 pages added to an existing PDF); a downsampled one is thresholded again (luma below 128 is
 black). One bit per pixel needs more pixels than gray to keep text smooth, hence their own,
-higher limit. A
+higher limit. At Compact and Smallest a color page is stored as two images instead: its text as
+a 1-bit G4 mask at up to 300 dpi, painted in black over the rest of the page as a JPEG of about
+100 dpi (`TextSplit`, `PdfMixedImage`); a page whose mask is not text-like, or whose ink is colored (the mask paints in black), stays a plain JPEG page. A
 color page counts as having no color when fewer than 0.1 % of its sampled pixels (every 4th
 pixel of every 4th row) differ by more than 32 between their strongest and weakest channel,
 so a stamp or a highlighter mark keeps the page in color. The size alone sets the JPEG

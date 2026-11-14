@@ -27,8 +27,12 @@ public enum PdfImageKind
 /// the scan resolution. 1-bit pages need more pixels than gray ones to keep text smooth, and
 /// cost far fewer bytes per pixel.
 /// </param>
+/// <param name="TextMask">
+/// Color pages are stored as a text mask over a low-resolution background
+/// (<see cref="PdfImageEncoding.SplitPage"/>), the mask at the black &amp; white limit.
+/// </param>
 public sealed record PdfSizeProfile(int? MaxDpi, double ColorQuality, double GrayQuality, bool AutoGray,
-                                    int? BilevelMaxDpi = null);
+                                    int? BilevelMaxDpi = null, bool TextMask = false);
 
 /// <summary>How to store one page image.</summary>
 /// <param name="TargetDpi">The resolution of the stored image (the page's own when it is not downsampled).</param>
@@ -72,8 +76,8 @@ public static class PdfImageEncoding
     public static PdfSizeProfile Profile(PdfSizePreset size) => size switch
     {
         PdfSizePreset.Best => new PdfSizeProfile(null, 0.90, 0.90, false, null),
-        PdfSizePreset.Compact => new PdfSizeProfile(200, 0.65, 0.70, true, 300),
-        PdfSizePreset.Smallest => new PdfSizeProfile(150, 0.50, 0.55, true, 300),
+        PdfSizePreset.Compact => new PdfSizeProfile(200, 0.65, 0.70, true, 300, true),
+        PdfSizePreset.Smallest => new PdfSizeProfile(150, 0.50, 0.55, true, 300, true),
         _ => new PdfSizeProfile(300, 0.80, 0.80, true, 600), // Standard
     };
 
@@ -108,6 +112,51 @@ public static class PdfImageEncoding
     {
         bool looksGray = mode == ColorMode.Color && Profile(size).AutoGray && ColorAnalysis.IsEffectivelyGray(image);
         return Plan(mode, imageDpi, size, looksGray);
+    }
+
+    /// <summary>
+    /// A mask denser than this (G4 bytes against the 1-bit page's size) means the page is not text, and
+    /// is stored as a plain page.
+    /// </summary>
+    public const double MaxMaskShare = 0.1;
+
+    /// <summary>
+    /// A color page of a size with <see cref="PdfSizeProfile.TextMask"/> cut into a text mask at the
+    /// black &amp; white limit and a background at <see cref="TextSplit.BackgroundDpi"/>; the mask as G4
+    /// data. Null for any other page, or when the mask is too dense to be text
+    /// (<see cref="MaxMaskShare"/>) or its ink is colored. <paramref name="image"/> is at <paramref name="imageDpi"/>.
+    /// </summary>
+    public static (TextSplit Split, byte[] G4)? SplitPage(RgbaImage image, int imageDpi, ColorMode mode, PdfSizePreset size)
+    {
+        if (mode != ColorMode.Color || !Profile(size).TextMask) return null;
+        var maskPlan = Plan(ColorMode.BlackWhite, imageDpi, size, false);
+        var page = Downsample(image, imageDpi, maskPlan);
+        var split = TextSplit.Split(page, maskPlan.TargetDpi);
+        if (HasColoredInk(split, page)) return null;
+        byte[] g4 = CcittG4Encoder.Encode(split.Mask, split.Width, split.Height);
+        return g4.Length <= MaxMaskShare * split.Mask.Length ? (split, g4) : null;
+    }
+
+    /// <summary>
+    /// True when more than <see cref="ColorAnalysis.MaxColoredFraction"/> of the ink pixels are colored
+    /// (chroma above <see cref="ColorAnalysis.ChromaThreshold"/>): the mask paints in black, so such a
+    /// page stays a plain page.
+    /// </summary>
+    private static bool HasColoredInk(TextSplit split, RgbaImage page)
+    {
+        long ink = 0, colored = 0;
+        for (int y = 0; y < split.Height; y++)
+        {
+            for (int x = 0; x < split.Width; x++)
+            {
+                if (!Bilevel.IsBlack(split.Mask, split.Width, x, y)) continue;
+                int i = (y * split.Width + x) * 4;
+                int r = page.Pixels[i], g = page.Pixels[i + 1], b = page.Pixels[i + 2];
+                ink++;
+                if (Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b)) > ColorAnalysis.ChromaThreshold) colored++;
+            }
+        }
+        return colored > ColorAnalysis.MaxColoredFraction * ink;
     }
 
     /// <summary>

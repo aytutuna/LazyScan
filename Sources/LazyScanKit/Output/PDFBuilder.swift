@@ -189,6 +189,7 @@ public enum PDFBuilder {
         private struct Entry {
             let file: URL
             let g4Size: (width: Int, height: Int)?
+            let maskFile: URL?
             let pixelWidth: Int
             let pixelHeight: Int
             let dpi: Int
@@ -212,8 +213,19 @@ public enum PDFBuilder {
                 throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", number))
             }
             var g4Size: (width: Int, height: Int)? = nil
+            var maskFile: URL? = nil
             if case .ccittG4(_, let width, let height) = page.image { g4Size = (width, height) }
-            entries.append(Entry(file: file, g4Size: g4Size, pixelWidth: page.pixelWidth,
+            if case .mixed(_, let mask, let width, let height) = page.image {
+                let maskURL = folder.appendingPathComponent("\(number)-mask")
+                do {
+                    try mask.write(to: maskURL)
+                } catch {
+                    throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", number))
+                }
+                g4Size = (width, height)
+                maskFile = maskURL
+            }
+            entries.append(Entry(file: file, g4Size: g4Size, maskFile: maskFile, pixelWidth: page.pixelWidth,
                                  pixelHeight: page.pixelHeight, dpi: page.dpi))
             lines.append(page.ocrLines)
         }
@@ -226,7 +238,16 @@ public enum PDFBuilder {
                     throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
                 }
                 var image = PDFImageData.jpeg(data)
-                if let size = entry.g4Size { image = .ccittG4(data: data, width: size.width, height: size.height) }
+                if let size = entry.g4Size {
+                    if let maskFile = entry.maskFile {
+                        guard let mask = try? Data(contentsOf: maskFile) else {
+                            throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
+                        }
+                        image = .mixed(background: data, mask: mask, maskWidth: size.width, maskHeight: size.height)
+                    } else {
+                        image = .ccittG4(data: data, width: size.width, height: size.height)
+                    }
+                }
                 return PDFPageInput(image: image, pixelWidth: entry.pixelWidth, pixelHeight: entry.pixelHeight,
                                     dpi: entry.dpi, ocrLines: lines[index])
             })
@@ -264,12 +285,28 @@ public enum PDFBuilder {
             guard let g4 = try? CCITTG4Encoder.encode(packed, width: width, height: height) else { return nil }
             return .ccittG4(data: Data(g4), width: width, height: height)
         }
+        if colorMode == .color, let mixed = mixedImage(image, imageDPI: imageDPI, pdfSize: pdfSize) {
+            return mixed
+        }
         if let stored = PDFImageEncoding.encodedPage(image, imageDPI: imageDPI, mode: colorMode, size: pdfSize) {
             return .jpeg(stored.jpegData)
         }
         let quality = PDFImageEncoding.profile(pdfSize).colorQuality
         guard let jpeg = PDFImageEncoding.encodeJPEG(image, quality: quality) else { return nil }
         return .jpeg(jpeg)
+    }
+
+    /// A color page of a size with a text mask as the mask over its background (`PDFImageEncoding.splitPage`);
+    /// nil for a page that is not stored so.
+    private static func mixedImage(_ image: CGImage, imageDPI: Int, pdfSize: PDFSizePreset) -> PDFImageData? {
+        guard let rgba = ColorAnalysis.rgbaPixels(of: image),
+              let page = PDFImageEncoding.splitPage(rgba: rgba, width: image.width, height: image.height,
+                                                    imageDPI: imageDPI, mode: .color, size: pdfSize),
+              let jpeg = PDFImageEncoding.encodedBackground(page.split.background, size: pdfSize) else {
+            return nil
+        }
+        return .mixed(background: jpeg, mask: Data(page.g4), maskWidth: page.split.width,
+                      maskHeight: page.split.height)
     }
 
     /// The text layer of the older overloads: OCR on every page when `searchable` (a page whose OCR

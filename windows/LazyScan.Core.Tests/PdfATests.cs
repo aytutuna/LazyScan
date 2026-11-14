@@ -53,6 +53,15 @@ public class PdfATests
         return new(PdfCcittImage.Encode(page), page.Width, page.Height, 100, ScriptLines());
     }
 
+    /// <summary>A color page as a mask over a background (the Compact and Smallest sizes).</summary>
+    private static PdfPageInput MixedPage()
+    {
+        var image = EnhancerPages.Shadowed(240, 320, stamp: false, picture: false);
+        var split = PdfImageEncoding.SplitPage(image, 300, ColorMode.Color, PdfSizePreset.Smallest)!.Value;
+        var mixed = new PdfMixedImage(PdfBuilderTests.TinyJpeg, new PdfCcittImage(split.G4, split.Split.Width, split.Split.Height));
+        return new(mixed, 240, 320, 300, ScriptLines());
+    }
+
     private static string Latin1(byte[] pdf) => Encoding.Latin1.GetString(pdf);
 
     // MARK: - Dates, strings, titles
@@ -499,6 +508,8 @@ public class PdfATests
                 ("pdfa-image-only.pdf", [Page()], null),
                 // A black & white page: a 1-bit CCITT G4 image in /DeviceGray.
                 ("pdfa-black-and-white.pdf", [BlackAndWhitePage(), Page()], "Siyah beyaz"),
+                // A mixed page: an image mask painted in /DeviceGray over the background.
+                ("pdfa-mixed.pdf", [MixedPage(), Page()], "Karma sayfa"),
             };
             foreach (var (name, pages, title) in files)
             {

@@ -15,8 +15,8 @@ public class PdfImageEncodingTests
     {
         Assert.Equal(new PdfSizeProfile(null, 0.90, 0.90, false, null), PdfImageEncoding.Profile(PdfSizePreset.Best));
         Assert.Equal(new PdfSizeProfile(300, 0.80, 0.80, true, 600), PdfImageEncoding.Profile(PdfSizePreset.Standard));
-        Assert.Equal(new PdfSizeProfile(200, 0.65, 0.70, true, 300), PdfImageEncoding.Profile(PdfSizePreset.Compact));
-        Assert.Equal(new PdfSizeProfile(150, 0.50, 0.55, true, 300), PdfImageEncoding.Profile(PdfSizePreset.Smallest));
+        Assert.Equal(new PdfSizeProfile(200, 0.65, 0.70, true, 300, true), PdfImageEncoding.Profile(PdfSizePreset.Compact));
+        Assert.Equal(new PdfSizeProfile(150, 0.50, 0.55, true, 300, true), PdfImageEncoding.Profile(PdfSizePreset.Smallest));
     }
 
     [Fact]
