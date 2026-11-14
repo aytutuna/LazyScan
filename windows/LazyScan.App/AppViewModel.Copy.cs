@@ -77,10 +77,20 @@ public sealed partial class AppViewModel
     /// to the chosen printer's margins; null otherwise (and while Fit, Fill or Center is on).
     /// </summary>
     public string? CopyMarginWarning =>
-        _copySetup is { } setup && PrintScale.HasCenterChoice(Settings.TaskOptions.CopyScale) && !Settings.TaskOptions.CopyCenter
+        _copySetup is { } setup && PrintScale.HasCenterChoice(CopyScaleShown) && !Settings.TaskOptions.CopyCenter
         && setup.Paper.LargestMargin > PrintLayout.ClipWarningInches
             ? Loc.T("Edges may lose up to {0} mm", PrintLayout.Millimetres(setup.Paper.LargestMargin))
             : null;
+
+    /// <summary>A held copy has a page with no known size: it prints fitted whatever Scale says.</summary>
+    public bool CopyNeedsFit => _heldCopy is { } held && !held.Pages.All(p => p.PrintsAtRealSize);
+
+    /// <summary>The scale a copy prints at now: Fit while <see cref="CopyNeedsFit"/>, else the one chosen.</summary>
+    public CopyScale CopyScaleShown => CopyNeedsFit ? CopyScale.Fit : Settings.TaskOptions.CopyScale;
+
+    /// <summary>An area selected on the preview (or on the held copy) is always centered.</summary>
+    public bool CopyAreaSelected =>
+        _heldCopy?.AreaSelected ?? (Settings.Source == ScanSource.Flatbed && SelectionRect is not null);
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
@@ -192,11 +202,30 @@ public sealed partial class AppViewModel
         NotifyAll();
     }
 
-    /// <summary>Copies are made smaller to fit the printable area (on), or printed at real size (off).</summary>
-    public void SetCopyFitToPage(bool fit)
+    /// <summary>How copies are sized on the paper.</summary>
+    public void SetCopyScale(CopyScale scale)
     {
-        if (IsBusy || Settings.TaskOptions.CopyFitToPage == fit) return;
-        Settings.TaskOptions.CopyFitToPage = fit;
+        if (IsBusy || Settings.TaskOptions.CopyScale == scale) return;
+        Settings.TaskOptions.CopyScale = scale;
+        SettingsEdited();
+        NotifyAll();
+    }
+
+    /// <summary>The share of real size for the Percent scale (25 to 400).</summary>
+    public void SetCopyScalePercent(int percent)
+    {
+        int clamped = PrintScale.Clamp(percent);
+        if (IsBusy || Settings.TaskOptions.CopyScalePercent == clamped) return;
+        Settings.TaskOptions.CopyScalePercent = clamped;
+        SettingsEdited();
+        NotifyAll();
+    }
+
+    /// <summary>Copies at real size or a percentage are centered on the paper (on) or start at its corner (off).</summary>
+    public void SetCopyCenter(bool center)
+    {
+        if (IsBusy || Settings.TaskOptions.CopyCenter == center) return;
+        Settings.TaskOptions.CopyCenter = center;
         SettingsEdited();
         NotifyAll();
     }

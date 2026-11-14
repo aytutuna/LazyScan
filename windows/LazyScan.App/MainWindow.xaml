@@ -979,10 +979,29 @@
                                             <ComboBox x:Name="CopyCountBox" HorizontalAlignment="Stretch"
                                                       AutomationProperties.Name="{loc:T Number of copies}"
                                                       SelectionChanged="CopyCount_Changed" />
-                                            <CheckBox x:Name="CopyFitBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,12,0,0"
-                                                      Content="{loc:T Fit to page}"
-                                                      ToolTip="{loc:T Off: real size. On: shrinks to fit the paper.}"
-                                                      Checked="CopyFit_Changed" Unchecked="CopyFit_Changed" />
+                                            <TextBlock Text="{loc:T Scale}" Style="{StaticResource FieldLabelText}" Margin="0,12,0,4" />
+                                            <ComboBox x:Name="CopyScaleBox" HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="{loc:T Scale}"
+                                                      AutomationProperties.HelpText="{loc:T Actual size\, shrink to fit\, fill the page\, or a percentage.}"
+                                                      ToolTip="{loc:T Actual size\, shrink to fit\, fill the page\, or a percentage.}"
+                                                      SelectionChanged="CopyScale_Changed" />
+                                            <DockPanel x:Name="CopyFitReason" Margin="0,4,0,0" Visibility="Collapsed">
+                                                <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
+                                                <TextBlock x:Name="CopyFitReasonText" Style="{StaticResource ReasonText}" />
+                                            </DockPanel>
+                                            <StackPanel x:Name="CopyPercentRow" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
+                                                <TextBox x:Name="CopyPercentBox" Width="64" Height="28" TextAlignment="Right"
+                                                         FlowDirection="LeftToRight" VerticalContentAlignment="Center"
+                                                         AutomationProperties.Name="{loc:T Custom percent}"
+                                                         PreviewTextInput="CopyPercent_PreviewTextInput" PreviewKeyDown="CopyPercent_PreviewKeyDown"
+                                                         LostKeyboardFocus="CopyPercent_LostFocus" />
+                                                <TextBlock Style="{StaticResource CaptionText}" Text="%" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <CheckBox x:Name="CopyCenterBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"
+                                                      Content="{loc:T Center}"
+                                                      ToolTip="{loc:T Off: the page starts at its top-left corner.}"
+                                                      AutomationProperties.HelpText="{loc:T Off: the page starts at its top-left corner.}"
+                                                      Checked="CopyCenter_Changed" Unchecked="CopyCenter_Changed" />
                                             <!-- Shown while copies print at real size: edges a printer can't reach are lost. -->
                                             <DockPanel x:Name="CopyMarginNotice" Margin="0,2,0,4" Visibility="Collapsed">
                                                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE7BA;"

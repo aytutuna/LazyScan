@@ -738,12 +738,13 @@ cards with holograms, and the real size of a printed copy measured with a ruler.
 The **Photocopy** task (any scanner; greyed out with "Needs a printer" when Windows lists no
 printer) makes the scanner and a printer a photocopier: the main button is **Copy**, which scans and
 prints straight away, at real size: a page scanned at 300 dpi prints at its pixels / 300 inches, 1
-inch on the glass is 1 inch on paper, and nothing is scaled to the page unless **Fit to page** is on
-(then it is made smaller, never larger, to fit the part of the paper the printer prints on, turned a
-quarter when that makes it larger, and centered). The inspector's **Photocopy** section has the
+inch on the glass is 1 inch on paper, and nothing is scaled to the page unless **Scale** says so
+(**Fit to page** makes it smaller, never larger, to fit the part of the paper the printer prints on, turned a
+quarter when that makes it larger, and centered; **Fill page** enlarges it to cover that part; 50%, 75%,
+150%, 200% and a custom 25 to 400% scale it from real size, from the corner unless **Center** is on). The inspector's **Photocopy** section has the
 **Printer** (the default printer unless another is chosen; a chosen printer that is no longer
 installed falls back to the default, and choosing the default follows the default), its paper,
-**Copies** (1 to 99), **Fit to page**, **Also save a PDF** and **Print test ruler**; color or grey
+**Copies** (1 to 99), **Scale** with **Center**, **Also save a PDF** and **Print test ruler**; color or grey
 is the inspector's Color. On the glass with nothing selected and Automatic
 paper size, the part of the glass the printer's paper covers is scanned from the corner, as a copier
 copies the sheet it prints on; another paper size is asked of the printer too; an area selected on

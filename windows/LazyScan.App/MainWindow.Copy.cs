@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using LazyScan.Core;
 
 namespace LazyScan.App;
@@ -15,6 +17,21 @@ public partial class MainWindow
     private void BuildCopyCountItems()
     {
         for (int count = 1; count <= PrintCopies.MaxCount; count++) CopyCountBox.Items.Add(count);
+    }
+
+    /// <summary>Fills the scale box: the three sizes, a separator, the preset percentages, Custom.</summary>
+    private void BuildCopyScaleItems()
+    {
+        foreach (var scale in new[] { CopyScale.Actual, CopyScale.Fit, CopyScale.Fill })
+        {
+            CopyScaleBox.Items.Add(new ComboBoxItem { Content = PrintScale.Label(scale, 100), Tag = (scale, 0) });
+        }
+        CopyScaleBox.Items.Add(new Separator());
+        foreach (int percent in PrintScale.PresetPercents)
+        {
+            CopyScaleBox.Items.Add(new ComboBoxItem { Content = PrintScale.Label(CopyScale.Percent, percent), Tag = (CopyScale.Percent, percent) });
+        }
+        CopyScaleBox.Items.Add(new ComboBoxItem { Content = Loc.T("Custom percent…"), Tag = (CopyScale.Percent, 0) });
     }
 
     /// <summary>The Copy task's section: shown for the task only, with the printers, the paper and the choices.</summary>
@@ -47,7 +64,22 @@ public partial class MainWindow
             CopyPrinterBox.SelectedItem = CopyPrinterBox.Items.Cast<ComboBoxItem>()
                 .FirstOrDefault(i => string.Equals((string)i.Tag, current, StringComparison.OrdinalIgnoreCase));
             CopyCountBox.SelectedItem = PrintCopies.Clamp(options.CopyCount);
-            CopyFitBox.IsChecked = options.CopyFitToPage;
+            var scale = ViewModel.CopyScaleShown;
+            int percent = PrintScale.Clamp(options.CopyScalePercent);
+            bool custom = scale == CopyScale.Percent && (_copyCustomPicked || !PrintScale.PresetPercents.Contains(percent));
+            CopyScaleBox.SelectedItem = CopyScaleBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i =>
+                i.Tag is ValueTuple<CopyScale, int> item && item.Item1 == scale
+                && (scale != CopyScale.Percent || item.Item2 == (custom ? 0 : percent)));
+            CopyScaleBox.IsEnabled = !ViewModel.CopyNeedsFit && !ViewModel.IsBusy;
+            CopyPercentRow.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+            CopyPercentBox.IsEnabled = !ViewModel.IsBusy;
+            if (!CopyPercentBox.IsKeyboardFocused) CopyPercentBox.Text = percent.ToString(CultureInfo.CurrentCulture);
+            bool centerChoice = PrintScale.HasCenterChoice(scale) && !ViewModel.CopyAreaSelected;
+            CopyCenterBox.Visibility = centerChoice ? Visibility.Visible : Visibility.Collapsed;
+            CopyCenterBox.IsEnabled = !ViewModel.IsBusy;
+            CopyCenterBox.IsChecked = options.CopyCenter;
+            CopyFitReasonText.Text = PrintText.RealSizeUnavailable;
+            CopyFitReason.Visibility = ViewModel.CopyNeedsFit ? Visibility.Visible : Visibility.Collapsed;
             CopyPdfBox.IsChecked = options.CopyAlsoSavePdf;
         }
         finally
@@ -69,10 +101,6 @@ public partial class MainWindow
         AutomationProperties.SetName(CopyPaperText, paper.Length > 0
             ? Loc.T("Printer paper: {0}", ViewModel.CopyPaperSpokenText)
             : "");
-        string fitHint = options.CopyFitToPage
-            ? Loc.T("Made smaller to fit the paper, never larger. It is not at real size.")
-            : Loc.T("At real size, like a photocopier: 1 inch on the glass is 1 inch on paper.");
-        AutomationProperties.SetHelpText(CopyFitBox, fitHint);
         // Edges a printer can't reach are lost at real size: always shown while that is the case.
         CopyMarginText.Text = ViewModel.CopyMarginWarning ?? "";
         CopyMarginNotice.Visibility = ViewModel.CopyMarginWarning is null ? Visibility.Collapsed : Visibility.Visible;
@@ -95,10 +123,67 @@ public partial class MainWindow
         ViewModel.SetCopyCount(count);
     }
 
-    private void CopyFit_Changed(object sender, RoutedEventArgs e)
+    /// <summary>Custom percent was picked, so its box stays while the stored share happens to match a preset.</summary>
+    private bool _copyCustomPicked;
+
+    private void CopyScale_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded || CopyScaleBox.SelectedItem is not ComboBoxItem { Tag: ValueTuple<CopyScale, int> item }) return;
+        var (scale, percent) = item;
+        _copyCustomPicked = scale == CopyScale.Percent && percent == 0;
+        if (scale == CopyScale.Percent && percent != 0) ViewModel.SetCopyScalePercent(percent);
+        ViewModel.SetCopyScale(scale);
+        SyncCopyOptions();
+    }
+
+    private void CopyCenter_Changed(object sender, RoutedEventArgs e)
     {
         if (_updatingUi || !IsLoaded) return;
-        ViewModel.SetCopyFitToPage(CopyFitBox.IsChecked == true);
+        ViewModel.SetCopyCenter(CopyCenterBox.IsChecked == true);
+    }
+
+    private void CopyPercent_PreviewTextInput(object sender, TextCompositionEventArgs e) =>
+        e.Handled = !e.Text.All(char.IsAsciiDigit);
+
+    private void CopyPercent_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        int stored = ViewModel.Settings.TaskOptions.CopyScalePercent;
+        if (e.Key == Key.Enter)
+        {
+            CommitCopyPercent();
+            CopyPercentBox.SelectAll();
+        }
+        else if (e.Key == Key.Escape)
+        {
+            CopyPercentBox.Text = stored.ToString(CultureInfo.CurrentCulture);
+            CopyPercentBox.SelectAll();
+        }
+        else if (e.Key is Key.Up or Key.Down)
+        {
+            ViewModel.SetCopyScalePercent(stored + (e.Key == Key.Up ? PrintScale.PercentStep : -PrintScale.PercentStep));
+            CopyPercentBox.Text = ViewModel.Settings.TaskOptions.CopyScalePercent.ToString(CultureInfo.CurrentCulture);
+            CopyPercentBox.SelectAll();
+        }
+        else return;
+        e.Handled = true;
+    }
+
+    private void CopyPercent_LostFocus(object sender, KeyboardFocusChangedEventArgs e) => CommitCopyPercent();
+
+    /// <summary>A number is kept between 25 and 400; anything else puts the stored value back.</summary>
+    private void CommitCopyPercent()
+    {
+        if (_updatingUi || !IsLoaded) return;
+        string text = CopyPercentBox.Text;
+        if (int.TryParse(text, NumberStyles.None, CultureInfo.CurrentCulture, out int percent))
+        {
+            ViewModel.SetCopyScalePercent(percent);
+        }
+        else if (text.Length > 0 && text.All(char.IsAsciiDigit))
+        {
+            ViewModel.SetCopyScalePercent(int.MaxValue);
+        }
+        CopyPercentBox.Text = PrintScale.Clamp(ViewModel.Settings.TaskOptions.CopyScalePercent).ToString(CultureInfo.CurrentCulture);
     }
 
     private void CopyPdf_Changed(object sender, RoutedEventArgs e)

@@ -2273,8 +2273,6 @@
   "{0} (default)": {},
   "Paper: {0}": {},
   "Printer paper: {0}": {},
-  "Made smaller to fit the paper, never larger. It is not at real size.": {},
-  "At real size, like a photocopier: 1 inch on the glass is 1 inch on paper.": {},
   "Print at real size on {0}": {
     "note": "{0} is the printer name."
   },
@@ -2539,7 +2537,12 @@
   "Reads the installed printers again": {},
   "Copies": {},
   "Number of copies": {},
-  "Off: real size. On: shrinks to fit the paper.": {},
+  "Scale": {},
+  "Center": {},
+  "Custom percent": {},
+  "Custom percent…": {},
+  "Actual size, shrink to fit, fill the page, or a percentage.": {},
+  "Off: the page starts at its top-left corner.": {},
   "Also save a PDF": {},
   "Keeps a PDF of each copy in your save folder": {},
   "Each copy is also saved as a PDF in the save folder": {},

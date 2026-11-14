@@ -103,6 +103,7 @@ public partial class MainWindow : Window
             IdCardFormatBox.Items.Add(new ComboBoxItem { Content = format.Label(), Tag = format });
         }
         BuildCopyCountItems();
+        BuildCopyScaleItems();
 
         Loaded += (_, _) =>
         {
