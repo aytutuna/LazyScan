@@ -119,6 +119,37 @@ struct DrawerHandle: View {
     }
 }
 
+/// The items of a Type menu, one per tile: the Options sheet's Type row and the camera's Type label list the
+/// kinds the same way. A kind that cannot start is dimmed, with the reason in its hint.
+struct KindMenuItems: View {
+    let tiles: [IOSKindTile]
+    let settings: ScanSettings
+    let camera: Bool
+    let onType: (IOSScanKind) -> Void
+
+    var body: some View {
+        ForEach(tiles) { (tile: IOSKindTile) in
+            let kind: IOSScanKind = tile.kind
+            let available: Bool = tile.availability.isAvailable
+            let name: String = camera ? kind.cameraTitle : kind.title
+            let subtitle: String = kind.shownSubtitle(for: settings)
+            let hint: String = available ? subtitle : String(localized: "\(subtitle). Not available: \(tile.availability.reason ?? "")")
+            Button {
+                onType(kind)
+            } label: {
+                if tile.isCurrent {
+                    Label(name, systemImage: "checkmark")
+                } else {
+                    Text(name)
+                }
+            }
+            .disabled(!available)
+            .accessibilityHint(Text(hint))
+            .accessibilityIdentifier("type.\(kind.rawValue)")
+        }
+    }
+}
+
 /// Options and Save as round buttons over the bottom corners of the picture on both tabs, Options at the
 /// leading corner (it opens the sheet of everything about what is saved) and Save at the trailing one. Both
 /// are always there; Save is dimmed while nothing can be saved. Save's accessibility label is its `title`

@@ -10,7 +10,7 @@ import UIKit
 /// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), the
 /// Auto chip (on or off, a tap switches it), the flash button where the camera has a light, and the Camera |
 /// Scanner switch (`ModeSwitch`), whose Scanner segment switches to printer mode (`onPrinter`). The Controls
-/// pill at the picture's foot (`DrawerHandle`) opens the drawer (`ScanDrawer`) above the bottom bar. The photo size ("24 MP", where the camera offers more than one: a tap
+/// pill at the picture's foot (`DrawerHandle`) opens the drawer (`ScanDrawer`) above the bottom bar; beside it the Type label (`typeButton`) names the kind and opens the Options sheet's Type menu. The photo size ("24 MP", where the camera offers more than one: a tap
 /// steps to the next, the first pick of a size that may not fit in the phone's memory says so once) is in
 /// the drawer's Camera group. The viewfinder shows the whole photo as it will be taken (black bands where the screen is
 /// taller or wider), the page's outline, or every print's or receipt's, over it (yellow, green once the page holds still), one status line at
@@ -65,13 +65,14 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private let allowPending: Bool
     private let onAllow: () -> Void
     private let onLibrary: (() -> Void)?
+    private let onType: (IOSScanKind) -> Void
     private let onPrinter: () -> Void
     private let onPages: () -> Void
     private let notices: () -> Notices
     private let pictureButtons: () -> Buttons
 
     init(resting: Bool, holdsAuto: Bool, waitsForIntro: Bool, allowPending: Bool, onAllow: @escaping () -> Void,
-         onLibrary: (() -> Void)?,
+         onLibrary: (() -> Void)?, onType: @escaping (IOSScanKind) -> Void,
          onPrinter: @escaping () -> Void, onPages: @escaping () -> Void,
          @ViewBuilder notices: @escaping () -> Notices, @ViewBuilder pictureButtons: @escaping () -> Buttons) {
         _model = StateObject(wrappedValue: IOSCameraModel.makeLive())
@@ -81,6 +82,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         self.allowPending = allowPending
         self.onAllow = onAllow
         self.onLibrary = onLibrary
+        self.onType = onType
         self.onPrinter = onPrinter
         self.onPages = onPages
         self.notices = notices
@@ -558,9 +560,57 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 .accessibilityIdentifier("camera.skipBack")
             }
             if verticalSizeClass != .compact {
-                DrawerHandle(open: $showsDrawer)
+                handleRow
             }
         }
+    }
+
+    /// The Controls pill, centred, with the Type label at its leading side. Where the sidebar has the library
+    /// (`onLibrary` nil) it lists the type too, so the pill stands alone.
+    private var handleRow: some View {
+        DrawerHandle(open: $showsDrawer)
+            .frame(maxWidth: .infinity)
+            .overlay(alignment: .leading) {
+                if onLibrary != nil {
+                    typeButton
+                        .padding(.leading, 16)
+                }
+            }
+    }
+
+    /// The camera's Type menu, as Options has it, named by the current kind.
+    private var typeButton: some View {
+        let current: IOSScanKind = IOSShell.shownKind(state.settings)
+        let tiles: [IOSKindTile] = IOSShell.kindTiles(state.taskCards, current: current, order: IOSShell.cameraKinds)
+        let blocked: Bool = state.isBusy || importer.isImporting || state.retakingID != nil
+        return Menu {
+            KindMenuItems(tiles: tiles, settings: state.settings, camera: true, onType: onType)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: current.symbol)
+                    .accessibilityHidden(true)
+                Text(current.cameraTitle)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .accessibilityHidden(true)
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 32)
+            .background(Capsule().fill(Color(uiColor: .tertiarySystemFill)))
+            .frame(maxWidth: 112, minHeight: 44)
+            .opacity(blocked ? 0.4 : 1)
+            .contentShape(Rectangle())
+        }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .disabled(blocked)
+        .accessibilityLabel(Text("Type"))
+        .accessibilityValue(Text(current.cameraTitle))
+        .accessibilityHint(Text(IOSCameraText.typeHint))
+        .accessibilityIdentifier("camera.type")
     }
 
     /// The model's line, or that the camera is not on yet while it waits for Allow camera.

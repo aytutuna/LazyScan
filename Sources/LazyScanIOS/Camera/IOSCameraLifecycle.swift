@@ -205,6 +205,8 @@ public enum IOSCameraText {
     public static var controlsLabel: String { String(localized: "Controls") }
     public static var showControls: String { String(localized: "Show controls") }
     public static var hideControls: String { String(localized: "Hide controls") }
+    /// The hint of the Type label beside the Controls pill.
+    public static var typeHint: String { String(localized: "Changes what you are scanning") }
     /// Camera mode's button to printer mode, and its hint.
     public static var printerLabel: String { String(localized: "Scanner") }
     public static var printerHint: String { String(localized: "Scans with a scanner instead of the camera") }

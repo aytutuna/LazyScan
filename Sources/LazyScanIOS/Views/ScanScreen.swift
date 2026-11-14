@@ -393,7 +393,7 @@ struct ScanScreen: View {
     /// viewfinder's foot and the Options and Save buttons.
     private var cameraLayout: some View {
         CameraScreen(resting: cameraCovered, holdsAuto: openGroup == .options, waitsForIntro: waitsForIntro,
-                     allowPending: allowPending, onAllow: onAllow, onLibrary: libraryAction, onPrinter: switchToPrinter, onPages: openPages) {
+                     allowPending: allowPending, onAllow: onAllow, onLibrary: libraryAction, onType: pickKind, onPrinter: switchToPrinter, onPages: openPages) {
             cameraNotices
         } pictureButtons: {
             pictureButtons

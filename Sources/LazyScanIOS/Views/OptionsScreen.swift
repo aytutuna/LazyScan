@@ -264,24 +264,7 @@ struct OptionsScreen: View {
 
     private func typeMenu(_ tiles: [IOSKindTile], current: IOSScanKind) -> some View {
         Menu {
-            ForEach(tiles) { (tile: IOSKindTile) in
-                let kind: IOSScanKind = tile.kind
-                let available: Bool = tile.availability.isAvailable
-                let subtitle: String = kind.shownSubtitle(for: state.settings)
-                let hint: String = available ? subtitle : String(localized: "\(subtitle). Not available: \(tile.availability.reason ?? "")")
-                Button {
-                    onType(kind)
-                } label: {
-                    if tile.isCurrent {
-                        Label(title(kind), systemImage: "checkmark")
-                    } else {
-                        Text(title(kind))
-                    }
-                }
-                .disabled(!available)
-                .accessibilityHint(Text(hint))
-                .accessibilityIdentifier("type.\(kind.rawValue)")
-            }
+            KindMenuItems(tiles: tiles, settings: state.settings, camera: camera, onType: onType)
         } label: {
             HStack(spacing: 8) {
                 Text("Type")
