@@ -398,7 +398,8 @@ private struct OptionReason: View {
 /// The PDF's choices while a save writes one (`IOSSettingsSections.writesPDF`): its size (Best, Standard,
 /// Compact, Smallest), its page size (As scanned, A4, Letter), Searchable PDF (not for the ID card), Archive (PDF/A) and Password, which exclude each
 /// other (`IOSPDFOptions`), and the pages' text in a .txt file beside the PDF (`OutputOptions.alsoSaveText`, as
-/// on the Mac). The password itself is asked for when saving (`IOSPasswordPrompt`) and never kept.
+/// on the Mac). The password itself is asked for when saving (`IOSPasswordPrompt`) and never kept. With Word as
+/// the shown format it offers the page images switch and the page image size (`OutputOptions.wordPageImages`).
 struct PDFOptionsSection: View {
     @EnvironmentObject private var state: AppState
 
@@ -424,6 +425,26 @@ struct PDFOptionsSection: View {
             .pickerStyle(.menu)
             .accessibilityHint(Text(output.pageSize.hint))
             .accessibilityIdentifier("pdf.pageSize")
+        }
+        if IOSSettingsSections.shownFormat(s) == OutputFormat.word {
+            Toggle(DocxWriter.pageImagesLabel, isOn: $state.settings.output.wordPageImages)
+                .accessibilityHint(Text(DocxWriter.pageImagesHint(on: output.wordPageImages)))
+                .accessibilityIdentifier("word.pageImages")
+            if output.wordPageImages {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(pageImageSizeLabel)
+                    Picker(pageImageSizeLabel, selection: pdfSize) {
+                        ForEach(PDFSizePreset.displayOrder, id: \.self) { (size: PDFSizePreset) in
+                            Text(size.label).tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityLabel(Text(pageImageSizeLabel))
+                    .accessibilityHint(Text("\(output.pdfSize.hint). \(output.pdfSize.detail)"))
+                    .accessibilityIdentifier("word.pageImageSize")
+                }
+            }
         }
         if IOSSettingsSections.writesPDF(s) {
             if flow != TaskFlowKind.copy && flow != TaskFlowKind.idCard {
@@ -462,6 +483,8 @@ struct PDFOptionsSection: View {
             .font(.caption)
             .foregroundStyle(Color.secondary)
     }
+
+    private var pageImageSizeLabel: String { L10n.t("Page image size") }
 
     private var pdfSize: Binding<PDFSizePreset> {
         let appState: AppState = state
