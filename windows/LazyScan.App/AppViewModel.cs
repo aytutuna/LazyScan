@@ -916,6 +916,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private readonly HashSet<string> _certificateRefused = [];
     /// <summary>WIA Automation, which may list a scanner late (null when the app runs without it).</summary>
     private readonly Scanning.IPolledScannerBackend? _polled;
+    private readonly Scanning.WiaScannerBackend? _wia;
     /// <summary>
     /// Each Windows Scan entry listed now, with how many WIA enumerations had started when it was
     /// first listed: until WIA finishes a later one, its scanner may simply not be in WIA's list
@@ -1008,6 +1009,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // Windows Scan writes each scan's files to the page spool, created below; it is read only once a scan runs.
         _backends = backends ?? DefaultBackends(SpoolDirectory);
         _polled = _backends.OfType<Scanning.IPolledScannerBackend>().FirstOrDefault();
+        _wia = _backends.OfType<Scanning.WiaScannerBackend>().FirstOrDefault();
         _presetStore = new PresetStore();
         var preferences = AppPreferencesStore.Load();
         // A null value can only come from a hand-edited file; it means no choice.
@@ -1199,6 +1201,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         // A Windows Scan entry WIA had not confirmed waits for the end of a WIA enumeration (see AwaitingWia).
         if (_polled is not null) _polled.EnumerationFinished += () => _dispatcher.BeginInvoke(AfterWiaEnumeration);
+        if (_wia is not null)
+        {
+            _wia.DeviceEvent += (eventId, deviceId) =>
+            {
+                if (Scanning.WiaScannerBackend.IsButtonEvent(eventId)) ScanFromDeviceButton(Scanning.WiaScannerBackend.ScannerIdOf(deviceId));
+            };
+        }
         foreach (var backend in _backends)
         {
             backend.DevicesChanged += () => _dispatcher.BeginInvoke(MergeDevices);
@@ -1937,6 +1946,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             StatusMessage = Loc.T("Overview ready — drag on the preview to select an area, then Scan.");
             CanvasImageChanged();
         });
+    }
+
+    /// <summary>
+    /// A press on a scanner's own button starts the scan the Scan button would, when that scanner is
+    /// the one open and nothing is running; a press is ignored while a review or a dialog is open,
+    /// since those keep the Scan button out of reach.
+    /// </summary>
+    private void ScanFromDeviceButton(string scannerId)
+    {
+        if (SelectedDeviceId is not { } sel || GroupOfSelection(sel)?.Members.Any(m => string.Equals(m.Id, scannerId, StringComparison.OrdinalIgnoreCase)) != true) return;
+        if (!IsConnected || IsBusy || ScanAgainRemaining is not null) return;
+        if (ShowPhotoReview || ShowIdCardReview || System.Windows.Interop.ComponentDispatcher.IsThreadModal) return;
+        _ = PerformScan();
     }
 
     public Task PerformScan()

@@ -14,6 +14,7 @@ namespace LazyScan.App.Scanning;
 /// or scanner attached. The WIA property IDs and flow follow the documented WIA Automation
 /// model (DeviceManager → DeviceInfos → Connect → Items → Transfer), but expect to iterate
 /// against a real device. Known scaffold limitations:
+///   - the scanner's own button is heard through WIA device events (see ListenForEvents);
 ///   - hot-plug is detected from WIA connect and disconnect events, with a poll (the watchdog below) as the fallback;
 ///   - Transfer() is synchronous with no progress callbacks — progress is coarse;
 ///   - CancelScan() cannot abort an in-flight WIA transfer: the pass ends, then the scan stops (a feeder after the current sheet).
@@ -38,7 +39,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
 
     /// <summary>
     /// Raised on the thread that started browsing for every WIA event the backend is registered for,
-    /// with the event id and the device id. The connect and disconnect events also refresh the list.
+    /// with the event id and the device id. The connect and disconnect events also refresh the list;
+    /// the button events are for the app (<see cref="IsButtonEvent"/>).
     /// </summary>
     internal event Action<string, string>? DeviceEvent;
 
@@ -85,6 +87,19 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     internal const string DeviceConnected = "{A28BBADE-64B6-11D2-A231-00C04FA31809}";
     internal const string DeviceDisconnected = "{143E4E83-6497-11D2-A231-00C04FA31809}";
     private const string AnyDevice = "*";
+    // The events a press on the scanner's own button raises (wiaEventScanImage, ScanPrintImage, ScanFaxImage, ScanEmailImage, ScanImage2, ScanImage3, ScanImage4, ScanOCRImage, ScanFilmImage).
+    private static readonly string[] ButtonEvents =
+    [
+        "{A6C5A715-8C6E-11D2-977A-0000F87A926F}",
+        "{B441F425-8C6E-11D2-977A-0000F87A926F}",
+        "{C00EB793-8C6E-11D2-977A-0000F87A926F}",
+        "{C686DCEE-54F2-419E-9A27-2FC7F2E98F9E}",
+        "{FC4767C1-C8B3-48A2-9CFA-2E90CB3D3590}",
+        "{154E27BE-B617-4653-ACC5-0FD7BD4C42CE}",
+        "{A65B704A-7F3C-4447-A75D-8A26DFCA1FDF}",
+        "{9D095B89-37D6-4877-AFED-62A297DC6DBE}",
+        "{9B2B662C-6185-438C-B68B-E39EE25E71CB}",
+    ];
     // _IDeviceManagerEvents, whose OnEvent (dispatch id 1) reports the events registered with RegisterEvent.
     private static readonly Guid DeviceManagerEvents = new("2E9A5206-2360-49DF-9D9B-1762B4BEAE77");
 
@@ -176,6 +191,12 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         DevicesChanged?.Invoke();
     }
 
+    /// <summary>Whether a WIA event is a press on the scanner's own button.</summary>
+    internal static bool IsButtonEvent(string eventId) => ButtonEvents.Contains(eventId, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The app's id for the WIA device id an event carries.</summary>
+    internal static string ScannerIdOf(string deviceId) => $"wia:{deviceId}";
+
     /// <summary>Starts WIA event delivery unless it runs or WIA has nothing to listen to; a failed start is tried again.</summary>
     private void EnsureListening()
     {
@@ -208,7 +229,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     });
 
     /// <summary>
-    /// Registers a WIA device manager for the connect and disconnect events of every device and
+    /// Registers a WIA device manager for the connect, disconnect and scanner button events of every device and
     /// passes each event to <paramref name="onEvent"/> (event id, device id), on the WIA thread, so
     /// it must be quick. The manager stays alive until the returned action runs, on the WIA thread;
     /// null when WIA Automation cannot create one.
@@ -228,6 +249,12 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
             dynamic wia = manager;
             wia.RegisterEvent(DeviceConnected, AnyDevice);
             wia.RegisterEvent(DeviceDisconnected, AnyDevice);
+            foreach (string buttonEvent in ButtonEvents)
+            {
+                // A driver may refuse some of them; connect and disconnect stay registered.
+                try { wia.RegisterEvent(buttonEvent, AnyDevice); }
+                catch { }
+            }
         }
         catch
         {

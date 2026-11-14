@@ -563,6 +563,16 @@ public class WiaEnumerationTests
         }
     }
 
+    [Fact]
+    public void ButtonEventsAreToldApartFromConnectionEvents()
+    {
+        Assert.True(WiaScannerBackend.IsButtonEvent("{a6c5a715-8c6e-11d2-977a-0000f87a926f}"));
+        Assert.True(WiaScannerBackend.IsButtonEvent("{FC4767C1-C8B3-48A2-9CFA-2E90CB3D3590}"));
+        Assert.False(WiaScannerBackend.IsButtonEvent(WiaScannerBackend.DeviceConnected));
+        Assert.False(WiaScannerBackend.IsButtonEvent(WiaScannerBackend.DeviceDisconnected));
+        Assert.Equal("wia:{ABC}", WiaScannerBackend.ScannerIdOf("{ABC}"));
+    }
+
     private static void WaitForEnumerations(WiaScannerBackend wia, int count)
     {
         var waited = System.Diagnostics.Stopwatch.StartNew();
