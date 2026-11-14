@@ -335,6 +335,7 @@ extension AppState {
         }
         if usedStamp { commit(stamp) }
         lastSavedURLs = saved
+        savedAsReceipts = receipts ? saved : []
         // The last PDF's size, as after any save (the Windows inspector shows the same).
         if format == .pdf, let last = saved.last { notePDFSize(of: last, protected: protectedPDFs) }
         dropSaved(queued, wrote: files.urls, undoable: !protectedPDFs)

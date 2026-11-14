@@ -1957,6 +1957,7 @@ struct TurnedOverButtons: View {
 private struct SavedFilesRow: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var fileActions: IOSFileActions
+    @State private var checkingAppend = false
 
     var body: some View {
         let urls: [URL] = state.lastSavedURLs
@@ -1984,6 +1985,9 @@ private struct SavedFilesRow: View {
                 .accessibilityLabel(Text("Undo"))
                 .accessibilityHint(Text("Puts the pages back, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went."))
                 .accessibilityIdentifier("save.undo")
+            }
+            if state.canAddMorePages(to: urls) {
+                addPagesButton(urls[0])
             }
             if SaveActions.canPrintWithLazyPrint(urls) {
                 let printName: LocalizedStringKey = state.lazyPrintInstalled ? "Lazy Print" : "Print"
@@ -2016,6 +2020,28 @@ private struct SavedFilesRow: View {
             .accessibilityLabel(Text("Show in Files"))
             .accessibilityIdentifier("reveal.button")
         }
+    }
+
+    /// Makes the next scan go to the end of the PDF just saved; the file is checked first and a refusal is
+    /// shown as an alert.
+    private func addPagesButton(_ url: URL) -> some View {
+        let appState: AppState = state
+        return Button {
+            checkingAppend = true
+            Task { @MainActor in
+                _ = await appState.addMorePages(to: url)
+                checkingAppend = false
+            }
+        } label: {
+            Label(FileAction.addPages.label, systemImage: IOSSavedFiles.symbol(FileAction.addPages))
+                .labelStyle(.iconOnly)
+        }
+        .disabled(checkingAppend)
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityLabel(Text(FileAction.addPages.label))
+        .accessibilityHint(Text(SaveActions.addPagesHint))
+        .accessibilityIdentifier("saved.addpages")
     }
 
     /// Adds the saved pictures to Photos; a check once they are in, a progress view while they go.

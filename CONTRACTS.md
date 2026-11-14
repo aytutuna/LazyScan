@@ -3075,9 +3075,10 @@ public enum AfterSaveAction: String, Codable, CaseIterable, Identifiable, Sendab
     public var hint: String                    // one line, the picker's tooltip
 }
 public enum FileAction: String, CaseIterable, Identifiable, Sendable {
-    case open, openWith, reveal, share, email, lazyPrint, copy
-    public var label: String                   // "Open", "Open with…", "Show in folder", "Share…", "Email…", "Lazy Print", "Copy"
+    case open, openWith, reveal, share, addPages, email, lazyPrint, copy
+    public var label: String                   // "Open", "Open with…", "Show in folder", "Share…", "Add more pages", "Email…", "Lazy Print", "Copy"
 }
+// SaveActions.offered(fileCount:lazyPrint:addPages:) puts .addPages after .share for one file; SaveActions.canAddMorePages(saved:protected:eachReceipt:appended:appendTargetSet:busy:) (C# CanAddMorePages) is true for one new, unprotected PDF, with no append target set and nothing running; AppState.addMorePages(to:) checks the file and sets it as the append target
 public struct SaveFollowUp: Equatable, Sendable { action: AfterSaveAction; urls: [URL]; var fileAction: FileAction }
 public struct ClipboardContent: Equatable, Sendable { files: [URL]; imageFile: URL? }
 public enum SendRoute: Equatable, Sendable { case compose, shareSheet, showInFolder }

@@ -121,6 +121,16 @@ public static class SaveActions
         };
     }
 
+    /// <summary>
+    /// Add more pages is offered: the last save wrote exactly one PDF, new and not password-protected (not a
+    /// file per receipt, not pages added to an existing PDF), no PDF is set to take the next save already, and
+    /// nothing is running. Twin of Swift <c>SaveActions.canAddMorePages</c>.
+    /// </summary>
+    public static bool CanAddMorePages(IReadOnlyList<string> saved, bool isProtected, bool eachReceipt, bool appended,
+                                       bool appendTargetSet, bool busy) =>
+        saved.Count == 1 && string.Equals(Path.GetExtension(saved[0]), ".pdf", StringComparison.OrdinalIgnoreCase)
+        && !isProtected && !eachReceipt && !appended && !appendTargetSet && !busy;
+
     /// <summary>The longest address offered; a command line stops at 32,767 characters, which leaves room for the exe's path.</summary>
     public const int MaxLazyPrintAddressLength = 30000;
 

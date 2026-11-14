@@ -136,6 +136,7 @@ public enum IOSSavedFiles {
         case .openWith: return "arrow.up.forward.app"
         case .reveal: return "folder"
         case .share: return "square.and.arrow.up"
+        case .addPages: return "text.badge.plus"
         case .email: return "envelope"
         case .lazyPrint: return "printer"
         case .copy: return "doc.on.doc"

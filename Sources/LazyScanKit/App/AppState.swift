@@ -420,6 +420,10 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var lastPDFByteCount: Int64?
     /// The PDF saved last was password-protected: its status says so after its size.
     @Published public internal(set) var lastPDFProtected = false
+    /// The files of the last save when it wrote a file per receipt, and the PDF the last save added pages
+    /// to: neither offers Add more pages (`SaveActions.canAddMorePages`).
+    var savedAsReceipts: [URL] = []
+    var savedByAppending: [URL] = []
 
     /// Asks for the password of a protected PDF (`OutputOptions.protect`) when a save needs one: the
     /// Mac's window shows its dialog; nil (cancelled, or nobody to ask) saves nothing. Asked once per
@@ -2937,10 +2941,28 @@ public final class AppState: ObservableObject {
     /// Lazy Print is installed (something opens `lazyprint:`).
     public var lazyPrintInstalled: Bool { fileActions.lazyPrintInstalled() }
 
-    /// What `SaveActions.offered` gives for these files, with Lazy Print when it is installed and can read them.
+    /// What `SaveActions.offered` gives for these files, with Lazy Print when it is installed and can read them,
+    /// and Add more pages when they are the last save's one new PDF.
     public func offeredFileActions(for urls: [URL]) -> [FileAction] {
         SaveActions.offered(fileCount: urls.count,
-                            lazyPrint: SaveActions.canPrintWithLazyPrint(urls) && fileActions.lazyPrintInstalled())
+                            lazyPrint: SaveActions.canPrintWithLazyPrint(urls) && fileActions.lazyPrintInstalled(),
+                            addPages: canAddMorePages(to: urls))
+    }
+
+    /// The files are the last save's one new PDF, which can take the next scan (`SaveActions.canAddMorePages`).
+    public func canAddMorePages(to urls: [URL]) -> Bool {
+        urls == lastSavedURLs
+            && SaveActions.canAddMorePages(saved: urls, protected: lastPDFProtected,
+                                           eachReceipt: savedAsReceipts == urls, appended: savedByAppending == urls,
+                                           appendTargetSet: appendTarget != nil, busy: isBusy)
+    }
+
+    /// Makes the next save add its pages to the PDF saved last. The file is checked first, as when it is
+    /// picked; false (with the reason shown, or the question declined) leaves everything as it was.
+    public func addMorePages(to url: URL) async -> Bool {
+        guard await checkAppendTarget(url) else { return false }
+        setAppendTarget(url)
+        return true
     }
 
     /// Opens, shows, shares, emails or copies saved files (the Saved tab and the status bar after
@@ -2972,6 +2994,9 @@ public final class AppState: ObservableObject {
                 fileActions.reveal(urls)
             case .share:
                 try send(SaveActions.shareRoute(fileActions.sendProbe(for: urls)), urls: urls)
+            case .addPages:
+                // Checking the file can ask a question, so the view runs `addMorePages(to:)`.
+                return false
             case .email:
                 try send(SaveActions.emailRoute(fileActions.sendProbe(for: urls)), urls: urls)
             case .lazyPrint:

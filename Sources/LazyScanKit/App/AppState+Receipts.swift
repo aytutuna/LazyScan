@@ -343,6 +343,7 @@ extension AppState {
             }
             self.commit(stamp)
             self.lastSavedURLs = saved
+            self.savedAsReceipts = combine ? [] : saved
             let pdfs: Bool = combine || format == .pdf
             if let url = saved.first, pdfs, saved.count == 1 { self.notePDFSize(of: url, protected: protection != nil) }
             self.detectedPhotos = []

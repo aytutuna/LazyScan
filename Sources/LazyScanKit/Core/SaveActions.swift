@@ -42,6 +42,7 @@ public enum FileAction: String, CaseIterable, Identifiable, Sendable {
     case openWith
     case reveal
     case share
+    case addPages
     case email
     case lazyPrint
     case copy
@@ -54,6 +55,7 @@ public enum FileAction: String, CaseIterable, Identifiable, Sendable {
         case .openWith: return L10n.t("Open with…")
         case .reveal: return L10n.t("Show in folder")
         case .share: return L10n.t("Share…")
+        case .addPages: return L10n.t("Add more pages")
         case .email: return L10n.t("Email…")
         case .lazyPrint: return L10n.t("Lazy Print")
         case .copy: return L10n.t("Copy")
@@ -154,12 +156,30 @@ public enum SaveActions {
 
     /// The actions offered for `fileCount` saved files, in menu order. Open and Open with work on
     /// one file; showing, sharing, emailing and copying take several. Lazy Print is
-    /// offered only when `lazyPrint` says it can be.
-    public static func offered(fileCount: Int, lazyPrint: Bool = false) -> [FileAction] {
+    /// offered only when `lazyPrint` says it can be, and Add more pages (after Share) only for one file
+    /// when `addPages` says it can be (`canAddMorePages`).
+    public static func offered(fileCount: Int, lazyPrint: Bool = false, addPages: Bool = false) -> [FileAction] {
         let tail: [FileAction] = lazyPrint ? [.lazyPrint, .copy] : [.copy]
         if fileCount <= 0 { return [] }
-        if fileCount == 1 { return [.open, .openWith, .reveal, .share, .email] + tail }
+        if fileCount == 1 {
+            let add: [FileAction] = addPages ? [.addPages] : []
+            return [.open, .openWith, .reveal, .share] + add + [.email] + tail
+        }
         return [.reveal, .share, .email] + tail
+    }
+
+    /// What Add more pages does, for VoiceOver.
+    public static var addPagesHint: String {
+        L10n.t("Your next scan is added to the end of this PDF.")
+    }
+
+    /// Add more pages is offered: the last save wrote exactly one PDF, new and not password-protected
+    /// (not a file per receipt, not pages added to an existing PDF), no PDF is set to take the next
+    /// save already, and nothing is running. Twin of C# `SaveActions.CanAddMorePages`.
+    public static func canAddMorePages(saved: [URL], protected: Bool, eachReceipt: Bool, appended: Bool,
+                                       appendTargetSet: Bool, busy: Bool) -> Bool {
+        saved.count == 1 && saved[0].pathExtension.lowercased() == "pdf"
+            && !protected && !eachReceipt && !appended && !appendTargetSet && !busy
     }
 
     /// Lazy Print can take these files: every one is a PDF or a JPEG, PNG or TIFF picture.

@@ -218,6 +218,7 @@ extension FileAction {
         case .openWith: return "square.grid.2x2"
         case .reveal: return "folder"
         case .share: return "square.and.arrow.up"
+        case .addPages: return "text.badge.plus"
         case .email: return "envelope"
         case .lazyPrint: return "printer"
         case .copy: return "doc.on.doc"
@@ -231,6 +232,7 @@ extension FileAction {
         case .openWith: return String(localized: "Choose the app to open it with")
         case .reveal: return String(localized: "Show in Finder")
         case .share: return String(localized: "Send with Mail, Messages, AirDrop or another app")
+        case .addPages: return SaveActions.addPagesHint
         case .email: return String(localized: "Attach to a new email in Mail")
         case .lazyPrint: return L10n.t("Open it in Lazy Print, then choose a printer and print")
         case .copy: return fileCount == 1 ? String(localized: "Copy the file to the clipboard")

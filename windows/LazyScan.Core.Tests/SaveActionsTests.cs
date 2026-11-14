@@ -87,6 +87,26 @@ public class SaveActionsTests
     }
 
     [Fact]
+    public void CanAddMorePages_NeedsOneNewUnprotectedPdfAndNothingRunning()
+    {
+        static bool Can(string[] saved, bool isProtected = false, bool eachReceipt = false, bool appended = false,
+                        bool targetSet = false, bool busy = false) =>
+            SaveActions.CanAddMorePages(saved, isProtected, eachReceipt, appended, targetSet, busy);
+
+        Assert.True(Can([@"C:\Scans\Scan 1.pdf"]));
+        Assert.True(Can([@"C:\Scans\Scan.PDF"]));
+        Assert.False(Can([]));
+        Assert.False(Can([@"C:\Scans\Photo 1.jpg", @"C:\Scans\Photo 2.jpg", @"C:\Scans\Photo 3.jpg"]));
+        Assert.False(Can([@"C:\Scans\a.pdf", @"C:\Scans\b.pdf"]));
+        Assert.False(Can([@"C:\Scans\Photo 1.jpg"]));
+        Assert.False(Can([@"C:\Scans\Scan 1.pdf"], isProtected: true));
+        Assert.False(Can([@"C:\Scans\Scan 1.pdf"], eachReceipt: true));
+        Assert.False(Can([@"C:\Scans\Scan 1.pdf"], appended: true));
+        Assert.False(Can([@"C:\Scans\Scan 1.pdf"], targetSet: true));
+        Assert.False(Can([@"C:\Scans\Scan 1.pdf"], busy: true));
+    }
+
+    [Fact]
     public void Offered_AddsPrintWithLazyPrintBeforeCopyOnlyWhenAsked()
     {
         Assert.Equal([FileAction.Open, FileAction.OpenWith, FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.LazyPrint, FileAction.Copy],

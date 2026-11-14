@@ -292,6 +292,41 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_addMorePages_isOfferedAgainOnceAnotherSaveReusesTheName() {
+        let state = makeState()
+        let pdf = folder.appendingPathComponent("Scan 1.pdf")
+        state.lastSavedURLs = [pdf]
+        state.savedAsReceipts = [pdf]
+        state.lastSavedURLs = []
+        state.lastSavedURLs = [pdf]
+        XCTAssertTrue(state.canAddMorePages(to: [pdf]))
+    }
+
+    @MainActor
+    func test_addMorePages_isOfferedOnlyForTheLastSavesOneNewPDF() {
+        let state = makeState()
+        let pdf = folder.appendingPathComponent("Scan 1.pdf")
+        state.lastSavedURLs = [pdf]
+        XCTAssertTrue(state.offeredFileActions(for: [pdf]).contains(.addPages))
+        XCTAssertFalse(state.offeredFileActions(for: [folder.appendingPathComponent("Other.pdf")]).contains(.addPages))
+
+        state.savedAsReceipts = [pdf]
+        XCTAssertFalse(state.offeredFileActions(for: [pdf]).contains(.addPages))
+        state.savedAsReceipts = []
+        state.savedByAppending = [pdf]
+        XCTAssertFalse(state.offeredFileActions(for: [pdf]).contains(.addPages))
+        state.savedByAppending = []
+        XCTAssertTrue(state.canAddMorePages(to: [pdf]))
+
+        state.setAppendTarget(pdf)
+        XCTAssertFalse(state.canAddMorePages(to: [pdf]))
+        state.clearAppendTarget()
+
+        state.lastSavedURLs = [pdf, folder.appendingPathComponent("Scan 2.pdf")]
+        XCTAssertFalse(state.canAddMorePages(to: state.lastSavedURLs))
+    }
+
+    @MainActor
     func test_withoutTheShellsServices_onlyTheDemoScanner_noPrinter_andFileActionsRefused() throws {
         let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: SeamScorer(),
                              barcodeReader: SeamBarcodes(), files: AppStateFiles.all(in: folder))

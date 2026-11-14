@@ -157,7 +157,7 @@ struct StatusBarView: View {
 
     private var savedActions: some View {
         let urls = state.lastSavedURLs
-        let offered = state.savedFileActions
+        let offered = state.savedFileActions.filter { $0 != .addPages }
         // Open with is in the menu for one saved file only (`SaveActions.offered`).
         let moreHelp: String = urls.count == 1
             ? String(localized: "More: open with, email and the other actions")

@@ -29,7 +29,7 @@ struct SavedFilesView: View {
                             SavedFileCard(file: file,
                                           rotating: rotatingPaths.contains(file.url.path),
                                           canAppend: state.canAppendPages,
-                                          actions: state.offeredFileActions(for: [file.url]),
+                                          actions: state.offeredFileActions(for: [file.url]).filter { $0 != .addPages },
                                           onAction: { state.runFileAction($0, urls: [file.url]) },
                                           onRotate: { rotate(file) },
                                           onAppend: { state.appendToPDF(at: file.url) })

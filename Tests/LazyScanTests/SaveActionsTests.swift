@@ -34,7 +34,7 @@ final class SaveActionsTests: XCTestCase {
             XCTAssertFalse(action.hint.isEmpty, action.rawValue)
         }
         XCTAssertEqual(FileAction.allCases.map(\.label),
-                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Email\u{2026}", "Lazy Print", "Copy"])
+                       ["Open", "Open with\u{2026}", "Show in folder", "Share\u{2026}", "Add more pages", "Email\u{2026}", "Lazy Print", "Copy"])
     }
 
     func test_plan_nothingToDo() {
@@ -76,6 +76,35 @@ final class SaveActionsTests: XCTestCase {
         XCTAssertEqual(SaveActions.offered(fileCount: 1), [.open, .openWith, .reveal, .share, .email, .copy])
         XCTAssertEqual(SaveActions.offered(fileCount: 2), [.reveal, .share, .email, .copy])
         XCTAssertEqual(SaveActions.offered(fileCount: 40), SaveActions.offered(fileCount: 2))
+    }
+
+    func test_offered_addsMorePagesAfterShareForOneFileOnlyWhenAsked() {
+        XCTAssertEqual(SaveActions.offered(fileCount: 1, addPages: true),
+                       [.open, .openWith, .reveal, .share, .addPages, .email, .copy])
+        XCTAssertEqual(SaveActions.offered(fileCount: 1, lazyPrint: true, addPages: true),
+                       [.open, .openWith, .reveal, .share, .addPages, .email, .lazyPrint, .copy])
+        XCTAssertEqual(SaveActions.offered(fileCount: 2, addPages: true), SaveActions.offered(fileCount: 2))
+        XCTAssertEqual(SaveActions.offered(fileCount: 0, addPages: true), [])
+        XCTAssertFalse(SaveActions.offered(fileCount: 1).contains(.addPages))
+    }
+
+    func test_canAddMorePages_needsOneNewUnprotectedPDFAndNothingRunning() {
+        func can(_ saved: [URL], protected: Bool = false, eachReceipt: Bool = false, appended: Bool = false,
+                 targetSet: Bool = false, busy: Bool = false) -> Bool {
+            SaveActions.canAddMorePages(saved: saved, protected: protected, eachReceipt: eachReceipt,
+                                        appended: appended, appendTargetSet: targetSet, busy: busy)
+        }
+        XCTAssertTrue(can(onePDF))
+        XCTAssertTrue(can([URL(fileURLWithPath: "/Scans/Scan.PDF")]))
+        XCTAssertFalse(can([]))
+        XCTAssertFalse(can(threePhotos))
+        XCTAssertFalse(can(onePDF + onePDF))
+        XCTAssertFalse(can([URL(fileURLWithPath: "/Scans/Photo 1.jpg")]))
+        XCTAssertFalse(can(onePDF, protected: true))
+        XCTAssertFalse(can(onePDF, eachReceipt: true))
+        XCTAssertFalse(can(onePDF, appended: true))
+        XCTAssertFalse(can(onePDF, targetSet: true))
+        XCTAssertFalse(can(onePDF, busy: true))
     }
 
     func test_offered_addsPrintWithLazyPrintBeforeCopyOnlyWhenAsked() {
