@@ -803,6 +803,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     public Func<SidesSaveChoice?>? AskSidesOrder { get; set; }
 
+    /// <summary>
+    /// Asks what to do with files over <see cref="SaveActions.LargeAttachmentBytes"/> that are about to go to the share
+    /// window: how many files, their size in bytes, and whether they can be saved smaller. Without anyone to ask, they go.
+    /// </summary>
+    public Func<int, long, bool, LargeSendChoice>? AskLargeSend { get; set; }
+
     /// <summary>How the next scan captures the sheets (one side, both, or turned over by hand).</summary>
     public DuplexMode EffectiveDuplex => DocumentSides.Effective(Settings, Capabilities);
 
@@ -2333,6 +2339,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (ScannedPages.Count == 0 || !SettleSides()) return Task.CompletedTask;
         if (AppendTarget is { } target) return AppendToPdf(target);
         var s = Settings.Clone();
+        if (_savingSmaller)
+        {
+            s.Output.PdfSize = PdfSizePreset.Smallest;
+            s.Output.AfterSave = AfterSaveAction.None;
+        }
         return RunExclusive(async token =>
         {
             // Let page rotations that were clicked before the save land first.
@@ -4150,6 +4161,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             NotifyAll();
             return sent;
         }
+        if (action is FileAction.Share or FileAction.Email && HoldsBackLargeSend(action, paths)) return false;
         try
         {
             switch (action)
@@ -4190,6 +4202,26 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         NotifyAll();
         return true;
+    }
+
+    /// <summary>
+    /// Asks about a share or an email of files over the limit. True when it is not to go on now: cancelled, or Save
+    /// smaller was chosen and takes over once the save in progress has ended.
+    /// </summary>
+    private bool HoldsBackLargeSend(FileAction action, IReadOnlyList<string> paths)
+    {
+        long bytes = paths.Sum(path => new FileInfo(path).Length);
+        if (bytes <= SaveActions.LargeAttachmentBytes || AskLargeSend is not { } ask) return false;
+        switch (ask(paths.Count, bytes, CanSaveSmaller(paths)))
+        {
+            case LargeSendChoice.SaveSmaller:
+                _ = SaveSmaller(action);
+                return true;
+            case LargeSendChoice.SendAnyway:
+                return false;
+            default:
+                return true;
+        }
     }
 
     private void Send(SendRoute route, IReadOnlyList<string> paths)

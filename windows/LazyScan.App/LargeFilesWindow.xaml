@@ -1,0 +1,30 @@
+<Window x:Class="LazyScan.App.LargeFilesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:LazyScan.App"
+        xmlns:ui="clr-namespace:LazyScan.App"
+        AutomationProperties.AutomationId="LargeFilesWindow"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        FontFamily="{StaticResource TextFontFamily}"
+        Icon="{x:Static ui:AppIcon.Image}"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource DialogFooterStyle}" Padding="24,14,24,18">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SaveSmallerButton" Content="{loc:T _Save smaller}" MinWidth="120" Margin="0,0,8,0"
+                        AutomationProperties.AutomationId="LargeFilesSaveSmaller" Click="SaveSmaller_Click" />
+                <Button x:Name="SendAnywayButton" Content="{loc:T Send _anyway}" MinWidth="120"
+                        AutomationProperties.AutomationId="LargeFilesSendAnyway" Click="SendAnyway_Click" />
+                <Button x:Name="CancelButton" Content="{loc:T Cancel}" IsCancel="True" MinWidth="96" Margin="8,0,0,0"
+                        AutomationProperties.AutomationId="LargeFilesCancel" />
+            </StackPanel>
+        </Border>
+
+        <DockPanel Margin="24,20,24,16">
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE7BA;" FontSize="24"
+                       Foreground="{DynamicResource SystemFillColorCautionBrush}" Margin="0,0,12,0"
+                       VerticalAlignment="Top" />
+            <TextBlock x:Name="MessageText" Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+        </DockPanel>
+    </DockPanel>
+</Window>

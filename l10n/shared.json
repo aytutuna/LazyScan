@@ -1653,6 +1653,12 @@
     "other": "These files are {1}. Many mail services reject attachments over {2}."
   },
   "Saved smaller: {0}.": {},
+  "_Save smaller": {
+    "note": "Button of the large files window on Windows; the underscore marks the access key (Alt+S)."
+  },
+  "Send _anyway": {
+    "note": "Button of the large files window on Windows; the underscore marks the access key (Alt+A)."
+  },
   "Receipts discarded.": {},
   "Photo batch discarded.": {},
   "The page could not be switched: its file could not be read.": {},

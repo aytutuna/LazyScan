@@ -80,6 +80,7 @@ public partial class MainWindow : Window
         // A protected PDF's password is asked for at save time, over this window.
         ViewModel.AskPdfPassword = () => PdfPasswordWindow.Ask(this);
         ViewModel.AskSidesOrder = () => SidesOrderWindow.Ask(this);
+        ViewModel.AskLargeSend = (count, bytes, canSaveSmaller) => LargeFilesWindow.Ask(this, count, bytes, canSaveSmaller);
         SetUpAddToPdf();
         SetUpImport();
         SetUpPhone();

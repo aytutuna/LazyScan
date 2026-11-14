@@ -86,6 +86,12 @@ public static class SaveActions
     public static string ShowInFolderMessage =>
         Loc.T("Sharing is not available here, so the file is shown in its folder. Attach it from there.");
 
+    /// <summary>
+    /// Files over this many bytes together are not handed to the share window before the user has seen their size
+    /// (the app asks first). Decimal, as sizes are shown and mail services quote them.
+    /// </summary>
+    public const long LargeAttachmentBytes = 20_000_000;
+
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".tif", ".tiff"];
 
     /// <summary>

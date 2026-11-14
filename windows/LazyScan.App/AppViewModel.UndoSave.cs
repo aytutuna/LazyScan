@@ -23,6 +23,8 @@ public sealed partial class AppViewModel
         public required Dictionary<string, (long Length, DateTime Written)?> Stamps { get; init; }
         public AppendedPdf? Appended { get; set; }
         public TaskFlow? Flow { get; init; }
+        /// <summary>The save was made at the Smallest size for a large share or email.</summary>
+        public bool Smaller { get; init; }
     }
 
     private SavedHold? _saved;
@@ -56,6 +58,7 @@ public sealed partial class AppViewModel
                 Stamps = written.ToDictionary(path => path, StampIfThere),
                 Appended = appended,
                 Flow = Flow?.Copy(),
+                Smaller = _savingSmaller,
             };
         }
         else

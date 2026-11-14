@@ -1080,6 +1080,10 @@ Nothing leaves the PC without the user choosing where it goes:
   windows), which lists Mail, Outlook, nearby sharing and other apps. The files are offered as
   read-only copies. Where Windows has no share window, the files are shown in their folder with
   a note instead.
+  Files over 20 MB together (`SaveActions.LargeAttachmentBytes`) are asked about first, for Share and
+  Email alike: a small window (`LargeFilesWindow`) shows their size and offers **Save smaller**
+  (the held pages saved again at the Smallest PDF size, replacing the files; only while the save can
+  still be undone), **Send anyway** and **Cancel**.
 - **Email** is not offered as an item of its own: with no way to start a message with files
   attached it would open the same share window as **Share**, where Mail and Outlook are listed.
   The app does not use Simple MAPI or `mailto:` (the new Outlook does not support Simple MAPI,
