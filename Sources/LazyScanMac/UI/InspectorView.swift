@@ -678,6 +678,7 @@ struct InspectorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Show in Finder")
+                .accessibilityLabel("Show in Finder")
             }
         }
     }

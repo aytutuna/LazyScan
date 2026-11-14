@@ -56,10 +56,10 @@ struct ScanHistoryView: View {
                 .foregroundStyle(.secondary)
             Text("No scans yet this session")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             Text("Every scan appears here as it happens.")
                 .font(.callout)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
         .padding(40)
     }
@@ -198,16 +198,18 @@ private struct HistoryCard: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(decorative: entry.thumbnail, scale: 1)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(height: 150)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-                .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
-                .onTapGesture(perform: onEnlarge)
-                .accessibilityLabel(Text("Enlarge scan"))
-                .accessibilityAddTraits(.isButton)
+            Button(action: onEnlarge) {
+                Image(decorative: entry.thumbnail, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 150)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(accessibilityName))
+            .accessibilityHint(Text("Opens the scan larger"))
 
             Text("\(entry.intent.label) · \(entry.dpi) dpi")
                 .font(.caption)

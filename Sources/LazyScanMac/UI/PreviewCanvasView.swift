@@ -479,12 +479,12 @@ struct PreviewCanvasView: View {
             if let line = startLine {
                 Text(line)
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
             if demoSelected {
                 Text("This is the demo scanner: it scans sample pages. Your own scanner appears in the sidebar once it is found.")
                     .font(.callout)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .multilineTextAlignment(.center)
