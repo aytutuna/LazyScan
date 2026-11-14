@@ -8,9 +8,13 @@ import UIKit
 public enum IOSCompanionText {
     public static var title: String { String(localized: "My computer") }
     public static var pairTitle: String { String(localized: "Pair with a computer") }
-    public static var pairLine: String { String(localized: "On the computer, choose Pair a phone.") }
+    public static var installLine: String { String(localized: "1. Install Lazy Scan on your Mac or PC (alazy.app/scan).") }
+    public static var openLine: String { String(localized: "2. On it, open Phone and pair a phone. Use the same Wi-Fi.") }
+    public static var scanButton: String { String(localized: "Scan the code") }
+    public static var pasteCaption: String { String(localized: "Or paste the pairing link") }
+    public static func pairWith(_ name: String) -> String { L10n.t("Pair with {0}", name) }
     public static var textLabel: String { String(localized: "Enter pairing text") }
-    public static let textPlaceholder = "lazyscan://pair?\u{2026}"
+    public static var textPlaceholder: String { String(localized: "Pairing link") }
     public static var compareLine: String { String(localized: "Compare with the code on the computer") }
     /// The model word ("iPhone", "iPad") instead of "phone", here and in `waitingLine`.
     @MainActor public static var phoneNameLabel: String { String(localized: "Name of this \(UIDevice.current.model)") }

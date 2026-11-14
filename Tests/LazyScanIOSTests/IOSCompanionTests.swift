@@ -283,6 +283,7 @@ final class IOSCompanionTests: XCTestCase {
                        "Office PC was not found. Open Lazy Scan on it and check both are on the same Wi-Fi.")
         XCTAssertEqual(IOSCompanionText.status(.unpaired(byDesktop: "Office PC")),
                        "This device is no longer paired with Office PC.")
+        XCTAssertEqual(IOSCompanionText.pairWith("Studio iMac"), "Pair with Studio iMac")
         XCTAssertEqual(IOSCompanionText.waiting(0), "Nothing waiting to be sent")
         XCTAssertEqual(IOSCompanionText.waiting(1), "1 document waiting to be sent")
         XCTAssertEqual(IOSCompanionText.waiting(4), "4 documents waiting to be sent")

@@ -21,6 +21,8 @@ struct CompanionScreen: View {
     @State private var confirmingUnpair: Bool = false
     @State private var confirmingRemoveAll: Bool = false
     @State private var confirmingRemoveOther: Bool = false
+    @State private var scanning: Bool = false
+    @State private var textExpanded: Bool = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(state: AppState, browser: IOSCompanionBrowser?, network: IOSNetworkScanners?) {
@@ -245,19 +247,19 @@ struct CompanionScreen: View {
 
     private var pairSection: some View {
         Section {
-            if model.code == nil && !model.needsExplanation {
-                PairingScannerView(onCode: { (value: String) in
-                    model.scanned(value)
-                })
+            if model.code == nil {
+                steps
+                if !model.needsExplanation {
+                    PairingScannerView(started: scanning, onStart: { scanning = true }, onCode: { (value: String) in
+                        model.scanned(value)
+                    })
+                }
+                Text(IOSCompanionText.pasteCaption)
+                    .font(.footnote)
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityIdentifier("companion.textCaption")
+                textField
             }
-            TextField(IOSCompanionText.textPlaceholder, text: $model.text, axis: .vertical)
-                .lineLimit(1...4)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .disabled(model.isPairing || model.needsExplanation)
-                .accessibilityLabel(Text(IOSCompanionText.textLabel))
-                .accessibilityIdentifier("companion.text")
             if let problem = model.problem {
                 Text(problem)
                     .font(.footnote)
@@ -266,6 +268,11 @@ struct CompanionScreen: View {
             }
             if let check = model.checkCode {
                 VStack(alignment: .leading, spacing: 4) {
+                    if let name = model.code?.name {
+                        Text(IOSCompanionText.pairWith(name))
+                            .font(.headline)
+                            .accessibilityIdentifier("companion.pairWith")
+                    }
                     Text(check)
                         .font(.title2.monospacedDigit())
                         .accessibilityIdentifier("companion.checkCode")
@@ -279,6 +286,13 @@ struct CompanionScreen: View {
                     .disabled(model.isPairing)
                     .accessibilityLabel(Text(IOSCompanionText.phoneNameLabel))
                     .accessibilityIdentifier("companion.phoneName")
+            }
+            if model.code != nil {
+                DisclosureGroup(IOSCompanionText.textLabel, isExpanded: $textExpanded) {
+                    textField
+                }
+                .disabled(model.isPairing)
+                .accessibilityIdentifier("companion.textDisclosure")
             }
             if model.isPairing {
                 HStack(spacing: 8) {
@@ -299,9 +313,30 @@ struct CompanionScreen: View {
             .accessibilityIdentifier("companion.pair")
         } header: {
             Text(IOSCompanionText.pairTitle)
-        } footer: {
-            Text(IOSCompanionText.pairLine)
         }
+        .onChange(of: model.code == nil) { _, isEmpty in
+            if isEmpty { textExpanded = false }
+        }
+    }
+
+    private var steps: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(IOSCompanionText.installLine)
+                .accessibilityIdentifier("companion.step1")
+            Text(IOSCompanionText.openLine)
+                .accessibilityIdentifier("companion.step2")
+        }
+    }
+
+    private var textField: some View {
+        TextField(IOSCompanionText.textPlaceholder, text: $model.text, axis: .vertical)
+            .lineLimit(1...4)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .keyboardType(.URL)
+            .disabled(model.isPairing || model.needsExplanation)
+            .accessibilityLabel(Text(IOSCompanionText.textLabel))
+            .accessibilityIdentifier("companion.text")
     }
 }
 

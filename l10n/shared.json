@@ -584,6 +584,7 @@
   },
   "Unpair {0}?": {},
   "Not sent: {0}": {},
+  "Pair with {0}": {},
   "New document every {0} sheet": {
     "other": "New document every {0} sheets"
   },

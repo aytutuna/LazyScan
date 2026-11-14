@@ -9,15 +9,20 @@ import VisionKit
 /// The camera looking for the computer's pairing code (its QR code): VisionKit's live scanner where this
 /// device has it, else the camera's own QR reader (AVCaptureMetadataOutput). The first text read that is
 /// a pairing code (`isPairingCode`) is handed to `onCode`, once. Camera access is asked for the first
-/// time, as our camera asks (`IOSCameraAvailability`); without a camera (the Simulator) or access, one
-/// line says why, and the pairing text is entered below instead.
+/// time, as our camera asks (`IOSCameraAvailability`), and only once `started`, from the button on the
+/// box; without a camera (the Simulator) or access, one line says why, and the pairing text is entered
+/// below instead.
 struct PairingScannerView: View {
+    let started: Bool
+    let onStart: () -> Void
     let onCode: @MainActor (String) -> Void
     @State private var availability: IOSCameraAvailability?
 
     var body: some View {
         Group {
-            if let shown = availability {
+            if !started {
+                idle
+            } else if let shown = availability {
                 if shown.isAvailable {
                     if PairingScannerView.usesDataScanner {
                         PairingDataScanner(onCode: onCode)
@@ -36,9 +41,23 @@ struct PairingScannerView: View {
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("companion.scanner")
-        .task {
+        .task(id: started) {
+            guard started else { return }
             availability = await PairingScannerView.cameraAvailability()
         }
+    }
+
+    private var idle: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "qrcode.viewfinder")
+                .font(.system(size: 64))
+                .foregroundStyle(Color.white)
+                .accessibilityHidden(true)
+            Button(IOSCompanionText.scanButton, action: onStart)
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("companion.scanner.start")
+        }
+        .padding(16)
     }
 
     private func unavailable(_ shown: IOSCameraAvailability) -> some View {
