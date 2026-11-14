@@ -221,6 +221,42 @@ public class DocumentEnhancerTests
     }
 
     [Fact]
+    public void APhotoIsStretchedByAtMostTheCappedGain()
+    {
+        // A faded print: levels 70 to 136, one of each.
+        var faded = Ramp(70, 136);
+        var result = DocumentEnhancer.Enhance(faded, DocumentEnhanceMode.Photo).Image;
+        int first = result.Pixels[0], last = result.Pixels[(faded.Width - 1) * 4];
+        Assert.True(last - first <= (136 - 70) * DocumentEnhancer.MaxPhotoGain + 1, $"{first}...{last}");
+        Assert.True(last - first > 136 - 70);
+        Assert.InRange(first, 55, 75);
+        Assert.InRange(last, 130, 150);
+        Assert.Equal(0x9D70AB4Au, PhotoScenes.Checksum(result));
+
+        // A photo that already spans the range is stretched to the ends as before.
+        var normal = Ramp(10, 250);
+        var stretched = DocumentEnhancer.Enhance(normal, DocumentEnhanceMode.Photo).Image;
+        Assert.Equal(0, stretched.Pixels[0]);
+        Assert.Equal(255, stretched.Pixels[(normal.Width - 1) * 4]);
+        Assert.Equal(0x7E1D5280u, PhotoScenes.Checksum(stretched));
+    }
+
+    private static RgbaImage Ramp(int from, int to)
+    {
+        int w = to - from + 1;
+        var pixels = new byte[w * 4];
+        for (int x = 0; x < w; x++)
+        {
+            byte v = (byte)(from + x);
+            pixels[x * 4] = v;
+            pixels[x * 4 + 1] = v;
+            pixels[x * 4 + 2] = v;
+            pixels[x * 4 + 3] = 255;
+        }
+        return new RgbaImage(w, 1, pixels);
+    }
+
+    [Fact]
     public void TheBytesAreTheSameOnBothPlatforms()
     {
         var page = EnhancerPages.Shadowed();

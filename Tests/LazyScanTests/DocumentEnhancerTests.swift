@@ -226,6 +226,39 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertEqual(DocumentEnhancer.enhance(flat, mode: .photo).image, flat)
     }
 
+    func testAPhotoIsStretchedByAtMostTheCappedGain() {
+        // A faded print: levels 70 to 136, one of each.
+        let faded: RgbaImage = ramp(from: 70, to: 136)
+        let result: RgbaImage = DocumentEnhancer.enhance(faded, mode: .photo).image
+        let first: Int = Int(result.pixels[0])
+        let last: Int = Int(result.pixels[(faded.width - 1) * 4])
+        XCTAssertLessThanOrEqual(Double(last - first), Double(136 - 70) * DocumentEnhancer.maxPhotoGain + 1, "\(first)...\(last)")
+        XCTAssertGreaterThan(last - first, 136 - 70)
+        XCTAssert((55...75).contains(first), "\(first)")
+        XCTAssert((130...150).contains(last), "\(last)")
+        XCTAssertEqual(PhotoScenes.checksum(result), 0x9D70_AB4A)
+
+        // A photo that already spans the range is stretched to the ends as before.
+        let normal: RgbaImage = ramp(from: 10, to: 250)
+        let stretched: RgbaImage = DocumentEnhancer.enhance(normal, mode: .photo).image
+        XCTAssertEqual(stretched.pixels[0], 0)
+        XCTAssertEqual(stretched.pixels[(normal.width - 1) * 4], 255)
+        XCTAssertEqual(PhotoScenes.checksum(stretched), 0x7E1D_5280)
+    }
+
+    private func ramp(from: Int, to: Int) -> RgbaImage {
+        let width: Int = to - from + 1
+        var pixels: [UInt8] = [UInt8](repeating: 255, count: width * 4)
+        var x: Int = 0
+        while x < width {
+            pixels[x * 4] = UInt8(from + x)
+            pixels[x * 4 + 1] = UInt8(from + x)
+            pixels[x * 4 + 2] = UInt8(from + x)
+            x += 1
+        }
+        return RgbaImage(width: width, height: 1, pixels: pixels)
+    }
+
     func testTheBytesAreTheSameOnBothPlatforms() {
         let page: RgbaImage = EnhancerPages.shadowed()
         XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(page, mode: .auto).image), 0x7060_4295)

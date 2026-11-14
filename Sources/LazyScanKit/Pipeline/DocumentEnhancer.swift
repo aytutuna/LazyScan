@@ -144,6 +144,8 @@ public enum DocumentEnhancer {
     public static let photoClip: Double = 0.005
     /// …when those two lumas are at least this far apart; a flatter photo is left as it is.
     public static let minPhotoRange: Int = 64
+    /// A photo's stretch gains at most this much: a narrower range is widened to it (see `photoRange`).
+    public static let maxPhotoGain: Double = 1.3
     /// The ground of a page, to tell light print on a dark ground, is this percentile of each tile's luma.
     public static let groundPercentile: Double = 0.5
     /// A pixel this many times as bright as the ground there is light print; this many times darker, dark print.
@@ -381,7 +383,7 @@ public enum DocumentEnhancer {
     /// at `defaultThreshold`) for `.blackAndWhite`.
     private static func lightOnDark(_ image: RgbaImage, mode: DocumentEnhanceMode,
                                     threshold setting: Double) -> DocumentEnhancement {
-        let stretched: RgbaImage = photo(image)
+        let stretched: RgbaImage = photo(image, capped: false)
         let w: Int = stretched.width
         let h: Int = stretched.height
         if mode == .color {
@@ -410,9 +412,9 @@ public enum DocumentEnhancer {
     }
 
     /// A photo's levels stretched as a whole, the same for each channel: the `photoClip` and 1 − `photoClip`
-    /// percentiles of its luma become 0 and 255; a photo whose two are less than `minPhotoRange` apart is
-    /// returned as it is.
-    public static func photo(_ image: RgbaImage) -> RgbaImage {
+    /// percentiles of its luma become 0 and 255, as far as `photoRange` allows (`capped` false: all the way);
+    /// a photo whose two are less than `minPhotoRange` apart is returned as it is.
+    public static func photo(_ image: RgbaImage, capped: Bool = true) -> RgbaImage {
         let gray: GrayImage = GrayImage.luma(image)
         var histogram: [Int] = [Int](repeating: 0, count: 256)
         for value in gray.pixels {
@@ -422,10 +424,12 @@ public enum DocumentEnhancer {
         let lo: Int = Int(BackgroundMap.percentile(histogram, count: count, fraction: photoClip))
         let hi: Int = Int(BackgroundMap.percentile(histogram, count: count, fraction: 1 - photoClip))
         if hi - lo < minPhotoRange { return image }
+        let range: ClosedRange<Double> = photoRange(lo: lo, hi: hi, capped: capped)
+        let span: Double = range.upperBound - range.lowerBound
         var lut: [UInt8] = [UInt8](repeating: 0, count: 256)
         var index: Int = 0
         while index < 256 {
-            let stretched: Double = floor(Double(index - lo) * 255.0 / Double(hi - lo) + 0.5)
+            let stretched: Double = floor((Double(index) - range.lowerBound) * 255.0 / span + 0.5)
             lut[index] = UInt8(min(max(stretched, 0), 255))
             index += 1
         }
@@ -440,6 +444,18 @@ public enum DocumentEnhancer {
             i += 4
         }
         return RgbaImage(width: image.width, height: image.height, pixels: output)
+    }
+
+    /// The levels that become 0 and 255 for a photo whose percentiles are `lo` and `hi`: those two, unless the
+    /// gain would pass `maxPhotoGain`, then the range is widened to 255 / `maxPhotoGain` levels, each end moving
+    /// out in proportion to the room it has before 0 or 255, so the photo's own tones stay where they were.
+    public static func photoRange(lo: Int, hi: Int, capped: Bool = true) -> ClosedRange<Double> {
+        let range: Double = Double(hi - lo)
+        let span: Double = capped ? max(range, 255.0 / maxPhotoGain) : range
+        let extra: Double = span - range
+        if extra <= 0 { return Double(lo)...Double(hi) }
+        let low: Double = Double(lo) - extra * Double(lo) / (255.0 - range)
+        return low...(low + span)
     }
 
     /// `value` against the paper's `background`, as a level 0...`levels` (at most the paper's own).

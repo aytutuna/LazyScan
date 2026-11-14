@@ -66,7 +66,7 @@ struct LiveStats: Sendable {
         if mode != .photo, !DocumentEnhancer.isLightOnDark(gray), let paper = DocumentEnhancer.paperMap(gray) {
             fresh = document(image, gray: gray, paper: paper)
         } else {
-            fresh = photo(image, gray: gray)
+            fresh = photo(image, gray: gray, capped: mode == .photo)
         }
         if mode == .auto {
             fresh.isGray = DocumentEnhancer.enhance(image, mode: .auto).mode == .gray
@@ -100,15 +100,16 @@ struct LiveStats: Sendable {
 
     /// The range `DocumentEnhancer.photo` stretches, from the same percentiles; the whole range (no change)
     /// when the levels are already close together.
-    private static func photo(_ image: RgbaImage, gray: GrayImage) -> LiveStats {
+    private static func photo(_ image: RgbaImage, gray: GrayImage, capped: Bool) -> LiveStats {
         var histogram: [Int] = [Int](repeating: 0, count: 256)
         for value in gray.pixels {
             histogram[Int(value)] += 1
         }
         let count: Int = image.width * image.height
-        let low: Double = Double(BackgroundMap.percentile(histogram, count: count, fraction: DocumentEnhancer.photoClip))
-        let high: Double = Double(BackgroundMap.percentile(histogram, count: count, fraction: 1 - DocumentEnhancer.photoClip))
-        let range: ClosedRange<Double> = high - low >= Double(DocumentEnhancer.minPhotoRange) ? low...high : 0...255
+        let low: Int = Int(BackgroundMap.percentile(histogram, count: count, fraction: DocumentEnhancer.photoClip))
+        let high: Int = Int(BackgroundMap.percentile(histogram, count: count, fraction: 1 - DocumentEnhancer.photoClip))
+        let range: ClosedRange<Double> = high - low >= DocumentEnhancer.minPhotoRange
+            ? DocumentEnhancer.photoRange(lo: low, hi: high, capped: capped) : 0...255
         return LiveStats(gains: [], columns: 0, rows: 0, balance: PaperWhiteBalance.neutral, blackPoint: 0,
                          photoRange: range, isGray: nil)
     }

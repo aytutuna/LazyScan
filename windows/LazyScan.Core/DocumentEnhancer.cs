@@ -135,6 +135,8 @@ public static class DocumentEnhancer
     public const double PhotoClip = 0.005;
     /// <summary>…when those two lumas are at least this far apart; a flatter photo is left as it is.</summary>
     public const int MinPhotoRange = 64;
+    /// <summary>A photo's stretch gains at most this much: a narrower range is widened to it (see <see cref="PhotoRange"/>).</summary>
+    public const double MaxPhotoGain = 1.3;
     /// <summary>The ground of a page, to tell light print on a dark ground, is this percentile of each tile's luma.</summary>
     public const double GroundPercentile = 0.5;
     /// <summary>A pixel this many times as bright as the ground there is light print; this many times darker, dark print.</summary>
@@ -346,7 +348,7 @@ public static class DocumentEnhancer
     /// </summary>
     private static DocumentEnhancement LightOnDark(RgbaImage image, DocumentEnhanceMode mode, double threshold)
     {
-        var stretched = Photo(image);
+        var stretched = Photo(image, capped: false);
         int w = stretched.Width, h = stretched.Height;
         if (mode == DocumentEnhanceMode.Color) return new DocumentEnhancement(stretched, DocumentEnhanceMode.Color);
         if (mode == DocumentEnhanceMode.Auto && !ColorAnalysis.IsEffectivelyGray(stretched.Pixels, w, h))
@@ -371,10 +373,11 @@ public static class DocumentEnhancer
 
     /// <summary>
     /// A photo's levels stretched as a whole, the same for each channel: the <see cref="PhotoClip"/> and
-    /// 1 − <see cref="PhotoClip"/> percentiles of its luma become 0 and 255; a photo whose two are less
-    /// than <see cref="MinPhotoRange"/> apart is returned as it is (a copy).
+    /// 1 − <see cref="PhotoClip"/> percentiles of its luma become 0 and 255, as far as <see cref="PhotoRange"/>
+    /// allows (<paramref name="capped"/> false: all the way); a photo whose two are less than
+    /// <see cref="MinPhotoRange"/> apart is returned as it is (a copy).
     /// </summary>
-    public static RgbaImage Photo(RgbaImage image)
+    public static RgbaImage Photo(RgbaImage image, bool capped = true)
     {
         int w = image.Width, h = image.Height;
         var gray = GrayImage.Luma(image);
@@ -384,10 +387,12 @@ public static class DocumentEnhancer
         int lo = BackgroundMap.Percentile(histogram, count, PhotoClip);
         int hi = BackgroundMap.Percentile(histogram, count, 1 - PhotoClip);
         if (hi - lo < MinPhotoRange) return image.Clone();
+        var (low, high) = PhotoRange(lo, hi, capped);
+        double span = high - low;
         var lut = new byte[256];
         for (int v = 0; v < 256; v++)
         {
-            lut[v] = (byte)Math.Clamp(Math.Floor((v - lo) * 255.0 / (hi - lo) + 0.5), 0, 255);
+            lut[v] = (byte)Math.Clamp(Math.Floor((v - low) * 255.0 / span + 0.5), 0, 255);
         }
         var src = image.Pixels;
         var output = new byte[src.Length];
@@ -399,6 +404,22 @@ public static class DocumentEnhancer
             output[i + 3] = src[i + 3];
         }
         return new RgbaImage(w, h, output);
+    }
+
+    /// <summary>
+    /// The levels that become 0 and 255 for a photo whose percentiles are <paramref name="lo"/> and
+    /// <paramref name="hi"/>: those two, unless the gain would pass <see cref="MaxPhotoGain"/>, then the range is
+    /// widened to 255 / <see cref="MaxPhotoGain"/> levels, each end moving out in proportion to the room it has
+    /// before 0 or 255, so the photo's own tones stay where they were.
+    /// </summary>
+    public static (double Low, double High) PhotoRange(int lo, int hi, bool capped = true)
+    {
+        double range = hi - lo;
+        double span = capped ? Math.Max(range, 255.0 / MaxPhotoGain) : range;
+        double extra = span - range;
+        if (extra <= 0) return (lo, hi);
+        double low = lo - extra * lo / (255.0 - range);
+        return (low, low + span);
     }
 
     /// <summary><paramref name="value"/> against the paper's <paramref name="background"/>, as a level 0...<see cref="Levels"/> (at most the paper's own).</summary>
