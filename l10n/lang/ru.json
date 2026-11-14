@@ -785,7 +785,6 @@
     "Importing page {0} of {1}…": "Импорт страницы {0} из {1}…",
     "{0}, page {1} of {2}": "{0}, страница {1} из {2}",
     "{0} could not be opened: {1}": "Не удалось открыть «{0}»: {1}",
-    "{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.": "Не удалось открыть файл «{0}»: для фото HEIC нужны бесплатные «Расширения для изображений HEIF» из Microsoft Store (для большинства фото с iPhone также «Расширения для видео HEVC»). Если они уже установлены, возможно, фото повреждено. Чтобы избежать таких ошибок, включите на телефоне сохранение фото в JPEG.",
     "Save as One PDF": "Сохранить как один PDF",
     "Lightens the dark band along the spine": "Осветляет темную полосу вдоль корешка",
     "The spread could not be read.": "Не удалось прочитать разворот.",

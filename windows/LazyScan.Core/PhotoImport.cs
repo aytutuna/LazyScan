@@ -518,7 +518,7 @@ public static class PhotoImport
     /// else the file is damaged (the Mac reads HEIF itself).
     /// </summary>
     public static string HeifUnavailableMessage(string fileName) =>
-        Loc.T("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.", fileName);
+        Loc.T("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store, and most iPhone photos also need “HEVC Video Extensions”, which may cost money. To avoid both, set the phone's camera to Most Compatible, or send the photos as JPEG. If the extensions are installed, the photo may be damaged.", fileName);
 
     /// <summary>The lowercase extension of <paramref name="path"/>, without the dot.</summary>
     private static string ExtensionOf(string path)

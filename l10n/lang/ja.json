@@ -785,7 +785,6 @@
     "Importing page {0} of {1}…": "{0} / {1}ページを読み込み中…",
     "{0}, page {1} of {2}": "{0}、{1} / {2}ページ",
     "{0} could not be opened: {1}": "“{0}”を開けませんでした: {1}",
-    "{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.": "“{0}”を開けませんでした。HEIC写真を開くには、Microsoft Storeで無料の“HEIF 画像表示オプション”を入手してください（iPhoneの写真の多くは“HEVC ビデオ拡張機能”も必要です）。インストール済みの場合は、写真が破損している可能性があります。写真をJPEGで保存するようにiPhoneを設定すると、この問題を避けられます。",
     "Save as One PDF": "ひとつのPDFとして保存",
     "Lightens the dark band along the spine": "綴じ目に沿った暗い帯を明るくします",
     "The spread could not be read.": "見開きを読み込めませんでした。",

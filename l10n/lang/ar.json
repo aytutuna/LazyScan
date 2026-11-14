@@ -785,7 +785,6 @@
     "Importing page {0} of {1}…": "جارٍ استيراد الصفحة {0} من {1}…",
     "{0}, page {1} of {2}": "{0}، الصفحة {1} من {2}",
     "{0} could not be opened: {1}": "تعذر فتح الملف {0}: {1}",
-    "{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.": "تعذر فتح الملف {0}: تتطلب صور HEIC الإضافة المجانية \"ملحقات صور HEIF\" من Microsoft Store، وتتطلب معظم صور iPhone أيضًا \"ملحقات فيديو HEVC\". إذا كانت مثبّتة فقد تكون الصورة تالفة. ولتجنّب ذلك، يمكن ضبط الهاتف على حفظ الصور بتنسيق JPEG.",
     "Save as One PDF": "حفظ كملف PDF واحد",
     "Lightens the dark band along the spine": "يُفتّح الشريط الداكن على امتداد كعب الكتاب",
     "The spread could not be read.": "تعذرت قراءة الصفحتين المتقابلتين.",

@@ -507,7 +507,7 @@ public enum PhotoImport {
     /// the file is damaged. The Mac reads HEIF itself (ImageIO), so it never shows this; it is here so both
     /// platforms keep the same words.
     public static func heifUnavailableMessage(_ fileName: String) -> String {
-        L10n.t("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.", fileName)
+        L10n.t("{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store, and most iPhone photos also need “HEVC Video Extensions”, which may cost money. To avoid both, set the phone's camera to Most Compatible, or send the photos as JPEG. If the extensions are installed, the photo may be damaged.", fileName)
     }
 
     /// The lowercase extension of `path`, without the dot.

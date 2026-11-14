@@ -448,6 +448,8 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertEqual(PhotoImport.unreadableMessage("a.jpg", detail: "it is damaged."), "a.jpg could not be opened: it is damaged.")
         XCTAssertTrue(PhotoImport.heifUnavailableMessage("IMG_1.heic")
             .hasPrefix("IMG_1.heic could not be opened: HEIC photos need the free \u{201C}HEIF Image Extensions\u{201D}"))
+        XCTAssertTrue(PhotoImport.heifUnavailableMessage("IMG_1.heic").contains("may cost money"))
+        XCTAssertTrue(PhotoImport.heifUnavailableMessage("IMG_1.heic").contains("Most Compatible"))
     }
 
     func testTheImportAndTheCornerEditor_sayLittle() {

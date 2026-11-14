@@ -461,6 +461,8 @@ public class PhotoImportTests
         Assert.Equal("Photo 2 of 3: fax.tif, page 2 of 5", PhotoImport.CounterName(2, 3, PhotoImport.PageName("fax.tif", 2, 5)));
         Assert.Equal("a.jpg could not be opened: it is damaged.", PhotoImport.UnreadableMessage("a.jpg", "it is damaged."));
         Assert.StartsWith("IMG_1.heic could not be opened: HEIC photos need the free “HEIF Image Extensions”", PhotoImport.HeifUnavailableMessage("IMG_1.heic"));
+        Assert.Contains("may cost money", PhotoImport.HeifUnavailableMessage("IMG_1.heic"));
+        Assert.Contains("Most Compatible", PhotoImport.HeifUnavailableMessage("IMG_1.heic"));
     }
 
     [Fact]

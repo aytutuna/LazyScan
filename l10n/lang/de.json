@@ -785,7 +785,6 @@
     "Importing page {0} of {1}…": "Seite {0} von {1} wird importiert …",
     "{0}, page {1} of {2}": "{0}, Seite {1} von {2}",
     "{0} could not be opened: {1}": "{0} ließ sich nicht öffnen: {1}",
-    "{0} could not be opened: HEIC photos need the free “HEIF Image Extensions” from the Microsoft Store (most iPhone photos also need “HEVC Video Extensions”). If they are installed, the photo may be damaged; a phone set to save photos as JPEG avoids this.": "{0} ließ sich nicht öffnen: HEIC-Fotos benötigen die kostenlose „HEIF-Bilderweiterung“ aus dem Microsoft Store, die meisten iPhone-Fotos zusätzlich die „HEVC-Videoerweiterungen“. Sind beide installiert, ist das Foto vielleicht beschädigt. Nimmt dein Telefon Fotos als JPEG auf, tritt das Problem nicht auf.",
     "Save as One PDF": "In einem PDF sichern",
     "Lightens the dark band along the spine": "Hellt das dunkle Band am Buchrücken auf",
     "The spread could not be read.": "Die Doppelseite ließ sich nicht lesen.",
