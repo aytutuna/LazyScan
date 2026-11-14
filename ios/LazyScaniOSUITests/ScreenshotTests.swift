@@ -422,7 +422,7 @@ final class ScreenshotTests: XCTestCase {
             app.growOptions()
             optionsPage(app, "saveAs", ready: "options.format", as: "02a-options-save-as")
             optionsPage(app, "pages", ready: "options.collect", as: "02c-options-pages")
-            optionsPage(app, "separate", ready: "options.separate", as: "02d-options-separate")
+            optionsPage(app, "separate", ready: "options.split", as: "02d-options-separate")
             optionsPage(app, "fileName", ready: "naming.field", as: "02e-options-file-name")
             optionsPage(app, "afterSaving", ready: "options.afterSave.then", as: "02f-options-after-saving")
             optionsPage(app, "shareNow", ready: "save.email", as: "02g-options-share-now")

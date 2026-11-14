@@ -36,9 +36,9 @@ final class BatchTests: XCTestCase {
         app.switchToPrinter()
         app.openOptions()
         app.openPage("separate")
-        let separate: XCUIElement = app.switches["options.separate"].firstMatch
+        let separate: XCUIElement = app.descendants(matching: .any)["options.split"].firstMatch
         XCTAssertTrue(separate.waitForExistence(timeout: 10), "Separate documents")
-        XCTAssertEqual(separate.value as? String, "1")
+        XCTAssertEqual(separate.value as? String, "At separator sheets")
         XCTAssertTrue(app.buttons["separator.save"].waitForExistence(timeout: 10), "Separator sheet")
         app.closeOptions()
 
@@ -66,24 +66,27 @@ final class BatchTests: XCTestCase {
         app.openOptions()
         app.openPage("separate")
         let sheet: XCUIElement = app.buttons["separator.save"]
-        XCTAssertFalse(sheet.exists, "One document until Separate documents is on")
-        app.turnSwitch("options.separate", on: true)
+        let split: XCUIElement = app.descendants(matching: .any)["options.split"].firstMatch
+        XCTAssertTrue(split.waitForExistence(timeout: 10), "How the queue is split")
+        XCTAssertFalse(sheet.exists, "One document until the split is at separator sheets")
+        split.tap()
+        app.buttons["At separator sheets"].firstMatch.tap()
         XCTAssertTrue(sheet.waitForExistence(timeout: 10), "Separator sheet")
         app.closeOptions()
         XCTAssertTrue(app.buttons["task.newDocument"].exists, "New document")
         XCTAssertEqual(app.pickedKind, "document")
 
-        // The split choice is the same setting: QR codes keep the switch on and name the sheet.
+        // QR codes keep the Separate documents task and name the sheet.
         app.openOptions()
         app.openPage("separate")
-        let split: XCUIElement = app.descendants(matching: .any)["options.split"].firstMatch
         XCTAssertTrue(split.waitForExistence(timeout: 10), "How the queue is split")
         split.tap()
         app.buttons["At QR codes or barcodes"].firstMatch.tap()
         XCTAssertTrue(app.textFields["separator.name"].waitForExistence(timeout: 10), "The QR sheet's name")
-        XCTAssertEqual(app.switches["options.separate"].firstMatch.value as? String, "1", "Still separating")
+        XCTAssertEqual(split.value as? String, "At QR codes or barcodes")
 
-        app.turnSwitch("options.separate", on: false)
+        split.tap()
+        app.buttons["Off"].firstMatch.tap()
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 10), .completed, "One document again")
     }

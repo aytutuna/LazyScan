@@ -110,7 +110,8 @@ struct SplitHereButton: View {
         let fill: Color = pending ? Color.accentColor : Color(white: 0.15)
         let enabled: Bool = state.canToggleNewDocument && !importer.isImporting
         let title: String = pending ? Self.cancelLabel : Self.label
-        let hint: String = pending ? String(localized: "Cancels the pending split.") : CameraTaskCatalog.newDocumentPrompt
+        let hint: String = pending ? String(localized: "Cancels the pending split.")
+            : String(localized: "The next page starts a new document. Set in Options under Split into documents.")
         return Button {
             state.startNewDocument()
         } label: {
@@ -285,41 +286,6 @@ struct RestoreToggle: View {
             get: { appState.settings.adjustments.restoreFadedColors },
             set: { (on: Bool) in
                 appState.settings = IOSShell.settingRestore(on, in: appState.settings)
-            })
-    }
-}
-
-/// Options' Separate documents: the Separate documents task under the hood (`IOSShell.setSeparate`), with its
-/// New document button and separator sheets; dimmed without a feeder as its tile was, and while Both sides is
-/// on, since one task holds either. Split into documents (`SplitSettingsRows`) is the same setting seen as the
-/// queue's split, and turns this on and off from its choices.
-struct SeparateToggle: View {
-    @EnvironmentObject private var state: AppState
-    @EnvironmentObject private var importer: IOSImportSession
-
-    var body: some View {
-        let s: ScanSettings = state.settings
-        let busy: Bool = state.isBusy || importer.isImporting
-        let separates: Bool = IOSShell.separatesDocuments(s)
-        let bothSides: Bool = !separates && state.activeTask == .twoSided
-        let availability: TaskAvailability = TaskCatalog.availability(of: .batch, capabilities: state.capabilities)
-        Toggle("Separate documents", isOn: separate)
-            .disabled(busy || (!separates && (!availability.isAvailable || bothSides)))
-            .accessibilityHint(Text("Splits the pages into documents at separator sheets"))
-            .accessibilityIdentifier("options.separate")
-        if bothSides {
-            OptionReason(text: IOSCameraText.notWithBothSides)
-        } else if !separates, let reason = availability.reason {
-            OptionReason(text: reason)
-        }
-    }
-
-    private var separate: Binding<Bool> {
-        let appState: AppState = state
-        return Binding<Bool>(
-            get: { IOSShell.separatesDocuments(appState.settings) },
-            set: { (on: Bool) in
-                IOSShell.setSeparate(on, in: appState)
             })
     }
 }

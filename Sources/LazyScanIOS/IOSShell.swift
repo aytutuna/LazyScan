@@ -1041,8 +1041,7 @@ public enum IOSShell {
         return s
     }
 
-    /// `settingSeparate`, adapted to the scanner in use: the switch's and the split choice's way of turning
-    /// Separate documents on or off.
+    /// `settingSeparate`, adapted to the scanner in use: how the split choice turns Separate documents on or off.
     @MainActor
     static func setSeparate(_ on: Bool, in state: AppState) {
         let s: ScanSettings = settingSeparate(on, in: state.settings)
@@ -1050,8 +1049,8 @@ public enum IOSShell {
     }
 
     /// A split choice made on the Separate documents page. For the Document kind, going to or from separator
-    /// sheets and codes is Separate documents turned on or off, as its switch does, so the task, the feeder and
-    /// the file names follow the choice; the other choices only set the split. Where the switch is dimmed
+    /// sheets and codes is Separate documents turned on or off, so the task, the feeder and
+    /// the file names follow the choice; the other choices only set the split. Where the task cannot start
     /// (no feeder) or Both sides is on, the choice only sets the split too, so the task and the fronts
     /// already taken stay, and leaving Separate for another split keeps the source.
     @MainActor

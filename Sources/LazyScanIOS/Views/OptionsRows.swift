@@ -521,22 +521,27 @@ struct PageSettingsRows: View {
 /// QR codes where the codes are; Save sheet makes the separator sheet to print.
 struct SplitSettingsRows: View {
     @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var importer: IOSImportSession
 
     var body: some View {
         let s: ScanSettings = state.settings
         let collecting: Bool = s.documentMultiPage
+        let busy: Bool = state.isBusy || importer.isImporting
         let mode: SplitMode = s.document.splitMode
         if !collecting {
             ReasonLine(text: IOSSettingsText.notCollectingReason)
         }
-        Picker("Split|setting", selection: splitMode) {
+        Picker(InspectorSections.title(InspectorSections.split), selection: splitMode) {
             ForEach(SplitMode.displayOrder, id: \.self) { (choice: SplitMode) in
                 Text(choice.label).tag(choice)
             }
         }
-        .disabled(!collecting)
+        .disabled(!collecting || busy)
         .accessibilityHint(Text(mode.hint))
         .accessibilityIdentifier("options.split")
+        if let reason = separateReason {
+            ReasonLine(text: reason)
+        }
         if collecting && !mode.caption.isEmpty {
             Text(mode.caption)
                 .font(.caption)
@@ -589,6 +594,17 @@ struct SplitSettingsRows: View {
                 ReasonLine(text: CameraTaskCatalog.separatorHint)
             }
         }
+    }
+
+    /// Why a split at separator sheets or codes has not started the Separate documents task: Both sides holds
+    /// the task, or the scanner has no feeder (`IOSShell.setSplit` then only sets the split).
+    private var separateReason: String? {
+        let s: ScanSettings = state.settings
+        let mode: SplitMode = s.document.splitMode
+        let separates: Bool = mode == SplitMode.separatorSheet || mode == SplitMode.barcode
+        guard separates, IOSShell.shownKind(s) == IOSScanKind.document, state.activeTask != ScanTask.batch else { return nil }
+        if state.activeTask == ScanTask.twoSided { return IOSCameraText.notWithBothSides }
+        return TaskCatalog.availability(of: ScanTask.batch, capabilities: state.capabilities).reason
     }
 
     private var splitMode: Binding<SplitMode> {

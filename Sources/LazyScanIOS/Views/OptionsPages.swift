@@ -242,23 +242,16 @@ struct PagesPage: View {
     }
 }
 
-/// Separate documents: the switch for the Document kind, and Split into documents, the way the queue is cut.
+/// Separate documents: Split into documents, the one choice of how the queue is cut.
 struct SeparatePage: View {
     @EnvironmentObject private var state: AppState
 
     var body: some View {
         let s: ScanSettings = state.settings
         OptionsForm(title: IOSSettingsText.separateLabel) {
-            if IOSShell.shownKind(s) == IOSScanKind.document {
-                Section {
-                    SeparateToggle()
-                }
-            }
             if InspectorSections.shown(s).contains(InspectorSections.split) {
                 Section {
                     SplitSettingsRows()
-                } header: {
-                    Text(InspectorSections.title(InspectorSections.split))
                 }
             }
         }
