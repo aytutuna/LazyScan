@@ -1,6 +1,7 @@
 #if os(iOS)
 import LazyScanKit
 import UIKit
+import UniformTypeIdentifiers
 import XCTest
 @testable import LazyScanIOS
 
@@ -167,12 +168,18 @@ final class IOSFileActionsTests: XCTestCase {
     }
 
     @MainActor
-    func test_copy_putsTheFiles_andASingleImagesPicture() throws {
+    func test_copy_putsEachFilesBytes_andASingleImagesPicture() throws {
         let actions = makeActions(OpenedAddresses())
         let pdf = try file("Scan 1.pdf")
         try actions.copy(ClipboardContent(files: [pdf], imageFile: nil))
         XCTAssertEqual(pasteboard?.numberOfItems, 1)
         XCTAssertEqual(pasteboard?.hasImages, false)
+        XCTAssertNotNil(pasteboard?.data(forPasteboardType: UTType.pdf.identifier))
+
+        let second = try file("Scan 2.pdf")
+        try actions.copy(ClipboardContent(files: [pdf, second], imageFile: nil))
+        XCTAssertEqual(pasteboard?.numberOfItems, 2)
+        XCTAssertNotNil(pasteboard?.data(forPasteboardType: UTType.pdf.identifier))
 
         let picture: URL = folder.appendingPathComponent("Photo 1.png")
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
@@ -183,7 +190,7 @@ final class IOSFileActionsTests: XCTestCase {
         let png: Data = try XCTUnwrap(image.pngData())
         try png.write(to: picture)
         try actions.copy(ClipboardContent(files: [picture], imageFile: picture))
-        XCTAssertEqual(pasteboard?.numberOfItems, 2)
+        XCTAssertEqual(pasteboard?.numberOfItems, 1)
         XCTAssertEqual(pasteboard?.hasImages, true)
     }
 

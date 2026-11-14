@@ -214,17 +214,14 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     public func copy(_ content: ClipboardContent) throws {
         var items: [[String: Any]] = []
         for url in content.files {
-            let item: [String: Any] = [UTType.fileURL.identifier: url]
-            items.append(item)
-        }
-        if let imageURL = content.imageFile {
-            // The file's own bytes, under its own type (PNG, JPEG, TIFF), once they read as a picture.
-            let data: Data? = try? Data(contentsOf: imageURL)
-            let type: UTType? = UTType(filenameExtension: imageURL.pathExtension)
-            guard let data, let type, type.conforms(to: UTType.image), UIImage(data: data) != nil else {
-                throw ScanError.exportFailed(String(localized: "\(imageURL.lastPathComponent) could not be read."))
+            // The file's own bytes under its own type (PDF, text, Word, a picture), since another app cannot
+            // read a URL inside this app's container. The URL stays as an extra.
+            let data: Data? = try? Data(contentsOf: url)
+            let type: UTType? = UTType(filenameExtension: url.pathExtension)
+            guard let data, let type, url != content.imageFile || (type.conforms(to: UTType.image) && UIImage(data: data) != nil) else {
+                throw ScanError.exportFailed(String(localized: "\(url.lastPathComponent) could not be read."))
             }
-            let item: [String: Any] = [type.identifier: data]
+            let item: [String: Any] = [type.identifier: data, UTType.fileURL.identifier: url]
             items.append(item)
         }
         guard !items.isEmpty else {
