@@ -921,7 +921,8 @@ password is asked for when saving, in a dialog that asks for it twice, says how 
 guess (a bar of four segments with "Weak · use 12+ characters", "Fair · longer is safer" or "Strong"; the full
 advice is the tooltip: a rough guess from its length and the kinds of characters in it), keeps its
 warning in view ("It can't be recovered if forgotten. Every PDF of this save gets it; the next
-save asks again.") and offers
+save asks again."), has a **Show password** box that swaps both masked boxes for one plain
+text box (the second is typed again when it is unticked) and offers
 **Allow printing** and **Allow copying** (text and images; both on). While it is on, the Save
 button carries a lock and the collapsed Archive & password header says "Password on". It is asked for once
 per save and used for every file of that save; the next save asks again. It is never stored:

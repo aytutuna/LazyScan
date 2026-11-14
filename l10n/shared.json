@@ -2664,6 +2664,7 @@
   "Confirm|password field": {
     "note": "Label of the second password field, where the same password is typed again."
   },
+  "Show password": {},
   "Allow printing": {},
   "Allow copying": {},
   "Allow copying text and images": {},

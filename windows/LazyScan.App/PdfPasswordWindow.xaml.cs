@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Automation.Peers;
+using System.Windows.Controls;
 using System.Windows.Input;
 using LazyScan.Core;
 
@@ -24,6 +25,7 @@ public partial class PdfPasswordWindow : Window
         Closed += (_, _) =>
         {
             PasswordInput.Clear();
+            PasswordText.Clear();
             ConfirmInput.Clear();
         };
     }
@@ -37,10 +39,54 @@ public partial class PdfPasswordWindow : Window
 
     private void Password_Changed(object sender, RoutedEventArgs e) => Refresh();
 
+    private void PasswordText_Changed(object sender, TextChangedEventArgs e) => Refresh();
+
+    private bool PasswordShown => ShowPasswordBox.IsChecked == true;
+
+    /// <summary>The password and its confirmation; while the password is shown there is nothing to confirm.</summary>
+    private (string Password, string Confirmation) Typed()
+    {
+        if (PasswordShown) return (PasswordText.Text, PasswordText.Text);
+        return (PasswordInput.Password, ConfirmInput.Password);
+    }
+
+    /// <summary>
+    /// Swaps the masked boxes for a text box holding the same password and back. The second box
+    /// is emptied either way, so it is typed again when the masked boxes return.
+    /// </summary>
+    private void ShowPassword_Changed(object sender, RoutedEventArgs e)
+    {
+        bool shown = PasswordShown;
+        ConfirmInput.Clear();
+        if (shown)
+        {
+            PasswordText.Text = PasswordInput.Password;
+            PasswordInput.Clear();
+        }
+        else
+        {
+            PasswordInput.Password = PasswordText.Text;
+            PasswordText.Clear();
+        }
+        PasswordInput.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+        PasswordText.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        ConfirmLabel.Visibility = ConfirmInput.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+        if (shown)
+        {
+            PasswordText.Focus();
+            PasswordText.CaretIndex = PasswordText.Text.Length;
+        }
+        else
+        {
+            PasswordInput.Focus();
+        }
+        Refresh();
+    }
+
     /// <summary>The strength bar and its words, and Save enabled once the password can be used.</summary>
     internal void Refresh()
     {
-        string password = PasswordInput.Password, confirmation = ConfirmInput.Password;
+        var (password, confirmation) = Typed();
         var strength = PdfProtection.StrengthOf(password);
         string label = PdfProtection.StrengthLabel(strength);
         string hint = PdfProtection.StrengthHint(strength);
@@ -107,21 +153,23 @@ public partial class PdfPasswordWindow : Window
 
     internal void ConfirmLeft()
     {
-        if (ConfirmInput.Password.Length == 0) return;
-        if (PdfProtection.Problem(PasswordInput.Password, ConfirmInput.Password) is { } problem) ShowProblem(problem);
+        var (password, confirmation) = Typed();
+        if (PasswordShown || confirmation.Length == 0) return;
+        if (PdfProtection.Problem(password, confirmation) is { } problem) ShowProblem(problem);
     }
 
     /// <summary>Takes the password when it can be used, and closes the dialog.</summary>
     internal void Save()
     {
-        string password = PasswordInput.Password;
-        if (PdfProtection.Problem(password, ConfirmInput.Password) is { } problem)
+        var (password, confirmation) = Typed();
+        if (PdfProtection.Problem(password, confirmation) is { } problem)
         {
             ShowProblem(problem);
             return;
         }
         Protection = new PdfProtection(password, AllowPrintingBox.IsChecked == true, AllowCopyingBox.IsChecked == true);
         PasswordInput.Clear();
+        PasswordText.Clear();
         ConfirmInput.Clear();
         if (IsVisible) DialogResult = true;
     }
