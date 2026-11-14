@@ -127,12 +127,12 @@ extension PDFPageSize {
 ///
 /// Objects are numbered in a fixed order: 1 Catalog, 2 Pages; when any page has text, the six
 /// objects of the text layer's font (Type0 font, CIDFont, FontDescriptor, FontFile2, CIDToGIDMap,
-/// ToUnicode); for PDF/A, the Info dictionary, the XMP Metadata and the sRGB profile; for a protected
+/// ToUnicode); the Info dictionary; for PDF/A, the XMP Metadata and the sRGB profile; for a protected
 /// file, the Encrypt dictionary; then Page, Image and Contents for each page.
 ///
 /// A protected file is PDF 1.7 with Adobe's extension level 8 declared in the catalog (what AES-256
 /// readers look for), every stream and string encrypted with its own random file key
-/// (`PDFEncryption`), and /Encrypt and /ID in the trailer.
+/// (`PDFEncryption`), and /Encrypt in the trailer. Every file has /Info and /ID there.
 public enum PDFWriter {
     /// Build the PDF in memory (`options`: see `write(_:progress:shouldContinue:options:to:)`).
     public static func make(_ pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
@@ -188,7 +188,7 @@ public enum PDFWriter {
     /// Stream the PDF to `output`, never holding the whole document. `shouldContinue` is polled
     /// before each page; returning false aborts with `ScanError.cancelled`, leaving `output` with an
     /// incomplete document. `progress` hears "Writing page n of m…" before each page. `options` (nil:
-    /// a plain PDF) choose PDF/A-2b and carry its title, date and file identifier, or protect the file
+    /// a plain PDF) carry the file's title, date and identifier, and choose PDF/A-2b or protect the file
     /// with a password; options asking for both are refused (`ScanError.exportFailed` with
     /// `PDFA.cannotProtectNote`): PDF/A forbids encryption. So is a protection already disposed.
     public static func write(_ pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
@@ -225,10 +225,11 @@ public enum PDFWriter {
         var next = 3
         let fontObject = hasText ? next : 0
         if hasText { next += 6 }
-        let infoObject = archival ? next : 0
+        let infoObject = next
+        next += 1
         let metadataObject = infoObject + 1
         let profileObject = infoObject + 2
-        if archival { next += 3 }
+        if archival { next += 2 }
         var encryptObject = 0
         if encryption != nil {
             encryptObject = next
@@ -256,16 +257,20 @@ public enum PDFWriter {
 
         if hasText { try writeTextFont(w, first: fontObject, codes: codes) }
 
+        // Whole seconds, as the dates are written.
+        let made: Date = settings.creationDate ?? Date()
+        let date = Date(timeIntervalSince1970: made.timeIntervalSince1970.rounded(.down))
+        let zone: TimeZone = settings.timeZone ?? TimeZone.current
+        var title: String? = nil
+        if let requested = settings.title { title = PDFA.cleanTitle(requested) }
+        if let encryption {
+            try w.writeObject(infoObject, PDFA.infoDictionary(title: title, date: date, timeZone: zone,
+                                                               encryption: encryption))
+        } else {
+            try w.writeObject(infoObject, PDFA.infoDictionary(title: title, date: date, timeZone: zone))
+        }
         if archival {
-            // Whole seconds, as both dates are written.
-            let made: Date = settings.creationDate ?? Date()
-            let date = Date(timeIntervalSince1970: made.timeIntervalSince1970.rounded(.down))
-            let zone: TimeZone = settings.timeZone ?? TimeZone.current
-            var title: String? = nil
-            if let requested = settings.title { title = PDFA.cleanTitle(requested) }
-            let info: String = PDFA.infoDictionary(title: title, date: date, timeZone: zone)
             let metadata: Data = PDFA.xmp(title: title, date: date, timeZone: zone)
-            try w.writeObject(infoObject, info)
             try w.writeStream(metadataObject, "/Type /Metadata /Subtype /XML", metadata)
             try w.writeStream(profileObject, "/N 3", Data(PDFA.srgbProfile))
         }
@@ -282,27 +287,23 @@ public enum PDFWriter {
                           pageSize: settings.pageSize, extraEntries: "")
         }
 
-        var trailer = "/Root 1 0 R"
-        if archival {
-            let id: [UInt8] = settings.documentId?.count == 16 ? (settings.documentId ?? []) : uuidBytes()
-            let hex: String = PDFEncryption.hex(id)
-            trailer += " /Info \(infoObject) 0 R /ID [<\(hex)> <\(hex)>]"
+        let id: [UInt8]
+        if let given = settings.documentId, given.count == 16 {
+            id = given
         } else if encryption != nil {
-            // PDF 2.0 asks for the identifier whenever a file is encrypted.
-            var id: [UInt8] = []
-            if let given = settings.documentId, given.count == 16 {
-                id = given
-            } else {
-                id = try PDFEncryption.randomBytes(settings.random ?? PDFEncryption.systemRandom, 16)
-            }
-            let hex: String = PDFEncryption.hex(id)
-            trailer += " /Encrypt \(encryptObject) 0 R /ID [<\(hex)> <\(hex)>]"
+            id = try PDFEncryption.randomBytes(settings.random ?? PDFEncryption.systemRandom, 16)
+        } else {
+            id = uuidBytes()
         }
+        let hex: String = PDFEncryption.hex(id)
+        var trailer = "/Root 1 0 R /Info \(infoObject) 0 R"
+        if encryption != nil { trailer += " /Encrypt \(encryptObject) 0 R" }
+        trailer += " /ID [<\(hex)> <\(hex)>]"
         try w.finish(trailer)
     }
 
-    /// Sixteen random bytes from a new UUID (C#'s `Guid.NewGuid().ToByteArray()`): a PDF/A file's
-    /// identifier when none is given.
+    /// Sixteen random bytes from a new UUID (C#'s `Guid.NewGuid().ToByteArray()`): the identifier of a
+    /// file that is not protected, when none is given.
     private static func uuidBytes() -> [UInt8] {
         let uuid: uuid_t = UUID().uuid
         let bytes: [UInt8] = [uuid.0, uuid.1, uuid.2, uuid.3, uuid.4, uuid.5, uuid.6, uuid.7,

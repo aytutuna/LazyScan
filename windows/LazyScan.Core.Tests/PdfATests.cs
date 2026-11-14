@@ -204,17 +204,25 @@ public class PdfATests
     }
 
     [Fact]
-    public void Standard_IsUnchanged_NoMetadataIntentOrId()
+    public void Standard_HasInfoAndIdButNoMetadataOrIntent()
     {
         string text = Latin1(PdfBuilder.Make([Page(ScriptLines())]));
         Assert.StartsWith("%PDF-1.4\n", text);
         Assert.DoesNotContain("/Metadata", text);
         Assert.DoesNotContain("/OutputIntents", text);
-        Assert.DoesNotContain("/ID", text);
-        Assert.DoesNotContain("/Info", text);
-        Assert.Contains("trailer\n<</Size 12 /Root 1 0 R>>", text);
-        Assert.Contains("9 0 obj\n<</Type /Page", text);
-        AssertXrefPointsAtEveryObject(text, 11);
+        Assert.Contains("trailer\n<</Size 13 /Root 1 0 R /Info 9 0 R /ID [<", text);
+        Assert.Contains("10 0 obj\n<</Type /Page", text);
+        AssertXrefPointsAtEveryObject(text, 12);
+    }
+
+    [Fact]
+    public void Standard_InfoNamesTheTitleDatesAndProducer()
+    {
+        var options = new PdfWriteOptions { Title = "Receipt (1)", CreationDate = Date, DocumentId = [.. Enumerable.Range(0, 16).Select(i => (byte)i)] };
+        string text = Latin1(PdfBuilder.Make([Page()], options: options));
+        Assert.Contains("3 0 obj\n<</Title (Receipt \\(1\\)) /Producer (Lazy Scan) /Creator (Lazy Scan) " +
+                        "/CreationDate (D:20261019213005+03'00') /ModDate (D:20261019213005+03'00')>>\nendobj\n", text);
+        Assert.Contains("/Root 1 0 R /Info 3 0 R /ID [<000102030405060708090A0B0C0D0E0F> <000102030405060708090A0B0C0D0E0F>]>>", text);
     }
 
     [Fact]
@@ -400,9 +408,9 @@ public class PdfATests
     public void Standard_GoldenBytes()
     {
         var line = new OcrLine("Çağrı Işık İzmir'de öğün şüpheli", new RectD(0.1, 0.8, 0.6, 0.04), 0.9f);
-        byte[] pdf = PdfBuilder.Make([Page([line]), Page()]);
-        Assert.Equal(9866, pdf.Length);
-        Assert.Equal("7364F91269282507EE7AAE7006D38A735F96277719C074EE2476BA2D6D3E2594", Convert.ToHexString(SHA256.HashData(pdf)));
+        byte[] pdf = PdfBuilder.Make([Page([line]), Page()], options: new PdfWriteOptions { Title = "Tapu belgesi — Çağrı", CreationDate = Date, DocumentId = Id });
+        Assert.Equal(10207, pdf.Length);
+        Assert.Equal("2780A2BA51636E3A03974712445A8741D86CCA463CE958FF929214EB5B949ECF", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     // MARK: - Files

@@ -16,6 +16,7 @@ namespace LazyScan.Core.Tests;
 public class PdfAppenderTests
 {
     private static readonly byte[] NewId = [.. Enumerable.Range(0x10, 16).Select(i => (byte)i)];
+    private static readonly byte[] OriginalId = [.. Enumerable.Range(0x30, 16).Select(i => (byte)i)];
     private static readonly PdfAppendOptions Fixed = new() { DocumentId = NewId };
 
     private static readonly OcrLine[] Lines =
@@ -54,7 +55,7 @@ public class PdfAppenderTests
     [Fact]
     public void OurPdf_GetsPagesAfterItsUnchangedBytes()
     {
-        byte[] original = PdfBuilder.Make([Page(), Page()]);
+        byte[] original = PdfBuilder.Make([Page(), Page()], options: new PdfWriteOptions { DocumentId = OriginalId });
         byte[] appended = PdfAppender.Append(original, [Page(text: true), Page()], Fixed);
         var reader = CheckAppended(original, appended, 2);
 
@@ -70,13 +71,12 @@ public class PdfAppenderTests
 
         // A plain PDF's update: a classic table of the font, the pages and the tree root again.
         string update = Update(original, appended);
-        Assert.StartsWith("9 0 obj\n<</Type /Font /Subtype /Type0 /BaseFont /GlyphLessFont", update);
-        Assert.Contains("15 0 obj\n<</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <</XObject <</Im0 16 0 R>> /Font <</F1 9 0 R>>>> /Contents 17 0 R /Rotate 0>>", update);
-        Assert.Contains("18 0 obj\n<</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <</XObject <</Im1 19 0 R>>>> /Contents 20 0 R /Rotate 0>>", update);
-        Assert.Contains("2 0 obj\n<</Type /Pages /Kids [3 0 R 6 0 R 15 0 R 18 0 R] /Count 4>>\nendobj\n", update);
-        Assert.Matches(new Regex(@"xref\n2 1\n\d{10} 00000 n \n9 12\n(\d{10} 00000 n \n){12}trailer\n"), update);
-        string id = Convert.ToHexString(NewId);
-        Assert.EndsWith($"trailer\n<</Size 21 /Root 1 0 R /ID [<{id}> <{id}>] /Prev {reader.LatestPrev}>>\nstartxref\n{reader.StartXref}\n%%EOF\n", update);
+        Assert.StartsWith("10 0 obj\n<</Type /Font /Subtype /Type0 /BaseFont /GlyphLessFont", update);
+        Assert.Contains("16 0 obj\n<</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <</XObject <</Im0 17 0 R>> /Font <</F1 10 0 R>>>> /Contents 18 0 R /Rotate 0>>", update);
+        Assert.Contains("19 0 obj\n<</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <</XObject <</Im1 20 0 R>>>> /Contents 21 0 R /Rotate 0>>", update);
+        Assert.Contains("2 0 obj\n<</Type /Pages /Kids [4 0 R 7 0 R 16 0 R 19 0 R] /Count 4>>\nendobj\n", update);
+        Assert.Matches(new Regex(@"xref\n2 1\n\d{10} 00000 n \n10 12\n(\d{10} 00000 n \n){12}trailer\n"), update);
+        Assert.EndsWith($"trailer\n<</Size 22 /Root 1 0 R /Info 3 0 R /ID [<{Convert.ToHexString(OriginalId)}> <{Convert.ToHexString(NewId)}>] /Prev {reader.LatestPrev}>>\nstartxref\n{reader.StartXref}\n%%EOF\n", update);
     }
 
     [Fact]

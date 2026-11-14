@@ -104,7 +104,7 @@ public class PdfBuilderTests
         // No page has text: the font is left out altogether.
         Assert.DoesNotContain("/Font", text);
         Assert.Contains("1 0 obj\n<</Type /Catalog /Pages 2 0 R>>", text);
-        Assert.Contains("3 0 obj\n<</Type /Page /Parent 2 0 R", text);
+        Assert.Contains("4 0 obj\n<</Type /Page /Parent 2 0 R", text);
     }
 
     [Fact]
@@ -436,7 +436,8 @@ public class PdfBuilderTests
     public void PageSizeAsScanned_IsTheDefault_AndChangesNothing()
     {
         var pages = new[] { Scanned(2550, 3300, [new("Şehir", new RectD(0.1, 0.5, 0.8, 0.05), 0.9f)]), Scanned(600, 900) };
-        Assert.Equal(PdfBuilder.Make(pages), PdfBuilder.Make(pages, options: new PdfWriteOptions { PageSize = PdfPageSize.AsScanned }));
+        var fixedOptions = new PdfWriteOptions { CreationDate = new DateTimeOffset(2026, 10, 19, 21, 30, 5, TimeSpan.Zero), DocumentId = new byte[16] };
+        Assert.Equal(PdfBuilder.Make(pages, options: fixedOptions), PdfBuilder.Make(pages, options: fixedOptions with { PageSize = PdfPageSize.AsScanned }));
         Assert.Equal(PdfPageSize.AsScanned, new PdfWriteOptions().PageSize);
     }
 

@@ -316,21 +316,21 @@ public static class PdfBuilder
     /// <paramref name="cancellationToken"/> is polled before each page; cancellation aborts
     /// with <see cref="ScanException"/> (<see cref="ScanErrorKind.Cancelled"/>), leaving
     /// <paramref name="output"/> holding an incomplete document (use <see cref="WriteFile"/>
-    /// for an all-or-nothing file). <paramref name="options"/> (null: a plain PDF) choose
-    /// PDF/A-2b and carry its title, date and file identifier, or protect the file with a
+    /// for an all-or-nothing file). <paramref name="options"/> (null: a plain PDF)
+    /// carry the file's title, date and identifier, and choose PDF/A-2b or protect the file with a
     /// password; options asking for both are refused (<see cref="ArgumentException"/>): PDF/A
     /// forbids encryption.
     /// <para>
     /// Objects are numbered in a fixed order: 1 Catalog, 2 Pages; when any page has text, the six
     /// objects of the text layer's font (Type0 font, CIDFont, FontDescriptor, FontFile2,
-    /// CIDToGIDMap, ToUnicode); for PDF/A, the Info dictionary, the XMP Metadata and the sRGB
+    /// CIDToGIDMap, ToUnicode); the Info dictionary; for PDF/A, the XMP Metadata and the sRGB
     /// profile; for a protected file, the Encrypt dictionary; then Page, Image and Contents for
     /// each page.
     /// </para>
     /// <para>
     /// A protected file is PDF 1.7 with Adobe's extension level 8 declared in the catalog (what
     /// AES-256 readers look for), every stream and string encrypted with its own random file key
-    /// (<see cref="PdfEncryption"/>), and /Encrypt and /ID in the trailer.
+    /// (<see cref="PdfEncryption"/>), and /Encrypt in the trailer. Every file has /Info and /ID there.
     /// </para>
     /// </summary>
     public static void Write(IReadOnlyList<PdfPageInput> pages, Stream output, Action<string>? progress = null,
@@ -350,8 +350,8 @@ public static class PdfBuilder
         int next = 3;
         int fontObject = hasText ? next : 0;
         if (hasText) next += 6;
-        int infoObject = archival ? next : 0, metadataObject = infoObject + 1, profileObject = infoObject + 2;
-        if (archival) next += 3;
+        int infoObject = next++, metadataObject = infoObject + 1, profileObject = infoObject + 2;
+        if (archival) next += 2;
         int encryptObject = encryption is not null ? next++ : 0;
         int firstPageObject = next;
         int ObjPage(int i) => firstPageObject + i * 3;
@@ -376,12 +376,12 @@ public static class PdfBuilder
 
         if (hasText) WriteTextFont(w, fontObject, codes);
 
+        var date = options.CreationDate ?? DateTimeOffset.Now;
+        date = date.AddTicks(-(date.Ticks % TimeSpan.TicksPerSecond)); // whole seconds, as the dates are written
+        string? title = options.Title is { } t ? PdfA.CleanTitle(t) : null;
+        w.WriteObject(infoObject, encryption is null ? PdfA.InfoDictionary(title, date) : PdfA.InfoDictionary(title, date, encryption));
         if (archival)
         {
-            var date = options.CreationDate ?? DateTimeOffset.Now;
-            date = date.AddTicks(-(date.Ticks % TimeSpan.TicksPerSecond)); // whole seconds, as both dates are written
-            string? title = options.Title is { } t ? PdfA.CleanTitle(t) : null;
-            w.WriteObject(infoObject, PdfA.InfoDictionary(title, date));
             w.WriteStream(metadataObject, "/Type /Metadata /Subtype /XML", PdfA.Xmp(title, date));
             w.WriteStream(profileObject, "/N 3", PdfA.SrgbProfile);
         }
@@ -395,21 +395,14 @@ public static class PdfBuilder
             WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), "2 0 R", i, pages[i], fontObject, codes, options.PageSize, "");
         }
 
-        string trailer = "/Root 1 0 R";
-        if (archival)
-        {
-            byte[] id = options.DocumentId is { Length: 16 } given ? given : Guid.NewGuid().ToByteArray();
-            string hex = Convert.ToHexString(id);
-            trailer += $" /Info {infoObject} 0 R /ID [<{hex}> <{hex}>]";
-        }
-        else if (encryption is not null)
-        {
-            // PDF 2.0 asks for the identifier whenever a file is encrypted.
-            byte[] id = options.DocumentId is { Length: 16 } given ? given : new byte[16];
-            if (options.DocumentId is not { Length: 16 }) (options.Random ?? RandomNumberGenerator.Fill)(id);
-            string hex = Convert.ToHexString(id);
-            trailer += $" /Encrypt {encryptObject} 0 R /ID [<{hex}> <{hex}>]";
-        }
+        byte[] id;
+        if (options.DocumentId is { Length: 16 } given) id = given;
+        else if (encryption is null) id = Guid.NewGuid().ToByteArray();
+        else (options.Random ?? RandomNumberGenerator.Fill)(id = new byte[16]);
+        string hex = Convert.ToHexString(id);
+        string trailer = $"/Root 1 0 R /Info {infoObject} 0 R";
+        if (encryption is not null) trailer += $" /Encrypt {encryptObject} 0 R";
+        trailer += $" /ID [<{hex}> <{hex}>]";
         w.Finish(trailer);
     }
 

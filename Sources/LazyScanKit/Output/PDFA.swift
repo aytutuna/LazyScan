@@ -285,12 +285,43 @@ public enum PDFA {
     /// The document information dictionary: /Title (when given), /Producer, /Creator, /CreationDate
     /// and /ModDate, each the same as its XMP property (`xmp`).
     public static func infoDictionary(title: String?, date: Date, timeZone: TimeZone) -> String {
+        info(title: title, date: date, timeZone: timeZone) { textString($0) }
+    }
+
+    /// `infoDictionary` for a protected file: each string is encrypted and written as hex.
+    public static func infoDictionary(title: String?, date: Date, timeZone: TimeZone,
+                                      encryption: PDFEncryption) throws -> String {
+        try info(title: title, date: date, timeZone: timeZone) { text in
+            let encrypted: [UInt8] = try encryption.encrypt(textBytes(text))
+            return "<" + PDFEncryption.hex(encrypted) + ">"
+        }
+    }
+
+    private static func info(title: String?, date: Date, timeZone: TimeZone,
+                             string: (String) throws -> String) rethrows -> String {
         var text = "<<"
-        if let title { text += "/Title " + textString(title) + " " }
-        let written: String = pdfDate(date, timeZone: timeZone)
-        text += "/Producer (" + producer + ") /Creator (" + producer + ") "
-        text += "/CreationDate (" + written + ") /ModDate (" + written + ")>>"
+        if let title {
+            let heading: String = try string(title)
+            text += "/Title " + heading + " "
+        }
+        let written: String = try string(pdfDate(date, timeZone: timeZone))
+        let name: String = try string(producer)
+        text += "/Producer " + name + " /Creator " + name + " "
+        text += "/CreationDate " + written + " /ModDate " + written + ">>"
         return text
+    }
+
+    /// The bytes of `text` as a PDF text string: its ASCII when printable, else UTF-16BE with a
+    /// byte order mark.
+    private static func textBytes(_ text: String) -> [UInt8] {
+        let printable: Bool = text.utf16.allSatisfy { $0 >= 0x20 && $0 <= 0x7E }
+        if printable { return Array(text.utf8) }
+        var bytes: [UInt8] = [0xFE, 0xFF]
+        for unit in text.utf16 {
+            bytes.append(UInt8(unit >> 8))
+            bytes.append(UInt8(unit & 0xFF))
+        }
+        return bytes
     }
 
     /// The XMP packet, UTF-8 without a byte order mark: PDF/A-2 level B (pdfaid), the title

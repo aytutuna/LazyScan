@@ -220,15 +220,26 @@ public static class PdfA
     /// The document information dictionary: /Title (when given), /Producer, /Creator,
     /// /CreationDate and /ModDate, each the same as its XMP property (<see cref="Xmp"/>).
     /// </summary>
-    public static string InfoDictionary(string? title, DateTimeOffset date)
+    public static string InfoDictionary(string? title, DateTimeOffset date) => Info(title, date, TextString);
+
+    /// <summary><see cref="InfoDictionary"/> for a protected file: each string is encrypted and written as hex.</summary>
+    public static string InfoDictionary(string? title, DateTimeOffset date, PdfEncryption encryption) =>
+        Info(title, date, text => "<" + Convert.ToHexString(encryption.Encrypt(TextBytes(text))) + ">");
+
+    private static string Info(string? title, DateTimeOffset date, Func<string, string> str)
     {
         var sb = new StringBuilder("<<");
-        if (title is not null) sb.Append("/Title ").Append(TextString(title)).Append(' ');
-        string pdfDate = PdfDate(date);
-        sb.Append("/Producer (").Append(Producer).Append(") /Creator (").Append(Producer).Append(") ");
-        sb.Append("/CreationDate (").Append(pdfDate).Append(") /ModDate (").Append(pdfDate).Append(")>>");
+        if (title is not null) sb.Append("/Title ").Append(str(title)).Append(' ');
+        string pdfDate = str(PdfDate(date));
+        string producer = str(Producer);
+        sb.Append("/Producer ").Append(producer).Append(" /Creator ").Append(producer).Append(' ');
+        sb.Append("/CreationDate ").Append(pdfDate).Append(" /ModDate ").Append(pdfDate).Append(">>");
         return sb.ToString();
     }
+
+    /// <summary>The bytes of <paramref name="text"/> as a PDF text string: its ASCII when printable, else UTF-16BE with a byte order mark.</summary>
+    private static byte[] TextBytes(string text) =>
+        text.All(c => c is >= ' ' and <= '~') ? Encoding.ASCII.GetBytes(text) : [0xFE, 0xFF, .. Encoding.BigEndianUnicode.GetBytes(text)];
 
     /// <summary>
     /// The XMP packet, UTF-8 without a byte order mark: PDF/A-2 level B (pdfaid), the title

@@ -106,7 +106,7 @@ public class BilevelOutputTests
                 new PdfPageInput(new PdfJpegImage(jpegFile), 100, 150, 300, null),
                 new PdfPageInput(new PdfCcittImage(g4File, image.Width, image.Height), image.Width, image.Height, 300, null),
             };
-            var options = PdfWriteOptions.Standard;
+            var options = new PdfWriteOptions { CreationDate = new DateTimeOffset(2026, 10, 19, 21, 30, 5, TimeSpan.Zero), DocumentId = new byte[16] };
             Assert.Equal(PdfBuilder.Make(inMemory, options: options), PdfBuilder.Make(inFiles, options: options));
         }
         finally
@@ -171,9 +171,9 @@ public class BilevelOutputTests
         [
             new PdfPageInput(new PdfCcittImage(checker, 37, 23), 37, 23, 100, [line]),
             new PdfPageInput(PdfBuilderTests.TinyJpeg, 850, 1100, 100, null),
-        ]);
-        Assert.Equal(9892, pdf.Length);
-        Assert.Equal("75ED330CDE6CE4BA0D554F7F9C17EA81D2648A3C39E3C5141EBAA73138D4EF29", Convert.ToHexString(SHA256.HashData(pdf)));
+        ], options: new PdfWriteOptions { Title = "Siyah beyaz", CreationDate = new DateTimeOffset(2026, 10, 19, 21, 30, 5, TimeSpan.FromHours(3)), DocumentId = [.. Enumerable.Range(0xA0, 16).Select(i => (byte)i)] });
+        Assert.Equal(10160, pdf.Length);
+        Assert.Equal("799A2B612B58DEE3D2829A6841D5E598CD879D51384E35BC708890EEB6DA6804", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     [Fact]

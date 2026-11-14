@@ -248,7 +248,7 @@ final class PDFWriterTests: XCTestCase {
         // No page has text: the font is left out altogether.
         XCTAssertFalse(Self.has(pdf, "/Font"))
         XCTAssertTrue(Self.has(pdf, "1 0 obj\n<</Type /Catalog /Pages 2 0 R>>"))
-        XCTAssertTrue(Self.has(pdf, "3 0 obj\n<</Type /Page /Parent 2 0 R"))
+        XCTAssertTrue(Self.has(pdf, "4 0 obj\n<</Type /Page /Parent 2 0 R"))
     }
 
     func test_textNeedsNoEscaping_itIsWrittenAsHex() throws {
@@ -258,9 +258,9 @@ final class PDFWriterTests: XCTestCase {
 
     func test_xrefOffsetsPointAtObjects() throws {
         let plain = try PDFWriter.make([Self.page()])
-        Self.assertXrefPointsAtEveryObject(plain, objects: 5)
+        Self.assertXrefPointsAtEveryObject(plain, objects: 6)
         let withText = try PDFWriter.make([Self.page([Self.line("x", 0, 0, 1, 1)]), Self.page()])
-        Self.assertXrefPointsAtEveryObject(withText, objects: 14)
+        Self.assertXrefPointsAtEveryObject(withText, objects: 15)
     }
 
     func test_makePDFTwoPages() throws {
@@ -271,19 +271,29 @@ final class PDFWriterTests: XCTestCase {
         XCTAssertEqual(Self.count(pdf, "/MediaBox [0 0 288 216]"), 2)
     }
 
-    func test_standard_isUnchanged_noMetadataIntentOrId() throws {
+    func test_standard_hasInfoAndIdButNoMetadataOrIntent() throws {
         let lines = [Self.line("Çağrı", 0.1, 0.8, 0.6, 0.04), Self.line("𠀋 📄", 0.1, 0.7, 0.3, 0.04)]
         let pdf = try PDFWriter.make([Self.letterPage(lines)])
         XCTAssertEqual(Self.text(pdf, at: 0, count: 9), "%PDF-1.4\n")
         XCTAssertFalse(Self.has(pdf, "/Metadata"))
         XCTAssertFalse(Self.has(pdf, "/OutputIntents"))
-        XCTAssertFalse(Self.has(pdf, "/ID"))
-        XCTAssertFalse(Self.has(pdf, "/Info"))
-        XCTAssertTrue(Self.has(pdf, "trailer\n<</Size 12 /Root 1 0 R>>"))
-        XCTAssertTrue(Self.has(pdf, "9 0 obj\n<</Type /Page"))
+        XCTAssertTrue(Self.has(pdf, "trailer\n<</Size 13 /Root 1 0 R /Info 9 0 R /ID [<"))
+        XCTAssertTrue(Self.has(pdf, "10 0 obj\n<</Type /Page"))
         // Characters beyond the BMP get codes from D800 and come back through the ToUnicode map.
         XCTAssertTrue(Self.has(pdf, "2 beginbfchar\n<D800> <D840DC0B>\n<D801> <D83DDCC4>\nendbfchar\n"))
-        Self.assertXrefPointsAtEveryObject(pdf, objects: 11)
+        Self.assertXrefPointsAtEveryObject(pdf, objects: 12)
+    }
+
+    func test_standard_infoNamesTheTitleDatesAndProducer() throws {
+        let id: [UInt8] = Array(0..<16)
+        let options = PDFWriteOptions(title: "Receipt (1)", creationDate: Date(timeIntervalSince1970: 1_792_434_605),
+                                      timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: id)
+        let pdf = try PDFWriter.make([Self.page()], options: options)
+        let info = "3 0 obj\n<</Title (Receipt \\(1\\)) /Producer (Lazy Scan) /Creator (Lazy Scan) "
+            + "/CreationDate (D:20261019213005+03'00') /ModDate (D:20261019213005+03'00')>>\nendobj\n"
+        XCTAssertTrue(Self.has(pdf, info))
+        let hex = "000102030405060708090A0B0C0D0E0F"
+        XCTAssertTrue(Self.has(pdf, "/Root 1 0 R /Info 3 0 R /ID [<\(hex)> <\(hex)>]>>"))
     }
 
     // MARK: - The text layer (PdfATests.TextLayer_*)
@@ -489,8 +499,9 @@ final class PDFWriterTests: XCTestCase {
         PDFPageInput(jpegData: tinyJPEGData, pixelWidth: width, pixelHeight: height, dpi: 300, ocrLines: lines)
     }
 
-    private static func options(_ size: PDFPageSize, conformance: PDFConformance = .standard) -> PDFWriteOptions {
-        var options = PDFWriteOptions(conformance: conformance)
+    private static func options(_ size: PDFPageSize, conformance: PDFConformance = .standard,
+                                from base: PDFWriteOptions? = nil) -> PDFWriteOptions {
+        var options = base ?? PDFWriteOptions(conformance: conformance)
         options.pageSize = size
         return options
     }
@@ -514,7 +525,9 @@ final class PDFWriterTests: XCTestCase {
 
     func test_pageSize_asScanned_isTheDefault_andChangesNothing() throws {
         let pages = [Self.letterPage([Self.line("Şehir", 0.1, 0.5, 0.8, 0.05)]), Self.scanned(600, 900)]
-        XCTAssertEqual(try PDFWriter.make(pages, options: Self.options(.asScanned)), try PDFWriter.make(pages))
+        let fixed = PDFWriteOptions(creationDate: Date(timeIntervalSince1970: 0), timeZone: TimeZone(secondsFromGMT: 0),
+                                    documentId: [UInt8](repeating: 0, count: 16))
+        XCTAssertEqual(try PDFWriter.make(pages, options: Self.options(.asScanned, from: fixed)), try PDFWriter.make(pages, options: fixed))
         XCTAssertEqual(PDFWriteOptions().pageSize, .asScanned)
     }
 
@@ -582,8 +595,10 @@ final class PDFWriterTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: folder) }
         let url = folder.appendingPathComponent("out.pdf")
         let pages = [Self.letterPage([Self.line("Çağrı", 0.1, 0.8, 0.6, 0.04)]), Self.page()]
-        try PDFWriter.writeFile(pages, to: url)
-        XCTAssertEqual(try Data(contentsOf: url), try PDFWriter.make(pages))
+        let options = PDFWriteOptions(creationDate: Date(timeIntervalSince1970: 0), timeZone: TimeZone(secondsFromGMT: 0),
+                                      documentId: [UInt8](repeating: 0, count: 16))
+        try PDFWriter.writeFile(pages, to: url, options: options)
+        XCTAssertEqual(try Data(contentsOf: url), try PDFWriter.make(pages, options: options))
     }
 
     // MARK: - Golden bytes (pinned in C#)
@@ -591,10 +606,12 @@ final class PDFWriterTests: XCTestCase {
     func test_standard_goldenBytes() throws {
         // PdfATests.Standard_GoldenBytes: a Letter page with a Turkish line, then a plain one.
         let line = Self.line("Çağrı Işık İzmir'de öğün şüpheli", 0.1, 0.8, 0.6, 0.04)
-        let pdf = try PDFWriter.make([Self.letterPage([line]), Self.letterPage()])
-        XCTAssertEqual(pdf.count, 9866)
+        let options = PDFWriteOptions(title: "Tapu belgesi — Çağrı", creationDate: Date(timeIntervalSince1970: 1_792_434_605),
+                                      timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: Array(0xA0..<0xB0))
+        let pdf = try PDFWriter.make([Self.letterPage([line]), Self.letterPage()], options: options)
+        XCTAssertEqual(pdf.count, 10207)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "7364F91269282507EE7AAE7006D38A735F96277719C074EE2476BA2D6D3E2594")
+                       "2780A2BA51636E3A03974712445A8741D86CCA463CE958FF929214EB5B949ECF")
     }
 
     func test_g4AndJpegPages_goldenBytes() throws {
@@ -606,9 +623,11 @@ final class PDFWriterTests: XCTestCase {
         let g4 = PDFPageInput(image: .ccittG4(data: Data(checker), width: 37, height: 23), pixelWidth: 37,
                               pixelHeight: 23, dpi: 100, ocrLines: [line])
         let jpeg = PDFPageInput(jpegData: Self.tinyJPEGData, pixelWidth: 850, pixelHeight: 1100, dpi: 100, ocrLines: nil)
-        let pdf = try PDFWriter.make([g4, jpeg])
-        XCTAssertEqual(pdf.count, 9892)
+        let options = PDFWriteOptions(title: "Siyah beyaz", creationDate: Date(timeIntervalSince1970: 1_792_434_605),
+                                      timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: Array(0xA0..<0xB0))
+        let pdf = try PDFWriter.make([g4, jpeg], options: options)
+        XCTAssertEqual(pdf.count, 10160)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "75ED330CDE6CE4BA0D554F7F9C17EA81D2648A3C39E3C5141EBAA73138D4EF29")
+                       "799A2B612B58DEE3D2829A6841D5E598CD879D51384E35BC708890EEB6DA6804")
     }
 }

@@ -348,7 +348,9 @@ final class PDFEncryptionTests: XCTestCase {
     private static let idHex = "B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF"
 
     private static func protected(_ protection: PDFProtection) -> PDFWriteOptions {
-        var options = PDFWriteOptions(documentId: id, protection: protection)
+        var options = PDFWriteOptions(creationDate: Date(timeIntervalSince1970: 1_792_434_605),
+                                      timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: id,
+                                      protection: protection)
         options.random = counting()
         return options
     }
@@ -388,11 +390,11 @@ final class PDFEncryptionTests: XCTestCase {
         let pdf = try PDFWriter.make([Self.page([Self.line]), Self.page()], options: Self.protected(protection))
         XCTAssertEqual(PDFWriterTests.text(pdf, at: 0, count: 10), "%PDF-1.7\n%")
         XCTAssertEqual(PDFWriterTests.text(pdf, at: pdf.count - 6, count: 6), "%%EOF\n")
-        // 1 Catalog, 2 Pages, 3-8 the font, 9 Encrypt, then three objects a page.
+        // 1 Catalog, 2 Pages, 3-8 the font, 9 Info, 10 Encrypt, then three objects a page.
         XCTAssertTrue(Self.has(pdf, "1 0 obj\n<</Type /Catalog /Pages 2 0 R /Extensions <</ADBE <</BaseVersion /1.7 /ExtensionLevel 8>>>>>>\nendobj\n"))
-        XCTAssertTrue(Self.has(pdf, "2 0 obj\n<</Type /Pages /Kids [10 0 R 13 0 R] /Count 2>>"))
-        XCTAssertTrue(Self.has(pdf, "9 0 obj\n<</Filter /Standard /V 5 /R 6 /Length 256 /CF <</StdCF <</CFM /AESV3"))
-        XCTAssertTrue(Self.has(pdf, "trailer\n<</Size 16 /Root 1 0 R /Encrypt 9 0 R /ID [<\(Self.idHex)> <\(Self.idHex)>]>>"))
+        XCTAssertTrue(Self.has(pdf, "2 0 obj\n<</Type /Pages /Kids [11 0 R 14 0 R] /Count 2>>"))
+        XCTAssertTrue(Self.has(pdf, "10 0 obj\n<</Filter /Standard /V 5 /R 6 /Length 256 /CF <</StdCF <</CFM /AESV3"))
+        XCTAssertTrue(Self.has(pdf, "trailer\n<</Size 17 /Root 1 0 R /Info 9 0 R /Encrypt 10 0 R /ID [<\(Self.idHex)> <\(Self.idHex)>]>>"))
         // The font's strings are encrypted: no "(Adobe)" in the open, a 64-digit hex string each.
         XCTAssertFalse(Self.has(pdf, "(Adobe)"))
         let registry = try Self.value(pdf, "Registry")
@@ -403,7 +405,7 @@ final class PDFEncryptionTests: XCTestCase {
         XCTAssertFalse(Self.has(pdf, "BT\n3 Tr"))
         XCTAssertFalse(Self.has(pdf, "beginbfrange"))
         XCTAssertNil(pdf.range(of: PDFWriterTests.tinyJPEGData.prefix(64)))
-        PDFWriterTests.assertXrefPointsAtEveryObject(pdf, objects: 15)
+        PDFWriterTests.assertXrefPointsAtEveryObject(pdf, objects: 16)
     }
 
     func test_protected_streamsAndStrings_decryptWithTheKeyThePasswordOpens() throws {
@@ -413,9 +415,9 @@ final class PDFEncryptionTests: XCTestCase {
                                                                  o: Self.value(pdf, "O"), u: Self.value(pdf, "U"),
                                                                  oe: Self.value(pdf, "OE"), ue: Self.value(pdf, "UE")))
         XCTAssertTrue(PDFEncryption.permsMatch(fileKey: fileKey, perms: try Self.value(pdf, "Perms"), p: -4))
-        // 9 Encrypt, 10 Page, 11 Image, 12 Contents.
-        XCTAssertEqual(try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 11)), PDFWriterTests.tinyJPEG)
-        let contents = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 12))
+        // 10 Encrypt, 11 Page, 12 Image, 13 Contents.
+        XCTAssertEqual(try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 12)), PDFWriterTests.tinyJPEG)
+        let contents = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 13))
         XCTAssertTrue(String(decoding: contents, as: UTF8.self).hasPrefix("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n"))
         XCTAssertEqual(try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 6)), GlyphlessFont.program)
         // The font program keeps its own length beside the encrypted stream's.
@@ -425,6 +427,10 @@ final class PDFEncryptionTests: XCTestCase {
         let ordering = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.value(pdf, "Ordering"))
         XCTAssertEqual(String(decoding: registry, as: UTF8.self), "Adobe")
         XCTAssertEqual(String(decoding: ordering, as: UTF8.self), "Identity")
+        // The Info dictionary's strings are encrypted too.
+        XCTAssertFalse(Self.has(pdf, "(Lazy Scan)"))
+        let producer = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.value(pdf, "Producer"))
+        XCTAssertEqual(String(decoding: producer, as: UTF8.self), "Lazy Scan")
     }
 
     func test_protected_opensInPDFKit_withTheUserPassword_orTheOwnerPassword_only() throws {
@@ -562,9 +568,9 @@ final class PDFEncryptionTests: XCTestCase {
         // and IVs from the counting bytes.
         let protection = try PDFProtection("Şifre 2026")
         let pdf = try PDFWriter.make([Self.page([Self.line])], options: Self.protected(protection))
-        XCTAssertEqual(pdf.count, 10030)
+        XCTAssertEqual(pdf.count, 10458)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "CFA0C44FAC59790215E53E6D3D7AD08467844D2FCF53CD6DD87875459AEFD2B1")
+                       "7DADC017AF051A60FC4E2F7069FDBBB9B6DFB7DCF8E529329D86C0CF2CE1F46E")
     }
 
     func test_writeFile_writesAProtectedFile() throws {

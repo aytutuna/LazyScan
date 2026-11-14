@@ -318,6 +318,7 @@ public class PdfEncryptionTests
     private static PdfWriteOptions Protected(PdfProtection protection) => new()
     {
         Protection = protection,
+        CreationDate = new DateTimeOffset(2026, 10, 19, 21, 30, 5, TimeSpan.FromHours(3)),
         DocumentId = Id,
         Random = Counting(),
     };
@@ -336,11 +337,11 @@ public class PdfEncryptionTests
         string text = Latin1(PdfBuilder.Make([Page([Line]), Page()], options: Protected(protection)));
         Assert.StartsWith("%PDF-1.7\n%", text);
         Assert.EndsWith("%%EOF\n", text);
-        // 1 Catalog, 2 Pages, 3-8 the font, 9 Encrypt, then three objects a page.
+        // 1 Catalog, 2 Pages, 3-8 the font, 9 Info, 10 Encrypt, then three objects a page.
         Assert.Contains("1 0 obj\n<</Type /Catalog /Pages 2 0 R /Extensions <</ADBE <</BaseVersion /1.7 /ExtensionLevel 8>>>>>>\nendobj\n", text);
-        Assert.Contains("2 0 obj\n<</Type /Pages /Kids [10 0 R 13 0 R] /Count 2>>", text);
-        Assert.Contains("9 0 obj\n<</Filter /Standard /V 5 /R 6 /Length 256 /CF <</StdCF <</CFM /AESV3", text);
-        Assert.Contains($"trailer\n<</Size 16 /Root 1 0 R /Encrypt 9 0 R /ID [<{IdHex}> <{IdHex}>]>>", text);
+        Assert.Contains("2 0 obj\n<</Type /Pages /Kids [11 0 R 14 0 R] /Count 2>>", text);
+        Assert.Contains("10 0 obj\n<</Filter /Standard /V 5 /R 6 /Length 256 /CF <</StdCF <</CFM /AESV3", text);
+        Assert.Contains($"trailer\n<</Size 17 /Root 1 0 R /Info 9 0 R /Encrypt 10 0 R /ID [<{IdHex}> <{IdHex}>]>>", text);
         // The font's strings are encrypted: no "(Adobe)" in the open.
         Assert.DoesNotContain("(Adobe)", text);
         Assert.Matches(@"/CIDSystemInfo <</Registry <[0-9A-F]{64}> /Ordering <[0-9A-F]{64}> /Supplement 0>>", text);
@@ -348,7 +349,7 @@ public class PdfEncryptionTests
         Assert.DoesNotContain("BT\n3 Tr", text);
         Assert.DoesNotContain("beginbfrange", text);
         Assert.DoesNotContain(Latin1(PdfBuilderTests.TinyJpeg[..64]), text);
-        AssertXrefPointsAtEveryObject(text, 15);
+        AssertXrefPointsAtEveryObject(text, 16);
     }
 
     [Fact]
@@ -368,15 +369,18 @@ public class PdfEncryptionTests
             Assert.True(header.Success, $"stream {number}");
             return pdf.AsSpan(header.Index + header.Length, int.Parse(header.Groups[1].Value)).ToArray();
         }
-        // 9 Encrypt, 10 Page, 11 Image, 12 Contents.
-        Assert.Equal(PdfBuilderTests.TinyJpeg, PdfEncryption.Decrypt(fileKey, Stream(11)));
-        Assert.StartsWith("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Stream(12))));
+        // 10 Encrypt, 11 Page, 12 Image, 13 Contents.
+        Assert.Equal(PdfBuilderTests.TinyJpeg, PdfEncryption.Decrypt(fileKey, Stream(12)));
+        Assert.StartsWith("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Stream(13))));
         Assert.Equal(GlyphlessFont.Program, PdfEncryption.Decrypt(fileKey, Stream(6)));
         // The font program keeps its own length beside the encrypted stream's.
         Assert.Contains($"6 0 obj\n<</Length1 {GlyphlessFont.Program.Length} /Length {16 + (GlyphlessFont.Program.Length / 16 + 1) * 16}>>", text);
         var registry = Regex.Match(text, @"/Registry <([0-9A-F]+)> /Ordering <([0-9A-F]+)>");
         Assert.Equal("Adobe", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Hex(registry.Groups[1].Value))));
         Assert.Equal("Identity", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Hex(registry.Groups[2].Value))));
+        // The Info dictionary's strings are encrypted too.
+        Assert.DoesNotContain("(Lazy Scan)", text);
+        Assert.Equal("Lazy Scan", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Value("Producer"))));
     }
 
     [Fact]
@@ -453,8 +457,8 @@ public class PdfEncryptionTests
         // writer port must match.
         using var protection = new PdfProtection("Şifre 2026");
         byte[] pdf = PdfBuilder.Make([Page([Line])], options: Protected(protection));
-        Assert.Equal(10030, pdf.Length);
-        Assert.Equal("CFA0C44FAC59790215E53E6D3D7AD08467844D2FCF53CD6DD87875459AEFD2B1", Convert.ToHexString(SHA256.HashData(pdf)));
+        Assert.Equal(10458, pdf.Length);
+        Assert.Equal("7DADC017AF051A60FC4E2F7069FDBBB9B6DFB7DCF8E529329D86C0CF2CE1F46E", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     [Fact]
