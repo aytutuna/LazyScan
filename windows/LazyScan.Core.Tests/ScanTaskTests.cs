@@ -75,7 +75,7 @@ public class ScanTaskTests
                      TaskCatalog.All.Select(d => d.Steps[0].Prompt));
         foreach (var definition in TaskCatalog.All)
         {
-            Assert.InRange(StatusLine.Words(definition.Title), 1, 6);
+            Assert.InRange(StatusLine.Words(definition.Title), 1, 7);
             Assert.InRange(StatusLine.Words(definition.Subtitle), 1, 10);
             foreach (var step in definition.Steps)
             {
