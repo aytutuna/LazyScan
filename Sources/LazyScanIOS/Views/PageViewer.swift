@@ -517,6 +517,15 @@ struct PageViewer: View {
             .accessibilityIdentifier("viewer.crop")
             Spacer()
         }
+        if let page = current, let swapLabel = PageCorrections.toggleLabel(page) {
+            let swapSymbol: String = page.showsOriginal ? "arrow.uturn.forward" : "arrow.uturn.backward"
+            Button(action: swapCurrent) {
+                Label(swapLabel, systemImage: swapSymbol)
+            }
+            .disabled(blocked)
+            .accessibilityIdentifier("viewer.swap")
+            Spacer()
+        }
         if canRetake {
             Button(action: retakeCurrent) {
                 Label(PageViewerText.retakeLabel, systemImage: "camera")
@@ -595,6 +604,11 @@ struct PageViewer: View {
 
     private func toggleFilters() {
         showsFilters.toggle()
+    }
+
+    private func swapCurrent() {
+        guard let id = selection else { return }
+        state.togglePageGeometry(id: id)
     }
 
     private func rotateCurrent() {
