@@ -755,7 +755,6 @@
     "Imported from a photo": "写真から読み込んだページ",
     "Corrected from photo": "写真から補正済み",
     "As photographed": "撮影したまま",
-    "Check the corners": "角を確認",
     "Drag each corner onto a corner of the page.": "四隅をドラッグして、ページの角に合わせてください。",
     "Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.": "1～4キーで角を選択し、矢印キーで移動します。Shiftキーを押しながら操作すると大きく移動します。",
     "Use corners": "この角を使用",

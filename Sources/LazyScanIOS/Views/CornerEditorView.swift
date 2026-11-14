@@ -199,7 +199,30 @@ struct CornerEditorView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(PhotoImport.cornersName(request.kind)))
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress(phases: [.down, .repeat]) { (press: KeyPress) -> KeyPress.Result in
+            handleKey(press)
+        }
         .accessibilityIdentifier("corners.stage")
+    }
+
+    private func handleKey(_ press: KeyPress) -> KeyPress.Result {
+        let fine: Bool = !press.modifiers.contains(.shift)
+        switch press.key {
+        case .leftArrow:
+            model.shift(model.selected, dx: -1, dy: 0, fine: fine)
+        case .rightArrow:
+            model.shift(model.selected, dx: 1, dy: 0, fine: fine)
+        case .upArrow:
+            model.shift(model.selected, dx: 0, dy: -1, fine: fine)
+        case .downArrow:
+            model.shift(model.selected, dx: 0, dy: 1, fine: fine)
+        default:
+            guard let number = Int(press.characters), (1...4).contains(number) else { return .ignored }
+            model.select(number - 1)
+        }
+        return .handled
     }
 
     /// Corner `index` for VoiceOver: swipe up moves it outward, down inward.
@@ -211,7 +234,7 @@ struct CornerEditorView: View {
             .accessibilityElement()
             .accessibilityLabel(Text(model.cornerLabel(index)))
             .accessibilityValue(Text(model.cornerValue(index)))
-            .accessibilityHint(Text(PhotoImport.cornersHelp(request.kind)))
+            .accessibilityHint(Text("Swipe up to move the corner out, down to move it in, or use the actions to move it one way"))
             .accessibilityAdjustableAction { (direction: AccessibilityAdjustmentDirection) in
                 switch direction {
                 case .increment:
@@ -219,6 +242,18 @@ struct CornerEditorView: View {
                 default:
                     model.nudge(index, outward: false)
                 }
+            }
+            .accessibilityAction(named: Text("Move left")) {
+                model.shift(index, dx: -1, dy: 0)
+            }
+            .accessibilityAction(named: Text("Move right")) {
+                model.shift(index, dx: 1, dy: 0)
+            }
+            .accessibilityAction(named: Text("Move up")) {
+                model.shift(index, dx: 0, dy: -1)
+            }
+            .accessibilityAction(named: Text("Move down")) {
+                model.shift(index, dx: 0, dy: 1)
             }
             .accessibilityIdentifier("corner.\(index)")
     }

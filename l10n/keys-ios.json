@@ -482,6 +482,7 @@
  {"key": "Straightens pages that curve at the spine and fills thumbs at the edges with paper.", "comment": ""},
  {"key": "Swap sides", "comment": ""},
  {"key": "Swipe up or down to make it larger or smaller.", "comment": ""},
+ {"key": "Swipe up to move the corner out, down to move it in, or use the actions to move it one way", "comment": ""},
  {"key": "Swipe up to move the edge out, down to move it in", "comment": ""},
  {"key": "Take again", "comment": ""},
  {"key": "Take photo", "comment": ""},

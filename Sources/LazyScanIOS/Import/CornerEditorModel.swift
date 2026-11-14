@@ -509,6 +509,21 @@ struct CornerEditorModel: Equatable {
                                           width: photoWidth, height: photoHeight)
     }
 
+    /// Corner `index` moved along one axis: `dx` and `dy` are -1, 0 or 1 steps of a hundredth of the
+    /// photo's long side (a fifth of that when `fine`), for VoiceOver's named actions and the arrow keys.
+    mutating func shift(_ index: Int, dx: Int, dy: Int, fine: Bool = false) {
+        let at: CGPoint = corners[index & 3]
+        let step: CGFloat = CGFloat(max(photoWidth, photoHeight)) / (fine ? 500 : 100)
+        selected = index & 3
+        corners = PhotoImport.movedCorner(corners, index: index & 3, to: CGPoint(x: at.x + CGFloat(dx) * step, y: at.y + CGFloat(dy) * step),
+                                          width: photoWidth, height: photoHeight)
+    }
+
+    /// Makes corner `index` the one the arrow keys move.
+    mutating func select(_ index: Int) {
+        selected = index & 3
+    }
+
     /// Edge handle `index` (4 to 7) moved one step with VoiceOver's swipe up or down: `outward` away
     /// from the page's middle, else towards it, a hundredth of the photo's long side along its normal.
     mutating func nudgeEdge(_ index: Int, outward: Bool) {

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:LazyScan.App"
         xmlns:ui="clr-namespace:LazyScan.App"
-        Title="{loc:T Check the corners}"
+        Title="{loc:T Corners}"
         Width="860" Height="720" MinWidth="560" MinHeight="480"
         FontFamily="{StaticResource TextFontFamily}"
         Icon="{x:Static ui:AppIcon.Image}"

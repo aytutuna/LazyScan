@@ -162,6 +162,23 @@ final class CornerEditorModelTests: XCTestCase {
         XCTAssertEqual(editor.corners.topLeft, CGPoint(x: 76, y: 36))
     }
 
+    func test_shift_movesOneAxis_andSelectPicksTheCorner() {
+        var editor: CornerEditorModel = model()
+        editor.shift(1, dx: 1, dy: 0)
+        XCTAssertEqual(editor.corners.topRight, CGPoint(x: 324, y: 50))
+        XCTAssertEqual(editor.selected, 1)
+        editor.shift(1, dx: 0, dy: 1, fine: true)
+        XCTAssertEqual(editor.corners.topRight.x, 324, accuracy: 0.001)
+        XCTAssertEqual(editor.corners.topRight.y, 50.8, accuracy: 0.001)
+        editor.select(5)
+        XCTAssertEqual(editor.selected, 1)
+        for _ in 0..<40 {
+            editor.shift(1, dx: 1, dy: -1)
+        }
+        XCTAssertLessThanOrEqual(editor.corners.topRight.x, 400)
+        XCTAssertGreaterThanOrEqual(editor.corners.topRight.y, 0)
+    }
+
     func test_voiceOver_namesEachCornerByWhereItSitsNow() {
         // As found: each corner by its own place.
         let editor: CornerEditorModel = model()

@@ -141,7 +141,7 @@ public static class PhotoImport
     public static string CorrectedCaption => Loc.T("Corrected from photo");
     /// <summary>The caption of such a page shown as photographed (<see cref="PageCorrections.Caption"/>).</summary>
     public static string OriginalCaption => Loc.T("As photographed");
-    public static string EditorTitle => Loc.T("Check the corners");
+    public static string EditorTitle => Loc.T("Corners");
     public static string EditorHelp => Loc.T("Drag each corner onto a corner of the page.");
     /// <summary>The corner editor's keys, behind its ⓘ and in the canvas's help text.</summary>
     public static string EditorKeys => Loc.T("Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.");

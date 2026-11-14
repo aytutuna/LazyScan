@@ -143,7 +143,7 @@ public enum PhotoImport {
     public static var correctedCaption: String { L10n.t("Corrected from photo") }
     /// The caption of such a page shown as photographed (`PageCorrections.caption`).
     public static var originalCaption: String { L10n.t("As photographed") }
-    public static var editorTitle: String { L10n.t("Check the corners") }
+    public static var editorTitle: String { L10n.t("Corners") }
     public static var editorHelp: String { L10n.t("Drag each corner onto a corner of the page.") }
     /// The corner editor's keys, behind its info button and in the canvas's VoiceOver help.
     public static var editorKeys: String { L10n.t("Keys 1–4 select a corner. Arrow keys move it; Shift takes bigger steps.") }

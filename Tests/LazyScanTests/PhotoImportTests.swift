@@ -457,7 +457,7 @@ final class PhotoImportTests: XCTestCase {
         XCTAssertEqual(PhotoImport.dropHint, "or drop them here")
         XCTAssertEqual(PhotoImport.dropOverlay, "Drop to add as pages")
         XCTAssertEqual(PhotoImport.notImportedTitle, "Not imported")
-        XCTAssertEqual(PhotoImport.editorTitle, "Check the corners")
+        XCTAssertEqual(PhotoImport.editorTitle, "Corners")
         XCTAssertEqual(PhotoImport.editorHelp, "Drag each corner onto a corner of the page.")
         XCTAssertEqual(PhotoImport.editorKeys, "Keys 1\u{2013}4 select a corner. Arrow keys move it; Shift takes bigger steps.")
         XCTAssertEqual([PhotoImport.useCornersLabel, PhotoImport.wholePhotoLabel, PhotoImport.skipLabel, PhotoImport.stopLabel],
