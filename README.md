@@ -1,12 +1,20 @@
 # Lazy Scan
 
-A one-stop, native macOS scanning app: documents to (searchable) PDF, and batch photo
-scanning that automatically finds, straightens, and splits multiple photos laid on the
-flatbed into separate JPEG/PNG files.
+A one-stop scanning app in three native versions: an iPhone and iPad app, a Mac app and a
+Windows app. Each turns documents into (searchable) PDF, and the desktop apps also scan
+batches of photos laid on the flatbed, finding, straightening and splitting them into
+separate JPEG/PNG files. The iPhone and iPad app scans with the camera or a network scanner
+and pairs with Lazy Scan on a Windows PC or a Mac.
 
-Built with SwiftUI on Apple's **ImageCaptureCore**, so it works with any scanner that has a
-macOS driver (Epson, Canon, HP, Brother, …) as well as driverless **AirScan/eSCL network
-scanners** — including the Epson Perfection V39 II.
+The apps will be available on the App Store (iPhone, iPad and Mac) and the Microsoft Store
+(Windows). More at [alazy.app/scan](https://alazy.app/scan/); the privacy policy is at
+[alazy.app/scan/privacy.html](https://alazy.app/scan/privacy.html), and questions go to
+support@alazy.app. The source is available under the PolyForm Noncommercial licence (see
+[Licence](#licence)).
+
+The Mac app is built with SwiftUI on Apple's **ImageCaptureCore**, so it works with any
+scanner that has a macOS driver (Epson, Canon, HP, Brother, …) as well as driverless
+**AirScan/eSCL network scanners** — including the Epson Perfection V39 II.
 
 ## Features
 
@@ -292,63 +300,77 @@ tests run on the iOS Simulator with Xcode 26 or later, as CI's `ios` job runs th
 xcodebuild test -scheme LazyScan-Package   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
 ```
 
-The app itself (iPhone and iPad; on the iPhone it opens straight on the camera,
-whose viewfinder is the scan screen, with the last task used set up; what you scan (Document, Photo,
-Receipts, ID card or Book; several receipts or prints laid on the table are split into pages
-automatically) is the Type under Options, which also holds the format, the PDF's choices and the actions
-on the pages, a chevron opens a drawer of camera options (color, flash, camera) and Save sits beside Options in the
-bottom bar; the pages taken stay when you change the Type, and only the ID card asks first
-whether to save them or discard them; a printer button switches to printer mode, where one scanner is picked in the Scanner sheet and
-Scan sits beside Save, and a camera button switches back, the scanner kept for next time; Print… and
-Email… in Options, and what runs after each save (Email, Print, Send to computer, Photos) under After saving;
-so far the Demo Scanner,
-our own camera as the default way to take pages, with the page's outline found by the page corner
-model (FastViT-T8) and held
-steady over the preview, the lens that focuses close, the torch, an automatic shutter that takes each page once it
-holds still on a sharp, lit frame (Auto, on unless turned off, with a ring that fills as it waits) and
-continuous capture, page after page, with the corner editor only for a page the photo leaves unsure;
-camera pages kept as the camera saw them (Original), each of which can take another filter in the
-page viewer (Enhanced: the lighting evened out, the paper white and the print black; Grayscale; B&W),
-cut again from the photo kept with it, and Crop to place its corners again on that photo; photos and PDFs imported from Photos, Files or other apps with a touch
-corner editor and magnifier, the pages as a grid of whole pages (two across on the iPhone) that opens
-each one full screen, with pinch and double-tap zoom and a swipe to the next, Save as PDF or JPEG and
-the share sheet; several
-receipts or photos in one shot for Receipts, Photos and Restore old photos, each found with Vision's
-rectangles, cut out at its real size and added to the pages (keep, rotate, Crop with the corner editor,
-save in the format chosen in Options; receipts named by the day they are saved), a shot in which none is
-outlined searched whole as the scanner's glass is; the ID card in a frame of the card's shape, front then back, laid out at real size on one
-page, kept in memory only (never written before Save, never in Photos, never read), with a one-line
-"Tilt to avoid glare" when a reflection hid part of it, and a Print button that prints both sides at
-real size over AirPrint (a ruler test page to check that is in Options, under Help and about); two-sided documents taken as Flip & capture
-(each front, then its back, with No back side for an empty one) or every front then every back, put in
-order; Separate documents with a New document button between shots and separator sheets (patch code,
-or QR read with Vision) found on the pages, the sheet saved as a PDF to print; a book page by page or
-as whole spreads cut at the spine, split again by hand; Quick scan, from the camera or a scanner, with
-Live Text, Save JPEG and Copy text; the photocopy printed over AirPrint from the phone, at real size when the page matched a paper
-size and fitted to the page otherwise, with Copies, Also save a PDF and Copy again on the same
-printer; Email a document through Mail's composer (or the share sheet); Archive document and the PDF's
-size, Archive and Password choices, the password asked for in a sheet and never stored; the pages
-added to the end of a PDF picked in Files or in the saved files, as the same incremental update as on
-the desktop (signed files and PDF/A files that may not stay PDF/A asked about first), from
-Options or from the iPad's Add pages to a PDF, which picks the file first so that Save
-reads "Add to Contract.pdf"; the queue shared
-as a Lazy Scan document (`.lsdoc`), and one opened from AirDrop, Files or Mail offered on a
-banner with Add to pages or Open as new; the pages taken kept when iOS ends the app in the
-background, and asked about (save them first, discard them or cancel) before the ID card, a preset or
-Open as new would leave them without a Save; network
-scanners (AirScan/eSCL) found on the Wi-Fi or added by address, picked from a sheet on iPhone or a
-sidebar on iPad, with a flatbed preview to choose the scan area on, a feeder's progress with Cancel,
-the screen kept on while a network scanner works, and the troubleshooter with its iPhone checks;
-Options as a short list of pages (Save as, Look, Pages, Separate documents, File name and folder, After saving,
-Share now, Presets, My computer, Help and about), each row showing its value, the
-presets (save the current settings under a name, rename, delete, apply; also in the task list) and
-the file name with a button per part and the next file's name; the library of this session's scans and
-the saved files with Share and Show in Files; an optional Face ID or passcode lock (Options) that hides the
-Library and the pages kept while the app is locked, though files saved to the Files app are not covered;
-on iPad a sidebar with the tasks, presets, scanners and library,
-Command-S, Command-N and Command-comma, Space for the shutter, pages reordered by dragging them in the
-grid and PDFs or pictures dropped on the scan screen, in any window size Stage Manager gives) is
-an Xcode project that
+The iPhone and iPad app does the following:
+
+- **Camera first**: on the iPhone it opens straight on the camera, whose viewfinder is the scan
+  screen, with the last task used set up. A chevron opens a drawer of camera options (color,
+  flash, camera) and Save sits beside Options in the bottom bar. A printer button switches to
+  printer mode, where one scanner is picked in the Scanner sheet and Scan sits beside Save; a
+  camera button switches back, the scanner kept for next time.
+- **What you scan**: Document, Photo, Receipts, ID card or Book is the Type under Options,
+  which also holds the format, the PDF's choices and the actions on the pages. The pages taken
+  stay when you change the Type, and only the ID card asks first whether to save them or discard
+  them. Several receipts or prints laid on the table are split into pages automatically.
+- **Camera**: the page's outline is found by the page corner model (FastViT-T8) and held steady
+  over the preview. The lens that focuses close, the torch, an automatic shutter that takes each
+  page once it holds still on a sharp, lit frame (Auto, on unless turned off, with a ring that
+  fills as it waits) and continuous capture, page after page, with the corner editor only for a
+  page the photo leaves unsure. The Demo Scanner needs no hardware.
+- **Pages**: camera pages are kept as the camera saw them (Original), and each can take another
+  filter in the page viewer (Enhanced: the lighting evened out, the paper white and the print
+  black; Grayscale; B&W), be cut again from the photo kept with it, or use Crop to place its
+  corners again on that photo. Photos and PDFs can be imported from Photos, Files or other apps
+  with a touch corner editor and magnifier. The pages show as a grid of whole pages (two across
+  on the iPhone) that opens each one full screen, with pinch and double-tap zoom and a swipe to
+  the next, and are saved as PDF or JPEG or shared with the share sheet.
+- **Several items in one shot**: for Receipts, Photos and Restore old photos each is found with
+  Vision's rectangles, cut out at its real size and added to the pages (keep, rotate, Crop with
+  the corner editor, save in the format chosen in Options; receipts named by the day they are
+  saved). A shot in which none is outlined is searched whole as the scanner's glass is.
+- **ID card**: shot in a frame of the card's shape, front then back, and laid out at real size
+  on one page. It is kept in memory only (never written before Save, never in Photos, never
+  read), with a one-line "Tilt to avoid glare" when a reflection hid part of it, and a Print
+  button that prints both sides at real size over AirPrint (a ruler test page to check that is in
+  Options, under Help and about).
+- **Two-sided documents and books**: two-sided documents are taken as Flip & capture (each
+  front, then its back, with No back side for an empty one) or every front then every back, and
+  put in order. Separate documents has a New document button between shots and separator sheets
+  (patch code, or QR read with Vision) found on the pages, the sheet saved as a PDF to print. A
+  book is taken page by page or as whole spreads cut at the spine, split again by hand.
+- **Quick scan and printing**: Quick scan, from the camera or a scanner, with Live Text, Save
+  JPEG and Copy text. The photocopy is printed over AirPrint from the phone, at real size when
+  the page matched a paper size and fitted to the page otherwise, with Copies, Also save a PDF
+  and Copy again on the same printer. Print… on a saved file hands it to Lazy Print when that is installed and shows the AirPrint
+  sheet when it is not. Print… and Email… are in Options, and what runs after each save (Email,
+  Print, Send to computer, Photos) is under After saving.
+- **Documents**: Email a document goes through Mail's composer (or the share sheet). Archive
+  document and the PDF's size, Archive and Password choices are there, the password asked for in
+  a sheet and never stored. Pages can be added to the end of a PDF picked in Files or in the
+  saved files, as the same incremental update as on the desktop (signed files and PDF/A files
+  that may not stay PDF/A asked about first), from Options or from the iPad's Add pages to a
+  PDF, which picks the file first so that Save reads "Add to Contract.pdf".
+- **Sharing and keeping pages**: the queue is shared as a Lazy Scan document (`.lsdoc`), and one
+  opened from AirDrop, Files or Mail is offered on a banner with Add to pages or Open as new.
+  The pages taken are kept when iOS ends the app in the background, and asked about (save them
+  first, discard them or cancel) before the ID card, a preset or Open as new would leave them
+  without a Save.
+- **Network scanners**: AirScan/eSCL scanners found on the Wi-Fi or added by address, picked
+  from a sheet on iPhone or a sidebar on iPad, with a flatbed preview to choose the scan area
+  on, a feeder's progress with Cancel, the screen kept on while a network scanner works, and
+  the troubleshooter with its iPhone checks.
+- **Options and library**: Options is a short list of pages (Save as, Look, Pages, Separate
+  documents, File name and folder, After saving, Share now, Presets, My computer, Help and
+  about), each row showing its value. Presets save the current settings under a name and can be
+  renamed, deleted and applied, also from the task list. The file name has a button per part
+  and shows the next file's name. The library holds this session's scans and the saved files
+  with Share and Show in Files. An optional Face ID or passcode lock (Options) hides the Library
+  and the pages kept while the app is locked, though files saved to the Files app are not
+  covered.
+- **iPad**: a sidebar with the tasks, presets, scanners and library, Command-S, Command-N and
+  Command-comma, Space for the shutter, pages reordered by dragging them in the grid and PDFs
+  or pictures dropped on the scan screen, in any window size Stage Manager gives.
+
+The iPhone app is an Xcode project that
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) writes from `ios/project.yml`; CI pins XcodeGen's
 release and checks its SHA-256. To build it and run its UI smoke test on the Simulator:
 
@@ -398,9 +420,9 @@ picked on its own (the Demo Scanner never is), and the Scanner options close aft
 checked with stand-ins for the system's browsers, and the prompt, a denial, client-isolated Wi-Fi,
 IPv6 and a feeder batch while the app goes to the background need a real iPhone and scanner.
 
-Options > My computer pairs the iPhone with Lazy Scan on a Windows PC from the PC's QR code
-(or its text, with a check code to compare), and Send to computer then sends the queue to it, keeping
-what could not go yet to send later; the Simulator has no camera for the code and the tests reach no PC,
+Options > My computer pairs the iPhone with Lazy Scan on a Windows PC or a Mac, from its QR code
+(or a short code picked from the list of computers found, with a check code to compare), and Send to computer then sends the queue to it,
+keeping what could not go yet to send later; the Simulator has no camera for the code and the tests reach no PC,
 so those are checked with a real iPhone and PC.
 
 ## Windows version
