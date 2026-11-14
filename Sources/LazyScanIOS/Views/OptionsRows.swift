@@ -440,7 +440,7 @@ struct PageSettingsRows: View {
         if separators {
             ReasonLine(text: String(localized: "Blank sheets split documents"))
         }
-        if collecting && s.document.removeBlankPages {
+        if collecting {
             Picker("What counts as blank", selection: $state.settings.document.blankSensitivity) {
                 ForEach(BlankSensitivity.displayOrder, id: \.self) { (level: BlankSensitivity) in
                     Text(level.label).tag(level)
@@ -572,6 +572,19 @@ struct SplitSettingsRows: View {
             }
             .accessibilityHint(Text("Saves a PDF of the sheet; print it at 100%"))
             .accessibilityIdentifier("separator.save")
+            if state.hasPrinter {
+                let qrSheets: Bool = mode == SplitMode.barcode
+                Button {
+                    state.printSeparatorSheet()
+                } label: {
+                    Label("Print sheet", systemImage: "printer")
+                }
+                .disabled(state.isBusy)
+                .accessibilityLabel(Text(qrSheets ? String(localized: "Print QR separator sheet")
+                                         : String(localized: "Print separator sheet")))
+                .accessibilityHint(Text("Prints one now on the printer chosen for copies, at actual size"))
+                .accessibilityIdentifier("separator.print")
+            }
             if mode == SplitMode.separatorSheet {
                 ReasonLine(text: CameraTaskCatalog.separatorHint)
             }
