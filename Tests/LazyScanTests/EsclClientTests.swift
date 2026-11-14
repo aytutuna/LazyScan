@@ -734,6 +734,7 @@ final class EsclClientTests: XCTestCase {
         XCTAssertEqual(image.width, 8)
         XCTAssertTrue(device.bodies[0].contains("<pwg:InputSource>Platen</pwg:InputSource>"))
         XCTAssertTrue(device.bodies[0].contains("<scan:ColorMode>RGB24</scan:ColorMode>"))
+        XCTAssertTrue(device.bodies[0].contains("<scan:XResolution>75</scan:XResolution>"))
     }
 
     @MainActor

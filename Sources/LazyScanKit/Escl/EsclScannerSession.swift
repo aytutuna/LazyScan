@@ -48,11 +48,7 @@ public final class EsclScannerSession: ScannerSession {
             throw ScanError.unsupported(L10n.t("This scanner has no flatbed to preview."))
         }
         progressHandler?(ScanProgress(message: L10n.t("Scanning overview…")))
-        var dpi: Int = 150
-        for resolution in platen.resolutions where resolution >= 150 {
-            dpi = resolution
-            break
-        }
+        let dpi: Int = platen.resolutions.filter { $0 >= 75 }.min() ?? 150
         let result: EsclJobResult = try await runJob(dpi: dpi, colorMode: .color, source: .flatbed, selection: nil)
         guard let first: ScannedPage = result.pages.first else {
             throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no overview image.") })

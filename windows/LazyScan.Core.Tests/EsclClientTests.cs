@@ -403,6 +403,7 @@ public class EsclClientTests
         Assert.Equal(8, image.Width);
         Assert.Contains("<pwg:InputSource>Platen</pwg:InputSource>", device.Bodies[0]);
         Assert.Contains("<scan:ColorMode>RGB24</scan:ColorMode>", device.Bodies[0]);
+        Assert.Contains("<scan:XResolution>75</scan:XResolution>", device.Bodies[0]);
     }
 
     [Fact]

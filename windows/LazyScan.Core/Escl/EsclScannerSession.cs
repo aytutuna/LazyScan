@@ -32,7 +32,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         _cancelRequested = false;
         if (!EsclCapabilities.HasPlaten) throw ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview."));
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
-        int dpi = EsclCapabilities.Platen!.Resolutions.FirstOrDefault(r => r >= 150, 150);
+        int dpi = EsclCapabilities.Platen!.Resolutions.Where(r => r >= 75).DefaultIfEmpty(150).Min();
         var result = await RunJob(dpi, ColorMode.Color, ScanSource.Flatbed, selection: null).ConfigureAwait(true);
         if (result.Pages.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no overview image."));
         return result.Pages[0].Image;
