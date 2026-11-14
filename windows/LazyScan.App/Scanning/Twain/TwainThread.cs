@@ -29,6 +29,7 @@ internal sealed class TwainThread
     private readonly BlockingCollection<Action> _queue = [];
     private readonly object _gate = new();
     private int _overrunning;
+    private int _pending;
 
     public TwainThread()
     {
@@ -87,17 +88,23 @@ internal sealed class TwainThread
     /// Like <see cref="RunAsync{T}"/>, but <paramref name="startTimeout"/> covers the work only
     /// until it calls the action it is given (the end of its start phase, e.g. a scan whose
     /// source is enabled); from then on it runs without a limit, ended only by
-    /// <paramref name="token"/>, and has to watch its own progress.
+    /// <paramref name="token"/>, and has to watch its own progress. The limit counts from when
+    /// the thread takes the work up, not from queueing, so a call that is still winding down
+    /// (a cancelled scan) does not use it up. <paramref name="onWaiting"/> is called at once
+    /// when the thread is busy and the work has to wait its turn.
     /// </summary>
-    public Task<T> RunWithStartLimitAsync<T>(Func<Action, T> work, TimeSpan startTimeout, CancellationToken token = default) =>
-        Run(work, startTimeout, token, null);
+    public Task<T> RunWithStartLimitAsync<T>(Func<Action, T> work, TimeSpan startTimeout, CancellationToken token = default,
+                                             Action? onWaiting = null) =>
+        Run(work, startTimeout, token, null, true, onWaiting);
 
-    private async Task<T> Run<T>(Func<Action, T> work, TimeSpan timeout, CancellationToken token, Action<T>? whenAbandoned)
+    private async Task<T> Run<T>(Func<Action, T> work, TimeSpan timeout, CancellationToken token, Action<T>? whenAbandoned,
+                                 bool limitFromPickup = false, Action? onWaiting = null)
     {
         if (Wedged) throw NotResponding();
         var item = new Item();
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pickedUp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         void Release()
         {
             lock (_gate)
@@ -109,8 +116,17 @@ internal sealed class TwainThread
             released.TrySetResult();
         }
 
+        bool busy;
+        lock (_gate)
+        {
+            busy = _pending > 0;
+            _pending++;
+        }
+        if (busy) onWaiting?.Invoke();
+
         _queue.Add(() =>
         {
+            pickedUp.TrySetResult();
             T value;
             try
             {
@@ -147,6 +163,7 @@ internal sealed class TwainThread
         bool inTime;
         try
         {
+            if (limitFromPickup) await WaitForPickup(pickedUp.Task, timeout, token).ConfigureAwait(false);
             await Task.WhenAny(completion.Task, released.Task).WaitAsync(timeout, token).ConfigureAwait(false);
             inTime = true;
         }
@@ -178,11 +195,33 @@ internal sealed class TwainThread
         }
     }
 
-    /// <summary>An item's work and clean-up are done: an overrun one no longer wedges the thread.</summary>
+    /// <summary>
+    /// Waits for the thread to take the work up. A call ahead that is winding down gets time for it;
+    /// one that is stuck (the thread is wedged, or it outlasts a normal wind-down) ends in
+    /// <see cref="NotResponding"/>. The work has not run, so it is not marked as overrun.
+    /// </summary>
+    private async Task WaitForPickup(Task pickedUp, TimeSpan startTimeout, CancellationToken token)
+    {
+        var giveUp = DateTime.UtcNow + startTimeout + TwainLoopTimeouts.Default.NextEvent;
+        while (!pickedUp.IsCompleted)
+        {
+            if (Wedged || DateTime.UtcNow >= giveUp) throw NotResponding();
+            try
+            {
+                await pickedUp.WaitAsync(TimeSpan.FromMilliseconds(100), token).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+            }
+        }
+    }
+
+    /// <summary>An item's work and clean-up are done: an overrun one no longer wedges the thread, and the next one is not waiting behind it.</summary>
     private void EndItem(Item item)
     {
         lock (_gate)
         {
+            _pending--;
             if (item.Overran) _overrunning--;
         }
     }

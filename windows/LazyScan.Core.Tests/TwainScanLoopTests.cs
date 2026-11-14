@@ -21,6 +21,8 @@ public class TwainScanLoopTests
         /// <summary>RequestStop makes the source finish (as a real one does after MSG_RESET).</summary>
         public bool FinishesWhenStopped { get; init; } = true;
         public bool DisableSucceeds { get; init; } = true;
+        /// <summary>What a stopped source sends instead of just finishing (a native pass delivers its image last).</summary>
+        public TwainEvent[]? EventsAfterStop { get; init; }
         /// <summary>Cancel this token when the script runs out of events before the cancel point.</summary>
         public CancellationTokenSource? CancelAfterEvents { get; init; }
         public int CancelAt { get; init; } = -1;
@@ -66,7 +68,8 @@ public class TwainScanLoopTests
         {
             Calls.Add("stop");
             _script.Clear();
-            if (FinishesWhenStopped) _script.Enqueue(new TwainFinished());
+            if (EventsAfterStop is { } after) foreach (var e in after) _script.Enqueue(e);
+            else if (FinishesWhenStopped) _script.Enqueue(new TwainFinished());
         }
 
         public bool Disable(TimeSpan timeout)
@@ -198,6 +201,43 @@ public class TwainScanLoopTests
         Assert.Equal(Timeout.InfiniteTimeSpan, transport.Waits[1]);
         Assert.Equal(ScanErrorKind.Cancelled, result.Error?.Kind);
         Assert.Equal(["apply", "enable", "stop", "disable"], transport.Calls);
+    }
+
+    [Fact]
+    public void CancelledNativeTransfer_WaitsForItsImageLongerThanTheStopLimit()
+    {
+        // The cancelled pass is still scanning: its image comes after the whole scan, not within the stop limit.
+        using var cancellation = new CancellationTokenSource();
+        var transport = new FakeTransport(new TwainImageReady(new TwainImageInfo(1, 1, TwainPixelTypes.Rgb, 24)))
+        {
+            Applied = new TwainApplied(TwainTransferMechanisms.Native),
+            CancelAfterEvents = cancellation,
+            CancelAt = 1,
+            EventsAfterStop = [new TwainNativeImage(NativeBitmap()), new TwainFinished()],
+        };
+        var result = Run(transport, Flatbed() with { PixelType = TwainPixelTypes.Rgb }, cancellation.Token);
+
+        Assert.Equal(Timeouts.NextEvent, transport.Waits[2]);
+        Assert.Equal(ScanErrorKind.Cancelled, result.Error?.Kind);
+        Assert.False(result.DriverStuck);
+        Assert.Equal(["apply", "enable", "stop", "disable"], transport.Calls);
+    }
+
+    [Fact]
+    public void CancelledNativeTransfer_WhoseImageNeverComes_IsADriverStuck()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var transport = new FakeTransport(new TwainImageReady(new TwainImageInfo(1, 1, TwainPixelTypes.Rgb, 24)))
+        {
+            Applied = new TwainApplied(TwainTransferMechanisms.Native),
+            CancelAfterEvents = cancellation,
+            CancelAt = 1,
+            EventsAfterStop = [],
+        };
+        var result = Run(transport, Flatbed() with { PixelType = TwainPixelTypes.Rgb }, cancellation.Token);
+
+        Assert.Equal(Timeouts.NextEvent, transport.Waits[2]);
+        Assert.True(result.DriverStuck);
     }
 
     [Fact]

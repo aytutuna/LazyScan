@@ -1888,7 +1888,7 @@ same scanners through ImageCaptureCore.
   scanning without its own window never blocks the app: opening a scanner, reading what it
   offers and closing it give up after 60 s, and getting a scan going (an earlier scan
   finishing its stop, negotiating and, without the driver's window, enabling the source,
-  where a driver may show a message box) after 90 s ("not responding"); further TWAIN calls
+  where a driver may show a message box) after 90 s ("not responding"), counted from when the thread takes the scan up: a scan queued behind a cancelled one that is still finishing says so and waits its turn; further TWAIN calls
   are then refused at once until the stuck one returns. A scan gives up when the scanner says nothing for 3 minutes, except
   during a native transfer, which is one call lasting the whole physical scan (only Cancel
   ends that wait). **Cancel** returns at once; the pending transfers are then reset

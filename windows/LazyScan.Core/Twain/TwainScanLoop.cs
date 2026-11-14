@@ -131,6 +131,9 @@ public static class TwainScanLoop
         bool cancelled = false, driverCancelled = false, timedOut = false, stopping = false, finished = false;
         // A native image was announced and has not arrived yet.
         bool nativeTransfer = false;
+        // Same, but kept while stopping: a cancelled native pass still delivers (or drops) its one
+        // image only when the whole scan is done, which can take longer than the stop limit.
+        bool nativePending = false;
 
         // What the source really did, not what was asked. The user can turn two-sided off in the driver's
         // window: read it back (once the source is disabled again, unless pages are handed over as they come, where
@@ -199,7 +202,7 @@ public static class TwainScanLoop
                 cancelled = true;
                 Stop();
             }
-            TimeSpan wait = stopping ? timeouts.Stop
+            TimeSpan wait = stopping ? (nativePending ? timeouts.NextEvent : timeouts.Stop)
                 : nativeTransfer ? Timeout.InfiniteTimeSpan
                 : pageCount == 0 && current is null
                     ? (request.ShowDriverWindow ? Timeout.InfiniteTimeSpan : timeouts.FirstImage)
@@ -247,6 +250,7 @@ public static class TwainScanLoop
                     else
                     {
                         nativeTransfer = true;
+                        nativePending = true;
                     }
                     break;
                 case TwainStripReceived received:
@@ -265,6 +269,7 @@ public static class TwainScanLoop
                 case TwainNativeImage native:
                     current = null;
                     nativeTransfer = false;
+                    nativePending = false;
                     if (stopping) break;
                     try
                     {
@@ -284,17 +289,20 @@ public static class TwainScanLoop
                     break;
                 case TwainTransferFailed failed:
                     Settle();
+                    nativePending = false;
                     failure ??= TwainErrors.ToScanException(failed.ReturnCode, failed.ConditionCode, failed.Detail);
                     // The source resets its pending transfers after an error; make sure it stops.
                     Stop();
                     break;
                 case TwainTransferCancelled:
                     Settle();
+                    nativePending = false;
                     driverCancelled = true;
                     break;
                 case TwainFinished:
                     if (!stopping) Complete();
                     nativeTransfer = false;
+                    nativePending = false;
                     finished = true;
                     break;
             }

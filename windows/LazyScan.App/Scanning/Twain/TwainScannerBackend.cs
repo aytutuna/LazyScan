@@ -265,6 +265,13 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
 {
     public ScannerInfo Info { get; } = info;
     public Action<ScanProgress>? ProgressHandler { get; set; }
+    private ScanProgress? _progress;
+
+    private void Report(ScanProgress progress)
+    {
+        _progress = progress;
+        ProgressHandler?.Invoke(progress);
+    }
 
     /// <summary>Written on the TWAIN thread before the scan task completes, read after it.</summary>
     private volatile ScanStop? _lastScanStop;
@@ -337,7 +344,7 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         {
             throw ScanException.Unsupported(() => Loc.T("This scanner's driver always shows its own window, so it cannot preview."));
         }
-        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
+        Report(new ScanProgress(Loc.T("Scanning overview…")));
         var pages = (await Acquire(TwainScanRequests.ForOverview(caps, _preferNative))).PagesOrThrow();
         _lastScanStop = null;
         return pages[0].Image;
@@ -375,7 +382,7 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         var caps = _caps ?? await ReadCapabilities();
         var request = TwainScanRequests.ForScan(settings, selection, caps, UseDriverWindow, _preferNative);
         _waitingForDriverWindow = request.ShowDriverWindow;
-        ProgressHandler?.Invoke(new ScanProgress(request.ShowDriverWindow
+        Report(new ScanProgress(request.ShowDriverWindow
             ? Loc.T("Choose the settings in the scanner's window, then start the scan there…")
             : Loc.T("Scanning…")));
         if (request.ShowDriverWindow) _ = RaiseWhenOpened();
@@ -414,15 +421,21 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
         previous?.Cancel();
         var token = cancellation.Token;
         TwainScanResult result;
+        bool waited = false;
         try
         {
             result = await thread.RunWithStartLimitAsync(started =>
             {
+                if (waited && _progress is { } current) ProgressHandler?.Invoke(current);
                 // A source left enabled by a scan whose driver got stuck has to be disabled first.
                 if (!driver.Disable(TwainLoopTimeouts.Default.Stop)) throw TwainThread.NotResponding();
                 return TwainScanLoop.Run(driver, request, TwainLoopTimeouts.Default, token,
                                          progress => ProgressHandler?.Invoke(progress), started, onPage, onDuplex);
-            }, StartTimeout, token);
+            }, StartTimeout, token, () =>
+            {
+                waited = true;
+                ProgressHandler?.Invoke(new ScanProgress(Loc.T("The scanner is still finishing the cancelled scan…")));
+            });
         }
         catch
         {
