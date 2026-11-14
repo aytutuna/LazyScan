@@ -114,6 +114,7 @@ public partial class MainWindow : Window
             OfferLeftBehindPages();
             // Receives from paired phones on trusted networks; nothing listens while no phone is paired.
             ViewModel.StartCompanionIfPaired();
+            SetUpTray();
             // Opened from File Explorer: the .lsdoc is offered on its bar and photos are imported.
             OpenCommandLineFiles();
             _ = Task.Run(Services.FileAssociation.RegisterForCurrentUser);
@@ -139,6 +140,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             Application.Current.SessionEnding -= App_SessionEnding;
+            RemoveTray();
             ViewModel.Shutdown();
         };
         Application.Current.SessionEnding += App_SessionEnding;
@@ -281,6 +283,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        // With the icon up, the close button only hides the window; Exit on the icon's menu quits.
+        if (_tray is not null && !_trayExit)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
         string? unsaved = UnsavedWorkDescription();
         if (ViewModel.IsBusy || unsaved is not null)
         {
@@ -289,10 +299,20 @@ public partial class MainWindow : Window
                     ? Loc.T("A scan or save is still running.\n\nStop it and quit?")
                     : Loc.T("A scan or save is still running. {0}\n\nStop it and quit?", unsaved)
                 : Loc.T("{0}\n\nQuit anyway?", unsaved);
-            var answer = MessageBox.Show(this, message, "Lazy Scan", MessageBoxButton.YesNo,
+            MessageBoxResult answer;
+            _inClosingPrompt = true;
+            try
+            {
+                answer = MessageBox.Show(this, message, "Lazy Scan", MessageBoxButton.YesNo,
                                          MessageBoxImage.Warning, MessageBoxResult.No, App.BoxOptions);
+            }
+            finally
+            {
+                _inClosingPrompt = false;
+            }
             if (answer != MessageBoxResult.Yes)
             {
+                _trayExit = false;
                 e.Cancel = true;
                 return;
             }

@@ -1711,6 +1711,9 @@ Known divergences from the macOS app (all documented in the source):
   first while a scan or save is running, or while pages or detected photos are unsaved, as Quit
   does on the Mac. A running operation is then cancelled and allowed to finish its cleanup
   before the window closes; the Mac cancels it and quits at once.
+  With **Keep receiving when the window is closed** on in the Phone window (off by default), closing
+  only hides the window to a notification area icon with Open Lazy Scan and Exit, the phone link and
+  cloud folder watcher keep running, and the questions come only from Exit.
 - Rotating a saved JPEG re-encodes it at its own estimated quality (read from the file's
   quantization table) instead of a fixed 95%.
 - Email: the Mac starts a new Mail message with the files attached; Windows has no such route

@@ -60,6 +60,20 @@
                 <TextBlock Text="{loc:T Networks}" Style="{StaticResource SectionHeaderText}" Margin="0,4,0,8" />
                 <StackPanel x:Name="NetworksPanel" AutomationProperties.Name="{loc:T Networks}" />
 
+                <!-- Whether closing the window keeps the phone link running from the notification area. -->
+                <TextBlock Text="{loc:T Background}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,8" />
+                <Border Style="{StaticResource CardStyle}" Padding="16,12,16,12" Margin="0,0,0,8">
+                    <StackPanel>
+                        <CheckBox x:Name="KeepReceivingBox" Style="{StaticResource ToggleSwitchStyle}"
+                                  Content="{loc:T Keep receiving when the window is closed}"
+                                  ToolTip="{loc:T Keeps the phone link running after you close the window. Off by default.}"
+                                  AutomationProperties.HelpText="{loc:T Keeps the phone link running after you close the window; Lazy Scan stays in the notification area}"
+                                  Click="KeepReceiving_Click" />
+                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="{loc:T Lazy Scan stays in the notification area so phones can still send. Choose Exit on its menu to stop.}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Pairing: the QR code with its one-time code, the text to paste on the phone, and the question. -->
                 <TextBlock Text="{loc:T Pair a phone}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,8" />
                 <Border x:Name="PairCard" Style="{StaticResource CardStyle}" Padding="16,12,16,12">

@@ -77,6 +77,7 @@ public partial class PhoneWindow : Window
             if (_companion is not null) _companion.DevicePaired -= Companion_DevicePaired;
             _approval?.TrySetResult(false);
         };
+        KeepReceivingBox.IsChecked = AppPreferencesStore.Load().KeepReceiving;
         Refresh();
         Loaded += async (_, _) =>
         {
@@ -225,6 +226,13 @@ public partial class PhoneWindow : Window
         };
         AutomationProperties.SetName(card, Loc.T("{0}, {1}, {2}", name, kind, receiving));
         return card;
+    }
+
+    private void KeepReceiving_Click(object sender, RoutedEventArgs e)
+    {
+        bool on = KeepReceivingBox.IsChecked == true;
+        if (Application.Current.MainWindow is MainWindow main) on = main.SetKeepReceiving(on);
+        KeepReceivingBox.IsChecked = on;
     }
 
     private async void Allow_Toggled(object sender, RoutedEventArgs e)

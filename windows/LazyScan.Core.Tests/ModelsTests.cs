@@ -280,6 +280,24 @@ public class ModelsTests
     }
 
     [Fact]
+    public void KeepReceivingIsOffUntilChosenAndIsKept()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "lazyscan-prefs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Assert.False(AppPreferencesStore.Load(dir).KeepReceiving);
+            AppPreferencesStore.Update(p => p.KeepReceiving = true, dir);
+            AppPreferencesStore.Update(p => p.Appearance = AppAppearance.Dark, dir);
+            Assert.True(AppPreferencesStore.Load(dir).KeepReceiving);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void UnknownAppearanceFallsBackToSystemAndTheFileStaysInPlace()
     {
         const string json = """{ "appearance": "sepia" }""";

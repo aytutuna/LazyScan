@@ -128,6 +128,9 @@ public sealed class AppPreferences
     /// the Mac app lays out its settings its own way.
     /// </summary>
     public Dictionary<string, bool> InspectorSections { get; set; } = [];
+
+    /// <summary>Closing the window hides it to a notification area icon and the phone link keeps receiving. Windows only.</summary>
+    public bool KeepReceiving { get; set; }
 }
 
 public static class AppPreferencesStore

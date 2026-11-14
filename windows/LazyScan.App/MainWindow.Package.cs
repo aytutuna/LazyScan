@@ -24,6 +24,7 @@ public partial class MainWindow
     public void OpenFromOtherProcess(string[] args)
     {
         if (PendingPackage.FilesIn(args) is { Length: > 0 } files) Take(files);
+        if (!IsVisible) Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
     }
