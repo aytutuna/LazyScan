@@ -1717,7 +1717,6 @@
     "Apply": "تطبيق",
     "Crop frame": "إطار الاقتصاص",
     "Arrow keys move the crop, Ctrl+arrow keys resize it, Shift takes bigger steps.": "تحرّك مفاتيح الأسهم منطقة الاقتصاص، ومع الضغط على Ctrl تغيّر حجمها، ومع Shift تكون الخطوات أكبر.",
-    "Double-click to open": "النقر نقرًا مزدوجًا للفتح",
     "Open {0}": "فتح {0}",
     "Share {0}": "مشاركة {0}",
     "Show {0} in File Explorer": "إظهار الملف {0} في مستكشف الملفات",

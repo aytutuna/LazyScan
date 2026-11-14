@@ -25,13 +25,18 @@
 
         <!-- One card. Its thumbnail is decoded when the card is realized and dropped when the
              card scrolls out of the virtualized list (Card_Loaded / Card_Unloaded). The width
-             and margin match CardSlotWidth in code. The action bar is hidden by Opacity only,
-             so its buttons stay reachable with Tab; it shows on hover and on keyboard focus.
+             and margin match CardSlotWidth in code. The card is one Tab stop (arrow keys move
+             between cards, Enter opens); the action bar is hidden by Opacity only, so its buttons
+             stay clickable and visible to screen readers, and shows on hover and on keyboard focus.
              Every action on the file is also in the card's context menu (right-click, Shift+F10
-             or the Menu key on any of its buttons) and in the bar's More menu. -->
+             or the Menu key on the card) and in the bar's More menu. -->
         <DataTemplate x:Key="CardTemplate">
             <Grid x:Name="Card" Width="200" Margin="6" Background="Transparent"
+                  Focusable="True" FocusVisualStyle="{StaticResource CardFocusVisualStyle}"
+                  AutomationProperties.Name="{Binding AutomationName}"
+                  AutomationProperties.HelpText="{loc:T Enter opens. Menu key shows more actions.}"
                   Loaded="Card_Loaded" Unloaded="Card_Unloaded"
+                  MouseLeftButtonDown="Card_MouseDown" KeyDown="Card_KeyDown"
                   ContextMenuOpening="Card_ContextMenuOpening">
                 <!-- Replaced by the file's menu as it opens (Card_ContextMenuOpening). -->
                 <Grid.ContextMenu>
@@ -42,7 +47,7 @@
                         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}" />
                 <Border x:Name="Surface" Style="{StaticResource CardStyle}">
                     <StackPanel>
-                        <Grid Height="140" Cursor="Hand" ToolTip="{loc:T Double-click to open}"
+                        <Grid Height="140" Cursor="Hand" ToolTip="{loc:T Click to open}"
                               MouseLeftButtonDown="Thumbnail_MouseDown">
                             <Border Style="{StaticResource ImageWellStyle}" />
                             <TextBlock x:Name="Placeholder" Text="{Binding PlaceholderGlyph}"
@@ -61,21 +66,21 @@
                             <Border x:Name="Actions" Style="{StaticResource HoverActionBarStyle}"
                                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE8A7;"
+                                    <Button Style="{StaticResource SmallIconButtonStyle}" IsTabStop="False" Content="&#xE8A7;"
                                             Click="Open_Click" ToolTip="{loc:T Open with the default app}"
                                             AutomationProperties.Name="{Binding Name, StringFormat={loc:T 'Open {0}'}}" />
-                                    <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE72D;"
+                                    <Button Style="{StaticResource SmallIconButtonStyle}" IsTabStop="False" Content="&#xE72D;"
                                             Click="Share_Click" ToolTip="{loc:T Send by email or to an app}"
                                             AutomationProperties.Name="{Binding Name, StringFormat={loc:T 'Share {0}'}}" />
-                                    <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE838;"
+                                    <Button Style="{StaticResource SmallIconButtonStyle}" IsTabStop="False" Content="&#xE838;"
                                             Click="Reveal_Click" ToolTip="{loc:T Show in File Explorer}"
                                             AutomationProperties.Name="{Binding Name, StringFormat={loc:T 'Show {0} in File Explorer'}}" />
-                                    <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE7AD;"
+                                    <Button Style="{StaticResource SmallIconButtonStyle}" IsTabStop="False" Content="&#xE7AD;"
                                             Click="Rotate_Click" ToolTip="{loc:T Rotate}"
                                             AutomationProperties.Name="{Binding Name, StringFormat={loc:T 'Rotate {0} 90° clockwise'}}"
                                             Visibility="{Binding RotateVisibility}"
                                             IsEnabled="{Binding CanRotate}" />
-                                    <Button Style="{StaticResource SmallIconButtonStyle}" Content="&#xE712;"
+                                    <Button Style="{StaticResource SmallIconButtonStyle}" IsTabStop="False" Content="&#xE712;"
                                             Click="More_Click" ToolTip="{loc:T More}"
                                             AutomationProperties.Name="{Binding Name, StringFormat={loc:T 'More actions for {0}'}}"
                                             AutomationProperties.HelpText="{loc:T Opens a menu: open\, open with\, show in folder\, share\, email\, copy}" />
@@ -136,6 +141,7 @@
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Standard"
                           VirtualizingPanel.ScrollUnit="Pixel"
+                          Focusable="False" KeyboardNavigation.TabNavigation="Once"
                           ScrollViewer.CanContentScroll="True"
                           SizeChanged="Rows_SizeChanged" ScrollViewer.ScrollChanged="Rows_ScrollChanged">
                 <ItemsControl.Template>
@@ -148,7 +154,7 @@
                 </ItemsControl.Template>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <VirtualizingStackPanel />
+                        <local:RowsPanel Loaded="RowsPanel_Loaded" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

@@ -1717,7 +1717,6 @@
     "Apply": "適用",
     "Crop frame": "切り取り枠",
     "Arrow keys move the crop, Ctrl+arrow keys resize it, Shift takes bigger steps.": "矢印キーで切り取り範囲を移動し、Ctrl+矢印キーでサイズを変更します。Shiftキーを押しながら操作すると大きく移動します。",
-    "Double-click to open": "ダブルクリックで開きます",
     "Open {0}": "{0}を開く",
     "Share {0}": "{0}を共有",
     "Show {0} in File Explorer": "“{0}”をエクスプローラーで表示",

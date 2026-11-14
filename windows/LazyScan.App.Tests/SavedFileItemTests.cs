@@ -21,4 +21,12 @@ public sealed class SavedFileItemTests
             CultureInfo.CurrentCulture = saved;
         }
     }
+
+    [Fact]
+    public void AutomationNameIsNameTypeAndDate()
+    {
+        var modified = new DateTime(2026, 11, 12, 9, 30, 0);
+        var item = new SavedFileItem(new SavedFile(@"C:\scans\Receipt.pdf", modified, 1));
+        Assert.Equal($"Receipt.pdf, PDF, {modified:g}", item.AutomationName);
+    }
 }

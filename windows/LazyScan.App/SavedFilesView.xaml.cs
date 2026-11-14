@@ -26,6 +26,7 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
             _file = value;
             Changed(nameof(File)); Changed(nameof(Name)); Changed(nameof(Caption));
             Changed(nameof(DateText)); Changed(nameof(SizeText)); Changed(nameof(ToolTipText));
+            Changed(nameof(AutomationName));
         }
     }
     public string Name => File.Name;
@@ -41,6 +42,8 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
         ".tif" or ".tiff" => "TIFF",
         var other => other.TrimStart('.').ToUpperInvariant(),
     };
+    /// <summary>What a screen reader says for the card itself: name, type and date.</summary>
+    public string AutomationName => Loc.T("{0}, {1}, {2}", Name, TypeText, DateText);
     /// <summary>Icon font glyph shown until (or instead of) the thumbnail.</summary>
     public string PlaceholderGlyph => File.IsPdf || File.IsTextDocument ? "" : "";
     public Visibility RotateVisibility => File.ImageFormat is null ? Visibility.Collapsed : Visibility.Visible;
@@ -79,6 +82,12 @@ public sealed class SavedFileRow(IReadOnlyList<SavedFileItem> items)
     public IReadOnlyList<SavedFileItem> Items { get; } = items;
 }
 
+/// <summary>The rows' panel; lets the view scroll a row into view by index.</summary>
+public sealed class RowsPanel : VirtualizingStackPanel
+{
+    public void ScrollRowIntoView(int index) => BringIndexIntoView(index);
+}
+
 /// <summary>
 /// The Saved tab: everything in the destination folder, newest first, with open, open with,
 /// show in folder, share, email, copy (<see cref="AppViewModel.RunFileAction"/>) and 90°
@@ -112,6 +121,9 @@ public partial class SavedFilesView : UserControl
     /// <summary>The item each realized card element is showing.</summary>
     private readonly Dictionary<FrameworkElement, SavedFileItem> _cardItems = [];
     private Task _pendingWork = Task.CompletedTask;
+    private RowsPanel? _rowsPanel;
+    /// <summary>The item to focus once its card is realized (its row was scrolled into view first).</summary>
+    private SavedFileItem? _focusWhenLoaded;
 
     public SavedFilesView()
     {
@@ -144,8 +156,10 @@ public partial class SavedFilesView : UserControl
         });
         if (generation != _generation) return;
 
+        var focus = FocusedPosition();
         _items = (files ?? []).Select(file => new SavedFileItem(file)).ToList();
         RebuildRows(force: true);
+        RestoreFocus(focus);
         bool empty = _items.Count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         Rows.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
@@ -196,10 +210,10 @@ public partial class SavedFilesView : UserControl
     }
 
     /// <summary>Cut the items into rows that fit the current width (only when the column count changes, unless forced).</summary>
-    private void RebuildRows(bool force)
+    private bool RebuildRows(bool force)
     {
         int columns = ColumnCount();
-        if (!force && columns == _columns) return;
+        if (!force && columns == _columns) return false;
         _columns = columns;
         var rows = new List<SavedFileRow>();
         for (int i = 0; i < _items.Count; i += columns)
@@ -207,12 +221,14 @@ public partial class SavedFilesView : UserControl
             rows.Add(new SavedFileRow(_items.GetRange(i, Math.Min(columns, _items.Count - i))));
         }
         Rows.ItemsSource = rows;
+        return true;
     }
 
     private void Rows_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (!e.WidthChanged) return;
-        RebuildRows(force: false);
+        var focus = FocusedPosition();
+        if (RebuildRows(force: false)) RestoreFocus(focus);
         UpdateInsets();
     }
 
@@ -246,6 +262,11 @@ public partial class SavedFilesView : UserControl
         if (card.DataContext is not SavedFileItem item) return;
         _cardItems[card] = item;
         item.Cards.Add(card);
+        if (item == _focusWhenLoaded)
+        {
+            _focusWhenLoaded = null;
+            card.Focus();
+        }
         LoadThumbnail(item, replace: false);
     }
 
@@ -304,9 +325,82 @@ public partial class SavedFilesView : UserControl
         }
     }
 
+    // Ctrl or Shift on the thumbnail is left for selecting, not opening.
     private void Thumbnail_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 2 && ItemOf(sender) is { } item) Open(item);
+        if (e.ClickCount != 1 || (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) return;
+        if (ItemOf(sender) is { } item) Open(item);
+    }
+
+    private void Card_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        (sender as FrameworkElement)?.Focus();
+    }
+
+    private void RowsPanel_Loaded(object sender, RoutedEventArgs e) => _rowsPanel = (RowsPanel)sender;
+
+    private void Card_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: SavedFileItem item } card || Keyboard.Modifiers != ModifierKeys.None) return;
+        if (e.Key == Key.Enter)
+        {
+            if (e.OriginalSource != card) return;
+            Open(item);
+            e.Handled = true;
+            return;
+        }
+        bool rtl = card.FlowDirection == FlowDirection.RightToLeft;
+        int step = e.Key switch
+        {
+            Key.Left => rtl ? 1 : -1,
+            Key.Right => rtl ? -1 : 1,
+            Key.Up => -_columns,
+            Key.Down => _columns,
+            _ => 0,
+        };
+        if (step == 0) return;
+        e.Handled = true;
+        int index = _items.IndexOf(item);
+        int target = index + step;
+        // Down from a column the last row doesn't have lands on the last card.
+        if (e.Key == Key.Down && target >= _items.Count && index / _columns < (_items.Count - 1) / _columns)
+        {
+            target = _items.Count - 1;
+        }
+        if (target >= 0 && target < _items.Count) FocusItem(_items[target]);
+    }
+
+    /// <summary>Moves keyboard focus to the item's card, scrolling its row into view first when the card doesn't exist yet.</summary>
+    private void FocusItem(SavedFileItem item)
+    {
+        _focusWhenLoaded = null;
+        if (item.Cards.FirstOrDefault() is { } card)
+        {
+            card.Focus();
+            card.BringIntoView();
+            return;
+        }
+        _focusWhenLoaded = item;
+        _rowsPanel?.ScrollRowIntoView(_items.IndexOf(item) / _columns);
+    }
+
+    /// <summary>The path and position of the card that has keyboard focus, so a rebuilt list can give it back.</summary>
+    private (string Path, int Index)? FocusedPosition()
+    {
+        if (!Rows.IsKeyboardFocusWithin) return null;
+        if ((Keyboard.FocusedElement as FrameworkElement)?.DataContext is not SavedFileItem item) return null;
+        return (item.File.Path, _items.IndexOf(item));
+    }
+
+    /// <summary>Focus goes back to the same file's card, or to the nearest one when the file is gone.</summary>
+    private void RestoreFocus((string Path, int Index)? focus)
+    {
+        if (focus is not { } was || _items.Count == 0) return;
+        int index = _items.FindIndex(i => i.File.Path == was.Path);
+        if (index < 0) index = Math.Min(was.Index, _items.Count - 1);
+        // Every old row was just replaced, so the card is focused once its new one is realized.
+        _focusWhenLoaded = _items[index];
+        _rowsPanel?.ScrollRowIntoView(index / _columns);
     }
 
     private void Open_Click(object sender, RoutedEventArgs e)

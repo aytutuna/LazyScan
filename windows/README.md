@@ -1059,7 +1059,9 @@ offers **Open**, **Show in folder**, **Share** and **Copy**; its **…** button 
 with…**. With several files (a batch of photos) Open and Open with are left out.
 The bar goes away with its close button or when the next scan starts; in narrow windows its
 buttons show only their icons (names stay in tooltips and for screen readers). The Saved tab's
-cards offer the same actions. Nothing leaves the PC without the user choosing where it goes:
+cards offer the same actions; each card is one Tab stop, the arrow keys move between
+cards, Enter or a click on the thumbnail opens the file and the Menu key shows the actions.
+Nothing leaves the PC without the user choosing where it goes:
 
 - **Share** opens the Windows share window (the SDK's `DataTransferManagerInterop` for desktop
   windows), which lists Mail, Outlook, nearby sharing and other apps. The files are offered as
