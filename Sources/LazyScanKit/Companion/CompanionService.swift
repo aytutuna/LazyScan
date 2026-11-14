@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import Network
 import Security
+import UniformTypeIdentifiers
 
 // Twin of windows/LazyScan.Core/Companion/CompanionService.cs: the desktop's side of C1 put
 // together, without a screen, so the tests drive it end to end over loopback. The certificate is a
@@ -73,6 +74,8 @@ public final class CompanionService: @unchecked Sendable {
     /// A paired phone sent a document (on the request's task), or put it in the sync folder (on the
     /// watcher's task). Release it from `inbox` once imported.
     public var onPackageReceived: ((ReceivedPackage, PairedDevice) -> Void)?
+    /// A phone fetched a file `sendToPhone` put in its outbox (on the request's task): the phone and the item's id.
+    public var onSentFetched: ((PairedDevice, String) -> Void)?
     /// A file in the sync folder could not be read, or its bookmark could not be opened: the message for the status, once
     /// per file. nil when the folder opened again.
     public var onSyncFolderProblem: ((String?) -> Void)?
@@ -114,6 +117,7 @@ public final class CompanionService: @unchecked Sendable {
         }
         router.onPackageReceived = { [weak self] package, device in self?.onPackageReceived?(package, device) }
         router.onDeviceRemoved = { [weak self] _ in self?.refreshQuietly() }
+        router.onOutboxFetched = { [weak self] device, id in self?.onSentFetched?(device, id) }
         // A declined (or cut off) pairing no longer keeps the host listening.
         router.onApprovalSettled = { [weak self] in self?.refreshQuietly() }
         host.onStatusChange = { [weak self] in self?.onChange?() }
@@ -122,6 +126,16 @@ public final class CompanionService: @unchecked Sendable {
     }
 
     public var status: CompanionHostStatus { host.status }
+
+    /// Copies `file` into the phone's outbox, where the phone's next poll finds it. The copy is the app's
+    /// own, so a sandboxed app does not hand the phone a path, and the original may move or go.
+    @discardableResult
+    public func sendToPhone(_ file: URL, deviceId: String) throws -> OutboxItem {
+        guard devices.devices.contains(where: { $0.id == deviceId }) else { throw CompanionOutboxError.invalidId }
+        let type = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        return try outbox.add(deviceId: deviceId, source: file, name: file.lastPathComponent, contentType: type,
+                              now: options.clock())
+    }
 
     /// The pairing session open now; nil when none is (closed, used, or expired).
     public var pairing: PairingSession? {

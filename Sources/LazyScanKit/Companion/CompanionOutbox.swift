@@ -51,11 +51,18 @@ extension OutboxIndex {
 }
 
 /// Why a file could not be put in a phone's outbox (besides the file system's errors).
-public enum CompanionOutboxError: Error, Equatable, Sendable {
+public enum CompanionOutboxError: Error, Equatable, LocalizedError, Sendable {
     /// The phone's id is not valid (`CompanionProtocol.isValidId`).
     case invalidId
     /// The phone's outbox.json could not be saved.
     case notSaved
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidId: return CompanionHostText.phoneNotPairedMessage
+        case .notSaved: return CompanionHostText.outboxNotSavedMessage
+        }
+    }
 }
 
 /// What the desktop sends a phone: files copied into the phone's folder under the outbox folder

@@ -499,6 +499,8 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var companionHostStatus = CompanionHostStatus.initial
     /// Why the phone link could not start; nil when it started or was not tried.
     @Published public internal(set) var companionHostError: String?
+    /// Files put in paired phones' outboxes (`sendToPhone`), the latest 20, oldest first.
+    @Published public internal(set) var phoneSends: [PhoneSend] = []
     /// The last file in the cloud folder that could not be read; nil since the folder was chosen.
     @Published public internal(set) var syncFolderProblem: String?
     /// Asks the user whether a phone that presented the pairing code may pair (the Phone window answers;

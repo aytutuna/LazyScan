@@ -221,4 +221,11 @@ final class AppStateCompanionHostTests: XCTestCase {
                        "3 pages from Aytu's iPhone are waiting: The task “ID card” saves its scans on its own. "
                            + "Leave the task or pick Document to PDF to add them to the queue.")
     }
+
+    func test_phoneSend_saysWaitingThenSent() {
+        var send = PhoneSend(id: "item-0001", fileName: "Scan.pdf", phoneName: "Aytu's iPhone")
+        XCTAssertEqual(send.message, "Waiting for Aytu's iPhone to fetch it")
+        send.fetched = true
+        XCTAssertEqual(send.message, "Sent to Aytu's iPhone")
+    }
 }

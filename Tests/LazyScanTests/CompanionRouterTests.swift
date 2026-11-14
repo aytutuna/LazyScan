@@ -435,6 +435,20 @@ final class CompanionRouterTests: XCTestCase {
         XCTAssertEqual(OutboxList.fromJSON(otherListing.body)?.items, [])
     }
 
+    func testOutbox_SaysWhenThePhoneAcknowledgesAnItem() async throws {
+        let secret = try await pairPhone()
+        let file = directory.appendingPathComponent("Scan 1.pdf")
+        try Data("%PDF-1.7 test".utf8).write(to: file)
+        let item = try outbox.add(deviceId: "phone-0001", source: file, name: "Scan 1.pdf", contentType: "application/pdf", now: now)
+        let fetched = Guarded<[String]>([])
+        router.onOutboxFetched = { device, id in fetched.value.append(device.id + "/" + id) }
+        _ = await send("GET", CompanionProtocol.outboxPrefix + item.id, device: "phone-0001", secret: secret)
+        XCTAssertTrue(fetched.value.isEmpty)
+        _ = await send("DELETE", CompanionProtocol.outboxPrefix + item.id, device: "phone-0001", secret: secret)
+        _ = await send("DELETE", CompanionProtocol.outboxPrefix + item.id, device: "phone-0001", secret: secret)
+        XCTAssertEqual(fetched.value, ["phone-0001/" + item.id])
+    }
+
     func testOutbox_ListingWaitsForSomethingToArrive() async throws {
         let secret = try await pairPhone()
         let file = directory.appendingPathComponent("a.pdf")

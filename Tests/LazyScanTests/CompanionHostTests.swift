@@ -320,6 +320,35 @@ final class CompanionHostTests: XCTestCase {
         XCTAssertFalse(service.status.localNetworkDenied)
     }
 
+    func testSendToPhone_CopiesTheFile_AndSaysWhenThePhoneHasIt() async throws {
+        let client = try await pairedPhone().client
+        let file = directory.appendingPathComponent("Scan 1.pdf")
+        try Data("%PDF-1.7 hello".utf8).write(to: file)
+        let fetched = Guarded<[String]>([])
+        service.onSentFetched = { device, id in fetched.value.append(device.id + "/" + id) }
+        let item = try service.sendToPhone(file, deviceId: "phone-0001")
+        // The phone gets its own copy: the original may go.
+        try FileManager.default.removeItem(at: file)
+        XCTAssertEqual(item.name, "Scan 1.pdf")
+        XCTAssertEqual(item.contentType, "application/pdf")
+        let list = try await client.outbox(wait: 0)
+        XCTAssertEqual(list.items, [item])
+        let download = try await client.outboxItem(id: item.id)
+        XCTAssertEqual(String(decoding: download, as: UTF8.self), "%PDF-1.7 hello")
+        XCTAssertTrue(fetched.value.isEmpty)
+        try await client.ack(id: item.id)
+        XCTAssertEqual(fetched.value, ["phone-0001/" + item.id])
+    }
+
+    func testSendToPhone_RefusesAPhoneThatIsNotPaired() async throws {
+        _ = try await pairedPhone()
+        let file = directory.appendingPathComponent("a.png")
+        try Data([1, 2, 3]).write(to: file)
+        XCTAssertThrowsError(try service.sendToPhone(file, deviceId: "phone-9999")) { error in
+            XCTAssertEqual(error as? CompanionOutboxError, .invalidId)
+        }
+    }
+
     func testResetPairing_ChangesTheKeyAndUnpairsEveryone() async throws {
         _ = try await pairedPhone()
         let before = try service.fingerprint()

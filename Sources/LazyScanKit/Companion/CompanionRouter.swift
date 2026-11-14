@@ -172,6 +172,8 @@ public final class CompanionRouter: @unchecked Sendable {
     public var onPackageReceived: ((ReceivedPackage, PairedDevice) -> Void)?
     /// A phone forgot this desktop (`DELETE /v1/devices/self`).
     public var onDeviceRemoved: ((PairedDevice) -> Void)?
+    /// A phone acknowledged a file of its outbox (`DELETE /v1/outbox/{id}`): it has it.
+    public var onOutboxFetched: ((PairedDevice, String) -> Void)?
     /// A pairing request counted in `awaitingApproval` ended: paired, declined, refused or cut off.
     public var onApprovalSettled: (() -> Void)?
 
@@ -404,7 +406,9 @@ public final class CompanionRouter: @unchecked Sendable {
 
     private func outboxDelete(_ request: CompanionRequest, id: String, now: Date) -> CompanionResponse {
         guard let device = authenticate(request, now: now) else { return CompanionRouter.unauthorized() }
-        return outbox.remove(deviceId: device.id, id: id) ? .empty(204) : .error(404, .notFound)
+        guard outbox.remove(deviceId: device.id, id: id) else { return .error(404, .notFound) }
+        onOutboxFetched?(device, id)
+        return .empty(204)
     }
 
     private func removeSelf(_ request: CompanionRequest, now: Date) -> CompanionResponse {

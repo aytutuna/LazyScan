@@ -3020,6 +3020,14 @@
   "Uses the feeder's longest sheet": {},
   "Long paper needs the feeder.": {},
   "Lazy Scan could not listen for phones: ports {0} to {1} are in use by other programs.": {},
+  "Waiting for {0} to fetch it": {
+    "note": "{0} is the name of a phone. A file sent from the computer waits for the phone to download it."
+  },
+  "This phone is no longer paired.": {},
+  "The file could not be put in the phone's outbox.": {},
+  "Sent to {0}": {
+    "note": "{0} is the name of a phone. The phone has downloaded the file."
+  },
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

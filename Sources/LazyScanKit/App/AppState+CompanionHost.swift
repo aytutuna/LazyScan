@@ -12,6 +12,14 @@ public enum CompanionHostText {
         L10n.t("Another copy of Lazy Scan receives from phones. Pair and manage phones there.")
     }
 
+    public static var phoneNotPairedMessage: String {
+        L10n.t("This phone is no longer paired.")
+    }
+
+    public static var outboxNotSavedMessage: String {
+        L10n.t("The file could not be put in the phone's outbox.")
+    }
+
     /// "The phone link could not start: …"
     public static func notStartedMessage(_ reason: String) -> String {
         L10n.t("The phone link could not start: {0}", reason)
@@ -56,6 +64,29 @@ public enum CompanionHostText {
         L10n.t("The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.",
                phoneName, reason)
     }
+
+    /// "Waiting for Aytu's iPhone to fetch it": a file is in the phone's outbox.
+    public static func waitingToFetchMessage(_ phoneName: String) -> String {
+        L10n.t("Waiting for {0} to fetch it", phoneName)
+    }
+
+    /// "Sent to Aytu's iPhone": the phone has the file.
+    public static func sentToPhoneMessage(_ phoneName: String) -> String {
+        L10n.t("Sent to {0}", phoneName)
+    }
+}
+
+/// A file put in a paired phone's outbox (`AppState.sendToPhone`) and whether the phone has fetched it.
+public struct PhoneSend: Identifiable, Equatable, Sendable {
+    /// The outbox item's id.
+    public var id: String
+    public var fileName: String
+    public var phoneName: String
+    public var fetched = false
+
+    public var message: String {
+        fetched ? CompanionHostText.sentToPhoneMessage(phoneName) : CompanionHostText.waitingToFetchMessage(phoneName)
+    }
 }
 
 extension AppState {
@@ -97,6 +128,9 @@ extension AppState {
         service.onPackageReceived = { [weak self] package, device in
             Task { @MainActor in self?.queuePhoneDocument(package, phoneName: device.name) }
         }
+        service.onSentFetched = { [weak self] _, itemId in
+            Task { @MainActor in self?.phoneFetched(itemId) }
+        }
         service.onSyncFolderProblem = { [weak self] message in
             Task { @MainActor in
                 self?.syncFolderProblem = message
@@ -119,6 +153,30 @@ extension AppState {
             queuePhoneDocument(package, phoneName: names[package.deviceId] ?? "")
         }
         return service
+    }
+
+    /// Puts a copy of the saved file `url` in the paired phone's outbox; the phone's next poll takes it, and
+    /// `phoneSends` says when it has. False when the phone link is not running or the file could not be
+    /// copied (`statusMessage` says why).
+    @discardableResult
+    public func sendToPhone(_ url: URL, to device: PairedDevice) -> Bool {
+        guard let service = companionService else { return false }
+        do {
+            let item = try service.sendToPhone(url, deviceId: device.id)
+            let send = PhoneSend(id: item.id, fileName: item.name, phoneName: device.name)
+            phoneSends = Array((phoneSends + [send]).suffix(20))
+            statusMessage = send.message
+            return true
+        } catch {
+            statusMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func phoneFetched(_ itemId: String) {
+        guard let index = phoneSends.firstIndex(where: { $0.id == itemId }) else { return }
+        phoneSends[index].fetched = true
+        statusMessage = phoneSends[index].message
     }
 
     /// Chooses the cloud folder phones put documents in (nil: none); false when that could not be saved.
