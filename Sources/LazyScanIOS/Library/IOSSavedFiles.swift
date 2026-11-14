@@ -32,12 +32,40 @@ public struct IOSSavedFile: Identifiable, Equatable, Sendable {
         return "doc.text"
     }
 
-    /// "Oct 20, 2026 · 498 KB".
-    public var detail: String {
-        let date: String = modified.formatted(date: .abbreviated, time: .shortened)
-        let size: String = ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
-        return String(localized: "\(date) \u{00B7} \(size)")
+    /// "3 pages · 498 KB · Oct 20", with the year when it is not this year's; the page count is left out
+    /// until it is known (`IOSSavedFiles.pageCount(of:)`, PDFs only).
+    public func detail(pages: Int?, now: Date = Date(), calendar: Calendar = Calendar.current) -> String {
+        let style: Date.FormatStyle = Date.FormatStyle(calendar: calendar, timeZone: calendar.timeZone)
+        let sameYear: Bool = calendar.isDate(modified, equalTo: now, toGranularity: .year)
+        let date: String = sameYear ? modified.formatted(style.month(.abbreviated).day())
+                                    : modified.formatted(style.month(.abbreviated).day().year())
+        var parts: [String] = []
+        if let pages {
+            parts.append(L10n.plural(pages, one: "{0} page", other: "{0} pages"))
+        }
+        parts.append(ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file))
+        parts.append(date)
+        return parts.joined(separator: " \u{00B7} ")
     }
+}
+
+/// How recently a file was saved, as the Saved files list groups its rows.
+public enum IOSSavedSection: Sendable {
+    case today, thisWeek, earlier
+
+    public var title: String {
+        switch self {
+        case .today: return L10n.t("Today")
+        case .thisWeek: return L10n.t("This week")
+        case .earlier: return L10n.t("Earlier")
+        }
+    }
+}
+
+public struct IOSSavedGroup: Identifiable, Equatable, Sendable {
+    public let section: IOSSavedSection
+    public let files: [IOSSavedFile]
+    public var id: IOSSavedSection { section }
 }
 
 /// The save folder read: its files newest first, or that it could not be read.
@@ -115,8 +143,33 @@ public enum IOSSavedFiles {
         return IOSSavedFolder(files: files, failed: false)
     }
 
-    /// The actions of a file's More menu: what `SaveActions` offers for one file, but Share and Show in
-    /// Files, which have their own buttons, and Open with, which iOS answers with the share sheet too.
+    /// `files` (newest first) cut into Today, This week (earlier than today, in the calendar's current week)
+    /// and Earlier; a group with no files is left out.
+    public static func groups(_ files: [IOSSavedFile], now: Date = Date(), calendar: Calendar = Calendar.current) -> [IOSSavedGroup] {
+        let startOfToday: Date = calendar.startOfDay(for: now)
+        let startOfWeek: Date = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? startOfToday
+        var today: [IOSSavedFile] = []
+        var week: [IOSSavedFile] = []
+        var earlier: [IOSSavedFile] = []
+        for file in files {
+            if file.modified >= startOfToday {
+                today.append(file)
+            } else if file.modified >= startOfWeek {
+                week.append(file)
+            } else {
+                earlier.append(file)
+            }
+        }
+        var groups: [IOSSavedGroup] = []
+        if !today.isEmpty { groups.append(IOSSavedGroup(section: .today, files: today)) }
+        if !week.isEmpty { groups.append(IOSSavedGroup(section: .thisWeek, files: week)) }
+        if !earlier.isEmpty { groups.append(IOSSavedGroup(section: .earlier, files: earlier)) }
+        return groups
+    }
+
+    /// The actions of a file's More menu: what `SaveActions` offers for one file, but Share, which has its own
+    /// button, Show in Files, which the screen puts first in the menu, and Open with, which iOS answers with
+    /// the share sheet too.
     /// Lazy Print is in it when `lazyPrint` says it can take the file.
     public static func moreActions(lazyPrint: Bool) -> [FileAction] {
         var actions: [FileAction] = []
@@ -158,6 +211,12 @@ public enum IOSSavedFiles {
             kCGImageSourceCreateThumbnailWithTransform: true,
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// The pages of a PDF; nil when it cannot be opened or is locked. Safe off the main thread.
+    public static func pageCount(of url: URL) -> Int? {
+        guard let document = CGPDFDocument(url as CFURL), !document.isEncrypted || document.isUnlocked else { return nil }
+        return document.numberOfPages > 0 ? document.numberOfPages : nil
     }
 
     private static func pdfThumbnail(_ url: URL, maxSide: Int) -> CGImage? {

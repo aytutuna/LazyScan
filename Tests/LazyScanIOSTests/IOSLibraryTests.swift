@@ -377,7 +377,8 @@ final class IOSLibraryTests: XCTestCase {
         XCTAssertEqual(listed.files[0].symbol, "photo")
         XCTAssertEqual(listed.files[1].symbol, "doc.text")
         XCTAssertEqual(listed.files[2].symbol, "doc.richtext")
-        XCTAssertTrue(listed.files[2].detail.contains("\u{00B7}"), listed.files[2].detail)
+        let detail: String = listed.files[2].detail(pages: nil)
+        XCTAssertTrue(detail.contains("\u{00B7}"), detail)
 
         let missing: IOSSavedFolder = IOSSavedFiles.list(in: folder.appendingPathComponent("Nowhere", isDirectory: true),
                                                          justSaved: [])
@@ -391,6 +392,47 @@ final class IOSLibraryTests: XCTestCase {
                        [FileAction.open, FileAction.email, FileAction.lazyPrint, FileAction.copy])
         XCTAssertEqual(IOSSavedFiles.label(FileAction.reveal), "Show in Files")
         XCTAssertEqual(IOSSavedFiles.label(FileAction.copy), FileAction.copy.label)
+    }
+
+    func test_savedFiles_groups_todayThisWeekEarlier() throws {
+        var calendar: Calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "UTC"))
+        calendar.firstWeekday = 2
+        // A Thursday; the week began on Monday the 9th.
+        let now: Date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 12, hour: 15)))
+        func file(_ name: String, _ day: Int, month: Int = 11) throws -> IOSSavedFile {
+            let date: Date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: 9)))
+            return IOSSavedFile(url: URL(fileURLWithPath: "/tmp/\(name)"), modified: date, byteCount: 1000, isNew: false)
+        }
+        let files: [IOSSavedFile] = [try file("a.pdf", 12), try file("b.pdf", 11), try file("c.pdf", 9),
+                                     try file("d.pdf", 8), try file("e.pdf", 2, month: 10)]
+        let groups: [IOSSavedGroup] = IOSSavedFiles.groups(files, now: now, calendar: calendar)
+        XCTAssertEqual(groups.map(\.section), [IOSSavedSection.today, IOSSavedSection.thisWeek, IOSSavedSection.earlier])
+        XCTAssertEqual(groups[0].files.map(\.name), ["a.pdf"])
+        XCTAssertEqual(groups[1].files.map(\.name), ["b.pdf", "c.pdf"])
+        XCTAssertEqual(groups[2].files.map(\.name), ["d.pdf", "e.pdf"])
+
+        let onlyEarlier: [IOSSavedGroup] = IOSSavedFiles.groups([files[4]], now: now, calendar: calendar)
+        XCTAssertEqual(onlyEarlier.map(\.section), [IOSSavedSection.earlier])
+        XCTAssertTrue(IOSSavedFiles.groups([], now: now, calendar: calendar).isEmpty)
+    }
+
+    func test_savedFiles_detail_pagesSizeAndDate() throws {
+        var calendar: Calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "UTC"))
+        let now: Date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 12, hour: 15)))
+        let thisYear: Date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 3, day: 5, hour: 9)))
+        let lastYear: Date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2025, month: 3, day: 5, hour: 9)))
+        let recent: IOSSavedFile = IOSSavedFile(url: URL(fileURLWithPath: "/tmp/a.pdf"), modified: thisYear, byteCount: 340_000, isNew: false)
+        let old: IOSSavedFile = IOSSavedFile(url: URL(fileURLWithPath: "/tmp/b.pdf"), modified: lastYear, byteCount: 340_000, isNew: false)
+
+        let plain: String = recent.detail(pages: nil, now: now, calendar: calendar)
+        XCTAssertFalse(plain.contains("page"), plain)
+        XCTAssertTrue(plain.contains("\u{00B7}"), plain)
+        XCTAssertFalse(plain.contains("2026"), plain)
+        XCTAssertTrue(recent.detail(pages: 1, now: now, calendar: calendar).hasPrefix("1 page \u{00B7} "))
+        XCTAssertTrue(recent.detail(pages: 3, now: now, calendar: calendar).hasPrefix("3 pages \u{00B7} "))
+        XCTAssertTrue(old.detail(pages: nil, now: now, calendar: calendar).contains("2025"))
     }
 
     func test_savedFiles_thumbnails_ofAPictureAndAPDF() throws {
@@ -410,6 +452,8 @@ final class IOSLibraryTests: XCTestCase {
         let first: CGImage? = IOSSavedFiles.thumbnail(of: pdf, maxSide: 160)
         XCTAssertEqual(first?.height, 160)
         XCTAssertNil(IOSSavedFiles.thumbnail(of: folder.appendingPathComponent("notes.txt"), maxSide: 160))
+        XCTAssertEqual(IOSSavedFiles.pageCount(of: pdf), 1)
+        XCTAssertNil(IOSSavedFiles.pageCount(of: folder.appendingPathComponent("notes.txt")))
     }
 
     @MainActor

@@ -2070,6 +2070,8 @@
   "{0} dpi · {1} · {2} {3}": {},
   "Just now": {},
   "Today": {},
+  "This week": {},
+  "Earlier": {},
   "Yesterday": {},
   "Scan|noun": {
     "note": "A scan as a thing: the default name given to the document when it is sent to Lazy Print."

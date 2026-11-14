@@ -2,9 +2,9 @@
 import LazyScanKit
 import SwiftUI
 
-/// Everything in the save folder, newest first (`IOSSavedFiles`): each file with its picture, name, date
-/// and size, the files of the last save marked New; Share and Show in Files on each, and its other actions
-/// (open, email, copy, Lazy Print while it is installed, and Rotate for a picture) in its menu, through
+/// Everything in the save folder, newest first, under Today, This week and Earlier (`IOSSavedFiles`): each
+/// file with its picture, name, pages, size and date, the files of the last save marked New; Share on each, and its
+/// other actions (Show in Files, open, email, copy, Lazy Print while it is installed, and Rotate for a picture) in its menu, through
 /// `AppState.runFileAction` as on the desktop, and for a PDF, adding the queued pages to its end (`AppState.appendToPDF(at:)`), whose progress and result show under
 /// the list. Read again whenever something is saved and when pulled down.
 struct SavedFilesScreen: View {
@@ -21,6 +21,7 @@ struct SavedFilesScreen: View {
     var body: some View {
         let place: URL = IOSSavedFiles.shownFolder(state.settings)
         let lazyPrint: Bool = state.lazyPrintInstalled
+        let groups: [IOSSavedGroup] = IOSSavedFiles.groups(folder.files)
         List {
             if folder.files.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -35,18 +36,22 @@ struct SavedFilesScreen: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("saved.empty")
             }
-            Section {
-                ForEach(folder.files) { (file: IOSSavedFile) in
-                    let canLazyPrint: Bool = lazyPrint && SaveActions.canPrintWithLazyPrint([file.url])
-                    SavedFileRow(file: file, canAppend: state.canAppendPages,
-                                 canLazyPrint: canLazyPrint,
-                                 isRotating: rotating.contains(file.url.path),
-                                 onAction: run, onAppend: append, onRotate: rotate)
+            ForEach(groups) { (group: IOSSavedGroup) in
+                Section {
+                    ForEach(group.files) { (file: IOSSavedFile) in
+                        let canLazyPrint: Bool = lazyPrint && SaveActions.canPrintWithLazyPrint([file.url])
+                        SavedFileRow(file: file, canAppend: state.canAppendPages,
+                                     canLazyPrint: canLazyPrint,
+                                     isRotating: rotating.contains(file.url.path),
+                                     onAction: run, onAppend: append, onRotate: rotate)
+                    }
+                } header: {
+                    Text(group.section.title)
+                } footer: {
+                    if group.id == groups.last?.id {
+                        appendStatus
+                    }
                 }
-            } header: {
-                Text(place.lastPathComponent)
-            } footer: {
-                appendStatus
             }
         }
         .listStyle(.insetGrouped)
@@ -137,8 +142,8 @@ struct SavedFilesScreen: View {
     }
 }
 
-/// One saved file: its picture (or icon), name, "New" for the last save's, date and size, then Share,
-/// Show in Files and More.
+/// One saved file: its picture (or icon), name, "New" for the last save's, pages, size and date, then Share
+/// and More (Show in Files first in it).
 private struct SavedFileRow: View {
     let file: IOSSavedFile
     /// There are queued pages to add to a PDF (`AppState.canAppendPages`).
@@ -150,6 +155,7 @@ private struct SavedFileRow: View {
     let onAppend: (IOSSavedFile) -> Void
     let onRotate: (IOSSavedFile) -> Void
     @State private var thumbnail: CGImage?
+    @State private var pages: Int?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -157,10 +163,10 @@ private struct SavedFileRow: View {
                 .frame(width: 44, height: 56)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(file.name)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                Text(file.name)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if file.isNew {
                         Text(IOSSavedFiles.newBadge)
                             .font(.caption2)
@@ -169,10 +175,10 @@ private struct SavedFileRow: View {
                             .padding(.vertical, 1)
                             .background(Capsule().fill(Color.accentColor))
                     }
+                    Text(file.detail(pages: pages))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
                 }
-                Text(file.detail)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
@@ -184,19 +190,19 @@ private struct SavedFileRow: View {
             .buttonStyle(.borderless)
             .accessibilityLabel(Text("Share"))
             .accessibilityIdentifier("saved.share")
-            Button {
-                onAction(FileAction.reveal, file)
-            } label: {
-                Image(systemName: IOSSavedFiles.symbol(FileAction.reveal))
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(Text(IOSSavedFiles.revealLabel))
             Menu {
+                Button {
+                    onAction(FileAction.reveal, file)
+                } label: {
+                    Label(IOSSavedFiles.label(FileAction.reveal), systemImage: IOSSavedFiles.symbol(FileAction.reveal))
+                }
+                .accessibilityIdentifier("saved.reveal")
                 actionMenu
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
             .accessibilityLabel(Text(IOSSavedFiles.moreLabel))
+            .accessibilityIdentifier("saved.more")
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -218,6 +224,9 @@ private struct SavedFileRow: View {
         .accessibilityIdentifier("saved.file")
         .task(id: file.id) {
             thumbnail = await SavedFileRow.loadThumbnail(file.url)
+            if file.isPDF {
+                pages = await SavedFileRow.loadPageCount(file.url)
+            }
         }
     }
 
@@ -268,6 +277,13 @@ private struct SavedFileRow: View {
     private static func loadThumbnail(_ url: URL) async -> CGImage? {
         let task: Task<CGImage?, Never> = Task.detached(priority: .utility) { () -> CGImage? in
             IOSSavedFiles.thumbnail(of: url, maxSide: 160)
+        }
+        return await task.value
+    }
+
+    private static func loadPageCount(_ url: URL) async -> Int? {
+        let task: Task<Int?, Never> = Task.detached(priority: .utility) { () -> Int? in
+            IOSSavedFiles.pageCount(of: url)
         }
         return await task.value
     }
