@@ -597,11 +597,12 @@
                                 <StackPanel>
                                     <TextBlock x:Name="PageStripLabel" Text="{loc:T 0 pages}" Style="{StaticResource CaptionText}"
                                                TextWrapping="NoWrap" Margin="2,0,0,6" />
-                                    <!-- Tab walks through every page's buttons (a ListBox would
-                                         otherwise take one tab stop and skip them). -->
+                                    <!-- One Tab stop for the whole strip, arrows between pages. Enter on a page moves
+                                         into its buttons (Local on the template root), Esc comes back to the page. -->
                                     <ListBox x:Name="PageList" Height="158"
                                              AutomationProperties.Name="{loc:T Pages in queue}"
-                                             KeyboardNavigation.TabNavigation="Continue"
+                                             KeyboardNavigation.TabNavigation="Once"
+                                             PreviewKeyDown="PageList_PreviewKeyDown"
                                              VirtualizingPanel.ScrollUnit="Pixel"
                                              SelectionChanged="PageList_SelectionChanged"
                                              AllowDrop="True" PreviewMouseLeftButtonDown="PageList_PreviewMouseDown"
@@ -613,6 +614,7 @@
                                         <ListBox.ItemContainerStyle>
                                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource ThumbnailListItemStyle}">
                                                 <Setter Property="AutomationProperties.HelpText" Value="{Binding RescanHelp}" />
+                                                <Setter Property="KeyboardNavigation.TabNavigation" Value="None" />
                                             </Style>
                                         </ListBox.ItemContainerStyle>
                                         <ListBox.ItemsPanel>
@@ -622,7 +624,7 @@
                                         </ListBox.ItemsPanel>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <DockPanel>
+                                                <DockPanel KeyboardNavigation.TabNavigation="Local">
                                                     <!-- The gap before the page, shown while the strip shows documents:
                                                          one click starts a new document here or joins the page to the
                                                          document before. A document's start is drawn as a bar. -->

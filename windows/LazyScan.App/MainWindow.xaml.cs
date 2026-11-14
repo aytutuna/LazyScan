@@ -7,6 +7,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using LazyScan.Core;
 using Microsoft.Win32;
@@ -2763,12 +2764,54 @@ public partial class MainWindow : Window
 
     private void PageLeft_Click(object sender, RoutedEventArgs e)
     {
-        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? +1 : -1);
+        if (PageIdOf(sender) is not { } id) return;
+        ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? +1 : -1);
+        FocusPage(id);
     }
 
     private void PageRight_Click(object sender, RoutedEventArgs e)
     {
-        if (PageIdOf(sender) is { } id) ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? -1 : +1);
+        if (PageIdOf(sender) is not { } id) return;
+        ViewModel.MovePage(id, FlowDirection == FlowDirection.RightToLeft ? -1 : +1);
+        FocusPage(id);
+    }
+
+    /// <summary>A moved page lands in a recycled container, so the focus is put back on the page itself.</summary>
+    private void FocusPage(Guid id)
+    {
+        int index = IndexOfPage(id);
+        if (index < 0) return;
+        PageList.ScrollIntoView(ViewModel.ScannedPages[index]);
+        _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+            () => (PageList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus());
+    }
+
+    private void PageList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.None) return;
+        if (e.Key == Key.Enter && e.OriginalSource is ListBoxItem item)
+        {
+            if (FindDescendant<ContentPresenter>(item) is { } presenter && VisualTreeHelper.GetChildrenCount(presenter) > 0)
+                (VisualTreeHelper.GetChild(presenter, 0) as UIElement)?.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && e.OriginalSource is Button source
+            && ItemsControl.ContainerFromElement(PageList, source) is ListBoxItem container)
+        {
+            container.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject node) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+        {
+            var child = VisualTreeHelper.GetChild(node, i);
+            if (child is T match) return match;
+            if (FindDescendant<T>(child) is { } found) return found;
+        }
+        return null;
     }
 
     private void PageRemove_Click(object sender, RoutedEventArgs e)
