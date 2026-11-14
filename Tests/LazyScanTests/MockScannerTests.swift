@@ -211,6 +211,32 @@ final class MockScannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_everyDocumentSheetSaysSample_rightOnFrontsLeftOnBacks() async throws {
+        let (_, session) = try await open()
+        let pages = try await session.performScan(settings: feederSettings(duplex: .both), selection: nil)
+        XCTAssertEqual(pages.count, 6)
+        for (i, page) in pages.enumerated() {
+            let image = page.image
+            let pixels = rgbaPixels(image)
+            var left = 0, right = 0
+            for y in (image.height - 2 * mockDPI)..<image.height {
+                for x in 0..<image.width {
+                    let at = (y * image.width + x) * 4
+                    guard pixels[at] > 150, pixels[at + 1] < 90, pixels[at + 2] < 90 else { continue }
+                    if x < image.width / 2 { left += 1 } else { right += 1 }
+                }
+            }
+            if i % 2 == 0 {
+                XCTAssertGreaterThan(right, 0)
+                XCTAssertEqual(left, 0)
+            } else {
+                XCTAssertGreaterThan(left, 0)
+                XCTAssertEqual(right, 0)
+            }
+        }
+    }
+
+    @MainActor
     func test_feederScanDeliversThreeNumberedSheets() async throws {
         let (_, session) = try await open()
         let pages = try await session.performScan(settings: feederSettings(), selection: nil)

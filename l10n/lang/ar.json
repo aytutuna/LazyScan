@@ -1765,6 +1765,7 @@
     "{0} (32-bit driver)": "{0} (برنامج تشغيل 32 بت)",
     "The scanner sent an image too large to read.": "أرسل الماسح صورة أكبر من أن تُقرأ.",
     "Demo Scanner": "ماسح تجريبي",
+    "Demo Scanner: sample pages": "ماسح تجريبي: صفحات نموذجية",
     "Letter": "Letter",
     "Legal": "Legal",
     "Executive": "Executive",

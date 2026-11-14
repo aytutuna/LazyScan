@@ -1765,6 +1765,7 @@
     "{0} (32-bit driver)": "{0} (32 bit sürücü)",
     "The scanner sent an image too large to read.": "Tarayıcı okunamayacak kadar büyük bir görüntü gönderdi.",
     "Demo Scanner": "Demo tarayıcı",
+    "Demo Scanner: sample pages": "Demo tarayıcı: örnek sayfalar",
     "Letter": "Letter",
     "Legal": "Legal",
     "Executive": "Executive",

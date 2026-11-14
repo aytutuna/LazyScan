@@ -133,7 +133,7 @@ struct ScannerSettingsRows: View {
                 ReasonLine(text: DocumentSides.needsFeederReason)
             }
         }
-        if !demoSelected {
+        if !state.demoSelected {
             let fits: Bool = state.settings.paperSize == PaperSize.longPaper
                 ? feeder
                 : PaperSizes.fits(state.settings.paperSize, in: paperArea, custom: state.settings.customPaper)
@@ -192,11 +192,6 @@ struct ScannerSettingsRows: View {
                 s.duplex = mode
                 appState.settings = IOSShell.keepingKind(s)
             })
-    }
-
-    private var demoSelected: Bool {
-        let selected: String? = state.selectedDeviceID
-        return state.devices.contains { (info: ScannerInfo) -> Bool in info.id == selected && info.isDemo }
     }
 
     private var paperSizeHint: String {

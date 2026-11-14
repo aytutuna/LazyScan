@@ -1765,6 +1765,7 @@
     "{0} (32-bit driver)": "{0} (32-разрядный драйвер)",
     "The scanner sent an image too large to read.": "Сканер отправил слишком большое изображение.",
     "Demo Scanner": "Демо-сканер",
+    "Demo Scanner: sample pages": "Демо-сканер: примеры страниц",
     "Letter": "US Letter",
     "Legal": "US Legal",
     "Executive": "US Executive",

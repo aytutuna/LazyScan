@@ -1039,6 +1039,11 @@ public final class AppState: ObservableObject {
     /// A scanner other than the demo scanner is listed; without one the sidebar offers the troubleshooter.
     public var hasRealDevices: Bool { deviceGroups.contains { !$0.primary.isDemo } }
 
+    /// The selected scanner is the demo scanner.
+    public var demoSelected: Bool {
+        devices.contains { $0.id == selectedDeviceID && $0.isDemo }
+    }
+
     /// Which app this is, for the troubleshooter's checks and the connection ranking (`rankPatterns`):
     /// the Mac unless the app shell says otherwise before `start()` (the iPhone's `makeForIOS`: `.ios`).
     public package(set) var platform: TroubleshootPlatform = .mac

@@ -1029,6 +1029,29 @@ private enum MockBedRenderer {
                 ctx.fill(CGRect(x: left + CGFloat(mark) * pitch, y: markY, width: side, height: side))
             }
         }
+        if sheetIndex == nil {
+            // The flatbed scans the top left of the glass for small papers, so the mark sits in the top margin.
+            drawSample(at: CGPoint(x: left, y: page.minY + 0.35 * scale), in: ctx, scale: scale)
+        } else {
+            drawSheetSample(in: ctx, scale: scale, page: page, atRight: true)
+        }
+    }
+
+    private static func drawSample(at origin: CGPoint, in ctx: CGContext, scale: CGFloat) {
+        ctx.saveGState()
+        ctx.translateBy(x: origin.x, y: origin.y)
+        ctx.scaleBy(x: scale, y: scale)
+        drawSample(in: ctx, x: 0, y: 0, cell: 0.035, color: rgb(190 / 255, 40 / 255, 40 / 255))
+        ctx.restoreGState()
+    }
+
+    /// SAMPLE in the bottom corner of a document sheet, 0.75 in from the side and 0.6 in above the
+    /// bottom edge: right on fronts, left on backs, clear of the body text and the sheet marks.
+    private static func drawSheetSample(in ctx: CGContext, scale: CGFloat, page: CGRect, atRight: Bool) {
+        let width: CGFloat = 35 * 0.035
+        let height: CGFloat = 7 * 0.035
+        let x = atRight ? page.maxX - (0.75 + width) * scale : page.minX + 0.75 * scale
+        drawSample(at: CGPoint(x: x, y: page.maxY - (0.6 + height) * scale), in: ctx, scale: scale)
     }
 
     private static let documentBackBody = [
@@ -1071,6 +1094,7 @@ private enum MockBedRenderer {
         for mark in 0...sheetIndex {
             ctx.fill(CGRect(x: right - side - CGFloat(mark) * pitch, y: markY, width: side, height: side))
         }
+        drawSheetSample(in: ctx, scale: scale, page: page, atRight: false)
     }
 
     /// Draws one line of real text with CoreText so Vision OCR can read it.

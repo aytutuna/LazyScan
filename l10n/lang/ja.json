@@ -1765,6 +1765,7 @@
     "{0} (32-bit driver)": "{0}（32ビットドライバ）",
     "The scanner sent an image too large to read.": "スキャナから送信された画像が大きすぎて読み込めません。",
     "Demo Scanner": "デモスキャナ",
+    "Demo Scanner: sample pages": "デモスキャナ: サンプルページ",
     "Letter": "レター",
     "Legal": "リーガル",
     "Executive": "エグゼクティブ",

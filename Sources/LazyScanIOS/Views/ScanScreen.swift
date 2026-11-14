@@ -353,6 +353,9 @@ struct ScanScreen: View {
                 cameraModeButton
             }
             scannerRow
+            if state.demoSelected {
+                demoStrip
+            }
             picture
             if showsDrawer {
                 ScanDrawer(model: nil, torch: false, group: $drawerGroup)
@@ -882,6 +885,27 @@ struct ScanScreen: View {
         // An import's corner editor needs the screen; the sheet closes as one starts.
         .disabled(importer.isImporting)
         .accessibilityIdentifier("options.row.scanner")
+    }
+
+    /// Above the picture while the demo scanner is the scanner in use, so its sample pages are not taken for a real scan.
+    private var demoStrip: some View {
+        let text: String = L10n.t("Demo Scanner: sample pages")
+        return HStack(spacing: 6) {
+            Image(systemName: "sparkles.rectangle.stack")
+                .accessibilityHidden(true)
+            Text(text)
+        }
+        .font(.caption)
+        .foregroundStyle(Color.primary)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, minHeight: 28)
+        .padding(.horizontal, 24)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityIdentifier("demo.strip")
     }
 
     /// "Connecting to Epson…" while the scanner in use is being opened; the Scanner row, the caption under Scan and
