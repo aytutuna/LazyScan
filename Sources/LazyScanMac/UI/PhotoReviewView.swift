@@ -16,6 +16,14 @@ struct PhotoReviewView: View {
     /// Discard is asking before it drops more than one kept photo.
     @State private var asksDiscard = false
     @FocusState private var focusedDate: UUID?
+    /// The optional date taken and caption for the whole batch; empty on every review.
+    @State private var yearText = ""
+    @State private var month = 0
+    @State private var day = 0
+    @State private var caption = ""
+
+    private static let yearFocus = UUID()
+    private static let captionFocus = UUID()
 
     private var includedCount: Int {
         state.detectedPhotos.filter(\.included).count
@@ -55,6 +63,135 @@ struct PhotoReviewView: View {
             : Text(L10n.t("Uncheck any false detections, rotate if needed, add any that were missed, add a date or caption if you like, then save."))
     }
 
+    private var currentYear: Int {
+        Calendar.current.component(.year, from: Date())
+    }
+
+    /// The typed year when it is four digits from 1800 to this year.
+    private var year: Int? {
+        guard yearText.count == 4, let value = Int(yearText), (1800...currentYear).contains(value) else { return nil }
+        return value
+    }
+
+    /// Text is typed that is not a year, or a month or day is chosen with no year.
+    private var yearProblem: Bool {
+        yearText.isEmpty ? (month != 0 || day != 0) : year == nil
+    }
+
+    private var daysInMonth: Int {
+        guard month != 0 else { return 31 }
+        var parts = DateComponents()
+        parts.year = year ?? 2000
+        parts.month = month
+        guard let first = Calendar.current.date(from: parts) else { return 31 }
+        return Calendar.current.range(of: .day, in: .month, for: first)?.count ?? 31
+    }
+
+    /// What the review asks to be written into every saved photo; a date without a valid year is left out.
+    private var details: PhotoDetails {
+        guard let year else { return PhotoDetails(caption: caption) }
+        return PhotoDetails(year: year, month: month == 0 ? nil : month, day: month == 0 || day == 0 ? nil : day,
+                            caption: caption)
+    }
+
+    private var yearHelp: Text {
+        yearProblem
+            ? Text("Enter a four-digit year, like 1985.")
+            : Text("Optional. The year the photos were taken. The month and day are optional too. Saved in each file.")
+    }
+
+    private var dayHint: Text {
+        month == 0 ? Text("Optional. Choose a month first.") : Text("Optional")
+    }
+
+    private var yearBorder: CGFloat { yearProblem ? 1 : 0 }
+
+    /// A day with no month, or one that no longer fits the month, goes back to its placeholder.
+    private func fitDay() {
+        if month == 0 || day > daysInMonth { day = 0 }
+    }
+
+    private func keepFourDigits() {
+        let digits = String(yearText.filter { $0.isASCII && $0.isNumber }.prefix(4))
+        if digits != yearText { yearText = digits }
+    }
+
+    private var dateFields: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("Date taken (optional)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("Year", text: $yearText)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 60)
+                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.red, lineWidth: yearBorder))
+                .focused($focusedDate, equals: Self.yearFocus)
+                .help(yearHelp)
+                .accessibilityLabel(Text("Year photos were taken"))
+                .accessibilityHint(Text("Optional"))
+            Picker("Month", selection: $month) {
+                Text("Month").tag(0)
+                ForEach(1...12, id: \.self) { number in
+                    Text(verbatim: Calendar.current.monthSymbols[number - 1]).tag(number)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 90)
+            .accessibilityLabel(Text("Month photos were taken"))
+            .accessibilityHint(Text("Optional"))
+            Picker("Day", selection: $day) {
+                Text("Day").tag(0)
+                ForEach(1...daysInMonth, id: \.self) { number in
+                    Text(verbatim: "\(number)").tag(number)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(month == 0)
+            .accessibilityLabel(Text("Day photos were taken"))
+            .accessibilityHint(dayHint)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Date taken"))
+    }
+
+    private var captionField: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("Caption (optional)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("Caption", text: $caption)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 120)
+                .focused($focusedDate, equals: Self.captionFocus)
+                .help("Optional. Saved in each file as its description.")
+                .accessibilityLabel(Text("Caption for the photos"))
+                .accessibilityHint(Text("Optional"))
+        }
+    }
+
+    /// One line when it fits, else the caption drops under the date.
+    private var detailsRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) {
+                dateFields
+                captionField
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                dateFields
+                captionField
+            }
+        }
+        .disabled(state.isBusy)
+        .onChange(of: yearText) { _, _ in
+            keepFourDigits()
+            fitDay()
+        }
+        .onChange(of: month) { _, _ in fitDay() }
+    }
+
     /// Add Photo needs the scan the photos were cut from.
     private var addHelp: LocalizedStringKey {
         state.newPhotoRegion == nil ? "The scan is no longer available" : "Add a photo the scan missed (⌘N)"
@@ -76,6 +213,9 @@ struct PhotoReviewView: View {
                     Text(L10n.t("Found no receipts in that scan."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                }
+                if !state.isReceiptReview {
+                    detailsRow
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,7 +287,7 @@ struct PhotoReviewView: View {
                 }
 
                 Button(state.reviewSaveTitle) {
-                    state.saveReviewedPhotos()
+                    state.saveReviewedPhotos(details: details)
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(saveShortcut)

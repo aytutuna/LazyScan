@@ -2407,7 +2407,8 @@ public final class AppState: ObservableObject {
         return cancelled
     }
 
-    public func saveReviewedPhotos() {
+    /// `details` is the date taken and caption the review asked for, written into every photo saved.
+    public func saveReviewedPhotos(details: PhotoDetails = .none) {
         guard detectedPhotos.contains(where: \.included) else { return cancelPhotoReview() }
         // Receipts are named by their date and saved as PDFs or images (AppState+Receipts.swift).
         if isReceiptReview { return saveReceipts() }
@@ -2431,7 +2432,8 @@ public final class AppState: ObservableObject {
                             : ImagePipeline.rotate(photo.image, quarterTurns: photo.rotationQuarterTurns)
                         // The mode the photo was scanned in: a black & white TIFF is G4.
                         return try ImageExporter.write(image, to: planned, format: format, dpi: photo.dpi,
-                                                       jpegQuality: s.jpegQuality, colorMode: photo.colorMode, keepingExisting: true)
+                                                       jpegQuality: s.jpegQuality, colorMode: photo.colorMode, details: details,
+                                                       keepingExisting: true)
                     }.value
                     saved.append(url)
                 }

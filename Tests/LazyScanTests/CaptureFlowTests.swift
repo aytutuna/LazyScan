@@ -227,6 +227,28 @@ final class CaptureFlowTests: XCTestCase {
     }
 
     @MainActor
+    func test_reviewedPhotos_carryTheDateAndCaptionTheReviewAskedFor() async throws {
+        let state: AppState = makeState(.photos)
+        let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())
+        let pages: [ScannedPage] = CaptureObjects.pages(photo, quads: [ObjectShots.printA, ObjectShots.printB], kind: .photo)
+        XCTAssertTrue(state.ingest(pages, source: .photo))
+        try await waitFor(timeout: 60) { !state.isBusy }
+
+        state.saveReviewedPhotos(details: PhotoDetails(year: 1985, month: 7, day: 23, caption: "Dad at the lake"))
+        try await waitFor(timeout: 60) { !state.isBusy && !state.showPhotoReview }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.lastSavedURLs.count, 2)
+        for url in state.lastSavedURLs {
+            let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+            let props = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+            let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any]
+            let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any]
+            XCTAssertEqual(exif?[kCGImagePropertyExifDateTimeOriginal] as? String, "1985:07:23 00:00:00")
+            XCTAssertEqual(tiff?[kCGImagePropertyTIFFImageDescription] as? String, "Dad at the lake")
+        }
+    }
+
+    @MainActor
     func test_twoQuickCrops_endWithTheSecond_andASaveRightAfterWritesIt() async throws {
         let state: AppState = makeState(.photos)
         let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())
