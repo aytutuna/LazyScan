@@ -18,10 +18,11 @@ public sealed record PrinterInfo(string Name, bool IsDefault);
 /// <summary>
 /// What printing on a printer would use: the paper (the one asked for when the printer has it,
 /// else its own) and the part of it it prints on, the most copies it makes itself (null when it
-/// does not say), whether it can print in grey, and whether it collates the copies it makes.
+/// does not say), whether it can print in grey, whether it collates the copies it makes, and whether it
+/// can print on both sides of the paper, flipping on the long edge.
 /// </summary>
 public sealed record PrinterSetup(string PrinterName, PrinterPaper Paper, int? MaxCopyCount, bool CanPrintGray,
-                                  bool CanCollate = true);
+                                  bool CanCollate = true, bool CanTwoSided = false);
 
 /// <summary>One page of a print job: the pixels at their resolution, and where they go on the paper (<see cref="PrintLayout"/>).</summary>
 public sealed record PrintPage(RgbaImage Image, int Dpi, PrintPlacement Placement);
@@ -29,10 +30,10 @@ public sealed record PrintPage(RgbaImage Image, int Dpi, PrintPlacement Placemen
 /// <summary>
 /// A print job: the pages in order on <paramref name="Paper"/> (the paper of <see cref="PrinterSetup"/>,
 /// asked for again as <paramref name="RequestedPaper"/>), printed as <paramref name="Copies"/> says,
-/// in grey when <paramref name="Gray"/>.
+/// in grey when <paramref name="Gray"/>, on both sides of the paper when <paramref name="BothSides"/>.
 /// </summary>
 public sealed record PrintJob(string PrinterName, string JobName, PrinterPaper Paper, PaperSize? RequestedPaper,
-                              IReadOnlyList<PrintPage> Pages, PrintCopiesPlan Copies, bool Gray)
+                              IReadOnlyList<PrintPage> Pages, PrintCopiesPlan Copies, bool Gray, bool BothSides = false)
 {
     /// <summary>Pages in the document: every page, as many times as the copies are repeated in it.</summary>
     public int DocumentPageCount => Pages.Count * Math.Max(1, Copies.DocumentRepeats);
@@ -147,7 +148,8 @@ public sealed class WindowsPrintService : IPrintService
     /// (1 included), collated when the printer makes several copies and lists collating, one page
     /// per sheet (several pages on a sheet would shrink them from real size), one-sided (the app
     /// lays out each page on a sheet of its own, and copies repeated in the document must not share
-    /// sheets), and grey for a grey job, else colour when the printer lists it.
+    /// sheets) unless the job is on both sides and the printer lists long-edge duplex, and grey for a grey
+    /// job, else colour when the printer lists it.
     /// <paramref name="collations"/>, <paramref name="colors"/> and <paramref name="duplexings"/>
     /// are what the printer lists.
     /// </summary>
@@ -157,7 +159,8 @@ public sealed class WindowsPrintService : IPrintService
         ticket.CopyCount = Math.Max(1, job.Copies.TicketCopies);
         if (job.Copies.TicketCopies > 1 && collations.Contains(Collation.Collated)) ticket.Collation = Collation.Collated;
         ticket.PagesPerSheet = 1;
-        if (duplexings.Count == 0 || duplexings.Contains(Duplexing.OneSided)) ticket.Duplexing = Duplexing.OneSided;
+        if (job.BothSides && duplexings.Contains(Duplexing.TwoSidedLongEdge)) ticket.Duplexing = Duplexing.TwoSidedLongEdge;
+        else if (duplexings.Count == 0 || duplexings.Contains(Duplexing.OneSided)) ticket.Duplexing = Duplexing.OneSided;
         if (job.Gray)
         {
             if (colors.Contains(OutputColor.Grayscale)) ticket.OutputColor = OutputColor.Grayscale;
@@ -246,7 +249,25 @@ public sealed class WindowsPrintService : IPrintService
         bool gray = caps.OutputColorCapability.Contains(OutputColor.Grayscale)
                     || caps.OutputColorCapability.Contains(OutputColor.Monochrome);
         bool collate = caps.CollationCapability.Contains(Collation.Collated);
-        return new PrinterSetup(queue.FullName, PrinterPaper.Make(paper, printable), caps.MaxCopyCount, gray, collate);
+        bool twoSided = caps.DuplexingCapability.Contains(Duplexing.TwoSidedLongEdge);
+        return new PrinterSetup(queue.FullName, PrinterPaper.Make(paper, printable), caps.MaxCopyCount, gray, collate, twoSided);
+    }
+}
+
+/// <summary>Several copies on both sides of the paper: no copy may end on a sheet the next one starts on.</summary>
+public static class TwoSidedCopies
+{
+    /// <summary>
+    /// For an odd number of pages the copies cannot be left to the printer, which would print the first page
+    /// of the next copy on the back of the last: they are repeated in the document, each with a blank page
+    /// after it. Any other job is as it was.
+    /// </summary>
+    public static (IReadOnlyList<PrintPage> Pages, PrintCopiesPlan Plan) Arrange(IReadOnlyList<PrintPage> pages, int copies,
+                                                                                PrintCopiesPlan plan)
+    {
+        if (copies <= 1 || pages.Count % 2 == 0) return (pages, plan);
+        var blank = new PrintPage(RgbaImage.Filled(1, 1, 255, 255, 255), 96, new PrintPlacement(new RectD(0, 0, 1.0 / 96, 1.0 / 96), 1, 0, 0));
+        return ([.. pages, blank], new PrintCopiesPlan(1, copies));
     }
 }
 

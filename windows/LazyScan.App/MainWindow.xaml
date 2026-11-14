@@ -989,6 +989,11 @@
                                             <ComboBox x:Name="CopyCountBox" HorizontalAlignment="Stretch"
                                                       AutomationProperties.Name="{loc:T Number of copies}"
                                                       SelectionChanged="CopyCount_Changed" />
+                                            <CheckBox x:Name="CopyBothSidesBox" Style="{StaticResource ToggleSwitchStyle}" Margin="0,12,0,0"
+                                                      Content="{loc:T Print on both sides}" Visibility="Collapsed"
+                                                      ToolTip="{loc:T Prints on both sides of each sheet\, like a book.}"
+                                                      AutomationProperties.HelpText="{loc:T Copies print on both sides of the paper\, flipping on the long edge. With several copies\, an odd last page gets a blank back so copies do not share a sheet.}"
+                                                      Checked="CopyBothSides_Changed" Unchecked="CopyBothSides_Changed" />
                                             <TextBlock Text="{loc:T Scale}" Style="{StaticResource FieldLabelText}" Margin="0,12,0,4" />
                                             <ComboBox x:Name="CopyScaleBox" HorizontalAlignment="Stretch"
                                                       AutomationProperties.Name="{loc:T Scale}"

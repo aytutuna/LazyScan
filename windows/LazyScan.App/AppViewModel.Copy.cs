@@ -77,6 +77,9 @@ public sealed partial class AppViewModel
     public string CopyPaperText => _copySetup?.Paper.Description ?? "";
     public string CopyPaperSpokenText => _copySetup?.Paper.SpokenDescription ?? "";
 
+    /// <summary>The chosen printer lists printing on both sides, flipping on the long edge.</summary>
+    public bool CopyCanTwoSided => _copySetup?.CanTwoSided == true;
+
     /// <summary>
     /// "Edges may lose up to 5 mm" when copies at real size from the corner of the paper lose an edge
     /// to the chosen printer's margins; null otherwise (and while Fit, Fill or Center is on).
@@ -235,6 +238,15 @@ public sealed partial class AppViewModel
         NotifyAll();
     }
 
+    /// <summary>Copies print on both sides of the paper, when the printer can.</summary>
+    public void SetCopyBothSides(bool bothSides)
+    {
+        if (IsBusy || Settings.TaskOptions.CopyBothSides == bothSides) return;
+        Settings.TaskOptions.CopyBothSides = bothSides;
+        SettingsEdited();
+        NotifyAll();
+    }
+
     /// <summary>Each copy is also saved as a PDF.</summary>
     public void SetCopyAlsoSavePdf(bool save)
     {
@@ -324,7 +336,7 @@ public sealed partial class AppViewModel
     }
 
     /// <summary>
-    /// Prints the pages the queue would save, on the printer, paper and copies chosen for copies and with
+    /// Prints the pages the queue would save, on the printer, paper, copies and sides chosen for copies and with
     /// no dialog. The queue stays as it is; a print that fails holds the pages like a copy, so Print again works.
     /// </summary>
     public Task PrintQueue()
@@ -382,8 +394,11 @@ public sealed partial class AppViewModel
             .ToList();
         int copies = PrintCopies.Clamp(options.CopyCount);
         var plan = PrintCopies.Plan(copies, setup.MaxCopyCount, printPages.Count, setup.CanCollate);
-        var job = new PrintJob(setup.PrinterName, fromQueue ? Loc.T("Scan|noun") : Loc.T("Copy|print job name"), setup.Paper, RequestedPaper(s), printPages,
-                               plan, Gray: s.ColorMode != ColorMode.Color);
+        bool bothSides = options.CopyBothSides && setup.CanTwoSided;
+        IReadOnlyList<PrintPage> jobPages = printPages;
+        if (bothSides) (jobPages, plan) = TwoSidedCopies.Arrange(printPages, copies, plan);
+        var job = new PrintJob(setup.PrinterName, fromQueue ? Loc.T("Scan|noun") : Loc.T("Copy|print job name"), setup.Paper, RequestedPaper(s), jobPages,
+                               plan, Gray: s.ColorMode != ColorMode.Color, BothSides: bothSides);
         // No answer still prints the copy; the PDF is then not written.
         bool noPassword = false;
         if (options.CopyAlsoSavePdf)

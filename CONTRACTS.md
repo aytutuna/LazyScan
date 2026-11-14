@@ -1148,6 +1148,7 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     public var copyPrinterName: String?                       // "copyPrinterName"; nil: the default printer (left out of the file)
     public var copyAlsoSavePdf: Bool = false                  // "copyAlsoSavePdf"
     public var copyShowPrintDialog: Bool = false              // "copyShowPrintDialog": the Mac opens the print dialog before each copy and ID card print; off: straight on the printer
+    public var copyBothSides: Bool = false                    // "copyBothSides": the Windows app prints on both sides (long edge) when the printer lists it; off: one-sided
     public var receiptNameByDate: Bool = true                 // "receiptNameByDate"; true also for files without it
     public var receiptCombine: Bool = false                   // "receiptCombine"
     public var receiptEachFile: Bool = false                  // "receiptEachFile": the iPhone saves its queued receipts as a PDF each, named by their printed date

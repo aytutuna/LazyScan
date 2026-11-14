@@ -64,6 +64,9 @@ public partial class MainWindow
             CopyPrinterBox.SelectedItem = CopyPrinterBox.Items.Cast<ComboBoxItem>()
                 .FirstOrDefault(i => string.Equals((string)i.Tag, current, StringComparison.OrdinalIgnoreCase));
             CopyCountBox.SelectedItem = PrintCopies.Clamp(options.CopyCount);
+            CopyBothSidesBox.Visibility = ViewModel.CopyCanTwoSided ? Visibility.Visible : Visibility.Collapsed;
+            CopyBothSidesBox.IsEnabled = !ViewModel.IsBusy;
+            CopyBothSidesBox.IsChecked = options.CopyBothSides;
             var scale = ViewModel.CopyScaleShown;
             int percent = PrintScale.Clamp(options.CopyScalePercent);
             bool custom = scale == CopyScale.Percent && (_copyCustomPicked || !PrintScale.PresetPercents.Contains(percent));
@@ -134,6 +137,12 @@ public partial class MainWindow
         if (scale == CopyScale.Percent && percent != 0) ViewModel.SetCopyScalePercent(percent);
         ViewModel.SetCopyScale(scale);
         SyncCopyOptions();
+    }
+
+    private void CopyBothSides_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        ViewModel.SetCopyBothSides(CopyBothSidesBox.IsChecked == true);
     }
 
     private void CopyCenter_Changed(object sender, RoutedEventArgs e)

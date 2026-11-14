@@ -759,6 +759,12 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     public bool CopyShowPrintDialog { get; set; } = false;
 
     /// <summary>
+    /// The Windows app prints each copy on both sides of the paper, flipping on the long edge, when the
+    /// printer can. Off unless chosen; the Mac and the iPhone keep it as it is.
+    /// </summary>
+    public bool CopyBothSides { get; set; } = false;
+
+    /// <summary>
     /// The Receipts task names each file by the date printed on the receipt (the {docdate} token),
     /// read from its text; the scan date when none is found. On unless turned off, also for
     /// settings written before it existed.
@@ -841,7 +847,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         && CopyCount == other.CopyCount && CopyScale == other.CopyScale
         && CopyScalePercent == other.CopyScalePercent && CopyCenter == other.CopyCenter
         && CopyPrinterName == other.CopyPrinterName && CopyAlsoSavePdf == other.CopyAlsoSavePdf
-        && CopyShowPrintDialog == other.CopyShowPrintDialog
+        && CopyShowPrintDialog == other.CopyShowPrintDialog && CopyBothSides == other.CopyBothSides
         && ReceiptNameByDate == other.ReceiptNameByDate && ReceiptCombine == other.ReceiptCombine
         && ReceiptEachFile == other.ReceiptEachFile
         && BookRightToLeft == other.BookRightToLeft && BookRotationQuarterTurns == other.BookRotationQuarterTurns
@@ -862,6 +868,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(CopyPrinterName);
         hash.Add(CopyAlsoSavePdf);
         hash.Add(CopyShowPrintDialog);
+        hash.Add(CopyBothSides);
         hash.Add(ReceiptNameByDate);
         hash.Add(ReceiptCombine);
         hash.Add(ReceiptEachFile);

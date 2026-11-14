@@ -669,6 +669,9 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     /// The Mac opens the system print dialog before each copy (and the ID card's print). Off: they print
     /// straight on the chosen printer. Off unless chosen; the ruler test page always shows the dialog.
     public var copyShowPrintDialog: Bool = false
+    /// The Windows app prints each copy on both sides of the paper, flipping on the long edge, when the printer
+    /// can. Off unless chosen; the Mac and the iPhone keep it as it is.
+    public var copyBothSides: Bool = false
     /// The Receipts task names each file by the date printed on the receipt (the {docdate} token),
     /// read from its text; the scan date when none is found. On unless turned off, also for settings
     /// written before it existed.
@@ -720,6 +723,7 @@ public struct TaskOptions: Codable, Equatable, Sendable {
         case copyPrinterName
         case copyAlsoSavePdf
         case copyShowPrintDialog
+        case copyBothSides
         case receiptNameByDate
         case receiptCombine
         case receiptEachFile
@@ -750,6 +754,7 @@ extension TaskOptions {
         copyPrinterName = container.decodeLenient(forKey: .copyPrinterName, default: copyPrinterName)
         copyAlsoSavePdf = container.decodeLenient(forKey: .copyAlsoSavePdf, default: copyAlsoSavePdf)
         copyShowPrintDialog = container.decodeLenient(forKey: .copyShowPrintDialog, default: copyShowPrintDialog)
+        copyBothSides = container.decodeLenient(forKey: .copyBothSides, default: copyBothSides)
         receiptNameByDate = container.decodeLenient(forKey: .receiptNameByDate, default: receiptNameByDate)
         receiptCombine = container.decodeLenient(forKey: .receiptCombine, default: receiptCombine)
         receiptEachFile = container.decodeLenient(forKey: .receiptEachFile, default: receiptEachFile)
@@ -779,6 +784,7 @@ extension TaskOptions {
         try container.encodeIfPresent(copyPrinterName, forKey: .copyPrinterName)
         try container.encode(copyAlsoSavePdf, forKey: .copyAlsoSavePdf)
         try container.encode(copyShowPrintDialog, forKey: .copyShowPrintDialog)
+        try container.encode(copyBothSides, forKey: .copyBothSides)
         try container.encode(receiptNameByDate, forKey: .receiptNameByDate)
         try container.encode(receiptCombine, forKey: .receiptCombine)
         try container.encode(receiptEachFile, forKey: .receiptEachFile)

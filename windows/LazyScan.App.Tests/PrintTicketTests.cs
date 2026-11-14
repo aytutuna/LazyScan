@@ -14,12 +14,12 @@ public class PrintTicketTests
     private static readonly OutputColor[] Colors = [OutputColor.Color, OutputColor.Grayscale, OutputColor.Monochrome];
     private static readonly Duplexing[] Sides = [Duplexing.OneSided, Duplexing.TwoSidedLongEdge, Duplexing.TwoSidedShortEdge];
 
-    private static PrintJob Job(PrintCopiesPlan copies, bool gray = false, int pages = 1) =>
+    private static PrintJob Job(PrintCopiesPlan copies, bool gray = false, int pages = 1, bool bothSides = false) =>
         new("Test printer", "Copy", PrinterPaper.Make(new SizeD(8.5, 11), null), null,
             Enumerable.Range(0, pages)
                 .Select(_ => new PrintPage(RgbaImage.Filled(2, 2, 255, 255, 255), 300, new PrintPlacement(new RectD(0, 0, 1, 1), 1, 0, 0)))
                 .ToList(),
-            copies, gray);
+            copies, gray, bothSides);
 
     /// <summary>Preferences a user may have saved for the printer: 2 copies, 2 pages per sheet, both sides, grey, not collated.</summary>
     private static PrintTicket Preferences() => new()
@@ -107,5 +107,43 @@ public class PrintTicketTests
         Assert.Equal(3, ticket.CopyCount);
         Assert.Equal(Collation.Uncollated, ticket.Collation);
         Assert.Equal(Duplexing.OneSided, ticket.Duplexing);
+    }
+
+    [Fact]
+    public void BothSides_LongEdgeWhenThePrinterListsIt()
+    {
+        var ticket = new PrintTicket { Duplexing = Duplexing.OneSided };
+        WindowsPrintService.ApplyJobSettings(ticket, Job(new PrintCopiesPlan(1, 1), bothSides: true), Collates, Colors, Sides);
+        Assert.Equal(Duplexing.TwoSidedLongEdge, ticket.Duplexing);
+    }
+
+    [Fact]
+    public void BothSides_PrinterWithoutLongEdge_OneSided()
+    {
+        var ticket = Preferences();
+        WindowsPrintService.ApplyJobSettings(ticket, Job(new PrintCopiesPlan(1, 1), bothSides: true), Collates, Colors,
+                                             [Duplexing.OneSided, Duplexing.TwoSidedShortEdge]);
+        Assert.Equal(Duplexing.OneSided, ticket.Duplexing);
+    }
+
+    [Fact]
+    public void ThreePagesTwoCopiesOnBothSides_EachCopyEndsWithABlankPage()
+    {
+        var pages = Job(new PrintCopiesPlan(2, 1), pages: 3).Pages;
+        var (padded, plan) = TwoSidedCopies.Arrange(pages, 2, new PrintCopiesPlan(2, 1));
+        Assert.Equal(new PrintCopiesPlan(1, 2), plan);
+        Assert.Equal(4, padded.Count);
+        Assert.Equal(pages, padded.Take(3));
+        Assert.Equal(1, padded[3].Image.Width);
+        Assert.Equal(8, new PrintJob("P", "Copy", PrinterPaper.Make(new SizeD(8.5, 11), null), null, padded, plan, false, true).DocumentPageCount);
+    }
+
+    [Fact]
+    public void EvenPagesOrOneCopyOnBothSides_NoBlankPage()
+    {
+        var even = Job(new PrintCopiesPlan(2, 1), pages: 2).Pages;
+        Assert.Equal((even, new PrintCopiesPlan(2, 1)), TwoSidedCopies.Arrange(even, 2, new PrintCopiesPlan(2, 1)));
+        var odd = Job(new PrintCopiesPlan(1, 1), pages: 3).Pages;
+        Assert.Equal((odd, new PrintCopiesPlan(1, 1)), TwoSidedCopies.Arrange(odd, 1, new PrintCopiesPlan(1, 1)));
     }
 }

@@ -225,7 +225,7 @@ texts); the Mac mirrors the layout (see the main README).
 - **Save** is a split button: **Save PDF** with a badge of the pages it saves and a lock while the
   PDF gets a password (named "Save password-protected PDF (5 pages)" for screen readers), and a ▾
   menu with **Add to existing PDF…** and, when Lazy Print is installed, **Lazy Print**. Importing photos of documents is an icon button next to it, then
-  **Print**, which sends the queued pages straight to the printer chosen for copies. A name
+  **Print**, which sends the queued pages straight to the printer chosen for copies, on both sides when Print on both sides is on. A name
   box above it names the next save only (empty, the file name template names it).
 - **The status bar** shows at most six words, facts only (`StatusLine` in Core: "6 pages added · 1
   blank", "Saved"; nothing while a review shows its own title); a
@@ -745,7 +745,10 @@ quarter when that makes it larger, and centered; **Fill page** enlarges it to co
 150%, 200% and a custom 25 to 400% scale it from real size, from the corner unless **Center** is on). The inspector's **Photocopy** section has the
 **Printer** (the default printer unless another is chosen; a chosen printer that is no longer
 installed falls back to the default, and choosing the default follows the default), its paper,
-**Copies** (1 to 99), **Scale** with **Center**, **Also save a PDF** and **Print test ruler**; color or grey
+**Copies** (1 to 99), **Print on both sides** (only when the printer lists long-edge duplex; off by default;
+with several copies and an odd page count the copies are repeated in the job, each followed by a blank
+page, so none shares a sheet with the next; the saved PDF gets no blank page), **Scale** with **Center**,
+**Also save a PDF** and **Print test ruler**; color or grey
 is the inspector's Color. On the glass with nothing selected and Automatic
 paper size, the part of the glass the printer's paper covers is scanned from the corner, as a copier
 copies the sheet it prints on; another paper size is asked of the printer too; an area selected on
@@ -775,7 +778,7 @@ ticket, portrait at 100 %, asks for the chosen paper when the printer lists it (
 own paper and lays the page out on that), lets the printer make the copies (collated) when its
 capabilities say it can make that many and, for several pages, that it collates, and otherwise puts
 the pages in the job that many times; whatever the printer's saved preferences say, the job sets its
-copy count, one page per sheet, one-sided printing, and grey output for a grey or black-and-white scan or colour for a
+copy count, one page per sheet, one-sided printing unless **Print on both sides** is on (and then long-edge duplex, when the printer lists it), and grey output for a grey or black-and-white scan or colour for a
 colour one (`WindowsPrintService.ApplyJobSettings`), and writes one paper-sized page per page
 with the image at its place in 1/96 inch, each page drawn only when the writer asks for it. The page
 images are stored losslessly as plain bitmaps: the XPS writer keeps a single picture for every
