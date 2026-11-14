@@ -5,7 +5,7 @@ import Foundation
 import ImageIO
 
 /// A file in the save folder as the Saved files screen lists it.
-public struct IOSSavedFile: Identifiable, Equatable {
+public struct IOSSavedFile: Identifiable, Equatable, Sendable {
     public let url: URL
     public let modified: Date
     public let byteCount: Int
@@ -41,7 +41,7 @@ public struct IOSSavedFile: Identifiable, Equatable {
 }
 
 /// The save folder read: its files newest first, or that it could not be read.
-public struct IOSSavedFolder: Equatable {
+public struct IOSSavedFolder: Equatable, Sendable {
     public let files: [IOSSavedFile]
     /// The folder is there but could not be listed.
     public let failed: Bool

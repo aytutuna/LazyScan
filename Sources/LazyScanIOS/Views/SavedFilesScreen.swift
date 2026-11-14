@@ -12,6 +12,9 @@ struct SavedFilesScreen: View {
     @State private var folder: IOSSavedFolder = IOSSavedFolder(files: [], failed: false)
     /// The PDF the queued pages are being added to from this screen: the status under the list is about it.
     @State private var appending: URL?
+    /// Counts the reads started, so a listing that arrives after a newer read began is dropped.
+    @State private var reads: Int = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let place: URL = IOSSavedFiles.shownFolder(state.settings)
@@ -52,11 +55,16 @@ struct SavedFilesScreen: View {
             }
         }
         .refreshable {
-            reload()
+            await reload()
         }
         .task(id: state.lastSavedURLs) {
             state.removeStaleSaveTemps()
-            reload()
+            await reload()
+        }
+        .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
+            if phase == .active {
+                Task { await reload() }
+            }
         }
         .onDisappear {
             appending = nil
@@ -77,12 +85,25 @@ struct SavedFilesScreen: View {
         }
     }
 
-    private func reload() {
-        folder = IOSSavedFiles.list(in: IOSSavedFiles.shownFolder(state.settings), justSaved: state.lastSavedURLs)
+    /// Lists the folder off the main actor; the rows shown stay until the new list is in.
+    private func reload() async {
+        let place: URL = IOSSavedFiles.shownFolder(state.settings)
+        let justSaved: [URL] = state.lastSavedURLs
+        reads += 1
+        let mine: Int = reads
+        let task: Task<IOSSavedFolder, Never> = Task.detached(priority: .userInitiated) { () -> IOSSavedFolder in
+            IOSSavedFiles.list(in: place, justSaved: justSaved)
+        }
+        let listed: IOSSavedFolder = await task.value
+        if mine == reads {
+            folder = listed
+        }
     }
 
     private func run(_ action: FileAction, _ file: IOSSavedFile) {
-        state.runFileAction(action, urls: [file.url])
+        if !state.runFileAction(action, urls: [file.url]) {
+            Task { await reload() }
+        }
     }
 
     private func append(_ file: IOSSavedFile) {
