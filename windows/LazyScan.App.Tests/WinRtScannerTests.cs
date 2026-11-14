@@ -410,6 +410,90 @@ public class WiaEnumerationTests
         }
     }
 
+    public sealed class FakeProperty(object? value) { public object? Value { get; } = value; }
+
+    public sealed class FakeProperties(string? name)
+    {
+        public FakeProperty this[string key] => key == "Name" && name is not null
+            ? new FakeProperty(name)
+            : throw new InvalidOperationException("no such property");
+    }
+
+    public sealed class FakeInfo(int type, string id, string? name, bool throws = false)
+    {
+        public int Type => throws ? throw new InvalidOperationException("driver") : type;
+        public string DeviceID => id;
+        public FakeProperties Properties { get; } = new(name);
+    }
+
+    public sealed class FakeInfos(params FakeInfo[] infos)
+    {
+        public int Count => infos.Length;
+        public FakeInfo this[int index] => infos[index - 1];
+    }
+
+    public sealed class FakeManager(FakeInfos infos)
+    {
+        public FakeInfos DeviceInfos => infos;
+    }
+
+    [Fact]
+    public async Task AnEntryWiaCannotReadIsSkippedAndTheOthersAreListed()
+    {
+        var manager = new FakeManager(new FakeInfos(
+            new FakeInfo(1, "a", "First"),
+            new FakeInfo(1, "b", "Broken", throws: true),
+            new FakeInfo(2, "c", "Camera"),
+            new FakeInfo(1, "d", "Last")));
+        var found = await WiaApartment.Run(() => WiaScannerBackend.EnumerateScanners(() => manager));
+        Assert.Equal(["wia:a", "wia:d"], found.Select(d => d.Id));
+        Assert.Equal(["First", "Last"], found.Select(d => d.Name));
+    }
+
+    [Fact]
+    public async Task AFailingManagerThrowsSoTheCallerKeepsItsList()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            WiaApartment.Run(() => WiaScannerBackend.EnumerateScanners(() => throw new InvalidOperationException("manager"))));
+    }
+
+    [Fact]
+    public void AFailedEnumerationKeepsTheListedScannersAndReportsTheError()
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(null);
+        int calls = 0;
+        var wia = new WiaScannerBackend(() => ServiceStatus.Running, () => true, () =>
+        {
+            if (Interlocked.Increment(ref calls) == 1) return [new ScannerInfo("wia:a", "First", "WIA", Backend: "wia")];
+            throw new InvalidOperationException("manager");
+        });
+        try
+        {
+            wia.StartBrowsing();
+            WaitForEnumerations(wia, 1);
+            Assert.Equal("wia:a", Assert.Single(wia.Devices).Id);
+            Assert.Equal("WIA: 1 scanner(s)\n", wia.DiagnosticsReport);
+            wia.RefreshDevices();
+            WaitForEnumerations(wia, 2);
+            Assert.Equal("wia:a", Assert.Single(wia.Devices).Id);
+            Assert.Equal("WIA: 1 scanner(s), last listing failed - manager\n", wia.DiagnosticsReport);
+        }
+        finally
+        {
+            wia.StopBrowsing();
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    private static void WaitForEnumerations(WiaScannerBackend wia, int count)
+    {
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (wia.EnumerationsFinished < count && waited.Elapsed < TimeSpan.FromSeconds(60)) Thread.Sleep(10);
+        Thread.Sleep(50);
+        Assert.True(wia.EnumerationsFinished >= count, $"{wia.EnumerationsFinished} enumerations finished");
+    }
+
     /// <summary>Work for WIA runs on its STA thread in the order it was asked for, and its failures reach the caller.</summary>
     [Fact]
     public async Task WiaWorkRunsInOrderOnItsStaThread()

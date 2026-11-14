@@ -46,5 +46,7 @@ public class WiaAvailabilityTests
         Assert.Equal("WIA: 2 scanner(s)\n", WiaAvailability.Report(browsing: true, unavailable: null, scanners: 2));
         Assert.Equal("WIA: unavailable - the Windows Image Acquisition service (stisvc) is disabled\n",
                      WiaAvailability.Report(true, WiaAvailability.Unavailable(ServiceStatus.Disabled, true), 0));
+        Assert.Equal("WIA: 2 scanner(s), last listing failed - driver\n",
+                     WiaAvailability.Report(true, null, 2, "driver"));
     }
 }

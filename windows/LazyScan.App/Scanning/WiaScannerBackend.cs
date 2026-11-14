@@ -77,6 +77,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     private readonly Func<ServiceStatus> _serviceStatus;
     /// <summary>Whether WIA Automation (wiaaut.dll) is registered; any thread, never throws.</summary>
     private readonly Func<bool> _automationRegistered;
+    private readonly Func<List<ScannerInfo>> _enumerateScanners;
     private SynchronizationContext? _context;
     private CancellationTokenSource? _watchdog;
     /// <summary>Bumped by every Start/StopBrowsing; enumeration results from an older generation are dropped.</summary>
@@ -91,6 +92,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     private string? _unavailable;
     /// <summary>The WIA service as the last enumeration read it.</summary>
     private ServiceStatus _service;
+    /// <summary>Why the last enumeration failed while WIA could be asked; null when it did not. The list stays as it was.</summary>
+    private string? _failure;
 
     public long EnumerationsStarted => Interlocked.Read(ref _enumerationsStarted);
     public long EnumerationsFinished => Interlocked.Read(ref _enumerationsFinished);
@@ -101,16 +104,19 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
 
     /// <param name="serviceStatus">Reads the WIA service; asked on the WIA thread before each enumeration.</param>
     /// <param name="automationRegistered">Whether WIA Automation is registered; asked likewise.</param>
-    internal WiaScannerBackend(Func<ServiceStatus> serviceStatus, Func<bool> automationRegistered)
+    /// <param name="enumerateScanners">Lists the scanners on the WIA thread; WIA itself when null.</param>
+    internal WiaScannerBackend(Func<ServiceStatus> serviceStatus, Func<bool> automationRegistered,
+                               Func<List<ScannerInfo>>? enumerateScanners = null)
     {
         _serviceStatus = serviceStatus;
         _automationRegistered = automationRegistered;
+        _enumerateScanners = enumerateScanners ?? EnumerateScanners;
     }
 
     /// <summary>Why WIA is not asked for scanners now; null when it is (or before the first enumeration).</summary>
     public string? Unavailable => _unavailable;
 
-    public string? DiagnosticsReport => WiaAvailability.Report(_watchdog is not null, _unavailable, _devices.Count);
+    public string? DiagnosticsReport => WiaAvailability.Report(_watchdog is not null, _unavailable, _devices.Count, _failure);
 
     /// <summary>
     /// Enumerate once now, then keep re-enumerating so the list follows the hardware without
@@ -141,6 +147,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         _watchdog = null;
         Interlocked.Increment(ref _browseGeneration);
         _unavailable = null;
+        _failure = null;
         if (_devices.Count == 0) return;
         _devices.Clear();
         DevicesChanged?.Invoke();
@@ -227,6 +234,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         WiaApartment.Run(() => Enumerate(generation)).ContinueWith(task =>
         {
             var result = task.IsCompletedSuccessfully ? task.Result : null;
+            string? failure = task.Exception?.GetBaseException().Message;
             Post(() =>
             {
                 if (_running == number) _running = 0;
@@ -236,13 +244,19 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
                 // A failed enumeration says nothing about the scanners: the list stays as it was.
                 if (result is null)
                 {
+                    // The listing only ran because WIA was available, so an earlier reason is stale.
+                    bool failureChanged = failure != _failure || (failure is not null && _unavailable is not null);
+                    if (failure is not null) _unavailable = null;
+                    _failure = failure;
+                    if (failureChanged) DevicesChanged?.Invoke();
                     EnumerationFinished?.Invoke();
                     if (_refreshAgain && _running == 0) RefreshDevices();
                     return;
                 }
                 _service = result.Service;
-                bool noteChanged = result.Unavailable != _unavailable;
+                bool noteChanged = result.Unavailable != _unavailable || _failure is not null;
                 _unavailable = result.Unavailable;
+                _failure = null;
                 // A new reason (or none) is a change too: devices.txt is written again with it.
                 if (!ReplaceDevices(result.Found) && noteChanged) DevicesChanged?.Invoke();
                 EnumerationFinished?.Invoke();
@@ -265,7 +279,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         ServiceStatus service = _serviceStatus();
         string? unavailable = WiaAvailability.Unavailable(service, _automationRegistered());
         if (unavailable is not null) return new([], unavailable, service);
-        var found = EnumerateScanners();
+        var found = _enumerateScanners();
         if (service is ServiceStatus.Stopped or ServiceStatus.Stopping or ServiceStatus.Paused) service = _serviceStatus();
         return new(found, null, service);
     }
@@ -300,7 +314,11 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     }
 
     /// <summary>The scanners WIA lists now; throws when WIA fails. WIA thread only.</summary>
-    internal static List<ScannerInfo> EnumerateScanners()
+    internal static List<ScannerInfo> EnumerateScanners() => EnumerateScanners(() =>
+        Type.GetTypeFromProgID(DeviceManagerProgId) is { } type ? Activator.CreateInstance(type) : null);
+
+    /// <summary>A scanner whose entry cannot be read is skipped; the others are still listed.</summary>
+    internal static List<ScannerInfo> EnumerateScanners(Func<object?> createManager)
     {
         var found = new List<ScannerInfo>();
         // The watchdog may enumerate for hours: release every COM object deterministically
@@ -309,23 +327,29 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         using var use = WiaApartment.Use();
         try
         {
-            var managerType = Type.GetTypeFromProgID(DeviceManagerProgId);
-            if (managerType is null) return found;
-            dynamic manager = Activator.CreateInstance(managerType)!;
-            comObjects.Add(manager);
+            if (createManager() is not { } created) return found;
+            dynamic manager = created;
+            comObjects.Add(created);
             dynamic infos = manager.DeviceInfos;
             comObjects.Add(infos);
             int count = infos.Count;
             for (int i = 1; i <= count; i++) // WIA collections are 1-based
             {
-                dynamic info = infos[i];
-                comObjects.Add(info);
-                if ((int)info.Type != ScannerDeviceType) continue;
-                string id = (string)info.DeviceID;
-                string name = TryGetProperty(info.Properties, "Name") as string ?? Loc.T("Scanner");
-                found.Add(new ScannerInfo($"wia:{id}", name, "WIA", Backend: "wia",
-                                          Model: ModelOf(TryGetProperty(info.Properties, "Manufacturer") as string,
-                                                         TryGetProperty(info.Properties, "Description") as string)));
+                try
+                {
+                    dynamic info = infos[i];
+                    comObjects.Add(info);
+                    if ((int)info.Type != ScannerDeviceType) continue;
+                    string id = (string)info.DeviceID;
+                    string name = TryGetProperty(info.Properties, "Name") as string ?? Loc.T("Scanner");
+                    found.Add(new ScannerInfo($"wia:{id}", name, "WIA", Backend: "wia",
+                                              Model: ModelOf(TryGetProperty(info.Properties, "Manufacturer") as string,
+                                                             TryGetProperty(info.Properties, "Description") as string)));
+                }
+                catch (Exception e)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Skipped WIA device {i}: {e.Message}");
+                }
             }
         }
         finally

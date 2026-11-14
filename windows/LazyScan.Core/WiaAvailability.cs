@@ -31,11 +31,15 @@ public static class WiaAvailability
         };
     }
 
-    /// <summary>The WIA section of devices.txt: off, listing N scanners, or unavailable and why.</summary>
-    public static string Report(bool browsing, string? unavailable, int scanners)
+    /// <summary>
+    /// The WIA section of devices.txt: off, listing N scanners (and why the last listing failed,
+    /// when it did), or unavailable and why.
+    /// </summary>
+    public static string Report(bool browsing, string? unavailable, int scanners, string? failure = null)
     {
         string state = !browsing ? "off"
             : unavailable is not null ? "unavailable - " + unavailable
+            : failure is not null ? $"{scanners} scanner(s), last listing failed - {failure}"
             : $"{scanners} scanner(s)";
         return $"WIA: {state}\n";
     }
