@@ -77,7 +77,8 @@ public enum InspectorSections {
     /// "PDF · Standard", "PDF · Standard · A4", "Word", "JPEG": the format the save uses, and a PDF's size
     /// and, when it is not as scanned, its page size. `shownFormat`: the
     /// format the column shows (photos save an image, receipts and the ID card a PDF or an image).
-    public static func outputSummary(_ s: ScanSettings, shownFormat: OutputFormat) -> String {
+    /// `highBitDepth`: the scan is asked for 16 bits ("TIFF 16-bit").
+    public static func outputSummary(_ s: ScanSettings, shownFormat: OutputFormat, highBitDepth: Bool = false) -> String {
         let format: String
         switch shownFormat {
         case .word: format = "Word"
@@ -89,15 +90,16 @@ public enum InspectorSections {
             if s.output.pageSize != .asScanned { summary += " \u{00B7} " + s.output.pageSize.label }
             return summary
         }
+        if highBitDepth { return L10n.t("{0} 16-bit", format) }
         return format
     }
 
     /// The format differs from a fresh install's for the mode (JPEG for photos, PDF otherwise), or a
     /// PDF shown has a size or page size other than a fresh install's.
-    public static func outputChanged(_ s: ScanSettings, shownFormat: OutputFormat) -> Bool {
+    public static func outputChanged(_ s: ScanSettings, shownFormat: OutputFormat, highBitDepth: Bool = false) -> Bool {
         let d: ScanSettings = ScanSettings()
         let defaultFormat: OutputFormat = s.intent == .photo ? .jpeg : d.format
-        return shownFormat != defaultFormat
+        return shownFormat != defaultFormat || highBitDepth
             || (shownFormat == .pdf && (s.output.pdfSize != d.output.pdfSize || s.output.pageSize != d.output.pageSize))
     }
 

@@ -820,6 +820,12 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// (`ScannerCapabilities.supportsHighBitDepth`); every other path stays 8-bit. Off unless chosen.
     /// Twin of C# `ScanSettings.PhotoHighBitDepth`.
     public var photoHighBitDepth: Bool = false
+    /// The photo flow with a TIFF in color or gray and the switch on: the scan asks the unit for 16 bits when it
+    /// reports them (`ScannerCapabilities.supportsHighBitDepth`). Black & white stays 8-bit, thresholded by the app.
+    public var wantsHighBitDepth: Bool {
+        photoHighBitDepth && TaskCatalog.flow(of: self) == .photoSplit && format.imageFormatOrJPEG == .tiff
+            && colorMode != .blackWhite
+    }
 
     // Document / PDF mode
     /// true: scans accumulate as pages and are saved together with "Save PDF".
@@ -1420,6 +1426,9 @@ public struct DetectedPhoto: Identifiable {
     public var included: Bool = true
     /// Extra user-requested rotation applied at save time (0...3 quarter turns clockwise).
     public var rotationQuarterTurns: Int = 0
+    /// The photo's pixels at 16 bits per sample, cut from a page scanned with `ScanSettings.photoHighBitDepth`
+    /// and saved as a 16-bit TIFF while the photo is not turned; nil for every other photo.
+    public var deepPixels: DeepPixels?
     /// A receipt's text and date as read from the image turned as shown (`isRead`); nil until it is read.
     public var reading: ReceiptReading?
     /// The date as typed in the receipt review; nil until the user edits it, and then it replaces the one found.

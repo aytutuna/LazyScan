@@ -921,9 +921,10 @@ struct InspectorView: View {
     /// Photos mode: finding and straightening each photo, the image format and where it is saved. The
     /// smallest photo side and the edge trim show while Find each photo is on: only the finder reads them.
     private var photosSection: some View {
-        section(InspectorSections.output, title: InspectorSections.title(InspectorSections.output, for: state.settings),
-                summary: InspectorSections.outputSummary(state.settings, shownFormat: shownFormat),
-                changed: InspectorSections.outputChanged(state.settings, shownFormat: shownFormat)) {
+        let deep: Bool = scansHighBitDepth
+        return section(InspectorSections.output, title: InspectorSections.title(InspectorSections.output, for: state.settings),
+                summary: InspectorSections.outputSummary(state.settings, shownFormat: shownFormat, highBitDepth: deep),
+                changed: InspectorSections.outputChanged(state.settings, shownFormat: shownFormat, highBitDepth: deep)) {
             Toggle("Find each photo", isOn: $state.settings.photoAutoSplit)
                 .help("Finds each photo on the glass and saves it on its own")
             if state.settings.photoAutoSplit {
@@ -946,7 +947,31 @@ struct InspectorView: View {
             if shownFormat == .jpeg {
                 jpegQualityRow
             }
+            if offersHighBitDepth {
+                highBitDepthRows
+            }
             destinationRow
+        }
+    }
+
+    /// The unit reports 16 bits and photos are saved as a TIFF: otherwise the switch is not shown.
+    private var offersHighBitDepth: Bool {
+        shownFormat == .tiff && state.capabilities?.supportsHighBitDepth == true
+    }
+
+    /// The scan is asked for 16 bits: the switch is shown and on, and the scan can use it (`ScanSettings.wantsHighBitDepth`).
+    private var scansHighBitDepth: Bool {
+        offersHighBitDepth && state.settings.wantsHighBitDepth
+    }
+
+    @ViewBuilder
+    private var highBitDepthRows: some View {
+        let hint: String = String(localized: "Scans at 16 bits per color and saves a 16-bit TIFF. Files are much larger.")
+        Toggle("High bit depth TIFF", isOn: $state.settings.photoHighBitDepth)
+            .help("Scans at 16 bits per color for more shadow detail. Files are larger.")
+            .accessibilityHint(Text(hint))
+        if state.settings.photoHighBitDepth {
+            reasonLine(String(localized: "16 bits per color. Files are larger."))
         }
     }
 

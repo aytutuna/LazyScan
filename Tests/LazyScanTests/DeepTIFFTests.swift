@@ -121,4 +121,58 @@ final class DeepTIFFTests: XCTestCase {
         XCTAssertEqual(page.copyMeta(from: page).deepPixels, pixels)
         XCTAssertNil(page.withImage(onePixelImage()).deepPixels)
     }
+
+    func test_cropped_keepsTheRowsAndColumnsInsideTheRect() throws {
+        let samples: [UInt16] = (0..<12).map { UInt16($0) }
+        let pixels = DeepPixels(width: 2, height: 2, channels: 3, samples: samples)
+        let part = try XCTUnwrap(pixels.cropped(to: CGRect(x: 1, y: 0, width: 5, height: 1)))
+        XCTAssertEqual(part, DeepPixels(width: 1, height: 1, channels: 3, samples: [3, 4, 5]))
+        XCTAssertNil(pixels.cropped(to: CGRect(x: 2, y: 0, width: 1, height: 1)))
+    }
+
+    func test_rotated_turnsTheSamplesByQuarterTurns() {
+        let pixels = DeepPixels(width: 2, height: 1, channels: 3, samples: [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(pixels.rotated(quarterTurns: 0), pixels)
+        XCTAssertEqual(pixels.rotated(quarterTurns: 1),
+                       DeepPixels(width: 1, height: 2, channels: 3, samples: [1, 2, 3, 4, 5, 6]))
+        XCTAssertEqual(pixels.rotated(quarterTurns: 2),
+                       DeepPixels(width: 2, height: 1, channels: 3, samples: [4, 5, 6, 1, 2, 3]))
+        XCTAssertEqual(pixels.rotated(quarterTurns: 3),
+                       DeepPixels(width: 1, height: 2, channels: 3, samples: [4, 5, 6, 1, 2, 3]))
+        XCTAssertEqual(pixels.rotated(quarterTurns: -1), pixels.rotated(quarterTurns: 3))
+    }
+
+    func test_photoFlow_asksForSixteenBitsOnlyForATiffInColorOrGray() {
+        var s = ScanSettings()
+        s.intent = .photo
+        s.format = .tiff
+        XCTAssertFalse(s.wantsHighBitDepth)
+        s.photoHighBitDepth = true
+        XCTAssertTrue(s.wantsHighBitDepth)
+        s.colorMode = .grayscale
+        XCTAssertTrue(s.wantsHighBitDepth)
+        s.colorMode = .blackWhite
+        XCTAssertFalse(s.wantsHighBitDepth)
+        s.colorMode = .color
+        s.source = .negatives
+        XCTAssertFalse(s.wantsHighBitDepth)
+        s.source = .flatbed
+        s.adjustments.restoreFadedColors = true
+        XCTAssertFalse(s.wantsHighBitDepth)
+        s.adjustments.restoreFadedColors = false
+        s.format = .png
+        XCTAssertFalse(s.wantsHighBitDepth)
+        s.format = .tiff
+        s.intent = .document
+        XCTAssertFalse(s.wantsHighBitDepth)
+    }
+
+    func test_wholePagePhoto_carriesThePagesSixteenBitPixels() {
+        var page = ScannedPage(image: onePixelImage(), dpi: 300, colorMode: .color)
+        let pixels = DeepPixels(width: 2, height: 1, channels: 3, samples: [1, 2, 3, 4, 5, 6])
+        page.deepPixels = pixels
+        var s = ScanSettings()
+        s.photoAutoSplit = false
+        XCTAssertEqual(AppState.splitPhotos(from: page, settings: s).first?.deepPixels, pixels)
+    }
 }

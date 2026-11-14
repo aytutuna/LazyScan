@@ -68,6 +68,8 @@ final class InspectorSectionsTests: XCTestCase {
         XCTAssertEqual(InspectorSections.outputSummary(photo, shownFormat: .jpeg), "JPEG")
         // Photos at their defaults save JPEG: nothing changed; another image format is a change.
         XCTAssertFalse(InspectorSections.outputChanged(photo, shownFormat: .jpeg))
+        XCTAssertEqual(InspectorSections.outputSummary(photo, shownFormat: .tiff, highBitDepth: true), "TIFF 16-bit")
+        XCTAssertTrue(InspectorSections.outputChanged(photo, shownFormat: .jpeg, highBitDepth: true))
         XCTAssertTrue(InspectorSections.outputChanged(photo, shownFormat: .png))
         // A PDF size other than the default is a change only while a PDF is shown.
         var compact = ScanSettings()

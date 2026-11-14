@@ -2937,8 +2937,25 @@ StripByteCounts, the resolution in pixels per inch, and with `details` ImageDesc
 with DateTimeOriginal as in the other TIFFs. `DeepTIFF.applies(format)` is true for `.tiff` only (`.tiffPages` is
 written as 8-bit files). `ImageExporter.write(..., deepPixels:)` and `WpfImageCodec.SaveAsNew(..., deepPixels:)`
 write it for a TIFF whatever the color mode and do not read `image` then. ImageIO and WIC read the files back as 16
-bits per sample (Gray16 and Rgb48). The switch in the inspectors and the scanner backends that request 16 bits
-(ImageCaptureCore `depth16Bits`, TWAIN 16) are not part of this.
+bits per sample (Gray16 and Rgb48).
+
+The Mac asks for the 16 bits. `ScanSettings.wantsHighBitDepth` is `photoHighBitDepth` in the photo flow
+(`TaskCatalog.flow` is `.photoSplit`) with a TIFF (`format.imageFormatOrJPEG`) in color or gray, scanned as it is:
+black & white stays 8-bit, and so do Negatives and any adjustment (`adjustments.isIdentity` false), since no page step
+runs on 16-bit pixels. `ICScannerBackend.capabilities()` reports `supportsHighBitDepth` when the unit's `supportedBitDepths` has
+`depth16Bits`, and a scan sets `bitDepth = .depth16Bits` only when the setting wants it and the unit reports it. A
+scan file with 16 bits per component (gray or RGB) becomes a page with `deepPixels`; any other file is an ordinary
+8-bit page, and after such a scan `AppState` adds "This scanner gave 8-bit pages instead." to the Found line (or, when
+some found photos were straightened and so have no 16-bit data, "Photos that were straightened save as 8-bit
+files."). A 16-bit page is decoded twice and held as 16-bit samples next to its 8-bit view, about 12 bytes per pixel
+on top of the decoded file, so a 600 dpi A4 color page takes several hundred MB while it is read. In the
+photo review a whole-page photo carries the page's `deepPixels` as `DetectedPhoto.deepPixels`, and a found photo
+carries `DeepPixels.cropped(to: region.boundingBox)` when it needs no turning (Straighten photos off, or an angle
+under 0.05 degrees); a photo cut again by hand has none. Saving writes it with `ImageExporter.write(..., deepPixels:)`
+turned by the photo's quarter turns (`DeepPixels.rotated(quarterTurns:)`). The Mac inspector's Output section shows "High bit depth TIFF" under Format when the
+format is TIFF and the unit reports 16 bits (hidden otherwise, the stored value kept), with a caption while it is on;
+`InspectorSections.outputSummary` / `outputChanged` take `highBitDepth:` and read "TIFF 16-bit". The Windows switch and
+the TWAIN request (16) are not part of this.
 
 ### Output/OCRText.swift, TextExport.swift, DocxWriter.swift, ZipStore.swift (+ OutputFormat, OutputOptions in Core/Models.swift)
 

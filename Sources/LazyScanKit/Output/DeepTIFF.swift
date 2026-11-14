@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 // Twin of windows/LazyScan.Core/DeepTiff.cs: the same file, byte for byte (the golden value in
@@ -19,6 +20,43 @@ public struct DeepPixels: Equatable, Sendable {
         self.height = height
         self.channels = channels
         self.samples = samples
+    }
+
+    /// The part inside `rect` (pixels, top-left origin, clipped to the page); nil when nothing is left.
+    public func cropped(to rect: CGRect) -> DeepPixels? {
+        let left = max(0, Int(rect.minX.rounded(.down))), top = max(0, Int(rect.minY.rounded(.down)))
+        let right = min(width, Int(rect.maxX.rounded(.up))), bottom = min(height, Int(rect.maxY.rounded(.up)))
+        guard right > left, bottom > top else { return nil }
+        var part: [UInt16] = []
+        part.reserveCapacity((right - left) * (bottom - top) * channels)
+        for row in top..<bottom {
+            let start = (row * width + left) * channels
+            part.append(contentsOf: samples[start..<start + (right - left) * channels])
+        }
+        return DeepPixels(width: right - left, height: bottom - top, channels: channels, samples: part)
+    }
+
+    /// Turned clockwise by `quarterTurns` steps of 90 degrees, like `ImagePipeline.rotate`.
+    public func rotated(quarterTurns: Int) -> DeepPixels {
+        let turns = ((quarterTurns % 4) + 4) % 4
+        guard turns != 0 else { return self }
+        let newWidth = turns == 2 ? width : height
+        let newHeight = turns == 2 ? height : width
+        var turned = [UInt16](repeating: 0, count: samples.count)
+        for y in 0..<newHeight {
+            for x in 0..<newWidth {
+                let sourceX: Int, sourceY: Int
+                switch turns {
+                case 1: (sourceX, sourceY) = (y, height - 1 - x)
+                case 2: (sourceX, sourceY) = (width - 1 - x, height - 1 - y)
+                default: (sourceX, sourceY) = (width - 1 - y, x)
+                }
+                let from = (sourceY * width + sourceX) * channels
+                let to = (y * newWidth + x) * channels
+                for c in 0..<channels { turned[to + c] = samples[from + c] }
+            }
+        }
+        return DeepPixels(width: newWidth, height: newHeight, channels: channels, samples: turned)
     }
 }
 

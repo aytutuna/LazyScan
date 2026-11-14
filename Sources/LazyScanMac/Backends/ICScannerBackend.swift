@@ -334,6 +334,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
         if physical.width > 0, physical.height > 0 {
             caps.flatbedSizeInches = CGSize(width: physical.width, height: physical.height)
         }
+        caps.supportsHighBitDepth = Self.reports16Bits(unit)
         return caps
     }
 
@@ -449,13 +450,16 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
             .min(by: { abs($0 - settings.resolution) < abs($1 - settings.resolution) }) ?? settings.resolution
         unit.resolution = dpi
 
+        // 16 bits only where the app can save them (`ScanSettings.wantsHighBitDepth`) and the unit reports them.
+        let deep = settings.wantsHighBitDepth && Self.reports16Bits(unit)
+        let colorDepth: ICScannerBitDepth = deep ? .depth16Bits : .depth8Bits
         switch settings.colorMode {
         case .color:
             unit.pixelDataType = .RGB
-            unit.bitDepth = .depth8Bits
+            unit.bitDepth = colorDepth
         case .grayscale:
             unit.pixelDataType = .gray
-            unit.bitDepth = .depth8Bits
+            unit.bitDepth = colorDepth
         case .blackWhite:
             // 8-bit gray, thresholded by the app (ImagePipeline), so the threshold slider changes the
             // page; a 1-bit request would have the driver pick the threshold.
@@ -511,11 +515,13 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
                 let previous = self.deliveryTail
                 self.deliveryTail = Task { @MainActor [weak self] in
                     await previous?.value
-                    let image = await Task.detached(priority: .userInitiated) { Self.loadImage(at: url) }.value
+                    let loaded = await Task.detached(priority: .userInitiated) { Self.loadScan(at: url, deep: deep) }.value
                     try? FileManager.default.removeItem(at: url)
-                    guard let self, let image else { return }
+                    guard let self, let loaded else { return }
                     self.deliveredCount += 1
-                    await onPage(ScannedPage(image: image, dpi: dpi, colorMode: colorMode))
+                    var page = ScannedPage(image: loaded.image, dpi: dpi, colorMode: colorMode)
+                    page.deepPixels = loaded.deepPixels
+                    await onPage(page)
                 }
             }
         }
@@ -542,8 +548,10 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
 
         var pages: [ScannedPage] = []
         for url in urls {
-            if let image = Self.loadImage(at: url) {
-                pages.append(ScannedPage(image: image, dpi: dpi, colorMode: settings.colorMode))
+            if let loaded = Self.loadScan(at: url, deep: deep) {
+                var page = ScannedPage(image: loaded.image, dpi: dpi, colorMode: settings.colorMode)
+                page.deepPixels = loaded.deepPixels
+                pages.append(page)
             }
             try? FileManager.default.removeItem(at: url)
         }
@@ -647,6 +655,47 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
             }
             device.requestSelect(type)
         }
+    }
+
+    private static func reports16Bits(_ unit: ICScannerFunctionalUnit) -> Bool {
+        unit.supportedBitDepths.contains(Int(ICScannerBitDepth.depth16Bits.rawValue))
+    }
+
+    /// The scan file's 8-bit page, and its 16-bit samples when `deep` asks for them and the file has them
+    /// (a unit that refused 16 bits delivers 8-bit files, and the page is then an ordinary one).
+    private nonisolated static func loadScan(at url: URL, deep: Bool) -> (image: CGImage, deepPixels: DeepPixels?)? {
+        guard let image = loadImage(at: url) else { return nil }
+        return (image, deep ? loadDeepPixels(at: url) : nil)
+    }
+
+    /// The samples of a gray or RGB file at 16 bits per component, nil for any other file.
+    private nonisolated static func loadDeepPixels(at url: URL) -> DeepPixels? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              CGImageSourceGetCount(source) > 0,
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              image.bitsPerComponent == 16, let space = image.colorSpace else { return nil }
+        let gray = space.model == .monochrome
+        guard gray || space.model == .rgb else { return nil }
+        let width = image.width, height = image.height
+        let channels = gray ? 1 : 3
+        let perPixel = gray ? 1 : 4
+        let layout = gray ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue
+        guard width > 0, height > 0,
+              let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 16, bytesPerRow: 0,
+                                  space: space, bitmapInfo: layout | CGBitmapInfo.byteOrder16Little.rawValue),
+              let data = ctx.data else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let words = data.assumingMemoryBound(to: UInt16.self)
+        let rowWords = ctx.bytesPerRow / 2
+        var samples = [UInt16](repeating: 0, count: width * height * channels)
+        for y in 0..<height {
+            for x in 0..<width {
+                let from = y * rowWords + x * perPixel
+                let to = (y * width + x) * channels
+                for c in 0..<channels { samples[to + c] = words[from + c] }
+            }
+        }
+        return DeepPixels(width: width, height: height, channels: channels, samples: samples)
     }
 
     private nonisolated static func loadImage(at url: URL) -> CGImage? {

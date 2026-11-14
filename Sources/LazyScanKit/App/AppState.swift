@@ -1879,8 +1879,14 @@ public final class AppState: ObservableObject {
             self.isReceiptReview = false
             self.recordCaptures(found.map(\.id))
             self.showPhotoReview = !found.isEmpty
-            self.setStatus(L10n.plural(found.count, one: "Found {0} photo.", other: "Found {0} photos."),
-                           StatusDetail(head: .found(found.count, .photo)))
+            var foundMessage: String = L10n.plural(found.count, one: "Found {0} photo.", other: "Found {0} photos.")
+            let askedDeep: Bool = s.wantsHighBitDepth && source == .scanner && self.capabilities?.supportsHighBitDepth == true
+            if askedDeep && !processed.contains(where: { (page: ScannedPage) -> Bool in page.deepPixels != nil }) {
+                foundMessage += " " + L10n.t("This scanner gave 8-bit pages instead.")
+            } else if askedDeep && found.contains(where: { (photo: DetectedPhoto) -> Bool in photo.deepPixels == nil }) {
+                foundMessage += " " + L10n.t("Photos that were straightened save as 8-bit files.")
+            }
+            self.setStatus(foundMessage, StatusDetail(head: .found(found.count, .photo)))
         case .idCard:
             guard self.isIdCardFlow else {
                 self.dropIdCardScanOutsideTask()
@@ -2122,7 +2128,15 @@ public final class AppState: ObservableObject {
         guard !regions.isEmpty else { return [wholePagePhoto(page)] }
         return regions.compactMap { region in
             PhotoDetector.extractPhoto(from: page.image, region: region, deskew: s.photoAutoDeskew)
-                .map { DetectedPhoto(region: region, image: $0, dpi: page.dpi, sourcePageID: page.id, colorMode: page.colorMode) }
+                .map { (image: CGImage) -> DetectedPhoto in
+                    var photo = DetectedPhoto(region: region, image: image, dpi: page.dpi, sourcePageID: page.id,
+                                              colorMode: page.colorMode)
+                    // Only a region that needs no turning is cut from the 16-bit data as well.
+                    if let deep = page.deepPixels, !s.photoAutoDeskew || abs(region.angleDegrees) < 0.05 {
+                        photo.deepPixels = deep.cropped(to: region.boundingBox)
+                    }
+                    return photo
+                }
         }
     }
 
@@ -2130,8 +2144,10 @@ public final class AppState: ObservableObject {
         let w = CGFloat(page.image.width), h = CGFloat(page.image.height)
         let region = DetectedPhotoRegion(center: CGPoint(x: w / 2, y: h / 2),
                                          size: CGSize(width: w, height: h), angleDegrees: 0)
-        return DetectedPhoto(region: region, image: page.image, dpi: page.dpi, sourcePageID: page.id,
-                             colorMode: page.colorMode)
+        var photo = DetectedPhoto(region: region, image: page.image, dpi: page.dpi, sourcePageID: page.id,
+                                  colorMode: page.colorMode)
+        photo.deepPixels = page.deepPixels
+        return photo
     }
 
     public func cancelScan() {
@@ -2442,9 +2458,10 @@ public final class AppState: ObservableObject {
                             ? photo.image
                             : ImagePipeline.rotate(photo.image, quarterTurns: photo.rotationQuarterTurns)
                         // The mode the photo was scanned in: a black & white TIFF is G4.
+                        let deep: DeepPixels? = photo.deepPixels?.rotated(quarterTurns: photo.rotationQuarterTurns)
                         return try ImageExporter.write(image, to: planned, format: format, dpi: photo.dpi,
                                                        jpegQuality: s.jpegQuality, colorMode: photo.colorMode, details: details,
-                                                       keepingExisting: true)
+                                                       deepPixels: deep, keepingExisting: true)
                     }.value
                     saved.append(url)
                 }
