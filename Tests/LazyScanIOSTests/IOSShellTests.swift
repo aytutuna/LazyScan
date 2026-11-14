@@ -279,6 +279,39 @@ final class IOSShellTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "printer")
     }
 
+    func test_launch_onAFreshInstall_followsTheStartScreen() throws {
+        let suite: String = "startModeFresh"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        IOSShell.applyStartMode(defaults)
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "camera")
+        defaults.removeObject(forKey: IOSShell.scanModeKey)
+        defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.startModeKey)
+        IOSShell.applyStartMode(defaults)
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "printer")
+    }
+
+    func test_launch_keepsPrinterModeForWhoeverLeftItOn_andShowsItAsTheStartScreen() throws {
+        let suite: String = "startModeKept"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.scanModeKey)
+        IOSShell.applyStartMode(defaults)
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "printer")
+        XCTAssertEqual(defaults.string(forKey: IOSShell.startModeKey), "printer")
+    }
+
+    func test_launch_leavesAnOldSourceForTheMigration() throws {
+        let suite: String = "startModeOldSource"
+        let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("escl:x", forKey: IOSShell.oldSourceKey)
+        defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.startModeKey)
+        IOSShell.applyStartMode(defaults)
+        XCTAssertNil(defaults.object(forKey: IOSShell.scanModeKey))
+        XCTAssertEqual(IOSShell.migratedScanner(defaults), "escl:x")
+    }
+
     func test_printerScanner_isTheRememberedScanner_inPrinterModeWhileListedAndSelected() {
         let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
         let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")

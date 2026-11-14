@@ -365,9 +365,13 @@ public enum IOSShell {
 
     /// At launch: the mode becomes the one picked to start with.
     public static func applyStartMode(_ defaults: UserDefaults) {
-        // Without a mode yet this is a first run or a build from before the two modes, which
-        // `migratedScanner` still has to read; the camera is the default then anyway.
-        guard defaults.object(forKey: scanModeKey) != nil else { return }
+        // A kept `oldSourceKey` is a build from before the two modes, which `migratedScanner` still has to read;
+        // the camera is the default then anyway.
+        guard defaults.string(forKey: oldSourceKey) == nil else { return }
+        // Whoever left printer mode on before the start screen existed keeps opening on it.
+        if defaults.object(forKey: startModeKey) == nil, defaults.string(forKey: scanModeKey) == IOSScanMode.printer.rawValue {
+            defaults.set(IOSScanMode.printer.rawValue, forKey: startModeKey)
+        }
         let start: IOSScanMode = defaults.string(forKey: startModeKey).flatMap(IOSScanMode.init(rawValue:)) ?? .camera
         defaults.set(start.rawValue, forKey: scanModeKey)
     }
