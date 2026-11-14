@@ -2042,6 +2042,10 @@
                                         </Border>
                                         <TextBlock x:Name="IdCardLayoutText" Style="{StaticResource CaptionText}" TextWrapping="Wrap"
                                                    Margin="0,10,0,0" AutomationProperties.LiveSetting="Polite" />
+                                        <TextBlock x:Name="IdCardTurnedText" Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                                   Margin="0,6,0,0" Visibility="Collapsed"
+                                                   AutomationProperties.AutomationId="IdCardTurnedText"
+                                                   AutomationProperties.LiveSetting="Polite" />
                                         <DockPanel x:Name="IdCardSizeNotice" Visibility="Collapsed" Margin="0,6,0,0">
                                             <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE7BA;"
                                                        Margin="0,0,8,0" VerticalAlignment="Top" Padding="0,2,0,0"

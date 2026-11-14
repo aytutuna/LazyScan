@@ -632,6 +632,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public string IdCardLayoutCaption { get; private set; } = "";
     /// <summary>Set when the sides had to be made smaller to fit the page (<see cref="IdCardLayout.NotRealSizeMessage"/>).</summary>
     public string? IdCardSizeWarning { get; private set; }
+    /// <summary>Set when the back was turned a quarter turn to match the front (<see cref="IdCardLayout.BackTurnedMessage"/>).</summary>
+    public string? IdCardTurnedNote { get; private set; }
 
     /// <summary>This session's scans, newest first (small previews only) — the History tab.</summary>
     public ObservableCollection<HistoryItem> History { get; } = [];
@@ -3513,6 +3515,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (Flow?.Current?.Id == IdCardSteps.ReviewStepId)
         {
             StatusMessage = (side == PageSide.Front ? Loc.T("Front scanned. Check the sides, then save.") : Loc.T("Back scanned. Check the sides, then save.")) + check;
+            MatchIdCardBackToFront();
             OpenIdCardReview();
         }
         else
@@ -3553,6 +3556,25 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Turns the back a quarter turn clockwise when it lies the other way round from the front, and
+    /// says so. Runs as the review opens after a scan, never after the user's own turns.
+    /// </summary>
+    private void MatchIdCardBackToFront()
+    {
+        IdCardTurnedNote = null;
+        if (IdCardFront is not { } front || IdCardBack is not { } back
+            || !IdCardLayout.BackNeedsTurn(IdCardTurnedSize(front.Photo), IdCardTurnedSize(back.Photo))) return;
+        back.RotateClockwise();
+        IdCardTurnedNote = IdCardLayout.BackTurnedMessage;
+    }
+
+    /// <summary>A side's pixel size as it lies now, after the user's turns.</summary>
+    private static SizeD IdCardTurnedSize(DetectedPhoto photo) =>
+        photo.RotationQuarterTurns % 2 == 0
+            ? new SizeD(photo.Image.Width, photo.Image.Height)
+            : new SizeD(photo.Image.Height, photo.Image.Width);
+
     /// <summary>Opens the review of the ID card's sides, once there is a front.</summary>
     private void OpenIdCardReview()
     {
@@ -3587,6 +3609,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             IdCardPreview = null;
             IdCardLayoutCaption = "";
             IdCardSizeWarning = null;
+            IdCardTurnedNote = null;
             NotifyAll();
             return;
         }
@@ -3633,6 +3656,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (IsBusy || (side == PageSide.Front ? IdCardFront : IdCardBack) is not { } item) return;
         item.RotateClockwise();
+        if (side == PageSide.Back) IdCardTurnedNote = null;
         _ = RefreshIdCardPreview();
         NotifyAll();
     }
@@ -3643,6 +3667,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || IdCardFront is null || IdCardBack is null) return;
         (IdCardFront, IdCardBack) = (IdCardBack, IdCardFront);
         (IdCardFrontNote, IdCardBackNote) = (IdCardBackNote, IdCardFrontNote);
+        IdCardTurnedNote = null;
         StatusMessage = Loc.T("Front and back swapped.");
         _ = RefreshIdCardPreview();
         NotifyAll();
@@ -3657,6 +3682,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsBusy || !IsIdCardFlow || Flow is null) return;
         Flow.Retake(IdCardSteps.StepId(side));
         SetIdCardSide(side, null, null);
+        IdCardTurnedNote = null;
         ShowIdCardReview = false;
         IdCardPreview = null;
         _idCardPreviewRevision++;
@@ -3870,6 +3896,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         IdCardPreview = null;
         IdCardLayoutCaption = "";
         IdCardSizeWarning = null;
+        IdCardTurnedNote = null;
         _idCardPreviewRevision++;
         if (clearCanvas && (OverviewImage is not null || LastScanImage is not null))
         {

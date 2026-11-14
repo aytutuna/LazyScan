@@ -958,6 +958,8 @@ public partial class MainWindow : Window
         IdCardPageImage.Source = ViewModel.IdCardPreview;
         IdCardLayoutText.Text = ViewModel.IdCardLayoutCaption;
         IdCardSizeText.Text = ViewModel.IdCardSizeWarning ?? "";
+        IdCardTurnedText.Text = ViewModel.IdCardTurnedNote ?? "";
+        IdCardTurnedText.Visibility = ViewModel.IdCardTurnedNote is null ? Visibility.Collapsed : Visibility.Visible;
         IdCardSizeNotice.Visibility = ViewModel.IdCardSizeWarning is null ? Visibility.Collapsed : Visibility.Visible;
 
         var s = ViewModel.Settings;
