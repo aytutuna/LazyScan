@@ -1615,7 +1615,6 @@ private struct InspectorSectionHeader: View {
         }
     }
 }
-#endif
 
 /// One entry of the Copy task's Scale pop-up.
 private enum CopyScaleChoice: Hashable {
@@ -1638,3 +1637,4 @@ private enum CopyScaleChoice: Hashable {
         }
     }
 }
+#endif
