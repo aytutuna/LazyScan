@@ -258,7 +258,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
                 guard let self, self.openContinuation != nil else { return }
                 self.device.delegate = nil
                 // An answer that comes after this would open a session nobody owns.
-                self.device.requestCloseSession()
+                { self.device.requestCloseSession() }()
                 self.resumeOpen(.failure(ScanError.deviceUnavailable(reason: { L10n.t("{0} did not respond.", self.info.name) })))
             }
             device.requestOpenSession()
