@@ -774,6 +774,39 @@ public enum IOSShell {
         }
     }
 
+    /// Moves what an earlier version saved in the Lazy Scan folder inside `documents` up into `documents`,
+    /// keeping the names (a file whose name is taken gets a number; a folder already there is merged into)
+    /// and leaving the Inbox alone, then removes the inner folder once it is empty. Without that folder
+    /// there is nothing to do.
+    static let innerFolderMovedKey: String = "LazyScan.innerFolderMoved"
+
+    static func moveInnerFolderUp(in documents: URL) {
+        let inner: URL = documents.appendingPathComponent("Lazy Scan", isDirectory: true)
+        moveContents(of: inner, into: documents, skipping: "Inbox")
+        if let left = try? FileManager.default.contentsOfDirectory(atPath: inner.path), left.isEmpty {
+            try? FileManager.default.removeItem(at: inner)
+        }
+    }
+
+    private static func moveContents(of source: URL, into target: URL, skipping skipped: String? = nil) {
+        let manager: FileManager = FileManager.default
+        guard let items = try? manager.contentsOfDirectory(at: source, includingPropertiesForKeys: [.isDirectoryKey]) else { return }
+        for item in items where item.lastPathComponent != skipped {
+            let destination: URL = target.appendingPathComponent(item.lastPathComponent)
+            let isFolder: Bool = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+            var destinationIsFolder: ObjCBool = false
+            let exists: Bool = manager.fileExists(atPath: destination.path, isDirectory: &destinationIsFolder)
+            if isFolder, exists, destinationIsFolder.boolValue {
+                moveContents(of: item, into: destination)
+                if let left = try? manager.contentsOfDirectory(atPath: item.path), left.isEmpty {
+                    try? manager.removeItem(at: item)
+                }
+            } else {
+                _ = try? NamingTemplate.moveToFreeURL(item, to: destination)
+            }
+        }
+    }
+
     /// The folder iOS copies the files opened from AirDrop or Mail into.
     static func inboxFolder(in documents: URL) -> URL {
         documents.appendingPathComponent("Inbox", isDirectory: true)
@@ -1388,7 +1421,16 @@ extension AppState {
         state.resolveDestinationBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
             IOSSaveFolder.resolve(bookmark)
         }
-        state.openBookmarkedFolder()
+        let picked: URL? = state.openBookmarkedFolder()
+        if let documents = IOSShell.documentsFolder, !UserDefaults.standard.bool(forKey: IOSShell.innerFolderMovedKey) {
+            let inner: String = documents.appendingPathComponent("Lazy Scan", isDirectory: true).resolvingSymlinksInPath().path
+            let pickedPath: String? = picked?.resolvingSymlinksInPath().path
+            let pickedInside: Bool = pickedPath == inner || pickedPath?.hasPrefix(inner + "/") == true
+            if !pickedInside {
+                IOSShell.moveInnerFolderUp(in: documents)
+                UserDefaults.standard.set(true, forKey: IOSShell.innerFolderMovedKey)
+            }
+        }
         state.removeStaleSaveTemps()
         state.resolveSyncFolderBookmark = { (bookmark: Data) -> (folder: URL, bookmark: Data)? in
             IOSSyncFolder.resolve(bookmark)

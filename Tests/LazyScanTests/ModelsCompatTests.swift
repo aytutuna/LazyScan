@@ -452,13 +452,13 @@ final class ModelsCompatTests: XCTestCase {
         let documents = URL(fileURLWithPath: "/var/mobile/Containers/Data/Application/0B3C9D1E-5F0A-4C2B-9E7D-1A2B3C4D5E6F/Documents",
                             isDirectory: true)
         let earlier = "/private/var/mobile/Containers/Data/Application/7A1F2E3D-4C5B-4A69-8778-96A5B4C3D2E1/Documents"
-        XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier + "/Lazy Scan", documents: documents),
-                       documents.path + "/Lazy Scan")
+        XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier + "/Lazy Scan", documents: documents), documents.path)
         XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier + "/Lazy Scan/Receipts", documents: documents),
-                       documents.path + "/Lazy Scan/Receipts")
+                       documents.path + "/Receipts")
+        XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier + "/Scans/Lazy Scan", documents: documents),
+                       documents.path + "/Scans/Lazy Scan")
         XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier, documents: documents), documents.path)
-        XCTAssertEqual(ScanSettings.rebasedDestinationPath(documents.path + "/Lazy Scan", documents: documents),
-                       documents.path + "/Lazy Scan")
+        XCTAssertEqual(ScanSettings.rebasedDestinationPath(documents.path + "/Lazy Scan", documents: documents), documents.path)
         // The Mac keeps every path.
         XCTAssertEqual(ScanSettings.rebasedDestinationPath(earlier + "/Lazy Scan", documents: nil),
                        earlier + "/Lazy Scan")

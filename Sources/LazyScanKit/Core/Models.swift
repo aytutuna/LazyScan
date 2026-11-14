@@ -863,7 +863,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     public var task: ScanTask? { ScanTask.tryParse(taskId) }
 
     /// The Mac saves to Downloads/Lazy Scan, which its sandbox opens with an entitlement; the iPhone to the
-    /// app's own Documents/Lazy Scan, which the Files app shows.
+    /// app's own Documents folder, which the Files app shows as Lazy Scan.
     public static var defaultDestinationPath: String {
         #if os(macOS)
         // In the sandbox this is a link inside the container to the real folder, which is what the user knows.
@@ -872,14 +872,16 @@ public struct ScanSettings: Codable, Equatable, Sendable {
             .resolvingSymlinksInPath()
         return downloads.appendingPathComponent("Lazy Scan", isDirectory: true).path
         #else
-        return (NSHomeDirectory() as NSString).appendingPathComponent("Documents/Lazy Scan")
+        return (NSHomeDirectory() as NSString).appendingPathComponent("Documents")
         #endif
     }
 
     /// `path` moved into `documents` when it lies in another iOS app container's Documents folder
     /// (…/Application/<UUID>/Documents/…): the container's path changes with every update of the app, so
     /// a save folder kept as a full path would point into one that is gone. Any other path, and every
-    /// path when `documents` is nil (the Mac), is returned as it is.
+    /// path when `documents` is nil (the Mac), is returned as it is. Earlier versions saved into a
+    /// Lazy Scan folder inside Documents; that folder's files now live in Documents itself, so a path
+    /// through it loses that step.
     public static func rebasedDestinationPath(_ path: String, documents: URL?) -> String {
         guard let documents else { return path }
         let parts: [String] = (path as NSString).pathComponents
@@ -887,7 +889,9 @@ public struct ScanSettings: Codable, Equatable, Sendable {
         while index < parts.count {
             if parts[index] == "Documents", parts[index - 2] == "Application", UUID(uuidString: parts[index - 1]) != nil {
                 var rebased: String = documents.path
-                for part in parts[(index + 1)...] {
+                var rest: ArraySlice<String> = parts[(index + 1)...]
+                if rest.first == "Lazy Scan" { rest = rest.dropFirst() }
+                for part in rest {
                     rebased = (rebased as NSString).appendingPathComponent(part)
                 }
                 return rebased

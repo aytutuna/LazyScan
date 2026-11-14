@@ -266,9 +266,11 @@ struct SaveFolderRow: View {
 
     var body: some View {
         let folder: URL = IOSSavedFiles.shownFolder(state.settings)
+        let isAppFolder: Bool = folder.resolvingSymlinksInPath().path == IOSShell.documentsFolder?.resolvingSymlinksInPath().path
+        let name: String = isAppFolder ? "Lazy Scan" : folder.lastPathComponent
         LabeledContent(IOSSettingsText.saveToLabel) {
             HStack(spacing: 8) {
-                Text(folder.lastPathComponent)
+                Text(name)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Button {

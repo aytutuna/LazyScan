@@ -187,9 +187,12 @@ public enum IOSSavedFiles {
         for url in justSaved {
             saved.insert(url.standardizedFileURL.path)
         }
+        let inbox: String = IOSShell.inboxFolder(in: folder).resolvingSymlinksInPath().path + "/"
+        let isDocuments: Bool = folder.resolvingSymlinksInPath().path == IOSShell.documentsFolder?.resolvingSymlinksInPath().path
         var files: [IOSSavedFile] = []
         for url in urls {
             guard knownExtensions.contains(url.pathExtension.lowercased()) else { continue }
+            if isDocuments, url.resolvingSymlinksInPath().path.hasPrefix(inbox) { continue }
             let values: URLResourceValues? = try? url.resourceValues(forKeys: Set(keys))
             if values?.isRegularFile == false { continue }
             let parent: URL = url.deletingLastPathComponent()

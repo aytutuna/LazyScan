@@ -17,7 +17,11 @@ public enum SaveFailure {
     private enum Cause { case diskFull, notAllowed, missing }
 
     private static func reason(_ error: Error?, folder: URL) -> String {
-        let name = folder.lastPathComponent
+        var name = folder.lastPathComponent
+        #if os(iOS)
+        // Files shows the app's Documents folder as Lazy Scan.
+        if name == "Documents", folder.deletingLastPathComponent().path == NSHomeDirectory() { name = "Lazy Scan" }
+        #endif
         switch cause(error, folder: folder) {
         case .diskFull?:
             return L10n.t("There is not enough space to save in “{0}”.", name)

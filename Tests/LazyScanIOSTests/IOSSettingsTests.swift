@@ -633,7 +633,7 @@ final class IOSSettingsTests: XCTestCase {
         var settings: ScanSettings = ScanSettings()
         settings.destinationPath =
             "/var/mobile/Containers/Data/Application/7A1F2E3D-4C5B-4A69-8778-96A5B4C3D2E1/Documents/Lazy Scan"
-        XCTAssertEqual(IOSSavedFiles.folder(settings).path, documents.appendingPathComponent("Lazy Scan").path)
+        XCTAssertEqual(IOSSavedFiles.folder(settings).path, documents.path)
         let otherApp: String =
             "/private/var/mobile/Containers/Data/Application/0B9C8D7E-6F5A-4B3C-9D2E-1F0A9B8C7D6E/Documents/Scans"
         settings.destinationPath = otherApp

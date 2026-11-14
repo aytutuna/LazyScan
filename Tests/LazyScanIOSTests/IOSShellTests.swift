@@ -1033,6 +1033,33 @@ final class IOSShellTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: received.path))
     }
 
+    func testInnerFolderFilesMoveUpOnceAndTheInboxStays() throws {
+        let manager: FileManager = FileManager.default
+        let documents: URL = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? manager.removeItem(at: documents) }
+        let inner: URL = documents.appendingPathComponent("Lazy Scan", isDirectory: true)
+        let receipts: URL = inner.appendingPathComponent("Receipts", isDirectory: true)
+        try manager.createDirectory(at: receipts, withIntermediateDirectories: true)
+        try manager.createDirectory(at: inner.appendingPathComponent("Inbox", isDirectory: true), withIntermediateDirectories: true)
+        try Data([1]).write(to: inner.appendingPathComponent("Scan.pdf"))
+        try Data([2]).write(to: inner.appendingPathComponent("Same.pdf"))
+        try Data([3]).write(to: receipts.appendingPathComponent("R.pdf"))
+        try Data([4]).write(to: documents.appendingPathComponent("Same.pdf"))
+        try manager.createDirectory(at: documents.appendingPathComponent("Receipts", isDirectory: true), withIntermediateDirectories: true)
+        try Data([5]).write(to: documents.appendingPathComponent("Receipts/Old.pdf"))
+
+        IOSShell.moveInnerFolderUp(in: documents)
+
+        XCTAssertEqual(try Data(contentsOf: documents.appendingPathComponent("Scan.pdf")), Data([1]))
+        XCTAssertEqual(try Data(contentsOf: documents.appendingPathComponent("Receipts/R.pdf")), Data([3]))
+        XCTAssertEqual(try Data(contentsOf: documents.appendingPathComponent("Receipts/Old.pdf")), Data([5]))
+        XCTAssertEqual(try Data(contentsOf: documents.appendingPathComponent("Same.pdf")), Data([4]))
+        XCTAssertEqual(try Data(contentsOf: documents.appendingPathComponent("Same 2.pdf")), Data([2]))
+        XCTAssertTrue(manager.fileExists(atPath: inner.appendingPathComponent("Inbox").path))
+        IOSShell.moveInnerFolderUp(in: documents)
+        XCTAssertTrue(manager.fileExists(atPath: documents.appendingPathComponent("Scan.pdf").path))
+    }
+
     func testInboxSweepKeepsRecentEntries() throws {
         let documents: URL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: documents) }
