@@ -62,9 +62,17 @@ public static class WpfImageCodec
         int width = converted.PixelWidth, height = converted.PixelHeight;
         var bgra = new byte[width * height * 4];
         converted.CopyPixels(bgra, width * 4, 0);
-        // BGRA → RGBA.
+        // BGRA → RGBA, with transparent pixels blended over white as the Mac draws them.
         for (int i = 0; i < bgra.Length; i += 4)
         {
+            int a = bgra[i + 3];
+            if (a != 255)
+            {
+                bgra[i] = (byte)(bgra[i] * a / 255 + 255 - a);
+                bgra[i + 1] = (byte)(bgra[i + 1] * a / 255 + 255 - a);
+                bgra[i + 2] = (byte)(bgra[i + 2] * a / 255 + 255 - a);
+                bgra[i + 3] = 255;
+            }
             (bgra[i], bgra[i + 2]) = (bgra[i + 2], bgra[i]);
         }
         return new RgbaImage(width, height, bgra);
