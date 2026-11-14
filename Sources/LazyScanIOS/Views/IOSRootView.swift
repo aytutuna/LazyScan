@@ -177,6 +177,9 @@ public struct IOSRootView: View {
             CornerEditorView(request: request, onAnswer: answerCorners, onStop: stopAction,
                              isShot: importer.importsShot)
         }
+        .sheet(item: pageRangeRequest) { (request: IOSPageRangeRequest) in
+            PageRangeSheet(request: request, onAnswer: answerPageRange)
+        }
         .sheet(isPresented: $state.showTroubleshooter) {
             TroubleshooterScreen(makeAddModel: makeAddModel, network: picker.network, onClose: closeTroubleshooter)
                 .environmentObject(state)
@@ -315,7 +318,7 @@ public struct IOSRootView: View {
             return true
         }
         let listing: Bool = !showsScanner && (detail == .history || detail == .saved)
-        return cornerRequest.wrappedValue != nil || listing
+        return cornerRequest.wrappedValue != nil || importer.pageRangeRequest != nil || listing
     }
 
     /// What covers the window: the lock while it is on and something private is on screen, else the plain
@@ -330,7 +333,7 @@ public struct IOSRootView: View {
 
     /// A review or editor coming up adds its own container to the window, above a cover already there.
     private var presentsEditor: Bool {
-        scanCover != nil || spreadEditor != nil || cornerRequest.wrappedValue != nil
+        scanCover != nil || spreadEditor != nil || cornerRequest.wrappedValue != nil || importer.pageRangeRequest != nil
     }
 
     private func showCover() {
@@ -464,6 +467,22 @@ public struct IOSRootView: View {
 
     private func answerCorners(_ answer: PhotoCornersAnswer) {
         importer.answer(answer)
+    }
+
+    /// The pages sheet of a long PDF; closing it any other way leaves the PDF out.
+    private var pageRangeRequest: Binding<IOSPageRangeRequest?> {
+        let session: IOSImportSession = importer
+        return Binding<IOSPageRangeRequest?>(
+            get: { session.pageRangeRequest },
+            set: { (request: IOSPageRangeRequest?) in
+                if request == nil {
+                    session.answerPageRange(nil)
+                }
+            })
+    }
+
+    private func answerPageRange(_ range: ClosedRange<Int>?) {
+        importer.answerPageRange(range)
     }
 
     private var stopAction: (@MainActor () -> Void)? {

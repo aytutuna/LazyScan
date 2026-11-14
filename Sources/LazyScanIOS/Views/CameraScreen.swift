@@ -898,6 +898,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// once nothing does.
     private var covered: Bool {
         resting || picking || memoryWarned != nil || importer.cornerRequest != nil
+            || importer.pageRangeRequest != nil
     }
 
     private func setPicking(_ shown: Bool) {

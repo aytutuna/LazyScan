@@ -122,6 +122,69 @@ final class IOSPDFImportTests: XCTestCase {
         XCTAssertThrowsError(try IOSPDFPages.open(Data("not a pdf".utf8), fileName: "notes.pdf"))
     }
 
+    func test_pageRange_parsesOnlyWholePagesInsideTheFile() {
+        XCTAssertEqual(IOSPageRange.parse(from: "40", to: "42", count: 100), 40...42)
+        XCTAssertEqual(IOSPageRange.parse(from: "1", to: "100", count: 100), 1...100)
+        XCTAssertEqual(IOSPageRange.parse(from: "7", to: "7", count: 100), 7...7)
+        XCTAssertNil(IOSPageRange.parse(from: "", to: "5", count: 100))
+        XCTAssertNil(IOSPageRange.parse(from: "3", to: "", count: 100))
+        XCTAssertNil(IOSPageRange.parse(from: "0", to: "5", count: 100))
+        XCTAssertNil(IOSPageRange.parse(from: "5", to: "101", count: 100))
+        XCTAssertNil(IOSPageRange.parse(from: "6", to: "5", count: 100))
+    }
+
+    @MainActor
+    func test_aLongPDF_asksForPages_andImportsOnlyThose() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let importer = IOSImportSession(state: state)
+        let data: Data = try makePDF([letter, letter, letter, a4Landscape, letter, letter])
+        let item = IOSImportItem(name: "long.pdf", data: data, kind: .pdf)
+        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
+            await importer.importItems([item])
+        }
+        try await ImportTestSupport.waitUntil(timeout: 60) { importer.pageRangeRequest != nil }
+        let request: IOSPageRangeRequest = try XCTUnwrap(importer.pageRangeRequest)
+        XCTAssertEqual(request.name, "long.pdf")
+        XCTAssertEqual(request.pageCount, 6)
+        importer.answerPageRange(4...5)
+        let outcome: IOSImportOutcome = await importing.value
+        XCTAssertNil(importer.pageRangeRequest)
+        XCTAssertEqual(outcome.added, 2)
+        XCTAssertEqual(outcome.problems, [])
+        try await ImportTestSupport.waitUntil(timeout: 120) { !state.isBusy }
+        XCTAssertEqual(state.scannedPages.count, 2)
+        XCTAssertGreaterThan(state.scannedPages[0].image.width, state.scannedPages[0].image.height)
+        XCTAssertLessThan(state.scannedPages[1].image.width, state.scannedPages[1].image.height)
+    }
+
+    @MainActor
+    func test_cancellingThePagesSheet_leavesThePDFOut_withoutAMessage() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let importer = IOSImportSession(state: state)
+        let data: Data = try makePDF([CGSize](repeating: letter, count: 5))
+        let item = IOSImportItem(name: "long.pdf", data: data, kind: .pdf)
+        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
+            await importer.importItems([item])
+        }
+        try await ImportTestSupport.waitUntil(timeout: 60) { importer.pageRangeRequest != nil }
+        importer.answerPageRange(nil)
+        let outcome: IOSImportOutcome = await importing.value
+        XCTAssertEqual(outcome.added, 0)
+        XCTAssertEqual(outcome.problems, [])
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    @MainActor
+    func test_aThreePagePDF_importsWithoutAsking() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let importer = IOSImportSession(state: state)
+        let data: Data = try makePDF([CGSize](repeating: letter, count: 3))
+        let item = IOSImportItem(name: "three.pdf", data: data, kind: .pdf)
+        let outcome: IOSImportOutcome = await importer.importItems([item])
+        XCTAssertNil(importer.pageRangeRequest)
+        XCTAssertEqual(outcome.added, 3)
+    }
+
     @MainActor
     func test_roundTrip_importedPagesSavedAgain_keepTheirNumberOrderAndSize() async throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)

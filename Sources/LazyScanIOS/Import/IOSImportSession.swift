@@ -2,6 +2,7 @@
 import LazyScanKit
 import CoreGraphics
 import Foundation
+import PDFKit
 import UniformTypeIdentifiers
 
 /// One thing to import: a photo's or a PDF's bytes, and the name shown for it.
@@ -155,6 +156,26 @@ public struct IOSImportOutcome: Equatable, Sendable {
     }
 }
 
+/// A PDF of more pages than `IOSPageRange.freeCount` asks which pages to take before it is read.
+public struct IOSPageRangeRequest: Identifiable {
+    public let id: UUID = UUID()
+    public let name: String
+    public let pageCount: Int
+}
+
+public enum IOSPageRange {
+    /// A PDF of this many pages or fewer is imported whole, without asking.
+    public static let freeCount: Int = 3
+
+    /// The pages typed in `from` and `to` (from 1), or nil when either is empty, not a number, outside
+    /// 1...`count` or the first is past the last.
+    public static func parse(from: String, to: String, count: Int) -> ClosedRange<Int>? {
+        guard let first = Int(from), let last = Int(to),
+              first >= 1, last <= count, first <= last else { return nil }
+        return first...last
+    }
+}
+
 /// The iPhone's short texts of importing and the camera.
 public enum IOSImportText {
     /// Our own camera (`CameraScreen`), the default way to take pages.
@@ -181,6 +202,28 @@ public enum IOSImportText {
     /// While a file is read: "Importing scan.pdf…".
     public static func importingFile(_ name: String) -> String {
         String(localized: "Importing \(name)\u{2026}")
+    }
+    /// The pages sheet of a long PDF.
+    public static var pagesToImportTitle: String { String(localized: "Pages to import") }
+    public static func pagesToImportSubtitle(_ name: String, count: Int) -> String {
+        String(localized: "\(name), \(count) pages")
+    }
+    public static var fromLabel: String { String(localized: "From") }
+    public static var toLabel: String { String(localized: "To") }
+    public static var fromHint: String { String(localized: "The first page to import") }
+    public static var toHint: String { String(localized: "The last page to import") }
+    public static var fromAccessibilityLabel: String { String(localized: "From page") }
+    public static var toAccessibilityLabel: String { String(localized: "To page") }
+    public static var importRangeLabel: String { String(localized: "Import") }
+    /// The range in words under the fields: "Pages 40 to 42.", "Page 7.".
+    public static func rangeSummary(_ range: ClosedRange<Int>) -> String {
+        if range.lowerBound == range.upperBound {
+            return String(localized: "Page \(range.lowerBound).")
+        }
+        return String(localized: "Pages \(range.lowerBound) to \(range.upperBound).")
+    }
+    public static func rangeInvalid(count: Int) -> String {
+        String(localized: "Enter pages 1 to \(count).")
     }
     /// A page that was ready but could not be added (something else was running).
     public static func notAddedMessage(_ name: String) -> String {
@@ -244,6 +287,8 @@ public enum IOSImportText {
 public final class IOSImportSession: ObservableObject {
     /// The corner editor to show; nil when none is waiting.
     @Published public private(set) var cornerRequest: PhotoCornersRequest?
+    /// The pages sheet to show for a long PDF; nil when none is waiting.
+    @Published public private(set) var pageRangeRequest: IOSPageRangeRequest?
     /// An import runs.
     @Published public private(set) var isImporting: Bool = false
     /// The item in hand is a photo our camera just took: its corner editor has Retake and no caption, and its
@@ -262,6 +307,7 @@ public final class IOSImportSession: ObservableObject {
     /// Where Items in frame and Straighten pages are kept.
     private let defaults: UserDefaults
     private var continuation: CheckedContinuation<PhotoCornersAnswer, Never>?
+    private var rangeContinuation: CheckedContinuation<ClosedRange<Int>?, Never>?
     private var stopRequested: Bool = false
     /// What waits for its turn, in order.
     private var pending: [IOSImportSource] = []
@@ -413,13 +459,22 @@ public final class IOSImportSession: ObservableObject {
         waiting.resume(returning: answer)
     }
 
-    /// Stops the import after the photo or page in hand: what waits is dropped and a waiting editor is
-    /// answered with Skip. Nothing happens when no import runs.
+    /// The pages sheet's answer: the pages to take, or nil to leave the PDF out. A second answer changes nothing.
+    public func answerPageRange(_ range: ClosedRange<Int>?) {
+        guard let waiting = rangeContinuation else { return }
+        rangeContinuation = nil
+        pageRangeRequest = nil
+        waiting.resume(returning: range)
+    }
+
+    /// Stops the import after the photo or page in hand: what waits is dropped and a waiting editor or
+    /// pages sheet is answered with Skip. Nothing happens when no import runs.
     public func stop() {
         guard isImporting else { return }
         pending.removeAll()
         stopRequested = true
         answer(.skip)
+        answerPageRange(nil)
     }
 
     // MARK: The steps
@@ -660,35 +715,43 @@ public final class IOSImportSession: ObservableObject {
         var outcome = IOSImportOutcome()
         let data: Data = item.data
         let name: String = item.name
-        let counted: Result<Int, IOSImportError> = await Task.detached(priority: .userInitiated) { () -> Result<Int, IOSImportError> in
+        let opened: Result<IOSOpenPDF, IOSImportError> = await Task.detached(priority: .userInitiated) { () -> Result<IOSOpenPDF, IOSImportError> in
             do {
-                let document = try IOSPDFPages.open(data, fileName: name)
-                return .success(document.pageCount)
+                return .success(IOSOpenPDF(document: try IOSPDFPages.open(data, fileName: name)))
             } catch let error as IOSImportError {
                 return .failure(error)
             } catch {
                 return .failure(IOSImportError(message: PhotoImport.unreadableMessage(name, detail: PhotoImport.unreadableDetail)))
             }
         }.value
-        let pageCount: Int
-        switch counted {
-        case .success(let count):
-            pageCount = count
+        let pdf: IOSOpenPDF
+        switch opened {
+        case .success(let open):
+            pdf = open
         case .failure(let error):
             outcome.add(error.message)
             return outcome
         }
-        var index: Int = 0
-        while index < pageCount {
+        let pageCount: Int = pdf.pageCount
+        var range: ClosedRange<Int> = 1...pageCount
+        if pageCount > IOSPageRange.freeCount {
+            guard let chosen = await askPageRange(IOSPageRangeRequest(name: name, pageCount: pageCount)) else {
+                return outcome
+            }
+            range = chosen
+        }
+        let total: Int = range.count
+        var done: Int = 0
+        while done < total {
             if stopRequested { break }
-            if index > 0, await isFull(leaving: pageCount - index) { break }
-            canStop = !pending.isEmpty || index + 1 < pageCount
-            progressText = IOSImportText.importingPage(index + 1, of: pageCount)
-            let pageIndex: Int = index
+            if done > 0, await isFull(leaving: total - done) { break }
+            canStop = !pending.isEmpty || done + 1 < total
+            progressText = IOSImportText.importingPage(done + 1, of: total)
+            let pageIndex: Int = range.lowerBound - 1 + done
             let page: ScannedPage? = await Task.detached(priority: .userInitiated) { () -> ScannedPage? in
-                IOSImportSession.pdfPage(data, fileName: name, index: pageIndex)
+                IOSImportSession.pdfPage(pdf, index: pageIndex)
             }.value
-            let shownName: String = PhotoImport.pageName(name, page: index + 1, pageCount: pageCount)
+            let shownName: String = PhotoImport.pageName(name, page: pageIndex + 1, pageCount: pageCount)
             if let ready = page {
                 if await bringIn([ready]) {
                     outcome.added += 1
@@ -698,9 +761,18 @@ public final class IOSImportSession: ObservableObject {
             } else {
                 outcome.add(PhotoImport.unreadableMessage(shownName, detail: PhotoImport.unreadableDetail))
             }
-            index += 1
+            done += 1
         }
         return outcome
+    }
+
+    /// Shows the pages sheet for `request` and waits for the answer (`answerPageRange`).
+    private func askPageRange(_ request: IOSPageRangeRequest) async -> ClosedRange<Int>? {
+        if stopRequested { return nil }
+        return await withCheckedContinuation { (waiting: CheckedContinuation<ClosedRange<Int>?, Never>) in
+            rangeContinuation = waiting
+            pageRangeRequest = request
+        }
     }
 
     /// The objects of one shot (receipts, photos, a Document shot's pages) into the state together, each a page
@@ -858,13 +930,24 @@ public final class IOSImportSession: ObservableObject {
         return IOSFoundPage(corners: corners, reason: PhotoReviewReason.none, byModel: false)
     }
 
-    /// Page `index` of the PDF in `data`, drawn at `IOSPDFPages.dpi`, as a page of the queue.
-    nonisolated static func pdfPage(_ data: Data, fileName: String, index: Int) -> ScannedPage? {
-        guard let document = try? IOSPDFPages.open(data, fileName: fileName),
-              let rendered = IOSPDFPages.render(document, index: index) else { return nil }
+    /// Page `index` of `pdf`, drawn at `IOSPDFPages.dpi`, as a page of the queue.
+    nonisolated static func pdfPage(_ pdf: IOSOpenPDF, index: Int) -> ScannedPage? {
+        guard let rendered = IOSPDFPages.render(pdf.document, index: index) else { return nil }
         var page: ScannedPage = ScannedPage(image: rendered.image, dpi: rendered.dpi, colorMode: .color)
         page.source = .photo
         return page
+    }
+}
+
+/// A PDF opened once for the whole import. PDFDocument is not Sendable; the pages are drawn one after
+/// another, each awaited before the next, so it is never used by two tasks at once.
+final class IOSOpenPDF: @unchecked Sendable {
+    let document: PDFDocument
+    let pageCount: Int
+
+    init(document: PDFDocument) {
+        self.document = document
+        self.pageCount = document.pageCount
     }
 }
 
