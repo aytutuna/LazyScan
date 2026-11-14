@@ -195,6 +195,8 @@ public enum IOSImportText {
     public static var filesLabel: String { String(localized: "Files") }
     /// Ends the import after the photo or page in hand.
     public static var stopLabel: String { String(localized: "Stop") }
+    /// In place of the photo's progress when its read takes more than a few seconds.
+    public static var downloadingMessage: String { String(localized: "Downloading from iCloud\u{2026}") }
     /// While a PDF's pages come in: "Importing page 2 of 5…".
     public static func importingPage(_ number: Int, of count: Int) -> String {
         String(localized: "Importing page \(number) of \(count)\u{2026}")
@@ -294,7 +296,8 @@ public final class IOSImportSession: ObservableObject {
     /// The item in hand is a photo our camera just took: its corner editor has Retake and no caption, and its
     /// progress reads "Reading the photo…".
     @Published public private(set) var importsShot: Bool = false
-    /// More photos or pages follow the one in hand, so the corner editor and the progress offer Stop.
+    /// The progress offers Stop during every read; the corner editor and the pages after it offer it only
+    /// while more photos or pages follow the one in hand.
     @Published public private(set) var canStop: Bool = false
     /// "Importing photo 2 of 5…" while an import runs.
     @Published public private(set) var progressText: String?
@@ -309,6 +312,11 @@ public final class IOSImportSession: ObservableObject {
     private var continuation: CheckedContinuation<PhotoCornersAnswer, Never>?
     private var rangeContinuation: CheckedContinuation<ClosedRange<Int>?, Never>?
     private var stopRequested: Bool = false
+    /// The read in hand, and who waits for it: Stop answers the waiter without waiting for a slow read
+    /// (a photo still coming down from iCloud) to end.
+    private var readTask: Task<Void, Never>?
+    private var readWaiter: CheckedContinuation<Result<IOSImportItem, IOSImportError>?, Never>?
+    private var readNumber: Int = 0
     /// What waits for its turn, in order.
     private var pending: [IOSImportSource] = []
     /// The photos taken so far in this import (for "Photo 2 of 5").
@@ -467,12 +475,19 @@ public final class IOSImportSession: ObservableObject {
         waiting.resume(returning: range)
     }
 
-    /// Stops the import after the photo or page in hand: what waits is dropped and a waiting editor or
-    /// pages sheet is answered with Skip. Nothing happens when no import runs.
+    /// Stops the import: a read in progress is cancelled and its item skipped, otherwise the import ends
+    /// after the photo or page in hand. What waits is dropped and a waiting editor or pages sheet is
+    /// answered with Skip. Nothing happens when no import runs.
     public func stop() {
         guard isImporting else { return }
         pending.removeAll()
         stopRequested = true
+        readTask?.cancel()
+        readTask = nil
+        if let waiting = readWaiter {
+            readWaiter = nil
+            waiting.resume(returning: nil)
+        }
         answer(.skip)
         answerPageRange(nil)
     }
@@ -524,7 +539,7 @@ public final class IOSImportSession: ObservableObject {
     private func importSource(_ source: IOSImportSource) async -> IOSImportOutcome {
         var outcome = IOSImportOutcome()
         importsShot = source.isShot
-        canStop = !pending.isEmpty
+        canStop = !source.isShot || !pending.isEmpty
         if source.expectedKind == .image {
             photoNumber += 1
             progressText = source.isShot
@@ -540,7 +555,10 @@ public final class IOSImportSession: ObservableObject {
             return outcome
         }
         let read: IOSReadItem = await readItem(source)
+        canStop = !pending.isEmpty
         switch read {
+        case .stopped:
+            outcome.skipped += 1
         case .problem(let message):
             outcome.add(message)
         case .pdf(let item):
@@ -556,7 +574,30 @@ public final class IOSImportSession: ObservableObject {
     /// `source`'s bytes read and, for a photo, its first page decoded and searched off the main actor. The
     /// bytes are let go here unless more pages are to come from them (a PDF, a TIFF of several pages).
     private func readItem(_ source: IOSImportSource) async -> IOSReadItem {
-        let loaded: Result<IOSImportItem, IOSImportError> = await source.read()
+        if stopRequested { return .stopped }
+        let shown: String? = progressText
+        var slow: Task<Void, Never>?
+        if !source.isShot {
+            slow = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                if !Task.isCancelled { self.progressText = IOSImportText.downloadingMessage }
+            }
+        }
+        readNumber += 1
+        let number: Int = readNumber
+        let answered: Result<IOSImportItem, IOSImportError>? = await withCheckedContinuation { waiter in
+            self.readWaiter = waiter
+            self.readTask = Task { @MainActor in
+                let result: Result<IOSImportItem, IOSImportError> = await source.read()
+                guard number == self.readNumber, let waiting = self.readWaiter else { return }
+                self.readWaiter = nil
+                self.readTask = nil
+                waiting.resume(returning: result)
+            }
+        }
+        slow?.cancel()
+        if progressText == IOSImportText.downloadingMessage { progressText = shown }
+        guard let loaded = answered else { return .stopped }
         let item: IOSImportItem
         switch loaded {
         case .success(let read):
@@ -951,9 +992,10 @@ final class IOSOpenPDF: @unchecked Sendable {
     }
 }
 
-/// The item in hand once read: why it could not be, a PDF's bytes, or a photo file with its first page
-/// read and searched (`IOSPhotoFile`).
+/// The item in hand once read: that Stop ended the read, why it could not be, a PDF's bytes, or a photo
+/// file with its first page read and searched (`IOSPhotoFile`).
 enum IOSReadItem {
+    case stopped
     case problem(String)
     case pdf(IOSImportItem)
     case photo(IOSPhotoFile)

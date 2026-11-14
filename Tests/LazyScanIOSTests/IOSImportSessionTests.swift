@@ -166,6 +166,30 @@ final class IOSImportSessionTests: XCTestCase {
     }
 
     @MainActor
+    func test_stop_endsASlowRead_withoutWaitingForIt() async throws {
+        let state: AppState = ImportTestSupport.makeState(in: folder)
+        let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .none))
+        let slow = IOSImportSource(name: "Photo", expectedKind: .image) { () async -> Result<IOSImportItem, IOSImportError> in
+            try? await Task.sleep(nanoseconds: 600_000_000_000)
+            return .failure(IOSImportError(message: "late"))
+        }
+        let importing: Task<IOSImportOutcome, Never> = Task { @MainActor in
+            await importer.importSources([slow])
+        }
+        try await ImportTestSupport.waitUntil(timeout: 60) { importer.isImporting }
+        // The only item: Stop is offered while it is read.
+        XCTAssertTrue(importer.canStop)
+        importer.stop()
+        let outcome: IOSImportOutcome = await importing.value
+        XCTAssertEqual(outcome.added, 0)
+        XCTAssertEqual(outcome.skipped, 1)
+        XCTAssertTrue(outcome.problems.isEmpty)
+        XCTAssertFalse(importer.isImporting)
+        XCTAssertFalse(importer.canStop)
+        XCTAssertNil(importer.progressText)
+    }
+
+    @MainActor
     func test_whatArrivesDuringAnImport_waits_andComesInAfterIt() async throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let importer = IOSImportSession(state: state, finder: fixedFinder(sheetQuad, reason: .unsure))

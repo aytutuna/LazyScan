@@ -3958,7 +3958,7 @@ public struct IOSImportSource {                                    // read when 
 public struct IOSImportOutcome: Equatable, Sendable { public var added: Int; public var skipped: Int; public var problems: [String] }
 public enum IOSImportText { /* cameraLabel "Camera" (our camera, I8),
                                shotName "Camera photo",
-                               photosLabel "Photos", filesLabel "Files", stopLabel "Stop",
+                               photosLabel "Photos", filesLabel "Files", stopLabel "Stop", downloadingMessage "Downloading from iCloud…",
                                importingPage(_:of:), importingFile(_:), notAddedMessage(_:), photoNotLoadedMessage;
                                copyHeldMessage "Print or discard the copy first; nothing was imported.", copyFullMessage(_:),
                                sidesInProgressMessage "Finish the front and back sides first; nothing was imported.";
@@ -3969,7 +3969,7 @@ public enum IOSImportText { /* cameraLabel "Camera" (our camera, I8),
     @Published public private(set) var cornerRequest: PhotoCornersRequest?   // the corner editor's item
     @Published public private(set) var isImporting: Bool
     @Published public private(set) var importsShot: Bool    // the item in hand is our camera's shot: Retake, no caption, readingShot
-    @Published public private(set) var canStop: Bool        // more photos or pages follow the one in hand: Stop in the editor and beside the progress
+    @Published public private(set) var canStop: Bool        // Stop beside the progress during every read (a read in a stored task that stop() cancels, "Downloading from iCloud…" after 4 seconds); in the editor and after the read only while more photos or pages follow the one in hand
     @Published public private(set) var progressText: String?
     public private(set) var lastOutcome: IOSImportOutcome?
     public init(state: AppState, finder: (@Sendable (RgbaImage) -> IOSFoundPage)? = nil,
@@ -3986,7 +3986,7 @@ public enum IOSImportText { /* cameraLabel "Camera" (our camera, I8),
     @discardableResult public func bringInScans(_ pages: [ScannedPage]) async -> Bool
     @discardableResult public func importShot(_ shot: IOSCameraShot, asksOnlyWhenUnsure: Bool = false) async -> IOSImportOutcome   // our camera's photo (I8, I9)
     public func answer(_ answer: PhotoCornersAnswer)
-    public func stop()                                             // drops what waits, Skip, ends after the item in hand
+    public func stop()                                             // drops what waits, Skip, ends after the item in hand; a read in hand is cancelled and skipped
 }
 // internal: CornerEditorModel (the corner editor without a screen), CornerEditorView (I13: `fixesCrop`, Cancel and no Stop;
 // Stop only with `onStop`, while more follows; `isShot`: Retake and no caption; its words by `request.kind`), CaptureBar

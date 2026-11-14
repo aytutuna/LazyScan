@@ -200,6 +200,7 @@
  {"key": "Document scan, %@ dpi, %@ by %@ pixels, %@", "comment": ""},
  {"key": "Done", "comment": ""},
  {"key": "Done with fronts", "comment": ""},
+ {"key": "Downloading from iCloud…", "comment": ""},
  {"key": "Drag the edges to keep only the part you want.", "comment": ""},
  {"key": "Dropped PDF", "comment": ""},
  {"key": "Dropped picture", "comment": ""},

@@ -40,8 +40,8 @@ enum CaptureBar {
     }
 }
 
-/// An import's progress ("Importing photo 2 of 5…", a shot's "Reading the photo…") with Stop while more
-/// photos or pages follow the one in hand, over the scanner tab's bars and over camera mode's viewfinder.
+/// An import's progress ("Importing photo 2 of 5…", a shot's "Reading the photo…") with Stop during every
+/// read, and after it while more photos or pages follow the one in hand, over the scanner tab's bars and over camera mode's viewfinder.
 struct ImportProgressRow: View {
     @EnvironmentObject private var importer: IOSImportSession
 
