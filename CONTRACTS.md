@@ -3440,6 +3440,8 @@ Twin of C# `NamingTokens` (`All`, `Known`, `EmptyProblem`, `UnknownProblem`, `In
 @MainActor public protocol PlatformLifecycle: AnyObject {
     func observeWillTerminate(_ handler: @escaping @MainActor () -> Void)    // the app may end now: it is quitting (iOS: also gone to the background)
     func observeDidBecomeActive(_ handler: @escaping @MainActor () -> Void)  // each time the app comes to the front
+    func beginHoldingAwake(_ reason: String) -> (any NSObjectProtocol)?      // default nil; the Mac: ProcessInfo.beginActivity([.userInitiated, .idleSystemSleepDisabled]), held by AppState.runExclusive until the operation ends
+    func endHoldingAwake(_ token: any NSObjectProtocol)                      // default no-op
 }
 // LazyScanMac/App/AppKitLifecycle.swift:  @MainActor public final class AppKitLifecycle: PlatformLifecycle { public init(center: NotificationCenter = .default) }
 //   NSApplication.willTerminateNotification, didBecomeActiveNotification, delivered on the main queue

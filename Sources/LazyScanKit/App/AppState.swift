@@ -3480,6 +3480,7 @@ public final class AppState: ObservableObject {
         let activity: Int? = background?.beginActivity("Lazy Scan work", expired: {
             if stopsInBackground { flag.cancel() }
         })
+        let awake: (any NSObjectProtocol)? = lifecycle?.beginHoldingAwake("Lazy Scan work")
         Task { @MainActor in
             do {
                 try await operation(flag)
@@ -3514,6 +3515,7 @@ public final class AppState: ObservableObject {
             // Pages just queued are recorded before the system's time is given back, not half a second later.
             if queueRecordTask != nil { writeQueueRecord() }
             if let activity { background?.endActivity(activity) }
+            if let awake { lifecycle?.endHoldingAwake(awake) }
             endOfWork()
         }
     }

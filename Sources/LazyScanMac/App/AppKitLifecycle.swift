@@ -23,6 +23,14 @@ public final class AppKitLifecycle: PlatformLifecycle {
         observe(NSApplication.didBecomeActiveNotification, handler)
     }
 
+    public func beginHoldingAwake(_ reason: String) -> (any NSObjectProtocol)? {
+        ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled], reason: reason)
+    }
+
+    public func endHoldingAwake(_ token: any NSObjectProtocol) {
+        ProcessInfo.processInfo.endActivity(token)
+    }
+
     private func observe(_ name: Notification.Name, _ handler: @escaping @MainActor () -> Void) {
         let observer: NSObjectProtocol = center.addObserver(forName: name, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated {

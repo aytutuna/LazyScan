@@ -13,6 +13,16 @@ public protocol PlatformLifecycle: AnyObject {
     func observeWillTerminate(_ handler: @escaping @MainActor () -> Void)
     /// Runs `handler` on the main actor each time the app comes to the front.
     func observeDidBecomeActive(_ handler: @escaping @MainActor () -> Void)
+    /// Keeps the system from going to sleep on its own, and the app from being slowed down, while a long
+    /// operation runs. Returns what `endHoldingAwake` takes, or nil where nothing is held.
+    func beginHoldingAwake(_ reason: String) -> (any NSObjectProtocol)?
+    /// The operation is done (or stopped): lets the system sleep again.
+    func endHoldingAwake(_ token: any NSObjectProtocol)
+}
+
+public extension PlatformLifecycle {
+    func beginHoldingAwake(_ reason: String) -> (any NSObjectProtocol)? { nil }
+    func endHoldingAwake(_ token: any NSObjectProtocol) {}
 }
 
 /// Time the system gives the app to finish a piece of work once it has gone to the background: the

@@ -42,6 +42,24 @@ private final class FakeBackground: BackgroundActivity {
     }
 }
 
+@MainActor
+private final class FakeAwake: PlatformLifecycle {
+    private(set) var held: [String] = []
+    private(set) var released = 0
+
+    func observeWillTerminate(_ handler: @escaping @MainActor () -> Void) {}
+    func observeDidBecomeActive(_ handler: @escaping @MainActor () -> Void) {}
+
+    func beginHoldingAwake(_ reason: String) -> (any NSObjectProtocol)? {
+        held.append(reason)
+        return NSObject()
+    }
+
+    func endHoldingAwake(_ token: any NSObjectProtocol) {
+        released += 1
+    }
+}
+
 private func backgroundPage() -> ScannedPage {
     let space: CGColorSpace = CGColorSpaceCreateDeviceRGB()
     let context = CGContext(data: nil, width: 300, height: 400, bitsPerComponent: 8, bytesPerRow: 0,
@@ -81,9 +99,9 @@ final class AppStateBackgroundTests: XCTestCase {
     private var saveFolder: URL { folder.appendingPathComponent("Saved", isDirectory: true) }
 
     @MainActor
-    private func makeState(background: FakeBackground?) async throws -> AppState {
+    private func makeState(background: FakeBackground?, lifecycle: FakeAwake? = nil) async throws -> AppState {
         let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: BackgroundScorer(),
-                             barcodeReader: BackgroundBarcodes(), background: background,
+                             barcodeReader: BackgroundBarcodes(), lifecycle: lifecycle, background: background,
                              files: AppStateFiles.all(in: folder))
         var settings = ScanSettings()
         settings.intent = .document
@@ -117,6 +135,18 @@ final class AppStateBackgroundTests: XCTestCase {
         try await waitUntilIdle(state)
         XCTAssertEqual(background.ended.count, background.begun.count)
         XCTAssertEqual(state.lastSavedURLs.count, 1)
+    }
+
+    @MainActor
+    func test_save_holdsTheSystemAwakeUntilItIsDone() async throws {
+        let awake = FakeAwake()
+        let state = try await makeState(background: nil, lifecycle: awake)
+        let before = awake.held.count
+        state.savePDF()
+        XCTAssertEqual(awake.held.count, before + 1)
+        XCTAssertEqual(awake.released, before)
+        try await waitUntilIdle(state)
+        XCTAssertEqual(awake.released, awake.held.count)
     }
 
     @MainActor
