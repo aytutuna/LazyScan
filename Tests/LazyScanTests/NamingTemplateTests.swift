@@ -88,6 +88,16 @@ final class NamingTemplateTests: XCTestCase {
         XCTAssertEqual(render("a/b:c"), "a-b-c")
     }
 
+    func test_reservedCharactersSanitized() {
+        XCTAssertEqual(render("a\\b*c?d\"e<f>g|h\ni"), "a-b-c-d-e-f-g-h-i")
+    }
+
+    func test_leadingDotsAreStripped() {
+        XCTAssertEqual(render(".scan {counter}"), "scan 1")
+        XCTAssertEqual(render(" ..  scan"), "scan")
+        XCTAssertEqual(render("."), "Scan")
+    }
+
     func test_combinedTemplate() {
         XCTAssertEqual(render("Scan {date} {counter}", counter: 4), "Scan 2026-08-13 4")
     }

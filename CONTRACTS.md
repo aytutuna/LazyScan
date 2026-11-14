@@ -3369,7 +3369,7 @@ public struct NamingTemplate {
     /// trimmed and cut to `maxLabelBytes` bytes of UTF-8 between characters; empty without one;
     /// tokens in it are not expanded; appended after the name, before the batch index, when the
     /// template has no {label}).
-    /// Unknown tokens pass through; result sanitized for the filesystem (no "/" or ":").
+    /// Unknown tokens pass through; result sanitized for the filesystem (no path separators, reserved characters, control characters or leading dots).
     public func baseFilename(_ context: NamingContext) -> String
     /// The same without a task (kept for existing callers).
     public func baseFilename(counter: Int, date: Date, intent: ScanIntent, index: Int?) -> String

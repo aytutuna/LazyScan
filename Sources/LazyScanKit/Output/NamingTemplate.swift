@@ -9,7 +9,7 @@ public struct NamingTemplate {
 
     /// Tokens: {date}=yyyy-MM-dd, {time}=HH.mm.ss, {year} {month} {day}, {counter} (also {counter:N}
     /// zero-padded), {intent} ("Document"/"Photos"), {index} (photo number in a batch, empty when nil).
-    /// Unknown tokens pass through; result sanitized for the filesystem (no "/" or ":").
+    /// Unknown tokens pass through; result sanitized for the filesystem (no path separators, reserved characters, control characters or leading dots).
     /// Same as `baseFilename(_:)` without a task or document date.
     public func baseFilename(counter: Int, date: Date, intent: ScanIntent, index: Int?) -> String {
         baseFilename(NamingContext(counter: counter, date: date, intent: intent, index: index))
@@ -136,13 +136,19 @@ public struct NamingTemplate {
         return String(repeating: "0", count: width - text.count) + text
     }
 
-    /// Make the name safe for the filesystem: no "/" or ":", no leading/trailing
-    /// whitespace, no doubled spaces, never empty.
+    /// Make the name safe for the filesystem: no path separators or characters exFAT, SMB and
+    /// OneDrive reserve (\ * ? " < > | : /), no control characters, no leading dots (a hidden
+    /// file), no leading/trailing whitespace, no doubled spaces, never empty.
     private func sanitized(_ name: String) -> String {
-        var result = name
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ":", with: "-")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let unsafe = CharacterSet(charactersIn: "/:\\*?\"<>|").union(.controlCharacters)
+        var result = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .unicodeScalars
+            .map { unsafe.contains($0) ? "-" : String($0) }
+            .joined()
+        while result.hasPrefix(".") {
+            result.removeFirst()
+        }
+        result = result.trimmingCharacters(in: .whitespaces)
         while result.contains("  ") {
             result = result.replacingOccurrences(of: "  ", with: " ")
         }

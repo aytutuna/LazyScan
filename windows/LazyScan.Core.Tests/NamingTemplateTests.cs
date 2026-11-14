@@ -89,11 +89,15 @@ public class NamingTemplateTests
     public void Sanitization() => Assert.Equal("a-b-c", Render("a/b:c"));
 
     [Fact]
-    public void WindowsReservedCharactersSanitized()
+    public void ReservedCharactersSanitized() =>
+        Assert.Equal("a-b-c-d-e-f-g-h-i", Render("a\\b*c?d\"e<f>g|h\ni"));
+
+    [Fact]
+    public void LeadingDotsAreStripped()
     {
-        // Windows-specific extension of the Swift behavior: the full reserved set is stripped.
-        string result = Render(@"a\b*c?d""e<f>g|h");
-        Assert.Equal("a-b-c-d-e-f-g-h", result);
+        Assert.Equal("scan 1", Render(".scan {counter}"));
+        Assert.Equal("scan", Render(" ..  scan"));
+        Assert.Equal("Scan", Render("."));
     }
 
     [Fact]

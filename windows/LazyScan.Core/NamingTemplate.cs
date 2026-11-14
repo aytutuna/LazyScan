@@ -165,20 +165,19 @@ public sealed partial class NamingTemplate
 
     /// <summary>
     /// Make the name safe for the filesystem: no path separators or Windows-reserved
-    /// characters, no leading/trailing whitespace, no doubled spaces, never empty.
+    /// characters, no leading dots (a hidden file on Mac and iPhone), no leading/trailing
+    /// whitespace, no doubled spaces, never empty.
     /// </summary>
     private static string Sanitized(string name)
     {
-        var chars = name.ToCharArray();
+        var chars = name.Trim().ToCharArray();
         for (int i = 0; i < chars.Length; i++)
         {
-            // The Swift original replaces "/" and ":"; Windows additionally reserves \ * ? " < > |
-            // and control characters.
             char c = chars[i];
             if (c is '/' or ':' or '\\' or '*' or '?' or '"' or '<' or '>' or '|' || char.IsControl(c))
                 chars[i] = '-';
         }
-        string result = new string(chars).Trim();
+        string result = new string(chars).TrimStart('.').Trim();
         while (result.Contains("  "))
         {
             result = result.Replace("  ", " ");
