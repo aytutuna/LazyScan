@@ -2595,6 +2595,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         foreach (var item in spooled) ScannedPages.Add(item);
     }
 
+    /// <summary>The date taken and caption the photo review asks to be written into every saved photo.</summary>
+    public PhotoDetails ReviewDetails { get; set; } = new();
+
     public Task SaveReviewedPhotos()
     {
         if (!DetectedPhotos.Any(p => p.Photo.Included)) { CancelPhotoReview(); return Task.CompletedTask; }
@@ -2602,6 +2605,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (IsReceiptReview) return SaveReceipts();
         var s = Settings.Clone();
         var format = OutputFormats.ImageFormatOrJpeg(s.Format);
+        var details = ReviewDetails;
         return RunExclusive(async token =>
         {
             // A crop correction applied just before saving must be in the files.
@@ -2625,7 +2629,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                             ? photo.Image
                             : ImagePipeline.Rotate(photo.Image, photo.RotationQuarterTurns);
                         // The mode the photo was scanned in: a black & white TIFF is G4.
-                        return WpfImageCodec.SaveAsNew(image, path, format, photo.Dpi, s.JpegQuality, photo.ColorMode);
+                        return WpfImageCodec.SaveAsNew(image, path, format, photo.Dpi, s.JpegQuality, photo.ColorMode, details);
                     }));
                 }
             });

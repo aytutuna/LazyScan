@@ -1855,6 +1855,50 @@
                             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                                 <TextBlock x:Name="ReviewTitle" Text="{loc:T Found photos}" Style="{StaticResource SubtitleText}" />
                             </StackPanel>
+                            <!-- Photos only: one date taken and caption for the whole batch, written into every saved file. -->
+                            <StackPanel x:Name="ReviewDetailsRow" DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <WrapPanel>
+                                    <GroupBox Style="{StaticResource TaskBannerGroupStyle}" AutomationProperties.Name="{loc:T Date taken}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{loc:T Date taken (optional)}" Style="{StaticResource BodyText}" Width="130"
+                                                       VerticalAlignment="Center" Margin="0,0,0,4" />
+                                            <Grid Width="64" Margin="0,0,8,4">
+                                                <TextBox x:Name="PhotoYearBox" Height="28" MaxLength="4"
+                                                         Typography.NumeralAlignment="Tabular"
+                                                         AutomationProperties.Name="{loc:T Year photos were taken}"
+                                                         AutomationProperties.HelpText="{loc:T Optional}"
+                                                         ToolTip="{loc:T Optional. The year the photos were taken. The month and day are optional too.}"
+                                                         TextChanged="PhotoDetails_Changed" />
+                                                <TextBlock x:Name="PhotoYearPlaceholder" Text="{loc:T Year}" Style="{StaticResource PlaceholderText}" />
+                                            </Grid>
+                                            <ComboBox x:Name="PhotoMonthBox" Width="120" Height="28" Margin="0,0,8,4"
+                                                      AutomationProperties.Name="{loc:T Month photos were taken}"
+                                                      AutomationProperties.HelpText="{loc:T Optional}"
+                                                      SelectionChanged="PhotoDetails_Changed" />
+                                            <ComboBox x:Name="PhotoDayBox" Width="64" Height="28" Margin="0,0,16,4"
+                                                      AutomationProperties.Name="{loc:T Day photos were taken}"
+                                                      SelectionChanged="PhotoDetails_Changed" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                    <TextBlock Text="{loc:T Caption (optional)}" Style="{StaticResource BodyText}"
+                                               VerticalAlignment="Center" Margin="0,0,8,4" />
+                                    <Grid Width="260" Margin="0,0,0,4">
+                                        <TextBox x:Name="PhotoCaptionBox" Height="28" MaxLength="200"
+                                                 AutomationProperties.Name="{loc:T Caption for the photos}"
+                                                 AutomationProperties.HelpText="{loc:T Optional}"
+                                                 ToolTip="{loc:T Optional. Saved in each file as its description.}"
+                                                 TextChanged="PhotoDetails_Changed" />
+                                        <TextBlock x:Name="PhotoCaptionPlaceholder" Text="{loc:T Caption}" Style="{StaticResource PlaceholderText}" />
+                                    </Grid>
+                                </WrapPanel>
+                                <StackPanel x:Name="PhotoYearError" Orientation="Horizontal" Visibility="Collapsed">
+                                    <TextBlock Style="{StaticResource GlyphText}" Text="&#xE7BA;" Margin="0,0,4,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                    <TextBlock x:Name="PhotoYearErrorText" Style="{StaticResource CaptionText}" Text="{loc:T Enter a four-digit year\, like 1985.}"
+                                               VerticalAlignment="Center" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </StackPanel>
+                            </StackPanel>
                             <!-- The right margin puts the scrollbar in the dialog's padding, clear of the cards. -->
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                           Margin="-6,0,-18,0">

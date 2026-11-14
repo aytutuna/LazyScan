@@ -549,6 +549,9 @@ cases run in both suites (`CaptureObjectsTests`: the kinds, the pages, two print
 the camera ID card composed at 85.60 × 53.98 mm within 0.5 mm, receipts and prints found in a whole
 shot, the forCapture steps; `GlareDetectorTests`: readings pinned to an independent model). The
 iPhone's own side (Vision's rectangles, the reviews, the guide frame) is Swift only.
+A photo review also has one optional Date taken (year, month, day) and Caption for the
+whole batch (`PhotoDetailsEntry`), written into every saved photo as `PhotoDetails`; a month or
+day with no valid year shows an error and is ignored.
 
 **The camera's two-sided pages and book spreads (I14, shared with the iPhone app, no Windows screen
 yet).** Two arrangements the Windows app never produces: `ScanArrangement.CameraFront` and

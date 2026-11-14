@@ -89,6 +89,7 @@ public partial class MainWindow : Window
         BuildBookChoices();
         AfterSaveBox.ItemsSource = AfterSaveItems();
         ReviewAfterSaveBox.ItemsSource = AfterSaveItems();
+        SetUpPhotoDetails();
         foreach (var binding in Enum.GetValues<DuplexBinding>())
         {
             BackBindingBox.Items.Add(new ComboBoxItem { Content = binding.Label(), Tag = binding });
@@ -493,6 +494,7 @@ public partial class MainWindow : Window
 
         // Photo review overlay.
         PhotoReviewOverlay.Visibility = ViewModel.ShowPhotoReview ? Visibility.Visible : Visibility.Collapsed;
+        SyncPhotoDetailsRow();
         // The reviews are modal (sheets on macOS): nothing underneath is reachable, not even by keyboard.
         MainContent.IsEnabled = !ViewModel.ShowPhotoReview && !ViewModel.ShowIdCardReview;
         SyncIdCardReview();
