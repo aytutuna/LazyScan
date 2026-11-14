@@ -302,6 +302,53 @@ final class PDFWriterTests: XCTestCase {
         XCTAssertEqual(placed.baseline, 396, accuracy: 1e-9)
     }
 
+    func test_textLayer_tallNarrowLinesAreRotated() throws {
+        // 6 characters in a box 0.02 wide (12.24 pt) and 0.1 tall (79.2 pt) at x 0.1, y 0.2 on Letter.
+        let tall = Self.line("Margin", 0.1, 0.2, 0.02, 0.1)
+        let codes = GlyphlessCodes.of([])
+        XCTAssertTrue(PDFWriter.isTurned(tall, codes: codes, widthPts: 612, heightPts: 792))
+        let placed = try XCTUnwrap(PDFWriter.textLayerLine(tall, codes: codes, widthPts: 612, heightPts: 792, rotated: true))
+        XCTAssertTrue(placed.rotated)
+        XCTAssertEqual(placed.fontSize, 12.24, accuracy: 1e-9)
+        XCTAssertEqual(placed.x, 61.2, accuracy: 1e-9)
+        XCTAssertEqual(placed.baseline, 237.6, accuracy: 1e-9)
+        // 6 code units × 0.5 em × 12.24 pt = 36.72 pt measured; 79.2 pt wanted.
+        XCTAssertEqual(placed.horizontalScale, 79.2 / 36.72, accuracy: 1e-9)
+        let pdf = try PDFWriter.make([Self.letterPage([tall])])
+        XCTAssertTrue(Self.has(pdf, "/F1 12.24 Tf\n215.6863 Tz\n0 -1 1 0 61.2 237.6 Tm\n"))
+        // Two characters stay horizontal whatever the box, and so does a wide box.
+        XCTAssertFalse(PDFWriter.isTurned(Self.line("ab", 0.1, 0.2, 0.02, 0.1), codes: codes, widthPts: 612, heightPts: 792))
+        XCTAssertFalse(PDFWriter.isTurned(Self.line("Margin", 0.1, 0.2, 0.3, 0.05), codes: codes, widthPts: 612, heightPts: 792))
+        let plain = try XCTUnwrap(PDFWriter.textLayerLine(tall, codes: codes, widthPts: 612, heightPts: 792))
+        XCTAssertFalse(plain.rotated)
+    }
+
+    func test_textLayer_narrowWordsInAFlatLineStayHorizontal() throws {
+        // "all" is 12.24 pt wide and 23.76 pt tall, as a word box often is, yet the line is flat.
+        let words = [
+            OCRWord(text: "of", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.05, height: 0.03)),
+            OCRWord(text: "all", boundingBox: CGRect(x: 0.2, y: 0.5, width: 0.02, height: 0.03)),
+            OCRWord(text: "its", boundingBox: CGRect(x: 0.3, y: 0.5, width: 0.02, height: 0.03)),
+        ]
+        let flat = OCRLine(text: "of all its", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.3, height: 0.03),
+                           confidence: 0.9, words: words)
+        let pdf = try PDFWriter.make([Self.letterPage([flat])])
+        XCTAssertEqual(Self.count(pdf, " Tj\n"), 3)
+        XCTAssertEqual(Self.count(pdf, "0 -1 1 0"), 0)
+    }
+
+    func test_textLayer_tallLineTurnsEveryWordRun() throws {
+        let words = [
+            OCRWord(text: "abc", boundingBox: CGRect(x: 0.1, y: 0.3, width: 0.02, height: 0.1)),
+            OCRWord(text: "de", boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.02, height: 0.05)),
+        ]
+        let tall = OCRLine(text: "abc de", boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.02, height: 0.2),
+                           confidence: 0.9, words: words)
+        let pdf = try PDFWriter.make([Self.letterPage([tall])])
+        XCTAssertEqual(Self.count(pdf, " Tj\n"), 2)
+        XCTAssertEqual(Self.count(pdf, "0 -1 1 0"), 2)
+    }
+
     func test_textLayer_wordsAreEachPlacedInTheirOwnBoxes() throws {
         // Three words of different widths in one line: each gets its own Tm and Tz, not one stretch;
         // all but the last carry a space and reach the next word.
@@ -322,7 +369,7 @@ final class PDFWriterTests: XCTestCase {
     func test_textLayer_scaleIsClamped_andEmptyLinesAreSkipped() throws {
         let lines = [
             Self.line("x", 0, 0.5, 1, 0.01),                                            // far too wide: 5×
-            Self.line("a very long line squeezed into a tiny box", 0, 0.4, 0.01, 0.05), // 0.2×
+            Self.line("a very long line squeezed into a tiny box", 0, 0.4, 0.01, 0.005), // 0.2×
             Self.line("", 0, 0.3, 0.5, 0.05),
             Self.line("flat", 0, 0.2, 0.5, 0),
         ]

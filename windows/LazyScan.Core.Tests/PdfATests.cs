@@ -285,7 +285,7 @@ public class PdfATests
         var lines = new List<OcrLine>
         {
             new("x", new RectD(0, 0.5, 1, 0.01), 0.9f),                       // far too wide: 5×
-            new("a very long line squeezed into a tiny box", new RectD(0, 0.4, 0.01, 0.05), 0.9f), // 0.2×
+            new("a very long line squeezed into a tiny box", new RectD(0, 0.4, 0.01, 0.005), 0.9f), // 0.2×
             new("", new RectD(0, 0.3, 0.5, 0.05), 0.9f),
             new("flat", new RectD(0, 0.2, 0.5, 0), 0.9f),
         };
@@ -293,6 +293,58 @@ public class PdfATests
         Assert.Contains("500 Tz\n", content);
         Assert.Contains("20 Tz\n", content);
         Assert.Equal(2, content.Split(" Tj\n").Length - 1);
+    }
+
+    [Fact]
+    public void TextLayer_TallNarrowLinesAreRotated()
+    {
+        // 6 characters in a box 0.02 wide (12.24 pt) and 0.1 tall (79.2 pt) at x 0.1, y 0.2 on Letter.
+        var tall = new OcrLine("Margin", new RectD(0.1, 0.2, 0.02, 0.1), 0.9f);
+        var codes = GlyphlessCodes.For([]);
+        Assert.True(PdfBuilder.IsTurned(tall, codes, 612, 792));
+        var placed = PdfBuilder.TextLayerLine(tall, codes, 612, 792, rotated: true)!.Value;
+        Assert.True(placed.Rotated);
+        Assert.Equal(12.24, placed.FontSize, 9);
+        Assert.Equal(61.2, placed.X, 9);
+        Assert.Equal(237.6, placed.Baseline, 9);
+        // 6 code units × 0.5 em × 12.24 pt = 36.72 pt measured; 79.2 pt wanted.
+        Assert.Equal(79.2 / 36.72, placed.HorizontalScale, 9);
+        string content = Latin1(PdfBuilder.Make([Page([tall])]));
+        Assert.Contains("/F1 12.24 Tf\n215.6863 Tz\n0 -1 1 0 61.2 237.6 Tm\n", content);
+        // Two characters stay horizontal whatever the box, and so does a wide box.
+        Assert.False(PdfBuilder.IsTurned(new OcrLine("ab", new RectD(0.1, 0.2, 0.02, 0.1), 0.9f), codes, 612, 792));
+        Assert.False(PdfBuilder.IsTurned(new OcrLine("Margin", new RectD(0.1, 0.2, 0.3, 0.05), 0.9f), codes, 612, 792));
+        Assert.False(PdfBuilder.TextLayerLine(tall, codes, 612, 792)!.Value.Rotated);
+    }
+
+    [Fact]
+    public void TextLayer_NarrowWordsInAFlatLineStayHorizontal()
+    {
+        // "all" is 12.24 pt wide and 23.76 pt tall, as a word box often is, yet the line is flat.
+        var words = new List<OcrWord>
+        {
+            new("of", new RectD(0.1, 0.5, 0.05, 0.03)),
+            new("all", new RectD(0.2, 0.5, 0.02, 0.03)),
+            new("its", new RectD(0.3, 0.5, 0.02, 0.03)),
+        };
+        var flat = new OcrLine("of all its", new RectD(0.1, 0.5, 0.3, 0.03), 0.9f, words);
+        string content = Latin1(PdfBuilder.Make([Page([flat])]));
+        Assert.Equal(3, content.Split(" Tj\n").Length - 1);
+        Assert.DoesNotContain("0 -1 1 0", content);
+    }
+
+    [Fact]
+    public void TextLayer_TallLineTurnsEveryWordRun()
+    {
+        var words = new List<OcrWord>
+        {
+            new("abc", new RectD(0.1, 0.3, 0.02, 0.1)),
+            new("de", new RectD(0.1, 0.2, 0.02, 0.05)),
+        };
+        var tall = new OcrLine("abc de", new RectD(0.1, 0.2, 0.02, 0.2), 0.9f, words);
+        string content = Latin1(PdfBuilder.Make([Page([tall])]));
+        Assert.Equal(2, content.Split(" Tj\n").Length - 1);
+        Assert.Equal(2, content.Split("0 -1 1 0").Length - 1);
     }
 
     [Fact]

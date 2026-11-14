@@ -415,14 +415,16 @@ public enum PDFWriter {
             // space, so they map straight into points with no flip.
             text += "BT\n3 Tr\n"
             for line in lines {
+                let turned = isTurned(line, codes: codes, widthPts: place.width, heightPts: place.height)
                 for run in textRuns(of: line) {
                     guard let placed = textLayerLine(run, codes: codes, widthPts: place.width, heightPts: place.height,
-                                                     originX: place.x, originY: place.y) else {
+                                                     originX: place.x, originY: place.y, rotated: turned) else {
                         continue
                     }
                     text += "/F1 \(f(placed.fontSize)) Tf\n"
                     text += "\(f(placed.horizontalScale * 100)) Tz\n"
-                    text += "1 0 0 1 \(f(placed.x)) \(f(placed.baseline)) Tm\n"
+                    let matrix = placed.rotated ? "0 -1 1 0" : "1 0 0 1"
+                    text += "\(matrix) \(f(placed.x)) \(f(placed.baseline)) Tm\n"
                     text += codes.hexString(run.text)
                     text += " Tj\n"
                 }
@@ -453,28 +455,47 @@ public enum PDFWriter {
     /// Where one OCR line's invisible text goes, in points: the font size is the box's height and
     /// the baseline its bottom edge (the glyphless font's ascent is a full em and its descent none,
     /// so a selection covers the box), stretched across the box's width by the horizontal scale
-    /// (Tz / 100, clamped to 0.2–5).
+    /// (Tz / 100, clamped to 0.2–5). A `rotated` line runs down the box: the font size is the box's
+    /// width, the scale fits its height, and the glyphs' ascent rises from the box's left edge toward
+    /// the right; `x` is then the box's left and `baseline` its top.
     struct PlacedLine: Equatable {
         let fontSize: Double
         let horizontalScale: Double
         let x: Double
         let baseline: Double
+        var rotated = false
+    }
+
+    /// Whether `line` is written rotated: more than two characters in a box taller than wide. It is
+    /// decided from the line's own box and its word runs follow, because a short word in a flat line
+    /// can have a box taller than wide.
+    static func isTurned(_ line: OCRLine, codes: GlyphlessCodes, widthPts: Double, heightPts: Double) -> Bool {
+        let box = line.boundingBox.standardized
+        return codes.codes(line.text).count > 2 && Double(box.height) * heightPts > Double(box.width) * widthPts
     }
 
     /// The placement of `line` on an image of the given size whose lower left corner is at (`originX`,
     /// `originY`) on the page; nil for an empty line or box.
     static func textLayerLine(_ line: OCRLine, codes: GlyphlessCodes, widthPts: Double,
-                              heightPts: Double, originX: Double = 0, originY: Double = 0) -> PlacedLine? {
+                              heightPts: Double, originX: Double = 0, originY: Double = 0,
+                              rotated: Bool = false) -> PlacedLine? {
         if line.text.isEmpty { return nil }
         let box = line.boundingBox.standardized
         let targetWidth = Double(box.width) * widthPts
-        let fontSize = Double(box.height) * heightPts
-        if fontSize <= 0 || targetWidth <= 0 { return nil }
+        let targetHeight = Double(box.height) * heightPts
+        if targetHeight <= 0 || targetWidth <= 0 { return nil }
         let codeCount = codes.codes(line.text).count
+        let x = originX + Double(box.minX) * widthPts
+        if rotated {
+            let measured = GlyphlessFont.textWidth(codeCount: codeCount, fontSize: targetWidth)
+            let scale = min(max(targetHeight / measured, 0.2), 5.0)
+            return PlacedLine(fontSize: targetWidth, horizontalScale: scale, x: x,
+                              baseline: originY + Double(box.maxY) * heightPts, rotated: true)
+        }
+        let baseline = originY + Double(box.minY) * heightPts
+        let fontSize = targetHeight
         let measuredWidth = GlyphlessFont.textWidth(codeCount: codeCount, fontSize: fontSize)
         let scale = min(max(targetWidth / measuredWidth, 0.2), 5.0)
-        let x = originX + Double(box.minX) * widthPts
-        let baseline = originY + Double(box.minY) * heightPts
         return PlacedLine(fontSize: fontSize, horizontalScale: scale, x: x, baseline: baseline)
     }
 

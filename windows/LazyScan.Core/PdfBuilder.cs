@@ -570,12 +570,14 @@ public static class PdfBuilder
             sb.Append("BT\n3 Tr\n");
             foreach (var line in lines)
             {
+                bool turned = IsTurned(line, codes, place.Width, place.Height);
                 foreach (var run in TextRuns(line))
                 {
-                    if (TextLayerLine(run, codes, place.Width, place.Height, place.X, place.Y) is not { } placed) continue;
+                    if (TextLayerLine(run, codes, place.Width, place.Height, place.X, place.Y, turned) is not { } placed) continue;
                     sb.Append($"/F1 {F(placed.FontSize)} Tf\n");
                     sb.Append($"{F(placed.HorizontalScale * 100)} Tz\n");
-                    sb.Append($"1 0 0 1 {F(placed.X)} {F(placed.Baseline)} Tm\n");
+                    string matrix = placed.Rotated ? "0 -1 1 0" : "1 0 0 1";
+                    sb.Append($"{matrix} {F(placed.X)} {F(placed.Baseline)} Tm\n");
                     sb.Append(codes.HexString(run.Text)).Append(" Tj\n");
                 }
             }
@@ -608,25 +610,48 @@ public static class PdfBuilder
     /// Where one OCR line's invisible text goes, in points: the font size is the box's height and
     /// the baseline its bottom edge (the glyphless font's ascent is a full em and its descent
     /// none, so a selection covers the box), stretched across the box's width by the horizontal
-    /// scale (Tz / 100, clamped to 0.2–5).
+    /// scale (Tz / 100, clamped to 0.2–5). A <c>Rotated</c> line runs down the box: the font size is the box's
+    /// width, the scale fits its height, and the glyphs' ascent rises from the box's left edge toward the
+    /// right; <c>X</c> is then the box's left and <c>Baseline</c> its top.
     /// </summary>
-    internal readonly record struct PlacedLine(double FontSize, double HorizontalScale, double X, double Baseline);
+    internal readonly record struct PlacedLine(double FontSize, double HorizontalScale, double X, double Baseline,
+                                               bool Rotated = false);
+
+    /// <summary>
+    /// Whether <paramref name="line"/> is written rotated: more than two characters in a box taller than wide.
+    /// It is decided from the line's own box and its word runs follow, because a short word in a flat line
+    /// can have a box taller than wide.
+    /// </summary>
+    internal static bool IsTurned(OcrLine line, GlyphlessCodes codes, double widthPts, double heightPts)
+    {
+        var box = line.BoundingBox.Standardized;
+        return codes.Codes(line.Text).Count > 2 && box.Height * heightPts > box.Width * widthPts;
+    }
 
     /// <summary>
     /// The placement of <paramref name="line"/> on an image of the given size whose lower left corner is at
     /// (<paramref name="originX"/>, <paramref name="originY"/>) on the page; null for an empty line or box.
     /// </summary>
     internal static PlacedLine? TextLayerLine(OcrLine line, GlyphlessCodes codes, double widthPts, double heightPts,
-                                              double originX = 0, double originY = 0)
+                                              double originX = 0, double originY = 0, bool rotated = false)
     {
         if (string.IsNullOrEmpty(line.Text)) return null;
         var box = line.BoundingBox.Standardized;
         double targetWidth = box.Width * widthPts;
-        double fontSize = box.Height * heightPts;
-        if (fontSize <= 0 || targetWidth <= 0) return null;
-        double measuredWidth = GlyphlessFont.TextWidth(codes.Codes(line.Text).Count, fontSize);
+        double targetHeight = box.Height * heightPts;
+        if (targetHeight <= 0 || targetWidth <= 0) return null;
+        int codeCount = codes.Codes(line.Text).Count;
+        double x = originX + box.MinX * widthPts;
+        if (rotated)
+        {
+            double measured = GlyphlessFont.TextWidth(codeCount, targetWidth);
+            double turnedScale = Math.Clamp(targetHeight / measured, 0.2, 5.0);
+            return new PlacedLine(targetWidth, turnedScale, x, originY + box.MaxY * heightPts, true);
+        }
+        double baseline = originY + box.MinY * heightPts;
+        double measuredWidth = GlyphlessFont.TextWidth(codeCount, targetHeight);
         double scale = Math.Clamp(targetWidth / measuredWidth, 0.2, 5.0);
-        return new PlacedLine(fontSize, scale, originX + box.MinX * widthPts, originY + box.MinY * heightPts);
+        return new PlacedLine(targetHeight, scale, x, baseline);
     }
 
     /// <summary>Culture-invariant number formatting — PDF syntax requires '.' decimals.</summary>
