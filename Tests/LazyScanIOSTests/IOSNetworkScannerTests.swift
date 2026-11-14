@@ -184,5 +184,28 @@ final class IOSNetworkScannerTests: XCTestCase {
         // own (`backends(options:networkScanners:)`, IOSScannerPickerTests).
         XCTAssertEqual(IOSShell.backends(options: IOSLaunchOptions(demoScannerOnly: false)).count, 1)
     }
+
+    @MainActor
+    func test_hostsFile_movesOutOfTheExcludedFolderOnce_withoutOverwriting() throws {
+        let root: URL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("IOSNetworkScannerTests-\(UUID().uuidString)", isDirectory: true)
+        let oldFolder: URL = root.appendingPathComponent("Network", isDirectory: true)
+        try FileManager.default.createDirectory(at: oldFolder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let name: String = EsclHostList.fileName
+        try Data("[\"192.0.2.10\"]".utf8).write(to: oldFolder.appendingPathComponent(name))
+        let trust: URL = oldFolder.appendingPathComponent(EsclTrustStore.fileName)
+        try Data("{}".utf8).write(to: trust)
+
+        IOSNetworkScanners.moveHostsFile(from: oldFolder, to: root)
+        XCTAssertEqual(try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8), "[\"192.0.2.10\"]")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldFolder.appendingPathComponent(name).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: trust.path))
+
+        // A file already at the new place is kept, even when an old one turns up again.
+        try Data("[\"192.0.2.20\"]".utf8).write(to: oldFolder.appendingPathComponent(name))
+        IOSNetworkScanners.moveHostsFile(from: oldFolder, to: root)
+        XCTAssertEqual(try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8), "[\"192.0.2.10\"]")
+    }
 }
 #endif

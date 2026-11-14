@@ -60,8 +60,9 @@ public enum IOSNetworkText {
 
 /// The iPhone's and iPad's network scanners: the eSCL connection (`EsclScannerBackend`) with its search
 /// (`EsclDiscovery` over NWBrowser and dnssd), the addresses added by hand and the trusted certificates
-/// (escl-hosts.json and escl-trust.json in Application Support's Lazy Scan/Network folder, which is
-/// kept out of backups: pinned keys belong to this device), and what the screens need around it:
+/// (escl-hosts.json beside settings.json in Application Support's Lazy Scan folder, which is backed up;
+/// escl-trust.json in its Network folder, which is kept out of backups: pinned keys belong to this
+/// device), and what the screens need around it:
 /// - the explanation card before the first search (`needsExplanation`, kept in the user's defaults once
 ///   read), so the system's Local Network prompt comes when the user expects it;
 /// - searching only while the app is in front (UIApplication's background and foreground notifications);
@@ -92,11 +93,12 @@ public final class IOSNetworkScanners: ObservableObject {
     /// standard user defaults and notification center.
     public convenience init() {
         let folder: URL = IOSNetworkScanners.filesFolder()
+        let hostsFolder: URL = IOSNetworkScanners.hostsFolder(moving: folder)
         let discovery: EsclDiscovery = EsclDiscovery(makeBrowser: { (secure: Bool) -> any EsclServiceBrowsing in
             EsclNWBrowser(secure: secure)
         }, resolver: EsclDnssdResolver())
         let backend: EsclScannerBackend = EsclScannerBackend(trust: EsclTrustStore(directory: folder),
-                                                             hosts: EsclHostList(directory: folder),
+                                                             hosts: EsclHostList(directory: hostsFolder),
                                                              discovery: discovery,
                                                              background: UIKitBackgroundActivity())
         self.init(backend: backend, defaults: UserDefaults.standard, center: NotificationCenter.default)
@@ -135,17 +137,40 @@ public final class IOSNetworkScanners: ObservableObject {
         }
     }
 
-    /// Application Support/Lazy Scan/Network, created and kept out of backups.
-    public static func filesFolder() -> URL {
+    /// Application Support/Lazy Scan, created; settings.json lives here and the folder is backed up.
+    private static func supportFolder() -> URL {
         let base: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
-        var folder: URL = base.appendingPathComponent("Lazy Scan", isDirectory: true)
-            .appendingPathComponent("Network", isDirectory: true)
+        let folder: URL = base.appendingPathComponent("Lazy Scan", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
+    /// Application Support/Lazy Scan/Network, created and kept out of backups.
+    public static func filesFolder() -> URL {
+        var folder: URL = supportFolder().appendingPathComponent("Network", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var values: URLResourceValues = URLResourceValues()
         values.isExcludedFromBackup = true
         try? folder.setResourceValues(values)
         return folder
+    }
+
+    /// Application Support/Lazy Scan, where escl-hosts.json is kept. The file an earlier version left in
+    /// `oldFolder` moves here once, unless one is here already.
+    public static func hostsFolder(moving oldFolder: URL) -> URL {
+        let folder: URL = supportFolder()
+        moveHostsFile(from: oldFolder, to: folder)
+        return folder
+    }
+
+    static func moveHostsFile(from oldFolder: URL, to folder: URL) {
+        let old: URL = oldFolder.appendingPathComponent(EsclHostList.fileName)
+        let new: URL = folder.appendingPathComponent(EsclHostList.fileName)
+        let files: FileManager = FileManager.default
+        if files.fileExists(atPath: old.path), !files.fileExists(atPath: new.path) {
+            try? files.moveItem(at: old, to: new)
+        }
     }
 
     /// The user read the explanation card: the search starts (and with it the system's prompt).
