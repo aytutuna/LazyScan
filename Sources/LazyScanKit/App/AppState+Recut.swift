@@ -397,6 +397,7 @@ extension AppState {
         guard PageRecut.canRecut(page), let url = page.alternate?.fileURL else { return [:] }
         let rotation: Int = page.rotationQuarterTurns
         let threshold: Double = settings.adjustments.blackWhiteThreshold
+        let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
         return await Task.detached(priority: .userInitiated) { () -> [CaptureFilter: CGImage] in
             guard let photo = AppState.thumbnailOfFile(url, maxSide: maxSide * 2) else { return [:] }
             var previews: [CaptureFilter: CGImage] = [:]

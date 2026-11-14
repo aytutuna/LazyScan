@@ -1625,7 +1625,7 @@ public final class AppState: ObservableObject {
         }
     }
 
-    private func stopScanAgain() {
+    func stopScanAgain() {
         scanAgainTask?.cancel()
         scanAgainTask = nil
         scanAgainRemaining = nil
