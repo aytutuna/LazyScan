@@ -752,6 +752,7 @@ public final class AppState: ObservableObject {
     public var canvasImage: CGImage? { overviewImage ?? lastScanImage }
 
     public static let fallbackResolutions = [75, 150, 200, 300, 600, 1200]
+    private static let historySize = 50
 
     /// Each app shell passes its scanner connections and its system services (the Mac's:
     /// `AppState.makeForMac()` in LazyScanMac). Without them the app has the demo scanner only
@@ -1882,6 +1883,7 @@ public final class AppState: ObservableObject {
     /// with nothing added, when another scanner was chosen meanwhile (`generation`).
     func addToHistory(_ pages: [ScannedPage], intent: ScanIntent, generation: Int?) async -> Bool {
         let folder = historyDirectory
+        let pages = Array(pages.suffix(Self.historySize))
         let historyThumbs: [(CGImage, CGSize, Int, UUID, ColorMode, URL?)] = await Task.detached(priority: .utility) {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             return pages.map { page in
@@ -1907,9 +1909,9 @@ public final class AppState: ObservableObject {
             return false
         }
         scanHistory.insert(contentsOf: entries.reversed(), at: 0)
-        if scanHistory.count > 50 {
-            scanHistory[50...].forEach { removePageFile(of: $0) }
-            scanHistory.removeSubrange(50...)
+        if scanHistory.count > Self.historySize {
+            scanHistory[Self.historySize...].forEach { removePageFile(of: $0) }
+            scanHistory.removeSubrange(Self.historySize...)
         }
         return true
     }

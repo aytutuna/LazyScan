@@ -344,6 +344,17 @@ final class AppStateSeamTests: XCTestCase {
     }
 
     @MainActor
+    func test_ingest_ofMoreThan50Pages_keepsHistoryOfTheNewest50() async throws {
+        let state = makeState()
+        let pages: [ScannedPage] = (0..<60).map { _ in seamPage(width: 40, height: 52, dpi: 50) }
+        XCTAssertTrue(state.ingest(pages, source: .photo))
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertEqual(state.scannedPages.count, 60)
+        XCTAssertEqual(state.scanHistory.map(\.pageID), pages.suffix(50).reversed().map(\.id))
+    }
+
+    @MainActor
     func test_historyEntry_keepsItsPage_addToQueueQueuesACopy_clearDeletesTheFile() async throws {
         let state = makeState()
         let page = seamPage(width: 400, height: 520, dpi: 50)
