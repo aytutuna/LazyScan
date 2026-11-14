@@ -299,21 +299,45 @@ final class CaptureObjectsTests: XCTestCase {
         document.document.autoRotate = true
         XCTAssertEqual(stepNames(PageProcessor.forCapture(document, scorer: scorer)),
                        ["perspective", "enhance", "blank", "separator", "orientation"])
-        // Photos, receipts and the ID card: cut out and cleaned up, then only their adjustments.
-        let objects: [ScanTask] = [.photos, .idCard]
-        for task in objects {
-            var s: ScanSettings = taskSettings(task)
-            s.document.autoRotate = true
-            XCTAssertEqual(stepNames(PageProcessor.forCapture(s, scorer: scorer)), ["perspective", "enhance"], "\(task)")
-        }
+        // Photos, receipts and the ID card: cut out and cleaned up, then only their adjustments; photo prints
+        // are checked for glare as well.
+        var card: ScanSettings = taskSettings(.idCard)
+        card.document.autoRotate = true
+        XCTAssertEqual(stepNames(PageProcessor.forCapture(card, scorer: scorer)), ["perspective", "enhance"])
+        var prints: ScanSettings = taskSettings(.photos)
+        prints.document.autoRotate = true
+        XCTAssertEqual(stepNames(PageProcessor.forCapture(prints, scorer: scorer)), ["perspective", "enhance", "glare"])
         XCTAssertEqual(stepNames(PageProcessor.forCapture(taskSettings(.photoRestore), scorer: scorer)),
-                       ["perspective", "enhance", "adjust"])
+                       ["perspective", "enhance", "glare", "adjust"])
         XCTAssertEqual(stepNames(PageProcessor.forCapture(taskSettings(.receipt), scorer: scorer)),
                        ["perspective", "enhance", "adjust"])
         let photos: EnhanceStep = try XCTUnwrap(PageProcessor.forCapture(taskSettings(.photos)).prepare[1] as? EnhanceStep)
         XCTAssertEqual(photos.mode, .photo)
         let receipts: EnhanceStep = try XCTUnwrap(PageProcessor.forCapture(taskSettings(.receipt)).prepare[1] as? EnhanceStep)
         XCTAssertEqual(receipts.mode, .gray)
+    }
+
+    func testAShotOfAPrintIsCheckedForGlareAndFixCropChecksItAgain() throws {
+        let clean: CGImage = try XCTUnwrap(GlareCards.card().makeCGImage())
+        let glaring: CGImage = try XCTUnwrap(GlareCards.card(glare: true).makeCGImage())
+        let whole = Quad(topLeft: CGPoint(x: 4, y: 4), topRight: CGPoint(x: 424, y: 4),
+                         bottomRight: CGPoint(x: 424, y: 266), bottomLeft: CGPoint(x: 4, y: 266))
+        // The left half of the card holds no glare.
+        let left = Quad(topLeft: CGPoint(x: 4, y: 4), topRight: CGPoint(x: 200, y: 4),
+                        bottomRight: CGPoint(x: 200, y: 266), bottomLeft: CGPoint(x: 4, y: 266))
+        let processor: PageProcessor = PageProcessor.forCapture(taskSettings(.photos))
+        func cutOut(_ photo: CGImage, _ quad: Quad, kind: CaptureKind = .photo) throws -> ScannedPage {
+            let pages: [ScannedPage] = CaptureObjects.pages(photo, quads: [quad], kind: kind)
+            return try XCTUnwrap(try processor.process(pages).pages.first)
+        }
+        XCTAssertEqual(try cutOut(clean, whole).capture?.glare, false)
+        let flagged: ScannedPage = try cutOut(glaring, whole)
+        XCTAssertEqual(flagged.capture?.glare, true)
+        XCTAssertNil(try cutOut(glaring, whole, kind: .idCard).capture?.glare)
+        let recut: ScannedPage = try XCTUnwrap(PageRecut.recut(flagged, photo: glaring, filter: nil, corners: left))
+        XCTAssertEqual(recut.capture?.glare, false)
+        let again: ScannedPage = try XCTUnwrap(PageRecut.recut(recut, photo: glaring, filter: nil, corners: whole))
+        XCTAssertEqual(again.capture?.glare, true)
     }
 
     func testTwoPrintsInOneShotAreCutOutAtTheirSize() throws {

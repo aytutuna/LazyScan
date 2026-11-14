@@ -55,7 +55,7 @@ public struct PerspectiveStep: PageStep {
     /// The pixels of the photo the last page was cut from: the objects of a shot share one photo, so it
     /// is converted once per shot. The photo is held weakly, and its pixels are dropped at the next cut
     /// once the photo is gone.
-    private final class SharedPhoto: @unchecked Sendable {
+    final class SharedPhoto: @unchecked Sendable {
         private let lock = NSLock()
         private weak var source: CGImage?
         private var pixels: RgbaImage?
@@ -72,7 +72,7 @@ public struct PerspectiveStep: PageStep {
         }
     }
 
-    private static let sharedPhoto = SharedPhoto()
+    static let sharedPhoto = SharedPhoto()
 
     public func apply(_ page: ScannedPage) -> ScannedPage {
         guard let capture = page.capture, capture.scale == nil, page.geometry == nil,
@@ -101,6 +101,24 @@ public struct PerspectiveStep: PageStep {
         measured = measured.copyMeta(from: page).withCapture(measuredFacts)
         let geometry = PageGeometry(cropped: true, angleDegrees: 0, basis: .perspective, quad: quad)
         return measured.withGeometry(image, geometry: geometry)
+    }
+}
+
+/// Checks the photo as taken for glare on a print it was cut along (`GlareDetector`) and records it on the
+/// capture (`CaptureFacts.glare`): the page's note says to tilt. Only pages of kind photo cut out by
+/// `PerspectiveStep`, once; the photo kept as the other version is read, before any clean-up stretches its
+/// whites. Swift only: the Windows app takes no camera shots.
+public struct GlareStep: PageStep {
+    public var name: String { "glare" }
+
+    public init() {}
+
+    public func apply(_ page: ScannedPage) -> ScannedPage {
+        guard var facts = page.capture, facts.kind == .photo, facts.scale != nil, facts.glare == nil,
+              page.geometry?.basis == .perspective, let shot = page.alternate?.image,
+              let pixels = PerspectiveStep.sharedPhoto.rgba(of: shot) else { return page }
+        facts.glare = GlareDetector.hasGlare(pixels, region: facts.quad)
+        return page.withCapture(facts)
     }
 }
 
@@ -534,7 +552,8 @@ public struct PageProcessor {
 
     /// The steps for pages taken by a camera (`ScannedPage.capture`), which go to the queue like imported
     /// photos: `PerspectiveStep` cuts each page out of its photo at its real size, `EnhanceStep` cleans it up
-    /// in the task's mode (`DocumentEnhancer.mode(for:)`), both in `prepare`, then the steps of
+    /// in the task's mode (`DocumentEnhancer.mode(for:)`), then `GlareStep` for the photo flow (`.photoSplit`),
+    /// all in `prepare`, then the steps of
     /// `forPhotoImport` for pages that go to the queue. The objects of the other tasks (photos, receipts, an
     /// ID card: `CaptureObjects`) get only the adjustments after that, unless they change nothing, and not on the shot kept as their other
     /// version: no blank-page or separator check, no barcodes, and no text recognition to turn them upright,
@@ -555,6 +574,7 @@ public struct PageProcessor {
         if fillsFingers(settings) { cut.append(FingerFillStep()) }
         cut.append(EnhanceStep(mode: DocumentEnhancer.mode(for: settings),
                                threshold: settings.adjustments.blackWhiteThreshold))
+        if TaskCatalog.flow(of: settings) == .photoSplit { cut.append(GlareStep()) }
         var steps: [any PageStep] = []
         if TaskCatalog.flow(of: settings) == .documentQueue {
             steps = forPhotoImport(settings, scorer: scorer, barcodes: barcodes).steps

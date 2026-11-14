@@ -19,7 +19,8 @@ struct PageStripCell: Identifiable {
     let spokenBadge: String?
     /// "Document 2" over the first page of each document when the queue is saved as several; nil otherwise.
     let divider: String?
-    /// "Separator", "Blank", "Skipped" for a page saving leaves out (or may); nil otherwise.
+    /// "Separator", "Blank", "Skipped" for a page saving leaves out (or may), or `GlareDetector.hint` on a
+    /// photo print that shows glare; nil otherwise.
     let note: String?
     /// "Keep this page" for a page saving leaves out, "Skip this page" for one that looks blank or was kept;
     /// nil for other pages (`DocumentSplitter.toggleLabel`).
@@ -68,9 +69,11 @@ struct PageStripCell: Identifiable {
                 spoken = bookLabel.help
             }
             let divider: String? = DocumentSplitter.dividerTitle(plan, index)
+            let glare: String? = page.capture?.glare == true ? GlareDetector.hint : nil
+            let note: String? = DocumentSplitter.badge(plan, index, page: page, options: options) ?? glare
             cells.append(PageStripCell(id: page.id, number: index + 1, image: page.image, badge: badge,
                                        spokenBadge: spoken, divider: divider,
-                                       note: DocumentSplitter.badge(plan, index, page: page, options: options),
+                                       note: note,
                                        toggle: DocumentSplitter.toggleLabel(plan, index, page: page, options: options),
                                        excluded: plan.pages[index].role != .content,
                                        breakAction: showsBreaks ? DocumentSplitter.breakLabel(plan, index) : nil,
@@ -85,7 +88,7 @@ struct PageStripCell: Identifiable {
 /// The collected pages as a grid of whole pages, two across on an iPhone held upright and more on a wider
 /// screen until a pinch changes it (one to six across an iPhone, up to ten on an iPad; kept in the defaults
 /// under `columnsKey`), with the queue's summary: each page with its number, its side or book badge, the
-/// title of the document it starts and its note (blank, separator) on a badge over it. A tap opens the page
+/// title of the document it starts and its note (blank, separator, glare) on a badge over it. A tap opens the page
 /// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted; a
 /// press and hold starts a new document at the page or joins it to the one before, and names its document. A
 /// page pressed and dragged onto another, or into the gap beside it, goes before it, with a bar on the tile

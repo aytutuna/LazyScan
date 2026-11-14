@@ -116,9 +116,10 @@ public enum PageRecut {
         facts.fingersFilled = nil
         facts.enhancement = nil
         facts.filter = nil
+        facts.glare = nil
         let source = ScannedPage(image: taken, dpi: page.dpi, colorMode: .color, id: page.id, createdAt: page.createdAt)
             .withCapture(facts)
-        var cut: ScannedPage = PerspectiveStep().apply(source)
+        var cut: ScannedPage = GlareStep().apply(PerspectiveStep().apply(source))
         if flattens { cut = FlattenStep().apply(cut) }
         if fillsFingers { cut = FingerFillStep().apply(cut) }
         cut = EnhanceStep(mode: filter?.mode, threshold: threshold).apply(cut)

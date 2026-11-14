@@ -343,6 +343,20 @@ final class IOSCameraTasksTests: XCTestCase {
         XCTAssertEqual(book.first?.spokenBadge, "Spread 1, left page")
     }
 
+    func test_pageStrip_notesGlareOnAPhotoPrint() throws {
+        let picture: CGImage = try printedLetterPage(blocks: 1)
+        var facts = CaptureFacts(quad: Quad(topLeft: .zero, topRight: CGPoint(x: 10, y: 0),
+                                            bottomRight: CGPoint(x: 10, y: 10), bottomLeft: CGPoint(x: 0, y: 10)),
+                                 sourceWidth: 10, sourceHeight: 10, kind: .photo)
+        let plain = ScannedPage(image: picture, dpi: 60, colorMode: .color).withCapture(facts)
+        facts.glare = true
+        let glaring = ScannedPage(image: picture, dpi: 60, colorMode: .color).withCapture(facts)
+        let cells: [PageStripCell] = PageStripCell.cells([plain, glaring])
+        XCTAssertNil(cells[0].note)
+        XCTAssertEqual(cells[1].note, "Tilt to avoid glare")
+        XCTAssertEqual(cells[1].accessibilityLabel, "Page 2, Tilt to avoid glare")
+    }
+
     // MARK: The UI tests' imports, without a screen
 
     @MainActor

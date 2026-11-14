@@ -126,6 +126,9 @@ public struct CaptureFacts: Equatable, Codable, Sendable {
     /// the queue, not in companion packages.
     public var adjustments: AdjustmentSettings? = nil
     public var adjustedColorMode: ColorMode? = nil
+    /// Whether the shot of a photo print shows glare on it (`GlareStep`); nil for other pages, and until it is
+    /// checked. Kept with the queue, not in companion packages.
+    public var glare: Bool? = nil
 
     public init(quad: Quad, sourceWidth: Int, sourceHeight: Int, kind: CaptureKind = .document,
                 focalLength: Double? = nil, scale: CaptureScaleResult? = nil) {
