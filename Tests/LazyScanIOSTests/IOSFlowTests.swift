@@ -588,6 +588,8 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(PageViewerText.removeAllQuestion(3), "Remove all 3 pages?")
         XCTAssertEqual(PageViewerText.removeAllQuestion(1), "Remove 1 page?")
         XCTAssertEqual(PageViewerText.textLabel, "Text")
+        XCTAssertEqual(PageViewerText.adjustLabel, "Adjust")
+        XCTAssertEqual(PageViewerText.adjustHint, "Changes brightness and contrast of this page")
         XCTAssertEqual(PageViewerText.textTitle, "Text on this page")
         XCTAssertEqual(PageViewerText.noText, "No text found on this page")
         XCTAssertEqual(PageViewerText.textFailed, "The text could not be read")

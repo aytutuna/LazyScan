@@ -178,12 +178,27 @@ public enum PageRecut {
         return result
     }
 
-    /// The adjustments a photo of Photos was given when it was taken (Restore faded colors, the colour mode),
-    /// as recorded on its capture facts, which a cut again takes too; nil for any other page, and when they
-    /// changed nothing.
+    /// The adjustments recorded on a page's capture facts, which a cut again takes too: a photo of Photos
+    /// has the ones it was given when it was taken (Restore faded colors, the colour mode), and any page the
+    /// brightness and contrast set in the viewer (`AppState.setPageAdjustments`); nil when there are none.
     static func adjustment(for page: ScannedPage) -> AdjustmentStep? {
-        guard let facts = page.capture, facts.kind == .photo, let adjustments = facts.adjustments else { return nil }
+        guard let facts = page.capture, let adjustments = facts.adjustments else { return nil }
         return AdjustmentStep(adjustments: adjustments, colorMode: facts.adjustedColorMode ?? .color, adjustsAlternate: false)
+    }
+
+    /// `page` with `adjustments` recorded on its capture facts; none are kept when they change nothing and the
+    /// page is in color.
+    static func withAdjustments(_ page: ScannedPage, _ adjustments: AdjustmentSettings) -> ScannedPage {
+        var changed: ScannedPage = page
+        let plain: Bool = adjustments.isIdentity && (page.capture?.adjustedColorMode ?? .color) == .color
+        changed.capture?.adjustments = plain ? nil : adjustments
+        if plain { changed.capture?.adjustedColorMode = nil }
+        return changed
+    }
+
+    /// The adjustments `page` is cut with now: the recorded ones, else none.
+    public static func adjustments(of page: ScannedPage) -> AdjustmentSettings {
+        page.capture?.adjustments ?? AdjustmentSettings()
     }
 
     /// `page` with its pixels made easy to read as a receipt (`ReceiptEnhancer`); the page as it is when it
@@ -256,6 +271,19 @@ extension AppState {
                 state.filterPagesLeft -= 1
                 if state.filterPagesLeft == 0, failed { state.errorMessage = PageRecut.failedMessage }
             }
+        }
+    }
+
+    /// Brightness and contrast: the queued page `id` cut out of its photo again with `adjustments` (the
+    /// page's own, `PageRecut.adjustments(of:)`, with the two changed), which its capture facts keep so a
+    /// later filter, crop or turn gives the same. Every cut starts from the photo, so one setting does not
+    /// pile on another; as `setPageFilter(id:_:)` does it.
+    public func setPageAdjustments(id: UUID, _ adjustments: AdjustmentSettings) {
+        guard !isBusy, !readsQueue, let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              PageRecut.canCrop(page) else { return }
+        enqueuePageEdit { (state: AppState) async -> Void in
+            guard let now = state.scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }) else { return }
+            await state.recut(id: id, filter: PageRecut.filter(of: now), corners: nil, adjustments: adjustments)
         }
     }
 
@@ -373,7 +401,7 @@ extension AppState {
             guard let photo = AppState.thumbnailOfFile(url, maxSide: maxSide * 2) else { return [:] }
             var previews: [CaptureFilter: CGImage] = [:]
             for filter in CaptureFilter.displayOrder {
-                guard let cut = PageRecut.recut(page, photo: photo, filter: filter, threshold: threshold) else { continue }
+                guard let cut = PageRecut.recut(page, photo: photo, filter: filter, adjusting: adjusting, threshold: threshold) else { continue }
                 previews[filter] = rotation == 0 ? cut.image : ImagePipeline.rotate(cut.image, quarterTurns: rotation)
             }
             return previews
@@ -384,10 +412,12 @@ extension AppState {
     /// as it was when the work started (not removed, turned or swapped meanwhile); the old file goes.
     /// False when the cut failed; `reportsFailure` false leaves the alert to the caller.
     @discardableResult
-    func recut(id: UUID, filter: CaptureFilter?, corners: Quad?, reportsFailure: Bool = true) async -> Bool {
-        guard let page = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
-              PageRecut.canCrop(page), corners != nil || PageRecut.filter(of: page) != filter,
-              let photoURL = page.alternate?.fileURL, let oldFile = page.fileURL else { return true }
+    func recut(id: UUID, filter: CaptureFilter?, corners: Quad?, adjustments: AdjustmentSettings? = nil,
+               reportsFailure: Bool = true) async -> Bool {
+        guard let queued = scannedPages.first(where: { (item: ScannedPage) -> Bool in item.id == id }),
+              PageRecut.canCrop(queued), corners != nil || adjustments != nil || PageRecut.filter(of: queued) != filter,
+              let photoURL = queued.alternate?.fileURL, let oldFile = queued.fileURL else { return true }
+        let page: ScannedPage = adjustments.map { (set: AdjustmentSettings) -> ScannedPage in PageRecut.withAdjustments(queued, set) } ?? queued
         let spool: URL = spoolDirectory
         let adjusting: AdjustmentStep? = PageRecut.adjustment(for: page)
         let threshold: Double = settings.adjustments.blackWhiteThreshold

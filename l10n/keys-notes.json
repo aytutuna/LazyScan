@@ -1,5 +1,6 @@
 {
   "_button text": "Rule for button and menu item text. Mac: title case (Stop Adding, Save Sheet). iPhone and Windows: sentence case (Split here, Delete all), except system verbs. Texts the Kit shares between the apps use sentence case. US spelling throughout (Licenses). Translate with the case customary in the target language.",
+  "Adjust": "Segment in the page viewer, next to Filters: sliders for the brightness and contrast of the page. Short, shown in a segmented control.",
   "Apply to All": "Button in the page viewer's filter row: give every page the filter this page has.",
   "Applying, %lld left": "Button label and card text while a filter is applied to several pages; the number is how many pages are still to do.",
   "Auto": "Camera setting value: the camera decides. Short, shown in a small control.",

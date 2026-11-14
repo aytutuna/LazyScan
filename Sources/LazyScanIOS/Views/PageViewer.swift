@@ -15,6 +15,8 @@ struct PageViewerStart: Identifiable {
 enum PageViewerText {
     static var rotateLabel: String { String(localized: "Rotate") }
     static var filtersLabel: String { String(localized: "Filters") }
+    static var adjustLabel: String { String(localized: "Adjust") }
+    static var adjustHint: String { String(localized: "Changes brightness and contrast of this page") }
     static var cropLabel: String { String(localized: "Crop") }
     static var documentLabel: String { String(localized: "Document") }
     static var nameDocumentLabel: String { String(localized: "Name document\u{2026}") }
@@ -101,6 +103,7 @@ struct PageViewer: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Opens the split sheet for the spread the page shown was cut from; nil where the viewer cannot.
     let onEditSpread: (@MainActor (UUID) -> Void)?
     /// Shows the camera to take a page again (the page's id); nil where the viewer cannot, as in the scanner's mode.
@@ -108,6 +111,11 @@ struct PageViewer: View {
     let onClose: () -> Void
     @State private var selection: UUID?
     @State private var showsFilters: Bool = false
+    /// The Adjust segment of the filter slot is shown instead of the filters.
+    @State private var showsAdjust: Bool = false
+    /// Brightness and contrast moved since the page was last cut, on the slider's -100...100 scale: shown at once
+    /// and cut in when the finger lifts; dropped once the page is cut or the page shown changes.
+    @State private var adjustDraft: [IOSAdjustment: Double] = [:]
     @State private var previews: [CaptureFilter: CGImage] = [:]
     /// The previews are being made; once they are in, a filter without one shows a plain tile.
     @State private var loadingPreviews: Bool = false
@@ -262,6 +270,11 @@ struct PageViewer: View {
 
     private var offersFilters: Bool { canRecut || canEdit }
 
+    /// Brightness and contrast are cut in from the page's photo, so only a camera's page that can be cropped has them.
+    private var offersAdjust: Bool { canCrop }
+
+    private var offersSlot: Bool { offersFilters || offersAdjust }
+
     private var offersCrop: Bool { canCrop || canEdit }
 
     private var canRetake: Bool {
@@ -312,7 +325,7 @@ struct PageViewer: View {
     /// with no capture facts the part of its picture kept.
     private var previewKey: String {
         guard let page = current, showsFilters, offersFilters else { return "" }
-        let basis: String = canEdit ? String(describing: page.geometry?.edit?.rect) : String(describing: page.capture?.quad)
+        let basis: String = canEdit ? String(describing: page.geometry?.edit?.rect) : String(describing: page.capture?.quad) + String(describing: page.capture?.adjustments)
         return "\(page.id.uuidString) \(page.rotationQuarterTurns) \(basis)"
     }
 
@@ -321,8 +334,8 @@ struct PageViewer: View {
             pager
                 .background(Color(uiColor: .systemGroupedBackground))
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if showsFilters, offersFilters, let page = current {
-                        filterRow(page)
+                    if showsFilters, offersSlot, let page = current {
+                        filterSlot(page)
                     }
                 }
                 .navigationTitle(PageViewerText.title(number: number, count: state.scannedPages.count))
@@ -362,6 +375,10 @@ struct PageViewer: View {
             RectCropView(image: request.image, start: request.start, onAnswer: { (rect: CGRect?) -> Void in
                 finishRectCrop(request, rect: rect)
             })
+        }
+        .onChange(of: selection) { (_: UUID?, _: UUID?) in
+            adjustDraft = [:]
+            if !offersAdjust { showsAdjust = false }
         }
         .task(id: previewKey) {
             await loadPreviews()
@@ -497,7 +514,7 @@ struct PageViewer: View {
     private var actions: some View {
         // The queue's edits do nothing while an import, a scan or a save runs.
         let blocked: Bool = state.isBusy || preparesCrop
-        if offersFilters {
+        if offersSlot {
             Button(action: toggleFilters) {
                 Label(PageViewerText.filtersLabel, systemImage: "camera.filters")
             }
@@ -653,6 +670,38 @@ struct PageViewer: View {
 
     // MARK: Filters
 
+    /// The filters, and for a camera's page that can be cut again the Adjust sliders beside them; a photo has
+    /// no filters, so only the sliders.
+    private func filterSlot(_ page: ScannedPage) -> some View {
+        let segments: Bool = offersFilters && offersAdjust
+        let adjusting: Bool = offersAdjust && (showsAdjust || !offersFilters)
+        return VStack(spacing: 0) {
+            if segments {
+                adjustPicker
+            }
+            if adjusting {
+                adjustRow(page)
+            } else {
+                filterRow(page)
+            }
+        }
+    }
+
+    private var adjustPicker: some View {
+        Picker(PageViewerText.filtersLabel, selection: $showsAdjust) {
+            Text(PageViewerText.filtersLabel).tag(false)
+            Text(PageViewerText.adjustLabel).tag(true)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 2)
+        .background(.bar)
+        .accessibilityHint(Text(PageViewerText.adjustHint))
+        .accessibilityIdentifier("viewer.adjust")
+    }
+
     private func filterRow(_ page: ScannedPage) -> some View {
         let working: Bool = state.recuttingPages.contains(page.id)
         let edits: Bool = PageRecut.canEdit(page)
@@ -676,6 +725,117 @@ struct PageViewer: View {
         .background(.bar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("viewer.filterRow")
+    }
+
+    private func adjustRow(_ page: ScannedPage) -> some View {
+        let working: Bool = state.recuttingPages.contains(page.id)
+        let off: Bool = state.isBusy || state.readsQueue || working
+        let stored: AdjustmentSettings = PageRecut.adjustments(of: page)
+        let neutral: Bool = [IOSAdjustment.brightness, IOSAdjustment.contrast].allSatisfy { (kind: IOSAdjustment) -> Bool in
+            (adjustDraft[kind] ?? kind.amount(stored)).rounded() == 0
+        }
+        let controls = VStack(spacing: 12) {
+            adjustSlider(.brightness, page: page, stored: stored, working: working, off: off)
+            adjustSlider(.contrast, page: page, stored: stored, working: working, off: off)
+            HStack {
+                Spacer()
+                Button(IOSSettingsText.resetLabel) {
+                    resetAdjust(page)
+                }
+                .frame(minHeight: 44)
+                .disabled(off || neutral)
+                .accessibilityIdentifier("adjust.reset")
+            }
+        }
+        let scrolls: Bool = typeSize.isAccessibilitySize
+        return Group {
+            if scrolls {
+                ScrollView { controls }.frame(maxHeight: 240)
+            } else {
+                controls
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+        .onChange(of: working) { (_: Bool, now: Bool) in
+            if !now { adjustDraft = [:] }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("viewer.adjustRow")
+    }
+
+    private func adjustSlider(_ kind: IOSAdjustment, page: ScannedPage, stored: AdjustmentSettings, working: Bool,
+                              off: Bool) -> some View {
+        let value: Double = adjustDraft[kind] ?? kind.amount(stored)
+        let binding = Binding<Double>(get: { value }, set: { (now: Double) in adjustDraft[kind] = now })
+        let recutting: Bool = working && adjustDraft[kind] != nil
+        let roomy: Bool = typeSize.isAccessibilitySize
+        let layout: AnyLayout = roomy ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout())
+        return VStack(spacing: 0) {
+            layout {
+                Text(kind.label)
+                    .font(.callout)
+                if !roomy {
+                    Spacer()
+                }
+                if recutting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 16, height: 16)
+                } else {
+                    Text(IOSAdjustment.amountText(value))
+                        .font(.callout)
+                        .monospacedDigit()
+                        .foregroundStyle(Color.secondary)
+                }
+            }
+            HStack(spacing: 8) {
+                Text(IOSAdjustment.amountText(-100))
+                    .font(.caption2)
+                    .foregroundStyle(Color.secondary)
+                Slider(value: binding, in: -100...100, step: 1, onEditingChanged: { (editing: Bool) in
+                    if !editing { commitAdjust(page) }
+                })
+                .disabled(off)
+                .accessibilityLabel(Text(kind.label))
+                .accessibilityValue(Text(IOSAdjustment.amountText(value)))
+                .accessibilityAdjustableAction { (direction: AccessibilityAdjustmentDirection) in
+                    var moved: Double = value
+                    switch direction {
+                    case .increment: moved += 5
+                    case .decrement: moved -= 5
+                    @unknown default: break
+                    }
+                    adjustDraft[kind] = min(100, max(-100, moved))
+                    commitAdjust(page)
+                }
+                .accessibilityIdentifier("adjust.\(kind.rawValue)")
+                Text(IOSAdjustment.amountText(100))
+                    .font(.caption2)
+                    .foregroundStyle(Color.secondary)
+            }
+            .frame(minHeight: 44)
+        }
+    }
+
+    /// Cuts the page again with the brightness and contrast moved, from its photo.
+    private func commitAdjust(_ page: ScannedPage) {
+        let stored: AdjustmentSettings = PageRecut.adjustments(of: page)
+        var adjustments: AdjustmentSettings = stored
+        for (kind, amount) in adjustDraft {
+            adjustments = kind.setting(amount, in: adjustments)
+        }
+        guard adjustments != stored else {
+            adjustDraft = [:]
+            return
+        }
+        state.setPageAdjustments(id: page.id, adjustments)
+    }
+
+    private func resetAdjust(_ page: ScannedPage) {
+        adjustDraft = [.brightness: 0, .contrast: 0]
+        commitAdjust(page)
     }
 
     private func applyToAllButton(_ filter: CaptureFilter) -> some View {

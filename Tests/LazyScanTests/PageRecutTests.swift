@@ -298,6 +298,56 @@ final class PageRecutTests: XCTestCase {
     }
 
     @MainActor
+    func testBrightnessAndContrast_cutThePageAgainFromItsPhoto_surviveACropAndAFilter_andResetGivesTheCutBack() async throws {
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecutScorer(),
+                             barcodeReader: RecutBarcodes(), files: AppStateFiles.all(in: folder))
+        XCTAssertTrue(state.startTask(.document))
+        state.settings.taskOptions.cameraFilter = .original
+        state.settings.destinationPath = folder.path
+        XCTAssertTrue(state.ingest([shot().page], source: .photo))
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 1 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        let page: ScannedPage = state.scannedPages[0]
+        XCTAssertNil(page.capture?.adjustments)
+        XCTAssertEqual(PageRecut.adjustments(of: page), AdjustmentSettings())
+        let photoFile: URL = try XCTUnwrap(page.alternate?.fileURL)
+        let firstPixels: [UInt8] = pixels(try XCTUnwrap(AppState.imageInFile(try XCTUnwrap(page.fileURL))))
+
+        var brighter: AdjustmentSettings = PageRecut.adjustments(of: page)
+        brighter.brightness = 0.6
+        brighter.contrast = 1.5
+        state.setPageAdjustments(id: page.id, brighter)
+        try await waitUntil(timeout: 60) { state.scannedPages.first?.capture?.adjustments == brighter }
+        XCTAssertTrue(state.recuttingPages.isEmpty)
+        let lifted: ScannedPage = state.scannedPages[0]
+        XCTAssertEqual(lifted.alternate?.fileURL, photoFile)
+        let liftedPixels: [UInt8] = pixels(try XCTUnwrap(AppState.imageInFile(try XCTUnwrap(lifted.fileURL))))
+        XCTAssertNotEqual(liftedPixels, firstPixels)
+
+        // A filter cut from the photo keeps them.
+        state.setPageFilter(id: page.id, .grayscale)
+        try await waitUntil(timeout: 60) { state.scannedPages.first?.capture?.filter == .grayscale }
+        XCTAssertEqual(state.scannedPages[0].capture?.adjustments, brighter)
+
+        // Neutral again: nothing is kept, and the page is the plain cut.
+        state.setPageAdjustments(id: page.id, AdjustmentSettings())
+        state.setPageFilter(id: page.id, .original)
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        let reset: ScannedPage = state.scannedPages[0]
+        XCTAssertNil(reset.capture?.adjustments)
+        XCTAssertEqual(pixels(try XCTUnwrap(AppState.imageInFile(try XCTUnwrap(reset.fileURL)))), firstPixels)
+
+        // A crop keeps them too.
+        state.setPageAdjustments(id: page.id, brighter)
+        let inner = Quad(topLeft: CGPoint(x: 80, y: 80), topRight: CGPoint(x: 260, y: 80),
+                         bottomRight: CGPoint(x: 260, y: 330), bottomLeft: CGPoint(x: 80, y: 330))
+        state.recropPage(id: page.id, corners: inner, rotation: 0)
+        try await waitUntil(timeout: 60) { state.pageEditChain == nil }
+        XCTAssertEqual(state.scannedPages[0].geometry?.quad, inner)
+        XCTAssertEqual(state.scannedPages[0].capture?.adjustments, brighter)
+    }
+
+    @MainActor
     func testWhileTheQueueIsRead_thePageIsNotCutAgain() async throws {
         let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: RecutScorer(),
                              barcodeReader: RecutBarcodes(), files: AppStateFiles.all(in: folder))
