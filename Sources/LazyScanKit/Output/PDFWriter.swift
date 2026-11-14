@@ -415,20 +415,39 @@ public enum PDFWriter {
             // space, so they map straight into points with no flip.
             text += "BT\n3 Tr\n"
             for line in lines {
-                guard let placed = textLayerLine(line, codes: codes, widthPts: place.width, heightPts: place.height,
-                                                 originX: place.x, originY: place.y) else {
-                    continue
+                for run in textRuns(of: line) {
+                    guard let placed = textLayerLine(run, codes: codes, widthPts: place.width, heightPts: place.height,
+                                                     originX: place.x, originY: place.y) else {
+                        continue
+                    }
+                    text += "/F1 \(f(placed.fontSize)) Tf\n"
+                    text += "\(f(placed.horizontalScale * 100)) Tz\n"
+                    text += "1 0 0 1 \(f(placed.x)) \(f(placed.baseline)) Tm\n"
+                    text += codes.hexString(run.text)
+                    text += " Tj\n"
                 }
-                text += "/F1 \(f(placed.fontSize)) Tf\n"
-                text += "\(f(placed.horizontalScale * 100)) Tz\n"
-                text += "1 0 0 1 \(f(placed.x)) \(f(placed.baseline)) Tm\n"
-                text += codes.hexString(line.text)
-                text += " Tj\n"
             }
             text += "ET\n"
         }
         // Pure ASCII: the text is written as hex.
         return Data(text.utf8)
+    }
+
+    /// What is placed for `line`: one run for each of its words, so a search hit sits on the printed
+    /// word, or the line itself when it has no word boxes. Every word but the last carries a space
+    /// and its box reaches the next word, so copied text and phrase search keep the spaces.
+    static func textRuns(of line: OCRLine) -> [OCRLine] {
+        guard let words = line.words, !words.isEmpty else { return [line] }
+        return words.indices.map { i in
+            let word = words[i]
+            guard i + 1 < words.count else {
+                return OCRLine(text: word.text, boundingBox: word.boundingBox, confidence: line.confidence)
+            }
+            var box = word.boundingBox
+            let next = words[i + 1].boundingBox.minX
+            if next > box.maxX { box.size.width = next - box.minX }
+            return OCRLine(text: word.text + " ", boundingBox: box, confidence: line.confidence)
+        }
     }
 
     /// Where one OCR line's invisible text goes, in points: the font size is the box's height and

@@ -3,6 +3,7 @@ using LazyScan.Core;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
 using OcrLine = LazyScan.Core.OcrLine;
+using OcrWord = LazyScan.Core.OcrWord;
 
 namespace LazyScan.App.Services;
 
@@ -198,8 +199,16 @@ public sealed class WindowsOcrService : IOcrService
             if (maxX <= minX || maxY <= minY) continue;
             // Top-left pixel rect → normalized bottom-left origin.
             var box = new RectD(minX / w, 1.0 - maxY / h, (maxX - minX) / w, (maxY - minY) / h);
+            // A word without text or size would vanish from the text layer, so such a line is placed whole.
+            var placeable = line.Words.All(word => !string.IsNullOrWhiteSpace(word.Text)
+                && word.BoundingRect.Width > 0 && word.BoundingRect.Height > 0);
+            var words = !placeable ? null : line.Words
+                .Select(word => new OcrWord(word.Text, new RectD(word.BoundingRect.X / w,
+                    1.0 - (word.BoundingRect.Y + word.BoundingRect.Height) / h,
+                    word.BoundingRect.Width / w, word.BoundingRect.Height / h)))
+                .ToList();
             // Windows OCR has no per-line confidence; report 1.
-            lines.Add(new OcrLine(text, box, 1.0f));
+            lines.Add(new OcrLine(text, box, 1.0f, words));
         }
         return lines;
     }

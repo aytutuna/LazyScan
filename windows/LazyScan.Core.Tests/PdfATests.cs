@@ -295,6 +295,25 @@ public class PdfATests
         Assert.Equal(2, content.Split(" Tj\n").Length - 1);
     }
 
+    [Fact]
+    public void TextLayer_WordsAreEachPlacedInTheirOwnBoxes()
+    {
+        // Three words of different widths in one line: each gets its own Tm and Tz, not one stretch;
+        // all but the last carry a space and reach the next word.
+        var words = new List<OcrWord>
+        {
+            new("one", new RectD(0.1, 0.5, 0.1, 0.05)),
+            new("two", new RectD(0.3, 0.5, 0.1, 0.05)),
+            new("three", new RectD(0.5, 0.5, 0.2, 0.05)),
+        };
+        var line = new OcrLine("one two three", new RectD(0.1, 0.5, 0.6, 0.05), 0.9f, words);
+        string content = Latin1(PdfBuilder.Make([Page([line])]));
+        Assert.Equal(3, content.Split(" Tj\n").Length - 1);
+        Assert.Contains("154.5455 Tz\n1 0 0 1 61.2 396 Tm\n", content);
+        Assert.Contains("154.5455 Tz\n1 0 0 1 183.6 396 Tm\n", content);
+        Assert.Contains("123.6364 Tz\n1 0 0 1 306 396 Tm\n", content);
+    }
+
     // MARK: - Golden bytes
 
     [Fact]

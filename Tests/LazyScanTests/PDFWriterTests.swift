@@ -302,6 +302,23 @@ final class PDFWriterTests: XCTestCase {
         XCTAssertEqual(placed.baseline, 396, accuracy: 1e-9)
     }
 
+    func test_textLayer_wordsAreEachPlacedInTheirOwnBoxes() throws {
+        // Three words of different widths in one line: each gets its own Tm and Tz, not one stretch;
+        // all but the last carry a space and reach the next word.
+        let words = [
+            OCRWord(text: "one", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.1, height: 0.05)),
+            OCRWord(text: "two", boundingBox: CGRect(x: 0.3, y: 0.5, width: 0.1, height: 0.05)),
+            OCRWord(text: "three", boundingBox: CGRect(x: 0.5, y: 0.5, width: 0.2, height: 0.05)),
+        ]
+        let line = OCRLine(text: "one two three", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.6, height: 0.05),
+                           confidence: 0.9, words: words)
+        let pdf = try PDFWriter.make([Self.letterPage([line])])
+        XCTAssertEqual(Self.count(pdf, " Tj\n"), 3)
+        XCTAssertTrue(Self.has(pdf, "154.5455 Tz\n1 0 0 1 61.2 396 Tm\n"))
+        XCTAssertTrue(Self.has(pdf, "154.5455 Tz\n1 0 0 1 183.6 396 Tm\n"))
+        XCTAssertTrue(Self.has(pdf, "123.6364 Tz\n1 0 0 1 306 396 Tm\n"))
+    }
+
     func test_textLayer_scaleIsClamped_andEmptyLinesAreSkipped() throws {
         let lines = [
             Self.line("x", 0, 0.5, 1, 0.01),                                            // far too wide: 5×

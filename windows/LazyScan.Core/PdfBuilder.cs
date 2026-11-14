@@ -570,17 +570,38 @@ public static class PdfBuilder
             sb.Append("BT\n3 Tr\n");
             foreach (var line in lines)
             {
-                if (TextLayerLine(line, codes, place.Width, place.Height, place.X, place.Y) is not { } placed) continue;
-                sb.Append($"/F1 {F(placed.FontSize)} Tf\n");
-                sb.Append($"{F(placed.HorizontalScale * 100)} Tz\n");
-                sb.Append($"1 0 0 1 {F(placed.X)} {F(placed.Baseline)} Tm\n");
-                sb.Append(codes.HexString(line.Text)).Append(" Tj\n");
+                foreach (var run in TextRuns(line))
+                {
+                    if (TextLayerLine(run, codes, place.Width, place.Height, place.X, place.Y) is not { } placed) continue;
+                    sb.Append($"/F1 {F(placed.FontSize)} Tf\n");
+                    sb.Append($"{F(placed.HorizontalScale * 100)} Tz\n");
+                    sb.Append($"1 0 0 1 {F(placed.X)} {F(placed.Baseline)} Tm\n");
+                    sb.Append(codes.HexString(run.Text)).Append(" Tj\n");
+                }
             }
             sb.Append("ET\n");
         }
 
         // Pure ASCII: the text is written as hex.
         return Encoding.ASCII.GetBytes(sb.ToString());
+    }
+
+    /// <summary>
+    /// What is placed for <paramref name="line"/>: one run for each of its words, so a search hit sits on
+    /// the printed word, or the line itself when it has no word boxes. Every word but the last carries a
+    /// space and its box reaches the next word, so copied text and phrase search keep the spaces.
+    /// </summary>
+    internal static IEnumerable<OcrLine> TextRuns(OcrLine line)
+    {
+        if (line.Words is not { Count: > 0 } words) return [line];
+        return words.Select((word, i) =>
+        {
+            if (i + 1 == words.Count) return new OcrLine(word.Text, word.BoundingBox, line.Confidence);
+            var box = word.BoundingBox;
+            double next = words[i + 1].BoundingBox.X;
+            if (next > box.X + box.Width) box = box with { Width = next - box.X };
+            return new OcrLine(word.Text + " ", box, line.Confidence);
+        });
     }
 
     /// <summary>

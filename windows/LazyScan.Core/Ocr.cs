@@ -4,6 +4,9 @@ namespace LazyScan.Core;
 // app uses Apple Vision; on Windows the shell provides an implementation backed by
 // Windows.Media.Ocr (see LazyScan.App/Services/WindowsOcrService.cs).
 
+/// <summary>One recognized word of an <see cref="OcrLine"/>, with its own box (same convention).</summary>
+public sealed record OcrWord(string Text, RectD BoundingBox);
+
 /// <summary>One recognized line of text on a scanned page.</summary>
 /// <param name="Text">The recognized text.</param>
 /// <param name="BoundingBox">
@@ -13,7 +16,11 @@ namespace LazyScan.Core;
 /// ny = 1 - (y + h) / imageHeight.
 /// </param>
 /// <param name="Confidence">0...1.</param>
-public sealed record OcrLine(string Text, RectD BoundingBox, float Confidence);
+/// <param name="Words">
+/// The line's words with their own boxes, when the recognizer gave them; the PDF text layer places each
+/// one, and the line as a whole when there are none.
+/// </param>
+public sealed record OcrLine(string Text, RectD BoundingBox, float Confidence, IReadOnlyList<OcrWord>? Words = null);
 
 /// <summary>
 /// Text recognition over a scanned image. Platform shells provide the implementation;

@@ -2,16 +2,31 @@ import CoreGraphics
 import Foundation
 import Vision
 
+/// One recognized word of an `OCRLine`, with its own box.
+public struct OCRWord {
+    public let text: String
+    /// Vision-normalized bounding box (origin bottom-left).
+    public let boundingBox: CGRect
+    public init(text: String, boundingBox: CGRect) {
+        self.text = text
+        self.boundingBox = boundingBox
+    }
+}
+
 /// One recognized line of text on a scanned page.
 public struct OCRLine {
     public let text: String
     /// Vision-normalized bounding box (origin bottom-left).
     public let boundingBox: CGRect
     public let confidence: Float
-    public init(text: String, boundingBox: CGRect, confidence: Float) {
+    /// The line's words with their own boxes, when the recognizer gave them; the PDF text layer
+    /// places each one, and the line as a whole when there are none.
+    public let words: [OCRWord]?
+    public init(text: String, boundingBox: CGRect, confidence: Float, words: [OCRWord]? = nil) {
         self.text = text
         self.boundingBox = boundingBox
         self.confidence = confidence
+        self.words = words
     }
 }
 
@@ -46,8 +61,34 @@ public enum OCRService {
             guard let candidate = observation.topCandidates(1).first else { return nil }
             return OCRLine(text: candidate.string,
                            boundingBox: observation.boundingBox,
-                           confidence: candidate.confidence)
+                           confidence: candidate.confidence,
+                           words: words(of: candidate))
         }
+    }
+
+    /// The runs of non-space characters of `candidate`, each with Vision's box for it; nil when the
+    /// line has none or Vision gives no box for one of them.
+    private static func words(of candidate: VNRecognizedText) -> [OCRWord]? {
+        let string = candidate.string
+        var words: [OCRWord] = []
+        var start: String.Index?
+        var index = string.startIndex
+        while true {
+            let atEnd = index == string.endIndex
+            if atEnd || string[index].isWhitespace {
+                if let from = start {
+                    let range = from..<index
+                    guard let box = try? candidate.boundingBox(for: range)?.boundingBox else { return nil }
+                    words.append(OCRWord(text: String(string[range]), boundingBox: box))
+                    start = nil
+                }
+            } else if start == nil {
+                start = index
+            }
+            if atEnd { break }
+            index = string.index(after: index)
+        }
+        return words.isEmpty ? nil : words
     }
 
     /// The candidates Vision must be at least this sure of to count when turning pages upright.
