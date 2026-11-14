@@ -565,6 +565,13 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("camera.settings")
             }
+            if model.canRetry && !allowPending {
+                Button(IOSNetworkText.retry) {
+                    Task { await model.retry() }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("camera.retry")
+            }
             if allowPending {
                 Button(IOSCameraText.allowLabel) {
                     onAllow()

@@ -160,10 +160,9 @@ final class IOSCaptureSession: @unchecked Sendable {
 
     /// Sets the session up once: the camera `IOSCameraLens` picks, photos of `megapixels` (`usePhotoSize`)
     /// at the best quality, and BGRA video frames for the outline (the camera works without them when the
-    /// session cannot add them). False when there is no camera or it cannot be used.
+    /// session cannot add them). False when there is no camera or it cannot be used; a failed setup is tried again by the next call.
     func configure(megapixels: Int) -> Bool {
         if configured { return device != nil }
-        configured = true
         guard let camera = IOSCameraLens.bestDevice() else { return false }
         let input: AVCaptureDeviceInput
         do {
@@ -181,6 +180,7 @@ final class IOSCaptureSession: @unchecked Sendable {
         }
         session.addInput(input)
         guard session.canAddOutput(photoOutput) else {
+            session.removeInput(input)
             session.commitConfiguration()
             return false
         }
@@ -195,6 +195,7 @@ final class IOSCaptureSession: @unchecked Sendable {
         }
         session.commitConfiguration()
         device = camera
+        configured = true
         IOSCaptureSession.focusForPages(camera)
         usePhotoSize(megapixels)
         return true

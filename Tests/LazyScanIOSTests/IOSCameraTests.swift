@@ -809,6 +809,60 @@ final class IOSCameraTests: XCTestCase {
     }
 
     @MainActor
+    func test_theTorch_readsOffWhileAnInterruptionLasts_andIsLitAgainWhenItEnds() async throws {
+        let driver = FakeCameraDriver()
+        let model: IOSCameraModel = makeModel(driver, access: FakeCameraAccess(status: .authorized, grants: true),
+                                              hasCamera: true, center: NotificationCenter())
+        await model.appear()
+        await model.toggleTorch()
+        XCTAssertTrue(model.torchOn)
+        model.apply(IOSCameraEvent.interrupted(.inUse))
+        XCTAssertFalse(model.torchOn)
+        model.apply(IOSCameraEvent.interruptionEnded)
+        try await ImportTestSupport.waitUntil(timeout: 10) { model.torchOn }
+        XCTAssertEqual(driver.torchCalls, [true, true])
+        // Turned off by hand: an interruption leaves it off.
+        await model.toggleTorch()
+        model.apply(IOSCameraEvent.interrupted(.other))
+        model.apply(IOSCameraEvent.interruptionEnded)
+        try await settle()
+        XCTAssertFalse(model.torchOn)
+        XCTAssertEqual(driver.torchCalls, [true, true, false])
+        model.disappear()
+    }
+
+    @MainActor
+    func test_tryAgain_setsAFailedCameraUpAgain_andClearsAFailedSession() async {
+        let driver = FakeCameraDriver()
+        driver.prepareResult = false
+        let model: IOSCameraModel = makeModel(driver, access: FakeCameraAccess(status: .authorized, grants: true),
+                                              hasCamera: true, center: NotificationCenter())
+        await model.appear()
+        XCTAssertTrue(model.canRetry)
+        await model.retry()
+        XCTAssertEqual(driver.prepares, 2)
+        XCTAssertTrue(model.canRetry)
+        driver.prepareResult = true
+        await model.retry()
+        XCTAssertEqual(driver.prepares, 3)
+        XCTAssertFalse(model.canRetry)
+        XCTAssertTrue(model.showsPreview)
+        XCTAssertNil(model.message)
+        XCTAssertEqual(driver.starts, 1)
+        // The session kept stopping with errors: the card offers it, and Try again starts it.
+        for _ in 0...IOSCameraLifecycle.maxRestarts {
+            model.apply(IOSCameraEvent.runtimeError)
+        }
+        XCTAssertTrue(model.canRetry)
+        XCTAssertEqual(model.message, "Camera did not start")
+        await model.retry()
+        XCTAssertFalse(model.canRetry)
+        XCTAssertNil(model.message)
+        XCTAssertEqual(driver.prepares, 3)
+        model.disappear()
+    }
+
+    @MainActor
     func test_theShutter_takesAPhoto_withTheLiveOutlineTurnedIntoThePhoto() async throws {
         let driver = FakeCameraDriver()
         driver.frameSource = FixtureFrameSource(stillFrames())

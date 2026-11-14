@@ -200,6 +200,12 @@ public final class IOSCameraModel: ObservableObject {
         return nil
     }
 
+    /// The card says the camera did not start: the setup failed or the session kept stopping with errors.
+    public var canRetry: Bool {
+        guard availability?.reason == nil else { return false }
+        return setupFailed || lifecycle.hasFailed
+    }
+
     /// Settings can turn camera access back on (access is off).
     public var opensSettings: Bool {
         availability?.opensSettings ?? false
@@ -250,6 +256,11 @@ public final class IOSCameraModel: ObservableObject {
             }
         }
         apply(.ready(prepared))
+    }
+
+    /// Try again after the camera did not start: the screen is shown afresh and the session set up again.
+    public func retry() async {
+        await appear()
     }
 
     /// The screen is gone: the session stops and the page is forgotten. The torch stays off when the screen
@@ -321,6 +332,13 @@ public final class IOSCameraModel: ObservableObject {
             stop()
         case .keep:
             break
+        }
+        if case .interrupted = event {
+            // The system may put the torch out while it holds the camera; the light comes back when the
+            // interruption ends.
+            torchOn = false
+        } else if event == .interruptionEnded, torchWanted, lifecycle.isLive {
+            relightTorch()
         }
         if !lifecycle.isLive {
             live = nil
@@ -394,12 +412,16 @@ public final class IOSCameraModel: ObservableObject {
         }
         driver.startRunning()
         if torchWanted {
-            // The torch went out with the session. The driver keeps the order of its calls, so it is lit once
-            // the session runs; one that cannot light now (too warm) is tried again at the next start.
-            Task { @MainActor [weak self] in
-                guard let model = self, model.lifecycle.isLive else { return }
-                model.torchOn = await model.driver.setTorch(true)
-            }
+            relightTorch()
+        }
+    }
+
+    /// The torch went out with the session. The driver keeps the order of its calls, so it is lit once the
+    /// session runs; one that cannot light now (too warm) is tried again at the next start.
+    private func relightTorch() {
+        Task { @MainActor [weak self] in
+            guard let model = self, model.lifecycle.isLive else { return }
+            model.torchOn = await model.driver.setTorch(true)
         }
     }
 
