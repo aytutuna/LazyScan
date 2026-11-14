@@ -155,11 +155,26 @@ private final class ProtectedFiles: @unchecked Sendable {
 /// JSON storage under `~/Library/Application Support/Lazy Scan/` (created on demand). Also used
 /// by the phone link's files (`PairedDeviceStore`), which follow the same settings-file rules.
 enum StoreFiles {
-    static var defaultDirectory: URL {
+    static let defaultDirectory: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory())
                 .appendingPathComponent("Library/Application Support", isDirectory: true)
-        return base.appendingPathComponent("Lazy Scan", isDirectory: true)
+        let folder = base.appendingPathComponent("Lazy Scan", isDirectory: true)
+        copyOldFolder(from: base.appendingPathComponent("CompleteScanner", isDirectory: true), to: folder)
+        return folder
+    }()
+
+    /// Builds before the rename kept their files under CompleteScanner. They are copied once,
+    /// and only when the new folder does not exist yet, so nothing is ever overwritten.
+    static func copyOldFolder(from old: URL, to new: URL) {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: old.path), !fm.fileExists(atPath: new.path) else { return }
+        do {
+            try fm.copyItem(at: old, to: new)
+        } catch {
+            try? fm.removeItem(at: new)
+            storeLog.error("Could not copy the old data folder: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     static func presetsURL(in directory: URL) -> URL { directory.appendingPathComponent("presets.json") }

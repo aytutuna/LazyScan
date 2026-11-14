@@ -244,9 +244,43 @@ internal static class StoreFiles
         },
     };
 
-    internal static string DefaultDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     "Lazy Scan");
+    internal static string DefaultDirectory
+    {
+        get
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var directory = Path.Combine(appData, "Lazy Scan");
+            CopyOldFolder(Path.Combine(appData, "CompleteScanner"), directory);
+            return directory;
+        }
+    }
+
+    /// <summary>
+    /// Builds before the rename kept their files under CompleteScanner. They are copied once,
+    /// and only when the new folder does not exist yet, so nothing is ever overwritten.
+    /// </summary>
+    internal static void CopyOldFolder(string old, string directory)
+    {
+        if (!Directory.Exists(old) || Directory.Exists(directory)) return;
+        try
+        {
+            CopyTree(old, directory);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // A partial copy would hide the old files behind a half-filled new folder.
+            try { Directory.Delete(directory, recursive: true); } catch (Exception) { }
+        }
+    }
+
+    private static void CopyTree(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        foreach (var file in Directory.GetFiles(from))
+            File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
+        foreach (var dir in Directory.GetDirectories(from))
+            CopyTree(dir, Path.Combine(to, Path.GetFileName(dir)));
+    }
 
     internal static string PresetsPath(string directory) => Path.Combine(directory, "presets.json");
     internal static string SettingsPath(string directory) => Path.Combine(directory, "settings.json");

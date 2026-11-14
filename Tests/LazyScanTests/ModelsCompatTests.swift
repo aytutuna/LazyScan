@@ -1930,4 +1930,26 @@ final class PresetStoreFileTests: XCTestCase {
         SettingsStore.save(nonDefaultSettings(), directory: directory)
         XCTAssertEqual(SettingsStore.load(directory: directory), nonDefaultSettings())
     }
+
+    func test_oldFolderIsCopiedOnceWhenTheNewOneIsMissing() throws {
+        let old = directory.appendingPathComponent("CompleteScanner", isDirectory: true)
+        let new = directory.appendingPathComponent("Lazy Scan", isDirectory: true)
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: old.appendingPathComponent("presets.json"))
+
+        StoreFiles.copyOldFolder(from: old, to: new)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: new.appendingPathComponent("presets.json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("presets.json").path))
+    }
+
+    func test_oldFolderIsNotCopiedOverAnExistingNewOne() throws {
+        let old = directory.appendingPathComponent("CompleteScanner", isDirectory: true)
+        let new = directory.appendingPathComponent("Lazy Scan", isDirectory: true)
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: new, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: old.appendingPathComponent("presets.json"))
+
+        StoreFiles.copyOldFolder(from: old, to: new)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: new.appendingPathComponent("presets.json").path))
+    }
 }

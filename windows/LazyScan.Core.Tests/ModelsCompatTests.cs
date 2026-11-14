@@ -2249,4 +2249,32 @@ public sealed class PresetStoreFileTests : IDisposable
         Assert.Equal(original, File.ReadAllBytes(PreferencesPath));
         Assert.Empty(KeptFiles("preferences.unreadable-"));
     }
+
+    [Fact]
+    public void OldFolderIsCopiedOnceWhenTheNewOneIsMissing()
+    {
+        var old = Path.Combine(_directory, "CompleteScanner");
+        var @new = Path.Combine(_directory, "Lazy Scan");
+        Directory.CreateDirectory(Path.Combine(old, "Companion"));
+        File.WriteAllText(Path.Combine(old, "presets.json"), "{}");
+        File.WriteAllText(Path.Combine(old, "Companion", "companion-devices.json"), "{}");
+
+        StoreFiles.CopyOldFolder(old, @new);
+        Assert.True(File.Exists(Path.Combine(@new, "presets.json")));
+        Assert.True(File.Exists(Path.Combine(@new, "Companion", "companion-devices.json")));
+        Assert.True(File.Exists(Path.Combine(old, "presets.json")));
+    }
+
+    [Fact]
+    public void OldFolderIsNotCopiedOverAnExistingNewOne()
+    {
+        var old = Path.Combine(_directory, "CompleteScanner");
+        var @new = Path.Combine(_directory, "Lazy Scan");
+        Directory.CreateDirectory(old);
+        Directory.CreateDirectory(@new);
+        File.WriteAllText(Path.Combine(old, "presets.json"), "{}");
+
+        StoreFiles.CopyOldFolder(old, @new);
+        Assert.False(File.Exists(Path.Combine(@new, "presets.json")));
+    }
 }
