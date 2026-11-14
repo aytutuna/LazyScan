@@ -381,6 +381,7 @@ extension AppState {
         guard let index = keptPhoneDocuments.firstIndex(where: { $0.id == kept.id }) else { return }
         keptPhoneDocuments.remove(at: index)
         companionService?.inbox.release(kept.package)
+        phoneBarMessage = nil
         phoneBarMessage = CompanionHostText.discardedMessage(kept.phoneName)
     }
 

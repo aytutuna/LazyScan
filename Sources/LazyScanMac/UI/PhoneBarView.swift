@@ -81,7 +81,6 @@ struct PhoneBarView: View {
         return HStack(spacing: 8) {
             Text(CompanionHostText.keptRowText(pageCount: pages, phoneName: name))
                 .font(.callout)
-                .accessibilityLabel(CompanionHostText.keptRowText(pageCount: pages, phoneName: name))
             Spacer(minLength: 8)
             Button("Add Now") {
                 state.addKeptPhoneDocument(document)

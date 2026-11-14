@@ -1813,7 +1813,7 @@ public enum CompanionProtocol {                    // version 1, serviceType "_l
     public static func encodeBase64Url(_ data: Data) -> String; public static func decodeBase64Url(_ text: String?) -> Data?   // strict
     public static func target(_ value: String?) -> CompanionTarget; public static func targetValue(_ target: CompanionTarget) -> String
     public static func addedMessage(_ pageCount: Int, phoneName: String) -> String   // "3 pages from Aytu's iPhone added to the queue."
-    public static func keptMessage(_ pageCount: Int, phoneName: String, onMac: Bool) -> String   // after Cancel: "Cancelled. The 3 pages from Aytu's iPhone were not added. They are kept in the waiting list."
+    public static func keptMessage(_ pageCount: Int, phoneName: String, onMac: Bool) -> String   // after Cancel, on the Mac: "Cancelled. The 3 pages from Aytu's iPhone were not added. They are kept in the waiting list."
 }
 public enum CompanionTarget: String { case new, current }
 public struct CompanionError { code, message; toJSON(); fromJSON(_:) }   // codes in CompanionErrorCode, messages as static members
