@@ -82,6 +82,7 @@ final class InspectorSectionsTests: XCTestCase {
         a4.output.pageSize = .a4
         XCTAssertEqual(InspectorSections.outputSummary(a4, shownFormat: .pdf), "PDF \u{00B7} Standard \u{00B7} A4")
         XCTAssertTrue(InspectorSections.outputChanged(a4, shownFormat: .pdf))
+        a4.intent = .photo
         XCTAssertFalse(InspectorSections.outputChanged(a4, shownFormat: .jpeg))
         XCTAssertEqual(InspectorSections.outputSummary(s, shownFormat: .text), "Text")
 
