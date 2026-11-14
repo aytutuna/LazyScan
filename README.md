@@ -152,7 +152,7 @@ scanners** — including the Epson Perfection V39 II.
   turn it on. **Print** prints the page at real size on the printer chosen for copies.
 - **Photocopy**: a photocopier from a scanner and a printer. Put the original on the glass (or a stack in
   the feeder) and press **Copy**: it is scanned and printed at real size, 1 inch on the glass is 1
-  inch on paper, never scaled to the page unless you turn on **Fit to page**. Choose the printer
+  inch on paper, never scaled unless you pick another **Scale** (fit to page, fill the page or a percentage). Choose the printer
   (the default one unless you pick another), the number of copies (1 to 99) and color or gray; on
   the glass with Automatic paper size the part of the glass the printer's paper covers is copied,
   and an area selected on the preview is centred on the paper. The app says when the printer's

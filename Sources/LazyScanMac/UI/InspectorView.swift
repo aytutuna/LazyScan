@@ -19,6 +19,7 @@ struct InspectorView: View {
     @State private var showSavePresetAlert = false
     @State private var newPresetName = ""
     @State private var showSplitSteps = false
+    @State private var customCopyPicked = false
 
     @AppStorage("inspector.section.task") private var taskOpen: Bool = InspectorSections.openByDefault(InspectorSections.task)
     @AppStorage("inspector.section.scanner") private var scannerOpen: Bool = InspectorSections.openByDefault(InspectorSections.scanner)
@@ -204,10 +205,7 @@ struct InspectorView: View {
                     set: { state.setCopyShowPrintDialog($0) }))
                     .help("On: the system print dialog opens before each copy. Off: copies print straight on the chosen printer.")
                     .accessibilityHint("The system print dialog opens before each copy when this is on.")
-                Toggle("Fit to page", isOn: Binding(
-                    get: { state.settings.taskOptions.copyFitToPage },
-                    set: { state.setCopyFitToPage($0) }))
-                    .help("Off: real size. On: shrinks to fit the paper.")
+                copyScaleRows
                 // Printer margins cut the edges of a copy at real size: stays visible.
                 if let warning = state.copyMarginWarning {
                     reasonLine(warning, systemImage: "exclamationmark.triangle")
@@ -227,6 +225,83 @@ struct InspectorView: View {
                     state.refreshPrinters()
                 }
             }
+        }
+    }
+
+    /// Scale, the Custom percent stepper and Center for the Copy task.
+    @ViewBuilder
+    private var copyScaleRows: some View {
+        let forced: Bool = state.copyNeedsFit
+        let locked: Bool = forced || state.isBusy
+        let percent: Int = PrintScale.clamp(state.settings.taskOptions.copyScalePercent)
+        let scale: CopyScale = forced ? .fit : state.settings.taskOptions.copyScale
+        let choice: CopyScaleChoice = copyScaleChoice(scale: scale, percent: percent)
+        let scaleHint: String = String(localized: "Real size, shrink to fit, fill the page, or a percentage.")
+        Picker("Scale", selection: Binding<CopyScaleChoice>(
+            get: { choice },
+            set: { setCopyScaleChoice($0) })) {
+            ForEach(CopyScaleChoice.basic, id: \.self) { (item: CopyScaleChoice) in
+                Text(item.title(percent: percent)).tag(item)
+            }
+            Divider()
+            ForEach(CopyScaleChoice.percents, id: \.self) { (item: CopyScaleChoice) in
+                Text(item.title(percent: percent)).tag(item)
+            }
+        }
+        .disabled(locked)
+        .help(scaleHint)
+        .accessibilityHint(Text(scaleHint))
+        .accessibilityIdentifier("copy.scale")
+        if choice == .custom {
+            Stepper(value: Binding<Int>(
+                get: { percent },
+                set: { state.setCopyScalePercent($0) }),
+                in: PrintScale.minPercent...PrintScale.maxPercent, step: PrintScale.percentStep) {
+                Text("Custom percent: \(percent)%")
+            }
+            .disabled(locked)
+            .accessibilityLabel(Text("Custom percent"))
+            .accessibilityValue(Text("\(percent) percent"))
+            .accessibilityIdentifier("copy.scaleCustom")
+        }
+        if PrintScale.hasCenterChoice(scale) {
+            let centerHint: String = String(localized: "Off: the page starts at its top-left corner.")
+            Toggle("Center", isOn: Binding<Bool>(
+                get: { state.settings.taskOptions.copyCenter },
+                set: { state.setCopyCenter($0) }))
+                .disabled(state.isBusy)
+                .help(centerHint)
+                .accessibilityHint(Text(centerHint))
+                .accessibilityIdentifier("copy.center")
+        }
+        if forced {
+            reasonLine(PrintText.realSizeUnavailable)
+                .accessibilityIdentifier("copy.fitReason")
+        }
+    }
+
+    /// The Scale entry shown as chosen. A stored percentage that is no preset reads as Custom; so does
+    /// a preset's value once Custom percent was picked, so the stepper stays while it is stepped.
+    private func copyScaleChoice(scale: CopyScale, percent: Int) -> CopyScaleChoice {
+        switch scale {
+        case .actual: return .actual
+        case .fit: return .fit
+        case .fill: return .fill
+        case .percent:
+            return customCopyPicked || !PrintScale.presetPercents.contains(percent) ? .custom : .preset(percent)
+        }
+    }
+
+    private func setCopyScaleChoice(_ choice: CopyScaleChoice) {
+        customCopyPicked = choice == .custom
+        switch choice {
+        case .actual: state.setCopyScale(.actual)
+        case .fit: state.setCopyScale(.fit)
+        case .fill: state.setCopyScale(.fill)
+        case .preset(let percent):
+            state.setCopyScalePercent(percent)
+            state.setCopyScale(.percent)
+        case .custom: state.setCopyScale(.percent)
         }
     }
 
@@ -1456,3 +1531,25 @@ private struct InspectorSectionHeader: View {
     }
 }
 #endif
+
+/// One entry of the Copy task's Scale pop-up.
+private enum CopyScaleChoice: Hashable {
+    case actual
+    case fit
+    case fill
+    case preset(Int)
+    case custom
+
+    static let basic: [CopyScaleChoice] = [.actual, .fit, .fill]
+    static let percents: [CopyScaleChoice] = PrintScale.presetPercents.map { CopyScaleChoice.preset($0) } + [.custom]
+
+    func title(percent: Int) -> String {
+        switch self {
+        case .actual: return PrintScale.label(for: .actual, percent: percent)
+        case .fit: return PrintScale.label(for: .fit, percent: percent)
+        case .fill: return PrintScale.label(for: .fill, percent: percent)
+        case .preset(let value): return PrintScale.label(for: .percent, percent: value)
+        case .custom: return String(localized: "Custom percent\u{2026}")
+        }
+    }
+}
