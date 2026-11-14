@@ -6,23 +6,25 @@ Subtitle (30): Scan pages, IDs and photos
   = 26 chars
 
 Promotional text (170):
-Point the camera at a page: it finds the edges, straightens it and queues it. Save as PDF, JPEG or TIFF. No account; nothing leaves your phone unless you share it.
-  = 163 chars
+Point the camera at a page: it finds the edges and straightens it. Save searchable PDF, Word, text or images. No account; nothing leaves your phone unless you share it.
+  = 168 chars
 
 Description:
 Lazy Scan is a document scanner. Point the camera at a page and it finds the edges, straightens the page and adds it to your queue. If the corners are off, drag them yourself.
 
 Choose what you are scanning: Photo, Document, ID card, Receipts, Book or Text. The app sets itself up for it. Lay several receipts or prints on the table and they are split automatically.
 
-Your pages sit in a grid. Open one to rotate, crop or filter it, delete the ones you don't want, add more. Save them as a PDF, with a password if you like, or as JPEG or TIFF images, and share them anywhere.
+Your pages sit in a grid. Open one to rotate, crop or filter it, delete the ones you don't want, add more. Save them as a PDF, with a password if you like, or as JPEG, PNG or TIFF images, and share them anywhere.
+
+Turn on Searchable PDF and the app recognizes the text on each page (OCR), so you can search the PDF or save it as a Word file or plain text.
 
 If you have a printer-scanner on your Wi-Fi (AirScan / eSCL), the app can scan from it instead of the camera. Pair the phone with Lazy Scan on your Mac or Windows PC and send pages straight to it.
 
 There is no account, no ads and no analytics. Pages are processed on the phone and stay there unless you share them.
 
 Keywords (100, comma separated, no spaces):
-scanner,scan,pdf,document,receipt,id card,airscan,escl,tiff,jpeg,book,paper,page,camera
-  = 87 chars
+scanner,scan,pdf,document,receipt,id card,airscan,escl,tiff,jpeg,book,paper,page,camera,ocr,text
+  = 96 chars
 
 Primary category: Productivity
 Age rating: 4+ (answer No to everything)
