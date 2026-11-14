@@ -347,19 +347,23 @@ checked or left out, so the switch is greyed out then. The **Two-sided document*
 **Skip blank pages** on: the empty backs of one-sided sheets are its main use. The demo scanner's
 second sheet has a blank back.
 
-How a page is judged, at 100 dpi whatever the scan resolution: a 0.7 in band along every edge
-is left out (edge shadows, staples, punched holes); the paper's brightness is mapped in 0.25 in
+How a page is judged, at 100 dpi whatever the scan resolution: a 0.3 in band along every edge
+is left out (edge shadows, staples), and between 0.3 and 0.7 in dark marks too solid to be
+writing are taken for punched holes and ignored; the paper's brightness is mapped in 0.25 in
 tiles (the 90th percentile of each tile, the brightest of its neighbors), so tinted, recycled or
 unevenly lit paper is still paper; a pixel is ink when it is darker than 70 % of the paper
-around it, which leaves out show-through from the other side and paper texture; marks smaller
-than 6 pixels are dust; and the page is blank when the remaining ink covers less than 0.01 %
-(Low), 0.03 % (Medium) or 0.1 % (High) of it. A page with a photo, a dark block or a dark band
+around it, which leaves out show-through from the other side and paper texture, or when its
+color (the spread between its red, green and blue) is more than 32 above the page's median, so
+a yellow highlighter line or a pale stamp counts; marks smaller than 6 pixels are dust; and the
+page is blank when the remaining ink covers less than 0.008 % (Low), 0.024 % (Medium) or
+0.08 % (High) of it. A page with a photo, a dark block or a dark band
 (more than 1 % of its tiles far darker than the paper) is never blank. Checked here with
 synthetic pages (`TestPages`, the same bytes in both test suites) and with public-domain scans
 of letters and menus and blank backs made from them (their own paper, their text showing
 through at 8–25 %): no letter, menu or photo was taken for blank and every blank back was found.
 **To check on real hardware:** blank backs from real duplex feeders, very thin paper with heavy
-show-through, and pencil notes on otherwise empty backs.
+show-through, pencil notes on otherwise empty backs, and the paper-edge shadow line of a skewed
+sheet (a thin line 0.3 to 0.7 in from the edge counts as ink and makes the back not blank).
 
 ### Crop and straighten
 

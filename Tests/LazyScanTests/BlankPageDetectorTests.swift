@@ -62,8 +62,8 @@ final class BlankPageDetectorTests: XCTestCase {
         let page = TestPages.pageNumber()
         let medium = check(page)
         XCTAssertTrue(medium.isBlank)
-        XCTAssertGreaterThanOrEqual(medium.inkCoverage, 0.0001)
-        XCTAssertLessThanOrEqual(medium.inkCoverage, 0.0003)
+        XCTAssertGreaterThanOrEqual(medium.inkCoverage, 0.00008)
+        XCTAssertLessThanOrEqual(medium.inkCoverage, 0.00024)
         XCTAssertEqual(medium.inkComponents, 2)
         XCTAssertFalse(check(page, .low).isBlank)
         XCTAssertTrue(check(page, .high).isBlank)
@@ -105,14 +105,61 @@ final class BlankPageDetectorTests: XCTestCase {
     func test_isBlankAt_agreesWithTheThresholds() {
         XCTAssertLessThan(BlankPageDetector.threshold(.low), BlankPageDetector.threshold(.medium))
         XCTAssertLessThan(BlankPageDetector.threshold(.medium), BlankPageDetector.threshold(.high))
-        XCTAssertEqual(BlankPageDetector.threshold(.low), 0.0001)
-        XCTAssertEqual(BlankPageDetector.threshold(.medium), 0.0003)
-        XCTAssertEqual(BlankPageDetector.threshold(.high), 0.001)
+        XCTAssertEqual(BlankPageDetector.threshold(.low), 0.00008)
+        XCTAssertEqual(BlankPageDetector.threshold(.medium), 0.00024)
+        XCTAssertEqual(BlankPageDetector.threshold(.high), 0.0008)
         for (_, page) in TestPages.all() {
             for level in levels {
                 let result = check(page, level)
                 XCTAssertEqual(result.isBlank, result.isBlankAt(level))
             }
+        }
+    }
+
+    private func colored(_ page: GrayImage, _ x: Int, _ y: Int, _ w: Int, _ h: Int,
+                         _ r: UInt8, _ g: UInt8, _ b: UInt8, factor: Int = 1) -> RgbaImage {
+        var scan = TestPages.enlarged(page, factor)
+        for py in (y * factor)..<((y + h) * factor) {
+            for px in (x * factor)..<((x + w) * factor) {
+                let i = (py * scan.width + px) * 4
+                scan.pixels[i] = r
+                scan.pixels[i + 1] = g
+                scan.pixels[i + 2] = b
+            }
+        }
+        return scan
+    }
+
+    func test_aYellowHighlighterLine_isInk_thoughAsLightAsPaper() {
+        let scan = colored(TestPages.noisyBlank(), 200, 500, 450, 15, 255, 245, 100)
+        for level in levels {
+            let result = BlankPageDetector.analyze(scan, dpi: 100, options: BlankPageOptions(sensitivity: level))
+            XCTAssertFalse(result.isBlank, "\(level): coverage \(result.inkCoverage)")
+        }
+        XCTAssertTrue(check(GrayImage.from(scan, sourceDPI: 100)).isBlank)
+    }
+
+    func test_aPalePrintedStamp_isInk_thoughAsLightAsPaper() {
+        let scan = colored(TestPages.cleanBlank(), 300, 600, 150, 60, 200, 215, 245)
+        for level in levels {
+            let result = BlankPageDetector.analyze(scan, dpi: 100, options: BlankPageOptions(sensitivity: level))
+            XCTAssertFalse(result.isBlank, "\(level): coverage \(result.inkCoverage)")
+        }
+        XCTAssertTrue(check(GrayImage.from(scan, sourceDPI: 100)).isBlank)
+    }
+
+    func test_paperThatIsColoredAllOver_isStillPaper() {
+        let scan = colored(TestPages.noisyBlank(), 0, 0, TestPages.width, TestPages.height, 250, 245, 150)
+        XCTAssertTrue(BlankPageDetector.analyze(scan, dpi: 100).isBlank)
+    }
+
+    func test_aNoteAlongTheBottomEdge_040InchesIn_isNotBlank() {
+        let page = TestPages.noisy(0x0B07_E5E5, 245) { p in
+            TestPages.textLine(&p, 100, 1050, 650, 50, TestPages.Rng(0x7E7E_0004))
+        }
+        for level in levels {
+            let result = check(page, level)
+            XCTAssertFalse(result.isBlank, "\(level): coverage \(result.inkCoverage)")
         }
     }
 
@@ -144,6 +191,14 @@ final class BlankPageDetectorTests: XCTestCase {
             XCTAssertEqual(banded, GrayImage.from(read, sourceDPI: 200))
             XCTAssertEqual(BlankPageDetector.analyze(cgImage, dpi: 200), BlankPageDetector.analyze(read, dpi: 200))
         }
+        let highlighter = colored(TestPages.noisyBlank(), 200, 500, 450, 15, 255, 245, 100, factor: 2)
+        let cgImage = try XCTUnwrap(highlighter.makeCGImage())
+        let read = try XCTUnwrap(RgbaImage(cgImage: cgImage))
+        let planes = try XCTUnwrap(GrayImage.lumaAndChroma(cgImage: cgImage, sourceDPI: 200))
+        XCTAssertEqual(planes.chroma, GrayImage.chroma(read, sourceDPI: 200))
+        let colorScan = BlankPageDetector.analyze(cgImage, dpi: 200)
+        XCTAssertEqual(colorScan, BlankPageDetector.analyze(read, dpi: 200))
+        XCTAssertFalse(colorScan.isBlank)
     }
 
     func test_aLowResolutionScan_isAnalyzedAtItsOwnResolution() {
@@ -156,7 +211,7 @@ final class BlankPageDetectorTests: XCTestCase {
     }
 
     func test_aSmallCard_usesAShareOfItsShortSideAsMargin() {
-        // A 3.5 × 2 in card: a 0.7 in margin would leave almost nothing.
+        // A 3.5 × 2 in card: the edge band and hole band of a full page would leave almost nothing.
         let card = GrayImage.filled(width: 350, height: 200, value: 245)
         XCTAssertTrue(BlankPageDetector.analyze(card).isBlank)
         var pixels = card.pixels

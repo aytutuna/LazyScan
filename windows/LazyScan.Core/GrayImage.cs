@@ -70,6 +70,15 @@ public sealed class GrayImage
     }
 
     /// <summary>
+    /// The chroma of <paramref name="image"/> (max − min of R, G, B per pixel), scanned at
+    /// <paramref name="sourceDpi"/>, at <paramref name="analysisDpi"/>: the same size and box
+    /// filter as <see cref="From"/>.
+    /// </summary>
+    public static GrayImage Chroma(RgbaImage image, int sourceDpi, int analysisDpi = AnalysisDpi) =>
+        new GrayImage(image.Width, image.Height, ColorAnalysis.ChromaPixels(image), Math.Max(1, sourceDpi))
+            .AtResolution(analysisDpi);
+
+    /// <summary>
     /// This image at <paramref name="dpi"/> (box filter); itself when it is no finer. The
     /// <see cref="Scale"/> of the result maps back to the image this one was made from.
     /// </summary>

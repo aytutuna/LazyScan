@@ -64,4 +64,19 @@ public static class ColorAnalysis
         }
         return gray;
     }
+
+    /// <summary>
+    /// The chroma of every pixel (one byte per pixel, row-major): max(R, G, B) − min(R, G, B).
+    /// </summary>
+    public static byte[] ChromaPixels(RgbaImage image)
+    {
+        var rgba = image.Pixels;
+        var chroma = new byte[image.Width * image.Height];
+        for (int p = 0, i = 0; p < chroma.Length; p++, i += 4)
+        {
+            int r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+            chroma[p] = (byte)(Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b)));
+        }
+        return chroma;
+    }
 }

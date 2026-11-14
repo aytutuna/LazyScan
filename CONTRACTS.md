@@ -650,7 +650,7 @@ enum MaskOps {
     static func componentAreas(mask: [UInt8], width: Int, height: Int, eightConnected: Bool = false) -> [Int]
 }
 ```
-Twins of `windows/LazyScan.Core/RgbaImage.cs`, `GrayImage.cs` (`GrayImage.Luma` / `From` / `AtResolution` / `Downsampled`, `AnalysisDpi`), `BackgroundMap.cs` and `MaskOps.cs` (internal there too); `RgbaImageTests`, `GrayImageTests` and `MaskOpsTests` are the same cases on both sides and expect the same bytes. `MaskOpsTests` keeps PhotoDetector's former private code as the reference and checks MaskOps against it; the C# suite also pins PhotoDetector's regions on the demo bed to the last bit. New page analyses (page edges, separator sheets, receipts) build on these types rather than on CoreGraphics, so both platforms compute the same numbers; Swift meets CoreGraphics only in `RgbaImage(cgImage:)`, `makeCGImage()` and `GrayImage(cgImage:…)`.
+Twins of `windows/LazyScan.Core/RgbaImage.cs`, `GrayImage.cs` (`GrayImage.Luma` / `From` / `Chroma` / `AtResolution` / `Downsampled`, `AnalysisDpi`; Swift also `GrayImage.lumaAndChroma(cgImage:sourceDPI:)`, `ColorAnalysis.chromaPixels`), `BackgroundMap.cs` and `MaskOps.cs` (internal there too); `RgbaImageTests`, `GrayImageTests` and `MaskOpsTests` are the same cases on both sides and expect the same bytes. `MaskOpsTests` keeps PhotoDetector's former private code as the reference and checks MaskOps against it; the C# suite also pins PhotoDetector's regions on the demo bed to the last bit. New page analyses (page edges, separator sheets, receipts) build on these types rather than on CoreGraphics, so both platforms compute the same numbers; Swift meets CoreGraphics only in `RgbaImage(cgImage:)`, `makeCGImage()` and `GrayImage(cgImage:…)`.
 
 ### Pipeline/BlankPageDetector.swift, Pipeline/PageProcessor.swift (+ DocumentOptions, ScannedPage in Core/Models.swift)
 
@@ -724,10 +724,14 @@ public struct BlankPageResult: Equatable, Sendable {
     public func isBlankAt(_ sensitivity: BlankSensitivity) -> Bool
 }
 public enum BlankPageDetector {
-    // marginInches 0.7, smallPageInches 2.5, smallPageMarginFraction 0.15, tileInches 0.25,
-    // backgroundPercentile 0.9, darkAreaDrop 64, darkTileFraction 0.01, inkContrast 0.30, minMarkPixels 6
-    public static func threshold(_ sensitivity: BlankSensitivity) -> Double   // 0.0001, 0.0003, 0.001
-    public static func analyze(_ gray: GrayImage, options: BlankPageOptions = BlankPageOptions()) -> BlankPageResult
+    // marginInches 0.3, holeBandInches 0.7, holeRadiusInches 0.04, smallPageInches 2.5, smallPageMarginFraction 0.15,
+    // tileInches 0.25, backgroundPercentile 0.9, darkAreaDrop 64, darkTileFraction 0.01, inkContrast 0.30,
+    // inkChroma 32 (ColorAnalysis.chromaThreshold), minMarkPixels 6. A pixel is ink when darker than the paper
+    // or when its chroma is more than inkChroma above the page's median chroma (chroma plane given); between
+    // marginInches and holeBandInches, luma ink in a mark a square of holeRadiusInches fits in (a punched
+    // hole) is not ink, unless marginInches is 0
+    public static func threshold(_ sensitivity: BlankSensitivity) -> Double   // 0.00008, 0.00024, 0.0008
+    public static func analyze(_ gray: GrayImage, chroma: GrayImage? = nil, options: BlankPageOptions = BlankPageOptions()) -> BlankPageResult
     public static func analyze(_ page: RgbaImage, dpi: Int, options: BlankPageOptions = BlankPageOptions()) -> BlankPageResult
     public static func analyze(_ image: CGImage, dpi: Int, options: BlankPageOptions = BlankPageOptions()) -> BlankPageResult
 }

@@ -55,6 +55,18 @@ public enum ColorAnalysis {
         return gray
     }
 
+    /// The chroma of every pixel (one byte per pixel, row-major): max(R, G, B) − min(R, G, B).
+    public static func chromaPixels(rgba: [UInt8], width: Int, height: Int) -> [UInt8] {
+        let count = width * height
+        var chroma = [UInt8](repeating: 0, count: count)
+        for p in 0..<count {
+            let i = p * 4
+            let r = rgba[i], g = rgba[i + 1], b = rgba[i + 2]
+            chroma[p] = max(r, max(g, b)) - min(r, min(g, b))
+        }
+        return chroma
+    }
+
     /// The image as tightly packed sRGB RGBA8 pixels (row 0 = top of the image), drawn over
     /// white at its own size; nil when no bitmap context can be made.
     public static func rgbaPixels(of image: CGImage) -> [UInt8]? {

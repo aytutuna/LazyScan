@@ -58,13 +58,40 @@ public struct GrayImage: Equatable, Sendable {
         luma(image, dpi: Double(max(1, sourceDPI))).atResolution(analysisDPI)
     }
 
+    /// The chroma of `image` (max − min of R, G, B per pixel), scanned at `sourceDPI`, at
+    /// `analysisDPI`: the same size and box filter as `from(_:sourceDPI:analysisDPI:)`.
+    public static func chroma(_ image: RgbaImage, sourceDPI: Int,
+                              analysisDPI: Int = GrayImage.analysisDPI) -> GrayImage {
+        let pixels = ColorAnalysis.chromaPixels(rgba: image.pixels, width: image.width, height: image.height)
+        return GrayImage(width: image.width, height: image.height, pixels: pixels,
+                         dpi: Double(max(1, sourceDPI))).atResolution(analysisDPI)
+    }
+
     /// `image`, scanned at `sourceDPI`, as gray at `analysisDPI`, read in bands of rows so the
     /// whole page is never held as RGBA: the same luma and box filter as `from(_:sourceDPI:analysisDPI:)`
     /// on the pixels `RgbaImage(cgImage:)` would read. nil when no bitmap context can be made.
     public init?(cgImage: CGImage, sourceDPI: Int, analysisDPI: Int = GrayImage.analysisDPI) {
+        guard let planes = GrayImage.read(cgImage, sourceDPI: sourceDPI, analysisDPI: analysisDPI, withChroma: false) else {
+            return nil
+        }
+        self = planes.luma
+    }
+
+    /// `init(cgImage:sourceDPI:analysisDPI:)` together with the image's chroma plane
+    /// (`chroma(_:sourceDPI:analysisDPI:)`), read in the same pass.
+    public static func lumaAndChroma(cgImage: CGImage, sourceDPI: Int,
+                                     analysisDPI: Int = GrayImage.analysisDPI) -> (luma: GrayImage, chroma: GrayImage)? {
+        guard let planes = read(cgImage, sourceDPI: sourceDPI, analysisDPI: analysisDPI, withChroma: true),
+              let colors = planes.chroma else { return nil }
+        return (planes.luma, colors)
+    }
+
+    private static func read(_ cgImage: CGImage, sourceDPI: Int, analysisDPI: Int,
+                             withChroma: Bool) -> (luma: GrayImage, chroma: GrayImage?)? {
         let width = cgImage.width, height = cgImage.height
         guard width > 0, height > 0 else { return nil }
         var gray = [UInt8](repeating: 0, count: width * height)
+        var chroma = [UInt8](repeating: 0, count: withChroma ? width * height : 0)
         let band = max(1, min(height, 4_000_000 / max(1, width * 4) + 1))
         var buffer = [UInt8](repeating: 0, count: width * band * 4)
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
@@ -91,10 +118,21 @@ public struct GrayImage: Equatable, Sendable {
             for i in 0..<(width * rows) {
                 gray[top * width + i] = part[i]
             }
+            if withChroma {
+                let colors = ColorAnalysis.chromaPixels(rgba: buffer, width: width, height: rows)
+                for i in 0..<(width * rows) {
+                    chroma[top * width + i] = colors[i]
+                }
+            }
             top += rows
         }
-        self = GrayImage(width: width, height: height, pixels: gray, dpi: Double(max(1, sourceDPI)))
-            .atResolution(analysisDPI)
+        let dpi = Double(max(1, sourceDPI))
+        let luma = GrayImage(width: width, height: height, pixels: gray, dpi: dpi).atResolution(analysisDPI)
+        var colors: GrayImage?
+        if withChroma {
+            colors = GrayImage(width: width, height: height, pixels: chroma, dpi: dpi).atResolution(analysisDPI)
+        }
+        return (luma, colors)
     }
 
     /// This image at `dpi` (box filter); itself when it is no finer. The `scale` of the result maps
