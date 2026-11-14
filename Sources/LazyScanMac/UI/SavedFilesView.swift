@@ -2,6 +2,7 @@
 import AppKit
 import LazyScanKit
 import ImageIO
+import QuickLook
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -79,8 +80,8 @@ struct SavedFilesView: View {
     }
 
     private var destinationURL: URL {
-        URL(fileURLWithPath: (state.settings.destinationPath as NSString).expandingTildeInPath,
-            isDirectory: true)
+        state.lastSaveFolder ?? URL(fileURLWithPath: (state.settings.destinationPath as NSString).expandingTildeInPath,
+                                    isDirectory: true)
     }
 
     private func reload() async {
@@ -203,6 +204,8 @@ fileprivate struct SavedFileCard: View {
     let onAppend: () -> Void
 
     @State private var thumbnail: CGImage?
+    @State private var previewURL: URL?
+    @FocusState private var focused: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -231,10 +234,12 @@ fileprivate struct SavedFileCard: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .help(file.url.lastPathComponent)
+                .onTapGesture { focused = true }
 
             Text("\(file.modified.formatted(date: .abbreviated, time: .shortened)) · \(sizeText)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .onTapGesture { focused = true }
 
             HStack(spacing: 10) {
                 Button("Open") { onAction(.open) }
@@ -280,6 +285,14 @@ fileprivate struct SavedFileCard: View {
             .controlSize(.small)
         }
         .contextMenu { actionMenu }
+        .draggable(file.url)
+        .quickLookPreview($previewURL)
+        .focusable()
+        .focused($focused)
+        .onKeyPress(.space) {
+            previewURL = file.url
+            return .handled
+        }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1))

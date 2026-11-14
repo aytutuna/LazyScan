@@ -182,6 +182,8 @@ public final class AppState: ObservableObject {
     @Published public var settings: ScanSettings {
         didSet {
             if settings.document != oldValue.document { queuePlansCache = nil }
+            if settings.destinationPath != oldValue.destinationPath
+                || settings.destinationBookmark != oldValue.destinationBookmark { lastSaveFolder = nil }
             if rescanTarget != nil && !queuesScans { rescanTarget = nil }
             if retakingID != nil && !queuesScans { retakingID = nil }
             // A feeder known to scan one side turns two-sided scanning into turning over by hand
@@ -464,6 +466,10 @@ public final class AppState: ObservableObject {
     /// The Mac said once this launch that a save went to the default folder because the picked one did not
     /// open; the next saves do not say it again until the folder has opened.
     private var saveFolderFallbackSaid = false
+    /// The folder the last save went to, which is not the settings folder after a fallback to the app's
+    /// folder; nil until a save, and again once the folder setting changes. A template's subfolders are
+    /// inside it, not it.
+    @Published public internal(set) var lastSaveFolder: URL?
     /// The save folder as resolved for the save under way, so its files share one resolution of the bookmark.
     private var saveDirectory: URL?
     /// This install's Documents folder, which a save folder kept as a path into an earlier install's is
@@ -3483,6 +3489,7 @@ public final class AppState: ObservableObject {
         }
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         if currentCancelFlag != nil { saveDirectory = url }
+        if lastSaveFolder != url { lastSaveFolder = url }
         return url
     }
 
@@ -3495,6 +3502,7 @@ public final class AppState: ObservableObject {
         guard let bookmark = settings.destinationBookmark, let resolve = resolveDestinationBookmark,
               let resolved = resolve(bookmark) else { return nil }
         saveFolderFallbackSaid = false
+        lastSaveFolder = nil
         var updated = settings
         updated.destinationBookmark = resolved.bookmark
         updated.destinationPath = resolved.folder.path

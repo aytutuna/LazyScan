@@ -141,6 +141,7 @@ struct StatusBarView: View {
                     .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .draggable(urls[0])
             }
         }
         .help(help)
