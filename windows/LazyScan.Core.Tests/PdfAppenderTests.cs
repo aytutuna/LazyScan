@@ -605,12 +605,23 @@ public class PdfAppenderTests
         byte[] original = PdfFixture.Classic();
         var cause = new IOException("Unable to move the replacement file to the file to be replaced.", unchecked((int)0x80070499));
 
-        // Moved back: the user is asked to close the other app and try again.
+        // Moved back after a lock: the user is asked to close the other app and try again.
         string path = Path.Combine(folder.Path, "Report.pdf");
         string backup = folder.File(".1111.pdf.bak", original);
-        var back = PdfAppender.PutBack(backup, path, cause);
+        var lockCause = new IOException("The process cannot access the file.", unchecked((int)0x80070020));
+        var back = PdfAppender.PutBack(backup, path, lockCause);
         Assert.Equal(PdfAppendProblem.InUse, back.Problem);
         Assert.Equal(PdfAppender.Message(PdfAppendProblem.InUse, "Report.pdf"), back.Message);
+        Assert.Equal(original, File.ReadAllBytes(path));
+        Assert.Equal([path], Directory.GetFiles(folder.Path));
+
+        // Moved back after another failure: the system's reason is given.
+        File.Delete(path);
+        backup = folder.File(".3333.pdf.bak", original);
+        back = PdfAppender.PutBack(backup, path, cause);
+        Assert.Equal(PdfAppendProblem.NotWritten, back.Problem);
+        Assert.Equal(PdfAppender.Message(PdfAppendProblem.NotWritten, "Report.pdf") + " " + Loc.T("The system said: {0}", cause.Message),
+                     back.Message);
         Assert.Equal(original, File.ReadAllBytes(path));
         Assert.Equal([path], Directory.GetFiles(folder.Path));
 
@@ -628,6 +639,23 @@ public class PdfAppenderTests
         Assert.Same(cause, left.InnerException);
         Assert.False(File.Exists(other));
         Assert.Equal(original, File.ReadAllBytes(held));
+    }
+
+    [Fact]
+    public void ASwapThatFailed_IsInUseOnlyForALock()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "Report.pdf");
+        var full = new IOException("There is not enough space on the disk.", unchecked((int)0x80070070));
+        var error = PdfAppender.SwapRefusal(path, full);
+        Assert.Equal(PdfAppendProblem.NotWritten, error.Problem);
+        Assert.EndsWith(Loc.T("The system said: {0}", full.Message), error.Message);
+        Assert.Same(full, error.InnerException);
+
+        foreach (int code in new[] { 32, 33 })
+        {
+            var locked = new IOException("locked", unchecked((int)(0x80070000 | code)));
+            Assert.Equal(PdfAppendProblem.InUse, PdfAppender.SwapRefusal(path, locked).Problem);
+        }
     }
 
     [Fact]

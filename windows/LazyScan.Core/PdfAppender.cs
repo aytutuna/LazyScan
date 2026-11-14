@@ -29,6 +29,8 @@ public enum PdfAppendProblem
     NotVerified,
     /// <summary>The updated file could not be written next to it, say on a full disk (the original stays as it was).</summary>
     NotWritten,
+    /// <summary>It could not be opened, say because a file stored online is not available (it stays as it was).</summary>
+    NotOpened,
     /// <summary>
     /// The original was moved aside to be replaced, the replacement failed and it could not be
     /// moved back: it is in its folder under the backup name the message gives (<see cref="PdfAppender.LeftAsBackupMessage"/>).
@@ -149,6 +151,7 @@ public static class PdfAppender
         PdfAppendProblem.Missing => Loc.T("{0} is no longer in its folder. It may have been moved, renamed or deleted.", fileName),
         PdfAppendProblem.Changed => Loc.T("{0} was changed by another app while the pages were being added, so it was left as it was. Try again.", fileName),
         PdfAppendProblem.NotWritten => Loc.T("The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.", fileName),
+        PdfAppendProblem.NotOpened => Loc.T("{0} could not be opened, so pages can't be added to it. If it is stored online, check that it is available, then try again.", fileName),
         PdfAppendProblem.LeftAsBackup => LeftAsBackupMessage(fileName, null),
         _ => Loc.T("The pages could not be added to {0}: the updated file did not check out, so the original was left as it was.", fileName),
     };
@@ -519,6 +522,10 @@ public static class PdfAppender
         {
             throw Refusal(PdfAppendProblem.InUse, path, e);
         }
+        catch (IOException e)
+        {
+            throw Refusal(PdfAppendProblem.NotOpened, path, e);
+        }
     }
 
     private static PdfReaderLite Read(Stream stream, string path) => Mapped(path, () => new PdfReaderLite(stream, leaveOpen: true));
@@ -667,7 +674,7 @@ public static class PdfAppender
         }
         catch (IOException e)
         {
-            throw Refusal(PdfAppendProblem.InUse, path, e);
+            throw SwapRefusal(path, e);
         }
         try
         {
@@ -682,14 +689,15 @@ public static class PdfAppender
     /// <summary>
     /// The original, moved aside to <paramref name="backup"/> by a replacement that then failed
     /// (<paramref name="cause"/>), goes back to <paramref name="path"/>; returns the refusal to
-    /// throw: InUse when it is back, LeftAsBackup naming the backup when it could not be moved.
+    /// throw: <see cref="SwapRefusal"/> when it is back, LeftAsBackup naming the backup when it could
+    /// not be moved.
     /// </summary>
     internal static PdfAppendException PutBack(string backup, string path, IOException cause)
     {
         try
         {
             File.Move(backup, path);
-            return Refusal(PdfAppendProblem.InUse, path, cause);
+            return SwapRefusal(path, cause);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -711,9 +719,17 @@ public static class PdfAppender
         }
         catch (IOException e)
         {
-            throw Refusal(PdfAppendProblem.InUse, path, e);
+            throw SwapRefusal(path, e);
         }
     }
+
+    /// <summary>
+    /// The refusal for a replacement that failed for another reason than a missing or read-only
+    /// file: InUse when the cause is a sharing or lock violation, else NotWritten with the system's
+    /// reason.
+    /// </summary>
+    internal static PdfAppendException SwapRefusal(string path, IOException cause) =>
+        Refusal(Win32Error(cause) is 32 or 33 ? PdfAppendProblem.InUse : PdfAppendProblem.NotWritten, path, cause);
 
     /// <summary>The Windows error code an <see cref="IOException"/> carries in its HRESULT.</summary>
     private static int Win32Error(IOException e) => e.HResult & 0xFFFF;
@@ -726,8 +742,15 @@ public static class PdfAppender
         _ => PdfAppendProblem.Damaged,
     };
 
-    private static PdfAppendException Refusal(PdfAppendProblem problem, string path, Exception? inner = null) =>
-        new(problem, Message(problem, System.IO.Path.GetFileName(path)), inner);
+    private static PdfAppendException Refusal(PdfAppendProblem problem, string path, Exception? inner = null)
+    {
+        string text = Message(problem, System.IO.Path.GetFileName(path));
+        if (inner != null && problem is PdfAppendProblem.NotWritten or PdfAppendProblem.NotOpened)
+        {
+            text += " " + Loc.T("The system said: {0}", inner.Message);
+        }
+        return new(problem, text, inner);
+    }
 
     private static byte[] CopyHashing(Stream from, Stream to, long length, CancellationToken cancellationToken)
     {

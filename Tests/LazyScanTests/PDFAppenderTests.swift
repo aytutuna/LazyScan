@@ -648,24 +648,57 @@ final class PDFAppenderTests: XCTestCase {
         let original = PDFFixture.classic()
         let cause = Cause(text: "Unable to move the replacement file to the file to be replaced.")
 
-        // Moved back: the user is asked to close the other app and try again.
+        // Moved back after a lock: the user is asked to close the other app and try again.
         let path = (folder as NSString).appendingPathComponent("Report.pdf")
         let backup = try write(folder, ".1111.pdf.bak", original)
-        let back = PDFAppender.putBack(backup, path, cause: cause)
+        let back = PDFAppender.putBack(backup, path, cause: POSIXError(.EBUSY))
         XCTAssertEqual(back.problem, .inUse)
         XCTAssertEqual(back.message, PDFAppender.message(.inUse, "Report.pdf"))
         XCTAssertEqual(contents(path), original)
         XCTAssertEqual(names(folder), ["Report.pdf"])
 
+        // Moved back after another failure: the system's reason is given.
+        try FileManager.default.removeItem(atPath: path)
+        let second = try write(folder, ".3333.pdf.bak", original)
+        let other = PDFAppender.putBack(second, path, cause: cause)
+        XCTAssertEqual(other.problem, .notWritten)
+        XCTAssertEqual(contents(path), original)
+        XCTAssertEqual(names(folder), ["Report.pdf"])
+
         // Not moved back (the way back leads into a folder that is gone): the refusal says where the file is.
-        let other = ((folder as NSString).appendingPathComponent("gone") as NSString).appendingPathComponent("Contract.pdf")
+        let gone = ((folder as NSString).appendingPathComponent("gone") as NSString).appendingPathComponent("Contract.pdf")
         let held = try write(folder, ".2222.pdf.bak", original)
-        let left = PDFAppender.putBack(held, other, cause: cause)
+        let left = PDFAppender.putBack(held, gone, cause: cause)
         XCTAssertEqual(left.problem, .leftAsBackup)
         XCTAssertEqual(left.message, PDFAppender.leftAsBackupMessage("Contract.pdf", backupName: ".2222.pdf.bak"))
         XCTAssertEqual(left.underlying as? Cause, cause)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: other))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: gone))
         XCTAssertEqual(contents(held), original)
+    }
+
+    func test_aFailedSwap_isInUseOnlyForALock() {
+        let path = "/tmp/Report.pdf"
+        for code in [EBUSY, ETXTBSY, EAGAIN] {
+            XCTAssertEqual(PDFAppender.swapRefusal(path, POSIXError(POSIXErrorCode(rawValue: code)!)).problem, .inUse)
+        }
+        let wrapped = NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileWriteUnknown.rawValue,
+                              userInfo: [NSUnderlyingErrorKey: POSIXError(.ENOSPC) as NSError])
+        let full = PDFAppender.swapRefusal(path, wrapped)
+        XCTAssertEqual(full.problem, .notWritten)
+        XCTAssertEqual(full.message, PDFAppender.message(.notWritten, "Report.pdf") + " "
+                       + L10n.t("The system said: {0}", wrapped.localizedDescription))
+    }
+
+    func test_anUnmappedOpenError_isRefusedInWordsNamingTheFile() {
+        for code in [ETIMEDOUT, EIO, ENETDOWN] {
+            let error = PDFAppender.openRefusal(code, "/tmp/Scan.pdf")
+            XCTAssertEqual(error.problem, .notOpened)
+            XCTAssertTrue(error.message.hasPrefix(PDFAppender.message(.notOpened, "Scan.pdf")))
+            XCTAssertTrue(error.message.contains(POSIXError(POSIXErrorCode(rawValue: code)!).localizedDescription))
+        }
+        XCTAssertEqual(PDFAppender.openRefusal(ENOENT, "/tmp/Scan.pdf").problem, .missing)
+        XCTAssertEqual(PDFAppender.openRefusal(EROFS, "/tmp/Scan.pdf").problem, .readOnly)
+        XCTAssertEqual(PDFAppender.openRefusal(EBUSY, "/tmp/Scan.pdf").problem, .inUse)
     }
 
     func test_appendToFile_cancelled_leavesTheFile() throws {

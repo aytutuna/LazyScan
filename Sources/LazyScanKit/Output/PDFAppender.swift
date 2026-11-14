@@ -34,6 +34,8 @@ public enum PDFAppendProblem: CaseIterable, Equatable, Sendable {
     /// The updated file could not be written next to it, say on a full disk (the original stays as
     /// it was).
     case notWritten
+    /// It could not be opened, say because a file stored online is not available (it stays as it was).
+    case notOpened
     /// The original was moved aside to be replaced, the replacement failed and it could not be moved
     /// back: it is in its folder under the backup name the message gives
     /// (`PDFAppender.leftAsBackupMessage(_:backupName:)`).
@@ -208,6 +210,8 @@ public enum PDFAppender {
             return L10n.t("{0} was changed by another app while the pages were being added, so it was left as it was. Try again.", fileName)
         case .notWritten:
             return L10n.t("The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.", fileName)
+        case .notOpened:
+            return L10n.t("{0} could not be opened, so pages can't be added to it. If it is stored online, check that it is available, then try again.", fileName)
         case .leftAsBackup:
             return leftAsBackupMessage(fileName, backupName: nil)
         case .notVerified:
@@ -632,17 +636,32 @@ public enum PDFAppender {
                [EACCES, EPERM, EROFS].contains(Int32(truncatingIfNeeded: underlying.code)) {
                 throw refusal(.readOnly, path, error)
             }
-            throw refusal(.inUse, path, error)
+            throw swapRefusal(path, error)
         }
     }
 
+    /// The refusal for a replacement that failed for another reason than a missing or read-only file:
+    /// inUse when the cause is a lock, else notWritten with the system's reason.
+    package static func swapRefusal(_ path: String, _ cause: any Error) -> PDFAppendError {
+        refusal(isLock(cause) ? .inUse : .notWritten, path, cause)
+    }
+
+    private static func isLock(_ error: any Error) -> Bool {
+        if let cocoa = error as? CocoaError, cocoa.code == .fileLocking { return true }
+        let nsError = error as NSError
+        let posix: NSError? = nsError.domain == NSPOSIXErrorDomain
+            ? nsError : nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+        guard let posix, posix.domain == NSPOSIXErrorDomain else { return false }
+        return [EBUSY, ETXTBSY, EAGAIN].contains(Int32(truncatingIfNeeded: posix.code))
+    }
+
     /// The original, moved aside to `backup` by a replacement that then failed (`cause`), goes back to
-    /// `path`; returns the refusal to throw: inUse when it is back, leftAsBackup naming the backup when
-    /// it could not be moved.
+    /// `path`; returns the refusal to throw: `swapRefusal` when it is back, leftAsBackup naming the
+    /// backup when it could not be moved.
     static func putBack(_ backup: String, _ path: String, cause: any Error) -> PDFAppendError {
         do {
             try FileManager.default.moveItem(atPath: backup, toPath: path)
-            return refusal(.inUse, path, cause)
+            return swapRefusal(path, cause)
         } catch {
             let fileName = (path as NSString).lastPathComponent
             let backupName = (backup as NSString).lastPathComponent
@@ -656,15 +675,7 @@ public enum PDFAppender {
     private static func openForUpdate(_ path: String) throws -> FileHandle {
         let descriptor = open(path, O_RDWR | O_CLOEXEC)
         if descriptor < 0 {
-            let code = errno
-            switch code {
-            case ENOENT, ENOTDIR:
-                throw refusal(.missing, path, posixError(code))
-            case EACCES, EPERM, EROFS:
-                throw refusal(.readOnly, path, posixError(code))
-            default:
-                throw posixError(code)
-            }
+            throw openRefusal(errno, path)
         }
         // A file system without locks (ENOTSUP) says nothing about other apps.
         if flock(descriptor, LOCK_SH | LOCK_NB) != 0 && errno == EAGAIN {
@@ -672,6 +683,19 @@ public enum PDFAppender {
             throw refusal(.inUse, path, posixError(EAGAIN))
         }
         return FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+    }
+
+    package static func openRefusal(_ code: Int32, _ path: String) -> PDFAppendError {
+        switch code {
+        case ENOENT, ENOTDIR:
+            return refusal(.missing, path, posixError(code))
+        case EACCES, EPERM, EROFS:
+            return refusal(.readOnly, path, posixError(code))
+        case EBUSY, ETXTBSY:
+            return refusal(.inUse, path, posixError(code))
+        default:
+            return refusal(.notOpened, path, posixError(code))
+        }
     }
 
     /// A reader over what `handle` reads, which stays open; what it finds wrong is a refusal in words.
@@ -845,6 +869,10 @@ public enum PDFAppender {
 
     private static func refusal(_ problem: PDFAppendProblem, _ path: String,
                                 _ underlying: (any Error)? = nil) -> PDFAppendError {
-        PDFAppendError(problem, message(problem, (path as NSString).lastPathComponent), underlying: underlying)
+        var text = message(problem, (path as NSString).lastPathComponent)
+        if let underlying, problem == .notWritten || problem == .notOpened {
+            text += " " + L10n.t("The system said: {0}", underlying.localizedDescription)
+        }
+        return PDFAppendError(problem, text, underlying: underlying)
     }
 }

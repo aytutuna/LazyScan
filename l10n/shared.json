@@ -1439,6 +1439,12 @@
   "The pages could not be added to {0}: the updated file could not be written in its folder (the disk may be full), so the original was left as it was.": {
     "note": "{0} is the name of a PDF file."
   },
+  "{0} could not be opened, so pages can't be added to it. If it is stored online, check that it is available, then try again.": {
+    "note": "{0} is the name of a PDF file."
+  },
+  "The system said: {0}": {
+    "note": "{0} is a reason the system gives for a failure, as a sentence, appended to an error message."
+  },
   "The pages could not be added to {0}: the updated file did not check out, so the original was left as it was.": {
     "note": "{0} is the name of a PDF file."
   },
