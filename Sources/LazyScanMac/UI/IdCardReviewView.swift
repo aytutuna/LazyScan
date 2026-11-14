@@ -80,6 +80,13 @@ struct IdCardReviewView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let turned = state.idCardBackTurnedNote {
+                            Text(turned)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("idcard.turned")
+                        }
                         if let warning = state.idCardSizeWarning {
                             Label(warning, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
