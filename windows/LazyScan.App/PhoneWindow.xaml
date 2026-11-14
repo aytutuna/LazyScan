@@ -83,34 +83,44 @@
                         <Button x:Name="PairButton" Content="{loc:T Pair a phone}" ui:Icon.Glyph="&#xE8EA;" HorizontalAlignment="Left"
                                 Margin="0,10,0,0" Style="{StaticResource AccentIconTextButtonStyle}" Click="Pair_Click" />
                         <StackPanel x:Name="PairingPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Background="White" Padding="0" Margin="0,0,16,0"
-                                        CornerRadius="4" VerticalAlignment="Top">
-                                    <Image x:Name="QrImage" Stretch="None" FlowDirection="LeftToRight" RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                           AutomationProperties.Name="{loc:T Pairing code to scan with your phone}" />
-                                </Border>
+                            <DockPanel KeyboardNavigation.TabNavigation="Local">
+                                <StackPanel DockPanel.Dock="Left" Margin="0,0,16,0" VerticalAlignment="Top">
+                                    <Border Background="White" Padding="0" CornerRadius="4">
+                                        <Image x:Name="QrImage" Stretch="None" FlowDirection="LeftToRight" RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                               AutomationProperties.Name="{loc:T Pairing code to scan with your phone}" />
+                                    </Border>
+                                    <StackPanel Width="{Binding ActualWidth, ElementName=QrImage}">
+                                        <TextBlock x:Name="PairCodeCaption" Text="{loc:T Or enter this code on the phone}" Style="{StaticResource SecondaryBodyText}"
+                                                   TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
+                                                   AutomationProperties.AutomationId="PairCodeCaption" />
+                                        <TextBox x:Name="PairCodeText" IsReadOnly="True" IsTabStop="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent"
+                                                 FontFamily="Consolas" FontSize="34" FontWeight="SemiBold" TextAlignment="Center"
+                                                 FlowDirection="LeftToRight" AutomationProperties.AutomationId="PairCodeText"
+                                                 AutomationProperties.LabeledBy="{Binding ElementName=PairCodeCaption}" />
+                                        <Button x:Name="CopyPairingTextButton" Content="{loc:T Copy pairing text}" ui:Icon.Glyph="&#xE8C8;" HorizontalAlignment="Center"
+                                                Margin="0,8,0,0" Style="{StaticResource SubtleButtonStyle}" KeyboardNavigation.TabIndex="2"
+                                                AutomationProperties.Name="{loc:T Copy the pairing text}" Click="CopyPairingText_Click" />
+                                    </StackPanel>
+                                </StackPanel>
                                 <StackPanel>
                                     <TextBlock x:Name="ExpiryText" Style="{StaticResource BodyStrongText}" TextWrapping="Wrap"
                                                AutomationProperties.LiveSetting="Polite" />
                                     <TextBlock Style="{StaticResource SecondaryBodyText}" TextWrapping="Wrap" Margin="0,4,0,10"
                                                Text="{loc:T Cannot scan the code? Get this pairing text onto the phone (a message to yourself\, say) and paste it under Options › My computer › Enter pairing text\, then compare the check code.}" />
                                     <TextBlock x:Name="PairingTextLabel" Text="{loc:T Pairing text}" Style="{StaticResource DetailLabelText}" Margin="0,0,0,4" />
-                                    <TextBox x:Name="PairingTextBox" Style="{StaticResource DetailBox}"
+                                    <TextBox x:Name="PairingTextBox" Style="{StaticResource DetailBox}" KeyboardNavigation.TabIndex="1"
                                              AutomationProperties.LabeledBy="{Binding ElementName=PairingTextLabel}" />
-                                    <Button x:Name="CopyPairingTextButton" Content="{loc:T Copy}" ui:Icon.Glyph="&#xE8C8;" HorizontalAlignment="Left"
-                                            Margin="0,0,0,6" Style="{StaticResource SubtleButtonStyle}"
-                                            AutomationProperties.Name="{loc:T Copy the pairing text}" Click="CopyPairingText_Click" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Name="CheckLabel" Text="{loc:T Check code}" Style="{StaticResource DetailLabelText}" Margin="0,6,16,6" />
-                                        <TextBox Grid.Column="1" x:Name="CheckCodeBox" Style="{StaticResource DetailBox}"
+                                        <TextBox Grid.Column="1" x:Name="CheckCodeBox" Style="{StaticResource DetailBox}" KeyboardNavigation.TabIndex="3"
                                                  AutomationProperties.LabeledBy="{Binding ElementName=CheckLabel}" />
                                     </Grid>
                                     <Button x:Name="StopPairingButton" Content="{loc:T Stop pairing}" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                            Style="{StaticResource SubtleButtonStyle}" Click="StopPairing_Click" />
+                                            Style="{StaticResource SubtleButtonStyle}" KeyboardNavigation.TabIndex="4" Click="StopPairing_Click" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>

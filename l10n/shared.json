@@ -2795,6 +2795,9 @@
     "note": "Label of the text form of the pairing code, which the user can paste when the QR code cannot be scanned."
   },
   "Copy the pairing text": {},
+  "Or enter this code on the phone": {},
+  "Copy pairing text": {},
+  "Pairing code, {0}": {},
   "Check code": {
     "note": "Label of the short code shown on both devices that the user compares when pairing. A noun."
   },

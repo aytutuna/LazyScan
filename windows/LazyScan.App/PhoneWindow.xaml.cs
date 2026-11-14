@@ -285,6 +285,9 @@ public partial class PhoneWindow : Window
             string pairingText = _code.Format();
             QrImage.Source = QrBitmap(pairingText);
             PairingTextBox.Text = pairingText;
+            string digits = _companion.Pairing?.Code ?? "";
+            PairCodeText.Text = _companion.Pairing?.FormattedCode ?? "";
+            AutomationProperties.SetName(PairCodeText, Loc.T("Pairing code, {0}", string.Join(" ", digits.ToCharArray())));
             var fingerprint = _code.FingerprintBytes;
             CheckCodeBox.Text = fingerprint is null ? "" : SpkiFingerprint.FormatCheckCode(SpkiFingerprint.CheckCode(fingerprint));
             PairNote.Visibility = Visibility.Collapsed;
