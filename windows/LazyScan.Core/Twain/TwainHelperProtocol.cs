@@ -316,7 +316,7 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
 public static class TwainHelperProtocol
 {
     /// <summary>The protocol version; the app and the helper are built together and must agree.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     /// <summary>"LSTW": the first field of <see cref="TwainHelperHello"/> and its reply.</summary>
     public const uint Magic = 0x5754534C;
@@ -556,6 +556,7 @@ public static class TwainHelperProtocol
         w.Bool(request.PreferMemory);
         w.Bool(request.Duplex);
         w.Int(request.SupportedSize);
+        w.Bool(request.Transparency);
     }
 
     private static TwainScanRequest ReadRequest(ref Reader r)
@@ -565,7 +566,7 @@ public static class TwainHelperProtocol
         RectD? frame = r.Bool() ? new RectD(r.Double(), r.Double(), r.Double(), r.Double()) : null;
         return new TwainScanRequest(feeder, pixelType, bitDepth, resolution, frame,
                                     TransferCount: r.Int(), ShowDriverWindow: r.Bool(), PreferMemory: r.Bool(),
-                                    Duplex: r.Bool(), SupportedSize: r.Int());
+                                    Duplex: r.Bool(), SupportedSize: r.Int(), Transparency: r.Bool());
     }
 
     private static void WriteCaps(Writer w, TwainDeviceCaps caps)
@@ -574,6 +575,7 @@ public static class TwainHelperProtocol
         w.Bool(caps.UIControllable);
         w.Bool(caps.HasFlatbed);
         w.Bool(caps.HasFeeder);
+        w.Bool(caps.HasTransparency);
         w.Int(caps.DuplexKind);
         w.IntRuns(caps.Resolutions, MaxResolutionCount);
         w.Int(caps.NativeResolution);
@@ -590,6 +592,7 @@ public static class TwainHelperProtocol
         UIControllable = r.Bool(),
         HasFlatbed = r.Bool(),
         HasFeeder = r.Bool(),
+        HasTransparency = r.Bool(),
         DuplexKind = r.Int(),
         Resolutions = r.IntRuns(MaxResolutionCount),
         NativeResolution = r.Int(),

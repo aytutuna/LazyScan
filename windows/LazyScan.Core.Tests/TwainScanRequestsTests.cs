@@ -41,6 +41,38 @@ public class TwainScanRequestsTests
     }
 
     [Fact]
+    public void Capabilities_OfferSlidesAndNegativesOnlyWithATransparencyUnit()
+    {
+        var noFilm = FlatbedAndFeeder();
+        Assert.Equal([ScanSource.Flatbed, ScanSource.DocumentFeeder],
+                     TwainScanRequests.Capabilities(noFilm).Sources);
+        var caps = TwainScanRequests.Capabilities(new TwainDeviceCaps { HasTransparency = true });
+        Assert.Equal([ScanSource.Flatbed, ScanSource.Slides, ScanSource.Negatives], caps.Sources);
+        Assert.True(caps.SupportsOverview);
+    }
+
+    [Theory]
+    [InlineData(ScanSource.Slides)]
+    [InlineData(ScanSource.Negatives)]
+    public void ForScan_FilmUsesTheTransparencyUnitOverTheWholeBed(ScanSource source)
+    {
+        var caps = new TwainDeviceCaps
+        {
+            HasFlatbed = true,
+            HasFeeder = true,
+            HasTransparency = true,
+            FlatbedSizeInches = new SizeD(8.5, 11.69),
+            FeederSizeInches = new SizeD(8.5, 100),
+        };
+        var request = TwainScanRequests.ForScan(Settings(source), null, caps);
+        Assert.True(request.Transparency);
+        Assert.False(request.Feeder);
+        Assert.Equal(new RectD(0, 0, 8.5, 11.69), request.FrameInches);
+        Assert.False(TwainScanRequests.ForScan(Settings(ScanSource.Flatbed), null, caps).Transparency);
+        Assert.False(TwainScanRequests.ForScan(Settings(source), null, FlatbedAndFeeder()).Transparency);
+    }
+
+    [Fact]
     public void Capabilities_FeederOnlyScannerHasNoPreview_AndItsSizeComesFromItsSizesList()
     {
         var caps = TwainScanRequests.Capabilities(new TwainDeviceCaps

@@ -16,6 +16,8 @@ public sealed class TwainDeviceCaps
     public bool HasFlatbed { get; init; } = true;
     /// <summary>CAP_FEEDERENABLED can be turned on.</summary>
     public bool HasFeeder { get; init; }
+    /// <summary>ICAP_LIGHTPATH lists the transmissive path: the source has a transparency unit.</summary>
+    public bool HasTransparency { get; init; }
     /// <summary>CAP_DUPLEX, a <see cref="TwainDuplexKinds"/> value.</summary>
     public int DuplexKind { get; init; } = TwainDuplexKinds.None;
     /// <summary>ICAP_XRESOLUTION values (a range already expanded).</summary>

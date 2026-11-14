@@ -2406,6 +2406,7 @@
   "The scanner stopped responding. Check that it is turned on and connected, then try again.": {},
   "Transferred sheet {0}…": {},
   "The scanner did not accept its document feeder as the source.": {},
+  "The scanner did not accept its film unit as the source.": {},
   "WIA is not available on this system.": {},
   "{0} is no longer connected.": {},
   "This scanner has no flatbed; scan from its document feeder.": {},

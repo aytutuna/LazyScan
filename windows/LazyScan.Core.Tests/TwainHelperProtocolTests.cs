@@ -18,7 +18,7 @@ public class TwainHelperProtocolTests
         new TwainHelperOpen("Canon DR-C225 (é ✓)") { RequestId = 3 },
         new TwainHelperReadCapabilities { RequestId = 4 },
         new TwainHelperApply(new TwainScanRequest(true, TwainPixelTypes.Gray, 8, 300, new RectD(0.25, 0.5, 8.5, 11.7), -1,
-                                                  ShowDriverWindow: true, PreferMemory: false, Duplex: true, SupportedSize: 3))
+                                                  ShowDriverWindow: true, PreferMemory: false, Duplex: true, SupportedSize: 3, Transparency: true))
         {
             RequestId = 5,
         },
@@ -41,6 +41,7 @@ public class TwainHelperProtocolTests
             UIControllable = false,
             HasFlatbed = false,
             HasFeeder = true,
+            HasTransparency = true,
             DuplexKind = TwainDuplexKinds.OnePass,
             Resolutions = [100, 200, 300],
             NativeResolution = 600,

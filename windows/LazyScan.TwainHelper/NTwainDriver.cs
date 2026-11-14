@@ -92,6 +92,7 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
             }
             if (hasFlatbed) bedSize = PhysicalSize(caps);
 
+            bool transparency = caps.ICapLightPath.IsSupported && caps.ICapLightPath.GetValues().Contains(LightPath.Transmissive);
             int native = caps.ICapXNativeResolution.IsSupported ? (int)Math.Round((double)caps.ICapXNativeResolution.GetCurrent()) : 0;
             return new TwainDeviceCaps
             {
@@ -99,6 +100,7 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
                 UIControllable = uiControllable,
                 HasFlatbed = hasFlatbed,
                 HasFeeder = hasFeeder,
+                HasTransparency = transparency,
                 DuplexKind = duplex,
                 Resolutions = Resolutions(caps.ICapXResolution),
                 NativeResolution = native,
@@ -160,6 +162,15 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
             {
                 caps.CapFeederEnabled.SetValue(request.Feeder ? BoolType.True : BoolType.False);
                 if (request.Feeder && caps.CapAutoFeed.IsSupported) caps.CapAutoFeed.SetValue(BoolType.True);
+            }
+            // The film unit is its own light path; otherwise set it back to the glass, as the driver may keep the last one.
+            if (caps.ICapLightPath.IsSupported)
+            {
+                var path = request.Transparency ? LightPath.Transmissive : LightPath.Reflective;
+                if (caps.ICapLightPath.SetValue(path) != ReturnCode.Success && request.Transparency)
+                {
+                    throw new TwainException("Setting up the scan", TwainReturnCodes.Failure, TwainConditionCodes.Bummer, "The scanner did not accept its film unit as the source.");
+                }
             }
             // Both sides only when asked for; a driver that defaults to two-sided scans one side otherwise.
             // What the source settled on is read back: a refused value leaves the driver's own.

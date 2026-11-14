@@ -96,6 +96,26 @@ public class WiaErrorsTests
     }
 
     [Fact]
+    public void TransparencyUnitAddsSlidesAndNegativesAfterTheOthers()
+    {
+        Assert.Equal([ScanSource.Flatbed, ScanSource.Slides, ScanSource.Negatives],
+                     WiaDocumentHandling.Sources(WiaDocumentHandling.Flat | WiaDocumentHandling.FilmTpa));
+        Assert.Equal([ScanSource.Flatbed, ScanSource.DocumentFeeder, ScanSource.Slides, ScanSource.Negatives],
+                     WiaDocumentHandling.Sources(WiaDocumentHandling.Flat | WiaDocumentHandling.Feed | WiaDocumentHandling.FilmTpa));
+        Assert.Equal([ScanSource.Flatbed], WiaDocumentHandling.Sources(WiaDocumentHandling.Flat | 0x400));
+    }
+
+    [Fact]
+    public void FilmItemIsFoundByItsCategory()
+    {
+        Assert.True(WiaDocumentHandling.IsFilmItem("{fcf65be7-3ce3-4473-af85-f5d37d21b68a}"));
+        Assert.False(WiaDocumentHandling.IsFilmItem("{FB607B1F-43F3-488B-855B-FB703EC342A6}"));
+        Assert.False(WiaDocumentHandling.IsFilmItem(null));
+        Assert.True(WiaDocumentHandling.IsFilm(ScanSource.Negatives));
+        Assert.False(WiaDocumentHandling.IsFilm(ScanSource.Flatbed));
+    }
+
+    [Fact]
     public void FlatbedOnlyScanner()
     {
         Assert.Equal([ScanSource.Flatbed], WiaDocumentHandling.Sources(WiaDocumentHandling.Flat));

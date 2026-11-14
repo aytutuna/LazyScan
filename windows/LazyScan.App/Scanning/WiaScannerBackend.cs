@@ -59,6 +59,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     internal const string DocumentHandlingCapabilities = "3086"; // see WiaDocumentHandling (Core)
     internal const string DocumentHandlingSelect = "3088"; // see WiaDocumentHandling.SelectValues (Core)
     internal const string OpticalXResolution = "3090";
+    internal const string TransparencySelect = "3102";  // 2 = LIGHT_SOURCE_POSITIVE: the transparency unit, raw film
     internal const string Pages = "3096";               // 0 = every sheet in the feeder
     internal const string PageSize = "3097";            // see WiaDocumentHandling.PageSize (Core)
     internal const string PageWidth = "3098";           // thousandths of an inch
@@ -67,6 +68,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     internal const int HandlingFlatbed = 2;
 
     // Item-level property IDs (WIA_IPS_* / WIA_IPA_*).
+    internal const string ItemCategory = "4125";        // a GUID; the film item's is WiaDocumentHandling.FilmCategory
+    internal const string FilmScanMode = "3104";        // 0 = color slide: raw film, the app inverts negatives
     internal const string CurrentIntent = "6146";       // 1 color, 2 gray, 4 text
     internal const string HorizontalResolution = "6147";
     internal const string VerticalResolution = "6148";
@@ -922,6 +925,29 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         }
     }
 
+    /// <summary>
+    /// The transparency unit's item for slides and negatives; null for the other sources and for
+    /// devices that have no film item, which select the unit through WIA_DPS_TRANSPARENCY_SELECT instead.
+    /// </summary>
+    private static dynamic? FilmItem(dynamic device, ScanSource source)
+    {
+        if (!WiaDocumentHandling.IsFilm(source)) return null;
+        int count = device.Items.Count;
+        for (int i = 1; i <= count; i++)
+        {
+            dynamic candidate = device.Items[i];
+            if (WiaDocumentHandling.IsFilmItem(WiaScannerBackend.TryGetProperty(candidate.Properties, WiaScannerBackend.ItemCategory)))
+            {
+                return candidate;
+            }
+        }
+        if (!(bool)WiaScannerBackend.TrySetProperty(device.Properties, WiaScannerBackend.TransparencySelect, 2))
+        {
+            throw ScanException.ScanFailed(() => Loc.T("The scanner did not accept its film unit as the source."));
+        }
+        return null;
+    }
+
     private dynamic PrepareItemCore(dynamic device, int dpi, ScanSource source, ColorMode colorMode, RectD? selection,
                                     bool duplex, PaperSize paperSize, SizeD customPaper)
     {
@@ -955,8 +981,10 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             }
         }
 
-        dynamic item = device.Items[1];
+        if (!WiaDocumentHandling.IsFilm(source)) WiaScannerBackend.TrySetProperty(device.Properties, WiaScannerBackend.TransparencySelect, 0);
+        dynamic item = FilmItem(device, source) ?? device.Items[1];
         var props = item.Properties;
+        if (WiaDocumentHandling.IsFilm(source)) WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.FilmScanMode, 0);
         WiaScannerBackend.TrySetProperty(props, WiaScannerBackend.CurrentIntent, colorMode switch
         {
             ColorMode.Color => 1,

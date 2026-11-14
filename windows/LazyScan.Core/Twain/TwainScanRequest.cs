@@ -14,9 +14,10 @@ namespace LazyScan.Core;
 /// ICAP_SUPPORTEDSIZES to ask for (a <see cref="TwainSizes"/> value the source lists), which
 /// takes the place of <paramref name="FrameInches"/>; <see cref="TwainSizes.None"/> uses the frame.
 /// </param>
+/// <param name="Transparency">ICAP_LIGHTPATH transmissive: scan film in the transparency unit instead of the glass.</param>
 public sealed record TwainScanRequest(bool Feeder, int PixelType, int BitDepth, int Resolution, RectD? FrameInches,
                                       int TransferCount, bool ShowDriverWindow, bool PreferMemory,
-                                      bool Duplex = false, int SupportedSize = TwainSizes.None)
+                                      bool Duplex = false, int SupportedSize = TwainSizes.None, bool Transparency = false)
 {
     /// <summary>The color mode of the pages this request produces.</summary>
     public ColorMode ColorMode => PixelType switch
@@ -41,7 +42,7 @@ public static class TwainScanRequests
     /// offers no flatbed and so no preview, nor does one that cannot scan without its own
     /// window), its resolutions up to the optical one, the bed and feeder sizes (the
     /// feeder's from its sizes list when it reports no physical size), and whether the feeder
-    /// scans both sides.
+    /// scans both sides. A transparency unit adds Slides and Negatives.
     /// </summary>
     public static ScannerCapabilities Capabilities(TwainDeviceCaps caps)
     {
@@ -49,6 +50,11 @@ public static class TwainScanRequests
         if (caps.HasFlatbed) sources.Add(ScanSource.Flatbed);
         if (caps.HasFeeder) sources.Add(ScanSource.DocumentFeeder);
         if (sources.Count == 0) sources.Add(ScanSource.Flatbed);
+        if (caps.HasTransparency)
+        {
+            sources.Add(ScanSource.Slides);
+            sources.Add(ScanSource.Negatives);
+        }
         var resolutions = ResolutionList.Build(preferred: null, caps.Resolutions, caps.NativeResolution);
         return new ScannerCapabilities
         {
@@ -75,6 +81,7 @@ public static class TwainScanRequests
     /// TWSS size when the source lists that size); for Automatic its own largest sheet, at most
     /// <see cref="EsclScanRequest.MaxFeederHeightInches"/> tall, like the other backends; for
     /// Long paper its largest sheet at the height it reports.</item>
+    /// <item>Slides and negatives scan the whole bed through the transparency unit (ICAP_LIGHTPATH), when the source has one.</item>
     /// <item>Two-sided when asked for (<see cref="DuplexMode.Both"/>) on a feeder that can (CAP_DUPLEX).</item>
     /// <item>The source's own window is used when asked for or when the source cannot scan without it.
     /// The user may switch to the feeder there, so the app then accepts any number of images.</item>
@@ -83,7 +90,8 @@ public static class TwainScanRequests
     public static TwainScanRequest ForScan(ScanSettings settings, RectD? selection, TwainDeviceCaps caps,
                                            bool showDriverWindow = false, bool preferNative = false)
     {
-        bool feeder = caps.HasFeeder && (settings.Source == ScanSource.DocumentFeeder || !caps.HasFlatbed);
+        bool transparency = caps.HasTransparency && settings.Source is ScanSource.Slides or ScanSource.Negatives;
+        bool feeder = !transparency && caps.HasFeeder && (settings.Source == ScanSource.DocumentFeeder || !caps.HasFlatbed);
         int pixelType = PickPixelType(settings.ColorMode, caps.PixelTypes);
         var bed = caps.FlatbedSizeInches ?? DefaultBedInches;
         RectD? frame;
@@ -120,7 +128,8 @@ public static class TwainScanRequests
             ShowDriverWindow: driverWindow,
             PreferMemory: caps.MemoryTransfer && !preferNative,
             Duplex: feeder && settings.Duplex == DuplexMode.Both && caps.DuplexKind != TwainDuplexKinds.None,
-            SupportedSize: supportedSize);
+            SupportedSize: supportedSize,
+            Transparency: transparency);
     }
 
     /// <summary>The request for a preview: the whole flatbed in color at <see cref="OverviewResolution"/>, never through the driver's window.</summary>

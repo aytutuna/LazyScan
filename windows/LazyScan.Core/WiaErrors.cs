@@ -85,6 +85,11 @@ public static class WiaDocumentHandling
     public const int Flat = 0x02;
     /// <summary>DUP: the feeder can scan both sides.</summary>
     public const int Duplex = 0x04;
+    /// <summary>FILM_TPA: the device has a transparency unit for slides and film.</summary>
+    public const int FilmTpa = 0x200;
+
+    /// <summary>WIA_CATEGORY_FILM: the item category of the transparency unit's scan item.</summary>
+    public const string FilmCategory = "{FCF65BE7-3CE3-4473-AF85-F5D37D21B68A}";
 
     // WIA_DPS_DOCUMENT_HANDLING_SELECT (3088) flags; FEEDER, FLATBED and DUPLEX share the
     // values of the capability flags above.
@@ -168,7 +173,7 @@ public static class WiaDocumentHandling
     /// <summary>
     /// Sources from the capabilities flags. A device that does not report the property (or
     /// reports neither a flatbed nor a feeder) is treated as flatbed-only: drivers with a
-    /// feeder are required to report it.
+    /// feeder are required to report it. A transparency unit adds Slides and Negatives.
     /// </summary>
     public static List<ScanSource> Sources(int? capabilities)
     {
@@ -179,8 +184,20 @@ public static class WiaDocumentHandling
             if ((flags & Feed) != 0) sources.Add(ScanSource.DocumentFeeder);
         }
         if (sources.Count == 0) sources.Add(ScanSource.Flatbed);
+        if (capabilities is int film && (film & FilmTpa) != 0)
+        {
+            sources.Add(ScanSource.Slides);
+            sources.Add(ScanSource.Negatives);
+        }
         return sources;
     }
+
+    /// <summary>Slides and negatives are scanned from the transparency unit.</summary>
+    public static bool IsFilm(ScanSource source) => source is ScanSource.Slides or ScanSource.Negatives;
+
+    /// <summary>Whether a WIA_IPA_ITEM_CATEGORY value names the transparency unit's item.</summary>
+    public static bool IsFilmItem(object? category) =>
+        category is string text && string.Equals(text.Trim(), FilmCategory, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether the feeder scans both sides (only meaningful when it has a feeder).</summary>
     public static bool SupportsDuplex(int? capabilities) =>
