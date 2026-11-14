@@ -137,6 +137,8 @@ public struct CaptureStability: Sendable {
     public static let edgeMargin = 0.01
     /// A page held still and blurred for this long suggests tapping the shutter.
     public static let softHintMs = 2000.0
+    /// The automatic shutter takes no photo for this long after the camera goes live (launch, back from the background, a sheet closed).
+    public static let autoGraceMs = 1500.0
 
     private let options: CaptureStabilityOptions
     private var previous: Quad?

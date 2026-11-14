@@ -101,17 +101,19 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 }
             }
             .onChange(of: scenePhase) { (_: ScenePhase, phase: ScenePhase) in
+                allowPages(in: phase)
                 if phase == .background {
                     model.apply(IOSCameraEvent.background)
                 } else if phase == .active {
                     model.apply(IOSCameraEvent.foreground)
+                    model.rearm()
                 }
             }
             .onChange(of: covered) { (_: Bool, rests: Bool) in
                 model.apply(rests ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
             }
             .onChange(of: holdsAuto) { (_: Bool, holds: Bool) in
-                allowPages()
+                allowPages(in: scenePhase)
                 if !holds {
                     model.rearm()
                 }
@@ -749,7 +751,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             let outcome: IOSImportOutcome = await session.importShot(shot, asksOnlyWhenUnsure: continuous)
             shown?.shotImported(outcome)
         }
-        allowPages()
+        allowPages(in: scenePhase)
         shown.setKind(kind, singleItem: singleItem)
         shown.apply(covered ? IOSCameraEvent.reviewStarted : IOSCameraEvent.reviewEnded)
         Task { @MainActor in
@@ -758,9 +760,10 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     }
 
     /// Auto takes a page only while the queue can take one and nothing, an open sheet say, holds it back.
-    private func allowPages() {
+    /// Nor does it while the app is not active (Control Center, the app switcher, a system alert).
+    private func allowPages(in phase: ScenePhase) {
         let session: IOSImportSession = importer
-        let held: Bool = holdsAuto
+        let held: Bool = holdsAuto || phase != .active
         model.canTakePage = { () -> Bool in
             session.canQueueShot && (!session.isImporting || session.importsShot) && !held
         }

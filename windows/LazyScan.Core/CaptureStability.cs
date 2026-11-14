@@ -130,6 +130,8 @@ public sealed class CaptureStability
     public const double EdgeMargin = 0.01;
     /// <summary>A page held still and blurred for this long suggests tapping the shutter.</summary>
     public const double SoftHintMs = 2000;
+    /// <summary>The automatic shutter takes no photo for this long after the camera goes live (launch, back from the background, a sheet closed).</summary>
+    public const double AutoGraceMs = 1500;
 
     private readonly CaptureStabilityOptions _options;
     private Quad? _previous;

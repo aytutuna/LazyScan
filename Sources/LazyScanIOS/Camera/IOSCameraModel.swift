@@ -66,7 +66,9 @@ public protocol IOSCameraDriving: AnyObject {
 /// and one that comes while the queue cannot take a page (`canTakePage` false: the shot queue full, a save)
 /// stands without a photo until the screen calls `rearm()` once a photo can be taken, so the page is judged
 /// again then rather than over and over meanwhile. After every photo the page in view counts as taken
-/// (`LiveQuadTracker.markCaptured`), so the next photo waits for the next page.
+/// (`LiveQuadTracker.markCaptured`), so the next photo waits for the next page. The automatic shutter
+/// also waits `CaptureStability.autoGraceMs` after the session starts, so opening the app over a page takes
+/// no photo; the page is judged afresh when that time is over.
 @MainActor
 public final class IOSCameraModel: ObservableObject {
     /// Whether the camera can be used here; nil until checked (and asked, the first time).
@@ -120,6 +122,12 @@ public final class IOSCameraModel: ObservableObject {
     private var search: LiveSearch = .page
     /// Takes "Photo not taken" away again (`failedNoticeNanoseconds` after the photo failed).
     private var failedNoticeClear: Task<Void, Never>?
+    /// The camera went live a moment ago: the automatic shutter waits (`graceNanoseconds`).
+    private var inGrace: Bool = false
+    private var graceClear: Task<Void, Never>?
+
+    /// How long the automatic shutter waits after the camera goes live; tests shorten it.
+    public var graceNanoseconds: UInt64 = UInt64(CaptureStability.autoGraceMs * 1_000_000)
 
     /// How long "Photo not taken" stays over the viewfinder.
     public static let failedNoticeNanoseconds: UInt64 = 2_500_000_000
@@ -390,9 +398,10 @@ public final class IOSCameraModel: ObservableObject {
 
     /// What the import made of a photo the shutter took. Skipped in the corner editor (Retake, Stop), it
     /// brought no page in: the page still in view is judged afresh, so Auto takes it again once it holds
-    /// still. A shot waiting behind another import comes back empty and changes nothing.
+    /// still, and so does a photo that could not be read (a problem). A shot waiting behind another import
+    /// comes back empty and changes nothing.
     public func shotImported(_ outcome: IOSImportOutcome) {
-        if outcome.added == 0 && outcome.skipped > 0 {
+        if outcome.added == 0 && (outcome.skipped > 0 || !outcome.problems.isEmpty) {
             tracker.reset()
         }
     }
@@ -402,6 +411,7 @@ public final class IOSCameraModel: ObservableObject {
     private func start() {
         torchOn = false
         live = nil
+        startGrace()
         if let source = driver.frameSource {
             tracker.follow(source) { [weak self] (update: LiveQuadUpdate) -> Void in
                 guard let model = self else { return }
@@ -425,7 +435,23 @@ public final class IOSCameraModel: ObservableObject {
         }
     }
 
+    private func startGrace() {
+        graceClear?.cancel()
+        inGrace = graceNanoseconds > 0
+        guard inGrace else { return }
+        let wait: UInt64 = graceNanoseconds
+        graceClear = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: wait)
+            guard !Task.isCancelled, let model = self else { return }
+            model.inGrace = false
+            // A page decided on meanwhile took no photo; it is judged afresh now.
+            model.tracker.rearm()
+        }
+    }
+
     private func stop() {
+        graceClear?.cancel()
+        inGrace = false
         // Paused, not forgotten: the page taken before stays taken when the camera comes back.
         tracker.pauseFollowing()
         driver.stopRunning()
@@ -445,7 +471,7 @@ public final class IOSCameraModel: ObservableObject {
     /// `onAutoShot`, when the automatic shutter is on. While a photo is being taken the page is judged again;
     /// while the queue cannot take one (`canTakePage`), the decision stands without a photo until `rearm()`.
     private func shootAutomatically() {
-        guard autoShutter, let deliver = onAutoShot else { return }
+        guard autoShutter, !inGrace, let deliver = onAutoShot else { return }
         var free: Bool = true
         if let check = canTakePage {
             free = check()

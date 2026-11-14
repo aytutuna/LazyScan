@@ -150,6 +150,7 @@ private func makeAutoModel(_ driver: FakeCameraDriver, defaults: UserDefaults, l
                                requestAccess: { () async -> Bool in true },
                                thermalState: { () -> ProcessInfo.ThermalState in .nominal },
                                center: NotificationCenter(), defaults: defaults)
+    model.graceNanoseconds = 0
     model.onAutoShot = { (shot: IOSCameraShot) async -> Void in
         log.add(shot)
     }
@@ -1095,6 +1096,46 @@ final class IOSCameraTests: XCTestCase {
         source.push(LiveFrames.frame(), from: 47, through: 62)
         try await ImportTestSupport.waitUntil(timeout: 30) { log.shots.count == 2 }
         XCTAssertEqual(driver.photos, 2)
+        model.disappear()
+    }
+
+    @MainActor
+    func test_aShotThatCouldNotBeRead_hasThePageStillInViewTakenAgain() async throws {
+        let driver = FakeCameraDriver()
+        let source = ManualFrameSource()
+        driver.frameSource = source
+        driver.photo = IOSCameraPhoto(data: Data([5]), rotationDegrees: 0, mirrored: false)
+        let log = ShotLog()
+        let defaults: UserDefaults = try freshDefaults()
+        let model: IOSCameraModel = makeAutoModel(driver, defaults: defaults, log: log)
+        await model.appear()
+        source.push(LiveFrames.frame(), from: 0, through: 14)
+        try await ImportTestSupport.waitUntil(timeout: 30) { log.shots.count == 1 }
+        var unreadable = IOSImportOutcome()
+        unreadable.add("The photo could not be read. Take it again.")
+        model.shotImported(unreadable)
+        source.push(LiveFrames.frame(), from: 15, through: 30)
+        try await ImportTestSupport.waitUntil(timeout: 30) { log.shots.count == 2 }
+        model.disappear()
+    }
+
+    @MainActor
+    func test_afterTheCameraGoesLive_theAutomaticShutterWaits_thenTakesAPageStillInView() async throws {
+        let driver = FakeCameraDriver()
+        let source = ManualFrameSource()
+        driver.frameSource = source
+        driver.photo = IOSCameraPhoto(data: Data([6]), rotationDegrees: 0, mirrored: false)
+        let log = ShotLog()
+        let defaults: UserDefaults = try freshDefaults()
+        let model: IOSCameraModel = makeAutoModel(driver, defaults: defaults, log: log)
+        model.graceNanoseconds = 1_000_000_000
+        await model.appear()
+        source.push(LiveFrames.frame(), from: 0, through: 14)
+        try await settle()
+        XCTAssertEqual(driver.photos, 0)
+        try await Task.sleep(nanoseconds: 1_100_000_000)
+        source.push(LiveFrames.frame(), from: 15, through: 30)
+        try await ImportTestSupport.waitUntil(timeout: 30) { log.shots.count == 1 }
         model.disappear()
     }
 
