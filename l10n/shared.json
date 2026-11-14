@@ -1636,6 +1636,9 @@
   "Load the turned-over stack in the feeder again and scan the back sides.": {},
   "Scanning one side of each sheet.": {},
   "Applied preset “{0}”.": {},
+  "Saving to {0}.": {
+    "note": "{0} is the name of the folder scans are saved in."
+  },
   "No scanner selected. Choose one under Scanners (or the Demo Scanner).": {},
   "Not connected to {0}. Turn it on and choose it in the list again, or pick another scanner.": {
     "note": "{0} is the scanner name."

@@ -2867,10 +2867,16 @@ public final class AppState: ObservableObject {
     /// existed keeps the filter in use (`Preset.settings(over:)`).
     public func applyPreset(_ preset: Preset) {
         let adapted = SettingsAdapter.adapt(preset.settings(over: settings), to: sidesCapabilities)
+        let folderBefore = settings.destinationPath
         loweredSettings = nil
         settings = adapted.settings
         openBookmarkedFolder()
-        setStatus(L10n.t("Applied preset “{0}”.", preset.name), notes: adapted.notes)
+        var message = L10n.t("Applied preset “{0}”.", preset.name)
+        if settings.destinationPath != folderBefore {
+            let folder = URL(fileURLWithPath: settings.destinationPath).lastPathComponent
+            message += " " + L10n.t("Saving to {0}.", folder)
+        }
+        setStatus(message, notes: adapted.notes)
     }
 
     public func saveCurrentAsPreset(named name: String) {
