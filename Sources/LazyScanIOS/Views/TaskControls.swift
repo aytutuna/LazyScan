@@ -307,6 +307,9 @@ struct AfterSaveSection: View {
                 if let reason = reason {
                     OptionReason(text: reason)
                 }
+                if action == .email && emails {
+                    AfterSaveEmailToRow()
+                }
             }
             thenRow
         } footer: {
@@ -362,6 +365,25 @@ private struct AfterSaveRow: View {
 
     private var hint: String {
         action == .photos ? IOSAfterSave.photosRowHint : ""
+    }
+}
+
+/// Send to under After saving's Email: the addresses the email goes to, kept as typed.
+private struct AfterSaveEmailToRow: View {
+    @AppStorage(IOSAfterSave.emailToKey) private var to: String = ""
+
+    var body: some View {
+        LabeledContent(IOSAfterSave.sendToTitle) {
+            TextField(IOSAfterSave.sendToPlaceholder, text: $to)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .accessibilityLabel(Text(IOSAfterSave.sendToLabel))
+                .accessibilityHint(Text(IOSAfterSave.sendToHint))
+                .accessibilityIdentifier("options.afterSave.emailTo")
+        }
     }
 }
 

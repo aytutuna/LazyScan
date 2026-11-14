@@ -26,11 +26,13 @@ public struct MailRequest: Identifiable, Equatable {
     public let id: UUID
     public let urls: [URL]
     public let subject: String
+    public let recipients: [String]
 
-    public init(urls: [URL], subject: String) {
+    public init(urls: [URL], subject: String, recipients: [String] = []) {
         self.id = UUID()
         self.urls = urls
         self.subject = subject
+        self.recipients = recipients
     }
 }
 
@@ -72,6 +74,8 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     @Published public var previewURL: URL?
     /// The Mail message to compose; the root view sets it back to nil when the composer closes.
     @Published public var mailRequest: MailRequest?
+    /// The To addresses of the next Mail message (After saving's Send to); the message takes them and clears them.
+    public var mailRecipients: [String] = []
     /// Why the last add to Photos failed; the root view's alert sets it back to nil when it closes.
     @Published public var photosProblem: PhotosProblem?
     /// An add to Photos is under way.
@@ -204,11 +208,13 @@ public final class IOSFileActions: ObservableObject, FileActionService {
     }
 
     public func composeEmail(_ urls: [URL]) throws {
+        let to = mailRecipients
+        mailRecipients = []
         guard mailAvailable(), !urls.isEmpty else {
             try share(urls, title: SaveActions.shareTitle(urls))
             return
         }
-        mailRequest = MailRequest(urls: urls, subject: SaveActions.shareTitle(urls))
+        mailRequest = MailRequest(urls: urls, subject: SaveActions.shareTitle(urls), recipients: to)
     }
 
     public func copy(_ content: ClipboardContent) throws {

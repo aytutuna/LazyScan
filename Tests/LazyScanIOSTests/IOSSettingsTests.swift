@@ -317,6 +317,14 @@ final class IOSSettingsTests: XCTestCase {
 
     // MARK: After saving
 
+    func test_afterSave_splitsTheSendToAddressesAtCommasAndSpaces() {
+        XCTAssertEqual(IOSAfterSave.recipients(""), [])
+        XCTAssertEqual(IOSAfterSave.recipients("   "), [])
+        XCTAssertEqual(IOSAfterSave.recipients("me@example.com"), ["me@example.com"])
+        XCTAssertEqual(IOSAfterSave.recipients("a@example.com, b@example.com  c@example.com,"),
+                       ["a@example.com", "b@example.com", "c@example.com"])
+    }
+
     func test_afterSave_runsTheCheckedActionsInOrder_sendingOnlyWhilePaired() throws {
         let suite: String = "IOSSettingsTests.afterSave"
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))

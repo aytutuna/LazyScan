@@ -99,6 +99,12 @@ final class IOSFileActionsTests: XCTestCase {
         XCTAssertEqual(actions.mailRequest?.urls, [first, second])
         XCTAssertEqual(actions.mailRequest?.subject, "2 files")
         XCTAssertNil(actions.shareRequest)
+        XCTAssertEqual(actions.mailRequest?.recipients, [])
+        actions.mailRequest = nil
+        actions.mailRecipients = ["a@example.com", "b@example.com"]
+        try actions.composeEmail([first])
+        XCTAssertEqual(actions.mailRequest?.recipients, ["a@example.com", "b@example.com"])
+        XCTAssertEqual(actions.mailRecipients, [], "The next message starts with no recipients")
         // Share still opens the share sheet.
         try actions.share([first], title: first.lastPathComponent)
         XCTAssertEqual(actions.shareRequest?.urls, [first])

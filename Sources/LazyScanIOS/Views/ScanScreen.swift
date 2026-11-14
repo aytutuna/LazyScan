@@ -1110,6 +1110,7 @@ struct ScanScreen: View {
             case .addToPDF:
                 picksPDF = true
             case .email:
+                fileActions.mailRecipients = []
                 saveAndEmail()
             case .print:
                 if state.canPrintQueueWithLazyPrint {
@@ -1594,6 +1595,8 @@ struct ScanScreen: View {
             if !state.isBusy { state.afterSaveStep = nil }
         }
         if emails {
+            let to: String = UserDefaults.standard.string(forKey: IOSAfterSave.emailToKey) ?? ""
+            fileActions.mailRecipients = IOSAfterSave.recipients(to)
             saveAndEmail()
         } else {
             save()

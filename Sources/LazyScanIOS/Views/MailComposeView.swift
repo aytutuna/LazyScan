@@ -48,6 +48,7 @@ struct MailComposeView: UIViewControllerRepresentable {
         let controller: MFMailComposeViewController = MFMailComposeViewController()
         controller.mailComposeDelegate = context.coordinator
         controller.setSubject(request.subject)
+        controller.setToRecipients(request.recipients)
         for attachment in MailAttachment.of(request.urls) {
             controller.addAttachmentData(attachment.data, mimeType: attachment.mimeType, fileName: attachment.fileName)
         }

@@ -409,6 +409,20 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The defaults key of the address the After saving email goes to (empty: Mail opens with no To).
+    public static let emailToKey = "afterSave.email.to"
+    public static var sendToTitle: String { String(localized: "Send to") }
+    public static var sendToPlaceholder: String { String(localized: "Optional") }
+    public static var sendToLabel: String { String(localized: "Send email to") }
+    public static var sendToHint: String {
+        String(localized: "The addresses the email goes to. Separate several with commas or spaces. Leave empty to choose them in Mail.")
+    }
+
+    /// The addresses in the Send to field, split at commas and spaces.
+    public static func recipients(_ text: String) -> [String] {
+        text.split(whereSeparator: { (c: Character) -> Bool in c == "," || c.isWhitespace }).map { String($0) }
+    }
+
     /// The user's defaults key the row's switch is kept under.
     public var key: String { "afterSave.\(rawValue)" }
 
