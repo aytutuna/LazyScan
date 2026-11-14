@@ -723,7 +723,7 @@ def keys_in_code():
             if path.suffix not in (".swift", ".cs", ".xaml") or SKIP_DIRS & set(rel.parts):
                 continue
             platforms = PLATFORMS[rel.parts[1] if base == "Sources" else base]
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_source(path)
             if path.suffix == ".xaml":
                 for _, key in xaml_texts(text):
                     add(key, rel.as_posix(), None, platforms)
