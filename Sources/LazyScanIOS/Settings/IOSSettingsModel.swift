@@ -415,14 +415,17 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     /// Why Send to computer's pages have not gone when the send raised no alert of its own: the computer did not
     /// answer, or no longer knows this phone, and the document waits in the outbox (`waiting`), or in the cloud
     /// folder when every one waiting is there (`inFolder`). Nil when nothing waits or the computer answered.
-    public static func notSentMessage(_ status: CompanionStatus, waiting: Int, inFolder: Int = 0) -> String? {
+    /// With `folderHint`, a computer that did not answer is followed by where to set a cloud folder.
+    public static func notSentMessage(_ status: CompanionStatus, waiting: Int, inFolder: Int = 0,
+                                      folderHint: Bool = false) -> String? {
         guard waiting > 0 else { return nil }
         switch status {
         case .unreachable(let reason):
             if inFolder == waiting {
                 return String(localized: "\(reason) The document is in the cloud folder; the computer takes it from there.")
             }
-            return String(localized: "\(reason) The pages wait on this device and are sent once it answers.")
+            let message = String(localized: "\(reason) The pages wait on this device and are sent once it answers.")
+            return folderHint ? message + " " + CompanionText.syncFolderHint : message
         case .unpaired(let name):
             let message = CompanionText.unpairedMessage(name)
             return String(localized: "\(message) The pages were not sent.")

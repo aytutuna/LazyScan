@@ -57,9 +57,13 @@ struct OptionsScreen: View {
         }
         .onAppear {
             showPendingPairing()
+            showRequestedComputer()
         }
         .onChange(of: state.pendingPairingCode) { (_: String?, _: String?) in
             showPendingPairing()
+        }
+        .onChange(of: state.showCompanion) { (_: Bool, _: Bool) in
+            showRequestedComputer()
         }
         .onChange(of: path) { (_: [IOSOptionsPage], pages: [IOSOptionsPage]) in
             onPairing(pages.last == .computer)
@@ -69,6 +73,13 @@ struct OptionsScreen: View {
     /// A pairing code is waiting: My computer opens to take it.
     private func showPendingPairing() {
         guard state.pendingPairingCode != nil, path != [.computer] else { return }
+        path = [.computer]
+    }
+
+    /// A failed send's alert asked for My computer.
+    private func showRequestedComputer() {
+        guard state.showCompanion else { return }
+        state.showCompanion = false
         path = [.computer]
     }
 

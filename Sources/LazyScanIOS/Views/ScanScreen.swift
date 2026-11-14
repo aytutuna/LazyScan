@@ -110,6 +110,7 @@ struct ScanScreen: View {
     @State private var savesAfterHandoff: Bool = false
     /// After saving's steps left once Send to computer's alert closes: the copy screen and Mail cannot show over it.
     @State private var stepsAfterAlert: [IOSAfterSave]?
+    @State private var stepsDueAfterAlert: Bool = false
     /// What was asked for that would leave the pages without a Save, while the question about them is up.
     @State private var leavingPages: PagesLeave?
     /// Camera mode was asked for in the middle of a stack turned over by hand: the question about it is up.
@@ -117,6 +118,10 @@ struct ScanScreen: View {
     /// The status a busy spell left in camera mode ("3 pages sent to Office PC."), or one the companion said
     /// while idle (`companionNoticed`), on a card for a few seconds.
     @State private var statusAfterBusy: String?
+    /// The pages the last send took and the card that said so (`sentText`): the card offers to remove them
+    /// while the queue still holds exactly those.
+    @State private var sentPages: [UUID] = []
+    @State private var sentText: String = ""
     /// What a scanner changed in the settings while the Scanner sheet was still open, shown once it closes.
     @State private var pendingConnectionNotes: String?
     /// The status, the files saved last and whether the queue had pages as the busy spell began, to tell what
@@ -154,6 +159,9 @@ struct ScanScreen: View {
             }
             .onChange(of: state.pendingPairingCode) { (_: String?, _: String?) in
                 openForPairingCode()
+            }
+            .onChange(of: state.showCompanion) { (_: Bool, _: Bool) in
+                openForComputer()
             }
             .onChange(of: state.scannedPages.isEmpty) { (_: Bool, empty: Bool) in
                 if empty {
@@ -458,26 +466,80 @@ struct ScanScreen: View {
     }
 
     /// The status a busy spell or the companion left, spoken when it shows. It is gone after about eight
-    /// seconds or a tap; with VoiceOver on it stays whole until it is tapped or the next action starts.
+    /// seconds or a tap, fifteen when it offers to remove the pages it sent; with VoiceOver on it stays whole
+    /// until it is tapped or the next action starts.
     private func statusCard(_ message: String) -> some View {
         let spoken: Bool = UIAccessibility.isVoiceOverRunning
         let lines: Int? = spoken ? nil : 4
-        return Text(message)
-            .font(.footnote)
-            .lineLimit(lines)
+        let removable: Bool = offersRemove(message)
+        let seconds: UInt64 = removable ? 15 : 8
+        return statusContent(message, lines: lines, removable: removable)
             .modifier(NoticeCard())
-            .accessibilityIdentifier("camera.notice")
-            .onTapGesture {
-                statusAfterBusy = nil
-            }
             .task(id: message) {
                 AccessibilityNotification.Announcement(message).post()
                 if spoken { return }
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
                 if statusAfterBusy == message {
                     statusAfterBusy = nil
                 }
             }
+    }
+
+    @ViewBuilder
+    private func statusContent(_ message: String, lines: Int?, removable: Bool) -> some View {
+        if removable {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    statusText(message, lines: lines)
+                    removeSentButton
+                }
+                VStack(alignment: .trailing, spacing: 8) {
+                    statusText(message, lines: lines)
+                    removeSentButton
+                }
+            }
+        } else {
+            statusText(message, lines: lines)
+        }
+    }
+
+    private func statusText(_ message: String, lines: Int?) -> some View {
+        Text(message)
+            .font(.footnote)
+            .lineLimit(lines)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("camera.notice")
+            .onTapGesture {
+                statusAfterBusy = nil
+            }
+    }
+
+    private var removeSentButton: some View {
+        Button {
+            removeSent()
+        } label: {
+            Text(String(localized: "Remove pages"))
+                .font(.footnote)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.bordered)
+        .disabled(state.isBusy)
+        .accessibilityHint(String(localized: "Removes the pages you just sent from this device. You can undo it."))
+        .accessibilityIdentifier("camera.notice.remove")
+    }
+
+    /// `message` is the card of a send that went through and the queue still holds the pages it sent.
+    private func offersRemove(_ message: String) -> Bool {
+        let held: [UUID] = state.scannedPages.map(\.id)
+        return message == sentText && !sentPages.isEmpty && sentPages == held
+    }
+
+    /// The pages go to the removed pages' Undo card, which takes the place of the sent card.
+    private func removeSent() {
+        state.clearPages()
+        if state.scannedPages.isEmpty {
+            statusAfterBusy = nil
+        }
     }
 
     /// The pages taken out of the queue, with Undo, on a card for about ten seconds.
@@ -1410,12 +1472,14 @@ struct ScanScreen: View {
         sendsToComputer = true
         sendTask = Task { @MainActor in
             let noticeBefore: CompanionNotice? = appState.companionNotice
+            let pages: [UUID] = appState.scannedPages.map(\.id)
             let kept: Bool = await appState.sendQueueToDesktop(target: .new)
             let cancelled: Bool = Task.isCancelled
             if cancelled {
                 reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
             } else {
                 reportUnsent(appState)
+                rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
             }
             sendsToComputer = false
             sendTask = nil
@@ -1461,9 +1525,16 @@ struct ScanScreen: View {
     private func alertClosed() {
         guard let steps = stepsAfterAlert else { return }
         stepsAfterAlert = nil
+        stepsDueAfterAlert = true
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
             printThenSave(steps)
+            stepsDueAfterAlert = false
+            if savesAfterPrint || savesAfterHandoff || emailsAfterPrint || steps.contains(.email) {
+                state.showCompanion = false
+                return
+            }
+            openForComputer()
         }
     }
 
@@ -1529,11 +1600,13 @@ struct ScanScreen: View {
         let appState: AppState = state
         sendTask = Task { @MainActor in
             let noticeBefore: CompanionNotice? = appState.companionNotice
+            let pages: [UUID] = appState.scannedPages.map(\.id)
             let kept: Bool = await appState.sendQueueToDesktop(target: target)
             if Task.isCancelled {
                 reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
             } else {
                 reportUnsent(appState)
+                rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
             }
             sendsToComputer = false
             sendTask = nil
@@ -1552,13 +1625,29 @@ struct ScanScreen: View {
 
     /// A send whose document stays in the outbox, the computer not answering or no longer knowing the
     /// phone, says so in an alert, naming the cloud folder when the document went there, unless it failed with
-    /// an error of its own.
+    /// an error of its own. A computer that did not answer, with a sync key and no folder set, has the alert
+    /// say where to set one and offer My computer.
     private func reportUnsent(_ appState: AppState) {
-        if appState.errorMessage == nil {
-            appState.errorMessage = IOSAfterSave.notSentMessage(appState.companionStatus,
-                                                                waiting: appState.companionOutboxCount,
-                                                                inFolder: appState.companionInSyncFolderCount)
+        guard appState.errorMessage == nil else { return }
+        var unreachable: Bool = false
+        if case .unreachable = appState.companionStatus {
+            unreachable = true
         }
+        let hint: Bool = unreachable && appState.canUseSyncFolder && appState.companionDesktop?.syncFolderBookmark == nil
+        let message: String? = IOSAfterSave.notSentMessage(appState.companionStatus,
+                                                           waiting: appState.companionOutboxCount,
+                                                           inFolder: appState.companionInSyncFolderCount,
+                                                           folderHint: hint)
+        appState.errorMessage = message
+        appState.errorSuggestsCompanion = message != nil && hint
+    }
+
+    /// A send that went through leaves its card the pages it took, so the card can offer to remove them.
+    private func rememberSent(_ appState: AppState, pages: [UUID], kept: Bool, noticeBefore: CompanionNotice?) {
+        guard !kept, appState.errorMessage == nil, let notice = appState.companionNotice,
+              notice != noticeBefore else { return }
+        sentPages = pages
+        sentText = notice.text
     }
 
     // MARK: The bottom bar
@@ -1588,6 +1677,17 @@ struct ScanScreen: View {
     private func openForPairingCode() {
         guard state.pendingPairingCode != nil, cover == nil, spreadEditor == nil, !pagesShown, !picksPDF,
               !state.showTroubleshooter else { return }
+        openGroup = .options
+    }
+
+    /// A failed send's alert asked for My computer: Options opens, and its My computer page takes the request.
+    private func openForComputer() {
+        guard state.showCompanion, !stepsDueAfterAlert else { return }
+        guard cover == nil, spreadEditor == nil, !pagesShown, !picksPDF, !importer.isImporting,
+              !state.showTroubleshooter else {
+            state.showCompanion = false
+            return
+        }
         openGroup = .options
     }
 

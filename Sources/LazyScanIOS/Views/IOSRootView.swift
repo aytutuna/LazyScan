@@ -814,10 +814,25 @@ struct ErrorAlert: ViewModifier {
                         openTroubleshooter()
                     }
                 }
+                if state.errorSuggestsCompanion {
+                    Button(IOSCompanionText.openComputer) {
+                        openCompanion()
+                    }
+                    .accessibilityIdentifier("error.openCompanion")
+                }
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(notice.message)
             }
+    }
+
+    /// Opens My computer once the alert has gone.
+    private func openCompanion() {
+        let appState: AppState = state
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            appState.showCompanion = true
+        }
     }
 
     /// Opens the troubleshooter once the alert has gone.

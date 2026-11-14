@@ -395,7 +395,10 @@ public final class AppState: ObservableObject {
     /// producer that has any sets it after the message (`setStatus`).
     @Published public internal(set) var statusDetail = StatusDetail()
     @Published public var errorMessage: String? {
-        didSet { errorTitle = nil }
+        didSet {
+            errorTitle = nil
+            errorSuggestsCompanion = false
+        }
     }
     /// The name the next QR separator sheet carries (the inspector's field); empty for none. Not kept
     /// in settings (AppState+Split.swift).
@@ -527,6 +530,11 @@ public final class AppState: ObservableObject {
     /// `errorMessage` is about a scanner that would not connect or scan, so its alert offers the
     /// troubleshooter. Cleared when the alert closes.
     @Published public var errorSuggestsTroubleshooter = false
+    /// `errorMessage` is a send that waits for a computer that did not answer, with no cloud folder set, so
+    /// its alert offers My computer. Cleared whenever `errorMessage` changes, so it is set after it.
+    @Published public var errorSuggestsCompanion = false
+    /// Options opens on My computer (the alert's button); the Options sheet takes it.
+    @Published public var showCompanion = false
     /// `errorMessage` says why nothing was done rather than what failed, so its alert is titled with
     /// this ("Not imported") instead of `ScannerProblems.notice`'s title. Cleared whenever
     /// `errorMessage` changes, so it is set after it.

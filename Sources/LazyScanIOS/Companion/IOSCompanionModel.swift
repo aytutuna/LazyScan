@@ -7,6 +7,7 @@ import UIKit
 /// most, a line of eight, buttons of two or three). Longer sentences are the Kit's (`CompanionText`).
 public enum IOSCompanionText {
     public static var title: String { String(localized: "My computer") }
+    public static var openComputer: String { String(localized: "Open My computer") }
     public static var pairTitle: String { String(localized: "Pair with a computer") }
     public static var installLine: String { String(localized: "1. Install Lazy Scan on your Mac or PC (alazy.app/scan).") }
     public static var openLine: String { String(localized: "2. On it, open Phone and pair a phone. Use the same Wi-Fi.") }
