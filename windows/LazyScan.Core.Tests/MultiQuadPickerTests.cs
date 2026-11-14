@@ -34,18 +34,24 @@ public class MultiQuadPickerTests
     [Fact]
     public void ReceiptsAreKeptByShapeSizeAndInReadingOrder()
     {
-        // Three receipts in two rows, a square coaster, a speck and the whole table.
+        // Three receipts in two rows, a speck and the whole table.
         var candidates = new[]
         {
             C(Rect(600, 120, 160, 700), 0.9),   // top row, right
             C(Rect(100, 100, 150, 600), 0.8),   // top row, left
             C(Rect(350, 1100, 140, 500), 0.95), // second row
-            C(Rect(1000, 300, 300, 300), 0.99), // square: not a receipt
             C(Rect(10, 10, 20, 50), 0.99),      // too small
             C(Rect(0, 0, 1600, 2000), 0.99),    // the table, too large
         };
         var picked = MultiQuadPicker.Pick(candidates, 1600, 2000, CaptureKind.Receipt);
         Assert.Equal([Rect(100, 100, 150, 600), Rect(600, 120, 160, 700), Rect(350, 1100, 140, 500)], picked);
+    }
+
+    [Fact]
+    public void ShortSlipsAreKeptAsReceipts()
+    {
+        var slip = Rect(200, 200, 570, 630);   // 57 mm by 63 mm, short over long 0.9
+        Assert.Equal([slip], MultiQuadPicker.Pick([C(slip, 0.9)], 1600, 2000, CaptureKind.Receipt));
     }
 
     [Fact]

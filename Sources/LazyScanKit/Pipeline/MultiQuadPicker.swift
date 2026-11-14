@@ -59,7 +59,7 @@ public enum MultiQuadPicker {
     /// A card's shape may differ from `idCardLongOverShort` by this much.
     public static let idCardShapeSlack = 0.12
 
-    /// What is kept for `kind`: receipts long and narrow (short over long side 0.12 to 0.8) and at
+    /// What is kept for `kind`: receipts (short over long side 0.12 to 1) and at
     /// least 0.5 % of the photo, up to 6; photos up to twice as long as wide and at least 1 % of the
     /// photo, up to 8; one card of the ID-1 shape (± `idCardShapeSlack`) of at least 2 %; one document
     /// page up to twice as long as wide of at least 10 %.
@@ -67,7 +67,7 @@ public enum MultiQuadPicker {
         var o = MultiQuadOptions()
         switch kind {
         case .receipt:
-            o.minLongOverShort = 1 / 0.8
+            o.minLongOverShort = 1
             o.maxLongOverShort = 1 / 0.12
             o.minAreaFraction = 0.005
             o.maxAreaFraction = 0.9

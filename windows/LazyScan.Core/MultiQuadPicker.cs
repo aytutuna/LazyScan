@@ -53,8 +53,8 @@ public static class MultiQuadPicker
     public const double IdCardShapeSlack = 0.12;
 
     /// <summary>
-    /// What is kept for <paramref name="kind"/>: receipts long and narrow (short over long side 0.12 to
-    /// 0.8) and at least 0.5 % of the photo, up to 6; photos up to twice as long as wide and at least
+    /// What is kept for <paramref name="kind"/>: receipts (short over long side 0.12 to
+    /// 1) and at least 0.5 % of the photo, up to 6; photos up to twice as long as wide and at least
     /// 1 % of the photo, up to 8; one card of the ID-1 shape (± <see cref="IdCardShapeSlack"/>) of at
     /// least 2 %; one document page up to Legal's shape and more (2.0) of at least 10 %.
     /// </summary>
@@ -62,7 +62,7 @@ public static class MultiQuadPicker
     {
         CaptureKind.Receipt => new MultiQuadOptions
         {
-            MinLongOverShort = 1 / 0.8, MaxLongOverShort = 1 / 0.12, MinAreaFraction = 0.005, MaxAreaFraction = 0.9, MaxCount = 6,
+            MinLongOverShort = 1, MaxLongOverShort = 1 / 0.12, MinAreaFraction = 0.005, MaxAreaFraction = 0.9, MaxCount = 6,
         },
         CaptureKind.Photo => new MultiQuadOptions
         {

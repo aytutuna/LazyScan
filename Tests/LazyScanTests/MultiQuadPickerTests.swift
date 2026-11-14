@@ -35,17 +35,22 @@ final class MultiQuadPickerTests: XCTestCase {
     }
 
     func testReceiptsAreKeptByShapeSizeAndInReadingOrder() {
-        // Three receipts in two rows, a square coaster, a speck and the whole table.
+        // Three receipts in two rows, a speck and the whole table.
         let candidates: [QuadCandidate] = [
             candidate(box(600, 120, 160, 700), 0.9),   // top row, right
             candidate(box(100, 100, 150, 600), 0.8),   // top row, left
             candidate(box(350, 1100, 140, 500), 0.95), // second row
-            candidate(box(1000, 300, 300, 300), 0.99), // square: not a receipt
             candidate(box(10, 10, 20, 50), 0.99),      // too small
             candidate(box(0, 0, 1600, 2000), 0.99),    // the table, too large
         ]
         let picked = MultiQuadPicker.pick(candidates, imageWidth: 1600, imageHeight: 2000, kind: .receipt)
         XCTAssertEqual(picked, [box(100, 100, 150, 600), box(600, 120, 160, 700), box(350, 1100, 140, 500)])
+    }
+
+    func testShortSlipsAreKeptAsReceipts() {
+        let slip = box(200, 200, 570, 630)   // 57 mm by 63 mm, short over long 0.9
+        let picked = MultiQuadPicker.pick([candidate(slip, 0.9)], imageWidth: 1600, imageHeight: 2000, kind: .receipt)
+        XCTAssertEqual(picked, [slip])
     }
 
     func testOverlappingOutlinesAreOneObjectTheSurerStays() {
