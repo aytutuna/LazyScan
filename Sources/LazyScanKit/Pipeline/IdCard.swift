@@ -286,24 +286,27 @@ public enum IdCardDetector {
 }
 
 /// Where the sides go on the page, in inches from the top-left corner. `scale` is 1 at real size,
-/// below 1 when the sides were made smaller to fit the page. Twin of C# `IdCardLayoutResult`.
+/// below 1 when the sides were made smaller to fit the page. `back` lies on a second page when
+/// `backOnOwnPage`. Twin of C# `IdCardLayoutResult`.
 public struct IdCardLayoutResult: Equatable {
     public let front: CGRect
     public let back: CGRect?
     public let scale: Double
+    public let backOnOwnPage: Bool
 
-    public init(front: CGRect, back: CGRect?, scale: Double) {
+    public init(front: CGRect, back: CGRect?, scale: Double, backOnOwnPage: Bool = false) {
         self.front = front
         self.back = back
         self.scale = scale
+        self.backOnOwnPage = backOnOwnPage
     }
 
     /// The sides were made smaller to fit: the copy is not at real size.
     public var scaledToFit: Bool { scale < 1 }
 }
 
-/// Lays the sides out on the page: centred, one under the other, at real size when they fit. Twin
-/// of C# `IdCardLayout`.
+/// Lays the sides out on the page: centred, one under the other, at real size when they fit, else
+/// one to a page. Twin of C# `IdCardLayout`.
 public enum IdCardLayout {
     /// The front's top edge is this far below the top of the page.
     public static let topMarginInches = 1.0
@@ -326,8 +329,10 @@ public enum IdCardLayout {
     }
 
     /// The places of a front `front` and back `back` (inches) on `paper`: centred across, the front
-    /// 1 in from the top, the back 0.5 in under it, both at real size. When they would come closer
-    /// than 0.25 in to an edge, both are made smaller by the same factor (`scaledToFit`).
+    /// 1 in from the top, the back 0.5 in under it, both at real size. When they would not fit one
+    /// under the other, the back goes on a page of its own, also 1 in from the top
+    /// (`backOnOwnPage`). Only a side that does not fit a page alone is made smaller, both by the
+    /// same factor (`scaledToFit`).
     public static func place(front: CGSize, back: CGSize?, paper: CGSize) -> IdCardLayoutResult {
         let frontWidth0 = Double(front.width), frontHeight0 = Double(front.height)
         let backWidth0 = back.map { Double($0.width) } ?? 0
@@ -336,10 +341,12 @@ public enum IdCardLayout {
         let widest = max(frontWidth0, backWidth0)
         let stacked = frontHeight0 + backHeight0
         let availableWidth = paperWidth - 2 * edgeMarginInches
-        let availableHeight = paperHeight - edgeMarginInches - topMarginInches - (back == nil ? 0 : gapInches)
+        let singleHeight = paperHeight - edgeMarginInches - topMarginInches
         var scale = 1.0
-        if widest > 0 && widest > availableWidth { scale = min(scale, availableWidth / widest) }
-        if stacked > 0 && stacked > availableHeight { scale = min(scale, availableHeight / stacked) }
+        if widest > 0 && widest > availableWidth { scale = availableWidth / widest }
+        let backOnOwnPage = back != nil && stacked * scale > singleHeight - gapInches
+        let tallest = max(frontHeight0, backHeight0)
+        if tallest > 0 && tallest * scale > singleHeight { scale = singleHeight / tallest }
         scale = max(scale, 0.01)
 
         let frontWidth = frontWidth0 * scale, frontHeight = frontHeight0 * scale
@@ -348,17 +355,22 @@ public enum IdCardLayout {
         var backRect: CGRect?
         if back != nil {
             let backWidth = backWidth0 * scale, backHeight = backHeight0 * scale
-            backRect = CGRect(x: (paperWidth - backWidth) / 2, y: topMarginInches + frontHeight + gapInches,
-                              width: backWidth, height: backHeight)
+            let backY = backOnOwnPage ? topMarginInches : topMarginInches + frontHeight + gapInches
+            backRect = CGRect(x: (paperWidth - backWidth) / 2, y: backY, width: backWidth, height: backHeight)
         }
-        return IdCardLayoutResult(front: frontRect, back: backRect, scale: scale)
+        return IdCardLayoutResult(front: frontRect, back: backRect, scale: scale, backOnOwnPage: backOnOwnPage)
     }
 
-    /// "One A4 page, real size", "Front only, one Letter page, made smaller to fit".
-    public static func caption(paper: PaperSize, hasBack: Bool, scaledToFit: Bool) -> String {
+    /// "One A4 page, real size", "Front only, one Letter page, made smaller to fit", "Two A4 pages,
+    /// one side each, real size".
+    public static func caption(paper: PaperSize, hasBack: Bool, scaledToFit: Bool, backOnOwnPage: Bool = false) -> String {
         switch (hasBack, scaledToFit) {
-        case (true, false): return L10n.t("One {0} page, real size", paper.label)
-        case (true, true): return L10n.t("One {0} page, made smaller to fit", paper.label)
+        case (true, false):
+            return backOnOwnPage ? L10n.t("Two {0} pages, one side each, real size", paper.label)
+                : L10n.t("One {0} page, real size", paper.label)
+        case (true, true):
+            return backOnOwnPage ? L10n.t("Two {0} pages, one side each, made smaller to fit", paper.label)
+                : L10n.t("One {0} page, made smaller to fit", paper.label)
         case (false, false): return L10n.t("Front only, one {0} page, real size", paper.label)
         case (false, true): return L10n.t("Front only, one {0} page, made smaller to fit", paper.label)
         }
@@ -409,24 +421,52 @@ public enum IdCardComposer {
         (max(1, pixels(Double(paperInches.width), dpi: dpi)), max(1, pixels(Double(paperInches.height), dpi: dpi)))
     }
 
-    /// The page at `dpi`: white, `paperInches` large, with each side copied into its place. A side
-    /// is resampled only when its place in pixels differs from its own size (another resolution, or
-    /// made smaller to fit). Saved with `dpi`, the page is exactly the paper size, so the sides
-    /// print at real size.
-    public static func compose(front: IdCardSide, back: IdCardSide?, dpi: Int, paperInches: CGSize) -> RgbaImage {
+    /// The pages at `dpi`: white, `paperInches` large, with each side copied into its place; one
+    /// page, or two when the back goes on a page of its own. A side is resampled only when its place
+    /// in pixels differs from its own size (another resolution, or made smaller to fit). Saved with
+    /// `dpi`, a page is exactly the paper size, so the sides print at real size.
+    public static func compose(front: IdCardSide, back: IdCardSide?, dpi: Int, paperInches: CGSize) -> [RgbaImage] {
         let size = canvasSize(paperInches: paperInches, dpi: dpi)
-        var canvas = RgbaImage.filled(width: size.width, height: size.height, r: 255, g: 255, b: 255)
         let layout = IdCardLayout.place(front: front.inches, back: back?.inches, paper: paperInches)
-        copy(front.image, into: layout.front, dpi: dpi, canvas: &canvas)
-        if let back, let backRect = layout.back {
-            copy(back.image, into: backRect, dpi: dpi, canvas: &canvas)
+        var first = RgbaImage.filled(width: size.width, height: size.height, r: 255, g: 255, b: 255)
+        copy(front.image, into: layout.front, dpi: dpi, canvas: &first)
+        guard let back, let backRect = layout.back else { return [first] }
+        if layout.backOnOwnPage {
+            var second = RgbaImage.filled(width: size.width, height: size.height, r: 255, g: 255, b: 255)
+            copy(back.image, into: backRect, dpi: dpi, canvas: &second)
+            return [first, second]
         }
-        return canvas
+        copy(back.image, into: backRect, dpi: dpi, canvas: &first)
+        return [first]
+    }
+
+    /// The pages of `compose` for the review: side by side on one gray sheet when there are two, so
+    /// both sides show.
+    public static func composePreview(front: IdCardSide, back: IdCardSide?, dpi: Int, paperInches: CGSize) -> RgbaImage {
+        let pages = compose(front: front, back: back, dpi: dpi, paperInches: paperInches)
+        guard pages.count == 2 else { return pages[0] }
+        let gap = max(1, pixels(IdCardLayout.edgeMarginInches, dpi: dpi))
+        let width = pages[0].width + gap + pages[1].width
+        var sheet = RgbaImage.filled(width: width, height: pages[0].height, r: 200, g: 200, b: 200)
+        for (index, page) in pages.enumerated() {
+            let x0 = index == 0 ? 0 : pages[0].width + gap
+            for y in 0..<page.height {
+                let from = y * page.width * 4
+                let to = (y * width + x0) * 4
+                sheet.pixels.replaceSubrange(to..<(to + page.width * 4), with: page.pixels[from..<(from + page.width * 4)])
+            }
+        }
+        return sheet
     }
 
     /// The name of a side's own file next to the page's: "ID card 2026-10-19 front".
     public static func sideFileBase(_ baseName: String, side: PageSide) -> String {
         "\(baseName) \(side == .front ? "front" : "back")"
+    }
+
+    /// The name of the second page's file: "ID card 2026-10-19 page 2". Not " 2", which is what a taken name gets.
+    public static func pageFileBase(_ baseName: String) -> String {
+        "\(baseName) page 2"
     }
 
     private static func pixels(_ inches: Double, dpi: Int) -> Int {

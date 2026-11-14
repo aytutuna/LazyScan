@@ -55,17 +55,19 @@ extension AppState {
             let back = self.idCardBack
             let pageDPI = IdCardComposer.pageDPI(front.dpi)
             let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
-            let composed: CGImage? = await Task.detached(priority: .userInitiated) { () -> CGImage? in
-                guard let f = AppState.idCardSide(of: front) else { return nil }
+            let composed: [CGImage] = await Task.detached(priority: .userInitiated) { () -> [CGImage] in
+                guard let f = AppState.idCardSide(of: front) else { return [] }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }
-                return IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches).makeCGImage()
+                let drawn = IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches)
+                let images = drawn.compactMap { $0.makeCGImage() }
+                return images.count == drawn.count ? images : []
             }.value
-            guard let composed else { throw ScanError.exportFailed(L10n.t("The page could not be drawn.")) }
+            guard !composed.isEmpty else { throw ScanError.exportFailed(L10n.t("The page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
             let url: URL = try self.handoffURL(named: L10n.t("ID card"))
-            let page: ScannedPage = ScannedPage(image: composed, dpi: pageDPI, colorMode: pageMode)
+            let pages: [ScannedPage] = composed.map { ScannedPage(image: $0, dpi: pageDPI, colorMode: pageMode) }
             _ = try await Task.detached(priority: .userInitiated) {
-                try AppState.writePDFAtomically(pages: [page], pdfSize: s.output.pdfSize, to: url, textLayer: nil,
+                try AppState.writePDFAtomically(pages: pages, pdfSize: s.output.pdfSize, to: url, textLayer: nil,
                                                 shouldContinue: { !flag.isCancelled }, progress: nil)
             }.value
             self.openInLazyPrint(url)

@@ -224,17 +224,30 @@ final class IdCardTests: XCTestCase {
         XCTAssertFalse(IdCardLayout.backNeedsTurn(front: square, back: portrait))
     }
 
-    func test_layout_tooLarge_isScaledToFit() {
+    func test_layout_sidesThatDoNotShareAPage_goOneToAPageAtRealSize() {
         let large = CGSize(width: 7, height: 5)
         // Front only: 1 + 5 in fits in 11 − 0.25 in.
-        XCTAssertFalse(IdCardLayout.place(front: large, back: nil, paper: letter).scaledToFit)
-        // Both: 1 + 5 + 0.5 + 5 = 11.5 in does not; 9.25 / 10.
+        let single = IdCardLayout.place(front: large, back: nil, paper: letter)
+        XCTAssertFalse(single.scaledToFit)
+        XCTAssertFalse(single.backOnOwnPage)
+        // Both: 1 + 5 + 0.5 + 5 = 11.5 in does not fit one page, so each gets one, not made smaller.
         let both = IdCardLayout.place(front: large, back: large, paper: letter)
-        XCTAssertTrue(both.scaledToFit)
-        XCTAssertEqual(both.scale, 0.925, accuracy: 1e-6)
-        assertRect(CGRect(x: (8.5 - 6.475) / 2, y: 1.0, width: 6.475, height: 4.625), both.front)
-        assertRect(CGRect(x: (8.5 - 6.475) / 2, y: 6.125, width: 6.475, height: 4.625), both.back)
-        XCTAssertLessThanOrEqual(Double(both.back!.maxY), 11 - IdCardLayout.edgeMarginInches + 1e-9)
+        XCTAssertFalse(both.scaledToFit)
+        XCTAssertTrue(both.backOnOwnPage)
+        XCTAssertEqual(both.scale, 1)
+        assertRect(CGRect(x: 0.75, y: 1.0, width: 7, height: 5), both.front)
+        assertRect(CGRect(x: 0.75, y: 1.0, width: 7, height: 5), both.back)
+        // A card-sized pair still shares one page.
+        XCTAssertFalse(IdCardLayout.place(front: card, back: card, paper: letter).backOnOwnPage)
+        // A passport page, 3.5 × 4.9 in, front and back: 1 + 4.9 + 0.5 + 4.9 = 11.3 in on Letter.
+        let passport = CGSize(width: 3.5, height: 4.9)
+        XCTAssertTrue(IdCardLayout.place(front: passport, back: passport, paper: letter).backOnOwnPage)
+        // Tall sides are made smaller only when one does not fit a page alone: 9.75 / 12.
+        let tall = IdCardLayout.place(front: CGSize(width: 4, height: 12), back: large, paper: letter)
+        XCTAssertTrue(tall.backOnOwnPage)
+        XCTAssertTrue(tall.scaledToFit)
+        XCTAssertEqual(tall.scale, 9.75 / 12, accuracy: 1e-6)
+        XCTAssertLessThanOrEqual(Double(tall.front.maxY), 11 - IdCardLayout.edgeMarginInches + 1e-9)
         // Too wide: 9 in on 8.5 in paper.
         let wide = IdCardLayout.place(front: CGSize(width: 9, height: 2), back: nil, paper: letter)
         XCTAssertTrue(wide.scaledToFit)
@@ -249,6 +262,10 @@ final class IdCardTests: XCTestCase {
         XCTAssertEqual(IdCardLayout.caption(paper: .letter, hasBack: false, scaledToFit: true),
                        "Front only, one Letter page, made smaller to fit")
         XCTAssertEqual(IdCardLayout.caption(paper: .a4, hasBack: true, scaledToFit: true), "One A4 page, made smaller to fit")
+        XCTAssertEqual(IdCardLayout.caption(paper: .letter, hasBack: true, scaledToFit: false, backOnOwnPage: true),
+                       "Two Letter pages, one side each, real size")
+        XCTAssertEqual(IdCardLayout.caption(paper: .letter, hasBack: true, scaledToFit: true, backOnOwnPage: true),
+                       "Two Letter pages, one side each, made smaller to fit")
     }
 
     // MARK: Composer
@@ -258,7 +275,7 @@ final class IdCardTests: XCTestCase {
         let back = solidSide(card, dpi: 300, 40, 90, 200)
         XCTAssertEqual(front.image.width, 1011)
         XCTAssertEqual(front.image.height, 638)
-        let page = IdCardComposer.compose(front: front, back: back, dpi: 300, paperInches: letter)
+        let page = IdCardComposer.compose(front: front, back: back, dpi: 300, paperInches: letter)[0]
         XCTAssertEqual(page.width, 2550)
         XCTAssertEqual(page.height, 3300)
         let size = IdCardComposer.canvasSize(paperInches: letter, dpi: 300)
@@ -273,8 +290,37 @@ final class IdCardTests: XCTestCase {
         }
     }
 
+    func test_composer_sidesThatDoNotShareAPage_makeTwoPages() {
+        let large = CGSize(width: 7, height: 5)
+        let front = solidSide(large, dpi: 100, 200, 40, 40)
+        let back = solidSide(large, dpi: 100, 40, 90, 200)
+        let pages = IdCardComposer.compose(front: front, back: back, dpi: 100, paperInches: letter)
+        XCTAssertEqual(pages.count, 2)
+        for page in pages {
+            XCTAssertEqual(page.width, 850)
+            XCTAssertEqual(page.height, 1100)
+        }
+        // Each side at real size, 1 in from the top, with nothing of the other on its page.
+        XCTAssertEqual(pixel(pages[0], 425, 350), [200, 40, 40])
+        XCTAssertEqual(pixel(pages[1], 425, 350), [40, 90, 200])
+        XCTAssertEqual(pixel(pages[0], 425, 50), [255, 255, 255])
+        XCTAssertEqual(pixel(pages[1], 425, 50), [255, 255, 255])
+        XCTAssertEqual(pixel(pages[0], 425, 800), [255, 255, 255])
+        XCTAssertEqual(pixel(pages[1], 425, 800), [255, 255, 255])
+        // The review shows both pages side by side.
+        let sheet = IdCardComposer.composePreview(front: front, back: back, dpi: 100, paperInches: letter)
+        XCTAssertEqual(sheet.width, 850 * 2 + 25)
+        XCTAssertEqual(sheet.height, 1100)
+        XCTAssertEqual(pixel(sheet, 425, 350), [200, 40, 40])
+        XCTAssertEqual(pixel(sheet, 850 + 25 + 425, 350), [40, 90, 200])
+        // One page when the sides share it.
+        let shared = IdCardComposer.compose(front: solidSide(card, dpi: 100, 1, 2, 3), back: solidSide(card, dpi: 100, 1, 2, 3),
+                                            dpi: 100, paperInches: letter)
+        XCTAssertEqual(shared.count, 1)
+    }
+
     func test_composer_a4At300DPI_frontOnly() {
-        let page = IdCardComposer.compose(front: solidSide(card, dpi: 300, 200, 40, 40), back: nil, dpi: 300, paperInches: a4)
+        let page = IdCardComposer.compose(front: solidSide(card, dpi: 300, 200, 40, 40), back: nil, dpi: 300, paperInches: a4)[0]
         XCTAssertEqual(page.width, 2480)
         XCTAssertEqual(page.height, 3508)
         XCTAssertEqual(pixel(page, 1240, 619), [200, 40, 40])
@@ -287,7 +333,7 @@ final class IdCardTests: XCTestCase {
         let front = solidSide(card, dpi: 150, 10, 120, 60)
         XCTAssertEqual(front.image.width, 506)
         XCTAssertEqual(front.image.height, 319)
-        let page = IdCardComposer.compose(front: front, back: nil, dpi: 300, paperInches: letter)
+        let page = IdCardComposer.compose(front: front, back: nil, dpi: 300, paperInches: letter)[0]
         XCTAssertEqual(pixel(page, 1275, 619), [10, 120, 60])
         // Its edges are where a 300 dpi side's would be (within a pixel).
         XCTAssertEqual(pixel(page, 771, 302), [10, 120, 60])
@@ -299,7 +345,7 @@ final class IdCardTests: XCTestCase {
     func test_composer_pageIsTheWholePaperInThePDF() throws {
         let front = solidSide(card, dpi: 100, 200, 40, 40)
         let back = solidSide(card, dpi: 100, 40, 90, 200)
-        let composed = IdCardComposer.compose(front: front, back: back, dpi: 100, paperInches: letter)
+        let composed = IdCardComposer.compose(front: front, back: back, dpi: 100, paperInches: letter)[0]
         XCTAssertEqual(composed.width, 850)
         XCTAssertEqual(composed.height, 1100)
         let image = try XCTUnwrap(composed.makeCGImage())
@@ -318,6 +364,7 @@ final class IdCardTests: XCTestCase {
     func test_composer_sideFileNames() {
         XCTAssertEqual(IdCardComposer.sideFileBase("ID card 2026-10-19", side: .front), "ID card 2026-10-19 front")
         XCTAssertEqual(IdCardComposer.sideFileBase("ID card 2026-10-19", side: .back), "ID card 2026-10-19 back")
+        XCTAssertEqual(IdCardComposer.pageFileBase("ID card 2026-10-19"), "ID card 2026-10-19 page 2")
     }
 
     // MARK: Detector
@@ -456,7 +503,7 @@ final class IdCardTests: XCTestCase {
         // in one image (at 2400 dpi it would be 19843 × 28063 pixels).
         let side = solidSide(CGSize(width: 1, height: 0.5), dpi: 2400, 200, 40, 40)
         let dpi = IdCardComposer.pageDPI(side.dpi)
-        let page = IdCardComposer.compose(front: side, back: nil, dpi: dpi, paperInches: a4)
+        let page = IdCardComposer.compose(front: side, back: nil, dpi: dpi, paperInches: a4)[0]
         let expected = IdCardComposer.canvasSize(paperInches: a4, dpi: 600)
         XCTAssertEqual(page.width, expected.width)
         XCTAssertEqual(page.height, expected.height)

@@ -146,13 +146,14 @@ extension AppState {
                 guard let f = AppState.idCardSide(of: front) else { return nil }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }
                 let layout = IdCardLayout.place(front: f.inches, back: b?.inches, paper: paperInches)
-                let page = IdCardComposer.compose(front: f, back: b, dpi: previewDPI, paperInches: paperInches)
+                let page = IdCardComposer.composePreview(front: f, back: b, dpi: previewDPI, paperInches: paperInches)
                 return (page.makeCGImage(), layout)
             }.value
             guard let self, revision == self.idCardPreviewRevision, let drawn else { return }
             self.idCardPreview = drawn.0
             self.idCardLayoutCaption = IdCardLayout.caption(paper: paper, hasBack: back != nil,
-                                                            scaledToFit: drawn.1.scaledToFit)
+                                                            scaledToFit: drawn.1.scaledToFit,
+                                                            backOnOwnPage: drawn.1.backOnOwnPage)
             self.idCardSizeWarning = drawn.1.scaledToFit ? IdCardLayout.notRealSizeMessage : nil
         }
     }
@@ -239,8 +240,9 @@ extension AppState {
         refreshIdCardPreview()
     }
 
-    /// Saves the ID card: both sides on one page at real size on the paper chosen, as a PDF or an
-    /// image in the chosen format, and each side as an image of its own when asked for. All or
+    /// Saves the ID card: both sides on one page at real size on the paper chosen (two pages when
+    /// they do not fit one), as a PDF or an image in the chosen format (a second page is a second
+    /// file), and each side as an image of its own when asked for. All or
     /// nothing: a failed or cancelled save removes what it wrote, and the review stays open. Once
     /// saved, the sides and their scans are dropped from memory, the stage is cleared, and the steps
     /// start again.
@@ -259,12 +261,13 @@ extension AppState {
             // The sides are what they were scanned as, whatever the color mode is now.
             let pageMode = IdCardComposer.pageColorMode(front: front.colorMode, back: back?.colorMode)
             self.statusMessage = L10n.t("Saving the ID card…")
-            let composed: (page: CGImage, front: IdCardSide, back: IdCardSide?)? = await Task.detached(priority: .userInitiated) { () -> (page: CGImage, front: IdCardSide, back: IdCardSide?)? in
+            let composed: (pages: [CGImage], front: IdCardSide, back: IdCardSide?)? = await Task.detached(priority: .userInitiated) { () -> (pages: [CGImage], front: IdCardSide, back: IdCardSide?)? in
                 guard let f = AppState.idCardSide(of: front) else { return nil }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }
-                let page = IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches)
-                guard let image = page.makeCGImage() else { return nil }
-                return (page: image, front: f, back: b)
+                let drawn = IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches)
+                let images = drawn.compactMap { $0.makeCGImage() }
+                guard !images.isEmpty, images.count == drawn.count else { return nil }
+                return (pages: images, front: f, back: b)
             }.value
             guard let composed else { throw ScanError.exportFailed(L10n.t("The page could not be drawn.")) }
             if flag.isCancelled { throw ScanError.cancelled }
@@ -281,9 +284,9 @@ extension AppState {
                     var options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                     // The card is drawn at its paper's real size; a page size would scale it.
                     options.pageSize = .asScanned
-                    let page = ScannedPage(image: composed.page, dpi: pageDPI, colorMode: pageMode)
+                    let pages = composed.pages.map { ScannedPage(image: $0, dpi: pageDPI, colorMode: pageMode) }
                     url = try await Task.detached(priority: .userInitiated) {
-                        try AppState.writePDFAtomically(pages: [page], searchable: s.pdfSearchable,
+                        try AppState.writePDFAtomically(pages: pages, searchable: s.pdfSearchable,
                                                         languages: s.ocrLanguages, pdfSize: s.output.pdfSize, to: planned,
                                                         options: options, shouldContinue: { !flag.isCancelled },
                                                         failures: failures) { [weak self] msg in
@@ -294,12 +297,23 @@ extension AppState {
                     self.notePDFSize(of: url, protected: options.isProtected)
                 } else {
                     let planned = try self.outputURL(fileExtension: pageFormat.fileExtension)
-                    let image = composed.page
+                    let image = composed.pages[0]
                     url = try await Task.detached(priority: .userInitiated) {
                         try ImageExporter.write(image, to: planned, format: pageFormat, dpi: pageDPI,
                                                 jpegQuality: s.jpegQuality, colorMode: pageMode, keepingExisting: true)
                     }.value
                     saved.append(url)
+                    if composed.pages.count > 1 {
+                        let secondURL = NamingTemplate.uniqueURL(in: url.deletingLastPathComponent(),
+                                                                 base: IdCardComposer.pageFileBase(url.deletingPathExtension().lastPathComponent),
+                                                                 fileExtension: pageFormat.fileExtension)
+                        let second = composed.pages[1]
+                        let written = try await Task.detached(priority: .userInitiated) {
+                            try ImageExporter.write(second, to: secondURL, format: pageFormat, dpi: pageDPI,
+                                                    jpegQuality: s.jpegQuality, colorMode: pageMode, keepingExisting: true)
+                        }.value
+                        saved.append(written)
+                    }
                 }
                 if s.taskOptions.idCardSaveSidesAsImages {
                     let sideFormat = s.format.imageFormatOrJPEG
@@ -335,16 +349,25 @@ extension AppState {
             self.resetFlow()
             let name = saved.first?.lastPathComponent ?? ""
             let detail: String? = pageFormat == .pdf ? self.pdfDetail : nil
+            let withSides = s.taskOptions.idCardSaveSidesAsImages
             let message: String
-            switch (detail, saved.count == 1) {
-            case let (detail?, true):
+            switch (detail, withSides, composed.pages.count == 1) {
+            case let (detail?, false, true):
                 message = L10n.t("Saved the ID card on one {0} page: {1} ({2})", paper.label, name, detail)
-            case let (detail?, false):
+            case let (detail?, true, true):
                 message = L10n.t("Saved the ID card on one {0} page: {1} ({2}), and each side as an image", paper.label, name, detail)
-            case (nil, true):
+            case (nil, false, true):
                 message = L10n.t("Saved the ID card on one {0} page: {1}", paper.label, name)
-            case (nil, false):
+            case (nil, true, true):
                 message = L10n.t("Saved the ID card on one {0} page: {1}, and each side as an image", paper.label, name)
+            case let (detail?, false, false):
+                message = L10n.t("Saved the ID card on two {0} pages: {1} ({2})", paper.label, name, detail)
+            case let (detail?, true, false):
+                message = L10n.t("Saved the ID card on two {0} pages: {1} ({2}), and each side as an image", paper.label, name, detail)
+            case (nil, false, false):
+                message = L10n.t("Saved the ID card on two {0} pages: {1}", paper.label, name)
+            case (nil, true, false):
+                message = L10n.t("Saved the ID card on two {0} pages: {1}, and each side as an image", paper.label, name)
             }
             if let note = failures.note { self.errorMessage = note }
             self.setStatus(message, StatusDetail(head: .saved))

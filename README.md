@@ -143,7 +143,8 @@ scanners** — including the Epson Perfection V39 II.
 - **ID card**: copies of an ID card or driving licence for a bank, a rental or a job. Scan the
   front, turn the card over where it lies and scan the back (or skip it when nothing is printed
   there); the card is found on the glass, cut out and straightened, and both sides go on one A4 or
-  Letter page at their real size (85.60 × 53.98 mm): the paper in your default printer when it holds
+  Letter page at their real size (85.60 × 53.98 mm; sides too large to share a page, such as a passport,
+  go one to a page, still at real size): the paper in your default printer when it holds
   A4 or Letter, else the paper usual where you live, unless you pick the other. Check the sides, turn or re-crop one, swap them or scan one again, then save a PDF, or a
   JPEG, PNG or TIFF of the page, and if you like each side as an image too. ID cards are sensitive,
   so nothing leaves the Mac: the scans are kept in memory only, never in the Scans tab, and are

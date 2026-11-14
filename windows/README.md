@@ -691,8 +691,11 @@ card first.
 
 The review shows both sides, each with **Turn**, **Fix crop** (the crop editor, on the scan the side
 came from) and **Scan again**, **Swap front and back**, and the page they go on: centred, the front
-1 in from the top, the back 0.5 in under it, at real size; a side too large for that (a crop fixed
-to the whole glass) is made smaller with a warning that the copy is not at real size. **Paper** is
+1 in from the top, the back 0.5 in under it, at real size; sides that do not fit one under the other
+(a passport) go on two pages, the back 1 in from the top of the second, still at real size, and the
+review shows both pages side by side; only a side too large for a page alone (a crop fixed to the
+whole glass) is made smaller with a warning that the copy is not at real size. A second page saved as
+an image is a file of its own. **Paper** is
 Automatic (the default printer's paper when it holds A4 or Letter, read from Windows; otherwise the
 paper usual in the user's region: Letter in the US, Canada, Mexico and the other Letter countries, A4
 elsewhere), A4 or Letter; **Save as** is the inspector's format: a PDF page

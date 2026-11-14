@@ -234,18 +234,31 @@ public class IdCardTests
     }
 
     [Fact]
-    public void Layout_TooLarge_IsScaledToFit()
+    public void Layout_SidesThatDoNotShareAPage_GoOneToAPageAtRealSize()
     {
         var large = new SizeD(7, 5);
         // Front only: 1 + 5 in fits in 11 − 0.25 in.
-        Assert.False(IdCardLayout.Place(large, null, Letter).ScaledToFit);
-        // Both: 1 + 5 + 0.5 + 5 = 11.5 in does not; 9.25 / 10.
+        var single = IdCardLayout.Place(large, null, Letter);
+        Assert.False(single.ScaledToFit);
+        Assert.False(single.BackOnOwnPage);
+        // Both: 1 + 5 + 0.5 + 5 = 11.5 in does not fit one page, so each gets one, not made smaller.
         var both = IdCardLayout.Place(large, large, Letter);
-        Assert.True(both.ScaledToFit);
-        Assert.Equal(0.925, both.Scale, 6);
-        AssertRect(new RectD((8.5 - 6.475) / 2, 1.0, 6.475, 4.625), both.Front);
-        AssertRect(new RectD((8.5 - 6.475) / 2, 6.125, 6.475, 4.625), both.Back);
-        Assert.True(both.Back!.Value.MaxY <= 11 - IdCardLayout.EdgeMarginInches + 1e-9);
+        Assert.False(both.ScaledToFit);
+        Assert.True(both.BackOnOwnPage);
+        Assert.Equal(1.0, both.Scale);
+        AssertRect(new RectD(0.75, 1.0, 7, 5), both.Front);
+        AssertRect(new RectD(0.75, 1.0, 7, 5), both.Back);
+        // A card-sized pair still shares one page.
+        Assert.False(IdCardLayout.Place(Card, Card, Letter).BackOnOwnPage);
+        // A passport page, 3.5 × 4.9 in, front and back: 1 + 4.9 + 0.5 + 4.9 = 11.3 in on Letter.
+        var passport = new SizeD(3.5, 4.9);
+        Assert.True(IdCardLayout.Place(passport, passport, Letter).BackOnOwnPage);
+        // Tall sides are made smaller only when one does not fit a page alone: 9.75 / 12.
+        var tall = IdCardLayout.Place(new SizeD(4, 12), large, Letter);
+        Assert.True(tall.BackOnOwnPage);
+        Assert.True(tall.ScaledToFit);
+        Assert.Equal(9.75 / 12, tall.Scale, 6);
+        Assert.True(tall.Front.MaxY <= 11 - IdCardLayout.EdgeMarginInches + 1e-9);
         // Too wide: 9 in on 8.5 in paper.
         var wide = IdCardLayout.Place(new SizeD(9, 2), null, Letter);
         Assert.True(wide.ScaledToFit);
@@ -261,6 +274,8 @@ public class IdCardTests
         Assert.Equal("One Letter page, real size", IdCardLayout.Caption(PaperSize.Letter, hasBack: true, scaledToFit: false));
         Assert.Equal("Front only, one Letter page, made smaller to fit", IdCardLayout.Caption(PaperSize.Letter, hasBack: false, scaledToFit: true));
         Assert.Equal("One A4 page, made smaller to fit", IdCardLayout.Caption(PaperSize.A4, hasBack: true, scaledToFit: true));
+        Assert.Equal("Two Letter pages, one side each, real size", IdCardLayout.Caption(PaperSize.Letter, hasBack: true, scaledToFit: false, backOnOwnPage: true));
+        Assert.Equal("Two Letter pages, one side each, made smaller to fit", IdCardLayout.Caption(PaperSize.Letter, hasBack: true, scaledToFit: true, backOnOwnPage: true));
     }
 
     // MARK: - Composer
@@ -275,7 +290,7 @@ public class IdCardTests
         var front = SolidSide(Card, 300, 200, 40, 40);
         var back = SolidSide(Card, 300, 40, 90, 200);
         Assert.Equal((1011, 638), (front.Image.Width, front.Image.Height));
-        var page = IdCardComposer.Compose(front, back, 300, Letter);
+        var page = IdCardComposer.Compose(front, back, 300, Letter)[0];
         Assert.Equal((2550, 3300), (page.Width, page.Height));
         Assert.Equal((2550, 3300), IdCardComposer.CanvasSize(Letter, 300));
         // The centre of each side is its color.
@@ -289,9 +304,35 @@ public class IdCardTests
     }
 
     [Fact]
+    public void Composer_SidesThatDoNotShareAPage_MakeTwoPages()
+    {
+        var large = new SizeD(7, 5);
+        var front = SolidSide(large, 100, 200, 40, 40);
+        var back = SolidSide(large, 100, 40, 90, 200);
+        var pages = IdCardComposer.Compose(front, back, 100, Letter);
+        Assert.Equal(2, pages.Count);
+        foreach (var page in pages) Assert.Equal((850, 1100), (page.Width, page.Height));
+        // Each side at real size, 1 in from the top, with nothing of the other on its page.
+        Assert.Equal(((byte)200, (byte)40, (byte)40), Pixel(pages[0], 425, 350));
+        Assert.Equal(((byte)40, (byte)90, (byte)200), Pixel(pages[1], 425, 350));
+        foreach (var page in pages)
+        {
+            Assert.Equal(((byte)255, (byte)255, (byte)255), Pixel(page, 425, 50));
+            Assert.Equal(((byte)255, (byte)255, (byte)255), Pixel(page, 425, 800));
+        }
+        // The review shows both pages side by side.
+        var sheet = IdCardComposer.ComposePreview(front, back, 100, Letter);
+        Assert.Equal((850 * 2 + 25, 1100), (sheet.Width, sheet.Height));
+        Assert.Equal(((byte)200, (byte)40, (byte)40), Pixel(sheet, 425, 350));
+        Assert.Equal(((byte)40, (byte)90, (byte)200), Pixel(sheet, 850 + 25 + 425, 350));
+        // One page when the sides share it.
+        Assert.Single(IdCardComposer.Compose(SolidSide(Card, 100, 1, 2, 3), SolidSide(Card, 100, 1, 2, 3), 100, Letter));
+    }
+
+    [Fact]
     public void Composer_A4At300Dpi_FrontOnly()
     {
-        var page = IdCardComposer.Compose(SolidSide(Card, 300, 200, 40, 40), null, 300, A4);
+        var page = IdCardComposer.Compose(SolidSide(Card, 300, 200, 40, 40), null, 300, A4)[0];
         Assert.Equal((2480, 3508), (page.Width, page.Height));
         Assert.Equal(((byte)200, (byte)40, (byte)40), Pixel(page, 1240, 619));
         // No back: white where it would be.
@@ -304,7 +345,7 @@ public class IdCardTests
         // Scanned at 150 dpi, composed at 300: the side covers its real size.
         var front = SolidSide(Card, 150, 10, 120, 60);
         Assert.Equal((506, 319), (front.Image.Width, front.Image.Height));
-        var page = IdCardComposer.Compose(front, null, 300, Letter);
+        var page = IdCardComposer.Compose(front, null, 300, Letter)[0];
         Assert.Equal(((byte)10, (byte)120, (byte)60), Pixel(page, 1275, 619));
         // Its edges are where a 300 dpi side's would be (within a pixel).
         Assert.Equal(((byte)10, (byte)120, (byte)60), Pixel(page, 771, 302));
@@ -318,7 +359,7 @@ public class IdCardTests
     {
         var front = SolidSide(Card, 100, 200, 40, 40);
         var back = SolidSide(Card, 100, 40, 90, 200);
-        var composed = IdCardComposer.Compose(front, back, 100, Letter);
+        var composed = IdCardComposer.Compose(front, back, 100, Letter)[0];
         Assert.Equal((850, 1100), (composed.Width, composed.Height));
         var prepared = PdfBuilder.PreparePage(new ScannedPage(composed, 100, ColorMode.Color), null, 1);
         // The page size comes from the page's pixels and resolution, whatever the JPEG holds.
@@ -339,6 +380,7 @@ public class IdCardTests
     {
         Assert.Equal("ID card 2026-10-19 front", IdCardComposer.SideFileBase("ID card 2026-10-19", PageSide.Front));
         Assert.Equal("ID card 2026-10-19 back", IdCardComposer.SideFileBase("ID card 2026-10-19", PageSide.Back));
+        Assert.Equal("ID card 2026-10-19 page 2", IdCardComposer.PageFileBase("ID card 2026-10-19"));
     }
 
     // MARK: - Detector
@@ -489,7 +531,7 @@ public class IdCardTests
         // in one image (at 2400 dpi it would be 19843 × 28063 pixels, too large for one).
         var side = SolidSide(new SizeD(1, 0.5), 2400, 200, 40, 40);
         int dpi = IdCardComposer.PageDpi(side.Dpi);
-        var page = IdCardComposer.Compose(side, null, dpi, A4);
+        var page = IdCardComposer.Compose(side, null, dpi, A4)[0];
         Assert.Equal(IdCardComposer.CanvasSize(A4, 600), (page.Width, page.Height));
         Assert.Equal(((byte)200, (byte)40, (byte)40), Pixel(page, page.Width / 2, 600 + 150));
         Assert.Equal(((byte)255, (byte)255, (byte)255), Pixel(page, page.Width / 2 - 320, 600 + 150));

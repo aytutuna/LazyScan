@@ -351,7 +351,7 @@ public class CaptureObjectsTests
         int pageDpi = IdCardComposer.PageDpi(cut.Dpi);
         var side = new IdCardSide(cut.Image, cut.Dpi);
         Assert.False(IdCardLayout.Place(side.Inches, null, paper).ScaledToFit);
-        var composed = IdCardComposer.Compose(side, null, pageDpi, paper);
+        var composed = IdCardComposer.Compose(side, null, pageDpi, paper)[0];
         var printed = ObjectShots.Printed(composed)!.Value;
         double widthMm = (printed.X1 - printed.X0) * 25.4 / pageDpi;
         double heightMm = (printed.Y1 - printed.Y0) * 25.4 / pageDpi;

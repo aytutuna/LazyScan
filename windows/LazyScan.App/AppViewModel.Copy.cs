@@ -388,7 +388,7 @@ public sealed partial class AppViewModel
             token.ThrowIfCancellationRequested();
             var paperInches = setup.Paper.Paper;
             int dpi = IdCardComposer.PageDpi(frontPhoto.Dpi);
-            var (page, layout) = await Task.Run(() =>
+            var (pages, layout) = await Task.Run(() =>
             {
                 var f = IdCardSideOf(frontPhoto, frontTurns);
                 var b = backPhoto is null ? null : IdCardSideOf(backPhoto, backTurns);
@@ -399,7 +399,7 @@ public sealed partial class AppViewModel
             if (layout.Back is { } backRect) clipped = Math.Max(clipped, PrintLayout.ClippedInches(backRect, setup.Paper.Printable));
             var placement = new PrintPlacement(new RectD(0, 0, paperInches.Width, paperInches.Height), 1, 0, clipped);
             var job = new PrintJob(setup.PrinterName, Loc.T("ID card"), setup.Paper, paper,
-                                   [new PrintPage(page, dpi, placement)], new PrintCopiesPlan(1, 1),
+                                   pages.Select(p => new PrintPage(p, dpi, placement)).ToList(), new PrintCopiesPlan(1, 1),
                                    Gray: s.ColorMode != ColorMode.Color);
             StatusMessage = Loc.T("Printing the ID card on {0}…", setup.PrinterName);
             NotifyAll();

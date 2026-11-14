@@ -293,13 +293,14 @@ public static class IdCardDetector
 
 /// <summary>Where the sides go on the page, in inches from the top-left corner.</summary>
 /// <param name="Scale">1 at real size; below 1 when the sides were made smaller to fit the page.</param>
-public sealed record IdCardLayoutResult(RectD Front, RectD? Back, double Scale)
+/// <param name="BackOnOwnPage">The back lies on a second page.</param>
+public sealed record IdCardLayoutResult(RectD Front, RectD? Back, double Scale, bool BackOnOwnPage = false)
 {
     /// <summary>The sides were made smaller to fit: the copy is not at real size.</summary>
     public bool ScaledToFit => Scale < 1;
 }
 
-/// <summary>Lays the sides out on the page: centred, one under the other, at real size when they fit.</summary>
+/// <summary>Lays the sides out on the page: centred, one under the other, at real size when they fit, else one to a page.</summary>
 public static class IdCardLayout
 {
     /// <summary>The front's top edge is this far below the top of the page.</summary>
@@ -323,18 +324,22 @@ public static class IdCardLayout
     /// <summary>
     /// The places of a front <paramref name="front"/> and back <paramref name="back"/> (inches) on
     /// <paramref name="paper"/>: centred across, the front 1 in from the top, the back 0.5 in under
-    /// it, both at real size. When they would come closer than 0.25 in to an edge, both are made
-    /// smaller by the same factor (<see cref="IdCardLayoutResult.ScaledToFit"/>).
+    /// it, both at real size. When they would not fit one under the other, the back goes on a page
+    /// of its own, also 1 in from the top (<see cref="IdCardLayoutResult.BackOnOwnPage"/>). Only a
+    /// side that does not fit a page alone is made smaller, both by the same factor
+    /// (<see cref="IdCardLayoutResult.ScaledToFit"/>).
     /// </summary>
     public static IdCardLayoutResult Place(SizeD front, SizeD? back, SizeD paper)
     {
         double widest = Math.Max(front.Width, back?.Width ?? 0);
         double stacked = front.Height + (back?.Height ?? 0);
         double availableWidth = paper.Width - 2 * EdgeMarginInches;
-        double availableHeight = paper.Height - EdgeMarginInches - TopMarginInches - (back is null ? 0 : GapInches);
+        double singleHeight = paper.Height - EdgeMarginInches - TopMarginInches;
         double scale = 1;
-        if (widest > 0 && widest > availableWidth) scale = Math.Min(scale, availableWidth / widest);
-        if (stacked > 0 && stacked > availableHeight) scale = Math.Min(scale, availableHeight / stacked);
+        if (widest > 0 && widest > availableWidth) scale = availableWidth / widest;
+        bool backOnOwnPage = back is not null && stacked * scale > singleHeight - GapInches;
+        double tallest = Math.Max(front.Height, back?.Height ?? 0);
+        if (tallest > 0 && tallest * scale > singleHeight) scale = singleHeight / tallest;
         scale = Math.Max(scale, 0.01);
 
         double frontWidth = front.Width * scale, frontHeight = front.Height * scale;
@@ -343,16 +348,21 @@ public static class IdCardLayout
         if (back is { } b)
         {
             double backWidth = b.Width * scale, backHeight = b.Height * scale;
-            backRect = new RectD((paper.Width - backWidth) / 2, TopMarginInches + frontHeight + GapInches, backWidth, backHeight);
+            double backY = backOnOwnPage ? TopMarginInches : TopMarginInches + frontHeight + GapInches;
+            backRect = new RectD((paper.Width - backWidth) / 2, backY, backWidth, backHeight);
         }
-        return new IdCardLayoutResult(frontRect, backRect, scale);
+        return new IdCardLayoutResult(frontRect, backRect, scale, backOnOwnPage);
     }
 
-    /// <summary>"One A4 page, real size", "Front only, one Letter page, made smaller to fit".</summary>
-    public static string Caption(PaperSize paper, bool hasBack, bool scaledToFit) => (hasBack, scaledToFit) switch
+    /// <summary>"One A4 page, real size", "Front only, one Letter page, made smaller to fit", "Two A4 pages, one side each, real size".</summary>
+    public static string Caption(PaperSize paper, bool hasBack, bool scaledToFit, bool backOnOwnPage = false) => (hasBack, scaledToFit) switch
     {
-        (true, false) => Loc.T("One {0} page, real size", paper.Label()),
-        (true, true) => Loc.T("One {0} page, made smaller to fit", paper.Label()),
+        (true, false) => backOnOwnPage
+            ? Loc.T("Two {0} pages, one side each, real size", paper.Label())
+            : Loc.T("One {0} page, real size", paper.Label()),
+        (true, true) => backOnOwnPage
+            ? Loc.T("Two {0} pages, one side each, made smaller to fit", paper.Label())
+            : Loc.T("One {0} page, made smaller to fit", paper.Label()),
         (false, false) => Loc.T("Front only, one {0} page, real size", paper.Label()),
         (false, true) => Loc.T("Front only, one {0} page, made smaller to fit", paper.Label()),
     };
@@ -394,24 +404,52 @@ public static class IdCardComposer
         (Math.Max(1, Pixels(paperInches.Width, dpi)), Math.Max(1, Pixels(paperInches.Height, dpi)));
 
     /// <summary>
-    /// The page at <paramref name="dpi"/>: white, <paramref name="paperInches"/> large, with each
-    /// side copied into its place. A side is resampled only when its place in pixels differs from its
-    /// own size (another resolution, or made smaller to fit). Saved with <paramref name="dpi"/>, the
-    /// page is exactly the paper size, so the sides print at real size.
+    /// The pages at <paramref name="dpi"/>: white, <paramref name="paperInches"/> large, with each
+    /// side copied into its place; one page, or two when the back goes on a page of its own. A side
+    /// is resampled only when its place in pixels differs from its own size (another resolution, or
+    /// made smaller to fit). Saved with <paramref name="dpi"/>, a page is exactly the paper size, so
+    /// the sides print at real size.
     /// </summary>
-    public static RgbaImage Compose(IdCardSide front, IdCardSide? back, int dpi, SizeD paperInches)
+    public static List<RgbaImage> Compose(IdCardSide front, IdCardSide? back, int dpi, SizeD paperInches)
     {
         var (width, height) = CanvasSize(paperInches, dpi);
-        var canvas = RgbaImage.Filled(width, height, 255, 255, 255);
         var layout = IdCardLayout.Place(front.Inches, back?.Inches, paperInches);
-        Copy(front.Image, layout.Front, dpi, canvas);
-        if (back is not null && layout.Back is { } backRect) Copy(back.Image, backRect, dpi, canvas);
-        return canvas;
+        var first = RgbaImage.Filled(width, height, 255, 255, 255);
+        Copy(front.Image, layout.Front, dpi, first);
+        if (back is null || layout.Back is not { } backRect) return [first];
+        if (layout.BackOnOwnPage)
+        {
+            var second = RgbaImage.Filled(width, height, 255, 255, 255);
+            Copy(back.Image, backRect, dpi, second);
+            return [first, second];
+        }
+        Copy(back.Image, backRect, dpi, first);
+        return [first];
+    }
+
+    /// <summary>The pages of <see cref="Compose"/> for the review: side by side on one gray sheet when there are two, so both sides show.</summary>
+    public static RgbaImage ComposePreview(IdCardSide front, IdCardSide? back, int dpi, SizeD paperInches)
+    {
+        var pages = Compose(front, back, dpi, paperInches);
+        if (pages.Count == 1) return pages[0];
+        int gap = Math.Max(1, Pixels(IdCardLayout.EdgeMarginInches, dpi));
+        int width = pages[0].Width + gap + pages[1].Width;
+        var sheet = RgbaImage.Filled(width, pages[0].Height, 200, 200, 200);
+        for (int i = 0; i < pages.Count; i++)
+        {
+            int x0 = i == 0 ? 0 : pages[0].Width + gap;
+            for (int y = 0; y < pages[i].Height; y++)
+                Buffer.BlockCopy(pages[i].Pixels, y * pages[i].Width * 4, sheet.Pixels, (y * width + x0) * 4, pages[i].Width * 4);
+        }
+        return sheet;
     }
 
     /// <summary>The name of a side's own file next to the page's: "ID card 2026-10-19 front".</summary>
     public static string SideFileBase(string baseName, PageSide side) =>
         $"{baseName} {(side == PageSide.Front ? "front" : "back")}";
+
+    /// <summary>The name of the second page's file: "ID card 2026-10-19 page 2". Not " 2", which is what a taken name gets.</summary>
+    public static string PageFileBase(string baseName) => $"{baseName} page 2";
 
     private static int Pixels(double inches, int dpi) => (int)Math.Round(inches * dpi, MidpointRounding.AwayFromZero);
 

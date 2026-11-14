@@ -385,7 +385,7 @@ final class CaptureObjectsTests: XCTestCase {
         let sideImage: RgbaImage = try XCTUnwrap(RgbaImage(cgImage: cut.image))
         let side = IdCardSide(image: sideImage, dpi: cut.dpi)
         XCTAssertFalse(IdCardLayout.place(front: side.inches, back: nil, paper: paper).scaledToFit)
-        let composed: RgbaImage = IdCardComposer.compose(front: side, back: nil, dpi: pageDPI, paperInches: paper)
+        let composed: RgbaImage = IdCardComposer.compose(front: side, back: nil, dpi: pageDPI, paperInches: paper)[0]
         let printed: [Int] = try XCTUnwrap(ObjectShots.printed(composed))
         let widthMm: Double = Double(printed[2] - printed[0]) * 25.4 / Double(pageDPI)
         let heightMm: Double = Double(printed[3] - printed[1]) * 25.4 / Double(pageDPI)

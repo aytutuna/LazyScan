@@ -3577,7 +3577,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 var f = IdCardSideOf(frontPhoto, frontTurns);
                 var b = backPhoto is null ? null : IdCardSideOf(backPhoto, backTurns);
                 var layout = IdCardLayout.Place(f.Inches, b?.Inches, paperInches);
-                var page = IdCardComposer.Compose(f, b, IdCardPreviewDpi, paperInches);
+                var page = IdCardComposer.ComposePreview(f, b, IdCardPreviewDpi, paperInches);
                 return (WpfImageCodec.ToBitmapSource(page), layout);
             });
         }
@@ -3590,7 +3590,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         if (revision != _idCardPreviewRevision) return;
         IdCardPreview = result.Bitmap;
-        IdCardLayoutCaption = IdCardLayout.Caption(paper, backPhoto is not null, result.Layout.ScaledToFit);
+        IdCardLayoutCaption = IdCardLayout.Caption(paper, backPhoto is not null, result.Layout.ScaledToFit, result.Layout.BackOnOwnPage);
         IdCardSizeWarning = result.Layout.ScaledToFit ? IdCardLayout.NotRealSizeMessage : null;
         NotifyAll();
     }
@@ -3725,8 +3725,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Saves the ID card: both sides on one page at real size (<see cref="IdCardComposer"/>) on the
-    /// paper chosen, as a PDF or an image in the chosen format, and each side as an image of its own
-    /// when asked for. All or nothing: a failed or cancelled save removes what it wrote, and the
+    /// paper chosen, two pages when they do not fit one, as a PDF or an image in the chosen format (a
+    /// second page is a second file), and each side as an image of its own when asked for. All or nothing: a failed or cancelled save removes what it wrote, and the
     /// review stays open. Once saved, the sides and their scans are dropped from memory and the
     /// stage is cleared, and the steps start again.
     /// </summary>
@@ -3754,7 +3754,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             int dpi = IdCardComposer.PageDpi(frontPhoto.Dpi);
             // The sides are what they were scanned as, whatever the color mode is now.
             var pageMode = IdCardComposer.PageColorMode(frontPhoto.ColorMode, backPhoto?.ColorMode);
-            var (front, back, page) = await Task.Run(() =>
+            var (front, back, pages) = await Task.Run(() =>
             {
                 var f = IdCardSideOf(frontPhoto, frontTurns);
                 var b = backPhoto is null ? null : IdCardSideOf(backPhoto, backTurns);
@@ -3768,12 +3768,18 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 {
                     // The password before the file is named, which takes the running number.
                     ProtectionFor(s);
-                    saved.Add(await WritePdfAtomically([new ScannedPage(page, dpi, pageMode)], s, await OutputPath(s, "pdf"), token, failures: failures));
+                    saved.Add(await WritePdfAtomically(pages.Select(p => new ScannedPage(p, dpi, pageMode)).ToList(), s, await OutputPath(s, "pdf"), token, failures: failures));
                 }
                 else
                 {
                     string path = await OutputPath(s, pageFormat.FileExtension());
-                    saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(page, path, pageFormat, dpi, s.JpegQuality, pageMode), token));
+                    saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(pages[0], path, pageFormat, dpi, s.JpegQuality, pageMode), token));
+                    if (pages.Count > 1)
+                    {
+                        string secondPath = NamingTemplate.UniquePath(Path.GetDirectoryName(path)!,
+                                                                      IdCardComposer.PageFileBase(Path.GetFileNameWithoutExtension(saved[0])), pageFormat.FileExtension());
+                        saved.Add(await Task.Run(() => WpfImageCodec.SaveAsNew(pages[1], secondPath, pageFormat, dpi, s.JpegQuality, pageMode), token));
+                    }
                 }
                 if (!s.TaskOptions.IdCardSaveSidesAsImages) return;
                 var sideFormat = OutputFormats.ImageFormatOrJpeg(s.Format);
@@ -3795,12 +3801,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (failures.Note is { } layerNote) ErrorMessage = layerNote;
             string? detail = pageFormat == OutputFormat.Pdf ? PdfDetail() : null;
             string name = Path.GetFileName(saved[0]);
-            SetStatus((detail, saved.Count == 1) switch
+            bool withSides = s.TaskOptions.IdCardSaveSidesAsImages;
+            SetStatus((detail, withSides, pages.Count == 1) switch
                 {
-                    (not null, true) => Loc.T("Saved the ID card on one {0} page: {1} ({2})", paper.Label(), name, detail),
-                    (not null, false) => Loc.T("Saved the ID card on one {0} page: {1} ({2}), and each side as an image", paper.Label(), name, detail),
-                    (null, true) => Loc.T("Saved the ID card on one {0} page: {1}", paper.Label(), name),
-                    _ => Loc.T("Saved the ID card on one {0} page: {1}, and each side as an image", paper.Label(), name),
+                    (not null, false, true) => Loc.T("Saved the ID card on one {0} page: {1} ({2})", paper.Label(), name, detail),
+                    (not null, true, true) => Loc.T("Saved the ID card on one {0} page: {1} ({2}), and each side as an image", paper.Label(), name, detail),
+                    (null, false, true) => Loc.T("Saved the ID card on one {0} page: {1}", paper.Label(), name),
+                    (null, true, true) => Loc.T("Saved the ID card on one {0} page: {1}, and each side as an image", paper.Label(), name),
+                    (not null, false, false) => Loc.T("Saved the ID card on two {0} pages: {1} ({2})", paper.Label(), name, detail),
+                    (not null, true, false) => Loc.T("Saved the ID card on two {0} pages: {1} ({2}), and each side as an image", paper.Label(), name, detail),
+                    (null, false, false) => Loc.T("Saved the ID card on two {0} pages: {1}", paper.Label(), name),
+                    (null, true, false) => Loc.T("Saved the ID card on two {0} pages: {1}, and each side as an image", paper.Label(), name),
                 },
                 new(new StatusHead.Saved()));
             RunAfterSave(s.Output.AfterSave, saved);

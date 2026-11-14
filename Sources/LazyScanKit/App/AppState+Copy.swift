@@ -419,12 +419,14 @@ extension AppState {
                 guard let f = AppState.idCardSide(of: front) else { return nil }
                 let b = back.flatMap { AppState.idCardSide(of: $0) }
                 let layout = IdCardLayout.place(front: f.inches, back: b?.inches, paper: paperInches)
-                let composed = IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches)
-                guard let image = composed.makeCGImage() else { return nil }
                 let whole = CGRect(x: 0, y: 0, width: Double(paperInches.width), height: Double(paperInches.height))
-                let page = PrintPage(image: image, dpi: pageDPI,
+                let drawn = IdCardComposer.compose(front: f, back: b, dpi: pageDPI, paperInches: paperInches)
+                let pages: [PrintPage] = drawn.compactMap { composed in
+                    guard let image = composed.makeCGImage() else { return nil }
+                    return PrintPage(image: image, dpi: pageDPI,
                                      placement: PrintPlacement(rect: whole, scale: 1, quarterTurns: 0, clippedInches: 0))
-                guard let data = PrintDocument.makePDF(pages: [page], paper: paperInches) else { return nil }
+                }
+                guard !pages.isEmpty, pages.count == drawn.count, let data = PrintDocument.makePDF(pages: pages, paper: paperInches) else { return nil }
                 return (data, layout)
             }.value
             guard let drawn else { throw PrintError.failed(L10n.t("The page could not be drawn.")) }

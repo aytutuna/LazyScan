@@ -55,13 +55,13 @@ public sealed partial class AppViewModel
             int frontTurns = frontPhoto.RotationQuarterTurns, backTurns = backPhoto?.RotationQuarterTurns ?? 0;
             int dpi = IdCardComposer.PageDpi(frontPhoto.Dpi);
             var pageMode = IdCardComposer.PageColorMode(frontPhoto.ColorMode, backPhoto?.ColorMode);
-            var page = await Task.Run(() =>
+            var pages = await Task.Run(() =>
             {
                 var f = IdCardSideOf(frontPhoto, frontTurns);
                 var b = backPhoto is null ? null : IdCardSideOf(backPhoto, backTurns);
                 return IdCardComposer.Compose(f, b, dpi, paperInches);
             }, token);
-            OpenInLazyPrint(await WriteHandoff([new ScannedPage(page, dpi, pageMode)], s, Loc.T("ID card"), token));
+            OpenInLazyPrint(await WriteHandoff(pages.Select(p => new ScannedPage(p, dpi, pageMode)).ToList(), s, Loc.T("ID card"), token));
         });
     }
 

@@ -1208,6 +1208,10 @@
   "One {0} page, made smaller to fit": {},
   "Front only, one {0} page, real size": {},
   "Front only, one {0} page, made smaller to fit": {},
+  "Two {0} pages, one side each, real size": {
+    "note": "{0} is a paper size name such as Letter or A4."
+  },
+  "Two {0} pages, one side each, made smaller to fit": {},
   "Turned back as scanned": {},
   "Turned upright 90° clockwise": {},
   "Turned upright 90° counterclockwise": {},
@@ -1838,6 +1842,10 @@
   "Saved the ID card on one {0} page: {1} ({2}), and each side as an image": {},
   "Saved the ID card on one {0} page: {1}": {},
   "Saved the ID card on one {0} page: {1}, and each side as an image": {},
+  "Saved the ID card on two {0} pages: {1} ({2})": {},
+  "Saved the ID card on two {0} pages: {1} ({2}), and each side as an image": {},
+  "Saved the ID card on two {0} pages: {1}": {},
+  "Saved the ID card on two {0} pages: {1}, and each side as an image": {},
   "{0} page, {1}": {
     "other": "{0} pages, {1}"
   },
