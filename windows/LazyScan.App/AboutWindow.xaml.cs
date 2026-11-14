@@ -34,6 +34,9 @@ public partial class AboutWindow : Window
     private void Notices_Click(object sender, RoutedEventArgs e) =>
         Open(Path.Combine(AppContext.BaseDirectory, "THIRD-PARTY-NOTICES.txt"), Loc.T("Third-party notices"));
 
+    private void OnnxNotices_Click(object sender, RoutedEventArgs e) =>
+        Open(Path.Combine(AppContext.BaseDirectory, "ONNXRuntime-THIRD-PARTY-NOTICES.txt"), Loc.T("ONNX Runtime notices"));
+
     /// <summary>Opens a link or a file with the default app; a refusal is shown in the footer.</summary>
     private void Open(string target, string name)
     {

@@ -14,11 +14,6 @@
             <DockPanel>
                 <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="{loc:T Close}" IsCancel="True" IsDefault="True"
                         MinWidth="96" Style="{StaticResource AccentButtonStyle}" />
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <Button Content="{loc:T License}" Style="{StaticResource SubtleButtonStyle}" Click="License_Click" />
-                    <Button Content="{loc:T Third-party notices}" Style="{StaticResource SubtleButtonStyle}" Margin="4,0,0,0"
-                            Click="Notices_Click" />
-                </StackPanel>
                 <TextBlock x:Name="FooterStatus" Style="{StaticResource CaptionText}" VerticalAlignment="Center"
                            Margin="8,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             </DockPanel>
@@ -52,6 +47,17 @@
             <TextBlock Style="{StaticResource BodyText}">
                 <Hyperlink NavigateUri="https://alazy.app/scan/privacy.html" RequestNavigate="Link_RequestNavigate"
                            AutomationProperties.Name="{loc:T Open the privacy policy}">alazy.app/scan/privacy.html</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Text="{loc:T Licenses}" Style="{StaticResource SectionHeaderText}" Margin="0,16,0,2" />
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink Click="License_Click" AutomationProperties.Name="{loc:T Open the license}"><Run Text="{loc:T License}" /></Hyperlink>
+            </TextBlock>
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink Click="Notices_Click" AutomationProperties.Name="{loc:T Open the third-party notices}"><Run Text="{loc:T Third-party notices}" /></Hyperlink>
+            </TextBlock>
+            <TextBlock Style="{StaticResource BodyText}">
+                <Hyperlink Click="OnnxNotices_Click" AutomationProperties.Name="{loc:T Open the ONNX Runtime notices}"><Run Text="{loc:T ONNX Runtime notices}" /></Hyperlink>
             </TextBlock>
 
             <TextBlock Text="{loc:T Lazy Scan is source available under the PolyForm Noncommercial License 1.0.0.}"

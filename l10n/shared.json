@@ -2489,8 +2489,13 @@
   "Open the Lazy Scan website": {},
   "Open the privacy policy": {},
   "Lazy Scan is source available under the PolyForm Noncommercial License 1.0.0.": {},
+  "Licenses": {},
   "License": {},
   "Third-party notices": {},
+  "ONNX Runtime notices": {},
+  "Open the license": {},
+  "Open the third-party notices": {},
+  "Open the ONNX Runtime notices": {},
   "Could not open {0}.": {},
   "Start": {},
   "Scan": {
