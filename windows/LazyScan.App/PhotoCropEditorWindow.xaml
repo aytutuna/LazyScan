@@ -41,10 +41,10 @@
             <StackPanel Margin="0,0,16,0">
                 <TextBlock x:Name="HeaderTitle" Text="{loc:T Adjust crop}" Style="{StaticResource SubtitleText}" TextWrapping="NoWrap" />
                 <DockPanel Margin="0,4,0,0" HorizontalAlignment="Left">
-                    <ui:InfoButton DockPanel.Dock="Right" Label="{loc:T keyboard use}" Heading="{loc:T Keyboard}" Margin="4,-4,0,-4"
-                                   InfoText="{loc:T Arrow keys move the frame\, Ctrl+arrow keys resize it\, Shift takes bigger steps.}" />
-                    <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" VerticalAlignment="Center"
-                               Text="{loc:T Drag corners to resize\, or inside to move.}" />
+                    <ui:InfoButton x:Name="KeyboardInfo" DockPanel.Dock="Right" Label="{loc:T keyboard use}" Heading="{loc:T Keyboard}" Margin="4,-4,0,-4"
+                                   InfoText="{loc:T Arrow keys move the frame\, Ctrl+arrow keys resize it\, Shift takes bigger steps. Alt+Left or Right rotates 0.1°\, with Shift 1°.}" />
+                    <TextBlock x:Name="HelperText" Style="{StaticResource CaptionText}" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Text="{loc:T Drag corners to resize\, or inside to move. Drag the top handle to rotate.}" />
                 </DockPanel>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,4,0,0">
@@ -81,7 +81,7 @@
                     Focusable="True" KeyDown="Host_KeyDown"
                     FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
                     AutomationProperties.Name="{loc:T Crop frame}"
-                    AutomationProperties.HelpText="{loc:T Arrow keys move the crop\, Ctrl+arrow keys resize it\, Shift takes bigger steps.}"
+                    AutomationProperties.HelpText="{loc:T Arrow keys move the crop\, Ctrl+arrow keys resize it\, Shift takes bigger steps. Alt+Left or Right rotates 0.1°\, with Shift 1°.}"
                     MouseLeftButtonDown="Host_MouseDown" MouseMove="Host_MouseMove"
                     MouseLeftButtonUp="Host_MouseUp" LostMouseCapture="Host_LostMouseCapture"
                     SizeChanged="Host_SizeChanged">
@@ -94,6 +94,16 @@
                            TextAlignment="Center" MaxWidth="360" />
                 <Polygon x:Name="CropOutline" Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
                          StrokeLineJoin="Miter" IsHitTestVisible="False" />
+                <Line x:Name="RotateStem" StrokeThickness="1.5" IsHitTestVisible="False"
+                      Stroke="{DynamicResource AccentFillColorDefaultBrush}" />
+                <Grid x:Name="RotateKnob" Width="16" Height="16" IsHitTestVisible="False"
+                      AutomationProperties.Name="{loc:T Rotate handle}">
+                    <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                             Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="2" />
+                    <TextBlock Style="{StaticResource GlyphText}" Text="&#xE7AD;" FontSize="9"
+                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
             </ui:FocusCanvas>
         </Border>
     </DockPanel>

@@ -90,6 +90,26 @@ public static class CropGeometry
         region.Center = new PointD(cx, cy);
     }
 
+    /// <summary>
+    /// Angle in degrees that turns a region about <paramref name="center"/> so the rotate handle
+    /// (straight above the center in the region's own frame) points at <paramref name="p"/>.
+    /// </summary>
+    public static double AngleFrom(PointD center, PointD p) =>
+        Math.Atan2(p.Y - center.Y, p.X - center.X) * 180 / Math.PI + 90;
+
+    /// <summary>
+    /// Turn <paramref name="region"/> about its center to <paramref name="degrees"/> (kept within
+    /// -180..180), then move it back onto the page.
+    /// </summary>
+    public static void RotateTo(DetectedPhotoRegion region, double degrees, double pageWidth, double pageHeight)
+    {
+        double wrapped = degrees % 360;
+        if (wrapped > 180) wrapped -= 360;
+        if (wrapped < -180) wrapped += 360;
+        region.AngleDegrees = wrapped;
+        KeepOnPage(region, pageWidth, pageHeight);
+    }
+
     public static DetectedPhotoRegion Copy(DetectedPhotoRegion region) =>
         new(region.Center, region.Size, region.AngleDegrees, region.Id);
 }

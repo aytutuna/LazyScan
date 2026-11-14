@@ -26,9 +26,13 @@ public partial class PhotoCropEditorWindow : Window
     private const double HandleHitRadius = 14;
     private const double HandleSize = 14;
     private const double FrameInset = 20;
+    /// <summary>Distance of the rotate handle outside the top edge, in view units.</summary>
+    private const double RotateStemLength = 28;
+    private const double RotateHandleMargin = 10;
 
     private readonly RgbaImage _source;
     private readonly DetectedPhotoRegion _original;
+    private readonly bool _deskew;
     private readonly Ellipse[] _handles = new Ellipse[4];
     private DragMode? _drag;
 
@@ -39,6 +43,8 @@ public partial class PhotoCropEditorWindow : Window
     /// <summary>Dragging a corner; <paramref name="Fixed"/> is the opposite corner (image coords).</summary>
     private sealed record CornerDrag(PointD Fixed) : DragMode;
     private sealed record MoveDrag(PointD OriginalCenter, PointD StartImagePoint) : DragMode;
+    /// <summary>Dragging the rotate handle; <paramref name="Grab"/> is the pointer angle at the press.</summary>
+    private sealed record RotateDrag(double StartAngle, double Grab) : DragMode;
 
     /// <param name="deskew">
     /// The batch's auto-straighten setting. Without deskew the extraction crops the region's
@@ -59,6 +65,14 @@ public partial class PhotoCropEditorWindow : Window
             ResetButton.ToolTip = Loc.T("Go back to the starting crop");
         }
         _source = source;
+        _deskew = deskew;
+        if (!deskew)
+        {
+            // Extraction crops the bounding box, so a rotation would not be honored.
+            HelperText.Text = Loc.T("Drag corners to resize, or inside to move.");
+            KeyboardInfo.InfoText = Loc.T("Arrow keys move the frame, Ctrl+arrow keys resize it, Shift takes bigger steps.");
+            System.Windows.Automation.AutomationProperties.SetHelpText(Host, Loc.T("Arrow keys move the crop, Ctrl+arrow keys resize it, Shift takes bigger steps."));
+        }
         var start = CropGeometry.Copy(region);
         if (!deskew && start.AngleDegrees != 0)
         {
@@ -145,11 +159,43 @@ public partial class PhotoCropEditorWindow : Window
             Canvas.SetLeft(_handles[i], corners[i].X - HandleSize / 2);
             Canvas.SetTop(_handles[i], corners[i].Y - HandleSize / 2);
         }
+        UpdateRotateHandle(frame);
         UpdateDimAndGrid(frame, corners);
         SizeCaption.Text = Loc.T("{0} × {1} px", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}");
         AngleCaption.Text = $"{Region.AngleDegrees:0.0}°";
-        Host.AutomationValue = Loc.T("{0} × {1} px, center {2}, {3}", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}", $"{Region.Center.X:0}", $"{Region.Center.Y:0}");
+        Host.AutomationValue = Loc.T("{0} × {1} px, center {2}, {3}, angle {4}°", $"{Region.Size.Width:0}", $"{Region.Size.Height:0}", $"{Region.Center.X:0}", $"{Region.Center.Y:0}", $"{Region.AngleDegrees:0.0}");
         ResetButton.IsEnabled = !Region.Equals(_original);
+    }
+
+    /// <summary>
+    /// The rotate handle sits outside the middle of the top edge, along the crop's own up
+    /// direction, and is pulled back into the stage when the crop is near its top.
+    /// </summary>
+    private (Point Edge, Point Handle) RotateHandlePoints(Rect frame)
+    {
+        double a = Region.AngleDegrees * Math.PI / 180;
+        var up = new Vector(Math.Sin(a), -Math.Cos(a));
+        var edge = ViewPoint(new PointD(Region.Center.X + up.X * Region.Size.Height / 2,
+                                        Region.Center.Y + up.Y * Region.Size.Height / 2), frame);
+        var handle = edge + up * RotateStemLength;
+        handle.X = Math.Clamp(handle.X, RotateHandleMargin, Math.Max(RotateHandleMargin, Host.ActualWidth - RotateHandleMargin));
+        handle.Y = Math.Clamp(handle.Y, RotateHandleMargin, Math.Max(RotateHandleMargin, Host.ActualHeight - RotateHandleMargin));
+        return (edge, handle);
+    }
+
+    private void UpdateRotateHandle(Rect frame)
+    {
+        var visibility = _deskew ? Visibility.Visible : Visibility.Collapsed;
+        RotateStem.Visibility = visibility;
+        RotateKnob.Visibility = visibility;
+        if (!_deskew) return;
+        var (edge, handle) = RotateHandlePoints(frame);
+        RotateStem.X1 = edge.X;
+        RotateStem.Y1 = edge.Y;
+        RotateStem.X2 = handle.X;
+        RotateStem.Y2 = handle.Y;
+        Canvas.SetLeft(RotateKnob, handle.X - RotateKnob.Width / 2);
+        Canvas.SetTop(RotateKnob, handle.Y - RotateKnob.Height / 2);
     }
 
     /// <summary>
@@ -187,6 +233,11 @@ public partial class PhotoCropEditorWindow : Window
     {
         var frame = FittedFrame();
         var corners = Region.Corners();
+        if (_deskew && (RotateHandlePoints(frame).Handle - pointer).Length <= HandleHitRadius)
+        {
+            Host.Cursor = Cursors.Hand;
+            return;
+        }
         var center = ViewPoint(Region.Center, frame);
         foreach (var corner in corners)
         {
@@ -212,7 +263,11 @@ public partial class PhotoCropEditorWindow : Window
         var start = e.GetPosition(Host);
         var corners = Region.Corners();
         _drag = null;
-        for (int i = 0; i < 4; i++)
+        if (_deskew && (RotateHandlePoints(frame).Handle - start).Length <= HandleHitRadius)
+        {
+            _drag = new RotateDrag(Region.AngleDegrees, CropGeometry.AngleFrom(Region.Center, ImagePoint(start, frame)));
+        }
+        for (int i = 0; _drag is null && i < 4; i++)
         {
             var corner = ViewPoint(corners[i], frame);
             if ((corner - start).Length <= HandleHitRadius)
@@ -242,7 +297,8 @@ public partial class PhotoCropEditorWindow : Window
         var frame = FittedFrame();
         // The mouse is captured, so the pointer can leave the page (or the window): keep the
         // crop on the page instead of letting it grow into a huge, mostly blank region.
-        var now = CropGeometry.ClampToPage(ImagePoint(e.GetPosition(Host), frame), _source.Width, _source.Height);
+        var pointer = ImagePoint(e.GetPosition(Host), frame);
+        var now = CropGeometry.ClampToPage(pointer, _source.Width, _source.Height);
         switch (_drag)
         {
             case CornerDrag corner:
@@ -252,6 +308,12 @@ public partial class PhotoCropEditorWindow : Window
                 Region.Center = new PointD(move.OriginalCenter.X + (now.X - move.StartImagePoint.X),
                                            move.OriginalCenter.Y + (now.Y - move.StartImagePoint.Y));
                 CropGeometry.KeepOnPage(Region, _source.Width, _source.Height);
+                break;
+            case RotateDrag rotate:
+                // Only the direction matters, so the pointer is not held to the page here.
+                double angle = rotate.StartAngle + CropGeometry.AngleFrom(Region.Center, pointer) - rotate.Grab;
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) angle = Math.Round(angle);
+                CropGeometry.RotateTo(Region, angle, _source.Width, _source.Height);
                 break;
         }
         UpdateLayoutOverlay();
@@ -270,11 +332,22 @@ public partial class PhotoCropEditorWindow : Window
     /// <summary>
     /// Arrow keys move the crop; Ctrl+arrow keys resize it along its own axes with the first
     /// corner fixed (like dragging the opposite corner). A step is one display pixel; Shift
-    /// makes it ten. The same page clamping as dragging applies.
+    /// makes it ten. The same page clamping as dragging applies. Alt+Left/Right turns the crop
+    /// by 0.1 degree (1 with Shift); with Alt held WPF reports the arrow as <see cref="Key.System"/>.
     /// </summary>
     private void Host_KeyDown(object sender, KeyEventArgs e)
     {
         if (_drag is not null) return;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            int turn = (e.Key == Key.System ? e.SystemKey : e.Key) switch { Key.Left => -1, Key.Right => 1, _ => 0 };
+            if (turn == 0 || !_deskew) return;
+            double degrees = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 1 : 0.1;
+            CropGeometry.RotateTo(Region, Region.AngleDegrees + turn * degrees, _source.Width, _source.Height);
+            UpdateLayoutOverlay();
+            e.Handled = true;
+            return;
+        }
         int dx = e.Key switch { Key.Left => -1, Key.Right => 1, _ => 0 };
         int dy = e.Key switch { Key.Up => -1, Key.Down => 1, _ => 0 };
         if (dx == 0 && dy == 0) return;
