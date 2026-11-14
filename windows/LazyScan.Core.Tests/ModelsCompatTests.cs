@@ -163,7 +163,7 @@ internal static class CompatFixtures
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
         + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
         + "        \"bookFlattenCurves\": false,\n        \"bookFillFingers\": false,\n"
-        + "        \"cameraFrontsFirst\": true,\n        \"cameraSpreads\": true,\n        \"cameraFilter\": \"original\"\n      }\n");
+        + "        \"cameraFrontsFirst\": true,\n        \"cameraSpreads\": true,\n        \"cameraFilter\": \"original\"\n      },\n      \"scanAgainSeconds\": 0\n");
 
     /// <summary>Field-by-field equality, including the legacy OCR languages.</summary>
     public static void AssertSettingsEqual(ScanSettings expected, ScanSettings actual)
@@ -370,7 +370,7 @@ public class ModelsCompatTests
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-                "document", "taskOptions",
+                "document", "taskOptions", "scanAgainSeconds",
             ],
             settings.RootElement.EnumerateObject().Select(p => p.Name));
         var adjustments = settings.RootElement.GetProperty("adjustments");
@@ -463,13 +463,29 @@ public class ModelsCompatTests
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-                "document", "taskOptions",
+                "document", "taskOptions", "scanAgainSeconds",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
         Assert.Equal("document", written.RootElement.GetProperty("taskId").GetString());
     }
 
     // MARK: - Save folder (CONTRACTS.md, rule 6; the iPhone's bookmark, kept but not used here)
+
+    [Fact]
+    public void ScanAgainSeconds_IsOffByDefault_ReadLeniently_AndRoundTrips()
+    {
+        Assert.Equal(0, new ScanSettings().ScanAgainSeconds);
+        Assert.Equal(0, Decode<ScanSettings>("""{"resolution": 150}""").ScanAgainSeconds);
+        Assert.Equal(0, Decode<ScanSettings>("""{"scanAgainSeconds": "soon", "resolution": 150}""").ScanAgainSeconds);
+        var settings = new ScanSettings { ScanAgainSeconds = 10 };
+        Assert.Equal(10, Decode<ScanSettings>(CompatFixtures.Encode(settings)).ScanAgainSeconds);
+        Assert.Equal(5, TaskCatalog.Apply(ScanTask.Book, new ScanSettings(), keepingChoices: true).ScanAgainSeconds);
+        Assert.Equal(0, TaskCatalog.Apply(ScanTask.Book, new ScanSettings()).ScanAgainSeconds);
+        var book = TaskCatalog.Apply(ScanTask.Book, new ScanSettings(), keepingChoices: true);
+        var left = TaskCatalog.Restoring(new KeptChoices(new ScanSettings()), ScanTask.Book, book);
+        Assert.Equal(0, left.ScanAgainSeconds);
+        Assert.Equal(0, TaskCatalog.Apply(ScanTask.Receipt, left, keepingChoices: true).ScanAgainSeconds);
+    }
 
     [Fact]
     public void NoBookmark_IsLeftOutOfTheFile()
@@ -490,7 +506,7 @@ public class ModelsCompatTests
                 "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
                 "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-                "document", "taskOptions",
+                "document", "taskOptions", "scanAgainSeconds",
             ],
             written.RootElement.EnumerateObject().Select(p => p.Name));
         Assert.Equal("AAEC+vv/", written.RootElement.GetProperty("destinationBookmark").GetString());

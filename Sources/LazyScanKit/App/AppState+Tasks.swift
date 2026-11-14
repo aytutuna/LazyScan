@@ -95,6 +95,7 @@ extension AppState {
     @discardableResult
     public func startTask(_ task: ScanTask, keepingChoices: Bool = false) -> Bool {
         guard !isBusy else { return false }
+        stopScanAgain()
         // Printers come and go: the Copy task reads them again.
         if task == .copy { refreshPrinters() }
         let availability = TaskCatalog.availability(of: task, capabilities: capabilities, hasPrinter: hasPrinter)

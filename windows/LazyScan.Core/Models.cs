@@ -1007,6 +1007,12 @@ public sealed class ScanSettings
     /// <summary>Choices of particular tasks (the ID card's page, copies, receipts). Written after the earlier keys.</summary>
     public TaskOptions TaskOptions { get; set; } = new();
 
+    /// <summary>
+    /// Seconds after a flatbed scan before the next one starts by itself, so a book or a stack of loose pages
+    /// goes on without a click; 0 is off. The app offers 0, 3, 5 and 10.
+    /// </summary>
+    public int ScanAgainSeconds { get; set; } = 0;
+
     public static string DefaultDestinationPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Lazy Scan");
 

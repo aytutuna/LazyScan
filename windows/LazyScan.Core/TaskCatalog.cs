@@ -69,15 +69,16 @@ public sealed record TaskAvailability(bool IsAvailable, string? Reason = null)
 }
 
 /// <summary>
-/// The choices the desktop apps keep across tasks: the file name template, the PDF size and the
-/// action after saving. A task that sets one of them itself (<see cref="TaskCatalog.SetsNamingTemplate"/>,
-/// <see cref="TaskCatalog.SetsPdfSize"/>, <see cref="TaskCatalog.SetsAfterSave"/>) leaves the user's
+/// The choices the desktop apps keep across tasks: the file name template, the PDF size, the
+/// action after saving and the scan again delay. A task that sets one of them itself
+/// (<see cref="TaskCatalog.SetsNamingTemplate"/>, <see cref="TaskCatalog.SetsPdfSize"/>,
+/// <see cref="TaskCatalog.SetsAfterSave"/>, Book the delay) leaves the user's
 /// here until another task is picked.
 /// </summary>
-public sealed record KeptChoices(string NamingTemplate, PdfSizePreset PdfSize, AfterSaveAction AfterSave)
+public sealed record KeptChoices(string NamingTemplate, PdfSizePreset PdfSize, AfterSaveAction AfterSave, int ScanAgainSeconds)
 {
     public KeptChoices(ScanSettings settings)
-        : this(settings.NamingTemplate, settings.Output.PdfSize, settings.Output.AfterSave) { }
+        : this(settings.NamingTemplate, settings.Output.PdfSize, settings.Output.AfterSave, settings.ScanAgainSeconds) { }
 }
 
 /// <summary>
@@ -375,6 +376,7 @@ public static class TaskCatalog
                 s.Resolution = 300;
                 s.Format = OutputFormat.Pdf;
                 s.NamingTemplate = "{task} {date} {counter}";
+                if (keepingChoices) s.ScanAgainSeconds = BookScanAgainSeconds;
                 break;
             case ScanTask.Archive:
                 s.Intent = ScanIntent.Document;
@@ -394,6 +396,9 @@ public static class TaskCatalog
         s.TaskId = task.RawValue();
         return s;
     }
+
+    /// <summary>The delay Book suggests on the desktop apps, where the Stop button is.</summary>
+    private const int BookScanAgainSeconds = 5;
 
     /// <summary>The task names its files itself (Receipts by the receipt's date, the ID card).</summary>
     public static bool SetsNamingTemplate(ScanTask task) => task is ScanTask.Receipt or ScanTask.IdCard;
@@ -420,6 +425,7 @@ public static class TaskCatalog
         if (SetsNamingTemplate(task) && s.NamingTemplate == own.NamingTemplate) s.NamingTemplate = kept.NamingTemplate;
         if (SetsPdfSize(task) && s.Output.PdfSize == own.Output.PdfSize) s.Output.PdfSize = kept.PdfSize;
         if (SetsAfterSave(task) && s.Output.AfterSave == own.Output.AfterSave) s.Output.AfterSave = kept.AfterSave;
+        if (task == ScanTask.Book && s.ScanAgainSeconds == BookScanAgainSeconds) s.ScanAgainSeconds = kept.ScanAgainSeconds;
         return s;
     }
 

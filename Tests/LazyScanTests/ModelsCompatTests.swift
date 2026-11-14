@@ -157,7 +157,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
     .replacingOccurrences(of: "\"format\" : \"tiff\"",
                           with: "\"duplex\" : \"manual\",\n      \"format\" : \"tiff\"")
     .replacingOccurrences(of: "\"source\" : \"documentFeeder\"",
-                          with: "\"source\" : \"documentFeeder\",\n      \"taskOptions\" : {\n"
+                          with: "\"scanAgainSeconds\" : 0,\n      \"source\" : \"documentFeeder\",\n      \"taskOptions\" : {\n"
                               + "        \"bookCutAt\" : \"sameAsLast\",\n        \"bookFillFingers\" : false,\n"
                               + "        \"bookFlattenCurves\" : false,\n        \"bookLastCut\" : 0.3,\n"
                               + "        \"bookRightToLeft\" : true,\n        \"bookRotationQuarterTurns\" : 1,\n"
@@ -313,7 +313,7 @@ final class ModelsCompatTests: XCTestCase {
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-            "document", "taskOptions",
+            "document", "taskOptions", "scanAgainSeconds",
         ])
         let adjustments = try XCTUnwrap(settings["adjustments"] as? [String: Any])
         XCTAssertEqual(Set(adjustments.keys), [
@@ -398,12 +398,27 @@ final class ModelsCompatTests: XCTestCase {
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-            "document", "taskOptions",
+            "document", "taskOptions", "scanAgainSeconds",
         ])
         XCTAssertEqual(written["taskId"] as? String, "document")
     }
 
     // MARK: Save folder (CONTRACTS.md, rule 6; the iPhone's bookmark and container)
+
+    func test_scanAgainSeconds_isOffByDefault_readLeniently_andRoundTrips() throws {
+        XCTAssertEqual(ScanSettings().scanAgainSeconds, 0)
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"resolution": 150}"#).scanAgainSeconds, 0)
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"scanAgainSeconds": "soon", "resolution": 150}"#).scanAgainSeconds, 0)
+        var settings = ScanSettings()
+        settings.scanAgainSeconds = 10
+        XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: encode(settings)).scanAgainSeconds, 10)
+        XCTAssertEqual(TaskCatalog.apply(.book, to: ScanSettings(), keepingChoices: true).scanAgainSeconds, 5)
+        XCTAssertEqual(TaskCatalog.apply(.book, to: ScanSettings()).scanAgainSeconds, 0)
+        let book = TaskCatalog.apply(.book, to: ScanSettings(), keepingChoices: true)
+        let left = TaskCatalog.restoring(KeptChoices(ScanSettings()), leaving: .book, in: book)
+        XCTAssertEqual(left.scanAgainSeconds, 0)
+        XCTAssertEqual(TaskCatalog.apply(.receipt, to: left, keepingChoices: true).scanAgainSeconds, 0)
+    }
 
     func test_noBookmark_isLeftOutOfTheFile() throws {
         XCTAssertNil(try jsonObject(encode(ScanSettings()))["destinationBookmark"])
@@ -419,7 +434,7 @@ final class ModelsCompatTests: XCTestCase {
             "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
             "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
-            "document", "taskOptions",
+            "document", "taskOptions", "scanAgainSeconds",
         ])
         XCTAssertEqual(written["destinationBookmark"] as? String, "AAEC+vv/")
         XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: encode(settings)), settings)

@@ -853,6 +853,10 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// Choices of particular tasks (the ID card's page).
     public var taskOptions: TaskOptions = TaskOptions()
 
+    /// Seconds after a flatbed scan before the next one starts by itself, so a book or a stack of loose pages
+    /// goes on without a click; 0 is off. The app offers 0, 3, 5 and 10.
+    public var scanAgainSeconds: Int = 0
+
     public init() {}
 
     /// The task of `taskId`, when this version knows it.
@@ -905,6 +909,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
         case duplex, backBinding, paperSize, customPaperWidth, customPaperHeight
         case document
         case taskOptions
+        case scanAgainSeconds
     }
 }
 
@@ -941,6 +946,7 @@ extension ScanSettings {
         customPaperHeight = container.decodeLenient(forKey: .customPaperHeight, default: customPaperHeight)
         document = container.decodeLenient(forKey: .document, default: document)
         taskOptions = container.decodeLenient(forKey: .taskOptions, default: taskOptions)
+        scanAgainSeconds = container.decodeLenient(forKey: .scanAgainSeconds, default: scanAgainSeconds)
     }
 }
 

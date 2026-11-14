@@ -373,6 +373,12 @@ public final class AppState: ObservableObject {
     private var observesActivation = false
 
     @Published public private(set) var isBusy = false
+    /// Seconds left before the next flatbed scan starts by itself (`ScanSettings.scanAgainSeconds`); nil when no
+    /// countdown is running. Stop is `cancelScan()`.
+    @Published public private(set) var scanAgainRemaining: Int?
+    /// How long one second of the countdown lasts; shortened by tests.
+    var scanAgainTick: UInt64 = 1_000_000_000
+    private var scanAgainTask: Task<Void, Never>?
     /// The page the next scan replaces (Scan Again), kept across a failed or cancelled scan.
     @Published public internal(set) var rescanTarget: UUID?
     /// The last page of a scan that replaced a page: the rest of that scan's pages go after it.
@@ -1431,6 +1437,7 @@ public final class AppState: ObservableObject {
 
     public func performScan() {
         guard let session else { return noDevice() }
+        stopScanAgain()
         // The ID card task scans the side its steps are at; once the sides are in, Scan opens the
         // review again.
         let idCard = TaskCatalog.flow(of: settings) == .idCard
@@ -1444,6 +1451,7 @@ public final class AppState: ObservableObject {
         // A copy of an area selected on the preview is centred on the paper; of a page, it lies in the corner.
         let areaSelected = settings.source == .flatbed && selectionRect != nil
         let generation = switchGeneration
+        let replacesPage = rescanTarget != nil
         runExclusive(stopsInBackground: false) { flag in
             if self.settings.source == .documentFeeder { await self.checkFeederDuplex() }
             guard self.switchGeneration == generation else { return }
@@ -1500,9 +1508,10 @@ public final class AppState: ObservableObject {
             // Pages that go to the queue are processed and stored one by one as the feeder delivers them,
             // so a long stack is never held whole in memory.
             if TaskCatalog.flow(of: s) == .documentQueue && s.documentMultiPage && cardSide == nil {
-                try await self.scanIntoQueue(session, settings: s, selection: selection, generation: generation,
-                                             flag: flag, makeIntake: makeIntake)
+                let finished = try await self.scanIntoQueue(session, settings: s, selection: selection,
+                                                            generation: generation, flag: flag, makeIntake: makeIntake)
                 if self.capabilities == nil { await self.readCapabilitiesAfterScan(session, generation: generation) }
+                if finished && !replacesPage && !flag.isCancelled { self.startScanAgain(s, generation: generation) }
                 return
             }
             let scanned = try await session.performScan(settings: s, selection: selection)
@@ -1526,10 +1535,10 @@ public final class AppState: ObservableObject {
     /// A scan whose pages go to the queue: each page is processed, stored and queued as the scanner delivers it,
     /// so the page strip fills while the feeder goes on and only the page in hand is held in full. The pages
     /// queued before a Cancel or an error stay in the queue. `makeIntake` gives the intake of the pages
-    /// (its argument: the scan was cut short).
+    /// (its argument: the scan was cut short). Returns whether the scan ran to its end.
     private func scanIntoQueue(_ session: any ScannerSession, settings s: ScanSettings, selection: CGRect?,
                                generation: Int, flag: CancelFlag,
-                               makeIntake: @escaping @MainActor (Bool) -> PageIntake) async throws {
+                               makeIntake: @escaping @MainActor (Bool) -> PageIntake) async throws -> Bool {
         let before = Set(scannedPages.map(\.id))
         var received = 0
         var failure: Error?
@@ -1559,7 +1568,7 @@ public final class AppState: ObservableObject {
             if failure == nil { failure = error }
         }
         // Discard results that arrive after the user switched devices.
-        guard switchGeneration == generation else { return }
+        guard switchGeneration == generation else { return false }
         if failure == nil && flag.isCancelled { failure = ScanError.cancelled }
         if let failure, received == 0 { throw failure }
         guard received > 0 else { throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no pages.") }) }
@@ -1567,7 +1576,7 @@ public final class AppState: ObservableObject {
         // Pages queued before a Cancel or an error are kept, so the stack is finished like a stopped batch.
         let stop = failure.map { ScanStop.from($0) } ?? session.lastScanStop
         announceQueued(scannedPages.filter { !before.contains($0.id) }, intake: makeIntake(stop != nil), scorer: orientationScorer)
-        guard let stop else { return }
+        guard let stop else { return true }
         let message = stop.message(pagesKept: received)
         switch failure {
         case ScanError.cancelled?, is CancellationError:
@@ -1575,6 +1584,36 @@ public final class AppState: ObservableObject {
         default:
             errorMessage = message
         }
+        return false
+    }
+
+    /// After a flatbed scan into the queue, counts `ScanSettings.scanAgainSeconds` down and scans again, until
+    /// Stop, an error or a scan that stopped early, or the scanner is closed or another chosen.
+    private func startScanAgain(_ scanned: ScanSettings, generation: Int) {
+        let seconds: Int = scanned.scanAgainSeconds
+        guard seconds > 0, scanned.source == .flatbed else { return }
+        let tick: UInt64 = scanAgainTick
+        scanAgainTask = Task { @MainActor [weak self] in
+            var left: Int = seconds
+            while left > 0 {
+                guard let self, self.switchGeneration == generation, self.isConnected else { break }
+                self.scanAgainRemaining = left
+                try? await Task.sleep(nanoseconds: tick)
+                if Task.isCancelled { return }
+                left -= 1
+            }
+            guard let self else { return }
+            self.scanAgainRemaining = nil
+            guard left == 0, self.switchGeneration == generation, !self.isBusy,
+                  self.settings.source == .flatbed, self.settings.scanAgainSeconds > 0 else { return }
+            self.performScan()
+        }
+    }
+
+    private func stopScanAgain() {
+        scanAgainTask?.cancel()
+        scanAgainTask = nil
+        scanAgainRemaining = nil
     }
 
     // MARK: Bringing pages in
@@ -2087,6 +2126,7 @@ public final class AppState: ObservableObject {
     public func cancelScan() {
         // Stop the hardware if it's mid-scan, AND flag the software phases
         // (processing, OCR, PDF build, exports) — either may be the one running.
+        stopScanAgain()
         session?.cancelScan()
         currentCancelFlag?.cancel()
         // An import waiting for the corner editor's answer goes on, sees the flag and stops (the sheet closes).
@@ -3646,6 +3686,7 @@ public final class AppState: ObservableObject {
     /// for the ones that bring pages in, which keep the pages they have when the app is suspended.
     func runExclusive(stopsInBackground: Bool = true, _ operation: @escaping (CancelFlag) async throws -> Void) {
         guard !isBusy else { return }
+        stopScanAgain()
         isBusy = true
         copyPrintFailure = nil
         let flag = CancelFlag()

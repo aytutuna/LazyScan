@@ -79,19 +79,21 @@ public struct TaskAvailability: Equatable, Sendable {
     public static let available = TaskAvailability(isAvailable: true)
 }
 
-/// The choices the desktop apps keep across tasks: the file name template, the PDF size and the
-/// action after saving. A task that sets one of them itself (`TaskCatalog.setsNamingTemplate`,
-/// `setsPDFSize`, `setsAfterSave`) leaves the user's here until another task is picked. Twin of C#
-/// `KeptChoices`.
+/// The choices the desktop apps keep across tasks: the file name template, the PDF size, the
+/// action after saving and the scan again delay. A task that sets one of them itself
+/// (`TaskCatalog.setsNamingTemplate`, `setsPDFSize`, `setsAfterSave`, Book the delay) leaves the user's
+/// here until another task is picked. Twin of C# `KeptChoices`.
 public struct KeptChoices: Equatable, Sendable {
     public var namingTemplate: String
     public var pdfSize: PDFSizePreset
     public var afterSave: AfterSaveAction
+    public var scanAgainSeconds: Int
 
     public init(_ settings: ScanSettings) {
         namingTemplate = settings.namingTemplate
         pdfSize = settings.output.pdfSize
         afterSave = settings.output.afterSave
+        scanAgainSeconds = settings.scanAgainSeconds
     }
 }
 
@@ -411,6 +413,7 @@ public enum TaskCatalog {
             s.resolution = 300
             s.format = .pdf
             s.namingTemplate = "{task} {date} {counter}"
+            if keepingChoices { s.scanAgainSeconds = bookScanAgainSeconds }
         case .archive:
             s.intent = .document
             s.resolution = 300
@@ -428,6 +431,9 @@ public enum TaskCatalog {
         s.taskId = task.rawValue
         return s
     }
+
+    /// The delay Book suggests on the desktop apps, where the Stop button is.
+    private static let bookScanAgainSeconds = 5
 
     /// The task names its files itself (Receipts by the receipt's date, the ID card).
     public static func setsNamingTemplate(_ task: ScanTask) -> Bool { task == .receipt || task == .idCard }
@@ -453,6 +459,7 @@ public enum TaskCatalog {
         if setsNamingTemplate(task) && s.namingTemplate == own.namingTemplate { s.namingTemplate = kept.namingTemplate }
         if setsPDFSize(task) && s.output.pdfSize == own.output.pdfSize { s.output.pdfSize = kept.pdfSize }
         if setsAfterSave(task) && s.output.afterSave == own.output.afterSave { s.output.afterSave = kept.afterSave }
+        if task == .book && s.scanAgainSeconds == bookScanAgainSeconds { s.scanAgainSeconds = kept.scanAgainSeconds }
         return s
     }
 

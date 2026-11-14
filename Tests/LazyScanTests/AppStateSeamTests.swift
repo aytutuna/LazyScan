@@ -930,6 +930,42 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertEqual(state.errorMessage, ScanStop.from(ScanError.scannerProblem(.paperJam)).message(pagesKept: 4))
     }
 
+    // MARK: Scan again (AppState.startScanAgain)
+
+    @MainActor
+    func test_scanAgain_repeatsAfterTheCountdown_untilStop() async throws {
+        let state = makeState(backends: [MockScannerBackend()])
+        state.settings.scanAgainSeconds = 2
+        state.scanAgainTick = 10_000_000
+        state.start()
+        try await waitUntil(timeout: 30) { state.capabilities != nil && state.statusMessage.hasPrefix("Ready") }
+        state.performScan()
+        try await waitUntil(timeout: 120) { state.scannedPages.count >= 3 }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertNil(state.errorMessage)
+        state.cancelScan()
+        XCTAssertNil(state.scanAgainRemaining)
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        let kept = state.scannedPages.count
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(state.scannedPages.count, kept)
+        XCTAssertFalse(state.isBusy)
+    }
+
+    @MainActor
+    func test_scanAgain_off_scansOnce() async throws {
+        let state = makeState(backends: [MockScannerBackend()])
+        state.scanAgainTick = 10_000_000
+        state.start()
+        try await waitUntil(timeout: 30) { state.capabilities != nil && state.statusMessage.hasPrefix("Ready") }
+        state.performScan()
+        try await waitUntil(timeout: 120) { !state.isBusy }
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertNil(state.scanAgainRemaining)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(state.scannedPages.count, 1)
+    }
+
     // MARK: PDF/A and the password (AppState+Protection.swift)
 
     /// The PDFs in the test's folder.
