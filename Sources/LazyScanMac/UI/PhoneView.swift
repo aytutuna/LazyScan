@@ -56,7 +56,7 @@ struct PhoneView: View {
                         networkCard(network, service: service)
                     }
 
-                    sectionTitle("Pair a phone")
+                    sectionTitle("Pair a Phone")
                     pairCard(service)
 
                     sectionTitle("Paired phones")
@@ -202,7 +202,7 @@ struct PhoneView: View {
 
     private func pairCard(_ service: CompanionService?) -> some View {
         let shown = codeShown(service)
-        let title: String = shown ? String(localized: "Show a new code") : String(localized: "Pair a phone")
+        let title: String = shown ? String(localized: "Show a New Code") : String(localized: "Pair a Phone")
         return VStack(alignment: .leading, spacing: 10) {
             Text("Open Lazy Scan on your phone, go to Options \u{203A} My computer, and scan the code shown here. The code works once, for 5 minutes.")
                 .fixedSize(horizontal: false, vertical: true)
@@ -243,7 +243,7 @@ struct PhoneView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if code != nil {
-                    Text("The code expired. Choose Pair a phone to show a new one.")
+                    Text("The code expired. Choose Pair a Phone to show a new one.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -341,9 +341,9 @@ struct PhoneView: View {
     static func whyNoCode(_ status: CompanionHostStatus) -> String {
         switch status.state {
         case .offline:
-            return String(localized: "Connect this Mac to a network first, then choose Pair a phone again.")
+            return String(localized: "Connect this Mac to a network first, then choose Pair a Phone again.")
         case .noTrustedNetwork:
-            return String(localized: "This Mac does not receive on the network it is on. Turn on Allow receiving on this network above, then choose Pair a phone again.")
+            return String(localized: "This Mac does not receive on the network it is on. Turn on Allow receiving on this network above, then choose Pair a Phone again.")
         case .failed:
             return status.error ?? String(localized: "Receiving from phones could not start.")
         default:
