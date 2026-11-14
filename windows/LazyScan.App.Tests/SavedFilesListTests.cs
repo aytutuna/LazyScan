@@ -49,4 +49,33 @@ public class SavedFilesListTests : IDisposable
 
         Assert.Equal(["ok.pdf"], names);
     }
+
+    [Theory]
+    [InlineData(FileAttributes.Offline, true)]
+    [InlineData((FileAttributes)0x40000, true)]
+    [InlineData((FileAttributes)0x400000, true)]
+    [InlineData(FileAttributes.Archive, false)]
+    [InlineData((FileAttributes)0, false)]
+    public void OnlyCloudPlaceholdersAreOnlineOnly(FileAttributes attributes, bool expected)
+    {
+        Assert.Equal(expected, new SavedFile(@"C:\scans.jpg", DateTime.Now, 1, attributes).IsOnlineOnly);
+    }
+
+    [Fact]
+    public async Task OnlineOnlyFilesGetNoThumbnail()
+    {
+        string path = Path.Combine(_folder, "a.png");
+        File.WriteAllBytes(path, [1]);
+        var file = new SavedFile(path, DateTime.Now, 1, (FileAttributes)0x400000);
+
+        Assert.Null(await SavedFiles.LoadThumbnailAsync(file, 64));
+    }
+
+    [Fact]
+    public void ListKeepsTheFileAttributes()
+    {
+        Touch("a.pdf");
+
+        Assert.True(SavedFiles.List(_folder)!.Single().Attributes.HasFlag(FileAttributes.Archive));
+    }
 }

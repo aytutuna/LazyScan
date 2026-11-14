@@ -10,8 +10,16 @@ using LazyScan.Core;
 namespace LazyScan.App.Services;
 
 /// <summary>One file in the destination folder, as listed by the Saved tab.</summary>
-public sealed record SavedFile(string Path, DateTime Modified, long Size)
+public sealed record SavedFile(string Path, DateTime Modified, long Size, FileAttributes Attributes = 0)
 {
+    /// <summary>A cloud placeholder: reading it would download the file.</summary>
+    public bool IsOnlineOnly =>
+        (Attributes & (FileAttributes.Offline | RecallOnOpen | RecallOnDataAccess)) != 0;
+
+    // Not in the FileAttributes enum.
+    private const FileAttributes RecallOnOpen = (FileAttributes)0x40000;
+    private const FileAttributes RecallOnDataAccess = (FileAttributes)0x400000;
+
     public string Name => System.IO.Path.GetFileName(Path);
     public bool IsPdf => System.IO.Path.GetExtension(Path).Equals(".pdf", StringComparison.OrdinalIgnoreCase);
 
@@ -72,7 +80,7 @@ public static class SavedFiles
             return info.EnumerateFiles("*", options)
                 .Where(f => !IsDotNamed(directory, f)
                             && KnownExtensions.Contains(f.Extension))
-                .Select(f => new SavedFile(f.FullName, f.LastWriteTime, f.Length))
+                .Select(f => new SavedFile(f.FullName, f.LastWriteTime, f.Length, f.Attributes))
                 .OrderByDescending(f => f.Modified)
                 .ToList();
         }
@@ -88,7 +96,7 @@ public static class SavedFiles
         try
         {
             var info = new FileInfo(path);
-            return info.Exists ? new SavedFile(info.FullName, info.LastWriteTime, info.Length) : null;
+            return info.Exists ? new SavedFile(info.FullName, info.LastWriteTime, info.Length, info.Attributes) : null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
@@ -183,14 +191,14 @@ public static class SavedFiles
     /// <summary>
     /// A small frozen preview: images decode at <paramref name="decodeWidth"/> (never the full
     /// pixels) with their EXIF orientation applied; PDFs render their first page through the
-    /// built-in Windows PDF renderer. null when the file cannot be read, and for text files and
-    /// Word documents, which show their icon.
+    /// built-in Windows PDF renderer. null when the file cannot be read, and for text files, Word
+    /// documents and files that are online only (reading one would download it), which show their icon.
     /// </summary>
     public static async Task<BitmapSource?> LoadThumbnailAsync(SavedFile file, int decodeWidth)
     {
         try
         {
-            if (file.IsTextDocument) return null;
+            if (file.IsTextDocument || file.IsOnlineOnly) return null;
             if (file.IsPdf) return await RenderPdfThumbnailAsync(file.Path, decodeWidth);
             return await Task.Run(() => LoadImageThumbnail(file.Path, decodeWidth));
         }
