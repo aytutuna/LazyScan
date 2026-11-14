@@ -31,7 +31,7 @@
              Every action on the file is also in the card's context menu (right-click, Shift+F10
              or the Menu key on the card) and in the bar's More menu. -->
         <DataTemplate x:Key="CardTemplate">
-            <Grid x:Name="Card" Width="200" Margin="6" Background="Transparent"
+            <local:SavedCard x:Name="Card" Width="200" Margin="6" Background="Transparent"
                   Focusable="True" FocusVisualStyle="{StaticResource CardFocusVisualStyle}"
                   AutomationProperties.Name="{Binding AutomationName}"
                   AutomationProperties.HelpText="{loc:T Enter opens. Menu key shows more actions.}"
@@ -62,6 +62,13 @@
                             </Border>
                             <Border Style="{StaticResource TypeBadgeStyle}">
                                 <TextBlock Text="{Binding TypeText}" Style="{StaticResource TypeBadgeText}" />
+                            </Border>
+                            <Border x:Name="SelectedCheck" Width="20" Height="20" CornerRadius="10" Margin="6"
+                                    HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed"
+                                    IsHitTestVisible="False" Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                <TextBlock Text="&#xE73E;" Style="{StaticResource GlyphText}" FontSize="12"
+                                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <Border x:Name="Actions" Style="{StaticResource HoverActionBarStyle}"
                                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6">
@@ -94,11 +101,18 @@
                                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolTipText}" />
                     </StackPanel>
                 </Border>
-            </Grid>
+                <!-- A selected card: a light accent fill over the surface, and a check on the thumbnail. -->
+                <Border x:Name="SelectedTint" CornerRadius="{StaticResource CardCornerRadius}" Visibility="Collapsed"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0.16" IsHitTestVisible="False" />
+            </local:SavedCard>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
                     <Setter TargetName="Page" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter TargetName="SelectedTint" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="SelectedCheck" Property="Visibility" Value="Visible" />
                 </DataTrigger>
                 <Trigger SourceName="Card" Property="IsKeyboardFocusWithin" Value="True">
                     <Setter TargetName="Actions" Property="Opacity" Value="1" />
@@ -133,6 +147,28 @@
                        Background="Transparent" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
         </DockPanel>
 
+        <!-- Two or more cards selected: the actions for all of them, in the layout of the bar after a
+             save on a neutral surface. The buttons are built in code from AppViewModel.OfferedFor
+             (UpdateSelectionBar) and fold to their glyphs in narrow windows. -->
+        <Border x:Name="SelectionBar" DockPanel.Dock="Top" Style="{StaticResource InfoBarStyle}" Margin="16,0,16,8"
+                Padding="12,4,4,4" Visibility="Collapsed" Height="48"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                SizeChanged="SelectionBar_SizeChanged" KeyDown="SelectionBar_KeyDown">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButtonStyle}" local:Icon.Glyph="&#xE711;"
+                        Content="{loc:T Clear selection}" VerticalAlignment="Center" Margin="4,0,0,0"
+                        ToolTip="{loc:T Clear the selection (Esc)}" AutomationProperties.AcceleratorKey="Esc"
+                        Click="ClearSelection_Click" />
+                <StackPanel DockPanel.Dock="Right" x:Name="SelectionButtons" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE73A;" Margin="0,0,12,0"
+                           VerticalAlignment="Center" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="SelectionText" Style="{StaticResource BodyText}" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           AutomationProperties.LiveSetting="Polite" />
+            </DockPanel>
+        </Border>
+
         <Grid>
             <!-- Rows of cards in a virtualizing list: only the rows on screen (plus a small
                  cache) exist, so a folder with thousands of files stays cheap. The rows are
@@ -142,6 +178,7 @@
                           VirtualizingPanel.VirtualizationMode="Standard"
                           VirtualizingPanel.ScrollUnit="Pixel"
                           Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                          AutomationProperties.AcceleratorKey="Ctrl+A"
                           ScrollViewer.CanContentScroll="True"
                           SizeChanged="Rows_SizeChanged" ScrollViewer.ScrollChanged="Rows_ScrollChanged">
                 <ItemsControl.Template>

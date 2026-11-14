@@ -1061,6 +1061,11 @@ The bar goes away with its close button or when the next scan starts; in narrow 
 buttons show only their icons (names stay in tooltips and for screen readers). The Saved tab's
 cards offer the same actions; each card is one Tab stop, the arrow keys move between
 cards, Enter or a click on the thumbnail opens the file and the Menu key shows the actions.
+Ctrl+click, Shift+click, Shift and the arrow keys, Space and Ctrl+A select cards; with two or
+more selected a bar above the cards offers the multi-file actions for them (the same list as
+the bar after a save, Lazy Print only when offered), and Esc or **Clear
+selection** clears it. A refresh keeps the selection of files still listed; a new save folder
+clears it.
 Nothing leaves the PC without the user choosing where it goes:
 
 - **Share** opens the Windows share window (the SDK's `DataTransferManagerInterop` for desktop

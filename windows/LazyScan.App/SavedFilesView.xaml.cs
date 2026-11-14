@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -48,6 +50,13 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
     public string PlaceholderGlyph => File.IsPdf || File.IsTextDocument ? "" : "";
     public Visibility RotateVisibility => File.ImageFormat is null ? Visibility.Collapsed : Visibility.Visible;
 
+    private bool _selected;
+    public bool IsSelected
+    {
+        get => _selected;
+        set { _selected = value; Changed(nameof(IsSelected)); }
+    }
+
     private BitmapSource? _thumbnail;
     public BitmapSource? Thumbnail
     {
@@ -80,6 +89,54 @@ public sealed class SavedFileItem(SavedFile file) : INotifyPropertyChanged
 public sealed class SavedFileRow(IReadOnlyList<SavedFileItem> items)
 {
     public IReadOnlyList<SavedFileItem> Items { get; } = items;
+}
+
+/// <summary>A card; its automation peer reports whether the file is selected and can select it.</summary>
+public sealed class SavedCard : Grid
+{
+    protected override AutomationPeer OnCreateAutomationPeer() => new SavedCardPeer(this);
+}
+
+internal sealed class SavedCardPeer(SavedCard card) : FrameworkElementAutomationPeer(card), ISelectionItemProvider
+{
+    private SavedFileItem? Item => card.DataContext as SavedFileItem;
+
+    private SavedFilesView? View
+    {
+        get
+        {
+            DependencyObject? parent = card;
+            while (parent is not null and not SavedFilesView) parent = VisualTreeHelper.GetParent(parent);
+            return parent as SavedFilesView;
+        }
+    }
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.ListItem;
+
+    public override object? GetPattern(PatternInterface patternInterface) =>
+        patternInterface == PatternInterface.SelectionItem ? this : base.GetPattern(patternInterface);
+
+    public bool IsSelected => Item?.IsSelected == true;
+
+    public IRawElementProviderSimple? SelectionContainer => null;
+
+    public void Select()
+    {
+        if (Item is { } item) View?.SelectOnly(item);
+    }
+
+    public void AddToSelection()
+    {
+        if (Item is { } item) View?.SetSelected(item, true);
+    }
+
+    public void RemoveFromSelection()
+    {
+        if (Item is { } item) View?.SetSelected(item, false);
+    }
+
+    public void RaiseSelectedChanged(bool selected) =>
+        RaisePropertyChangedEvent(SelectionItemPatternIdentifiers.IsSelectedProperty, !selected, selected);
 }
 
 /// <summary>The rows' panel; lets the view scroll a row into view by index.</summary>
@@ -124,6 +181,14 @@ public partial class SavedFilesView : UserControl
     private RowsPanel? _rowsPanel;
     /// <summary>The item to focus once its card is realized (its row was scrolled into view first).</summary>
     private SavedFileItem? _focusWhenLoaded;
+    /// <summary>The card a Shift selection starts from: the last one clicked or toggled.</summary>
+    private SavedFileItem? _anchor;
+    /// <summary>The folder the selection belongs to; another folder starts with none.</summary>
+    private string? _selectionFolder;
+    /// <summary>A plain click landed on a thumbnail (which opens the file) and must not change the selection.</summary>
+    private bool _thumbnailPressed;
+    /// <summary>The selection bar is narrow: its buttons show only their glyphs.</summary>
+    private bool _selectionCompact;
 
     public SavedFilesView()
     {
@@ -157,7 +222,14 @@ public partial class SavedFilesView : UserControl
         if (generation != _generation) return;
 
         var focus = FocusedPosition();
-        _items = (files ?? []).Select(file => new SavedFileItem(file)).ToList();
+        var selected = _selectionFolder == folder
+            ? _items.Where(i => i.IsSelected).Select(i => i.File.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : [];
+        string? anchorPath = _selectionFolder == folder ? _anchor?.File.Path : null;
+        _selectionFolder = folder;
+        _items = (files ?? []).Select(file => new SavedFileItem(file) { IsSelected = selected.Contains(file.Path) }).ToList();
+        _anchor = anchorPath is null ? null : _items.FirstOrDefault(i => i.File.Path.Equals(anchorPath, StringComparison.OrdinalIgnoreCase));
+        UpdateSelectionBar();
         RebuildRows(force: true);
         RestoreFocus(focus);
         bool empty = _items.Count == 0;
@@ -201,6 +273,7 @@ public partial class SavedFilesView : UserControl
         var (cards, header) = GridInsets.For(width, ColumnCount());
         RowInset = cards;
         Header.Margin = new Thickness(header.Left, 16, header.Right, 8);
+        SelectionBar.Margin = new Thickness(header.Left, 0, header.Right, 8);
     }
 
     /// <summary>The viewport changed width (a scrollbar came or went): re-centre.</summary>
@@ -328,24 +401,54 @@ public partial class SavedFilesView : UserControl
     // Ctrl or Shift on the thumbnail is left for selecting, not opening.
     private void Thumbnail_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount != 1 || (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) return;
-        if (ItemOf(sender) is { } item) Open(item);
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) return;
+        _thumbnailPressed = true;
+        if (e.ClickCount == 1 && ItemOf(sender) is { } item) Open(item);
     }
 
     private void Card_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        (sender as FrameworkElement)?.Focus();
+        if (sender is not FrameworkElement { DataContext: SavedFileItem item } card) return;
+        card.Focus();
+        bool onThumbnail = _thumbnailPressed;
+        _thumbnailPressed = false;
+        if (onThumbnail) return;
+        var modifiers = Keyboard.Modifiers;
+        SelectByClick(item, modifiers.HasFlag(ModifierKeys.Control), modifiers.HasFlag(ModifierKeys.Shift));
     }
 
     private void RowsPanel_Loaded(object sender, RoutedEventArgs e) => _rowsPanel = (RowsPanel)sender;
 
     private void Card_KeyDown(object sender, KeyEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: SavedFileItem item } card || Keyboard.Modifiers != ModifierKeys.None) return;
-        if (e.Key == Key.Enter)
+        if (sender is not FrameworkElement { DataContext: SavedFileItem item } card) return;
+        var modifiers = Keyboard.Modifiers;
+        if (modifiers.HasFlag(ModifierKeys.Alt)) return;
+        bool shift = modifiers.HasFlag(ModifierKeys.Shift);
+        if (e.Key == Key.A && modifiers == ModifierKeys.Control)
+        {
+            Select(_items);
+            e.Handled = true;
+            return;
+        }
+        if (modifiers == ModifierKeys.None && e.Key == Key.Escape && _items.Any(i => i.IsSelected))
+        {
+            ClearSelection();
+            e.Handled = true;
+            return;
+        }
+        if (modifiers == ModifierKeys.None && e.Key is Key.Enter or Key.Space)
         {
             if (e.OriginalSource != card) return;
-            Open(item);
+            if (e.Key == Key.Enter)
+            {
+                Open(item);
+            }
+            else
+            {
+                SetSelected(item, !item.IsSelected);
+                _anchor = item;
+            }
             e.Handled = true;
             return;
         }
@@ -367,7 +470,176 @@ public partial class SavedFilesView : UserControl
         {
             target = _items.Count - 1;
         }
-        if (target >= 0 && target < _items.Count) FocusItem(_items[target]);
+        if (target < 0 || target >= _items.Count) return;
+        FocusItem(_items[target]);
+        if (!shift) return;
+        _anchor ??= item;
+        SelectRange(_anchor, _items[target], keep: false);
+    }
+
+    // MARK: - Selection
+
+    private int SelectedCount => _items.Count(i => i.IsSelected);
+
+    private List<string> SelectedPaths() => _items.Where(i => i.IsSelected).Select(i => i.File.Path).ToList();
+
+    private void SetItemSelected(SavedFileItem item, bool selected)
+    {
+        if (item.IsSelected == selected) return;
+        item.IsSelected = selected;
+        foreach (var card in item.Cards)
+        {
+            if (UIElementAutomationPeer.FromElement(card) is SavedCardPeer peer) peer.RaiseSelectedChanged(selected);
+        }
+    }
+
+    /// <summary>Exactly these items are selected.</summary>
+    private void Select(IEnumerable<SavedFileItem> chosen)
+    {
+        var set = chosen.ToHashSet();
+        foreach (var item in _items) SetItemSelected(item, set.Contains(item));
+        UpdateSelectionBar();
+    }
+
+    internal void SetSelected(SavedFileItem item, bool selected)
+    {
+        SetItemSelected(item, selected);
+        UpdateSelectionBar();
+    }
+
+    internal void SelectOnly(SavedFileItem item)
+    {
+        Select([item]);
+        _anchor = item;
+    }
+
+    private void SelectRange(SavedFileItem from, SavedFileItem to, bool keep)
+    {
+        int a = _items.IndexOf(from), b = _items.IndexOf(to);
+        var range = _items.Skip(Math.Min(a, b)).Take(Math.Abs(a - b) + 1).ToList();
+        Select(keep ? range.Concat(_items.Where(i => i.IsSelected)) : range);
+    }
+
+    private void SelectByClick(SavedFileItem item, bool ctrl, bool shift)
+    {
+        if (shift)
+        {
+            _anchor ??= item;
+            SelectRange(_anchor, item, keep: ctrl);
+        }
+        else if (ctrl)
+        {
+            SetSelected(item, !item.IsSelected);
+            _anchor = item;
+        }
+        else
+        {
+            SelectOnly(item);
+        }
+    }
+
+    /// <summary>Clears the selection; a focused bar goes away with it, so the focus moves to a card.</summary>
+    private void ClearSelection()
+    {
+        bool barFocused = SelectionBar.IsKeyboardFocusWithin;
+        var back = _anchor ?? _items.FirstOrDefault(i => i.IsSelected);
+        Select([]);
+        _anchor = null;
+        if (barFocused && back is not null) FocusItem(back);
+    }
+
+    private void ClearSelection_Click(object sender, RoutedEventArgs e) => ClearSelection();
+
+    private void SelectionBar_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || Keyboard.Modifiers != ModifierKeys.None || !_items.Any(i => i.IsSelected)) return;
+        ClearSelection();
+        e.Handled = true;
+    }
+
+    /// <summary>Below this bar width the action buttons show only their glyphs.</summary>
+    private const double SelectionBarCompactBelowWidth = 760;
+
+    private void SelectionBar_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!e.WidthChanged) return;
+        bool compact = e.NewSize.Width < SelectionBarCompactBelowWidth;
+        if (compact == _selectionCompact) return;
+        _selectionCompact = compact;
+        foreach (var button in SelectionButtons.Children.OfType<Button>()) SetButtonCompact(button);
+    }
+
+    private void SetButtonCompact(Button button)
+    {
+        if (_selectionCompact)
+        {
+            button.ContentTemplate = (DataTemplate)FindResource("IconOnlyTemplate");
+            button.Padding = new Thickness(8, 5, 8, 6);
+        }
+        else
+        {
+            button.ClearValue(ContentControl.ContentTemplateProperty);
+            button.ClearValue(PaddingProperty);
+        }
+    }
+
+    private void SetSelectionButtonText(Button button, FileAction action, int count)
+    {
+        string label = action == FileAction.Share ? Loc.T("Share") : action.Label();
+        string hint = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, count);
+        button.Content = label;
+        button.ToolTip = hint;
+        AutomationProperties.SetName(button, Loc.T("{0} {1}", label, Loc.Plural(count, "{0} file", "{0} files")));
+        AutomationProperties.SetHelpText(button, hint);
+    }
+
+    /// <summary>The bar is shown for two or more selected files, with the actions offered for all of them.</summary>
+    private void UpdateSelectionBar()
+    {
+        var paths = SelectedPaths();
+        if (paths.Count < 2 || _viewModel is null)
+        {
+            SelectionBar.Visibility = Visibility.Collapsed;
+            SelectionButtons.Children.Clear();
+            return;
+        }
+        string text = Loc.T("{0} selected", paths.Count);
+        bool textChanged = SelectionText.Text != text || SelectionBar.Visibility != Visibility.Visible;
+        SelectionText.Text = text;
+        var actions = _viewModel.OfferedFor(paths).ToList();
+        var buttons = SelectionButtons.Children.OfType<Button>().ToList();
+        if (!actions.SequenceEqual(buttons.Select(b => (FileAction)b.Tag)))
+        {
+            SelectionButtons.Children.Clear();
+            buttons.Clear();
+            foreach (var action in actions)
+            {
+                var button = new Button { Style = (Style)FindResource("SubtleButtonStyle"), Tag = action };
+                Icon.SetGlyph(button, FileActionMenu.Glyph(action));
+                SetButtonCompact(button);
+                button.Click += SelectionAction_Click;
+                SelectionButtons.Children.Add(button);
+                buttons.Add(button);
+            }
+        }
+        foreach (var button in buttons) SetSelectionButtonText(button, (FileAction)button.Tag, paths.Count);
+        SelectionBar.Visibility = Visibility.Visible;
+        if (textChanged) AnnounceSelection();
+    }
+
+    private void AnnounceSelection()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!SelectionText.IsVisible) return;
+            var peer = UIElementAutomationPeer.FromElement(SelectionText) ?? UIElementAutomationPeer.CreatePeerForElement(SelectionText);
+            peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
+
+    private void SelectionAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: FileAction action }) _viewModel?.RunFileAction(action, SelectedPaths());
     }
 
     /// <summary>Moves keyboard focus to the item's card, scrolling its row into view first when the card doesn't exist yet.</summary>
@@ -434,12 +706,21 @@ public partial class SavedFilesView : UserControl
     {
         if (sender is FrameworkElement card && card.DataContext is SavedFileItem item)
         {
-            card.ContextMenu = BuildFileMenu(item);
+            if (!item.IsSelected) SelectOnly(item);
+            card.ContextMenu = SelectedCount > 1 ? BuildSelectionMenu() : BuildFileMenu(item);
         }
         else
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>The actions for all the selected files, as the selection bar offers them.</summary>
+    private ContextMenu BuildSelectionMenu()
+    {
+        var paths = SelectedPaths();
+        return FileActionMenu.Build(_viewModel?.OfferedFor(paths) ?? SaveActions.Offered(paths.Count), paths.Count,
+                                    action => _viewModel?.RunFileAction(action, paths));
     }
 
     /// <summary>Every action on one saved file, then Rotate for image files or Add the scanned pages for a PDF.</summary>
