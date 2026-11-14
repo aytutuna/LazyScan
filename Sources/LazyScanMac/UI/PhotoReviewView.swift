@@ -49,8 +49,8 @@ struct PhotoReviewView: View {
 
     private var scrollHint: Text {
         showsDate
-            ? Text("Uncheck any false detections, rotate if needed, fix any dates, then save.")
-            : Text("Uncheck any false detections, rotate if needed, then save.")
+            ? Text(L10n.t("Untick a receipt to leave it out, fix its crop, or correct its date."))
+            : Text(L10n.t("Untick a photo to leave it out, or fix its crop."))
     }
 
     var body: some View {
@@ -254,7 +254,7 @@ fileprivate struct PhotoReviewCard: View {
             }
 
             HStack(spacing: 10) {
-                Toggle("Include", isOn: $included)
+                Toggle("Keep", isOn: $included)
                     .toggleStyle(.checkbox)
                     .accessibilityLabel(Text(String(localized: "Keep photo \(number)")))
                     .font(.caption)
@@ -315,7 +315,7 @@ fileprivate struct PhotoReviewCard: View {
                 Button("Split apart", action: onSplit)
                     .disabled(busy)
             }
-            Toggle("Include", isOn: $included)
+            Toggle("Keep", isOn: $included)
             Button("Rotate left") { onRotate(-1) }
             Button("Rotate right") { onRotate(1) }
         }

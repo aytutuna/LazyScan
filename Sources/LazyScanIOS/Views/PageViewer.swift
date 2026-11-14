@@ -50,9 +50,9 @@ enum PageViewerText {
         String(localized: "\(number) of \(count)")
     }
 
-    /// The filter as VoiceOver says it: "Black and white" for B&W.
+    /// The filter as VoiceOver says it: the visible label.
     static func filterName(_ filter: CaptureFilter) -> String {
-        filter == .blackAndWhite ? String(localized: "Black and white") : filter.label
+        filter.label
     }
 
     /// "Page 3"

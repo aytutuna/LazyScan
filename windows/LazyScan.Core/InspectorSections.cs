@@ -90,7 +90,7 @@ public static class InspectorSections
                    && (s.Output.PdfSize != Defaults.Output.PdfSize || s.Output.PageSize != Defaults.Output.PageSize));
     }
 
-    /// <summary>"Edited" when a slider or a switch other than Auto enhance is changed, "Auto" for Auto enhance alone, else "".</summary>
+    /// <summary>"Edited" when a slider or a switch other than Auto-enhance is changed, "Auto" for Auto-enhance alone, else "".</summary>
     public static string AdjustmentsSummary(AdjustmentSettings a)
     {
         bool edited = a.Brightness != 0 || a.Contrast != 1 || a.Saturation != 1 || a.Sharpness != 0

@@ -207,7 +207,7 @@ public static class ModelLabels
     {
         ColorMode.Color => Loc.T("Color"),
         ColorMode.Grayscale => Loc.T("Grayscale"),
-        ColorMode.BlackWhite => Loc.T("Black & White"),
+        ColorMode.BlackWhite => Loc.T("Black & white"),
         _ => mode.ToString(),
     };
 

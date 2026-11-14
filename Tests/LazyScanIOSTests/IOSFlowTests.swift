@@ -586,7 +586,7 @@ final class IOSFlowTests: XCTestCase {
         for filter in CaptureFilter.displayOrder {
             names.append(PageViewerText.filterName(filter))
         }
-        XCTAssertEqual(names, ["Original", "Enhanced", "Grayscale", "Black and white"])
+        XCTAssertEqual(names, ["Original", "Enhanced", "Grayscale", "B&W"])
     }
 
     func test_pageGrid_isTwoAcrossAPhone_untilPinched_andStaysWithinTheWidth() {

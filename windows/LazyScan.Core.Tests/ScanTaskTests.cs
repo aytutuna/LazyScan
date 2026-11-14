@@ -837,7 +837,7 @@ public class ScanTaskTests
     {
         Assert.Equal("300 dpi · Color · PDF", TaskCatalog.Summary(new ScanSettings()));
         Assert.Equal("600 dpi · Color · PNG", TaskCatalog.Summary(TaskCatalog.Apply(ScanTask.PhotoRestore, new ScanSettings())));
-        Assert.Equal("200 dpi · Black & White · TIFF", TaskCatalog.Summary(
+        Assert.Equal("200 dpi · Black & white · TIFF", TaskCatalog.Summary(
             new ScanSettings { Resolution = 200, ColorMode = ColorMode.BlackWhite, Format = OutputFormat.Tiff }));
     }
 

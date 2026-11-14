@@ -34,7 +34,7 @@ public enum ColorMode: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .color: return L10n.t("Color")
         case .grayscale: return L10n.t("Grayscale")
-        case .blackWhite: return L10n.t("Black & White")
+        case .blackWhite: return L10n.t("Black & white")
         }
     }
 }

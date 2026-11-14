@@ -101,7 +101,7 @@ public enum InspectorSections {
             || (shownFormat == .pdf && (s.output.pdfSize != d.output.pdfSize || s.output.pageSize != d.output.pageSize))
     }
 
-    /// "Edited" when a slider or a switch other than Auto enhance is changed, "Auto" for Auto enhance
+    /// "Edited" when a slider or a switch other than Auto-enhance is changed, "Auto" for Auto-enhance
     /// alone, else "".
     public static func adjustmentsSummary(_ a: AdjustmentSettings) -> String {
         let sliders: Bool = a.brightness != 0 || a.contrast != 1 || a.saturation != 1 || a.sharpness != 0

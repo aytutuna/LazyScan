@@ -780,7 +780,7 @@ final class ScanTaskTests: XCTestCase {
         s.resolution = 200
         s.colorMode = .blackWhite
         s.format = .tiff
-        XCTAssertEqual(TaskCatalog.summary(s), "200 dpi \u{00B7} Black & White \u{00B7} TIFF")
+        XCTAssertEqual(TaskCatalog.summary(s), "200 dpi \u{00B7} Black & white \u{00B7} TIFF")
     }
 
     func test_summary_namesANonDefaultPDFSize_forPDFsOnly() {

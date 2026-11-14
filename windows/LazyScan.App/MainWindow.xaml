@@ -1239,7 +1239,7 @@
                                     <Expander x:Name="AdjustmentsSection" Style="{StaticResource SectionExpanderStyle}" AutomationProperties.Name="{loc:T Adjustments}">
                                         <StackPanel>
                                             <CheckBox x:Name="AutoEnhanceBox" Style="{StaticResource ToggleSwitchStyle}"
-                                                      Content="{loc:T Auto enhance}"
+                                                      Content="{loc:T Auto-enhance}"
                                                       Checked="Setting_Changed" Unchecked="Setting_Changed" />
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions>
