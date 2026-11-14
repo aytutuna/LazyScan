@@ -208,12 +208,12 @@ public sealed partial class AppViewModel
         var pages = ScannedPages.Select(p => p.Page).ToList();
         if (pages.Count == 0) throw new CompanionPackageException(CompanionPackageErrorKind.NoPages, CompanionPackage.NoPagesMessage);
         var s = Settings.Clone();
-        string name = new NamingTemplate(s.NamingTemplate)
+        string name = Path.GetFileName(new NamingTemplate(s.NamingTemplate)
             .BaseFilename(new NamingContext(PeekCounter() + 1, DateTime.Now, s.Intent)
             {
                 Task = TaskCatalog.Infer(s),
                 Label = pages[0].DocumentLabel,
-            });
+            }));
         string path = NamingTemplate.UniquePath(folder, name, CompanionPackage.FileExtension);
         string encoded = NewEncodedFolder();
         try

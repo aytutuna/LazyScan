@@ -44,12 +44,12 @@ struct SavedFilesView: View {
         // Refresh whenever something new is saved, and on every appearance.
         .task(id: state.lastSavedURLs) {
             state.removeStaleSaveTemps()
-            reload()
+            await reload()
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
-                    reload()
+                    Task { await reload() }
                 } label: {
                     Label("Reload Folder", systemImage: "arrow.triangle.2.circlepath")
                 }
@@ -83,11 +83,11 @@ struct SavedFilesView: View {
             isDirectory: true)
     }
 
-    private func reload() {
+    private func reload() async {
         let dir = destinationURL
         let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
-        guard let urls = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles]) else {
+        let found: [URL]? = await Task.detached { try? NamingTemplate.filesUnder(dir, keys: keys) }.value
+        guard let urls = found else {
             files = []
             loadFailed = FileManager.default.fileExists(atPath: dir.path)
             return
@@ -158,7 +158,7 @@ struct SavedFilesView: View {
             if let failure {
                 state.errorMessage = String(localized: "Could not rotate \(url.lastPathComponent): \(failure)")
             } else {
-                reload()
+                await reload()
             }
         }
     }

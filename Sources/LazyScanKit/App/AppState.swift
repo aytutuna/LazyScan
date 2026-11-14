@@ -3380,10 +3380,15 @@ public final class AppState: ObservableObject {
             isDirectory: true)
         Task.detached(priority: .utility) {
             let manager: FileManager = FileManager.default
-            let names: [String] = (try? manager.contentsOfDirectory(atPath: folder.path)) ?? []
             let cutoff: Date = Date().addingTimeInterval(-3600)
-            for name in names where Self.isSaveTempName(name) {
-                let url: URL = folder.appendingPathComponent(name)
+            // Hidden files are wanted here, so the Saved lists' walk will not do; a template can put temps in subfolders.
+            let found: FileManager.DirectoryEnumerator? = manager.enumerator(at: folder, includingPropertiesForKeys: nil)
+            var temps: [URL] = []
+            while let url = found?.nextObject() as? URL {
+                if found?.level ?? 0 > NamingTemplate.maxFolderDepth { found?.skipDescendants() }
+                if Self.isSaveTempName(url.lastPathComponent) { temps.append(url) }
+            }
+            for url in temps {
                 let changed: Date? = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
                 if let changed, changed > cutoff { continue }
                 try? manager.removeItem(at: url)
@@ -3453,7 +3458,16 @@ public final class AppState: ObservableObject {
                                             index: index, task: TaskCatalog.infer(settings), documentDate: documentDate,
                                             label: label))
         }
-        return NamingTemplate.uniqueURL(in: dir, base: base, fileExtension: fileExtension)
+        let url = NamingTemplate.uniqueURL(in: dir, base: base, fileExtension: fileExtension)
+        let folder = url.deletingLastPathComponent()
+        if folder != dir {
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            } catch {
+                throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
+            }
+        }
+        return url
     }
 
     /// The name the next single file would get, without its extension: what the name field shows until
@@ -3461,7 +3475,7 @@ public final class AppState: ObservableObject {
     public var suggestedName: String {
         let format = settings.format.queueFormat
         let example = fileNameExample(settings.namingTemplate, format: format)
-        return String(example.dropLast(format.fileExtension.count + 1))
+        return (String(example.dropLast(format.fileExtension.count + 1)) as NSString).lastPathComponent
     }
 
     /// Run one long operation at a time; surface errors; manage busy state. The

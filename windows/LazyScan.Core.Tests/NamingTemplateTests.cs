@@ -93,7 +93,26 @@ public class NamingTemplateTests
     public void UnknownTokenPassesThrough() => Assert.Equal("{bogus}", Render("{bogus}"));
 
     [Fact]
-    public void Sanitization() => Assert.Equal("a-b-c", Render("a/b:c"));
+    public void Sanitization() => Assert.Equal("a/b-c", Render("a/b:c"));
+
+    [Fact]
+    public void SlashesMakeFolders()
+    {
+        Assert.Equal("2026/08/Scan 1", Render("{year}/{month}/Scan {counter}"));
+        Assert.Equal("a/b/c", Render(" a /b / c"));
+    }
+
+    [Fact]
+    public void FoldersCannotLeaveTheSaveFolder()
+    {
+        Assert.Equal("x", Render("../x"));
+        Assert.Equal("a/x", Render("a/../../x"));
+        Assert.Equal("a/x", Render("a/./x"));
+        Assert.Equal("a/x", Render("/a//x"));
+        Assert.Equal("-x", Render("..\\x"));
+        Assert.Equal("Scan", Render("../.."));
+        Assert.Equal("a/Scan", Render("a/"));
+    }
 
     [Fact]
     public void ReservedCharactersSanitized() =>
@@ -178,6 +197,8 @@ public class NamingTemplateTests
         Assert.Equal("Invoice 0042", Render("{label}", context with { Label = "  Invoice 0042 " }));
         // Characters a file name cannot hold become "-"; tokens in a name are not expanded.
         Assert.Equal("ACME-Smith - 2026 Q3", Render("{label}", context with { Label = "ACME/Smith : 2026 Q3" }));
+        // A name never makes folders, as a template's slash does.
+        Assert.Equal("2026/ACME-..", Render("{year}/{label}", context with { Label = "ACME/.." }));
         Assert.Equal("{date} 14", Render("{label} {counter}", context with { Label = "{date}" }));
     }
 
@@ -238,6 +259,23 @@ public class NamingTemplateTests
                          Index = 3,
                          DocumentDate = new DocumentDate(2026, 3, 5),
                      }));
+    }
+
+    [Fact]
+    public void UniquePathLooksInTheFolderTheNameNames()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), $"NamingTemplateTests-{Guid.NewGuid()}");
+        Directory.CreateDirectory(Path.Combine(dir, "2026"));
+        try
+        {
+            File.WriteAllBytes(Path.Combine(dir, "2026", "Scan.pdf"), []);
+            Assert.Equal(Path.Combine(dir, "2026", "Scan 2.pdf"),
+                         Path.GetFullPath(NamingTemplate.UniquePath(dir, "2026/Scan", "pdf")));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 
     [Fact]

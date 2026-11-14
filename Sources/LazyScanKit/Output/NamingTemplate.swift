@@ -9,7 +9,9 @@ public struct NamingTemplate {
 
     /// Tokens: {date}=yyyy-MM-dd, {time}=HH.mm.ss, {year} {month} {day}, {counter} (also {counter:N}
     /// zero-padded), {intent} ("Document"/"Photos"), {index} (photo number in a batch, empty when nil).
-    /// Unknown tokens pass through; result sanitized for the filesystem (no path separators, reserved characters, control characters or leading dots).
+    /// Unknown tokens pass through. A "/" in the template separates folders under the save folder:
+    /// each part is sanitized for the filesystem (no reserved characters, control characters or leading
+    /// dots), a part that ends up empty (including "." and "..") is dropped, and the name is never empty.
     /// Same as `baseFilename(_:)` without a task or document date.
     public func baseFilename(counter: Int, date: Date, intent: ScanIntent, index: Int?) -> String {
         baseFilename(NamingContext(counter: counter, date: date, intent: intent, index: index))
@@ -26,6 +28,7 @@ public struct NamingTemplate {
         let index = context.index
         let label = Self.cutToBytes(context.label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
                                     maxBytes: Self.maxLabelBytes)
+            .replacingOccurrences(of: "/", with: "-")
         var result = template
 
         // {counter:N} — zero-padded to N digits.
@@ -86,7 +89,8 @@ public struct NamingTemplate {
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// base.ext, appending " 2", " 3", … until the name is free.
+    /// base.ext, appending " 2", " 3", … until the name is free. A `base` with folders ("2026/11/Scan 4")
+    /// is looked for under `directory`; the folders are not made here.
     public static func uniqueURL(in directory: URL, base: String, fileExtension: String) -> URL {
         let fileManager = FileManager.default
         var candidate = directory.appendingPathComponent(base).appendingPathExtension(fileExtension)
@@ -99,6 +103,29 @@ public struct NamingTemplate {
     }
 
     private static let maxMoveAttempts = 1000
+
+    /// How many folders down the Saved lists look.
+    public static let maxFolderDepth = 4
+
+    /// The files in `folder` and in the folders under it, down to `maxFolderDepth`; hidden files and
+    /// folders are left out. Throws when `folder` itself cannot be read; a folder below it that cannot
+    /// be read is skipped. Twin of the Windows `SavedFiles.List`.
+    public static func filesUnder(_ folder: URL, keys: [URLResourceKey], depth: Int = 0) throws -> [URL] {
+        let items = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys + [.isDirectoryKey],
+                                                                options: [.skipsHiddenFiles])
+        var files: [URL] = []
+        for url in items {
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
+            let isFolder = values?.isDirectory == true
+            if values?.isPackage == true { continue }
+            if !isFolder {
+                files.append(url)
+            } else if depth < maxFolderDepth, let inner = try? filesUnder(url, keys: keys, depth: depth + 1) {
+                files.append(contentsOf: inner)
+            }
+        }
+        return files
+    }
 
     /// Moves `source` to `url` without replacing a file: when `url` has been taken since it was
     /// chosen, the next free " 2", " 3", … name is used. Returns where the file went. Twin of C#
@@ -136,10 +163,19 @@ public struct NamingTemplate {
         return String(repeating: "0", count: width - text.count) + text
     }
 
-    /// Make the name safe for the filesystem: no path separators or characters exFAT, SMB and
-    /// OneDrive reserve (\ * ? " < > | : /), no control characters, no leading dots (a hidden
-    /// file), no leading/trailing whitespace, no doubled spaces, never empty.
-    private func sanitized(_ name: String) -> String {
+    /// Make the name safe for the filesystem: each folder and the file name of the "/"-separated path
+    /// goes through `sanitizedPart`; empty folders are dropped and an empty file name becomes "Scan".
+    private func sanitized(_ path: String) -> String {
+        var parts: [String] = path.split(separator: "/", omittingEmptySubsequences: false).map { sanitizedPart(String($0)) }
+        let name: String = parts.removeLast()
+        let folders: [String] = parts.filter { !$0.isEmpty }
+        return (folders + [name.isEmpty ? "Scan" : name]).joined(separator: "/")
+    }
+
+    /// One folder or file name: no characters exFAT, SMB and OneDrive reserve (\ * ? " < > | : /), no
+    /// control characters, no leading dots (a hidden file; "." and ".." end up empty), no leading/trailing
+    /// whitespace, no doubled spaces. Empty when nothing is left.
+    private func sanitizedPart(_ name: String) -> String {
         let unsafe = CharacterSet(charactersIn: "/:\\*?\"<>|").union(.controlCharacters)
         var result = name.trimmingCharacters(in: .whitespacesAndNewlines)
             .unicodeScalars
@@ -152,7 +188,7 @@ public struct NamingTemplate {
         while result.contains("  ") {
             result = result.replacingOccurrences(of: "  ", with: " ")
         }
-        return result.isEmpty ? "Scan" : result
+        return result
     }
 }
 

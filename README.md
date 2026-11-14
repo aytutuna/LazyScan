@@ -246,7 +246,8 @@ scanners** — including the Epson Perfection V39 II.
 - **File naming templates**: `{date}`, `{time}`, `{counter}`, `{counter:4}`, `{intent}`,
   `{index}`, `{task}`, `{docdate}` (the date printed on the document, for receipts; the scan date
   otherwise), `{label}` (a document's name, given in the page strip) tokens; automatic
-  collision-free numbering.
+  collision-free numbering; a `/` files scans into folders under the save folder
+  (`{year}/{month}/Scan {counter}`).
 - **Demo Scanner**: a built-in simulated device so you can try every feature (including OCR,
   photo splitting and a document feeder with three two-sided sheets, which it scans one side or
   both; the second sheet's back is blank; for the ID card task a made-up sample card, which it

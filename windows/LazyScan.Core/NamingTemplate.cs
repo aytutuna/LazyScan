@@ -22,8 +22,10 @@ public sealed partial class NamingTemplate
     /// <summary>
     /// Tokens: {date}=yyyy-MM-dd, {time}=HH.mm.ss, {year} {month} {day}, {counter} (also
     /// {counter:N} zero-padded), {intent} ("Document"/"Photos"), {index} (photo number in a
-    /// batch, empty when null). Unknown tokens pass through; result sanitized for the
-    /// filesystem (the Windows port strips the full invalid set, not just "/" and ":").
+    /// batch, empty when null). Unknown tokens pass through. A "/" in the template separates
+    /// folders under the save folder: each part is sanitized for the filesystem (the Windows port
+    /// strips the full invalid set, not just ":"), a part that ends up empty (including "." and
+    /// "..") is dropped, and the name is never empty.
     /// Same as <see cref="BaseFilename(NamingContext)"/> without a task or document date.
     /// </summary>
     public string BaseFilename(int counter, DateTime date, ScanIntent intent, int? index) =>
@@ -43,7 +45,7 @@ public sealed partial class NamingTemplate
         int counter = context.Counter;
         var date = context.Date;
         int? index = context.Index;
-        string label = CutToBytes(context.Label?.Trim() ?? "", MaxLabelBytes);
+        string label = CutToBytes(context.Label?.Trim() ?? "", MaxLabelBytes).Replace('/', '-');
 
         // {counter:N} — zero-padded to N digits.
         result = PaddedCounterRegex().Replace(result, match =>
@@ -114,7 +116,11 @@ public sealed partial class NamingTemplate
         return result.ToString().TrimEnd();
     }
 
-    /// <summary>base.ext, appending " 2", " 3", … until the name is free.</summary>
+    /// <summary>
+    /// base.ext, appending " 2", " 3", … until the name is free. A <paramref name="baseName"/>
+    /// with folders ("2026/11/Scan 4") is looked for under <paramref name="directory"/>; the
+    /// folders are not made here.
+    /// </summary>
     public static string UniquePath(string directory, string baseName, string fileExtension)
     {
         string candidate = Path.Combine(directory, $"{baseName}.{fileExtension}");
@@ -164,17 +170,32 @@ public sealed partial class NamingTemplate
     }
 
     /// <summary>
-    /// Make the name safe for the filesystem: no path separators or Windows-reserved
-    /// characters, no leading dots (a hidden file on Mac and iPhone), no leading/trailing
-    /// whitespace, no doubled spaces, never empty.
+    /// Make the name safe for the filesystem: each folder and the file name of the "/"-separated
+    /// path goes through <see cref="SanitizedPart"/>; empty folders are dropped and an empty file
+    /// name becomes "Scan".
     /// </summary>
-    private static string Sanitized(string name)
+    private static string Sanitized(string path)
+    {
+        var parts = path.Split('/').Select(SanitizedPart).ToList();
+        string name = parts[^1];
+        parts.RemoveAt(parts.Count - 1);
+        parts.RemoveAll(part => part.Length == 0);
+        parts.Add(name.Length == 0 ? "Scan" : name);
+        return string.Join('/', parts);
+    }
+
+    /// <summary>
+    /// One folder or file name: no Windows-reserved characters, no leading dots (a hidden file on
+    /// Mac and iPhone; "." and ".." end up empty), no leading/trailing whitespace, no doubled
+    /// spaces. Empty when nothing is left.
+    /// </summary>
+    private static string SanitizedPart(string name)
     {
         var chars = name.Trim().ToCharArray();
         for (int i = 0; i < chars.Length; i++)
         {
             char c = chars[i];
-            if (c is '/' or ':' or '\\' or '*' or '?' or '"' or '<' or '>' or '|' || char.IsControl(c))
+            if (c is ':' or '\\' or '*' or '?' or '"' or '<' or '>' or '|' || char.IsControl(c))
                 chars[i] = '-';
         }
         string result = new string(chars).TrimStart('.').Trim();
@@ -182,7 +203,7 @@ public sealed partial class NamingTemplate
         {
             result = result.Replace("  ", " ");
         }
-        return result.Length == 0 ? "Scan" : result;
+        return result;
     }
 }
 

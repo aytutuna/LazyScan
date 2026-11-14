@@ -697,7 +697,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         string? example = FileNamePreview(template);
         int dot = example?.LastIndexOf('.') ?? -1;
-        return dot > 0 ? example![..dot] : example;
+        string? name = dot > 0 ? example![..dot] : example;
+        return name is null ? null : Path.GetFileName(name);
     }
 
     /// <summary>
@@ -4608,7 +4609,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     DocumentDate = documentDate,
                     Label = label,
                 });
-        return NamingTemplate.UniquePath(dir, baseName, fileExtension);
+        string path = NamingTemplate.UniquePath(dir, baseName, fileExtension);
+        string folder = Path.GetDirectoryName(path)!;
+        try { Directory.CreateDirectory(folder); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw ScanException.ExportFailed(SaveErrors.Describe(e, folder));
+        }
+        return path;
     });
 
     private static bool IsCancellation(Exception e) =>

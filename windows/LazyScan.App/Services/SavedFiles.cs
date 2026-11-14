@@ -42,9 +42,17 @@ public static class SavedFiles
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>How many folders down the Saved tab looks (the Mac and iPhone twin is <c>NamingTemplate.maxFolderDepth</c>).</summary>
+    private const int MaxFolderDepth = 4;
+
+    /// <summary>A file or a folder above it (below <paramref name="directory"/>) whose name starts with a dot.</summary>
+    private static bool IsDotNamed(string directory, FileInfo file) =>
+        Path.GetRelativePath(directory, file.FullName).Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith('.'));
+
     /// <summary>
-    /// Saved scans in <paramref name="directory"/>, newest first. Returns null when the folder
-    /// exists but cannot be read; an empty list when it does not exist yet.
+    /// Saved scans in <paramref name="directory"/> and in the folders a file name template makes
+    /// under it, newest first. Returns null when the folder exists but cannot be read; a folder
+    /// below it that cannot be read is skipped. An empty list when it does not exist yet.
     /// </summary>
     public static List<SavedFile>? List(string directory)
     {
@@ -52,9 +60,17 @@ public static class SavedFiles
         try
         {
             var info = new DirectoryInfo(directory);
-            return info.EnumerateFiles()
-                .Where(f => !f.Name.StartsWith('.')
-                            && (f.Attributes & FileAttributes.Hidden) == 0
+            // IgnoreInaccessible below would turn an unreadable top folder into an empty list.
+            info.EnumerateFileSystemInfos().Any();
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                MaxRecursionDepth = MaxFolderDepth,
+                AttributesToSkip = FileAttributes.Hidden,
+                IgnoreInaccessible = true,
+            };
+            return info.EnumerateFiles("*", options)
+                .Where(f => !IsDotNamed(directory, f)
                             && KnownExtensions.Contains(f.Extension))
                 .Select(f => new SavedFile(f.FullName, f.LastWriteTime, f.Length))
                 .OrderByDescending(f => f.Modified)
@@ -98,7 +114,8 @@ public static class SavedFiles
         {
             if (!Directory.Exists(directory)) return 0;
             var cutoff = DateTime.UtcNow - minAge;
-            foreach (var file in new DirectoryInfo(directory).EnumerateFiles(".*.tmp"))
+            var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = MaxFolderDepth };
+            foreach (var file in new DirectoryInfo(directory).EnumerateFiles(".*.tmp", options))
             {
                 try
                 {

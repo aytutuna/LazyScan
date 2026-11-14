@@ -83,14 +83,14 @@ public enum IOSSavedFiles {
         return URL(fileURLWithPath: path, isDirectory: true)
     }
 
-    /// The files of `folder` the app saves, newest first (a hidden file, a folder or another kind of file
-    /// is left out); those in `justSaved` marked new. A folder not made yet is empty, not a failure.
+    /// The files of `folder` and of the folders a file name template makes under it
+    /// (`NamingTemplate.filesUnder`) the app saves, newest first (a hidden file, a folder or another kind
+    /// of file is left out); those in `justSaved` marked new. A folder not made yet is empty, not a failure.
     public static func list(in folder: URL, justSaved: [URL]) -> IOSSavedFolder {
         let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey]
         let urls: [URL]
         do {
-            urls = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys,
-                                                               options: [.skipsHiddenFiles])
+            urls = try NamingTemplate.filesUnder(folder, keys: keys)
         } catch {
             return IOSSavedFolder(files: [], failed: FileManager.default.fileExists(atPath: folder.path))
         }

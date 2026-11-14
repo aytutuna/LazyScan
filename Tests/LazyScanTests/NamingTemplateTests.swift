@@ -90,7 +90,22 @@ final class NamingTemplateTests: XCTestCase {
     }
 
     func test_sanitization() {
-        XCTAssertEqual(render("a/b:c"), "a-b-c")
+        XCTAssertEqual(render("a/b:c"), "a/b-c")
+    }
+
+    func test_slashesMakeFolders() {
+        XCTAssertEqual(render("{year}/{month}/Scan {counter}"), "2026/08/Scan 1")
+        XCTAssertEqual(render(" a /b / c"), "a/b/c")
+    }
+
+    func test_foldersCannotLeaveTheSaveFolder() {
+        XCTAssertEqual(render("../x"), "x")
+        XCTAssertEqual(render("a/../../x"), "a/x")
+        XCTAssertEqual(render("a/./x"), "a/x")
+        XCTAssertEqual(render("/a//x"), "a/x")
+        XCTAssertEqual(render("..\\x"), "-x")
+        XCTAssertEqual(render("../.."), "Scan")
+        XCTAssertEqual(render("a/"), "a/Scan")
     }
 
     func test_reservedCharactersSanitized() {
@@ -160,6 +175,9 @@ final class NamingTemplateTests: XCTestCase {
         // Characters a file name cannot hold become "-"; tokens in a name are not expanded.
         context.label = "ACME/Smith : 2026 Q3"
         XCTAssertEqual(renderContext("{label}", context), "ACME-Smith - 2026 Q3")
+        // A name never makes folders, as a template's slash does.
+        context.label = "ACME/.."
+        XCTAssertEqual(renderContext("{year}/{label}", context), "2026/ACME-..")
         context.label = "{date}"
         XCTAssertEqual(renderContext("{label} {counter}", context), "{date} 14")
     }
@@ -245,6 +263,34 @@ final class NamingTemplateTests: XCTestCase {
 
         let third = NamingTemplate.uniqueURL(in: dir, base: "Report", fileExtension: "pdf")
         XCTAssertEqual(third.lastPathComponent, "Report 3.pdf")
+    }
+
+    func test_uniqueURLLooksInTheFolderTheNameNames() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("NamingTemplateTests-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: dir.appendingPathComponent("2026"), withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+
+        XCTAssertTrue(fm.createFile(atPath: dir.appendingPathComponent("2026/Scan.pdf").path, contents: Data()))
+        let next = NamingTemplate.uniqueURL(in: dir, base: "2026/Scan", fileExtension: "pdf")
+        XCTAssertEqual(next.path, dir.appendingPathComponent("2026/Scan 2.pdf").path)
+    }
+
+    func test_filesUnder_readsSubfoldersDownToTheLimitAndSkipsHiddenOnes() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("NamingTemplateTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: dir) }
+        for path in ["top.pdf", "2026/08/Scan 1.pdf", ".hidden/Scan 2.pdf", "a/b/c/d/ok.pdf", "a/b/c/d/e/deep.pdf"] {
+            let url = dir.appendingPathComponent(path)
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            XCTAssertTrue(fm.createFile(atPath: url.path, contents: Data()))
+        }
+
+        let found = try NamingTemplate.filesUnder(dir, keys: []).map(\.lastPathComponent).sorted()
+        XCTAssertEqual(found, ["Scan 1.pdf", "ok.pdf", "top.pdf"])
+        XCTAssertThrowsError(try NamingTemplate.filesUnder(dir.appendingPathComponent("missing"), keys: []))
     }
 
     func test_moveToFreeURLMovesToAFreeName() throws {

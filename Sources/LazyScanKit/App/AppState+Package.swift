@@ -185,9 +185,9 @@ extension AppState {
         guard !pages.isEmpty else { throw CompanionPackageError(.noPages, CompanionPackage.noPagesMessage) }
         let s = settings
         let counter = counterDefaults.integer(forKey: Self.counterKey) + 1
-        let name = NamingTemplate(s.namingTemplate)
+        let name = (NamingTemplate(s.namingTemplate)
             .baseFilename(NamingContext(counter: counter, date: Date(), intent: s.intent, task: TaskCatalog.infer(s),
-                                        label: pages[0].documentLabel))
+                                        label: pages[0].documentLabel)) as NSString).lastPathComponent
         let url = NamingTemplate.uniqueURL(in: folder, base: name, fileExtension: CompanionPackage.fileExtension)
         // Each page's picture goes to a file as soon as it is encoded and is mapped back from there, so
         // a long document is never held whole in memory.
