@@ -53,6 +53,7 @@ struct ScanScreen: View {
     @EnvironmentObject private var importer: IOSImportSession
     @EnvironmentObject private var fileActions: IOSFileActions
     @Environment(\.horizontalSizeClass) private var sizeClass: UserInterfaceSizeClass?
+    @Environment(\.verticalSizeClass) private var verticalSizeClass: UserInterfaceSizeClass?
     /// The scanners to pick from.
     let picker: IOSScannerPickerModel
     @Binding var cover: ScanCover?
@@ -402,9 +403,11 @@ struct ScanScreen: View {
 
     /// Something covers the camera: what the root presents, a cover, a sheet, Files to pick a PDF in, a
     /// question or the error alert. The Options sheet does not: the camera keeps running above it, with
-    /// Auto held back meanwhile (`holdsAuto`).
+    /// Auto held back meanwhile (`holdsAuto`). Held sideways the sheet fills the screen, so it covers.
     private var cameraCovered: Bool {
+        let optionsFill: Bool = openGroup == .options && verticalSizeClass == .compact
         let presented: Bool = cover != nil || openGroup == .scanner || pairing || pagesShown || picksPDF || spreadEditor != nil
+            || optionsFill
         let asked: Bool = askedToDiscard || leavingPages != nil || asksSendTarget || state.errorMessage != nil
             || state.showTroubleshooter
         return rests || presented || asked
