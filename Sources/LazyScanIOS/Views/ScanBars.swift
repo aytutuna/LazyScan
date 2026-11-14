@@ -152,9 +152,10 @@ struct KindMenuItems: View {
 
 /// Options and Save as round buttons over the bottom corners of the picture on both tabs, Options at the
 /// leading corner (it opens the sheet of everything about what is saved) and Save at the trailing one. Both
-/// are always there; Save is dimmed while nothing can be saved. Save's accessibility label is its `title`
-/// ("Save", or "Add to Contract.pdf" while the pages go into a PDF picked) and the format and the pages are
-/// its value (`detail`); while a PDF is picked the caption `adding` between the buttons says so in words.
+/// are always there; Save keeps Options' dark look with a dimmed glyph while nothing can be saved. Save's
+/// accessibility label is its `title` ("Save", or "Add to Contract.pdf" while the pages go into a PDF
+/// picked) and the format and the pages are its value (`detail`); while a PDF is picked the caption
+/// `adding` between the buttons says so in words.
 /// With Separate documents, Split here sits there too (`SplitHereButton`), at the buttons' height.
 struct PictureButtons: View {
     @EnvironmentObject private var state: AppState
@@ -216,19 +217,22 @@ struct PictureButtons: View {
     }
 
     private var saveButton: some View {
-        Button(action: onSave) {
+        let fill: Color = canSave ? Color.accentColor : Color(white: 0.15)
+        let stroke: Color = canSave ? Color.clear : Color.white.opacity(0.3)
+        let glyph: Color = canSave ? Color.white : Color.white.opacity(0.4)
+        return Button(action: onSave) {
             Image(systemName: "square.and.arrow.down")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(glyph)
                 // The tray makes the symbol bottom-heavy, so centred by its bounds it looks low in the circle.
                 .offset(y: -2)
                 .frame(width: Self.diameter, height: Self.diameter)
-                .background(Circle().fill(Color.accentColor))
+                .background(Circle().fill(fill))
+                .overlay(Circle().strokeBorder(stroke, lineWidth: 1))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!canSave)
-        .opacity(canSave ? 1 : 0.4)
         .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
         .accessibilityLabel(Text(title))
         .accessibilityValue(Text(detail))
