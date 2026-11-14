@@ -354,6 +354,11 @@ public enum IOSCameraText {
     /// The status line for receipts and photos while the live search is off (the phone is warm or saving power).
     public static var tapToTake: String { String(localized: "Tap to take") }
 
+    /// The camera's line at the ID card's back when the front was taken with glare, with a button that takes the front again.
+    public static var frontGlare: String { String(localized: "Glare on the front: tilt and take it again") }
+    public static var frontGlareRetake: String { String(localized: "Retake front") }
+    public static var frontGlareRetakeHint: String { String(localized: "Drops the front. Take it again.") }
+
     /// The line under the outline while a page held still waits (`CaptureQuality`): "Not sharp yet" (once it
     /// has lasted, "Tap the shutter") or "Too dark"; nil for a good frame.
     public static func waitReason(_ quality: CaptureQuality, suggestsShutter: Bool = false) -> String? {

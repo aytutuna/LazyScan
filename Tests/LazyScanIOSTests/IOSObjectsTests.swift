@@ -712,13 +712,13 @@ final class IOSObjectsTests: XCTestCase {
         XCTAssertEqual(IOSIdCardGuide.prompt(stepID: IdCardSteps.backStepID), "Fit the back in the frame")
         XCTAssertNil(IOSIdCardGuide.prompt(stepID: IdCardSteps.reviewStepID))
         XCTAssertEqual(IOSIdCardGuide.glareLine(stepID: IdCardSteps.backStepID, frontNote: GlareDetector.hint),
-                       "Tilt to avoid glare")
+                       "Glare on the front: tilt and take it again")
         XCTAssertNil(IOSIdCardGuide.glareLine(stepID: IdCardSteps.frontStepID, frontNote: GlareDetector.hint))
         XCTAssertNil(IOSIdCardGuide.glareLine(stepID: IdCardSteps.backStepID, frontNote: nil))
         // A front not at real size with glare on it: the glare line still shows; without glare it does not.
         XCTAssertEqual(IOSIdCardGuide.glareLine(stepID: IdCardSteps.backStepID,
                                                 frontNote: CaptureObjects.cardNote(realSize: false, glare: true)),
-                       GlareDetector.hint)
+                       IOSCameraText.frontGlare)
         XCTAssertNil(IOSIdCardGuide.glareLine(stepID: IdCardSteps.backStepID, frontNote: CaptureObjects.cardNotRealSizeNote))
         XCTAssertEqual(IOSReviewText.idCardSaveTitle(.pdf), "Save PDF")
         XCTAssertEqual(IOSReviewText.idCardSaveTitle(.jpeg), "Save JPEG")

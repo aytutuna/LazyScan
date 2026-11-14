@@ -135,6 +135,11 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             .onChange(of: countLine) { (_: String?, line: String?) in
                 announceCount(line)
             }
+            .onChange(of: glareLine) { (_: String?, line: String?) in
+                if let line {
+                    AccessibilityNotification.Announcement(line).post()
+                }
+            }
             .onChange(of: model.tapToTake) { (_: Bool, on: Bool) in
                 if on {
                     AccessibilityNotification.Announcement(IOSCameraText.tapToTake).post()
@@ -602,7 +607,8 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// the task's camera line (none under the ID card's guide, which says the side itself).
     private var statusLine: CameraStatus? {
         if let glare = glareLine {
-            return CameraStatus(text: glare, hint: nil, identifier: "camera.glare")
+            return CameraStatus(text: glare, hint: nil, identifier: "camera.glare",
+                                retake: { state.retakeIdCardSide(.front) })
         }
         if model.tapToTake {
             return CameraStatus(text: IOSCameraText.tapToTake, hint: nil, identifier: "camera.tap")
@@ -932,6 +938,60 @@ struct RetakeBanner: View {
         .frame(minHeight: 44)
         .background(Capsule().fill(Color.black.opacity(0.65)))
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Says the ID card's front was taken with glare, with a button that takes it again, on a dark capsule over the viewfinder.
+struct GlareBanner: View {
+    let text: String
+    let isBusy: Bool
+    let onRetake: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(spacing: 0) {
+                label
+                retakeButton
+            }
+            .frame(minHeight: 44)
+            .background(Capsule().fill(Color.black.opacity(0.75)))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("camera.glare")
+        } else {
+            HStack(spacing: 4) {
+                label
+                retakeButton
+            }
+            .frame(minHeight: 44)
+            .background(Capsule().fill(Color.black.opacity(0.75)))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("camera.glare")
+        }
+    }
+
+    private var label: some View {
+        Text(text)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Color.white)
+            .lineLimit(3)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+    }
+
+    private var retakeButton: some View {
+        Button(action: onRetake) {
+            Text(IOSCameraText.frontGlareRetake)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .padding(.trailing, 8)
+        .disabled(isBusy)
+        .opacity(isBusy ? 0.5 : 1)
+        .accessibilityHint(Text(IOSCameraText.frontGlareRetakeHint))
+        .accessibilityIdentifier("camera.glareRetake")
     }
 }
 

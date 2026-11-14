@@ -36,11 +36,11 @@ public enum IOSIdCardGuide {
         return side == .front ? IOSReviewText.cardFrontPrompt : IOSReviewText.cardBackPrompt
     }
 
-    /// The glare hint the camera shows for the side just taken: while the back is next, when the front was
+    /// The glare line the camera shows, naming the side just taken: while the back is next, when the front was
     /// taken with glare on it (its note ends with `GlareDetector.hint`, `CaptureObjects.cardNote`); nil otherwise.
     public static func glareLine(stepID: String?, frontNote: String?) -> String? {
         guard stepID == IdCardSteps.backStepID, let note = frontNote, note.hasSuffix(GlareDetector.hint) else { return nil }
-        return GlareDetector.hint
+        return IOSCameraText.frontGlare
     }
 }
 
