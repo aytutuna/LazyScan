@@ -223,6 +223,36 @@ extension AppState {
         }
     }
 
+    /// Reads the held Quick scan page's text and hands it to `then`, nothing copied; a page without text says so
+    /// and `then` is not called. The page stays.
+    public func readQuickScanText(then: @escaping @MainActor (String) -> Void) {
+        readQuickScanText(reading: { try AppState.readText($0, number: 1) }, then: then)
+    }
+
+    /// The same with the text read by `reading` (tests pass a stand-in).
+    func readQuickScanText(reading: @escaping @Sendable (ScannedPage) throws -> String,
+                           then: @escaping @MainActor (String) -> Void) {
+        guard let page = quickScanPage else { return }
+        runExclusive { flag in
+            self.statusMessage = L10n.t("Reading the text…")
+            let text: String = try await Task.detached(priority: .userInitiated) { () throws -> String in
+                try reading(page)
+            }.value
+            if flag.isCancelled { throw ScanError.cancelled }
+            if text.isEmpty {
+                self.statusMessage = L10n.t("No text found.")
+            } else {
+                self.statusMessage = before
+                then(text)
+            }
+        }
+    }
+
+    /// Says `message` on the Quick scan screen's status line.
+    public func showQuickScanStatus(_ message: String) {
+        statusMessage = message
+    }
+
     /// Lets the held Quick scan page go, unsaved.
     public func discardQuickScan() {
         guard !isBusy, let page = quickScanPage else { return }

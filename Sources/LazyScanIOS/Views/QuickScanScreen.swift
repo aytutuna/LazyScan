@@ -8,8 +8,8 @@ import VisionKit
 
 /// Quick scan's screen, full screen once a shot's page is in (`AppState.quickScanPage`): the page, with
 /// Live Text where the device has it (press on the text to select part of it, `LiveTextImageView`), Save
-/// JPEG, Copy text (the whole page's text, `OCRService`) and Discard. It closes once the page is saved or
-/// discarded.
+/// JPEG, Copy text (the whole page's text, `OCRService`), Add to Contacts and Discard.
+/// It closes once the page is saved or discarded.
 struct QuickScanScreen: View {
     @ObservedObject var model: IOSQuickScanModel
     @EnvironmentObject private var state: AppState
@@ -52,15 +52,25 @@ struct QuickScanScreen: View {
                         .disabled(!model.canAct)
                         .accessibilityIdentifier("quick.copy")
                         Button {
-                            model.save()
+                            model.addToContacts()
                         } label: {
-                            Text(model.saveLabel)
+                            Label(IOSQuickScanModel.addToContactsLabel, systemImage: "person.crop.circle.badge.plus")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.bordered)
                         .disabled(!model.canAct)
-                        .accessibilityIdentifier("quick.save")
+                        .accessibilityHint(Text(IOSQuickScanModel.addToContactsHint))
+                        .accessibilityIdentifier("quick.contact")
                     }
+                    Button {
+                        model.save()
+                    } label: {
+                        Text(model.saveLabel)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!model.canAct)
+                    .accessibilityIdentifier("quick.save")
                 }
                 .padding(16)
             }
@@ -88,6 +98,13 @@ struct QuickScanScreen: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(IOSQuickScanModel.discardLine)
+        }
+        .sheet(item: $model.contact) { (fields: ContactFields) in
+            NewContactView(fields: fields, onDone: { (saved: Bool) in
+                model.contactClosed(saved: saved)
+            })
+            .interactiveDismissDisabled()
+            .ignoresSafeArea()
         }
         .modifier(ErrorAlert(state: state))
     }

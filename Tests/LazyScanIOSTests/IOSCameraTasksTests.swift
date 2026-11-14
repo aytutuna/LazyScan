@@ -291,6 +291,45 @@ final class IOSCameraTasksTests: XCTestCase {
 
     // MARK: Quick scan
 
+    func test_contactFields_findPhonesEmailsAndLinks() {
+        let fields: ContactFields = ContactFields.found(in: "JANE ROE
+Design Lead
++1 613 555 0142
++1 (613) 555-0142
+jane@roe.com
+roe.com")
+        XCTAssertEqual(fields.phones.count, 1)
+        XCTAssertEqual(fields.emails, ["jane@roe.com"])
+        XCTAssertTrue(fields.links.contains { $0.contains("roe.com") })
+        XCTAssertFalse(fields.isEmpty)
+    }
+
+    func test_contactFields_noneInPlainWords() {
+        XCTAssertTrue(ContactFields.found(in: "Design Lead").isEmpty)
+    }
+
+    @MainActor
+    func test_quickScanModel_addToContacts_offersWhatItFinds_andSaysWhenNothing() async throws {
+        let state: AppState = makeState(.quickScan)
+        let model = IOSQuickScanModel(state: state, liveTextSupported: { () -> Bool in false })
+        let page = ScannedPage(image: try printedLetterPage(blocks: 2), dpi: 60, colorMode: .color)
+        XCTAssertTrue(state.ingest([page], source: .photo))
+        try await ImportTestSupport.waitUntil(timeout: 60) { !state.isBusy }
+        let before: String = state.statusMessage
+        state.readQuickScanText(reading: { (_: ScannedPage) throws -> String in "jane@roe.com" }, then: { (text: String) in
+            model.contact = ContactFields.found(in: text)
+        })
+        try await ImportTestSupport.waitUntil(timeout: 30) { !state.isBusy }
+        XCTAssertEqual(model.contact?.emails, ["jane@roe.com"])
+        XCTAssertEqual(state.statusMessage, before)
+        model.contactClosed(saved: false)
+        XCTAssertNil(model.contact)
+        XCTAssertEqual(state.statusMessage, before)
+        model.contactClosed(saved: true)
+        XCTAssertEqual(state.statusMessage, IOSQuickScanModel.contactSavedLine)
+        XCTAssertNotNil(state.quickScanPage)
+    }
+
     @MainActor
     func test_quickScanModel_showsTheShot_savesAJPEG_andDiscards() async throws {
         let state: AppState = makeState(.quickScan)
