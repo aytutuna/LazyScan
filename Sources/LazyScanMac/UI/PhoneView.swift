@@ -17,6 +17,8 @@ struct PhoneView: View {
     /// The pairing code shown, with its picture; nil when none is.
     @State private var code: PairingUri?
     @State private var qr: CGImage?
+    /// The short code of the session the QR belongs to, grouped in threes.
+    @State private var shortCode = ""
     /// Why no code could be shown, or the phone just paired.
     @State private var pairNote: String?
     @State private var footerMessage: String?
@@ -275,12 +277,32 @@ struct PhoneView: View {
 
     private func codeDetails(_ code: PairingUri, service: CompanionService?) -> some View {
         let pairingText = (try? code.format()) ?? ""
+        let spokenCode = shortCode.filter { $0 != " " }.map(String.init).joined(separator: " ")
         return HStack(alignment: .top, spacing: 16) {
-            if let qr {
-                Image(qr, scale: 1, label: Text("Pairing code to scan with your phone"))
-                    .interpolation(.none)
-                    .background(Color.white)
+            VStack(spacing: 8) {
+                if let qr {
+                    Image(qr, scale: 1, label: Text("Pairing code to scan with your phone"))
+                        .interpolation(.none)
+                        .background(Color.white)
+                }
+                Text("Or enter this code on the phone")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("phone.pairCode.caption")
+                Text(shortCode)
+                    .font(.system(size: 34, weight: .semibold, design: .monospaced))
+                    .textSelection(.enabled)
+                    .accessibilityLabel("Pairing code")
+                    .accessibilityValue(spokenCode)
+                    .accessibilityIdentifier("phone.pairCode")
+                Button("Copy Pairing Text") {
+                    copyPairingText(pairingText)
+                }
+                .accessibilityLabel("Copy the pairing text")
             }
+            .frame(width: 232)
             VStack(alignment: .leading, spacing: 6) {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(expiry(at: context.date, service: service))
@@ -295,10 +317,6 @@ struct PhoneView: View {
                         .font(.system(.body, design: .monospaced))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Copy") {
-                        copyPairingText(pairingText)
-                    }
-                    .accessibilityLabel("Copy the pairing text")
                 }
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                     GridRow {
@@ -308,7 +326,7 @@ struct PhoneView: View {
                             .textSelection(.enabled)
                     }
                 }
-                Button("Stop pairing") {
+                Button("Stop Pairing") {
                     Task { await stopPairing() }
                 }
                 .padding(.top, 4)
@@ -333,6 +351,7 @@ struct PhoneView: View {
         let opened = await service.openPairing()
         opening = false
         code = opened
+        shortCode = service.pairing?.formattedCode ?? ""
         if let opened, let text = try? opened.format() {
             qr = PhoneView.qrImage(text)
             pairNote = nil
