@@ -289,8 +289,8 @@ extension AppState {
                         try AppState.writePDFAtomically(pages: pages, searchable: s.pdfSearchable,
                                                         languages: s.ocrLanguages, pdfSize: s.output.pdfSize, to: planned,
                                                         options: options, shouldContinue: { !flag.isCancelled },
-                                                        failures: failures) { [weak self] msg in
-                            Task { @MainActor in self?.statusMessage = msg }
+                                                        failures: failures) { [weak self] update in
+                            Task { @MainActor in self?.showProgress(update) }
                         }
                     }.value
                     saved.append(url)

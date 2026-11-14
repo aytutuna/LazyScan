@@ -258,4 +258,19 @@ final class OutputTests: XCTestCase {
             }
         }
     }
+
+    func test_aPlainBuildReportsEveryPageWithAFraction() throws {
+        let page = ScannedPage(image: makeSolidImage(width: 40, height: 30, red: 1, green: 1, blue: 1),
+                               dpi: 100, colorMode: .color)
+        var updates: [ScanProgress] = []
+
+        _ = try PDFBuilder.makePDF(pages: [page, page, page], pdfSize: .standard,
+                                   progress: { updates.append($0) }, textLayer: nil)
+
+        let prepared = updates.filter { $0.message.hasPrefix("Preparing page") }
+        XCTAssertEqual(prepared.map(\.message), ["Preparing page 1 of 3…", "Preparing page 2 of 3…", "Preparing page 3 of 3…"])
+        XCTAssertEqual(prepared.compactMap(\.fraction), [0, 1.0 / 3.0, 2.0 / 3.0])
+        XCTAssertEqual(updates.count, 6) // the three pages prepared, then the three written
+        XCTAssertFalse(updates.contains { $0.fraction == nil })
+    }
 }

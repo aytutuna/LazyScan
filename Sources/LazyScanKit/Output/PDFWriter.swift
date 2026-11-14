@@ -135,12 +135,12 @@ extension PDFPageSize {
 /// (`PDFEncryption`), and /Encrypt and /ID in the trailer.
 public enum PDFWriter {
     /// Build the PDF in memory (`options`: see `write(_:progress:shouldContinue:options:to:)`).
-    public static func make(_ pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
+    public static func make(_ pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
                             shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws -> Data {
         try make(PDFPageSource(pages), progress: progress, shouldContinue: shouldContinue, options: options)
     }
 
-    static func make(_ pages: PDFPageSource, progress: ((String) -> Void)? = nil,
+    static func make(_ pages: PDFPageSource, progress: ((ScanProgress) -> Void)? = nil,
                      shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws -> Data {
         var result = Data()
         try write(pages, progress: progress, shouldContinue: shouldContinue, options: options) { chunk in
@@ -152,13 +152,13 @@ public enum PDFWriter {
     /// Write the PDF to the file at `url` (created or replaced), streaming it: the whole document is
     /// never held in memory. Errors are `ScanError`s; a failed or cancelled write leaves an
     /// incomplete file, so callers write to a temporary file and move it into place.
-    public static func writeFile(_ pages: [PDFPageInput], to url: URL, progress: ((String) -> Void)? = nil,
+    public static func writeFile(_ pages: [PDFPageInput], to url: URL, progress: ((ScanProgress) -> Void)? = nil,
                                  shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
         try writeFile(PDFPageSource(pages), to: url, progress: progress, shouldContinue: shouldContinue,
                       options: options)
     }
 
-    static func writeFile(_ pages: PDFPageSource, to url: URL, progress: ((String) -> Void)? = nil,
+    static func writeFile(_ pages: PDFPageSource, to url: URL, progress: ((ScanProgress) -> Void)? = nil,
                           shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws {
         let folder = url.deletingLastPathComponent()
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
@@ -191,14 +191,14 @@ public enum PDFWriter {
     /// a plain PDF) choose PDF/A-2b and carry its title, date and file identifier, or protect the file
     /// with a password; options asking for both are refused (`ScanError.exportFailed` with
     /// `PDFA.cannotProtectNote`): PDF/A forbids encryption. So is a protection already disposed.
-    public static func write(_ pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
+    public static func write(_ pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
                              shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil,
                              to output: @escaping (Data) throws -> Void) throws {
         try write(PDFPageSource(pages), progress: progress, shouldContinue: shouldContinue, options: options,
                   to: output)
     }
 
-    static func write(_ pages: PDFPageSource, progress: ((String) -> Void)? = nil,
+    static func write(_ pages: PDFPageSource, progress: ((ScanProgress) -> Void)? = nil,
                       shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil,
                       to output: @escaping (Data) throws -> Void) throws {
         let settings: PDFWriteOptions = options ?? PDFWriteOptions.standard
@@ -274,7 +274,8 @@ public enum PDFWriter {
 
         for i in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
-            progress?(L10n.t("Writing page {0} of {1}…", i + 1, pages.count))
+            progress?(ScanProgress(fraction: Double(i) / Double(pages.count),
+                                  message: L10n.t("Writing page {0} of {1}…", i + 1, pages.count)))
             let pageObject = firstPageObject + i * 3
             try writePage(w, pageObject: pageObject, imageObject: pageObject + 1, contentsObject: pageObject + 2,
                           parent: "2 0 R", index: i, page: try pages.page(i), fontObject: fontObject, codes: codes,

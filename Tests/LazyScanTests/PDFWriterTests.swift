@@ -501,8 +501,8 @@ final class PDFWriterTests: XCTestCase {
     func test_cancellationIsCheckedBeforeEachPage() {
         var messages: [String] = []
         var stop = false
-        let progress: (String) -> Void = { message in
-            messages.append(message)
+        let progress: (ScanProgress) -> Void = { update in
+            messages.append(update.message)
             stop = true // cancel while page 1 is being written
         }
         XCTAssertThrowsError(try PDFWriter.make([Self.page(), Self.page(), Self.page()], progress: progress,

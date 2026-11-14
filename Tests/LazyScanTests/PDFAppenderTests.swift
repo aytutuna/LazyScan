@@ -510,7 +510,7 @@ final class PDFAppenderTests: XCTestCase {
         try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: path)
         var messages: [String] = []
         let result = try PDFAppender.appendToFile(path: path, pages: [Self.page(text: true), Self.page()],
-                                                  progress: { message in messages.append(message) })
+                                                  progress: { update in messages.append(update.message) })
         let full = URL(fileURLWithPath: path).standardized.path
         XCTAssertEqual(result, PDFAppendResult(path: full, pagesBefore: 2, pagesAdded: 2, bytes: contents(path).count))
         XCTAssertEqual(result.pageCount, 4)

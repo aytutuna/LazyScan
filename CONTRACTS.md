@@ -2365,24 +2365,24 @@ public enum PDFBuilder {
     /// image is stored as `pdfSize` plans it (`storedImage`).
     public static func makePDF(pages: [ScannedPage], searchable: Bool, ocrLanguages: [String],
                                pdfSize: PDFSizePreset = .best,
-                               progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data
+                               progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data
     /// Same, but written to `url` (created or replaced).
     public static func writePDF(pages: [ScannedPage], searchable: Bool, ocrLanguages: [String],
                                 pdfSize: PDFSizePreset = .best,
-                                to url: URL, progress: ((String) -> Void)?,
+                                to url: URL, progress: ((ScanProgress) -> Void)?,
                                 shouldContinue: (() -> Bool)? = nil) throws
     /// The text layer read beforehand: `ocrLines[i]` on page `i` (nil, or past the end: none). No OCR runs.
     public static func makePDF(pages: [ScannedPage], ocrLines: [[OCRLine]?], pdfSize: PDFSizePreset = .best,
-                               progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data
+                               progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data
     public static func writePDF(pages: [ScannedPage], ocrLines: [[OCRLine]?], pdfSize: PDFSizePreset = .best,
-                                to url: URL, progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws
+                                to url: URL, progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws
     /// Each page's text layer from `textLayer` (none when nil): the app's one OCR pass per save;
     /// PDF/A or a password as `options` ask (nil: a plain PDF; see `PDFWriter.write`).
-    public static func makePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, progress: ((String) -> Void)?,
+    public static func makePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, progress: ((ScanProgress) -> Void)?,
                                shouldContinue: (() -> Bool)? = nil, textLayer: PDFTextLayer?,
                                options: PDFWriteOptions? = nil) throws -> Data
     public static func writePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, to url: URL,
-                                progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil,
+                                progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil,
                                 textLayer: PDFTextLayer?, options: PDFWriteOptions? = nil) throws
 }
 ```
@@ -2393,7 +2393,7 @@ Every overload writes through the port of the C# writer, `PDFWriter` (I5 took th
 extension PDFBuilder {   // internal, for the tests
     static func writesG4(_ pages: [ScannedPage]) -> Bool          // any page scanned in black & white
     /// Twin of the Windows view model's PdfPageInputs: prepared page, its text layer, the stored image.
-    static func pageInputs(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((String) -> Void)?,
+    static func pageInputs(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((ScanProgress) -> Void)?,
                            shouldContinue: (() -> Bool)?, textLayer: PDFTextLayer?) throws -> [PDFPageInput]
     /// Black & white: downsampled to the plan (box filter), Bilevel.pack, G4. Others: encodedPage's JPEG,
     /// else a JPEG of the pixels at the size's color quality. Nil when the pixels cannot be read or encoded.
@@ -2510,7 +2510,7 @@ public struct PDFPageInput {                                // C# PdfPageInput
     init(image:pixelWidth:pixelHeight:dpi:ocrLines:); init(jpegData:pixelWidth:pixelHeight:dpi:ocrLines:)
 }
 public enum PDFWriter {                                     // C# PdfBuilder's object level
-    static func make(_ pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
+    static func make(_ pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
                      shouldContinue: (() -> Bool)? = nil, options: PDFWriteOptions? = nil) throws -> Data
     static func writeFile(_ pages: [PDFPageInput], to url: URL, progress:, shouldContinue:, options:) throws  // streamed
     static func write(_ pages: [PDFPageInput], progress:, shouldContinue:, options:, to output: @escaping (Data) throws -> Void) throws
@@ -2518,7 +2518,7 @@ public enum PDFWriter {                                     // C# PdfBuilder's o
 }
 ```
 `shouldContinue` returning false before a page throws `ScanError.cancelled` (C#'s cancellation
-token); `progress` hears "Writing page n of m…". Numbers are written as C#'s `ToString("0.####",
+token); `progress` hears "Writing page n of m…" with the fraction n-1 over m (the page builder says "Preparing page n of m…" or "OCR page n of m…" before it, the same way). Numbers are written as C#'s `ToString("0.####",
 CultureInfo.InvariantCulture)` writes them: 15 significant digits rounded half up at the fourth
 decimal, a negative value that rounds to 0 as "-0" (checked against .NET on 200,000 values).
 - **Object numbers, fixed order:** 1 Catalog, 2 Pages; when any page has text, 3–8 the font (Type0, CIDFontType2, FontDescriptor, FontFile2, CIDToGIDMap, ToUnicode); for PDF/A, the Info dictionary, the XMP Metadata and the ICC profile; for a protected file, the Encrypt dictionary; then Page, Image and Contents per page. A document without text has no font objects and no `/Font` resource.

@@ -32,7 +32,7 @@ public enum PDFBuilder {
     /// first. `shouldContinue` is polled before each page; returning false aborts with
     /// ScanError.cancelled.
     public static func makePDF(pages: [ScannedPage], searchable: Bool, ocrLanguages: [String],
-                               pdfSize: PDFSizePreset = .best, progress: ((String) -> Void)?,
+                               pdfSize: PDFSizePreset = .best, progress: ((ScanProgress) -> Void)?,
                                shouldContinue: (() -> Bool)? = nil) throws -> Data {
         try makePDF(pages: pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
                     textLayer: ocrTextLayer(searchable: searchable, languages: ocrLanguages))
@@ -41,14 +41,14 @@ public enum PDFBuilder {
     /// The same, with the text layer read beforehand: `ocrLines[i]` is written on page `i` (nil, or
     /// a page past the end of the list, gets none). OCR does not run.
     public static func makePDF(pages: [ScannedPage], ocrLines: [[OCRLine]?], pdfSize: PDFSizePreset = .best,
-                               progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data {
+                               progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil) throws -> Data {
         try makePDF(pages: pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
                     textLayer: { index, _ in index < ocrLines.count ? ocrLines[index] : nil })
     }
 
     /// The same, with each page's text layer from `textLayer` (no text layer when nil), written as
     /// `options` ask (nil: a plain PDF; see `PDFWriter.write`).
-    public static func makePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, progress: ((String) -> Void)?,
+    public static func makePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, progress: ((ScanProgress) -> Void)?,
                                shouldContinue: (() -> Bool)? = nil, textLayer: PDFTextLayer?,
                                options: PDFWriteOptions? = nil) throws -> Data {
         let spool = try spoolPages(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
@@ -61,7 +61,7 @@ public enum PDFBuilder {
     /// leaves an incomplete file: callers write to a temporary file and move it into place
     /// (`AppState.writePDFAtomically`).
     public static func writePDF(pages: [ScannedPage], searchable: Bool, ocrLanguages: [String],
-                                pdfSize: PDFSizePreset = .best, to url: URL, progress: ((String) -> Void)?,
+                                pdfSize: PDFSizePreset = .best, to url: URL, progress: ((ScanProgress) -> Void)?,
                                 shouldContinue: (() -> Bool)? = nil) throws {
         try writePDF(pages: pages, pdfSize: pdfSize, to: url, progress: progress, shouldContinue: shouldContinue,
                      textLayer: ocrTextLayer(searchable: searchable, languages: ocrLanguages))
@@ -69,7 +69,7 @@ public enum PDFBuilder {
 
     /// The same, with the text layer read beforehand (see `makePDF(pages:ocrLines:...)`).
     public static func writePDF(pages: [ScannedPage], ocrLines: [[OCRLine]?], pdfSize: PDFSizePreset = .best,
-                                to url: URL, progress: ((String) -> Void)?,
+                                to url: URL, progress: ((ScanProgress) -> Void)?,
                                 shouldContinue: (() -> Bool)? = nil) throws {
         try writePDF(pages: pages, pdfSize: pdfSize, to: url, progress: progress, shouldContinue: shouldContinue,
                      textLayer: { index, _ in index < ocrLines.count ? ocrLines[index] : nil })
@@ -78,7 +78,7 @@ public enum PDFBuilder {
     /// The same, with each page's text layer from `textLayer` (no text layer when nil): the app's
     /// one OCR pass per save runs there. Written as `options` ask (nil: a plain PDF).
     public static func writePDF(pages: [ScannedPage], pdfSize: PDFSizePreset = .best, to url: URL,
-                                progress: ((String) -> Void)?, shouldContinue: (() -> Bool)? = nil,
+                                progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)? = nil,
                                 textLayer: PDFTextLayer?, options: PDFWriteOptions? = nil) throws {
         let spool = try spoolPages(pages, pdfSize: pdfSize, progress: progress, shouldContinue: shouldContinue,
                                    textLayer: textLayer)
@@ -134,7 +134,7 @@ public enum PDFBuilder {
     /// one prepared at full resolution with its rotation, read by `textLayer` (its lines become the
     /// page's text layer), and stored as `pdfSize` plans it (`storedImage`). `shouldContinue` is
     /// polled before each page.
-    static func pageInputs(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((String) -> Void)?,
+    static func pageInputs(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((ScanProgress) -> Void)?,
                            shouldContinue: (() -> Bool)?, textLayer: PDFTextLayer?) throws -> [PDFPageInput] {
         var inputs: [PDFPageInput] = []
         for index in 0..<pages.count {
@@ -147,7 +147,7 @@ public enum PDFBuilder {
     /// The same pages, but each encoded image goes to a temporary file and is dropped, so only the
     /// text layers stay in memory. The caller calls `remove()` on the result when the write is over,
     /// whether it worked, failed or was cancelled.
-    static func spoolPages(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((String) -> Void)?,
+    static func spoolPages(_ pages: [ScannedPage], pdfSize: PDFSizePreset, progress: ((ScanProgress) -> Void)?,
                            shouldContinue: (() -> Bool)?, textLayer: PDFTextLayer?) throws -> PageSpool {
         let spool = try PageSpool()
         do {
@@ -164,12 +164,15 @@ public enum PDFBuilder {
     }
 
     private static func pageInput(_ pages: [ScannedPage], _ index: Int, pdfSize: PDFSizePreset,
-                                  progress: ((String) -> Void)?, textLayer: PDFTextLayer?) throws -> PDFPageInput {
+                                  progress: ((ScanProgress) -> Void)?, textLayer: PDFTextLayer?) throws -> PDFPageInput {
         let page = pages[index]
+        let message: String = textLayer == nil
+            ? L10n.t("Preparing page {0} of {1}…", index + 1, pages.count)
+            : L10n.t("OCR page {0} of {1}…", index + 1, pages.count)
+        progress?(ScanProgress(fraction: Double(index) / Double(pages.count), message: message))
         let prepared = try preparePage(page, number: index + 1)
         var lines: [OCRLine]? = nil
         if let textLayer {
-            progress?(L10n.t("OCR page {0} of {1}…", index + 1, pages.count))
             // A page without lines (OCR failed or found nothing) is still written, without a text layer.
             lines = textLayer(index, prepared)
         }

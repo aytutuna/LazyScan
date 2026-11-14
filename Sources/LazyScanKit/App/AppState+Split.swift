@@ -180,9 +180,10 @@ extension AppState {
                     let done = results.count
                     await MainActor.run {
                         if !flag.isCancelled {
-                            self.statusMessage = PhoneWording.isPhone
+                            let message: String = PhoneWording.isPhone
                                 ? L10n.t("Reading barcodes on the pages: {0} of {1}…", done, total)
                                 : L10n.t("Reading barcodes on queued pages: {0} of {1}…", done, total)
+                            self.showProgress(ScanProgress(fraction: Double(done) / Double(total), message: message))
                         }
                     }
                 }
@@ -282,8 +283,8 @@ extension AppState {
                     let (url, hasText) = try await Task.detached(priority: .userInitiated) {
                         try Self.writeTextDocument(pages: pages, format: format, to: planned,
                                                    pageImages: pageImages,
-                                                   shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
-                            Task { @MainActor in self?.setStatus(msg, detail) }
+                                                   shouldContinue: { !flag.isCancelled }) { [weak self] update, detail in
+                            Task { @MainActor in self?.showProgress(update, detail: detail) }
                         }
                     }.value
                     files.add(url)
@@ -307,8 +308,8 @@ extension AppState {
                                                               textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
                                                                                         pages: pages, failures: failures),
                                                               options: options,
-                                                              shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                        Task { @MainActor in self?.statusMessage = msg }
+                                                              shouldContinue: { !flag.isCancelled }) { [weak self] update in
+                        Task { @MainActor in self?.showProgress(update) }
                     }
                     return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
                 }.value

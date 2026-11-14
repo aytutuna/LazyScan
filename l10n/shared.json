@@ -1491,6 +1491,7 @@
   },
   "Writing page {0} of {1}…": {},
   "OCR page {0} of {1}…": {},
+  "Preparing page {0} of {1}…": {},
   "Page {0} could not be stored in the PDF.": {},
   "Writing PDF…": {},
   "Nothing was added to {0}.": {

@@ -115,8 +115,8 @@ extension AppState {
             self.statusMessage = s.pdfSearchable ? L10n.t("Running OCR and adding pages…") : L10n.t("Adding pages…")
             let backup: URL? = self.keepsSavedForUndo ? self.spoolDirectory.appendingPathComponent("\(UUID().uuidString).pdf") : nil
             let (result, kept, stamp): (PDFAppendResult, Bool, FileStamp?) = try await Task.detached(priority: .userInitiated) { () throws -> (PDFAppendResult, Bool, FileStamp?) in
-                let report: (String) -> Void = { [weak self] msg in
-                    Task { @MainActor in self?.statusMessage = msg }
+                let report: (ScanProgress) -> Void = { [weak self] update in
+                    Task { @MainActor in self?.showProgress(update) }
                 }
                 let reportAdding: (String, StatusDetail) -> Void = { [weak self] msg, detail in
                     Task { @MainActor in self?.setStatus(msg, detail) }
@@ -131,6 +131,7 @@ extension AppState {
                     let copied: Bool = backup.map { (try? FileManager.default.copyItem(at: file, to: $0)) != nil } ?? false
                     do {
                         let added: PDFAppendResult = try PDFAppender.appendToFile(path: file.path, pages: inputs,
+                                                                                  progress: report,
                                                                                   shouldContinue: { !flag.isCancelled },
                                                                                   options: PDFAppendOptions(pageSize: s.output.pageSize),
                                                                                   protection: protection)

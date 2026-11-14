@@ -57,7 +57,8 @@ extension AppState {
                 var number: Int = 1
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
-                    self.statusMessage = L10n.t("Saving page {0} of {1}…", number, pages.count)
+                    self.showProgress(ScanProgress(fraction: Double(number - 1) / Double(pages.count),
+                                                   message: L10n.t("Saving page {0} of {1}…", number, pages.count)))
                     let planned: URL = try self.outputURL(fileExtension: format.fileExtension,
                                                           index: pages.count > 1 ? number : nil,
                                                           stamp: stamp)

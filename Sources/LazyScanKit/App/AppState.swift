@@ -1688,6 +1688,7 @@ public final class AppState: ObservableObject {
         }
         guard self.isCurrent(generation) else { return nil }
         if flag.isCancelled && !keepsOnCancel { throw ScanError.cancelled }
+        if total != nil { progress = nil }
         let raw = cleaned.arranged
         let ownFlow: TaskFlowKind = TaskCatalog.flow(of: s)
         let listsObjects: Bool = listsFoundObjects && (ownFlow == .photoSplit || ownFlow == .receiptSplit)
@@ -1848,7 +1849,15 @@ public final class AppState: ObservableObject {
             statusMessage = total == nil ? L10n.t("Processing page {0}…", number) : L10n.t("Processing…")
             return
         }
-        statusMessage = L10n.t("Processing page {0} of {1}…", number, total)
+        showProgress(ScanProgress(fraction: min(Double(number - 1) / Double(total), 1),
+                                  message: L10n.t("Processing page {0} of {1}…", number, total)))
+    }
+
+    /// A phase that counts its pages: the message as the status and the fraction on the bar.
+    func showProgress(_ update: ScanProgress, detail: StatusDetail? = nil) {
+        statusMessage = update.message
+        if let detail { statusDetail = detail }
+        progress = update
     }
 
     /// The status once pages were queued (`ingestPages`, or `scanIntoQueue` when the scan is over): what was
@@ -2103,8 +2112,8 @@ public final class AppState: ObservableObject {
                 let (url, hasText) = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: format, to: planned,
                                                pageImages: pageImages,
-                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
-                        Task { @MainActor in self?.setStatus(msg, detail) }
+                                               shouldContinue: { !flag.isCancelled }) { [weak self] update, detail in
+                        Task { @MainActor in self?.showProgress(update, detail: detail) }
                     }
                 }.value
                 self.lastSavedURLs = [url]
@@ -2143,8 +2152,8 @@ public final class AppState: ObservableObject {
                                                           textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
                                                                                     pages: pages, failures: failures),
                                                           options: options,
-                                                          shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                    Task { @MainActor in self?.statusMessage = msg }
+                                                          shouldContinue: { !flag.isCancelled }) { [weak self] update in
+                    Task { @MainActor in self?.showProgress(update) }
                 }
                 return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
             }.value
@@ -2179,8 +2188,8 @@ public final class AppState: ObservableObject {
                 let written = try await Task.detached(priority: .userInitiated) {
                     try Self.writeTextDocument(pages: pages, format: s.format, to: target,
                                                pageImages: pageImages,
-                                               shouldContinue: { !flag.isCancelled }) { [weak self] msg, detail in
-                        Task { @MainActor in self?.setStatus(msg, detail) }
+                                               shouldContinue: { !flag.isCancelled }) { [weak self] update, detail in
+                        Task { @MainActor in self?.showProgress(update, detail: detail) }
                     }
                 }.value
                 url = written.url
@@ -2225,8 +2234,8 @@ public final class AppState: ObservableObject {
                                                               textLayer: Self.textLayer(searchable: s.pdfSearchable, collecting: text,
                                                                                         pages: pages, failures: failures),
                                                               options: options,
-                                                              shouldContinue: { !flag.isCancelled }) { [weak self] msg in
-                        Task { @MainActor in self?.statusMessage = msg }
+                                                              shouldContinue: { !flag.isCancelled }) { [weak self] update in
+                        Task { @MainActor in self?.showProgress(update) }
                     }
                     return (written, text.map { Self.writeTextBeside(pdf: written, text: $0) })
                 }.value
@@ -3175,7 +3184,7 @@ public final class AppState: ObservableObject {
                                                        to url: URL, options: PDFWriteOptions? = nil,
                                                        shouldContinue: (() -> Bool)? = nil,
                                                        failures: PDFTextFailures? = nil,
-                                                       progress: ((String) -> Void)?) throws -> URL {
+                                                       progress: ((ScanProgress) -> Void)?) throws -> URL {
         let layer: PDFTextLayer? = searchable
             ? { index, prepared in
                 do {
@@ -3197,7 +3206,7 @@ public final class AppState: ObservableObject {
     nonisolated static func writePDFAtomically(pages: [ScannedPage], pdfSize: PDFSizePreset, to url: URL,
                                                textLayer: PDFTextLayer?, options: PDFWriteOptions? = nil,
                                                shouldContinue: (() -> Bool)? = nil,
-                                               progress: ((String) -> Void)?) throws -> URL {
+                                               progress: ((ScanProgress) -> Void)?) throws -> URL {
         let tmp = url.deletingLastPathComponent()
             .appendingPathComponent(".\(UUID().uuidString).pdf.tmp")
         do {
@@ -3265,13 +3274,14 @@ public final class AppState: ObservableObject {
     nonisolated static func writeTextDocument(pages: [ScannedPage], format: OutputFormat, to url: URL,
                                                           pageImages: PDFSizePreset? = nil,
                                                           shouldContinue: () -> Bool,
-                                                          progress: (String, StatusDetail) -> Void) throws -> (url: URL, hasText: Bool) {
+                                                          progress: (ScanProgress, StatusDetail) -> Void) throws -> (url: URL, hasText: Bool) {
         var ocrPages: [OCRPage] = []
         var pictures: [DocxPicture?] = []
         var pictureBytes = 0
         for (index, page) in pages.enumerated() {
             if !shouldContinue() { throw ScanError.cancelled }
-            progress(L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count),
+            progress(ScanProgress(fraction: Double(index) / Double(pages.count),
+                                  message: L10n.t("Reading the text of page {0} of {1}…", index + 1, pages.count)),
                      StatusDetail(head: .readingPage(index + 1, of: pages.count)))
             let prepared = try PDFBuilder.preparePage(page, number: index + 1)
             let lines = try recognizeForText(prepared.image, of: page)
@@ -3290,7 +3300,7 @@ public final class AppState: ObservableObject {
             }
         }
         if !shouldContinue() { throw ScanError.cancelled }
-        progress(format == .word ? L10n.t("Writing the Word document…") : L10n.t("Writing the text file…"),
+        progress(ScanProgress(message: format == .word ? L10n.t("Writing the Word document…") : L10n.t("Writing the text file…")),
                  StatusDetail())
         let data: Data
         if format == .word {

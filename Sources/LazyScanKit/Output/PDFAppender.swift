@@ -326,7 +326,7 @@ public enum PDFAppender {
     /// and returning false aborts with `ScanError.cancelled`.
     public static func writeUpdate(_ reader: PDFReaderLite, into output: @escaping (Data) throws -> Void,
                                    pages: [PDFPageInput], options: PDFAppendOptions? = nil,
-                                   progress: ((String) -> Void)? = nil,
+                                   progress: ((ScanProgress) -> Void)? = nil,
                                    shouldContinue: (() -> Bool)? = nil) throws {
         if pages.isEmpty { throw ScanError.exportFailed("There are no pages to add.") }
         if reader.isEncrypted { throw PDFReadError(.encrypted, "The file is encrypted.") }
@@ -377,7 +377,8 @@ public enum PDFAppender {
         var kids: [any PDFObject] = oldKids.items
         for i in 0..<pages.count {
             if shouldContinue?() == false { throw ScanError.cancelled }
-            progress?(L10n.t("Adding page {0} of {1}…", i + 1, pages.count))
+            progress?(ScanProgress(fraction: Double(i) / Double(pages.count),
+                                  message: L10n.t("Adding page {0} of {1}…", i + 1, pages.count)))
             let page = pages[i]
             var extra = " /Rotate 0"
             if rootHasCropBox {
@@ -522,7 +523,7 @@ public enum PDFAppender {
     /// `PDFAppendError`; cancelling is `ScanError.cancelled`. With a `protection` the checked file is
     /// then written once more, encrypted (`writeProtected`), and that file takes the original's place.
     @discardableResult
-    public static func appendToFile(path: String, pages: [PDFPageInput], progress: ((String) -> Void)? = nil,
+    public static func appendToFile(path: String, pages: [PDFPageInput], progress: ((ScanProgress) -> Void)? = nil,
                                     shouldContinue: (() -> Bool)? = nil,
                                     options: PDFAppendOptions? = nil,
                                     protection: PDFProtection? = nil) throws -> PDFAppendResult {
@@ -747,7 +748,7 @@ public enum PDFAppender {
     /// disk) notWritten, and what the reader finds wrong while writing as when reading.
     private static func writeTemporary(_ tmp: String, from original: FileHandle, length: Int, reader: PDFReaderLite,
                                        pages: [PDFPageInput], options: PDFAppendOptions?,
-                                       progress: ((String) -> Void)?, shouldContinue: (() -> Bool)?,
+                                       progress: ((ScanProgress) -> Void)?, shouldContinue: (() -> Bool)?,
                                        path: String) throws -> [UInt8] {
         let descriptor = open(tmp, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o666)
         if descriptor < 0 {
