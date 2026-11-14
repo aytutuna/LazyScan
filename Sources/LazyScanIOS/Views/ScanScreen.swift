@@ -1591,6 +1591,9 @@ struct ScanScreen: View {
         let appState: AppState = state
         Task { @MainActor in
             await IOSShell.sharePackage(appState)
+            if appState.settings.output.protect, appState.errorMessage == nil {
+                statusAfterBusy = appState.statusMessage
+            }
             sharesPackage = false
         }
     }

@@ -839,6 +839,7 @@ public enum IOSShell {
             try? FileManager.default.removeItem(at: folder)
             try FileManager.default.createDirectoryCompleteUnlessOpen(at: folder)
             let url: URL = try await state.exportPackage(to: folder)
+            state.noteNoPasswordWhenProtecting()
             state.runFileAction(.share, urls: [url])
             return url
         } catch {

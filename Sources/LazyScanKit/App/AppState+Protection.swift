@@ -16,6 +16,14 @@ extension AppState {
     /// What a saved PDF's status says after its size when it has a password: "(412 KB, password-protected)".
     nonisolated static var protectedNote: String { L10n.t("password-protected") }
 
+    /// What a shared or sent copy says while the password switch is on: only saved PDFs get the password.
+    public nonisolated static var noPasswordNote: String { L10n.t("This copy has no password.") }
+
+    /// Says so in the status line when a copy goes out through the share sheet with the password switch on.
+    public func noteNoPasswordWhenProtecting() {
+        if settings.output.protect { statusMessage = Self.noPasswordNote }
+    }
+
     /// What is said in brackets after saved PDFs: their size and "password-protected" when they are
     /// ("412 KB, password-protected"); nil when there is neither. Twin of the Windows `PdfNote`.
     nonisolated static func pdfNote(size: String?, isProtected: Bool) -> String? {

@@ -524,6 +524,7 @@ struct PageStripSheet: View {
     @State private var asksDeleteAll: Bool = false
     @State private var sharing: Bool = false
     @State private var share: ShareRequest?
+    @State private var shareNote: String?
 
     var body: some View {
         NavigationStack {
@@ -619,6 +620,15 @@ struct PageStripSheet: View {
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+        } else if let shareNote {
+            Text(shareNote)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(12)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .accessibilityIdentifier("pages.shareNote")
         }
     }
 
@@ -642,6 +652,7 @@ struct PageStripSheet: View {
 
     private func stopSelecting() {
         selecting = false
+        shareNote = nil
         selected = []
     }
 
@@ -727,6 +738,7 @@ struct PageStripSheet: View {
             let pages: [ScannedPage] = appState.scannedPages
             do {
                 let urls: [URL] = try await IOSPageSelection.writeImages(ids, of: pages, format: format, jpegQuality: quality)
+                shareNote = appState.settings.output.protect ? AppState.noPasswordNote : nil
                 share = ShareRequest(urls: urls, title: SaveActions.shareTitle(urls))
             } catch {
                 appState.errorMessage = error.localizedDescription

@@ -295,7 +295,12 @@ extension AppState {
             return false
         }
         countOutbox()
+        let noticeBefore = companionNotice
         await drainOutbox()
+        if settings.output.protect, errorMessage == nil, !Task.isCancelled, companionNotice != noticeBefore {
+            statusMessage += " " + Self.noPasswordNote
+            companionNotice = CompanionNotice(text: statusMessage)
+        }
         return outbox.items.contains { $0.id == queued.id }
     }
 

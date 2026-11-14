@@ -267,6 +267,37 @@ final class AppStateCompanionTests: XCTestCase {
     }
 
     @MainActor
+    func test_sendQueueToDesktop_withThePasswordOn_saysTheCopyHasNone() async throws {
+        let fake = CompanionFakeDesktop()
+        let state = try await makeState(pages: 2)
+        try await pair(state, with: fake)
+        fake.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+            let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
+            return .json(201, InboxResponse(packageId: id, pageCount: 2, duplicate: false).toJSON())
+        }
+        fake.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello(queuedPages: 2))
+        let sent = CompanionText.sentMessage(2, desktopName: "Office PC")
+
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.statusMessage, sent)
+
+        state.settings.output.protect = true
+        await state.sendQueueToDesktop(target: .new)
+        XCTAssertEqual(state.statusMessage, sent + " " + AppState.noPasswordNote)
+        XCTAssertEqual(state.companionNotice?.text, state.statusMessage)
+    }
+
+    func test_noteNoPasswordWhenProtecting_onlyWithThePasswordOn() async throws {
+        let state = try await makeState()
+        let before = state.statusMessage
+        state.noteNoPasswordWhenProtecting()
+        XCTAssertEqual(state.statusMessage, before)
+
+        state.settings.output.protect = true
+        state.noteNoPasswordWhenProtecting()
+        XCTAssertEqual(state.statusMessage, AppState.noPasswordNote)
+    }
+
     func test_sendQueueToDesktop_unreachable_keepsTheDocumentUntilItGoes() async throws {
         let fake = CompanionFakeDesktop()
         let state = try await makeState(pages: 1)
