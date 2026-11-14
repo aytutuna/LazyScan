@@ -1075,5 +1075,16 @@ final class IOSShellTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: old.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: recent.path))
     }
+
+    func testDemoCameraFrameHasItsPageOutlined() {
+        let corners: [CGPoint] = IOSDemoFrame.outline
+        XCTAssertEqual(corners.count, 4)
+        let xs: [CGFloat] = corners.map { (point: CGPoint) -> CGFloat in point.x }
+        let ys: [CGFloat] = corners.map { (point: CGPoint) -> CGFloat in point.y }
+        XCTAssertEqual(Double(xs.min() ?? 0), 0.10, accuracy: 0.04)
+        XCTAssertEqual(Double(xs.max() ?? 0), 0.90, accuracy: 0.04)
+        XCTAssertEqual(Double(ys.min() ?? 0), 0.10, accuracy: 0.04)
+        XCTAssertEqual(Double(ys.max() ?? 0), 0.90, accuracy: 0.04)
+    }
 }
 #endif

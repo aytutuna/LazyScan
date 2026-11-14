@@ -25,6 +25,9 @@ public struct IOSLaunchOptions: Equatable, Sendable {
     public static let importFixturePDFName = "fixture.pdf"
     /// The launch argument naming the task the photo imported at launch goes into (the next argument).
     public static let importTaskArgument = "-importTask"
+    /// The launch argument that has the camera screen show a drawn page with its outline where there is no
+    /// camera, for the screenshot run; `IOSDemoFrame` reads it.
+    public static let demoCameraFrameArgument = "-demoCameraFrame"
 
     /// Only the demo scanner is offered.
     public let demoScannerOnly: Bool

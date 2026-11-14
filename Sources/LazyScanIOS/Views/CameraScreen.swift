@@ -473,6 +473,9 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     }
                     .accessibilityIdentifier("camera.zoom")
             }
+            if IOSDemoFrame.isOn {
+                DemoCameraFrame()
+            }
             if shownMessage == nil, let prompt = cardPrompt {
                 IdCardGuide(prompt: prompt)
                     .padding(.bottom, PictureButtons.clearance)
@@ -615,7 +618,8 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
 
     /// The model's line, or that the camera is not on yet while it waits for Allow camera.
     private var shownMessage: String? {
-        allowPending ? IOSCameraText.notOnYet : model.message
+        if IOSDemoFrame.isOn { return nil }
+        return allowPending ? IOSCameraText.notOnYet : model.message
     }
 
     /// Why the camera cannot be used or waits, with Settings when access is off, or Allow camera.

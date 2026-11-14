@@ -1,9 +1,10 @@
 import XCTest
 
 // Walks the app's main screens on the demo scanner and keeps a screenshot of each, named by screen, so
-// CI's ios-screenshots artifact shows what the screens look like after a change: camera mode (the
-// Simulator's viewfinder says there is no camera), its Options sheet at half height with the Type menu open,
-// each of its pages and Photo and Book picked, and its drawer on Camera and Colour, then printer mode empty,
+// CI's ios-screenshots artifact shows what the screens look like after a change: camera mode (a drawn
+// page with its detected outline, since the Simulator has no camera), its Options sheet at half height
+// with the Type menu open, each of its pages and Photo and Book picked, and its drawer on Camera and
+// Colour, then printer mode empty,
 // with its drawer on Scanner, its Scanner sheet, the flatbed's overview, a scanned page in the picture (and
 // with the drawer open), two scanned pages in the page grid (and selecting, one ticked), the Options sheet
 // with the pages queued and its Save as and Share now pages, the Options pages of the scanner tab with
@@ -30,7 +31,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     func test_mainScreens() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-demoScanner"] + Self.language
+        app.launchArguments = ["-demoScanner", "-demoCameraFrame"] + Self.language
         app.launch()
 
         // The mode is kept from run to run: the walk starts in camera mode.
