@@ -413,9 +413,10 @@ struct ShareNowPage: View {
 }
 
 /// Help and about: Troubleshoot (over the sheet, `onTroubleshoot`), the ruler test page where a printer is
-/// installed, About and Licenses.
+/// installed, About and Licenses, and last a row that brings the one-time tips back.
 struct HelpPage: View {
     @EnvironmentObject private var state: AppState
+    @State private var tipsReset: Bool = false
     let onTroubleshoot: () -> Void
 
     var body: some View {
@@ -445,6 +446,27 @@ struct HelpPage: View {
                     Label(IOSSettingsText.licencesLabel, systemImage: "doc.text")
                 }
                 .accessibilityIdentifier("about.licences")
+            }
+            Section {
+                Button {
+                    IOSTips.reset()
+                    tipsReset = true
+                } label: {
+                    LabeledContent {
+                        if tipsReset {
+                            Label(IOSTips.showAgainDone, systemImage: "checkmark")
+                        }
+                    } label: {
+                        Label(IOSTips.showAgainLabel, systemImage: "arrow.counterclockwise")
+                    }
+                }
+                .task(id: tipsReset) {
+                    if tipsReset {
+                        try? await Task.sleep(for: .seconds(2))
+                        tipsReset = false
+                    }
+                }
+                .accessibilityIdentifier("settings.showTips")
             }
         }
     }

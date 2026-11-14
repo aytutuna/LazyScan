@@ -37,6 +37,8 @@ struct OptionsScreen: View {
     let onPairing: (Bool) -> Void
     @State private var path: [IOSOptionsPage] = []
     @State private var refusesLock: Bool = false
+    /// The one-time tip due, as the defaults say; the My computer tip shows under its row.
+    @State private var dueTip: IOSTip? = IOSTips.current()
 
     private let lockNote: String = String(localized: "Hides your pages and the Library when Lazy Scan opens. Files saved to the Files app are not covered.")
 
@@ -67,6 +69,9 @@ struct OptionsScreen: View {
         }
         .onChange(of: path) { (_: [IOSOptionsPage], pages: [IOSOptionsPage]) in
             onPairing(pages.last == .computer)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { (_: Notification) in
+            dueTip = IOSTips.current()
         }
     }
 
@@ -113,7 +118,18 @@ struct OptionsScreen: View {
             }
             Section {
                 ForEach(IOSOptionsPage.more) { (page: IOSOptionsPage) in
-                    row(page)
+                    if page == .computer {
+                        row(page)
+                            .tipTap(.computer)
+                            .environment(\.shownTip, dueTip)
+                        if dueTip == .computer {
+                            TipBubble(tip: .computer)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
+                    } else {
+                        row(page)
+                    }
                 }
             } footer: {
                 if state.isBusy {

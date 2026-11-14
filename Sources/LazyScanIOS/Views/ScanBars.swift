@@ -34,6 +34,7 @@ struct ScanTopBar<Trailing: View>: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .tipAnchor(.library)
             .accessibilityLabel(Text(IOSSettingsText.libraryLabel))
             .accessibilityIdentifier("open.library")
         } else {
@@ -217,6 +218,7 @@ struct PictureButtons: View {
         // An import's corner editor needs the screen; the sheet closes as one starts.
         .disabled(importer.isImporting)
         .opacity(importer.isImporting ? 0.4 : 1)
+        .tipAnchor(.options)
         .accessibilityLabel(Text("Options"))
         .accessibilityIdentifier("options.button")
     }
@@ -239,6 +241,7 @@ struct PictureButtons: View {
         .buttonStyle(.plain)
         .disabled(!canSave)
         .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
+        .tipAnchor(.save)
         .accessibilityLabel(Text(title))
         .accessibilityValue(Text(detail))
         .accessibilityIdentifier("save.button")

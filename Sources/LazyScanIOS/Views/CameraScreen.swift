@@ -59,6 +59,8 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The preview's zoom, 1 at the wide lens's view, and whether its readout is up (while pinching and a moment after).
     @State private var zoomValue: Double = 1
     @State private var showsZoom: Bool = false
+    /// The one-time tip due, as the defaults say; shown once the camera screen is up and idle (`shownTip`).
+    @State private var dueTip: IOSTip? = IOSTips.current()
     private let resting: Bool
     private let holdsAuto: Bool
     private let waitsForIntro: Bool
@@ -91,7 +93,14 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
 
     var body: some View {
         layout
+            .environment(\.shownTip, shownTip)
             .background(Color(uiColor: .systemBackground))
+            .overlayPreferenceValue(TipAnchorKey.self) { (anchors: [Int: Anchor<CGRect>]) in
+                tipLayer(anchors)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { (_: Notification) in
+                dueTip = IOSTips.current()
+            }
             .onAppear {
                 if !waitsForIntro {
                     start()
@@ -272,6 +281,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .tipAnchor(.library)
             .accessibilityLabel(Text(IOSSettingsText.libraryLabel))
             .accessibilityIdentifier("open.library")
         }
@@ -347,6 +357,25 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             .frame(width: 44, height: 44)
             .background(Circle().fill(on ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
             .contentShape(Circle())
+    }
+
+    // MARK: The one-time tips
+
+    /// The tip to show now: nothing while the camera card or Allow camera is up, the camera cannot be used,
+    /// the app is busy, something covers the screen or the controls are open, and none on the sidebar layout.
+    private var shownTip: IOSTip? {
+        guard let tip = dueTip, tip != .computer, onLibrary != nil else { return nil }
+        let waiting: Bool = waitsForIntro || allowPending || shownMessage != nil
+        let covering: Bool = resting || holdsAuto || showsDrawer || picking
+        let working: Bool = state.isBusy || importer.isImporting
+        return waiting || covering || working ? nil : tip
+    }
+
+    @ViewBuilder
+    private func tipLayer(_ anchors: [Int: Anchor<CGRect>]) -> some View {
+        if let tip = shownTip, let anchor = anchors[tip.rawValue] {
+            TipLayer(tip: tip, anchor: anchor, compact: verticalSizeClass == .compact)
+        }
     }
 
     // MARK: The top bar

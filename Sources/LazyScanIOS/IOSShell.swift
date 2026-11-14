@@ -28,6 +28,13 @@ public struct IOSLaunchOptions: Equatable, Sendable {
     /// The launch argument that has the camera screen show a drawn page with its outline where there is no
     /// camera, for the screenshot run; `IOSDemoFrame` reads it.
     public static let demoCameraFrameArgument = "-demoCameraFrame"
+    /// The launch argument that keeps the one-time tips off; `-demoScanner` does too.
+    public static let noTipsArgument = "-noTips"
+
+    /// Whether a launch with these arguments shows no tips (the UI tests and the screenshot run).
+    public static func hidesTips(_ arguments: [String]) -> Bool {
+        arguments.contains(noTipsArgument) || arguments.contains(demoScannerArgument)
+    }
 
     /// Only the demo scanner is offered.
     public let demoScannerOnly: Bool
