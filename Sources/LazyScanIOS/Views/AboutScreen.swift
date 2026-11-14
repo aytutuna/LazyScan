@@ -29,17 +29,19 @@ struct AboutScreen: View {
     }
 }
 
-/// The licence texts of DocAligner and ONNX Runtime, as they go with the app (`FastViTCornerModel.licence`).
+/// The licence texts of DocAligner and ONNX Runtime and the third-party notices, as they go with the app (`FastViTCornerModel.licence`).
 struct LicensesScreen: View {
     var body: some View {
         List {
             licence("DocAligner", file: "DocAligner-LICENSE", id: "licences.docaligner")
             licence("ONNX Runtime", file: "ONNXRuntime-LICENSE", id: "licences.onnxruntime")
+            licence("Third-party notices", file: "THIRD-PARTY-NOTICES", id: "licences.thirdparty")
+            licence("ONNX Runtime notices", file: "ONNXRuntime-THIRD-PARTY-NOTICES", id: "licences.onnxnotices")
         }
         .navigationTitle(IOSSettingsText.licencesLabel)
     }
 
-    private func licence(_ title: String, file: String, id: String) -> some View {
+    private func licence(_ title: LocalizedStringKey, file: String, id: String) -> some View {
         Section(title) {
             Text(FastViTCornerModel.licence(file) ?? IOSSettingsText.licenceMissing)
                 .font(.footnote.monospaced())
