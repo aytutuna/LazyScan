@@ -123,6 +123,40 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertEqual(grayAuto.image.pixels, DocumentEnhancer.enhance(plain, mode: .gray).image.pixels)
     }
 
+    func testColoredPaperKeepsItsHueAndAWarmWhitePageStaysNeutral() {
+        let width: Int = 240
+        let height: Int = 320
+        func page(_ r: UInt8, _ g: UInt8, _ b: UInt8) -> RgbaImage {
+            var pixels: [UInt8] = [UInt8](repeating: 255, count: width * height * 4)
+            var y: Int = 0
+            while y < height {
+                var x: Int = 0
+                while x < width {
+                    let ink: Bool = EnhancerPages.isInk(x, y, width: width, height: height)
+                    let o: Int = (y * width + x) * 4
+                    pixels[o] = ink ? 40 : r
+                    pixels[o + 1] = ink ? 38 : g
+                    pixels[o + 2] = ink ? 44 : b
+                    x += 1
+                }
+                y += 1
+            }
+            return RgbaImage(width: width, height: height, pixels: pixels)
+        }
+        let o: Int = (5 * width + 5) * 4
+
+        let yellow: DocumentEnhancement = DocumentEnhancer.enhance(page(240, 220, 120), mode: .auto)
+        XCTAssertEqual(yellow.mode, .color)
+        XCTAssertGreaterThanOrEqual(Int(yellow.image.pixels[o]) - Int(yellow.image.pixels[o + 2]), 40, "the yellow stays")
+
+        let warm: RgbaImage = page(250, 232, 205)
+        XCTAssertEqual(DocumentEnhancer.enhance(warm, mode: .auto).mode, .gray)
+        let warmColor: DocumentEnhancement = DocumentEnhancer.enhance(warm, mode: .color)
+        XCTAssertGreaterThanOrEqual(warmColor.image.pixels[o], 250)
+        XCTAssertGreaterThanOrEqual(warmColor.image.pixels[o + 1], 250)
+        XCTAssertGreaterThanOrEqual(warmColor.image.pixels[o + 2], 250)
+    }
+
     func testBlackAndWhiteKeepsPencilAndFadedThermalPrint() {
         let cases: [(paper: Int, ink: Int, thin: Bool)] = [(226, 158, false), (245, 176, true)]
         for c in cases {

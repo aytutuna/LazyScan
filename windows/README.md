@@ -505,7 +505,7 @@ taken. `DocumentEnhancer` cleans up a page cut out of a camera's photo: the pape
 estimated in large tiles (a sixteenth of the page's long side, the 90th percentile of each), tiles
 much darker than their neighbours (a picture, a black bar) filled from the paper around them unless
 they reach the page's edge (then they are a shadow cast across the sheet and are evened out), each
-pixel divided by the paper there, the paper's tint taken out (white balance from the paper's own
+pixel divided by the paper there, a slight tint of the paper taken out (white balance from the paper's own
 pixels), the levels stretched from the darkest print to white, in auto (color, or gray when nothing
 colored is left), color, gray, black and white (threshold on the evened-out page, so print in a
 shadow stays black), or photo (levels only, nothing evened out) mode. A page of light print on a dark

@@ -8,7 +8,7 @@ public enum DocumentEnhanceMode
 {
     /// <summary>As <see cref="Color"/>, then gray when the page has no color left (<see cref="ColorAnalysis.IsEffectivelyGray(RgbaImage)"/>).</summary>
     Auto,
-    /// <summary>The lighting evened out, the paper made white and neutral, the print stretched to black, in color.</summary>
+    /// <summary>The lighting evened out, the paper made white, a slight tint taken out, the print stretched to black, in color.</summary>
     Color,
     /// <summary>As <see cref="Color"/>, in gray.</summary>
     Gray,
@@ -75,7 +75,7 @@ public readonly record struct PaperWhiteBalance(double R, double G, double B)
 
 /// <summary>
 /// Cleans up a page taken by a camera, after it was cut out of its photo: the lighting evened out, so a
-/// shadow across the sheet or a lamp's falloff leaves the paper one white, the paper's tint taken out,
+/// shadow across the sheet or a lamp's falloff leaves the paper one white, a slight tint of the paper taken out,
 /// and the print stretched to black. How bright the paper is everywhere is estimated in large tiles
 /// (<see cref="TileSize"/>: about a sixteenth of the page's long side), each tile's paper the
 /// <see cref="BackgroundPercentile"/> of its luma (<see cref="BackgroundMap"/>), tiles much darker than
@@ -115,8 +115,8 @@ public static class DocumentEnhancer
     /// <summary>A pixel at least this share of the paper there counts as paper for the white balance.</summary>
     public const double PaperShare = 0.9;
     /// <summary>The white balance's gains are kept within MinGain...MaxGain.</summary>
-    public const double MinGain = 0.625;
-    public const double MaxGain = 1.6;
+    public const double MinGain = 0.87;
+    public const double MaxGain = 1.15;
     /// <summary>Levels at or above this share of the paper become white.</summary>
     public const double WhitePoint = 0.9;
     /// <summary>The share of the sampled levels taken as the darkest print.</summary>

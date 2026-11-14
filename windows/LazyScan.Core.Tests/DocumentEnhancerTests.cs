@@ -114,6 +114,39 @@ public class DocumentEnhancerTests
     }
 
     [Fact]
+    public void ColoredPaperKeepsItsHueAndAWarmWhitePageStaysNeutral()
+    {
+        const int width = 240, height = 320;
+        static RgbaImage Page(int r, int g, int b)
+        {
+            var pixels = new byte[width * height * 4];
+            Array.Fill(pixels, (byte)255);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    bool ink = EnhancerPages.IsInk(x, y, width, height);
+                    int o = (y * width + x) * 4;
+                    pixels[o] = (byte)(ink ? 40 : r);
+                    pixels[o + 1] = (byte)(ink ? 38 : g);
+                    pixels[o + 2] = (byte)(ink ? 44 : b);
+                }
+            }
+            return new RgbaImage(width, height, pixels);
+        }
+        int p = (5 * width + 5) * 4;
+
+        var yellow = DocumentEnhancer.Enhance(Page(240, 220, 120), DocumentEnhanceMode.Auto);
+        Assert.Equal(DocumentEnhanceMode.Color, yellow.Mode);
+        Assert.True(yellow.Image.Pixels[p] - yellow.Image.Pixels[p + 2] >= 40, "the yellow stays");
+
+        var warm = Page(250, 232, 205);
+        Assert.Equal(DocumentEnhanceMode.Gray, DocumentEnhancer.Enhance(warm, DocumentEnhanceMode.Auto).Mode);
+        var warmColor = DocumentEnhancer.Enhance(warm, DocumentEnhanceMode.Color);
+        Assert.True(warmColor.Image.Pixels[p] >= 250 && warmColor.Image.Pixels[p + 1] >= 250 && warmColor.Image.Pixels[p + 2] >= 250);
+    }
+
+    [Fact]
     public void BlackAndWhiteKeepsPencilAndFadedThermalPrint()
     {
         foreach (var (paper, ink, thin) in new[] { (226, 158, false), (245, 176, true) })

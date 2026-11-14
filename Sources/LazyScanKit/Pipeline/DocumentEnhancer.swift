@@ -5,7 +5,7 @@ import Foundation
 public enum DocumentEnhanceMode: String, CaseIterable, Codable, Sendable {
     /// As `.color`, then gray when the page has no color left (`ColorAnalysis.isEffectivelyGray`).
     case auto
-    /// The lighting evened out, the paper made white and neutral, the print stretched to black, in color.
+    /// The lighting evened out, the paper made white, a slight tint taken out, the print stretched to black, in color.
     case color
     /// As `.color`, in gray.
     case gray
@@ -87,7 +87,7 @@ public struct PaperWhiteBalance: Equatable, Sendable {
 }
 
 /// Cleans up a page taken by a camera, after it was cut out of its photo: the lighting evened out, so a
-/// shadow across the sheet or a lamp's falloff leaves the paper one white, the paper's tint taken out, and
+/// shadow across the sheet or a lamp's falloff leaves the paper one white, a slight tint of the paper taken out, and
 /// the print stretched to black. How bright the paper is everywhere is estimated in large tiles
 /// (`tileSize`: about a sixteenth of the page's long side), each tile's paper the `backgroundPercentile`
 /// of its luma (`BackgroundMap`), tiles much darker than the paper beside them (a picture, a black bar)
@@ -123,8 +123,8 @@ public enum DocumentEnhancer {
     /// A pixel at least this share of the paper there counts as paper for the white balance.
     public static let paperShare: Double = 0.9
     /// The white balance's gains are kept within minGain...maxGain.
-    public static let minGain: Double = 0.625
-    public static let maxGain: Double = 1.6
+    public static let minGain: Double = 0.87
+    public static let maxGain: Double = 1.15
     /// Levels at or above this share of the paper become white.
     public static let whitePoint: Double = 0.9
     /// The share of the sampled levels taken as the darkest print.
