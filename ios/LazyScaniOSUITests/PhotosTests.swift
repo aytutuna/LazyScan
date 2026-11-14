@@ -46,6 +46,7 @@ final class PhotosTests: XCTestCase {
         let app: XCUIApplication = try launchWithPrints()
 
         app.openPages(2)
+        app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
         let select: XCUIElement = app.descendants(matching: .any)["pages.select"].firstMatch
         XCTAssertTrue(select.waitForExistence(timeout: 10), "Select")
         select.tap()
@@ -54,8 +55,13 @@ final class PhotosTests: XCTestCase {
         let ticked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: second)
         XCTAssertEqual(XCTWaiter.wait(for: [ticked], timeout: 10), .completed, "Page 2 ticked")
 
+        let actions: XCUIElement = app.descendants(matching: .any)["pages.selectActions"].firstMatch
+        if actions.exists {
+            app.waitUntilEnabled(actions, "Actions", timeout: 10)
+            actions.tap()
+        }
         let delete: XCUIElement = app.descendants(matching: .any)["pages.deleteSelected"].firstMatch
-        app.waitUntilEnabled(delete, "Remove", timeout: 120)
+        app.waitUntilEnabled(delete, "Remove", timeout: 10)
         let deleteText: String = delete.label
         delete.tap()
         let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteText,

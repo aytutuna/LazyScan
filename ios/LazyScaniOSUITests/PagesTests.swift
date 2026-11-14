@@ -20,6 +20,7 @@ final class PagesTests: XCTestCase {
         app.launch()
 
         app.openPages(3)
+        app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
         let select: XCUIElement = app.descendants(matching: .any)["pages.select"].firstMatch
         XCTAssertTrue(select.waitForExistence(timeout: 10), "Select")
         select.tap()
@@ -35,9 +36,15 @@ final class PagesTests: XCTestCase {
 
         XCTAssertTrue(titleCount(app, is: 2), "The title counts the two selected pages")
 
+        // On a compact phone the actions sit in one menu.
+        let actions: XCUIElement = app.descendants(matching: .any)["pages.selectActions"].firstMatch
+        if actions.exists {
+            app.waitUntilEnabled(actions, "Actions", timeout: 10)
+            actions.tap()
+        }
         let delete: XCUIElement = app.descendants(matching: .any)["pages.deleteSelected"].firstMatch
         // Off until the import is done, as Save is in BatchTests.
-        app.waitUntilEnabled(delete, "Remove", timeout: 120)
+        app.waitUntilEnabled(delete, "Remove", timeout: 10)
         let deleteText: String = delete.label
         delete.tap()
         // By its label: a dialog's button may not keep its identifier. The bar's Remove is the other one.
@@ -120,10 +127,14 @@ final class PagesTests: XCTestCase {
         app.launch()
 
         app.openPages(3)
+        app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
+        let more: XCUIElement = app.descendants(matching: .any)["pages.more"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 10), "The menu beside Save")
+        more.tap()
         let deleteAll: XCUIElement = app.descendants(matching: .any)["pages.deleteAll"].firstMatch
         XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Remove All")
         // Off until the import is done.
-        app.waitUntilEnabled(deleteAll, "Remove All", timeout: 120)
+        app.waitUntilEnabled(deleteAll, "Remove All", timeout: 10)
         let deleteAllText: String = deleteAll.label
         deleteAll.tap()
         let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteAllText,

@@ -83,6 +83,7 @@ struct ScanScreen: View {
     @State private var pagesShown: Bool = false
     /// A book page whose spread is split again once the page strip's sheet has closed.
     @State private var spreadAfterPages: UUID?
+    @State private var savesAfterPages: Bool = false
     /// The option group open in a sheet.
     @State private var openGroup: ScanOptionGroup?
     /// What waits for the option group's sheet to close: nothing else can be presented while it is up.
@@ -152,7 +153,8 @@ struct ScanScreen: View {
                     .environmentObject(importer)
             }
             .sheet(isPresented: $pagesShown, onDismiss: pagesClosed) {
-                PageStripSheet(onEditSpread: editSpreadFromPages, onRetake: retakeAction, onClose: closePages,
+                PageStripSheet(onEditSpread: editSpreadFromPages, saveText: pagesSaveText, canSave: canSaveFromPages,
+                               onSave: saveFromPages, onRetake: retakeAction, onClose: closePages,
                                detents: sheetDetents)
                     .environmentObject(state)
             }
@@ -1158,6 +1160,32 @@ struct ScanScreen: View {
         }
     }
 
+    /// The Save of the pages sheet reads as the scan screen's: its value, or "Add to Contract.pdf".
+    private var pagesSaveText: String {
+        if let target = state.appendTarget {
+            return IOSShell.saveTitle(target: target)
+        }
+        return IOSShell.saveDetail(state.settings, plan: savePlan, target: nil)
+    }
+
+    private var canSaveFromPages: Bool {
+        IOSShell.offersSave(state.settings, pageCount: state.scannedPages.count) && !saveBlocked && savePlan.pageCount > 0
+    }
+
+    /// Saves in place unless the save shows something (Mail, a preview, the share sheet, the copy screen, an
+    /// alert): the root presents those, which it cannot while the strip's sheet is up.
+    private func saveFromPages() {
+        let paired: Bool = IOSShell.offersSendToComputer(state.settings, status: state.companionStatus)
+        let pictures: Bool = savesImages && IOSShell.savesPhotosPictures(state.settings)
+        let steps: [IOSAfterSave] = IOSAfterSave.steps(UserDefaults.standard, paired: paired, pictures: pictures)
+        guard steps.isEmpty && state.settings.output.afterSave == .none else {
+            savesAfterPages = true
+            pagesShown = false
+            return
+        }
+        saveWithActions()
+    }
+
     private func closePages() {
         pagesShown = false
     }
@@ -1177,6 +1205,11 @@ struct ScanScreen: View {
     }
 
     private func pagesClosed() {
+        if savesAfterPages {
+            savesAfterPages = false
+            saveWithActions()
+            return
+        }
         guard let pageID = spreadAfterPages else { return }
         spreadAfterPages = nil
         openSpreadEditor(pageID)

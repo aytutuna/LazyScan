@@ -505,13 +505,22 @@ struct RemovedPagesRow: View {
 /// (`capture.pages`), with Done; a page tapped opens in the page viewer over it. Select
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
-/// start or the end, and removes them once asked. Outside Select a bottom bar has Remove All, which empties the
-/// queue once asked; the sheet then closes, as it does whenever the pages run out, unless the pages just taken
-/// out can still be put back (`RemovedPagesRow` under the grid). The deletes are off while
-/// a share or a send reads the pages (`AppState.readsQueue`).
+/// start or the end, and removes them once asked, each by name: as buttons at a regular width, in an Actions
+/// menu on a compact phone. Outside Select a bottom bar has Save, which runs the scan screen's Save without
+/// closing the sheet, and a menu with Remove All, which empties the queue once asked; the sheet then closes,
+/// as it does whenever the pages run out, unless the pages just taken out can still be put back
+/// (`RemovedPagesRow` under the grid). The removes are off while a share or a send reads the pages
+/// (`AppState.readsQueue`).
 struct PageStripSheet: View {
     @EnvironmentObject private var state: AppState
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     var onEditSpread: (@MainActor (UUID) -> Void)?
+    /// The Save button's text: the scan screen's Save value, or "Add to Contract.pdf".
+    var saveText: String = ""
+    /// The scan screen's Save is on.
+    var canSave: Bool = false
+    var onSave: () -> Void = {}
     /// Shows the camera to take a page again once this sheet and the viewer are closed; nil in the scanner's mode.
     var onRetake: (@MainActor (UUID) -> Void)?
     let onClose: () -> Void
@@ -530,7 +539,12 @@ struct PageStripSheet: View {
         NavigationStack {
             PageStripView(selection: selecting ? $selected : nil, onOpen: openPage)
                 .safeAreaInset(edge: .bottom) {
-                    removedCard
+                    VStack(spacing: 0) {
+                        removedCard
+                        if !selecting && !state.scannedPages.isEmpty {
+                            saveBar
+                        }
+                    }
                 }
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
@@ -558,16 +572,6 @@ struct PageStripSheet: View {
                                 onClose()
                             }
                             .accessibilityIdentifier("pages.done")
-                        }
-                        // In the bottom bar: beside Select or Done it would crowd the title on an iPhone.
-                        if !state.scannedPages.isEmpty {
-                            ToolbarItemGroup(placement: .bottomBar) {
-                                Spacer()
-                                Button(PageViewerText.removeAllLabel, role: .destructive, action: askDeleteAll)
-                                    .tint(Color.red)
-                                    .disabled(state.isBusy || state.readsQueue)
-                                    .accessibilityIdentifier("pages.deleteAll")
-                            }
                         }
                     }
                 }
@@ -600,6 +604,7 @@ struct PageStripSheet: View {
         }
         // The root's alert cannot show over a sheet.
         .modifier(ErrorAlert(state: state))
+        .modifier(SidesOrderQuestion(state: state))
     }
 
     /// The pages taken out of the queue, with Undo, until the next scan or save.
@@ -630,6 +635,42 @@ struct PageStripSheet: View {
                 .padding(.bottom, 8)
                 .accessibilityIdentifier("pages.shareNote")
         }
+    }
+
+    /// Save and a menu with Remove All, drawn flat so the bar looks the same over the camera.
+    private var saveBar: some View {
+        let removeBlocked: Bool = state.isBusy || state.readsQueue
+        return HStack(spacing: 12) {
+            Button(action: onSave) {
+                Text(saveText)
+                    .font(.headline)
+                    .foregroundStyle(Color.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Capsule().fill(Color.accentColor))
+            }
+            .buttonStyle(.plain)
+            .opacity(canSave ? 1 : 0.4)
+            .disabled(!canSave)
+            .accessibilityIdentifier("pages.save")
+            Menu {
+                Button(role: .destructive, action: askDeleteAll) {
+                    Label(PageViewerText.removeAllLabel, systemImage: "trash")
+                }
+                .disabled(removeBlocked)
+                .accessibilityIdentifier("pages.deleteAll")
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(Color.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color(uiColor: .secondarySystemBackground)))
+            }
+            .accessibilityLabel(Text(PageViewerText.moreLabel))
+            .accessibilityIdentifier("pages.more")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color(uiColor: .systemBackground))
     }
 
     private func undoRemoved() {
@@ -664,19 +705,55 @@ struct PageStripSheet: View {
         }
     }
 
+    /// The pages picked, each action by name: buttons in the bottom bar where they fit with their titles, else one
+    /// Actions menu.
     @ViewBuilder
     private var selectionActions: some View {
-        let none: Bool = selected.isEmpty
-        // The queue's edits do nothing while an import, a scan or a save runs.
-        let blocked: Bool = none || state.isBusy
-        let recuttable: Bool = state.scannedPages.contains { (page: ScannedPage) -> Bool in selected.contains(page.id) && PageRecut.canRecut(page) }
+        if sizeClass == .regular && !typeSize.isAccessibilitySize {
+            rotateAction
+            Spacer()
+            filterAction
+            Spacer()
+            shareAction
+            Spacer()
+            moveAction
+            Spacer()
+            removeAction
+        } else {
+            Menu {
+                rotateAction
+                filterAction
+                shareAction
+                moveAction
+                removeAction
+            } label: {
+                Label(PageViewerText.actionsLabel, systemImage: "ellipsis.circle")
+                    .labelStyle(.titleAndIcon)
+            }
+            .disabled(selected.isEmpty)
+            .accessibilityLabel(Text(PageViewerText.actionsLabel))
+            .accessibilityIdentifier("pages.selectActions")
+        }
+    }
+
+    /// The queue's edits do nothing while an import, a scan or a save runs.
+    private var selectionBlocked: Bool {
+        selected.isEmpty || state.isBusy
+    }
+
+    private var rotateAction: some View {
         Button(action: rotateSelected) {
             Label(PageViewerText.rotateLabel, systemImage: "rotate.right")
+                .labelStyle(.titleAndIcon)
         }
-        .disabled(blocked)
+        .disabled(selectionBlocked)
         .accessibilityIdentifier("pages.rotateSelected")
-        Spacer()
-        Menu {
+    }
+
+    private var filterAction: some View {
+        let recuttable: Bool = state.scannedPages.contains { (page: ScannedPage) -> Bool in selected.contains(page.id) && PageRecut.canRecut(page) }
+        let off: Bool = selectionBlocked || state.readsQueue || state.filterPagesLeft > 0 || !state.recuttingPages.isEmpty || !recuttable
+        return Menu {
             ForEach(CaptureFilter.displayOrder, id: \.self) { (filter: CaptureFilter) in
                 Button(filter.label) {
                     state.setPagesFilter(ids: IOSPageSelection.ordered(selected, in: state.scannedPages), filter)
@@ -684,16 +761,22 @@ struct PageStripSheet: View {
             }
         } label: {
             Label(PageViewerText.filterLabel, systemImage: "camera.filters")
+                .labelStyle(.titleAndIcon)
         }
-        .disabled(blocked || state.readsQueue || state.filterPagesLeft > 0 || !state.recuttingPages.isEmpty || !recuttable)
+        .disabled(off)
         .accessibilityIdentifier("pages.filterSelected")
-        Spacer()
+    }
+
+    private var shareAction: some View {
         Button(action: shareSelected) {
             Label(PageViewerText.shareLabel, systemImage: "square.and.arrow.up")
+                .labelStyle(.titleAndIcon)
         }
-        .disabled(none || sharing)
+        .disabled(selected.isEmpty || sharing)
         .accessibilityIdentifier("pages.shareSelected")
-        Spacer()
+    }
+
+    private var moveAction: some View {
         Menu {
             Button {
                 IOSPageSelection.move(selected, toStart: true, in: state)
@@ -707,14 +790,18 @@ struct PageStripSheet: View {
             }
         } label: {
             Label(PageViewerText.moveLabel, systemImage: "arrow.up.arrow.down")
+                .labelStyle(.titleAndIcon)
         }
-        .disabled(blocked)
+        .disabled(selectionBlocked)
         .accessibilityIdentifier("pages.moveSelected")
-        Spacer()
+    }
+
+    private var removeAction: some View {
         Button(role: .destructive, action: askDelete) {
             Label(PageViewerText.removeLabel, systemImage: "trash")
+                .labelStyle(.titleAndIcon)
         }
-        .disabled(blocked || state.readsQueue)
+        .disabled(selectionBlocked || state.readsQueue)
         .accessibilityIdentifier("pages.deleteSelected")
     }
 
