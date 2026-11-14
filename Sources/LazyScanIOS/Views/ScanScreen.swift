@@ -896,11 +896,51 @@ struct ScanScreen: View {
                 .disabled(state.isBusy)
                 .accessibilityIdentifier("step.skip")
             }
+            if showsPictureFlatbedButtons {
+                pictureFlatbedButtons
+            }
             DrawerHandle(open: $showsDrawer)
         }
         .padding(.horizontal, 12)
         .padding(.top, 12)
         .padding(.bottom, PictureButtons.clearance)
+    }
+
+    /// Preview and Choose area on the picture, for the flatbed's empty picture and its overview.
+    private var showsPictureFlatbedButtons: Bool {
+        guard usesFlatbed else { return false }
+        return pictureShown == .empty || pictureShown == .overview
+    }
+
+    private var pictureFlatbedButtons: some View {
+        let disabled: Bool = state.isBusy || importer.isImporting
+        let hasOverview: Bool = pictureShown == .overview
+        return HStack(spacing: 12) {
+            Button {
+                previewFlatbed()
+            } label: {
+                Label("Preview", systemImage: "eye")
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(disabled)
+            .accessibilityHint(Text("Scans the whole glass to show it here."))
+            .accessibilityIdentifier("picture.preview")
+            if hasOverview {
+                Button {
+                    openCrop()
+                } label: {
+                    Label("Choose area", systemImage: "crop")
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(disabled)
+                .accessibilityHint(Text("Opens the preview full screen to draw the scan area."))
+                .accessibilityIdentifier("picture.crop.open")
+            }
+        }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: The options
