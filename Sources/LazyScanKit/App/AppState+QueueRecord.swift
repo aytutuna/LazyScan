@@ -45,6 +45,7 @@ struct QueueRecord: Codable, Sendable {
         var upright: UprightTurn?
         var source: PageSource
         var capture: CaptureFacts?
+        var marks: PageMarks?
     }
 
     static let fileName = "queue.json"
@@ -117,7 +118,7 @@ struct QueueRecord: Codable, Sendable {
                                 geometry: page.geometry, showsOriginal: page.showsOriginal, patch: page.patch,
                                 barcodes: page.barcodes, documentBreak: page.documentBreak,
                                 documentLabel: page.documentLabel, upright: page.upright, source: page.source,
-                                capture: page.capture))
+                                capture: page.capture, marks: page.marks))
         }
         self.pages = records
         self.queued = pages.count
@@ -203,6 +204,7 @@ extension QueueRecord.Page {
         page.upright = upright
         page.source = source
         page.capture = capture
+        page.marks = marks
         if let alternateFile {
             let other = spool.appendingPathComponent(alternateFile)
             if FileManager.default.fileExists(atPath: other.path) {

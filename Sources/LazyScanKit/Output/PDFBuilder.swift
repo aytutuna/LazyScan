@@ -170,12 +170,16 @@ public enum PDFBuilder {
             ? L10n.t("Preparing page {0} of {1}…", index + 1, pages.count)
             : L10n.t("OCR page {0} of {1}…", index + 1, pages.count)
         progress?(ScanProgress(fraction: Double(index) / Double(pages.count), message: message))
-        let prepared = try preparePage(page, number: index + 1)
+        var prepared = try preparePage(page, number: index + 1)
         var lines: [OCRLine]? = nil
         if let textLayer {
             // A page without lines (OCR failed or found nothing) is still written, without a text layer.
             lines = textLayer(index, prepared)
         }
+        // After the text is read, so the strokes do not get in the way of the OCR.
+        let marked = PageMarkRenderer.burned(prepared.image, marks: page.marks,
+                                             quarterTurns: page.rotationQuarterTurns, showsOriginal: page.showsOriginal)
+        prepared = PreparedPage(image: marked, pixelWidth: prepared.pixelWidth, pixelHeight: prepared.pixelHeight)
         guard let stored = storedImage(prepared, colorMode: page.colorMode, dpi: page.dpi, pdfSize: pdfSize) else {
             throw ScanError.exportFailed(L10n.t("Page {0} could not be stored in the PDF.", index + 1))
         }

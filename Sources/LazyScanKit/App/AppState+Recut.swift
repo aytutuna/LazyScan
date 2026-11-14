@@ -445,6 +445,8 @@ extension AppState {
         var updated: ScannedPage = made.copyMeta(from: scannedPages[index])
         updated.geometry = made.geometry
         updated.capture = made.capture
+        // New corners are a new cut: strokes drawn on the old one would land in the wrong place.
+        if corners != nil { updated.marks = nil }
         scannedPages[index] = updated
         try? FileManager.default.removeItem(at: oldFile)
         if corners == nil, let filter {
@@ -498,6 +500,7 @@ extension AppState {
         var updated: ScannedPage = made.copyMeta(from: scannedPages[index])
         updated.geometry = made.geometry
         updated.showsOriginal = false
+        if changed.rect != before.rect { updated.marks = nil }
         scannedPages[index] = updated
         if let replaced { try? FileManager.default.removeItem(at: replaced) }
         if changed.rect == before.rect {

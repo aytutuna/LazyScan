@@ -698,6 +698,9 @@ Twins of `windows/LazyScan.Core/RgbaImage.cs`, `GrayImage.cs` (`GrayImage.Luma` 
 // Pipeline/CaptureScale.swift below; carried by companion packages); copyMeta(from:), withGeometry,
 // withSpineShadow, withVersionsSwapped and every with… copy it:
 //   public func withCapture(_ capture: CaptureFacts?) -> ScannedPage
+// Swift only: `marks: PageMarks?` (pen and highlighter strokes; kept with the queue, burned into the
+// saved PDF and image exports); copyMeta(from:) and withVersionsSwapped copy it, withGeometry and
+// withSpineShadow drop it, and a crop clears it.
 public enum BlankSensitivity: String, Codable, CaseIterable, Identifiable, Sendable {
     case medium, low, high                         // first case = default and fallback
     public var label: String                       // "Low", "Medium", "High"

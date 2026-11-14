@@ -1071,6 +1071,10 @@ public struct ScannedPage: Identifiable {
     /// and files. Carried by every rebuild of the page and by companion packages.
     public var capture: CaptureFacts?
 
+    /// The pen and highlighter strokes drawn on the page, burned into what is saved, printed and copied
+    /// (`PageMarkRenderer`); nil for none. A new cut of the page (`withGeometry`) leaves them behind.
+    public var marks: PageMarks?
+
     /// Whether the page can be printed at its real size: a scan or an imported file carries a true
     /// resolution (no capture facts), and a camera page only when `CaptureScale` snapped it to a known
     /// size (`CaptureScaleResult.isRealSize`). A camera page whose size was guessed is fitted to the
@@ -1114,7 +1118,7 @@ public struct ScannedPage: Identifiable {
     /// blank-page check, the user's keep or skip, what crop and straighten did and which version is
     /// shown, the patch code and barcodes found on it, the user's document break and document name, the turn that
     /// made it upright, the spread it was cut from, what softening its spine's shadow did, where it came
-    /// from (`source`) and what the camera recorded (`capture`). Pixels, id, file, rotation and the other
+    /// from (`source`), what the camera recorded (`capture`) and the user's strokes (`marks`). Pixels, id, file, rotation and the other
     /// version stay this page's. Twin of C# `ScannedPage.CopyMeta`.
     public func copyMeta(from source: ScannedPage) -> ScannedPage {
         var page = self
@@ -1134,6 +1138,7 @@ public struct ScannedPage: Identifiable {
         page.cleanedUp = source.cleanedUp
         page.source = source.source
         page.capture = source.capture
+        page.marks = source.marks
         return page
     }
 
@@ -1234,6 +1239,7 @@ public struct ScannedPage: Identifiable {
         page.cleanedUp = cleanedUp
         page.source = source
         page.capture = capture
+        page.marks = marks
         page.alternate = PageVersion(image: fileURL == nil ? image : nil, fileURL: fileURL, fullPixelSize: fullPixelSize)
         return page
     }

@@ -142,14 +142,15 @@ extension AppState {
     /// stays unturned until it is saved), or the pixels in memory, which show the rotation already. A spooled
     /// page whose file cannot be read throws, naming page `number`.
     public nonisolated static func fullImage(of page: ScannedPage, number: Int) throws -> CGImage {
-        guard let spooled = spoolImage(of: page) else {
-            if page.fileURL != nil {
-                throw ScanError.exportFailed(L10n.t("The picture of page {0} could not be written.", number))
-            }
-            return page.image
-        }
         let turns: Int = ((page.rotationQuarterTurns % 4) + 4) % 4
-        if turns == 0 { return spooled }
-        return ImagePipeline.rotate(spooled, quarterTurns: turns)
+        let shown: CGImage
+        if let spooled = spoolImage(of: page) {
+            shown = turns == 0 ? spooled : ImagePipeline.rotate(spooled, quarterTurns: turns)
+        } else if page.fileURL != nil {
+            throw ScanError.exportFailed(L10n.t("The picture of page {0} could not be written.", number))
+        } else {
+            shown = page.image
+        }
+        return PageMarkRenderer.burned(shown, marks: page.marks, quarterTurns: turns, showsOriginal: page.showsOriginal)
     }
 }

@@ -2617,6 +2617,22 @@ public final class AppState: ObservableObject {
         scannedPages[idx] = updated
     }
 
+    /// Sets the strokes drawn on a queued page (nil: none). Behind a swap still reading its file, like a turn
+    /// by hand, so the page the strokes were drawn on is the one they land on.
+    public func setMarks(_ marks: PageMarks?, for id: UUID) {
+        guard !isBusy else { return }
+        if pageEditChain != nil {
+            enqueuePageEdit { state in state.applyMarks(marks, id: id) }
+        } else {
+            applyMarks(marks, id: id)
+        }
+    }
+
+    private func applyMarks(_ marks: PageMarks?, id: UUID) {
+        guard let idx = scannedPages.firstIndex(where: { $0.id == id }) else { return }
+        scannedPages[idx].marks = (marks?.isEmpty ?? true) ? nil : marks
+    }
+
     /// Whether pages can be turned upright: text recognition can read them.
     public var canTurnPagesUpright: Bool { orientationScorer.isAvailable }
 
@@ -2635,7 +2651,9 @@ public final class AppState: ObservableObject {
 
     private func applyUprightToggle(id: UUID) {
         guard let idx = scannedPages.firstIndex(where: { $0.id == id }), scannedPages[idx].upright != nil else { return }
-        let toggled = scannedPages[idx].withUprightToggled()
+        var toggled = scannedPages[idx].withUprightToggled()
+        // Without a spool file the rotation does not grow, so the strokes would stay put under a turned picture.
+        if toggled.fileURL == nil && toggled.alternate?.fileURL == nil { toggled.marks = nil }
         scannedPages[idx] = toggled
         statusMessage = PageTurns.toggleNote(toggled, number: idx + 1)
     }
@@ -3441,7 +3459,9 @@ public final class AppState: ObservableObject {
                 // OCR above has read the full pixels; the picture is stored as the PDF size plans it.
                 let imageDPI = PDFImageEncoding.effectiveDPI(imageWidth: prepared.image.width,
                                                              pagePixelWidth: prepared.pixelWidth, pageDPI: page.dpi)
-                let picture = DocxWriter.picture(of: prepared.image, imageDPI: imageDPI, mode: page.colorMode,
+                let marked = PageMarkRenderer.burned(prepared.image, marks: page.marks,
+                                                     quarterTurns: page.rotationQuarterTurns, showsOriginal: page.showsOriginal)
+                let picture = DocxWriter.picture(of: marked, imageDPI: imageDPI, mode: page.colorMode,
                                                  size: size)
                 pictures.append(picture)
                 // Stop as soon as the pictures alone are past the limit, not after reading every page.
