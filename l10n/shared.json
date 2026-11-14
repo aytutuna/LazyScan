@@ -1784,9 +1784,6 @@
   "Discarded the document from {0}.": {
     "note": "{0} is the name of a phone."
   },
-  "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": {
-    "note": "{0} is the name of a phone."
-  },
   "a phone": {
     "note": "Stands in for the phone name in sentences such as 'Added {0} page from {1}' when the phone has no name, so it must read where the sentence puts the name."
   },
@@ -3157,6 +3154,11 @@
   "Open the Scan tab without changing your settings": {},
   "Scan more pages and add them to this PDF": {},
   "Returns to scanning. The next Save adds the pages to this PDF.": {},
+  "Waiting ({0})": {},
+  "Waiting documents from phones": {},
+  "Add now": {},
+  "Add these pages to the queue now": {},
+  "Delete this document from this PC without adding it": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

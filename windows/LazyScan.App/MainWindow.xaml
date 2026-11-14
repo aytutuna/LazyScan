@@ -155,13 +155,47 @@
                     <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE8EA;" Margin="0,0,12,0"
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE711;"
+                    <Button x:Name="PhoneBarClose" DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE711;"
                             ToolTip="{loc:T Dismiss}" AutomationProperties.Name="{loc:T Dismiss}" VerticalAlignment="Center"
                             Margin="4,0,0,0" Click="PhoneBarClose_Click" />
-                    <TextBlock x:Name="PhoneBarText" Style="{StaticResource BodyText}" TextWrapping="Wrap"
-                               VerticalAlignment="Center" Padding="0,4"
-                               AutomationProperties.LiveSetting="Polite"><Run
-                            x:Name="PhoneBarLead" Text="{loc:T From your phone}" FontWeight="SemiBold" /><Run Text="  " /><Run x:Name="PhoneBarMessage" /></TextBlock>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="PhoneBarText" Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Padding="0,4"
+                                   AutomationProperties.LiveSetting="Polite"><Run
+                                x:Name="PhoneBarLead" Text="{loc:T From your phone}" FontWeight="SemiBold" /><Run Text="  " /><Run x:Name="PhoneBarMessage" /></TextBlock>
+                        <!-- Cancelled or failed documents, kept in the inbox until added now or discarded. -->
+                        <Expander x:Name="PhoneWaiting" Visibility="Collapsed"
+                                  AutomationProperties.Name="{loc:T Waiting documents from phones}"
+                                  AutomationProperties.AutomationId="PhoneWaitingList">
+                            <Expander.Header>
+                                <TextBlock x:Name="PhoneWaitingHeader" Style="{StaticResource BodyText}" />
+                            </Expander.Header>
+                            <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="PhoneWaitingItems">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Height="32" AutomationProperties.Name="{Binding RowText}">
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Style="{StaticResource SubtleButtonStyle}" Content="{loc:T Add now}"
+                                                            ToolTip="{loc:T Add these pages to the queue now}"
+                                                            AutomationProperties.Name="{Binding AddLabel}"
+                                                            AutomationProperties.AutomationId="PhoneWaitingAddNow"
+                                                            Click="PhoneWaitingAdd_Click" />
+                                                    <Button Style="{StaticResource SubtleButtonStyle}" Content="{loc:T Discard}"
+                                                            ToolTip="{loc:T Delete this document from this PC without adding it}"
+                                                            AutomationProperties.Name="{Binding DiscardLabel}"
+                                                            AutomationProperties.AutomationId="PhoneWaitingDiscard"
+                                                            Margin="4,0,0,0" Click="PhoneWaitingDiscard_Click" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding RowText}"
+                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Expander>
+                    </StackPanel>
                 </DockPanel>
             </Border>
 

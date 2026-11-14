@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
@@ -25,6 +26,8 @@ public sealed partial class AppViewModel
     private readonly Queue<(ReceivedPackage Package, string PhoneName)> _phoneDocuments = new();
     /// <summary>Retries adding waiting documents while the app is busy or the queue does not collect pages.</summary>
     private DispatcherTimer? _phoneRetryTimer;
+    /// <summary>Documents that were cancelled or could not be added, in the phone bar's waiting list; they stay in the inbox until added or discarded.</summary>
+    public ObservableCollection<KeptPhoneDocument> KeptPhoneDocuments { get; } = [];
     /// <summary>The queue's page count, for phones asking from the server's threads.</summary>
     private volatile int _queuedPageCount;
     /// <summary>The paired phones when the link is not running (it has its own store once started).</summary>
@@ -40,6 +43,16 @@ public sealed partial class AppViewModel
         public IReadOnlyList<string> Paths { get; } = paths;
         /// <summary>Outbox item id to the file it holds.</summary>
         public Dictionary<string, string> Waiting { get; } = [];
+    }
+
+    /// <summary>One row of the phone bar's waiting list.</summary>
+    public sealed class KeptPhoneDocument(ReceivedPackage package, string phoneName)
+    {
+        public ReceivedPackage Package { get; } = package;
+        public string PhoneName { get; } = phoneName;
+        public string RowText => Loc.Plural(Package.PageCount, "{1} · {0} page", "{1} · {0} pages", PhoneName);
+        public string AddLabel => Loc.Plural(Package.PageCount, "Add {0} page from {1} now", "Add {0} pages from {1} now", PhoneName);
+        public string DiscardLabel => Loc.Plural(Package.PageCount, "Discard {0} page from {1}", "Discard {0} pages from {1}", PhoneName);
     }
 
     /// <summary>The phone link; null until it is started, and when another window of the app has it.</summary>
@@ -293,6 +306,21 @@ public sealed partial class AppViewModel
         }
     }
 
+    /// <summary>Adds a kept document to the queue now, or as soon as the queue can take it.</summary>
+    public void AddKeptPhoneDocument(KeptPhoneDocument kept)
+    {
+        if (!KeptPhoneDocuments.Remove(kept)) return;
+        QueuePhoneDocument(kept.Package, kept.PhoneName);
+    }
+
+    /// <summary>Deletes a kept document from the inbox without adding it.</summary>
+    public void DiscardKeptPhoneDocument(KeptPhoneDocument kept)
+    {
+        if (!KeptPhoneDocuments.Remove(kept)) return;
+        _companion?.Inbox.Release(kept.Package);
+        PhoneDocumentArrived?.Invoke(Loc.T("Discarded the document from {0}.", kept.PhoneName));
+    }
+
     private static string CompanionSettingsDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lazy Scan");
 
@@ -378,8 +406,8 @@ public sealed partial class AppViewModel
     /// <summary>
     /// Decodes, spools and queues the document's pages; the package is then released from the
     /// inbox. A document with a picture that cannot be read is released too (it never will be); one
-    /// that could not be spooled (the disk is full, the folder cannot be made) stays in the inbox and
-    /// is added the next time the app starts.
+    /// that was cancelled or could not be spooled (the disk is full, the folder cannot be made) stays
+    /// in the inbox and goes to the waiting list, to be added now, discarded, or added at the next start.
     /// </summary>
     private async Task AddPhoneDocumentAsync(ReceivedPackage package, string phoneName)
     {
@@ -387,6 +415,7 @@ public sealed partial class AppViewModel
         string? problem = null;
         bool unreadable = false;
         bool cancelled = false;
+        bool kept = false;
         await RunExclusive(async token =>
         {
             SavedBarPaths = null;
@@ -401,7 +430,8 @@ public sealed partial class AppViewModel
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.",
+                kept = true;
+                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept in the waiting list.",
                     phoneName, e.Message.TrimEnd('.'));
                 StatusMessage = Loc.T("Ready.");
                 return;
@@ -420,7 +450,8 @@ public sealed partial class AppViewModel
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.",
+                kept = true;
+                problem = Loc.T("The document from {0} could not be added to the queue now ({1}). It is kept in the waiting list.",
                     phoneName, e.Message.TrimEnd('.'));
                 StatusMessage = Loc.T("Ready.");
                 return;
@@ -448,6 +479,7 @@ public sealed partial class AppViewModel
                 if (e is OperationCanceledException)
                 {
                     cancelled = true;
+                    kept = true;
                     throw;
                 }
                 unreadable = true;
@@ -465,21 +497,24 @@ public sealed partial class AppViewModel
             SetStatus(Loc.Plural(added, "Added {0} page from {1} — {2} in queue.", "Added {0} pages from {1} — {2} in queue.",
                 phoneName, ScannedPages.Count), new(new StatusHead.PagesAdded(added, ScannedPages.Count, 0, 0)));
         });
-        if (problem is not null)
+        if (kept) KeptPhoneDocuments.Add(new KeptPhoneDocument(package, phoneName));
+        if (problem is not null && kept)
+        {
+            PhoneDocumentArrived?.Invoke(problem);
+        }
+        else if (problem is not null)
         {
             ErrorMessage = problem;
             NotifyAll();
         }
-        // A document whose import was cancelled or could not be spooled stays in the inbox: it is
-        // added the next time the app starts.
         if (added > 0 || unreadable) _companion?.Inbox.Release(package);
         if (added > 0) PhoneDocumentArrived?.Invoke(CompanionProtocol.AddedMessage(added, phoneName));
         if (cancelled)
         {
-            string kept = CompanionProtocol.KeptMessage(package.PageCount, phoneName, onMac: false);
-            StatusMessage = kept;
+            string keptText = CompanionProtocol.KeptMessage(package.PageCount, phoneName, onMac: true);
+            StatusMessage = keptText;
             NotifyAll();
-            PhoneDocumentArrived?.Invoke(kept);
+            PhoneDocumentArrived?.Invoke(keptText);
         }
         AddWaitingPhoneDocuments();
     }

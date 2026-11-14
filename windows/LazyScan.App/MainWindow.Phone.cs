@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -20,7 +21,19 @@ public partial class MainWindow
         ViewModel.PhoneSendChanged += ShowPhoneSend;
         ViewModel.PhoneSendCleared += () =>
         {
-            if (_phoneBarShowsSend) PhoneBar.Visibility = Visibility.Collapsed;
+            if (!_phoneBarShowsSend) return;
+            _phoneBarHasMessage = false;
+            UpdatePhoneBar();
+        };
+        PhoneWaitingItems.ItemsSource = ViewModel.KeptPhoneDocuments;
+        ViewModel.KeptPhoneDocuments.CollectionChanged += (_, e) =>
+        {
+            if (e.Action == NotifyCollectionChangedAction.Add && !_phoneWaitingOpened)
+            {
+                _phoneWaitingOpened = true;
+                PhoneWaiting.IsExpanded = true;
+            }
+            UpdatePhoneBar();
         };
     }
 
@@ -37,10 +50,29 @@ public partial class MainWindow
         _phoneBarShowsSend = send;
         PhoneBarLead.Text = lead;
         PhoneBarMessage.Text = message;
-        PhoneBar.Visibility = Visibility.Visible;
+        _phoneBarHasMessage = true;
+        UpdatePhoneBar();
         var peer = UIElementAutomationPeer.FromElement(PhoneBarText) ?? UIElementAutomationPeer.CreatePeerForElement(PhoneBarText);
         peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
         if (!IsActive && IsVisible) FlashTaskbarButton();
+    }
+
+    private bool _phoneBarHasMessage;
+
+    /// <summary>The waiting list opens by itself the first time a document is kept in a run, then stays as the user left it.</summary>
+    private bool _phoneWaitingOpened;
+
+    /// <summary>The bar shows while it has a message or documents are waiting; Dismiss clears the message only.</summary>
+    private void UpdatePhoneBar()
+    {
+        int kept = ViewModel.KeptPhoneDocuments.Count;
+        var message = _phoneBarHasMessage ? Visibility.Visible : Visibility.Collapsed;
+        PhoneBarText.Visibility = message;
+        PhoneBarClose.Visibility = message;
+        PhoneWaiting.Visibility = kept > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PhoneWaitingHeader.Text = Loc.T("Waiting ({0})", kept);
+        AutomationProperties.SetName(PhoneWaitingHeader, Loc.Plural(kept, "Waiting, {0} document", "Waiting, {0} documents"));
+        PhoneBar.Visibility = _phoneBarHasMessage || kept > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Whether the bar says where a file sent to a phone is, not what a phone sent.</summary>
@@ -52,7 +84,21 @@ public partial class MainWindow
         ShowPhoneBar(lead, "· " + SavedBarLine(paths), send: true);
     }
 
-    private void PhoneBarClose_Click(object sender, RoutedEventArgs e) => PhoneBar.Visibility = Visibility.Collapsed;
+    private void PhoneBarClose_Click(object sender, RoutedEventArgs e)
+    {
+        _phoneBarHasMessage = false;
+        UpdatePhoneBar();
+    }
+
+    private void PhoneWaitingAdd_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is AppViewModel.KeptPhoneDocument kept) ViewModel.AddKeptPhoneDocument(kept);
+    }
+
+    private void PhoneWaitingDiscard_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is AppViewModel.KeptPhoneDocument kept) ViewModel.DiscardKeptPhoneDocument(kept);
+    }
 
     /// <summary>Flashes the taskbar button until the window comes to the front (FlashWindowEx).</summary>
     private void FlashTaskbarButton()

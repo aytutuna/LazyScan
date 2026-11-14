@@ -68,6 +68,18 @@ public class CompanionAppTests
     };
 
     [Fact]
+    public void KeptPhoneDocument_ReadsAsAWaitingListRow()
+    {
+        var package = new ReceivedPackage("phone-0001", "p1", "p1.lsdoc", 3, CompanionTarget.New, DateTimeOffset.Now);
+        var kept = new AppViewModel.KeptPhoneDocument(package, "Aytu's iPhone");
+        Assert.Equal("Aytu's iPhone · 3 pages", kept.RowText);
+        Assert.Equal("Add 3 pages from Aytu's iPhone now", kept.AddLabel);
+        Assert.Equal("Discard 3 pages from Aytu's iPhone", kept.DiscardLabel);
+        var one = new AppViewModel.KeptPhoneDocument(package with { PageCount = 1 }, "Sam's iPad");
+        Assert.Equal("Sam's iPad · 1 page", one.RowText);
+    }
+
+    [Fact]
     public void PhoneDocument_BecomesQueuePages()
     {
         // Through the package format, as it arrives.
