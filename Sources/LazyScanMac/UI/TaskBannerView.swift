@@ -37,7 +37,10 @@ struct TaskBannerView: View {
 
     /// The step's fuller guidance; empty when the prompt says it all.
     private var guidance: String {
-        let help: String = shownStep?.help ?? ""
+        var help: String = shownStep?.help ?? ""
+        if definition?.task == .book && !help.isEmpty {
+            help += "\n" + String(localized: "To scan on a timer, set Scan again after in the Scanner section.")
+        }
         let note: String = state.taskChoicesNote
         if help.isEmpty { return note }
         return note.isEmpty ? help : help + "\n\n" + note

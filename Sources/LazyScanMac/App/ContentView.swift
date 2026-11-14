@@ -212,7 +212,7 @@ struct ContentView: View {
     /// A scan started on the Scan tab goes on when another tab is up: its progress and Cancel stay in reach.
     @ViewBuilder
     private var runningScanBar: some View {
-        if state.isBusy {
+        if state.isBusy || state.scanAgainRemaining != nil {
             ScanActionBar(showsScanButtons: false)
         }
     }

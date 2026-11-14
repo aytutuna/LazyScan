@@ -33,7 +33,13 @@ struct ScanCommands: Commands {
     }
 
     private var canScan: Bool { !dialogOpen && !state.isBusy && state.isConnected }
+    /// The wait before the next scan, which is not busy: Scan reads Stop and Cancel ends it.
+    private var counting: Bool { !dialogOpen && state.scanAgainRemaining != nil }
+    private var scanTitle: String { counting ? String(localized: "Stop") : state.primaryActionLabel }
     private var canPreview: Bool { !dialogOpen && !state.isBusy && state.previewUnavailableReason == nil }
+    private func scanOrStop() {
+        if counting { state.cancelScan() } else { state.performScan() }
+    }
     private var canSave: Bool {
         guard !dialogOpen, !state.isBusy else { return false }
         return state.queuePlans.save.pageCount > 0
@@ -49,15 +55,15 @@ struct ScanCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Scan") {
-            Button(state.primaryActionLabel) { run { state.performScan() } }
+            Button(scanTitle) { run { scanOrStop() } }
                 .keyboardShortcut("r")
-                .disabled(!canScan)
+                .disabled(!canScan && !counting)
             Button("Preview") { run { state.performOverview() } }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
                 .disabled(!canPreview)
             Button("Cancel") { state.cancelScan() }
                 .keyboardShortcut(".")
-                .disabled(!state.isBusy)
+                .disabled(!state.isBusy && state.scanAgainRemaining == nil)
             Divider()
             Button("Save") { run { state.savePDF() } }
                 .keyboardShortcut("s")

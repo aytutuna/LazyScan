@@ -383,7 +383,34 @@ struct InspectorView: View {
                     Text(mode.label).tag(mode)
                 }
             }
+            if offersScanAgain {
+                scanAgainRow
+            }
         }
+    }
+
+    /// Scan again after goes with the flatbed and the tasks that collect pages in the queue.
+    private var offersScanAgain: Bool {
+        state.settings.source == .flatbed && TaskCatalog.flow(of: state.settings) == .documentQueue
+            && state.settings.documentMultiPage
+    }
+
+    private static let scanAgainChoices: [Int] = [0, 3, 5, 10]
+
+    private func scanAgainLabel(_ seconds: Int) -> Text {
+        seconds == 0 ? Text("Off") : Text("\(seconds) s")
+    }
+
+    private var scanAgainRow: some View {
+        let seconds: Int = state.settings.scanAgainSeconds
+        let spoken: Text = seconds == 0 ? Text("Off") : Text("\(seconds) seconds")
+        return Picker("Scan again after", selection: $state.settings.scanAgainSeconds) {
+            ForEach(Self.scanAgainChoices, id: \.self) { choice in
+                scanAgainLabel(choice).tag(choice)
+            }
+        }
+        .help("Scans the next page by itself after the wait. Swap the page during the wait. Press Stop to end it.")
+        .accessibilityValue(spoken)
     }
 
     private var availableSources: [ScanSource] {

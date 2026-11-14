@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The bar under the canvas: Preview, Scan and Cancel, and Import photos of documents beside them. It does not
 /// depend on the settings column, so a scan can be started and stopped with that hidden. On the other tabs
-/// (`showsScanButtons` off) it shows only the progress and Cancel, and only while a scan runs.
+/// (`showsScanButtons` off) it shows only the progress and Cancel while a scan runs, or the countdown and Stop between passes.
 struct ScanActionBar: View {
     @EnvironmentObject var state: AppState
     let showsScanButtons: Bool
@@ -28,6 +28,9 @@ struct ScanActionBar: View {
                 HStack(spacing: 10) {
                     if state.isBusy {
                         progressBar
+                    } else if let left = state.scanAgainRemaining {
+                        countdownText(left)
+                        Spacer(minLength: 10)
                     } else {
                         importButton
                         Spacer(minLength: 10)
@@ -35,12 +38,15 @@ struct ScanActionBar: View {
                     scanButtons
                 }
                 VStack(spacing: 10) {
-                    if !state.isBusy {
+                    if !state.isBusy && state.scanAgainRemaining == nil {
                         importButton
                     }
                     HStack(spacing: 10) {
                         if state.isBusy {
                             progressBar
+                        } else if let left = state.scanAgainRemaining {
+                            countdownText(left)
+                            Spacer(minLength: 0)
                         } else {
                             Spacer(minLength: 0)
                         }
@@ -48,10 +54,19 @@ struct ScanActionBar: View {
                     }
                 }
             }
+            .onChange(of: state.scanAgainRemaining) { old, new in
+                announceScanAgain(from: old, to: new)
+            }
         } else {
             HStack(spacing: 10) {
-                progressBar
-                cancelButton
+                if let left = state.scanAgainRemaining, !state.isBusy {
+                    countdownText(left)
+                    Spacer(minLength: 10)
+                    stopButton
+                } else {
+                    progressBar
+                    cancelButton
+                }
             }
         }
     }
@@ -70,21 +85,54 @@ struct ScanActionBar: View {
                 Label("Preview", systemImage: "viewfinder")
             }
             .buttonStyle(.bordered)
-            .disabled(state.isBusy || state.previewUnavailableReason != nil)
+            .disabled(state.isBusy || state.scanAgainRemaining != nil || state.previewUnavailableReason != nil)
             .help(state.previewUnavailableReason ?? String(localized: "Quick look at the whole glass"))
 
-            Button {
-                state.performScan()
-            } label: {
-                Label(state.primaryActionLabel, systemImage: "scanner")
+            if state.scanAgainRemaining != nil {
+                stopButton
+            } else {
+                Button {
+                    state.performScan()
+                } label: {
+                    Label(state.primaryActionLabel, systemImage: "scanner")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(state.isBusy || !state.isConnected)
+                .help(scanHelp)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(state.isBusy || !state.isConnected)
-            .help(scanHelp)
 
             if state.isBusy {
                 cancelButton
             }
+        }
+    }
+
+    private var stopButton: some View {
+        Button {
+            state.cancelScan()
+        } label: {
+            Label("Stop", systemImage: "stop.fill")
+        }
+        .buttonStyle(.borderedProminent)
+        .keyboardShortcut(.cancelAction)
+        .help("Stop scanning")
+        .accessibilityHint(Text("Stops scanning pages by itself"))
+    }
+
+    private func countdownText(_ left: Int) -> some View {
+        Text("Scanning again in \(left) s")
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .accessibilityLabel(Text("Scanning again in \(left) seconds"))
+    }
+
+    /// The countdown is not read every second: VoiceOver hears it when it starts and when it ends without a scan.
+    private func announceScanAgain(from old: Int?, to new: Int?) {
+        if old == nil, let left = new {
+            let message: String = String(localized: "Scanning again in \(left) seconds")
+            AccessibilityNotification.Announcement(message).post()
+        } else if new == nil, old != nil, !state.isBusy {
+            AccessibilityNotification.Announcement(String(localized: "Stopped")).post()
         }
     }
 
