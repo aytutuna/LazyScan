@@ -1102,7 +1102,7 @@
                                             <TextBlock Text="{loc:T Color}" Style="{StaticResource FieldLabelText}" Margin="0,12,0,4" />
                                             <ComboBox x:Name="ColorModeBox" HorizontalAlignment="Stretch"
                                                       AutomationProperties.Name="{loc:T Color}" SelectionChanged="Setting_Changed" />
-                                            <!-- TWAIN connections only: scan through the driver's own window. -->
+                                            <!-- TWAIN and WIA connections: scan through the driver's own window. -->
                                             <StackPanel x:Name="DriverWindowOptions" Visibility="Collapsed" Margin="0,8,0,0">
                                                 <CheckBox x:Name="DriverWindowBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Use the scanner\'s own window}" ToolTipService.ShowOnDisabled="True"

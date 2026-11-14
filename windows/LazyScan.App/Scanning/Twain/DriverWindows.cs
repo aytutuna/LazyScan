@@ -9,6 +9,7 @@ namespace LazyScan.App.Scanning.Twain;
 internal static class DriverWindows
 {
     private const int RestoreCommand = 9;
+    private const uint CloseMessage = 0x0010;
     private const uint FlashAll = 3;
     private const uint FlashUntilForeground = 12;
 
@@ -22,6 +23,33 @@ internal static class DriverWindows
             if (owner == (uint)processId && IsWindowVisible(window)) windows.Add(window);
             return true;
         }, IntPtr.Zero);
+        return Bring(windows, processId);
+    }
+
+    /// <summary>Like <see cref="Raise(int)"/>, for the visible windows one thread of this process shows (a dialog a WIA call runs).</summary>
+    public static bool RaiseThread(int threadId) => Bring(ThreadWindows(threadId), Environment.ProcessId);
+
+    /// <summary>Asks the visible windows one thread of this process shows to close, which ends the dialog a call there is waiting on.</summary>
+    public static void CloseThread(int threadId)
+    {
+        foreach (var window in ThreadWindows(threadId)) PostMessage(window, CloseMessage, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    public static int CurrentThreadId => (int)GetCurrentThreadId();
+
+    private static List<IntPtr> ThreadWindows(int threadId)
+    {
+        var windows = new List<IntPtr>();
+        EnumThreadWindows((uint)threadId, (window, _) =>
+        {
+            if (IsWindowVisible(window)) windows.Add(window);
+            return true;
+        }, IntPtr.Zero);
+        return windows;
+    }
+
+    private static bool Bring(List<IntPtr> windows, int processId)
+    {
         if (windows.Count == 0) return false;
 
         AllowSetForegroundWindow(processId);
@@ -57,6 +85,17 @@ internal static class DriverWindows
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumThreadWindows(uint threadId, EnumWindowsProc callback, IntPtr parameter);
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", ExactSpelling = true)]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);

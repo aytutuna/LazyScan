@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using LazyScan.App.Scanning.Twain;
 using LazyScan.App.Services;
 using LazyScan.Core;
 
@@ -78,6 +79,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     internal static readonly TimeSpan MaxRebrowseDelay = TimeSpan.FromSeconds(60);
 
     internal const string DeviceManagerProgId = "WIA.DeviceManager";
+    internal const string CommonDialogProgId = "WIA.CommonDialog";
 
     // WIA event ids (wiaEventDeviceConnected, wiaEventDeviceDisconnected) and the "every device" id.
     internal const string DeviceConnected = "{A28BBADE-64B6-11D2-A231-00C04FA31809}";
@@ -529,7 +531,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
 }
 
 /// <param name="deviceLost">Called (on the WIA thread) when the device is no longer connected.</param>
-internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Action deviceLost) : IScannerSession
+internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Action deviceLost)
+    : IScannerSession, IDriverWindowOption, IDriverWindowControl
 {
     public ScannerInfo Info { get; } = info;
     public Action<ScanProgress>? ProgressHandler { get; set; }
@@ -543,6 +546,17 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     public bool? LastScanDuplex => _lastScanDuplex < 0 ? null : _lastScanDuplex == 1;
 
     private volatile bool _cancelRequested;
+    private volatile bool _waitingForDriverWindow;
+    private volatile int _dialogThread;
+    public bool WaitingForDriverWindow => _waitingForDriverWindow;
+    public bool DriverWindowOptional => true;
+    public bool UseDriverWindow { get; set; }
+
+    public void ShowDriverWindow()
+    {
+        if (_waitingForDriverWindow) DriverWindows.RaiseThread(_dialogThread);
+    }
+
     /// <summary>A scan was asked for and has not finished, from the call until the WIA thread is done with it.</summary>
     private volatile bool _scanning;
     private SizeD _bedInches = new(8.5, 11.7);
@@ -677,6 +691,11 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         _lastScanStop = null;
         _lastScanDuplex = -1;
         if (_cancelRequested) throw ScanException.Cancelled();
+        if (UseDriverWindow)
+        {
+            ScanInDriverWindow(settings, emit);
+            return;
+        }
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
         int count = 0;
         ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
@@ -754,9 +773,82 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         }
     }
 
+    /// <summary>
+    /// Shows the scanner's own WIA window for the connected device on the WIA thread and passes the pages it
+    /// scans to <paramref name="emit"/>, a whole feeder batch when the window selected the feeder. The window
+    /// chooses the settings, so the pages take the resolution and color the app asked for as their labels.
+    /// </summary>
+    private void ScanInDriverWindow(ScanSettings settings, Action<ScannedPage> emit)
+    {
+        ProgressHandler?.Invoke(new ScanProgress(Loc.T("Choose the settings in the scanner's window, then start the scan there…")));
+        using var use = WiaApartment.Use();
+        var dialogType = Type.GetTypeFromProgID(WiaScannerBackend.CommonDialogProgId)
+            ?? throw ScanException.DeviceUnavailable(() => Loc.T("WIA is not available on this system."));
+        dynamic dialog = Activator.CreateInstance(dialogType)!;
+        dynamic device = Connect();
+        object? items = null;
+        object? item = null;
+        try
+        {
+            _dialogThread = DriverWindows.CurrentThreadId;
+            _waitingForDriverWindow = true;
+            try
+            {
+                if (_cancelRequested) throw ScanException.Cancelled();
+                // Intent and bias unspecified; a cancelled window returns nothing.
+                items = dialog.ShowSelectItems(device, 0, 0, true, true, false);
+            }
+            catch (COMException e)
+            {
+                throw WiaErrors.ToScanException(e.HResult, e.Message);
+            }
+            finally
+            {
+                _waitingForDriverWindow = false;
+            }
+            if (items is null || _cancelRequested || ((dynamic)items).Count < 1) throw ScanException.Cancelled();
+            item = (object)((dynamic)items!)[1];
+            _preparedDpi = settings.Resolution;
+            int? selected = ToInt(WiaScannerBackend.TryGetProperty(device.Properties, WiaScannerBackend.DocumentHandlingSelect));
+            if (WiaDocumentHandling.FeederAlreadySelected(selected) is not null)
+            {
+                if (ScanFeeder(item, settings, emit) == 0)
+                {
+                    throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
+                }
+            }
+            else
+            {
+                RgbaImage image = Transfer(item);
+                if (_cancelRequested) throw ScanException.Cancelled();
+                emit(new ScannedPage(image, settings.Resolution, settings.ColorMode));
+            }
+        }
+        finally
+        {
+            if (item is not null) Release(item);
+            if (items is not null) Release(items);
+            Release(device);
+            Release(dialog);
+        }
+    }
+
     public void CancelScan()
     {
         _cancelRequested = true;
+        if (_waitingForDriverWindow)
+        {
+            // The window may not exist yet while the device connects, so ask again for a few seconds.
+            Task.Run(async () =>
+            {
+                for (int i = 0; i < 20 && _waitingForDriverWindow; i++)
+                {
+                    DriverWindows.CloseThread(_dialogThread);
+                    await Task.Delay(250);
+                }
+            });
+            return;
+        }
         // A transfer in flight cannot be aborted: the scanner ends this pass (a flatbed scan, or the
         // sheet in the feeder) and the scan stops after it.
         if (_scanning) ProgressHandler?.Invoke(new ScanProgress(Loc.T("Cancelling: the scanner is finishing this pass.")));
@@ -904,7 +996,13 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         {
             throw WiaErrors.ToScanException(e.HResult, e.Message);
         }
-        string tempPath = Path.Combine(Path.GetTempPath(), $"LazyScan-{Guid.NewGuid()}.bmp");
+        return LoadImageFile(imageFile);
+    }
+
+    /// <summary>Reads a WIA image file, then releases it.</summary>
+    private static RgbaImage LoadImageFile(dynamic imageFile)
+    {
+        string tempPath = Path.Combine(Path.GetTempPath(), $"LazyScan-{Guid.NewGuid()}.{imageFile.FileExtension}");
         try
         {
             imageFile.SaveFile(tempPath);
