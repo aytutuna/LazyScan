@@ -218,9 +218,10 @@ public enum DocumentSides {
 
     /// "3 fronts but 2 backs", "1 front but 2 backs".
     public static func countMessage(fronts: Int, backs: Int) -> String {
-        let frontsText = L10n.plural(fronts, one: "{0} front", other: "{0} fronts")
-        let backsText = L10n.plural(backs, one: "{0} back", other: "{0} backs")
-        return L10n.t("{0} but {1}", frontsText, backsText)
+        if backs == 1 {
+            return L10n.plural(fronts, one: "{0} front but {1} back", other: "{0} fronts but {1} back", backs)
+        }
+        return L10n.plural(fronts, one: "{0} front but {1} backs", other: "{0} fronts but {1} backs", backs)
     }
 
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in reading

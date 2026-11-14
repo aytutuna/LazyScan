@@ -103,6 +103,9 @@ final class SavePlanTests: XCTestCase {
         XCTAssertEqual(note(separators: 1, skipped: 0), " — 1 separator page was left out")
         XCTAssertEqual(note(separators: 2, skipped: 0), " — 2 separator pages were left out")
         XCTAssertEqual(note(separators: 1, skipped: 2), " — 1 separator page and 2 skipped pages were left out")
+        XCTAssertEqual(note(separators: 2, skipped: 1), " — 2 separator pages and 1 skipped page were left out")
+        XCTAssertEqual(note(separators: 1, skipped: 1), " — 1 separator page and 1 skipped page were left out")
+        XCTAssertEqual(note(separators: 3, skipped: 2), " — 3 separator pages and 2 skipped pages were left out")
         XCTAssertEqual(SavePlan.notSavedMessage("The disk is full."),
                        "None of the documents was saved; the pages are still in the queue. The disk is full.")
     }

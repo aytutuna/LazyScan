@@ -86,6 +86,9 @@ public class SavePlanTests
         Assert.Equal(" — 1 separator page was left out", (one with { SeparatorPages = 1 }).LeftOutNote());
         Assert.Equal(" — 2 separator pages were left out", (one with { SeparatorPages = 2 }).LeftOutNote());
         Assert.Equal(" — 1 separator page and 2 skipped pages were left out", (one with { SeparatorPages = 1, SkippedPages = 2 }).LeftOutNote());
+        Assert.Equal(" — 2 separator pages and 1 skipped page were left out", (one with { SeparatorPages = 2, SkippedPages = 1 }).LeftOutNote());
+        Assert.Equal(" — 1 separator page and 1 skipped page were left out", (one with { SeparatorPages = 1, SkippedPages = 1 }).LeftOutNote());
+        Assert.Equal(" — 3 separator pages and 2 skipped pages were left out", (one with { SeparatorPages = 3, SkippedPages = 2 }).LeftOutNote());
         Assert.Equal("None of the documents was saved; the pages are still in the queue. The disk is full.",
                      SavePlan.NotSavedMessage("The disk is full."));
     }

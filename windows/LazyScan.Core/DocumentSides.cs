@@ -216,8 +216,9 @@ public static class DocumentSides
     };
 
     /// <summary>"3 fronts but 2 backs", "1 front but 2 backs".</summary>
-    public static string CountMessage(int fronts, int backs) =>
-        Loc.T("{0} but {1}", Loc.Plural(fronts, "{0} front", "{0} fronts"), Loc.Plural(backs, "{0} back", "{0} backs"));
+    public static string CountMessage(int fronts, int backs) => backs == 1
+        ? Loc.Plural(fronts, "{0} front but {1} back", "{0} fronts but {1} back", backs)
+        : Loc.Plural(fronts, "{0} front but {1} backs", "{0} fronts but {1} backs", backs);
 
     /// <summary>
     /// The pages of a two-sided feeder scan (front, back, front, back… as delivered), in

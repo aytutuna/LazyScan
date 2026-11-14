@@ -128,6 +128,8 @@ public class DocumentSidesTests
         Assert.Equal("12 fronts but 11 backs", DocumentSides.CountMessage(12, 11));
         Assert.Equal("1 front but 2 backs", DocumentSides.CountMessage(1, 2));
         Assert.Equal("2 fronts but 1 back", DocumentSides.CountMessage(2, 1));
+        Assert.Equal("0 fronts but 1 back", DocumentSides.CountMessage(0, 1));
+        Assert.Equal("3 fronts but 0 backs", DocumentSides.CountMessage(3, 0));
     }
 
     [Fact]

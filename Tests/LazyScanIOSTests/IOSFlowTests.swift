@@ -540,6 +540,9 @@ final class IOSFlowTests: XCTestCase {
         var jpeg: ScanSettings = document
         jpeg.format = .jpeg
         XCTAssertEqual(IOSShell.saveFirstLabel(jpeg, pageCount: 3, target: nil), "Save JPEG first")
+        var word: ScanSettings = document
+        word.format = .word
+        XCTAssertEqual(IOSShell.saveFirstLabel(word, pageCount: 3, target: nil), "Save Word first")
         let target = URL(fileURLWithPath: "/tmp/Contract.pdf")
         XCTAssertEqual(IOSShell.saveFirstLabel(document, pageCount: 3, target: target), "Add to Contract.pdf first")
     }

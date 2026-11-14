@@ -595,12 +595,17 @@ public enum IOSShell {
     /// "Save JPEG first", "Add to Contract.pdf first".
     public static func saveFirstLabel(_ settings: ScanSettings, pageCount: Int, target: URL?) -> String {
         if let target {
-            return String(localized: "\(PDFAppender.saveTitle(target.lastPathComponent)) first")
+            return L10n.t("Add to {0} first", target.lastPathComponent)
         }
         if savesImages(settings) {
-            return String(localized: "\(AppState.imagesSaveTitle(settings.format, pageCount: 1)) first")
+            return L10n.t("Save {0} first", settings.format.imageFormatOrJPEG.label)
         }
-        return String(localized: "\(settings.format.saveTitle) first")
+        switch settings.format.queueFormat {
+        case .word: return L10n.t("Save Word first")
+        case .text: return L10n.t("Save Text first")
+        case .tiffPages: return L10n.t("Save TIFF first")
+        default: return L10n.t("Save PDF first")
+        }
     }
 
     /// The question before camera mode ends a stack turned over by hand with pages in: its steps go as the

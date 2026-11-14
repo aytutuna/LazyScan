@@ -114,6 +114,8 @@ final class DocumentSidesTests: XCTestCase {
         XCTAssertEqual(DocumentSides.countMessage(fronts: 12, backs: 11), "12 fronts but 11 backs")
         XCTAssertEqual(DocumentSides.countMessage(fronts: 1, backs: 2), "1 front but 2 backs")
         XCTAssertEqual(DocumentSides.countMessage(fronts: 2, backs: 1), "2 fronts but 1 back")
+        XCTAssertEqual(DocumentSides.countMessage(fronts: 0, backs: 1), "0 fronts but 1 back")
+        XCTAssertEqual(DocumentSides.countMessage(fronts: 3, backs: 0), "3 fronts but 0 backs")
     }
 
     func test_sideLabel() {

@@ -293,15 +293,29 @@
   "Save Text": {},
   "Save TIFF": {},
   "Save PDF": {},
-  "— {0} and {1} were left out": {},
+  "Save Word first": {},
+  "Save Text first": {},
+  "Save TIFF first": {},
+  "Save PDF first": {},
+  "Save {0} first": {
+    "note": "{0} is an image format name such as JPEG or PNG. The button saves the pages before something else happens."
+  },
+  "Add to {0} first": {
+    "note": "{0} is the name of a PDF file. The button adds the pages to it before something else happens."
+  },
   "— no text was found": {},
   "— no text was found in {0}": {},
   "{0} and {1} blank skipped": {},
   "{0} and {1} skipped": {},
   "{0} skipped": {},
   "{0} blank skipped": {},
-  "{0} but {1}": {
-    "note": "{0} is a count of fronts ('2 fronts') and {1} a count of backs; the sentence says they do not match."
+  "{0} front but {1} back": {
+    "other": "{0} fronts but {1} back",
+    "note": "{0} is the number of front sides and {1} the number of back sides; the sentence says they do not match. {1} is 1 here; this key is used only when there is exactly one back side."
+  },
+  "{0} front but {1} backs": {
+    "other": "{0} fronts but {1} backs",
+    "note": "{0} is the number of front sides and {1} the number of back sides; the sentence says they do not match. The key is used for every count of {1} except 1 (2, 5, 21, 0 and so on), so write {1} in a form that needs no agreement, for example a colon and the number."
   },
   "Save password-protected PDF ({0} page)": {
     "other": "Save password-protected PDF ({0} pages)"
@@ -315,8 +329,13 @@
   "{0} separator page": {
     "other": "{0} separator pages"
   },
-  "{0} skipped page": {
-    "other": "{0} skipped pages"
+  "— {0} separator page and {1} skipped page were left out": {
+    "other": "— {0} separator pages and {1} skipped page were left out",
+    "note": "{1} is 1 here; this key is used only when exactly one page was skipped."
+  },
+  "— {0} separator page and {1} skipped pages were left out": {
+    "other": "— {0} separator pages and {1} skipped pages were left out",
+    "note": "The key is used for every count of {1} except 1 (2, 5, 21, 0 and so on), so write {1} in a form that needs no agreement, for example a colon and the number."
   },
   "{0} page": {
     "other": "{0} pages"
@@ -341,14 +360,6 @@
   },
   "Found {0} separator page: {1}": {
     "other": "Found {0} separator pages: {1}"
-  },
-  "{0} front": {
-    "other": "{0} fronts",
-    "note": "Count of front sides in the two-sided flow; plural form for the number."
-  },
-  "{0} back": {
-    "other": "{0} backs",
-    "note": "Count of back sides in the two-sided flow; plural form for the number."
   },
   "Every sheet": {
     "other": "Every {0} sheets"
@@ -462,10 +473,12 @@
   "Load the sheets not scanned yet and scan more fronts. Once every front is scanned, put all the sheets back in one pile in their original order, turn the whole pile over and choose {0}.": {},
   "Copied {0} and its picture to the clipboard.": {},
   "Added {0} page, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.": {
-    "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages, one side of each sheet: the scanner did not scan both sides — {1} in queue. Scan more or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "Added {0} page — {1} in queue. Scan more or {2}.": {
-    "other": "Added {0} pages — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages — {1} in queue. Scan more or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "Found {0} photo.": {
     "other": "Found {0} photos."
@@ -484,7 +497,8 @@
     "other": "{0} front sides scanned. Turn the stack over and scan the back sides."
   },
   "Kept {0} front side — {1} in queue. Scan another stack or {2}.": {
-    "other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}."
+    "other": "Kept {0} front sides — {1} in queue. Scan another stack or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "Listening on port {1}. {0} phone is paired.": {
     "other": "Listening on port {1}. {0} phones are paired."
@@ -530,7 +544,8 @@
   "No pages were added.": {},
   "Cancelled.": {},
   "Added {0} page from photos — {1} in queue. Scan more or {2}.": {
-    "other": "Added {0} pages from photos — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages from photos — {1} in queue. Scan more or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "{0} photo was skipped.": {
     "other": "{0} photos were skipped."
@@ -2830,10 +2845,12 @@
   "Pages back from last time: {0} of {1}.": {},
   "Bringing back pages: {0} of {1}…": {},
   "Added {0} page, both sides of each sheet — {1} in queue. Scan more or {2}.": {
-    "other": "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}."
+    "other": "Added {0} pages, both sides of each sheet — {1} in queue. Scan more or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "Put {0} sheet in order — {1} in queue. Scan another stack or {2}.": {
-    "other": "Put {0} sheets in order — {1} in queue. Scan another stack or {2}."
+    "other": "Put {0} sheets in order — {1} in queue. Scan another stack or {2}.",
+    "note": "{2} is the label of the Save button, such as \"Save PDF\", \"Save JPEG\" or \"Add to Contract.pdf\". Quote it as the button's name; do not work it into the sentence as a verb."
   },
   "Save {0} password-protected PDF": {
     "other": "Save {0} password-protected PDFs"

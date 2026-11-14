@@ -82,9 +82,11 @@ public sealed record SavePlan(IReadOnlyList<SaveDocument> Documents, int Separat
         if (s == 0 && k == 0) return "";
         if (s == 0) return " " + Loc.Plural(k, "— {0} skipped page was left out", "— {0} skipped pages were left out");
         if (k == 0) return " " + Loc.Plural(s, "— {0} separator page was left out", "— {0} separator pages were left out");
-        string separators = Loc.Plural(s, "{0} separator page", "{0} separator pages");
-        string skipped = Loc.Plural(k, "{0} skipped page", "{0} skipped pages");
-        return " " + Loc.T("— {0} and {1} were left out", separators, skipped);
+        if (k == 1)
+            return " " + Loc.Plural(s, "— {0} separator page and {1} skipped page were left out",
+                                    "— {0} separator pages and {1} skipped page were left out", k);
+        return " " + Loc.Plural(s, "— {0} separator page and {1} skipped pages were left out",
+                                "— {0} separator pages and {1} skipped pages were left out", k);
     }
 
     /// <summary>

@@ -94,9 +94,12 @@ public struct SavePlan {
         if k == 0 {
             return " " + L10n.plural(s, one: "— {0} separator page was left out", other: "— {0} separator pages were left out")
         }
-        let separators = L10n.plural(s, one: "{0} separator page", other: "{0} separator pages")
-        let skipped = L10n.plural(k, one: "{0} skipped page", other: "{0} skipped pages")
-        return " " + L10n.t("— {0} and {1} were left out", separators, skipped)
+        if k == 1 {
+            return " " + L10n.plural(s, one: "— {0} separator page and {1} skipped page were left out",
+                                     other: "— {0} separator pages and {1} skipped page were left out", k)
+        }
+        return " " + L10n.plural(s, one: "— {0} separator page and {1} skipped pages were left out",
+                                 other: "— {0} separator pages and {1} skipped pages were left out", k)
     }
 
     /// "Saved 3 PDFs (7 pages, 1.2 MB): A.pdf, B.pdf, C.pdf and their text, A.txt, B.txt, C.txt — 2
