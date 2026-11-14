@@ -785,12 +785,22 @@ struct ScanScreen: View {
     /// The scanner tab's picture, on black as the camera's viewfinder is: the flatbed's overview, the last
     /// page queued or what the step asks for, with the notices at its foot and the buttons over its corners.
     private var picture: some View {
-        ZStack {
-            Color.black
-            pictureContent
-            pictureOverlays
-            pictureButtons
+        let populated: Bool = pictureShown != .empty
+        return VStack(spacing: 0) {
+            if populated, let line = stepLine {
+                StatusPill(text: line, hint: nil)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
+                    .accessibilityIdentifier("step.prompt")
+            }
+            ZStack {
+                pictureContent
+                pictureOverlays
+                pictureButtons
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(Color.black)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .accessibilityElement(children: .contain)
@@ -854,15 +864,10 @@ struct ScanScreen: View {
         return cameraLine?.prompt ?? IOSShell.printerStep(current, settings: state.settings).prompt
     }
 
-    /// Over the picture: the step's line at its top while it shows something, and at its foot the notices,
-    /// the sides mismatch, the task's buttons and Try again, above the corners the buttons are in.
+    /// Over the picture: at its foot the notices, the sides mismatch, the task's buttons and Try again, above the corners the buttons are in.
     private var pictureOverlays: some View {
         let populated: Bool = pictureShown != .empty
         return VStack(spacing: 8) {
-            if populated, let line = stepLine {
-                StatusPill(text: line, hint: nil)
-                    .accessibilityIdentifier("step.prompt")
-            }
             if usesFlatbed && state.selectionRect != nil {
                 AreaPill(isBusy: state.isBusy, onClear: clearArea)
             }
