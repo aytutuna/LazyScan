@@ -1045,6 +1045,32 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 new MockScannerBackend { FeederBlankBackSheets = [1] }];
     }
 
+    private static readonly TimeSpan SessionCloseLimit = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// Closes the open scanner before the app exits, so a network scanner is told to drop its job.
+    /// A stuck driver or scanner holds quitting up for a few seconds at most.
+    /// </summary>
+    public async Task CloseSessionAsync()
+    {
+        if (_session is not { } session) return;
+        session.ProgressHandler = null;
+        try
+        {
+            await Task.WhenAny(CloseAndRelease(session), Task.Delay(SessionCloseLimit));
+        }
+        catch (Exception e)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Closing the scanner failed: {e.Message}");
+        }
+    }
+
+    private static async Task CloseAndRelease(IScannerSession session)
+    {
+        await session.CloseAsync();
+        if (session is EsclScannerSession escl) await escl.Released;
+    }
+
     /// <summary>On app exit: flush settings, remove this process's page spill files and end the 32-bit TWAIN helper.</summary>
     public void Shutdown()
     {

@@ -419,4 +419,18 @@ public class EsclClientTests
         await session.Client.WhenCleanedUp();
         Assert.Equal("DELETE /eSCL/ScanJobs/7", device.Requests[^1]);
     }
+
+    [Fact]
+    public async Task SessionClosedMidJobDeletesTheJobBeforeItIsReleased()
+    {
+        var hold = new TaskCompletionSource();
+        var device = new FakeDevice { HoldPost = hold }.On("POST /eSCL/ScanJobs", Created("ScanJobs/7"));
+        var session = Session(device, EsclTests.PlatenAndDuplexAdf);
+        var scan = session.PerformScanAsync(new ScanSettings { Source = ScanSource.DocumentFeeder }, selection: null);
+        await session.CloseAsync();
+        hold.SetResult();
+        await Assert.ThrowsAsync<ScanException>(() => scan);
+        await session.Released;
+        Assert.Equal("DELETE /eSCL/ScanJobs/7", device.Requests[^1]);
+    }
 }

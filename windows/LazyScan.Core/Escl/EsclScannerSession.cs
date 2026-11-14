@@ -77,6 +77,9 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
         }
     }
 
+    /// <summary>Completes once the job is deleted on the device and the connection is released; set by <see cref="CloseAsync"/>.</summary>
+    public Task Released { get; private set; } = Task.CompletedTask;
+
     /// <summary>
     /// Closes at once. The connection is released in the background, once a cancelled job has
     /// wound down and its deletion has been sent to the device.
@@ -84,7 +87,7 @@ public sealed class EsclScannerSession(ScannerInfo info, EsclClient client, Escl
     public Task CloseAsync()
     {
         CancelScan();
-        _ = ReleaseWhenIdle();
+        Released = ReleaseWhenIdle();
         return Task.CompletedTask;
     }
 

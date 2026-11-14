@@ -279,7 +279,7 @@ public partial class MainWindow : Window
         }
 
         var pending = Task.WhenAll(ViewModel.CurrentOperation, SavedView.PendingWork);
-        if (pending.IsCompleted)
+        if (pending.IsCompleted && !ViewModel.IsConnected)
         {
             _closeConfirmed = true;
             return;
@@ -288,6 +288,8 @@ public partial class MainWindow : Window
         _closeAfterWork = true;
         if (ViewModel.IsBusy) ViewModel.CancelScan();
         try { await pending; } catch { /* each operation reports its own failure */ }
+        await ViewModel.CloseSessionAsync();
+        await System.Windows.Threading.Dispatcher.Yield(); // a synchronous finish must leave Closing before Close() runs
         _closeAfterWork = false;
         if (_closeConfirmed) return; // already force-closed meanwhile
         if (_inClosingPrompt) return; // the open prompt's Closing handler finishes the close
