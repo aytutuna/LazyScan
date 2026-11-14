@@ -400,7 +400,11 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                         cap.CancelAfter(Timeout.InfiniteTimeSpan);
                         bool trusted = await confirm(e);
                         cap.CancelAfter(connectTimeout);
-                        if (!trusted) throw;
+                        if (!trusted)
+                        {
+                            e.Declined = true;
+                            throw;
+                        }
                         TrustCertificate(e, e.DeviceUuid ?? record.Uuid, record.Info.Name);
                         trustedHere = true;
                         continue;

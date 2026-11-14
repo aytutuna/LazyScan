@@ -1789,7 +1789,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             RecordFailure(deviceName ?? "scanner", e);
             if (interactive)
             {
-                ErrorMessage = e.Message;
+                if (!e.Declined)
+                {
+                    ErrorMessage = e.Message;
+                }
             }
             else
             {

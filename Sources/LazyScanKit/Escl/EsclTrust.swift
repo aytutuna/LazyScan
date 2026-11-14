@@ -267,6 +267,8 @@ public struct EsclCertificateError: Error, Equatable, LocalizedError, Sendable {
     public let subject: String
     /// The previously trusted certificate, for `changed`.
     public let previous: EsclTrustedCertificate?
+    /// The user was asked about this certificate and said no: the screens show no error for it.
+    public var declined: Bool = false
 
     public init(verdict: EsclTrustVerdict, deviceName: String, deviceUuid: String?, authority: String,
                 fingerprint: String, subject: String, previous: EsclTrustedCertificate? = nil) {

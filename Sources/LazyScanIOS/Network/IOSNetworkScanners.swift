@@ -41,6 +41,8 @@ public enum IOSNetworkText {
     /// A changed certificate (the Windows dialog's wording, shortened).
     public static var certificateTitle: String { String(localized: "Scanner certificate changed") }
     public static var certificateLine: String { String(localized: "Trust it only if you know why it changed.") }
+    public static var certificateCauses: String { String(localized: "A firmware update or a reset can change it.") }
+    public static var certificateDetails: String { String(localized: "Details") }
     public static var trustedBefore: String { String(localized: "Trusted before") }
     public static var newFingerprint: String { String(localized: "New fingerprint") }
     public static var trustNew: String { String(localized: "Trust the new certificate") }

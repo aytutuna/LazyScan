@@ -238,6 +238,8 @@ public sealed class EsclCertificateException : Exception
     public string Subject { get; }
     /// <summary><see cref="Exception.Message"/> in English, for the support report.</summary>
     public string ReportMessage { get; }
+    /// <summary>The user was asked about this certificate and said no: the screens show no error for it.</summary>
+    public bool Declined { get; set; }
 
     public EsclCertificateException(EsclTrustVerdict verdict, string deviceName, string? deviceUuid, string authority,
                                     string fingerprint, string subject, EsclTrustedCertificate? previous = null)

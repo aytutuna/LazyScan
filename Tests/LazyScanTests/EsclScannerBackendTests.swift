@@ -111,6 +111,8 @@ private final class ChangedCertificateBackend: ScannerBackend {
     var onDevicesChanged: (() -> Void)?
     private(set) var devices: [ScannerInfo] = []
     private(set) var opened: [Bool] = []
+    /// The user said no to the question: the refusal carries `declined`.
+    var declines: Bool = false
 
     let refusal: EsclCertificateError = EsclCertificateError(
         verdict: EsclTrustVerdict.changed, deviceName: "Office Scanner", deviceUuid: nil,
@@ -133,7 +135,9 @@ private final class ChangedCertificateBackend: ScannerBackend {
 
     func openSession(deviceID: String, interactive: Bool) async throws -> any ScannerSession {
         opened.append(interactive)
-        throw refusal
+        var thrown: EsclCertificateError = refusal
+        thrown.declined = declines && interactive
+        throw thrown
     }
 }
 
@@ -652,6 +656,25 @@ final class EsclScannerBackendTests: XCTestCase {
         XCTAssertEqual(state.errorMessage, network.refusal.message)
         try await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertEqual(state.selectedDeviceID, ChangedCertificateBackend.deviceID)
+        network.stopBrowsing()
+    }
+
+    /// Cancel on the certificate question leaves the status line and no error alert.
+    @MainActor
+    func test_decliningAChangedCertificate_showsNoError() async throws {
+        let network: ChangedCertificateBackend = ChangedCertificateBackend()
+        network.declines = true
+        let state: AppState = AppState(backends: [AppState.makeDemoBackend(), network],
+                                       presetStore: PresetStore(directory: folder), files: AppStateFiles.all(in: folder))
+        state.platform = .ios
+        state.start()
+        try await waitFor(10) { state.selectedDeviceID == "mock:demo" }
+        state.errorMessage = nil
+
+        state.userSelectDevice(ChangedCertificateBackend.deviceID)
+        try await waitFor(10) { state.statusMessage == "Could not connect to Office Scanner." }
+        XCTAssertEqual(network.opened, [false, true])
+        XCTAssertNil(state.errorMessage)
         network.stopBrowsing()
     }
 }

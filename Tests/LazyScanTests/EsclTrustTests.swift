@@ -394,6 +394,7 @@ final class EsclTrustTests: XCTestCase {
             XCTAssertEqual(changed.fingerprint, presented)
             XCTAssertEqual(changed.authority, "10.0.0.30:443")
             XCTAssertTrue(changed.canTrust)
+            XCTAssertFalse(changed.declined)
         }
         XCTAssertEqual(fingerprints(makeStore().certificates), [fingerprint(0)])
 

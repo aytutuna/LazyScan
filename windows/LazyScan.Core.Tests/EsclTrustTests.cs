@@ -369,6 +369,7 @@ public sealed class EsclTrustTests : IDisposable
         Assert.Equal(presented, changed.Fingerprint);
         Assert.Equal("10.0.0.30:443", changed.Authority);
         Assert.True(changed.CanTrust);
+        Assert.False(changed.Declined);
         Assert.Equal([Fingerprint(0)], new EsclTrustStore(_directory).Certificates.Select(c => c.Fingerprint));
 
         // A scanner nobody trusted: pinned with its UUID once it answered.

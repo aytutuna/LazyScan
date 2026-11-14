@@ -1281,7 +1281,9 @@ public final class AppState: ObservableObject {
             statusMessage = L10n.t("Could not connect to {0}.", name)
             recordFailure(deviceName: deviceName ?? "scanner", error: certificate)
             if interactive {
-                errorMessage = certificate.message
+                if !certificate.declined {
+                    errorMessage = certificate.message
+                }
             } else {
                 errorMessage = L10n.t("{0} To review the new certificate, choose the scanner in the list.", certificate.message)
                 if !userPickedDevice {

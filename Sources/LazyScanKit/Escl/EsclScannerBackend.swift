@@ -593,6 +593,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                             trustedHere = true
                             continue
                         }
+                        var refused: EsclCertificateError = error
+                        refused.declined = true
+                        throw refused
                     }
                     throw error
                 } catch {

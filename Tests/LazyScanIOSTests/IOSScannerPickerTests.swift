@@ -537,7 +537,7 @@ final class IOSScannerPickerTests: XCTestCase {
             XCTAssertTrue(StatusLine.words(title) <= 5, title)
         }
         let lines: [String] = [IOSNetworkText.explanationLine, IOSNetworkText.deniedLine, IOSNetworkText.addLine,
-                               IOSNetworkText.certificateLine, IOSNetworkText.networkOff, IOSNetworkText.demoLine]
+                               IOSNetworkText.certificateLine, IOSNetworkText.certificateCauses, IOSNetworkText.networkOff, IOSNetworkText.demoLine]
         for line in lines {
             XCTAssertTrue(StatusLine.words(line) <= 9, line)
         }

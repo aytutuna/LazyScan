@@ -508,7 +508,7 @@ struct AddScannerView: View {
     }
 }
 
-/// A scanner's certificate changed since it was trusted: the scanner, both fingerprints, Cancel first and
+/// A scanner's certificate changed since it was trusted: the scanner, likely causes, both fingerprints under a collapsed Details row, Cancel first and
 /// "Trust the new certificate" as the destructive choice.
 struct CertificateChangedView: View {
     let certificate: EsclCertificateError
@@ -520,20 +520,28 @@ struct CertificateChangedView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(certificate.deviceName)
                         .font(.headline)
+                    Text(IOSNetworkText.certificateCauses)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(IOSNetworkText.certificateLine)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let previous = certificate.previous {
-                        Text(IOSNetworkText.trustedBefore)
-                            .font(.subheadline.weight(.semibold))
-                        Text(EsclCertificates.format(previous.fingerprint, bytesPerLine: 8))
-                            .font(.system(.footnote, design: .monospaced))
-                            .textSelection(.enabled)
+                    DisclosureGroup(IOSNetworkText.certificateDetails) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let previous = certificate.previous {
+                                Text(IOSNetworkText.trustedBefore)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(EsclCertificates.format(previous.fingerprint, bytesPerLine: 8))
+                                    .font(.system(.footnote, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
+                            Text(IOSNetworkText.newFingerprint)
+                                .font(.subheadline.weight(.semibold))
+                            Text(EsclCertificates.format(certificate.fingerprint, bytesPerLine: 8))
+                                .font(.system(.footnote, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 8)
                     }
-                    Text(IOSNetworkText.newFingerprint)
-                        .font(.subheadline.weight(.semibold))
-                    Text(EsclCertificates.format(certificate.fingerprint, bytesPerLine: 8))
-                        .font(.system(.footnote, design: .monospaced))
-                        .textSelection(.enabled)
                     Button(role: .destructive) {
                         onAnswer(true)
                     } label: {
