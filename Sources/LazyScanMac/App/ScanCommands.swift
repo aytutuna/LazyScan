@@ -81,6 +81,16 @@ struct ScanCommands: Commands {
             .keyboardShortcut(.delete, modifiers: .command)
             .disabled(!canDelete)
         }
+        // File > Print... takes the standard place and key; Lazy Print sits under it when it is installed.
+        CommandGroup(replacing: .printItem) {
+            Button("Print…") { run { state.printQueue() } }
+                .keyboardShortcut("p")
+                .disabled(dialogOpen || !state.canPrintQueue)
+            if state.lazyPrintInstalled {
+                Button("Lazy Print") { run { state.printQueueWithLazyPrint() } }
+                    .disabled(dialogOpen || !state.canPrintQueueWithLazyPrint)
+            }
+        }
         ScanSettingsCommands()
     }
 }

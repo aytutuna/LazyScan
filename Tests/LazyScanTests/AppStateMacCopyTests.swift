@@ -84,6 +84,16 @@ final class AppStateMacCopyTests: XCTestCase {
     }
 
     @MainActor
+    private func makeQueueState(_ printer: MacCopyPrintService) -> AppState {
+        let state = AppState(backends: [], presetStore: PresetStore(directory: folder), printService: printer,
+                             orientationScorer: MacCopyScorer(), barcodeReader: MacCopyBarcodes(),
+                             files: AppStateFiles.all(in: folder))
+        state.settings.destinationPath = folder.path
+        XCTAssertTrue(state.startTask(.document))
+        return state
+    }
+
+    @MainActor
     private func idle(_ state: AppState) async throws {
         let deadline = Date().addingTimeInterval(60)
         while state.isBusy {
@@ -188,5 +198,73 @@ final class AppStateMacCopyTests: XCTestCase {
         XCTAssertTrue(state.copyPages.isEmpty)
         XCTAssertNil(state.copyPrintFailure)
         XCTAssertFalse(state.copyIsKept)
+    }
+
+    @MainActor
+    func test_printQueue_printsThePagesWithThePanel_andLeavesTheQueue() async throws {
+        let printer = MacCopyPrintService()
+        let state: AppState = makeQueueState(printer)
+        XCTAssertTrue(state.ingest([copyPage(), copyPage()], source: .photo))
+        try await idle(state)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+        XCTAssertTrue(state.canPrintQueue)
+
+        state.printQueue()
+        try await idle(state)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(printer.jobs.map(\.showsPanel), [true])
+        XCTAssertEqual(state.scannedPages.count, 2)
+        XCTAssertTrue(state.copyPages.isEmpty)
+        XCTAssertFalse(state.copyIsOfQueue)
+    }
+
+    @MainActor
+    func test_printQueue_letsThePagesGoWhenThePanelIsCancelled() async throws {
+        let printer = MacCopyPrintService()
+        printer.answer = false
+        let state: AppState = makeQueueState(printer)
+        XCTAssertTrue(state.ingest([copyPage()], source: .photo))
+        try await idle(state)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+
+        state.printQueue()
+        try await idle(state)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertTrue(state.copyPages.isEmpty)
+        XCTAssertFalse(state.copyIsOfQueue)
+        XCTAssertEqual(state.scannedPages.count, 1)
+        XCTAssertTrue(printer.jobs.isEmpty)
+    }
+
+    @MainActor
+    func test_printQueue_keepsThePagesHeldOnAFailure() async throws {
+        let printer = MacCopyPrintService()
+        printer.failure = PrintError.failed("The printer is offline.")
+        let state: AppState = makeQueueState(printer)
+        XCTAssertTrue(state.ingest([copyPage()], source: .photo))
+        try await idle(state)
+        defer { state.deleteSpoolFiles(of: state.scannedPages) }
+
+        state.printQueue()
+        try await idle(state)
+        XCTAssertEqual(state.copyPrintFailure, "The printer is offline.")
+        XCTAssertEqual(state.copyPages.count, 1)
+        XCTAssertTrue(state.copyIsOfQueue)
+
+        printer.failure = nil
+        state.errorMessage = nil
+        state.printHeldCopyAgain()
+        try await idle(state)
+        XCTAssertTrue(state.copyPages.isEmpty)
+        XCTAssertEqual(state.scannedPages.count, 1)
+        XCTAssertEqual(printer.jobs.count, 1)
+    }
+
+    @MainActor
+    func test_printQueue_isOffWithoutPages() async throws {
+        let state: AppState = makeQueueState(MacCopyPrintService())
+        XCTAssertFalse(state.canPrintQueue)
+        state.printQueue()
+        XCTAssertFalse(state.isBusy)
     }
 }

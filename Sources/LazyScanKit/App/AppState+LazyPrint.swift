@@ -14,6 +14,39 @@ extension AppState {
         !isBusy && queuePlans.save.pageCount > 0 && lazyPrintInstalled
     }
 
+    /// There are pages the queue would save and nothing else is running.
+    public var canPrintQueue: Bool {
+        !isBusy && queuePlans.save.pageCount > 0
+    }
+
+    /// Prints the pages the queue would save through the print panel, whether or not Lazy Print is
+    /// installed. They are held while the panel is up and the printer works, so a failed print leaves
+    /// them for Print Again (`printHeldCopyAgain`); a print that went through or a cancelled panel lets
+    /// them go. The queue is left as it is.
+    public func printQueue() {
+        guard !isBusy, !scannedPages.isEmpty else { return }
+        var panelSettings: ScanSettings = settings
+        panelSettings.taskOptions.copyShowPrintDialog = true
+        let s: ScanSettings = panelSettings
+        runExclusive { flag in
+            await self.pageEditChain?.value
+            let plan: SavePlan = SavePlan.make(self.scannedPages, options: s.document)
+            let pages: [ScannedPage] = plan.documents.flatMap { $0.pages }
+            guard !pages.isEmpty else {
+                self.errorMessage = PageFilter.nothingToSaveMessage
+                self.errorTitle = PageFilter.nothingSavedTitle
+                return
+            }
+            self.refreshPrinters()
+            guard let setup = self.setupForPrinting(s, requestedPaper: Self.requestedPaper(s)) else {
+                throw PrintError.noPrinter
+            }
+            self.copyIsOfQueue = true
+            try await self.printCopyPages(pages, settings: s, setup: setup, areaSelected: false, flag: flag)
+            self.copyPages = []
+        }
+    }
+
     /// Opens the pages the queue would save (the ones left out stay out) as one PDF in Lazy Print. The
     /// queue is left as it is.
     public func printQueueWithLazyPrint() {

@@ -603,8 +603,8 @@ public final class AppState: ObservableObject {
     public internal(set) var copyIsKept = false
     /// Why the Mac's held copy did not print; nil when it was not tried or only cancelled.
     @Published public internal(set) var copyPrintFailure: String?
-    /// The held copy is the queue's pages (Print… on the phone, `printQueueAsCopy`), held whatever the
-    /// task; letting it go leaves the queue as it is.
+    /// The held copy is the queue's pages (Print… on the phone, `printQueueAsCopy`, and on the Mac,
+    /// `printQueue`), held whatever the task; letting it go leaves the queue as it is.
     public internal(set) var copyIsOfQueue = false
     /// The held copy's pages are in the session history and the task's steps: they go in once, on the
     /// first print.

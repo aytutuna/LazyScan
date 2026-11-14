@@ -148,11 +148,6 @@ struct PagesStripView: View {
                             Button(PDFAppender.buttonLabel) {
                                 state.chooseAndAppendToPDF()
                             }
-                            if state.canPrintQueueWithLazyPrint {
-                                Button("Lazy Print") {
-                                    state.printQueueWithLazyPrint()
-                                }
-                            }
                         } label: {
                             saveLabel(saveTitle)
                         } primaryAction: {
@@ -187,6 +182,7 @@ struct PagesStripView: View {
                         .help("Stop Adding to \(target.lastPathComponent)")
                         .accessibilityLabel(Text("Stop Adding to \(target.lastPathComponent)"))
                     }
+                    printControl(saveHelp: saveHelp)
                     Button("Clear") {
                         if state.scannedPages.count > 1 {
                             asksClear = true
@@ -254,6 +250,40 @@ struct PagesStripView: View {
             Label(title, systemImage: "lock.fill")
         } else {
             Text(title)
+        }
+    }
+
+    /// Print for every queue: the print panel, or with Lazy Print installed a split button whose menu opens the
+    /// pages there. Off while there is nothing to save, like Save.
+    @ViewBuilder
+    private func printControl(saveHelp: String) -> some View {
+        let printHelp: String = saveHelp.isEmpty ? String(localized: "Print the pages with the print panel") : saveHelp
+        if state.lazyPrintInstalled {
+            Menu {
+                Button("Lazy Print") {
+                    state.printQueueWithLazyPrint()
+                }
+                .disabled(!state.canPrintQueueWithLazyPrint)
+                .help(String(localized: "Open the pages in Lazy Print"))
+            } label: {
+                Text("Print…")
+            } primaryAction: {
+                state.printQueue()
+            }
+            .menuStyle(.button)
+            .fixedSize()
+            .disabled(!state.canPrintQueue)
+            .help(printHelp)
+            .accessibilityLabel(Text("Print"))
+            .accessibilityHint(Text("Opens the print panel. The menu opens the pages in Lazy Print."))
+        } else {
+            Button("Print…") {
+                state.printQueue()
+            }
+            .disabled(!state.canPrintQueue)
+            .help(printHelp)
+            .accessibilityLabel(Text("Print"))
+            .accessibilityHint(Text("Opens the print panel for the pages in the queue"))
         }
     }
 
