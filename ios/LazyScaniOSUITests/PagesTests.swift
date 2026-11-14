@@ -3,7 +3,7 @@ import XCTest
 // The page grid's Select mode, as a person uses it on the Simulator: the three pages of the batch fixture
 // brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Remove and
 // its question, and one page is left; Remove All, which empties the queue and closes the sheet; and a page
-// dragged onto another, which takes its place.
+// dragged onto another, which lands before it.
 
 final class PagesTests: XCTestCase {
     override func setUpWithError() throws {

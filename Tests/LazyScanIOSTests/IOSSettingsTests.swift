@@ -489,28 +489,37 @@ final class IOSSettingsTests: XCTestCase {
     }
 
     @MainActor
-    func test_pageDrop_aPageDraggedOntoAnother_takesItsPlace() {
+    func test_pageDrop_aPageDraggedOntoAnother_landsBeforeIt() throws {
         let state: AppState = ImportTestSupport.makeState(in: folder)
         let pages: [ScannedPage] = [settingsPage(), settingsPage(), settingsPage(), settingsPage()]
         let a: UUID = pages[0].id
         let b: UUID = pages[1].id
         let c: UUID = pages[2].id
         let d: UUID = pages[3].id
-        XCTAssertEqual(IOSPageDrop.offset(moving: a, onto: c, in: [a, b, c, d]), 2)
-        XCTAssertEqual(IOSPageDrop.offset(moving: d, onto: b, in: [a, b, c, d]), -2)
-        XCTAssertNil(IOSPageDrop.offset(moving: a, onto: a, in: [a, b, c, d]))
-        XCTAssertNil(IOSPageDrop.offset(moving: UUID(), onto: a, in: [a, b, c, d]))
-        XCTAssertEqual(IOSPageDrop.pageID(a.uuidString), a)
-        XCTAssertNil(IOSPageDrop.pageID("not a page"))
+        XCTAssertEqual(IOSPageDrop.offset(moving: a, before: c, in: [a, b, c, d]), 1)
+        XCTAssertEqual(IOSPageDrop.offset(moving: d, before: b, in: [a, b, c, d]), -2)
+        XCTAssertEqual(IOSPageDrop.offset(moving: a, before: nil, in: [a, b, c, d]), 3)
+        XCTAssertNil(IOSPageDrop.offset(moving: a, before: a, in: [a, b, c, d]))
+        XCTAssertNil(IOSPageDrop.offset(moving: a, before: b, in: [a, b, c, d]))
+        XCTAssertNil(IOSPageDrop.offset(moving: d, before: nil, in: [a, b, c, d]))
+        XCTAssertNil(IOSPageDrop.offset(moving: UUID(), before: a, in: [a, b, c, d]))
 
         state.scannedPages = pages
-        XCTAssertTrue(IOSPageDrop.move(a, onto: c, in: state))
-        XCTAssertEqual(order(state), [b, c, a, d])
-        XCTAssertTrue(IOSPageDrop.move(d, onto: b, in: state))
-        XCTAssertEqual(order(state), [d, b, c, a])
-        XCTAssertFalse(IOSPageDrop.move(c, onto: c, in: state))
-        XCTAssertFalse(IOSPageDrop.move(UUID(), onto: c, in: state))
-        XCTAssertEqual(order(state), [d, b, c, a])
+        XCTAssertTrue(IOSPageDrop.move(a, before: c, in: state))
+        XCTAssertEqual(order(state), [b, a, c, d])
+        XCTAssertTrue(IOSPageDrop.move(d, before: b, in: state))
+        XCTAssertEqual(order(state), [d, b, a, c])
+        XCTAssertTrue(IOSPageDrop.move(d, before: nil, in: state))
+        XCTAssertEqual(order(state), [b, a, c, d])
+        XCTAssertFalse(IOSPageDrop.move(c, before: c, in: state))
+        XCTAssertFalse(IOSPageDrop.move(UUID(), before: c, in: state))
+        XCTAssertEqual(order(state), [b, a, c, d])
+    }
+
+    func test_draggedPage_roundTripsItsID() throws {
+        let page: IOSDraggedPage = IOSDraggedPage(id: UUID())
+        let data: Data = try JSONEncoder().encode(page)
+        XCTAssertEqual(try JSONDecoder().decode(IOSDraggedPage.self, from: data).id, page.id)
     }
 
     @MainActor

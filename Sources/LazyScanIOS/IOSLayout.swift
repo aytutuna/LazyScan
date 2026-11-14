@@ -41,32 +41,48 @@ public enum IOSShortcuts {
     public static var all: [IOSShortcut] { [save, newDocument, options, shutter] }
 }
 
-/// Moving a page of the strip by dragging it onto another: it takes that page's place, the pages between
-/// moving up or down one (`AppState.movePage`, one place at a time).
+/// The page being dragged in the grid, as its id. It travels as a type of this app's own, so another app
+/// receives nothing it can read and text dropped on the grid is never taken for a page.
+public struct IOSDraggedPage: Transferable, Codable, Sendable {
+    public let id: UUID
+
+    public init(id: UUID) {
+        self.id = id
+    }
+
+    public static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: UTType(importedAs: "com.lazyscan.lazyscan.dragged-page"))
+    }
+}
+
+/// Moving a page of the strip by dragging it onto another: it goes before that page (or to the end, from
+/// the empty area after the last), the pages between moving up or down one (`AppState.movePage`, one place
+/// at a time).
 public enum IOSPageDrop {
-    /// The signed number of places the page `moving` goes to take `target`'s place; nil when either is not
-    /// in `ids` or they are the same page.
-    public static func offset(moving: UUID, onto target: UUID, in ids: [UUID]) -> Int? {
-        guard let from = ids.firstIndex(of: moving), let to = ids.firstIndex(of: target), from != to else { return nil }
-        return to - from
+    /// The signed number of places the page `moving` goes to land before `target`, or last when `target` is
+    /// nil; nil when `moving` or `target` is not in `ids` or the page would stay where it is.
+    public static func offset(moving: UUID, before target: UUID?, in ids: [UUID]) -> Int? {
+        guard let from = ids.firstIndex(of: moving) else { return nil }
+        var to: Int = ids.count
+        if let target {
+            guard let at = ids.firstIndex(of: target) else { return nil }
+            to = at
+        }
+        let landing: Int = to > from ? to - 1 : to
+        return landing == from ? nil : landing - from
     }
 
-    /// The dragged page's id, carried as its text.
-    public static func pageID(_ text: String) -> UUID? {
-        UUID(uuidString: text)
-    }
-
-    /// Moves the page `moving` to `target`'s place in the queue; false when nothing moved (an unknown page,
-    /// the same page, or an operation running).
+    /// Moves the page `moving` before `target` (to the end when nil); false when nothing moved (an unknown
+    /// page, the same place, or an operation running).
     @MainActor
     @discardableResult
-    public static func move(_ moving: UUID, onto target: UUID, in state: AppState) -> Bool {
+    public static func move(_ moving: UUID, before target: UUID?, in state: AppState) -> Bool {
         guard !state.isBusy else { return false }
         var ids: [UUID] = []
         for page in state.scannedPages {
             ids.append(page.id)
         }
-        guard let offset = offset(moving: moving, onto: target, in: ids) else { return false }
+        guard let offset = offset(moving: moving, before: target, in: ids) else { return false }
         let step: Int = offset > 0 ? 1 : -1
         var moved: Int = 0
         while moved < abs(offset) {

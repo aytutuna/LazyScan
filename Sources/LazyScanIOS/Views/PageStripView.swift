@@ -88,8 +88,8 @@ struct PageStripCell: Identifiable {
 /// title of the document it starts and its note (blank, separator) on a badge over it. A tap opens the page
 /// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted; a
 /// press and hold starts a new document at the page or joins it to the one before, and names its document. A
-/// page pressed and dragged onto another, or into the gap beside it, takes its place, and one dropped past the
-/// last goes to the end (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the same.
+/// page pressed and dragged onto another, or into the gap beside it, goes before it, with a bar on the tile
+/// it will land before, and one dropped past the last goes to the end (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the same.
 /// While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it is not dragged.
 struct PageStripView: View {
     @EnvironmentObject private var state: AppState
@@ -105,6 +105,10 @@ struct PageStripView: View {
     @GestureState private var pinching: Bool = false
     /// The page whose document is being named.
     @State private var namingPage: UUID?
+    /// The page a dragged page is over.
+    @State private var dropTarget: UUID?
+    /// A dragged page is over the grid's empty area after the last page.
+    @State private var overEnd: Bool = false
 
     static let columnsKey = "pages.columns"
 
@@ -171,12 +175,14 @@ struct PageStripView: View {
                         if let selection {
                             selectTile(cell, selection: selection, compact: compact, spacing: spacing)
                         } else {
-                            tile(cell, compact: compact, spacing: spacing)
+                            tile(cell, bar: insertBar(for: cell, last: cells.last?.id), compact: compact, spacing: spacing)
                         }
                     }
                 }
-                .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
-                    dropPageAtEnd(items)
+                .dropDestination(for: IOSDraggedPage.self) { (items: [IOSDraggedPage], _: CGPoint) -> Bool in
+                    dropPage(items, before: nil)
+                } isTargeted: { (targeted: Bool) in
+                    overEnd = targeted
                 }
             }
             .padding(16)
@@ -219,22 +225,44 @@ struct PageStripView: View {
         }
     }
 
-    private func tile(_ cell: PageStripCell, compact: Bool, spacing: CGFloat) -> some View {
+    /// Where the bar of a dragged page goes: before the tile it is over, or after the last page while it is
+    /// over the empty area. Not while an operation runs, since the drop would be refused.
+    private func insertBar(for cell: PageStripCell, last: UUID?) -> InsertBar {
+        guard !state.isBusy else { return .none }
+        if dropTarget == cell.id {
+            return .before
+        }
+        if overEnd && dropTarget == nil && cell.id == last {
+            return .after
+        }
+        return .none
+    }
+
+    private func tile(_ cell: PageStripCell, bar: InsertBar, compact: Bool, spacing: CGFloat) -> some View {
         let pageID: UUID = cell.id
         // The tile is not a Button: a button's own press competes with the lift of a drag.
-        return PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: false)
+        let animation: Animation? = reduceMotion ? nil : Animation.easeOut(duration: 0.12)
+        return PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: false,
+                        bar: bar, barInset: spacing / 2)
+            .animation(animation, value: bar)
             .onTapGesture {
                 onOpen(pageID)
             }
-            .draggable(pageID.uuidString)
+            .draggable(IOSDraggedPage(id: pageID))
             .contextMenu {
                 DocumentMenuItems(state: state, cell: cell, onName: { namingPage = pageID })
             }
             .padding(.horizontal, spacing / 2)
             .padding(.vertical, (spacing + 4) / 2)
             .contentShape(Rectangle())
-            .dropDestination(for: String.self) { (items: [String], _: CGPoint) -> Bool in
-                dropPage(items, onto: pageID)
+            .dropDestination(for: IOSDraggedPage.self) { (items: [IOSDraggedPage], _: CGPoint) -> Bool in
+                dropPage(items, before: pageID)
+            } isTargeted: { (targeted: Bool) in
+                if targeted {
+                    dropTarget = pageID
+                } else if dropTarget == pageID {
+                    dropTarget = nil
+                }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
@@ -274,7 +302,8 @@ struct PageStripView: View {
                 selection.wrappedValue.insert(pageID)
             }
         } label: {
-            PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: picked)
+            PageTile(cell: cell, working: state.recuttingPages.contains(pageID), compact: compact, selected: picked,
+                     bar: .none, barInset: 0)
         }
         .buttonStyle(.plain)
         .padding(.horizontal, spacing / 2)
@@ -284,18 +313,18 @@ struct PageStripView: View {
         .accessibilityIdentifier("page.\(cell.number)")
     }
 
-    /// A page of the grid dropped here: it takes this page's place.
-    private func dropPage(_ items: [String], onto target: UUID) -> Bool {
-        guard let text = items.first, let moving = IOSPageDrop.pageID(text) else { return false }
-        return IOSPageDrop.move(moving, onto: target, in: state)
+    /// A page of the grid dropped before `target`, or past the last page when `target` is nil.
+    private func dropPage(_ items: [IOSDraggedPage], before target: UUID?) -> Bool {
+        guard let moving = items.first?.id else { return false }
+        return IOSPageDrop.move(moving, before: target, in: state)
     }
+}
 
-    /// A page of the grid dropped past the last one: it goes to the end.
-    private func dropPageAtEnd(_ items: [String]) -> Bool {
-        guard let text = items.first, let moving = IOSPageDrop.pageID(text), !state.isBusy else { return false }
-        IOSPageSelection.move([moving], toStart: false, in: state)
-        return true
-    }
+/// Where a dragged page will land, drawn as a bar beside a tile: before it, or after it for the last page.
+private enum InsertBar {
+    case none
+    case before
+    case after
 }
 
 /// One page of the grid: the whole page fitted in a card of a sheet's shape, nothing of it cut off, its note
@@ -307,9 +336,13 @@ private struct PageTile: View {
     let working: Bool
     let compact: Bool
     let selected: Bool
+    let bar: InsertBar
+    /// Half the gap to the next tile, where the bar is centered.
+    let barInset: CGFloat
 
     private var radius: CGFloat { compact ? 6 : 10 }
     private var gap: CGFloat { compact ? 3 : 6 }
+    private var barAlignment: Alignment { bar == .after ? Alignment.trailing : Alignment.leading }
 
     var body: some View {
         VStack(alignment: .leading, spacing: gap) {
@@ -363,6 +396,11 @@ private struct PageTile: View {
                         .padding(.vertical, radius / 2)
                 }
             }
+            .overlay(alignment: barAlignment) {
+                if bar != .none {
+                    insertionBar
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
@@ -372,6 +410,17 @@ private struct PageTile: View {
                         .padding(gap)
                 }
             }
+    }
+
+    private var insertionBar: some View {
+        let width: CGFloat = compact ? 2 : 3
+        let shift: CGFloat = (barInset + width / 2) * (bar == .after ? 1 : -1)
+        return RoundedRectangle(cornerRadius: 1.5)
+            .fill(Color.accentColor)
+            .frame(width: width)
+            .offset(x: shift)
+            .accessibilityHidden(true)
+            .accessibilityIdentifier("page.dropbar")
     }
 
     private var page: some View {
