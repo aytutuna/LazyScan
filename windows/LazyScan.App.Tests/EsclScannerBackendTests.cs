@@ -95,6 +95,41 @@ public sealed class EsclScannerBackendTests : IDisposable
         backend.StopBrowsing();
     }
 
+    private EsclScannerBackend Listing(params (string Instance, string[] Txt, string Host)[] scanners)
+    {
+        int count = 0;
+        var endpoints = scanners.Select(s => new EsclEndpoint
+        {
+            Key = "uuid:" + count++,
+            Name = "HP M479",
+            InstanceName = s.Instance,
+            Txt = EsclTxtRecord.Parse(s.Txt),
+            Addresses = [ScannerAddress.Create(secure: false, s.Host, 80, "eSCL")!],
+        }).ToList();
+        var backend = new EsclScannerBackend(new EsclHostList(_directory), new EsclTrustStore(_directory), discover: false,
+                                             new EsclClientOptions(), endpoints);
+        backend.StartBrowsing();
+        return backend;
+    }
+
+    [Fact]
+    public void ScannersOfTheSameModelAreToldApartByInstanceNameNoteOrHost()
+    {
+        var byInstance = Listing(("HP M479 (A1B2C3)", [], "192.168.1.20"), ("HP M479 (D4E5F6)", [], "192.168.1.21"));
+        Assert.Equal(["HP M479 (A1B2C3)", "HP M479 (D4E5F6)"], byInstance.Devices.Select(d => d.Name));
+        Assert.Equal(["HP M479", "HP M479"], byInstance.Devices.Select(d => d.Model));
+
+        var byNote = Listing(("HP M479", ["note=Front office"], "192.168.1.20"), ("HP M479", ["note=Back office"], "192.168.1.21"));
+        Assert.Equal(["HP M479 (Front office)", "HP M479 (Back office)"], byNote.Devices.Select(d => d.Name));
+
+        var byHost = Listing(("HP M479", [], "192.168.1.20"), ("HP M479", [], "192.168.1.21"));
+        Assert.Equal(["HP M479 (192.168.1.20)", "HP M479 (192.168.1.21)"], byHost.Devices.Select(d => d.Name));
+
+        var alone = Listing(("HP M479 (A1B2C3)", [], "192.168.1.20"));
+        Assert.Equal(["HP M479"], alone.Devices.Select(d => d.Name));
+        foreach (var backend in new[] { byInstance, byNote, byHost, alone }) backend.StopBrowsing();
+    }
+
     [Fact]
     public async Task AScannerThatDoesNotAnswerFailsTheSessionWithAWholeSentence()
     {

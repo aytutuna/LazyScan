@@ -30,6 +30,8 @@ public sealed class EsclEndpoint
     public required string Key { get; init; }
     /// <summary>The model from the TXT record, else the service instance name.</summary>
     public required string Name { get; init; }
+    /// <summary>The first service's Bonjour instance name, e.g. "HP Color LaserJet MFP M479fdw (A1B2C3)".</summary>
+    public string InstanceName { get; init; } = "";
     /// <summary>The TXT record of the first service (the secure one when both are advertised).</summary>
     public required EsclTxtRecord Txt { get; init; }
     /// <summary>
@@ -92,6 +94,7 @@ public sealed class EsclEndpoint
             {
                 Key = key,
                 Name = ordered.Select(m => m.Txt.Model).FirstOrDefault(m => m is not null) ?? first.Service.InstanceName,
+                InstanceName = first.Service.InstanceName,
                 Txt = first.Txt,
                 Addresses = addresses,
             });

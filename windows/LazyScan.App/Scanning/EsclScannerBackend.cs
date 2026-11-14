@@ -59,7 +59,8 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
 
     /// <summary>A scanner as listed: the addresses to reach it through, best first.</summary>
     private sealed record EsclDevice(ScannerInfo Info, string? Uuid, IReadOnlyList<ScannerAddress> Addresses,
-                                     IReadOnlyList<ScannerAddress> ManualAddresses);
+                                     IReadOnlyList<ScannerAddress> ManualAddresses,
+                                     string? InstanceName = null, string? Note = null);
 
     /// <summary>An address added by hand and what answered there.</summary>
     private sealed class ManualHost(ScannerAddress address)
@@ -293,7 +294,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
             if (records.Any(r => r.Info.Id == id)) continue;
             var info = new ScannerInfo(id, endpoint.Name, "Network", Backend: "escl",
                                        Model: endpoint.Txt.Model, HardwareId: endpoint.Uuid);
-            records.Add(new EsclDevice(info, endpoint.Uuid, endpoint.Addresses, []));
+            records.Add(new EsclDevice(info, endpoint.Uuid, endpoint.Addresses, [], endpoint.InstanceName, endpoint.Txt.Note));
         }
         foreach (var host in _manual.Values.Where(h => h.Listed))
         {
@@ -322,6 +323,7 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
                                 Model: host.Name, HardwareId: host.Uuid),
                 host.Uuid, [host.Address], [host.Address]));
         }
+        records = TellApart(records);
         _records = records;
 
         // Raised when the list or the diagnostics change (devices.txt is written from them).
@@ -331,6 +333,59 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         _devices.Clear();
         _devices.AddRange(records.Select(r => r.Info));
         DevicesChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Scanners that share a name get what sets them apart added to it: the instance name's suffix, else the
+    /// location note, else the host address, whichever is there and different for all of them.
+    /// </summary>
+    private static List<EsclDevice> TellApart(List<EsclDevice> devices)
+    {
+        var result = devices.ToList();
+        var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var device in devices)
+        {
+            if (!done.Add(device.Info.Name)) continue;
+            var same = Enumerable.Range(0, devices.Count)
+                .Where(i => string.Equals(devices[i].Info.Name, device.Info.Name, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (same.Count < 2) continue;
+            Func<EsclDevice, string?>[] kinds =
+            [
+                d => d.InstanceName is { } instance ? InstanceSuffix(instance) : null,
+                d => d.Note,
+                d => d.Addresses.FirstOrDefault()?.Host,
+            ];
+            for (int position = 0; position < kinds.Length; position++)
+            {
+                var values = same.Select(i => kinds[position](devices[i])?.Trim() ?? "").ToList();
+                bool distinct = !values.Contains("")
+                    && values.Select(v => v.ToLowerInvariant()).Distinct().Count() == values.Count;
+                if (!distinct && position < kinds.Length - 1) continue;
+                for (int offset = 0; offset < same.Count; offset++)
+                {
+                    if (values[offset].Length == 0) continue;
+                    var info = devices[same[offset]].Info;
+                    result[same[offset]] = devices[same[offset]] with
+                    {
+                        Info = info with { Name = $"{info.Name} ({values[offset]})", Model = info.Model ?? info.Name },
+                    };
+                }
+                break;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>The part of an instance name inside its last parentheses ("HP LaserJet (A1B2C3)" gives "A1B2C3"), else all of it.</summary>
+    private static string InstanceSuffix(string instance)
+    {
+        int open = instance.LastIndexOf('(');
+        if (instance.EndsWith(')') && open >= 0)
+        {
+            string inner = instance[(open + 1)..^1];
+            if (inner.Trim().Length > 0) return inner;
+        }
+        return instance;
     }
 
     // MARK: - Sessions
