@@ -1770,6 +1770,7 @@ public partial class MainWindow : Window
             AutoEnhanceBox.IsChecked = s.Adjustments.AutoEnhance;
             PushAdjustmentSliders();
             DescreenBox.IsChecked = s.Adjustments.Descreen;
+            RemoveSpecksBox.IsChecked = s.Adjustments.RemoveSpecks;
             RestoreBox.IsChecked = s.Adjustments.RestoreFadedColors;
             CleanUpBox.IsChecked = s.Adjustments.CleanUp;
             PushOutputControls();
@@ -1844,6 +1845,7 @@ public partial class MainWindow : Window
         // the user moved: re-deriving them here would round-trip every value through the
         // -100...100 scale (and clamp out-of-range preset values) on unrelated edits.
         s.Adjustments.Descreen = DescreenBox.IsChecked == true;
+        s.Adjustments.RemoveSpecks = RemoveSpecksBox.IsChecked == true;
         s.Adjustments.RestoreFadedColors = RestoreBox.IsChecked == true;
         s.Adjustments.CleanUp = CleanUpBox.IsChecked == true;
         if (!string.IsNullOrWhiteSpace(TemplateBox.Text)) s.NamingTemplate = TemplateBox.Text;
@@ -2401,7 +2403,9 @@ public partial class MainWindow : Window
     {
         bool color = ViewModel.Settings.ColorMode == ColorMode.Color;
         SaturationSlider.IsEnabled = color;
-        ThresholdRow.Visibility = ViewModel.Settings.ColorMode == ColorMode.BlackWhite ? Visibility.Visible : Visibility.Collapsed;
+        var blackWhite = ViewModel.Settings.ColorMode == ColorMode.BlackWhite ? Visibility.Visible : Visibility.Collapsed;
+        ThresholdRow.Visibility = blackWhite;
+        RemoveSpecksBox.Visibility = blackWhite;
         RestoreBox.IsEnabled = color;
         ColorReason.Visibility = color ? Visibility.Collapsed : Visibility.Visible;
         string? tip = color ? null

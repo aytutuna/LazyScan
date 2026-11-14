@@ -187,7 +187,7 @@ texts); the Mac mirrors the layout (see the main README).
 
 - **Inspector sections.** Scanner (Source, Sides, Flip on, Paper size, Resolution, Color), Output
   (Format, JPEG quality (for JPEG), PDF size, the last PDF's size, Searchable PDF, Collect pages before saving, Save to; in
-  Photos mode it is **Photos**: Find each photo, Min photo side and Edge trim (while it is on), Straighten photos, Format, JPEG quality, Save to), Adjustments (with B&W threshold in Black & White),
+  Photos mode it is **Photos**: Find each photo, Min photo side and Edge trim (while it is on), Straighten photos, Format, JPEG quality, Save to), Adjustments (with B&W threshold and Remove specks in Black & White),
   Pages (Skip blank pages, Crop to page, Straighten pages, Rotate pages upright, Split facing
   pages), Split into documents, Archive & password (PDF/A and the password) and More options (Also
   save text, After saving, File name), after the Photocopy or Receipts section of those tasks. The

@@ -1443,6 +1443,10 @@
                                                         ValueChanged="Output_SliderChanged" />
                                                 <TextBlock Grid.Column="2" x:Name="ThresholdReadout" Style="{StaticResource ReadoutText}" />
                                             </Grid>
+                                            <CheckBox x:Name="RemoveSpecksBox" Style="{StaticResource ToggleSwitchStyle}"
+                                                      Content="{loc:T Remove specks}"
+                                                      ToolTip="{loc:T Removes small dark specks in black and white scans}"
+                                                      Checked="Setting_Changed" Unchecked="Setting_Changed" />
                                         </StackPanel>
                                     </Expander>
 

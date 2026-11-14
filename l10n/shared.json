@@ -2619,6 +2619,8 @@
   "Restore faded colors": {},
   "Clean up": {},
   "Whitens paper and removes show-through": {},
+  "Remove specks": {},
+  "Removes small dark specks in black and white scans": {},
   "Pages": {},
   "Skip blank pages": {
     "note": "Setting: pages found blank are left out when saving."
