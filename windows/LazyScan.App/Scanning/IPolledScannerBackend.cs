@@ -3,7 +3,7 @@ using LazyScan.Core;
 namespace LazyScan.App.Scanning;
 
 /// <summary>
-/// A connection that finds scanners by polling rather than from device events (WIA Automation,
+/// A connection that finds scanners by polling and WIA device events (WIA Automation,
 /// <see cref="WiaScannerBackend"/>), so for a while it may not list a scanner another connection
 /// already reports. The app asks it to look again and waits for that look to end before it
 /// treats the scanner as one this connection does not reach (see <c>AppViewModel.MergeDevices</c>).

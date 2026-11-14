@@ -900,7 +900,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// so only the user choosing one asks about its certificate.
     /// </summary>
     private readonly HashSet<string> _certificateRefused = [];
-    /// <summary>WIA Automation, which finds scanners by polling (null when the app runs without it).</summary>
+    /// <summary>WIA Automation, which may list a scanner late (null when the app runs without it).</summary>
     private readonly Scanning.IPolledScannerBackend? _polled;
     /// <summary>
     /// Each Windows Scan entry listed now, with how many WIA enumerations had started when it was
@@ -1234,16 +1234,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Notes when each Windows Scan entry was first listed, and has WIA Automation look again for a
-    /// new one: Windows Scan reports a scanner as soon as it is plugged in, WIA only on its next
-    /// poll (up to a minute later), so the WIA entry of the same scanner is usually on its way.
+    /// Notes when each Windows Scan entry was first listed, and has WIA Automation look again when
+    /// one appears or goes: Windows Scan reports a scanner as soon as it is plugged in or out, WIA
+    /// may only on its next poll (up to a minute later), so the WIA entry of the same scanner is
+    /// usually on its way or still listed.
     /// </summary>
     private void TrackWindowsScanEntries(List<ScannerInfo> entries)
     {
         var listed = entries.Where(e => e.Backend == WindowsScanConnection.Backend).Select(e => e.Id).ToHashSet();
+        bool removed = false;
         foreach (string gone in _windowsScanListedAt.Keys.Where(id => !listed.Contains(id)).ToList())
         {
             _windowsScanListedAt.Remove(gone);
+            removed = true;
         }
         if (_polled is null) return;
         bool added = false;
@@ -1251,7 +1254,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             added |= _windowsScanListedAt.TryAdd(id, _polled.EnumerationsStarted);
         }
-        if (added) _polled.RefreshDevices();
+        if (added || removed) _polled.RefreshDevices();
         _windowsScanAwaitingWia = _windowsScanListedAt.Values.Any(listedAt => _polled.EnumerationsFinished <= listedAt);
     }
 

@@ -201,7 +201,7 @@ public class WinRtScannerTests
     }
 }
 
-// WIA Automation finds scanners by polling; the app asks it to look again when Windows Scan
+// WIA Automation may list a scanner later than Windows Scan; the app asks it to look again when Windows Scan
 // lists a scanner first, and waits for a look that began after it asked.
 public class WiaEnumerationTests
 {
@@ -478,6 +478,83 @@ public class WiaEnumerationTests
             WaitForEnumerations(wia, 2);
             Assert.Equal("wia:a", Assert.Single(wia.Devices).Id);
             Assert.Equal("WIA: 1 scanner(s), last listing failed - manager\n", wia.DiagnosticsReport);
+        }
+        finally
+        {
+            wia.StopBrowsing();
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    [Fact]
+    public void ADisconnectEventListsTheScannersAgainAndAConnectEventToo()
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(null);
+        int calls = 0;
+        Action<string, string>? raise = null;
+        int stopped = 0;
+        var wia = new WiaScannerBackend(() => ServiceStatus.Running, () => true, () =>
+        {
+            return Interlocked.Increment(ref calls) switch
+            {
+                1 => [new ScannerInfo("wia:a", "First", "WIA", Backend: "wia")],
+                2 => [],
+                _ => [new ScannerInfo("wia:b", "Second", "WIA", Backend: "wia")],
+            };
+        }, handler =>
+        {
+            raise = handler;
+            return () => Interlocked.Increment(ref stopped);
+        });
+        var seen = new List<string>();
+        wia.DeviceEvent += (eventId, deviceId) => seen.Add($"{eventId} {deviceId}");
+        try
+        {
+            wia.StartBrowsing();
+            WaitForEnumerations(wia, 1);
+            Assert.Equal("wia:a", Assert.Single(wia.Devices).Id);
+            Assert.True(SpinWait.SpinUntil(() => raise is not null, TimeSpan.FromSeconds(60)));
+
+            raise!(WiaScannerBackend.DeviceDisconnected, "a");
+            WaitForEnumerations(wia, 2);
+            Assert.Empty(wia.Devices);
+
+            raise(WiaScannerBackend.DeviceConnected, "b");
+            WaitForEnumerations(wia, 3);
+            Assert.Equal("wia:b", Assert.Single(wia.Devices).Id);
+            Assert.Equal([$"{WiaScannerBackend.DeviceDisconnected} a", $"{WiaScannerBackend.DeviceConnected} b"], seen);
+        }
+        finally
+        {
+            wia.StopBrowsing();
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+        Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref stopped) == 1, TimeSpan.FromSeconds(60)));
+    }
+
+    [Fact]
+    public void AnEventOfAnotherKindListsNothingAgain()
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(null);
+        Action<string, string>? raise = null;
+        var wia = new WiaScannerBackend(() => ServiceStatus.Running, () => true, () => [], handler =>
+        {
+            raise = handler;
+            return () => { };
+        });
+        var seen = new List<string>();
+        wia.DeviceEvent += (eventId, _) => seen.Add(eventId);
+        try
+        {
+            wia.StartBrowsing();
+            WaitForEnumerations(wia, 1);
+            Assert.True(SpinWait.SpinUntil(() => raise is not null, TimeSpan.FromSeconds(60)));
+            raise!("{A28BBADE-0000-0000-0000-00C04FA31809}", "a");
+            Thread.Sleep(200);
+            Assert.Equal(1, wia.EnumerationsStarted);
+            Assert.Single(seen);
         }
         finally
         {

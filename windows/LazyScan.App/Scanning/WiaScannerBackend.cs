@@ -13,7 +13,7 @@ namespace LazyScan.App.Scanning;
 /// or scanner attached. The WIA property IDs and flow follow the documented WIA Automation
 /// model (DeviceManager → DeviceInfos → Connect → Items → Transfer), but expect to iterate
 /// against a real device. Known scaffold limitations:
-///   - hot-plug is detected by polling (see the watchdog below), not WIA device events;
+///   - hot-plug is detected from WIA connect and disconnect events, with a poll (the watchdog below) as the fallback;
 ///   - Transfer() is synchronous with no progress callbacks — progress is coarse;
 ///   - CancelScan() cannot abort an in-flight WIA transfer, it only discards the result.
 /// </summary>
@@ -34,6 +34,12 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
 
     public event Action? DevicesChanged;
     public event Action? EnumerationFinished;
+
+    /// <summary>
+    /// Raised on the thread that started browsing for every WIA event the backend is registered for,
+    /// with the event id and the device id. The connect and disconnect events also refresh the list.
+    /// </summary>
+    internal event Action<string, string>? DeviceEvent;
 
     private readonly List<ScannerInfo> _devices = [];
     public IReadOnlyList<ScannerInfo> Devices => _devices;
@@ -73,11 +79,21 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
 
     internal const string DeviceManagerProgId = "WIA.DeviceManager";
 
+    // WIA event ids (wiaEventDeviceConnected, wiaEventDeviceDisconnected) and the "every device" id.
+    internal const string DeviceConnected = "{A28BBADE-64B6-11D2-A231-00C04FA31809}";
+    internal const string DeviceDisconnected = "{143E4E83-6497-11D2-A231-00C04FA31809}";
+    private const string AnyDevice = "*";
+    // _IDeviceManagerEvents, whose OnEvent (dispatch id 1) reports the events registered with RegisterEvent.
+    private static readonly Guid DeviceManagerEvents = new("2E9A5206-2360-49DF-9D9B-1762B4BEAE77");
+
     /// <summary>Reads the WIA service (stisvc); any thread, never throws.</summary>
     private readonly Func<ServiceStatus> _serviceStatus;
     /// <summary>Whether WIA Automation (wiaaut.dll) is registered; any thread, never throws.</summary>
     private readonly Func<bool> _automationRegistered;
     private readonly Func<List<ScannerInfo>> _enumerateScanners;
+    /// <summary>Starts WIA event delivery on the WIA thread and returns what stops it; null when there is no WIA to listen to. Null itself: no events (harnesses).</summary>
+    private readonly Func<Action<string, string>, Action?>? _listen;
+    private Task<Action?>? _listener;
     private SynchronizationContext? _context;
     private CancellationTokenSource? _watchdog;
     /// <summary>Bumped by every Start/StopBrowsing; enumeration results from an older generation are dropped.</summary>
@@ -98,16 +114,19 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     public long EnumerationsStarted => Interlocked.Read(ref _enumerationsStarted);
     public long EnumerationsFinished => Interlocked.Read(ref _enumerationsFinished);
 
-    public WiaScannerBackend() : this(new WindowsSystemDiagnostics().WiaService, AutomationRegistered)
+    public WiaScannerBackend() : this(new WindowsSystemDiagnostics().WiaService, AutomationRegistered, null, ListenForEvents)
     {
     }
 
     /// <param name="serviceStatus">Reads the WIA service; asked on the WIA thread before each enumeration.</param>
     /// <param name="automationRegistered">Whether WIA Automation is registered; asked likewise.</param>
     /// <param name="enumerateScanners">Lists the scanners on the WIA thread; WIA itself when null.</param>
+    /// <param name="listen">Registers for WIA events on the WIA thread, given the handler of an event (its id and device id); no events when null.</param>
     internal WiaScannerBackend(Func<ServiceStatus> serviceStatus, Func<bool> automationRegistered,
-                               Func<List<ScannerInfo>>? enumerateScanners = null)
+                               Func<List<ScannerInfo>>? enumerateScanners = null,
+                               Func<Action<string, string>, Action?>? listen = null)
     {
+        _listen = listen;
         _serviceStatus = serviceStatus;
         _automationRegistered = automationRegistered;
         _enumerateScanners = enumerateScanners ?? EnumerateScanners;
@@ -121,8 +140,9 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     /// <summary>
     /// Enumerate once now, then keep re-enumerating so the list follows the hardware without
     /// a restart: a scanner plugged in later appears, and an unplugged one disappears (the
-    /// macOS backend gets both from ICDeviceBrowser add/remove callbacks; WIA device events
-    /// are not wired up here, so this polls). While no scanner is listed the poll starts at
+    /// macOS backend gets both from ICDeviceBrowser add/remove callbacks; here WIA's connect and
+    /// disconnect events refresh the list, and a poll covers a missed event or WIA not running
+    /// yet). While no scanner is listed the poll starts at
     /// 10 s and doubles up to 60 s; while one is listed it runs every 60 s. A session that
     /// finds its device gone also triggers an immediate re-enumeration. Enumeration runs on
     /// the WIA thread (<see cref="WiaApartment"/>), so the UI thread never blocks on WIA.
@@ -145,12 +165,94 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         _watchdog?.Cancel();
         _watchdog?.Dispose();
         _watchdog = null;
+        StopListening();
         Interlocked.Increment(ref _browseGeneration);
         _unavailable = null;
         _failure = null;
         if (_devices.Count == 0) return;
         _devices.Clear();
         DevicesChanged?.Invoke();
+    }
+
+    /// <summary>Starts WIA event delivery unless it runs or WIA has nothing to listen to; a failed start is tried again.</summary>
+    private void EnsureListening()
+    {
+        if (_listen is not { } listen || _listener is { IsFaulted: false }) return;
+        _listener = WiaApartment.Run(() => listen(HandleEvent));
+        _ = _listener.ContinueWith(t => System.Diagnostics.Trace.TraceWarning($"Could not listen for WIA events: {t.Exception?.GetBaseException().Message}"),
+                                   CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
+
+    private void StopListening()
+    {
+        var listener = _listener;
+        _listener = null;
+        _ = listener?.ContinueWith(t =>
+        {
+            if (t.IsCompletedSuccessfully && t.Result is { } stop) _ = WiaApartment.Run(() => { stop(); return 0; });
+        }, TaskScheduler.Default);
+    }
+
+    /// <summary>Called on the WIA thread for each event; the work goes to the thread that started browsing.</summary>
+    private void HandleEvent(string eventId, string deviceId) => Post(() =>
+    {
+        if (_watchdog is null) return;
+        DeviceEvent?.Invoke(eventId, deviceId);
+        if (eventId.Equals(DeviceConnected, StringComparison.OrdinalIgnoreCase)
+            || eventId.Equals(DeviceDisconnected, StringComparison.OrdinalIgnoreCase))
+        {
+            RefreshDevices();
+        }
+    });
+
+    /// <summary>
+    /// Registers a WIA device manager for the connect and disconnect events of every device and
+    /// passes each event to <paramref name="onEvent"/> (event id, device id), on the WIA thread, so
+    /// it must be quick. The manager stays alive until the returned action runs, on the WIA thread;
+    /// null when WIA Automation cannot create one.
+    /// </summary>
+    internal static Action? ListenForEvents(Action<string, string> onEvent)
+    {
+        object? manager;
+        using (WiaApartment.Use())
+        {
+            manager = Type.GetTypeFromProgID(DeviceManagerProgId) is { } type ? Activator.CreateInstance(type) : null;
+        }
+        if (manager is null) return null;
+        Action<string, string, string> sink = (eventId, deviceId, _) => onEvent(eventId, deviceId);
+        try
+        {
+            ComEventsHelper.Combine(manager, DeviceManagerEvents, 1, sink);
+            dynamic wia = manager;
+            wia.RegisterEvent(DeviceConnected, AnyDevice);
+            wia.RegisterEvent(DeviceDisconnected, AnyDevice);
+        }
+        catch
+        {
+            Release(manager, sink);
+            throw;
+        }
+        return () => Release(manager, sink);
+    }
+
+    private static void Release(object manager, Action<string, string, string> sink)
+    {
+        try
+        {
+            ComEventsHelper.Remove(manager, DeviceManagerEvents, 1, sink);
+        }
+        catch
+        {
+            // best effort
+        }
+        try
+        {
+            if (Marshal.IsComObject(manager)) Marshal.FinalReleaseComObject(manager);
+        }
+        catch
+        {
+            // best effort
+        }
     }
 
     private async Task RunWatchdog(CancellationToken token)
@@ -254,6 +356,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
                     return;
                 }
                 _service = result.Service;
+                if (result.Unavailable is null) EnsureListening();
                 bool noteChanged = result.Unavailable != _unavailable || _failure is not null;
                 _unavailable = result.Unavailable;
                 _failure = null;
