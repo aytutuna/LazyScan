@@ -7,10 +7,10 @@ import SwiftUI
 import UIKit
 
 /// Camera mode, the iPhone's scan screen unless printer mode was picked (`IOSScanMode`): the viewfinder is
-/// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), a
-/// small round arrow that opens the options drawer (`ScanDrawer`) above the bottom bar, the Auto chip (on or
-/// off, a tap switches it), the flash button where the camera has a light, and the scanner, which switches
-/// to printer mode (`onPrinter`). The photo size ("24 MP", where the camera offers more than one: a tap
+/// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), the
+/// Auto chip (on or off, a tap switches it), the flash button where the camera has a light, and the Camera |
+/// Scanner switch (`ModeSwitch`), whose Scanner segment switches to printer mode (`onPrinter`). The Controls
+/// pill at the picture's foot (`DrawerHandle`) opens the drawer (`ScanDrawer`) above the bottom bar. The photo size ("24 MP", where the camera offers more than one: a tap
 /// steps to the next, the first pick of a size that may not fit in the phone's memory says so once) is in
 /// the drawer's Camera group. The viewfinder shows the whole photo as it will be taken (black bands where the screen is
 /// taller or wider), the page's outline, or every print's or receipt's, over it (yellow, green once the page holds still), one status line at
@@ -278,7 +278,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var sideToggle: some View {
         let open: Bool = showsDrawer
         let symbol: String = open ? "chevron.forward" : "chevron.backward"
-        let label: String = open ? IOSCameraText.hideOptions : IOSCameraText.showOptions
+        let label: String = open ? IOSCameraText.hideControls : IOSCameraText.showControls
         return Button {
             withAnimation(Animation.snappy) {
                 showsDrawer.toggle()
@@ -350,11 +350,11 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     // MARK: The top bar
 
     private var topBar: some View {
-        ScanTopBar(showsDrawer: $showsDrawer, onLibrary: onLibrary) {
+        ScanTopBar(onLibrary: onLibrary) {
             HStack(spacing: 0) {
                 autoChip
                 flashButton
-                printerButton
+                ModeSwitch(onCamera: true, disabled: state.isBusy || state.retakingID != nil, onSwitch: onPrinter)
             }
         }
     }
@@ -556,6 +556,9 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(state.isBusy || importer.isImporting)
                 .accessibilityIdentifier("camera.skipBack")
+            }
+            if verticalSizeClass != .compact {
+                DrawerHandle(open: $showsDrawer)
             }
         }
     }

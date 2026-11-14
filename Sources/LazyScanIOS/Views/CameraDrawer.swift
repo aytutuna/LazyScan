@@ -20,6 +20,15 @@ enum DrawerGroup: String, Identifiable, CaseIterable {
         }
     }
 
+    /// The caption under the icon and its VoiceOver name: the Colour group is named Filter where it holds the
+    /// filter new pages get, else Color.
+    func caption(filters: Bool) -> String {
+        if self == .colour && filters {
+            return String(localized: "Filter")
+        }
+        return title
+    }
+
     var symbol: String {
         switch self {
         case .colour: return "circle.lefthalf.filled"
@@ -39,7 +48,7 @@ enum DrawerGroup: String, Identifiable, CaseIterable {
     }
 }
 
-/// The options drawer both tabs open with the arrow, above the bottom bar, or in landscape as a panel over the picture's trailing edge (`CameraScreen`): a
+/// The options drawer both tabs open with the Controls pill (`DrawerHandle`; the side arrow in landscape), above the bottom bar, or in landscape as a panel over the picture's trailing edge (`CameraScreen`): a
 /// row of icons, one per group (`DrawerGroup.shown`), and the chosen group's controls under it. Colour: the
 /// filter new pages get, or the colour mode for the kinds that collect no pages and on the scanner tab (and
 /// Restore faded colours for Photos). Flash: the camera's light (its torch), where it has one. Camera: the
@@ -58,13 +67,14 @@ struct ScanDrawer: View {
     var body: some View {
         let groups: [DrawerGroup] = DrawerGroup.shown(printer: model == nil, torch: torch)
         let shown: DrawerGroup = groups.contains(group) ? group : (groups.first ?? DrawerGroup.colour)
+        let filters: Bool = model != nil && IOSShell.offersFilters(state.settings)
         VStack(spacing: 10) {
             HStack(spacing: 14) {
                 ForEach(groups) { (item: DrawerGroup) in
-                    groupButton(item, selected: item == shown)
+                    groupButton(item, selected: item == shown, filters: filters)
                 }
             }
-            .frame(height: 56)
+            .frame(height: 72)
             // The icons sit in fixed circles.
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             controls(shown)
@@ -76,19 +86,28 @@ struct ScanDrawer: View {
         .accessibilityIdentifier("drawer")
     }
 
-    private func groupButton(_ item: DrawerGroup, selected: Bool) -> some View {
-        Button {
+    private func groupButton(_ item: DrawerGroup, selected: Bool, filters: Bool) -> some View {
+        let caption: String = item.caption(filters: filters)
+        return Button {
             group = item
         } label: {
-            Image(systemName: item.symbol)
-                .font(.body.weight(.medium))
-                .foregroundStyle(selected ? Color.white : Color.primary)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(selected ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
-                .contentShape(Circle())
+            VStack(spacing: 2) {
+                Image(systemName: item.symbol)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(selected ? Color.white : Color.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(selected ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
+                Text(caption)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+                    .lineLimit(1)
+                    .accessibilityHidden(true)
+            }
+            .frame(minWidth: 56)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(item.title))
+        .accessibilityLabel(Text(caption))
         .accessibilityAddTraits(selected ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier("drawer.\(item.rawValue)")
     }
@@ -257,13 +276,13 @@ private struct StraightenToggle: View {
 }
 
 /// The filter new pages get on the camera tab (Original, Enhanced, Grayscale, B&W; `IOSShell.drawerFilter`,
-/// `settingDrawerFilter`): the drawer's Colour group and the Look page are two places for the one setting.
+/// `settingDrawerFilter`): the drawer's Filter group and the Look page are two places for the one setting.
 struct CaptureFilterPicker: View {
     @EnvironmentObject private var state: AppState
     let identifier: String
 
     var body: some View {
-        Picker("Color", selection: filter) {
+        Picker("Filter", selection: filter) {
             ForEach(CaptureFilter.displayOrder, id: \.self) { (choice: CaptureFilter) in
                 Text(choice.label).tag(choice)
             }
@@ -282,6 +301,16 @@ struct CaptureFilterPicker: View {
     }
 }
 
+/// The small line over a control of the drawer's Colour group; its picker says the same to VoiceOver.
+private struct DrawerCaption: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+            .accessibilityHidden(true)
+    }
+}
+
 /// The drawer's Colour group: on the camera tab the filter new pages get (Original, Enhanced, Grayscale, B&W)
 /// for the kinds that collect pages, else the colour mode, and for Photos whether faded colours are restored.
 private struct ColourDrawer: View {
@@ -291,15 +320,20 @@ private struct ColourDrawer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            let filters: Bool = camera && IOSShell.offersFilters(state.settings)
             if IOSShell.shownKind(state.settings) == .photos {
-                Picker("Photos", selection: restore) {
+                Text("Restore faded colors")
+                    .modifier(DrawerCaption())
+                Picker("Restore faded colors", selection: restore) {
                     Text("As taken").tag(false)
                     Text("Restored").tag(true)
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("drawer.restore")
+                Text("Color")
+                    .modifier(DrawerCaption())
             }
-            if camera && IOSShell.offersFilters(state.settings) {
+            if filters {
                 CaptureFilterPicker(identifier: "drawer.colourMode")
             } else {
                 Picker("Color", selection: $state.settings.colorMode) {

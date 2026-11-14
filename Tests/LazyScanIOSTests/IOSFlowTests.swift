@@ -454,6 +454,10 @@ final class IOSFlowTests: XCTestCase {
         // The scanner tab has the scanner's own controls in place of the camera's.
         XCTAssertEqual(DrawerGroup.shown(printer: true, torch: true), [.colour, .scanner])
         XCTAssertEqual(DrawerGroup.flash.title, "Flash")
+        // The Colour group holds the filter on the camera tab and the colour mode on the scanner tab.
+        XCTAssertEqual(DrawerGroup.colour.caption(filters: true), "Filter")
+        XCTAssertEqual(DrawerGroup.colour.caption(filters: false), "Color")
+        XCTAssertEqual(DrawerGroup.scanner.caption(filters: false), "Scanner")
         for group in DrawerGroup.allCases {
             XCTAssertFalse(group.title.isEmpty, group.rawValue)
             XCTAssertFalse(group.symbol.isEmpty, group.rawValue)

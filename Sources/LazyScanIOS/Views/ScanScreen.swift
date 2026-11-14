@@ -17,10 +17,11 @@ enum ScanCover: String, Identifiable {
 }
 
 /// The scan screen, in the phone's mode (`IOSScanMode`), which is also where the pages come from; the two tabs
-/// share one layout. The top bar (`ScanTopBar`): the library (`onOpenLibrary`; nil where the sidebar has it),
-/// the arrow that opens the options drawer (`ScanDrawer`: Colour, and Flash and Camera on the camera, the
-/// scanner's Source, Sides and Resolution on the scanner tab) and the other tab's icon (`mode.printer`, and
-/// `mode.camera`, back to camera mode, which selects no scanner so none of its limits apply to the camera).
+/// share one layout. The top bar (`ScanTopBar`): the library (`onOpenLibrary`; nil where the sidebar has it)
+/// and the Camera | Scanner switch (`ModeSwitch`: `mode.printer`, and `mode.camera`, back to camera mode,
+/// which selects no scanner so none of its limits apply to the camera). The Controls pill at the picture's
+/// foot (`DrawerHandle`) opens the options drawer (`ScanDrawer`: Filter, and Flash and Camera on the camera,
+/// Color and the scanner's Source, Sides and Resolution on the scanner tab).
 /// Over the bottom corners of the picture, on both tabs, Options (`OptionsScreen` in a sheet that opens at half
 /// height: the Type and a short list of pages, each with its value, that holds every setting; the camera keeps
 /// running above it) and Save (`PictureButtons`). The bottom bar: the pages, the shutter (Scan on
@@ -357,8 +358,8 @@ struct ScanScreen: View {
 
     private var mainColumn: some View {
         VStack(spacing: 0) {
-            ScanTopBar(showsDrawer: $showsDrawer, onLibrary: libraryAction) {
-                cameraModeButton
+            ScanTopBar(onLibrary: libraryAction) {
+                ModeSwitch(onCamera: false, disabled: state.isBusy, onSwitch: switchToCamera)
             }
             scannerRow
             if state.demoSelected {
@@ -663,22 +664,6 @@ struct ScanScreen: View {
         .modifier(NoticeCard())
     }
 
-    /// Back to camera mode.
-    private var cameraModeButton: some View {
-        Button {
-            switchToCamera()
-        } label: {
-            Image(systemName: "camera")
-                .font(.title3)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .disabled(state.isBusy)
-        .accessibilityLabel(Text(IOSImportText.cameraLabel))
-        .accessibilityHint(Text(IOSCameraText.cameraModeHint))
-        .accessibilityIdentifier("mode.camera")
-    }
-
     /// Camera mode, with no scanner selected, so none of its limits apply to the camera (the sides turned
     /// over by hand back to both, `AppState.userSelectNoDevice`). That ends a stack turned over by hand, so
     /// while one has pages in (`TurnedOverButtons.showsAny`) it asks first (`leavingStack`).
@@ -903,6 +888,7 @@ struct ScanScreen: View {
                 .disabled(state.isBusy)
                 .accessibilityIdentifier("step.skip")
             }
+            DrawerHandle(open: $showsDrawer)
         }
         .padding(.horizontal, 12)
         .padding(.top, 12)

@@ -187,7 +187,7 @@ struct SaveAsPage: View {
     }
 }
 
-/// Look: the filter new pages get on the camera tab, which is the drawer's Colour group too, then the
+/// Look: the filter new pages get on the camera tab, which is the drawer's Filter group too, then the
 /// adjustments.
 struct LookPage: View {
     @EnvironmentObject private var state: AppState
@@ -196,7 +196,7 @@ struct LookPage: View {
     var body: some View {
         OptionsForm(title: IOSSettingsText.lookLabel) {
             if mode == IOSScanMode.camera && IOSShell.offersFilters(state.settings) {
-                Section {
+                Section("Filter for new pages") {
                     CaptureFilterPicker(identifier: "options.filter")
                 }
             }

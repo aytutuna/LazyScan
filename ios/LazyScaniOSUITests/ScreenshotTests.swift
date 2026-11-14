@@ -235,7 +235,8 @@ final class ScreenshotTests: XCTestCase {
             waitUntilGone(element(app, "pages.done"))
         }
         if element(app, "mode.camera").exists, tapIfThere(app, "mode.camera", for: "18a-two-sided-drawer") {
-            _ = element(app, "mode.printer").waitForExistence(timeout: 10)
+            waitUntilSelected(element(app, "mode.camera"))
+            _ = waitUntilGone(element(app, "preview.area"))
         }
         if tapIfThere(app, "drawer.toggle", for: "18a-two-sided-drawer") {
             if tapIfThere(app, "drawer.camera", for: "18a-two-sided-drawer") {
@@ -461,7 +462,9 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     private func printerScreens(_ app: XCUIApplication) {
         guard tapIfThere(app, "mode.printer", for: "04-printer") else { return }
-        guard element(app, "mode.camera").waitForExistence(timeout: 10) else {
+        waitUntilSelected(element(app, "mode.printer"))
+        _ = waitUntilGone(element(app, "camera.screen"))
+        guard element(app, "mode.printer").isSelected else {
             shot("skipped-04-printer")
             return
         }
@@ -688,7 +691,8 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     private func libraryScreens(_ app: XCUIApplication) {
         if tapIfThere(app, "mode.camera", for: "12-library-saved") {
-            _ = element(app, "mode.printer").waitForExistence(timeout: 10)
+            waitUntilSelected(element(app, "mode.camera"))
+            _ = waitUntilGone(element(app, "preview.area"))
         }
         guard tapIfThere(app, "open.library", for: "12-library-saved") else { return }
         let part: XCUIElement = app.segmentedControls["library.part"]

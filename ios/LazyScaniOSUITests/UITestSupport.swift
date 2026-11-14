@@ -10,42 +10,44 @@ extension XCUIApplication {
         "book": ["Book"], "text": ["Text"],
     ]
 
-    /// Waits for the scan screen in either mode and says which: true for camera mode (its printer button),
-    /// false for printer mode (its camera button). The app comes back in the mode the last run left.
+    /// Waits for the scan screen in either mode and says which: true for camera mode (the mode switch has its
+    /// Camera segment selected), false for printer mode (its Scanner segment). The app comes back in the mode
+    /// the last run left.
     @MainActor
     @discardableResult
     func waitForScanScreen(file: StaticString = #filePath, line: UInt = #line) -> Bool {
-        let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
         let camera: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
+        // The landscape camera has no mode switch, only the scanner button.
+        let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
         // The iPad starts on its task list; the scan screen is behind this button.
         let open: XCUIElement = descendants(matching: .any)["open.scanner"].firstMatch
         let deadline: Date = Date().addingTimeInterval(60)
         while Date() < deadline {
+            if camera.exists { return camera.isSelected }
             if printer.exists { return true }
-            if camera.exists { return false }
             if open.exists && open.isHittable { open.tap() }
-            _ = printer.waitForExistence(timeout: 1)
+            _ = camera.waitForExistence(timeout: 1)
         }
         XCTFail("The scan screen", file: file, line: line)
         return false
     }
 
-    /// Camera mode, from printer mode by its camera button; nothing when it is up already.
+    /// Camera mode, from printer mode by the Camera segment; nothing when it is up already.
     @MainActor
     func switchToCamera(file: StaticString = #filePath, line: UInt = #line) {
         guard !waitForScanScreen(file: file, line: line) else { return }
         let button: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 10), "The camera button", file: file, line: line)
-        waitUntilEnabled(button, "The camera button", file: file, line: line)
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "The Camera segment", file: file, line: line)
+        waitUntilEnabled(button, "The Camera segment", file: file, line: line)
         button.tap()
-        let printer: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
-        XCTAssertTrue(printer.waitForExistence(timeout: 30), "Camera mode's printer button", file: file, line: line)
         // The scanner tab is still there for a moment while the screens change places, and the next
         // question about the mode would be answered by it.
-        waitUntilGone(button, "The scanner tab gone", file: file, line: line)
+        XCTAssertTrue(descendants(matching: .any)["camera.screen"].firstMatch.waitForExistence(timeout: 30), "Camera mode",
+                      file: file, line: line)
+        waitUntilGone(descendants(matching: .any)["preview.area"].firstMatch, "The scanner tab gone", file: file, line: line)
     }
 
-    /// Printer mode, from camera mode by its printer button; nothing when it is up already. The scanner is
+    /// Printer mode, from camera mode by the Scanner segment; nothing when it is up already. The scanner is
     /// the one picked last, which `pickScanner(_:)` picks when there is none.
     @MainActor
     func switchToPrinter(file: StaticString = #filePath, line: UInt = #line) {
@@ -55,12 +57,11 @@ extension XCUIApplication {
             closeDrawer(file: file, line: line)
         }
         let button: XCUIElement = descendants(matching: .any)["mode.printer"].firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 10), "The printer button", file: file, line: line)
-        waitUntilEnabled(button, "The printer button", file: file, line: line)
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "The Scanner segment", file: file, line: line)
+        waitUntilEnabled(button, "The Scanner segment", file: file, line: line)
         button.tap()
-        let camera: XCUIElement = descendants(matching: .any)["mode.camera"].firstMatch
-        XCTAssertTrue(camera.waitForExistence(timeout: 30), "The scanner tab's camera button", file: file, line: line)
-        waitUntilGone(button, "Camera mode gone", file: file, line: line)
+        waitUntilSelected(descendants(matching: .any)["mode.printer"].firstMatch, "Printer mode", file: file, line: line)
+        waitUntilGone(descendants(matching: .any)["camera.screen"].firstMatch, "Camera mode gone", file: file, line: line)
     }
 
     /// Picks what is scanned the way a person does, in either mode: Options, its Type row and the kind in

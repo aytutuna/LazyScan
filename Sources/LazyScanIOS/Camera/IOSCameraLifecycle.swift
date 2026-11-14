@@ -201,9 +201,10 @@ public enum IOSCameraText {
         }
         return String(localized: "Auto splits the shot when it sees more than one page or photo. Pick One for a page with slips on it.")
     }
-    /// The chevron that swaps the kinds for the options drawer.
-    public static var showOptions: String { String(localized: "Show options") }
-    public static var hideOptions: String { String(localized: "Hide options") }
+    /// The pill that opens the controls drawer, and its VoiceOver names.
+    public static var controlsLabel: String { String(localized: "Controls") }
+    public static var showControls: String { String(localized: "Show controls") }
+    public static var hideControls: String { String(localized: "Hide controls") }
     /// Camera mode's button to printer mode, and its hint.
     public static var printerLabel: String { String(localized: "Scanner") }
     public static var printerHint: String { String(localized: "Scans with a scanner instead of the camera") }
