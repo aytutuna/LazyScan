@@ -604,6 +604,7 @@ struct InspectorView: View {
             }
             if pdfSizeShown {
                 pdfSizeRow
+                pageSizeRow
             }
             if shownFormat == .word {
                 wordPicturesRow
@@ -696,6 +697,18 @@ struct InspectorView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// The size every page of a saved PDF gets (`OutputOptions.pageSize`); not the scan area.
+    private var pageSizeRow: some View {
+        let size: PDFPageSize = state.settings.output.pageSize
+        return Picker(PDFPageSize.optionLabel, selection: $state.settings.output.pageSize) {
+            ForEach(PDFPageSize.allCases) { (option: PDFPageSize) in
+                Text(option.label).tag(option)
+            }
+        }
+        .help(size.hint)
+        .accessibilityHint(Text(size.hint))
     }
 
     private func pdfSizePicker(_ name: LocalizedStringKey) -> some View {
