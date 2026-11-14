@@ -514,4 +514,31 @@ public class MockScannerTests
         Assert.Equal(2, backend.BookSpread);
         Assert.Null(BookSplitter.FindGutter(document.Image, Dpi));
     }
+
+    [Fact]
+    public void TheDemoPages_UseOnlyCharactersTheStrokeTypeDraws()
+    {
+        var text = MockBedRenderer.DocumentBody.Concat(MockBedRenderer.DocumentBackBody).Append(MockBedRenderer.DocumentTitle);
+        Assert.All(string.Concat(text), c => Assert.True(MockBedRenderer.HasGlyph(c), $"no glyph for '{c}'"));
+        Assert.DoesNotContain("macOS", string.Concat(text));
+    }
+
+    [Fact]
+    public void TheDemoDocument_HasInkOnEveryLineOfText_AndNoneBetweenParagraphs()
+    {
+        const int dpi = 150;
+        var page = MockBedRenderer.RenderSheet(dpi, ScanIntent.Document, sheetIndex: 0);
+        double bodySize = 12.0 * dpi / 72;
+        double y = 0.9 * dpi + 18.0 * dpi / 72 * 2.2;
+        foreach (var line in MockBedRenderer.DocumentBody)
+        {
+            bool ink = false;
+            for (int py = (int)y; py < (int)(y + 9 * 0.11 * bodySize) && !ink; py++)
+            {
+                for (int px = 0; px < page.Width && !ink; px++) ink = page.Pixels[(py * page.Width + px) * 4] < 128;
+            }
+            Assert.Equal(line.Length > 0, ink);
+            y += bodySize * 1.55;
+        }
+    }
 }

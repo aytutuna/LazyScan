@@ -1624,10 +1624,9 @@ Known divergences from the macOS app (all documented in the source):
 - `ImagePipeline` re-implements the Core Image filters as per-pixel math — visually close,
   not bit-identical; auto-enhance is a histogram auto-level rather than Apple's suggestion
   list.
-- The demo scanner's document page draws text-shaped bars, not real glyphs (Core has no
-  font rasterizer), so OCR demos need a real scan. Its receipts are the exception: they are
-  printed in a plain stroke type drawn pixel by pixel (the same on the Mac), which Windows OCR
-  reads.
+- The demo scanner's document pages and receipts are printed in a plain stroke type drawn pixel
+  by pixel (Core has no font rasterizer), which Windows OCR reads. The text is the Mac's; the
+  Mac draws the document pages in a real font.
 - WIA, Windows Scan and TWAIN exist only here, so their logic in Core (`WiaErrors.cs`,
   `WindowsScan.cs` and `ResolutionList.FromBounds`, `Twain/`) and its tests
   (`WiaErrorsTests`, `WindowsScanTests` and the `FromBounds` cases of `ResolutionListTests`,

@@ -15,10 +15,6 @@ namespace LazyScan.Core;
 /// magazine task its glass holds an open book, whose page it turns after every scan
 /// (<see cref="BookSpread"/>, <see cref="MockBedRenderer.RenderBookSpread"/>). Port of
 /// Sources/LazyScanKit/Backends/MockScannerBackend.swift.
-///
-/// Divergence from the macOS mock: the demo document page renders text-shaped bars rather
-/// than real glyphs (the Core has no font rasterizer), so OCR demos need a real scan or a
-/// shell-provided page. The photo bed — what exercises the detector — is faithful.
 /// </summary>
 public sealed class MockScannerBackend : IScannerBackend
 {
@@ -680,22 +676,28 @@ internal static class MockBedRenderer
         double u = x / ReceiptUnitInches, v = y / ReceiptUnitInches;
         int line = (int)(v / 9), character = (int)(u / 5);
         if (line >= lines.Length || character >= lines[line].Length) return false;
-        if (!ReceiptStrokes.TryGetValue(lines[line][character], out var strokes)) return false;
-        double gu = u - character * 5, gv = v - line * 9;
+        return OnGlyph(lines[line][character], u - character * 5, v - line * 9, ReceiptStrokeHalfWidth);
+    }
+
+    /// <summary>Whether (<paramref name="gu"/>, <paramref name="gv"/>) units from a cell's top-left corner is within <paramref name="halfWidth"/> of a stroke of <paramref name="c"/>.</summary>
+    private static bool OnGlyph(char c, double gu, double gv, double halfWidth)
+    {
+        if (!ReceiptStrokes.TryGetValue(c, out var strokes)) return false;
         foreach (var (x0, y0, x1, y1) in strokes)
         {
             // Distance to the segment: round ends, as a thermal head's dots run together.
             double dx = x1 - x0, dy = y1 - y0;
             double t = dx == 0 && dy == 0 ? 0 : Math.Clamp(((gu - x0) * dx + (gv - y0) * dy) / (dx * dx + dy * dy), 0, 1);
             double ex = gu - (x0 + t * dx), ey = gv - (y0 + t * dy);
-            if (ex * ex + ey * ey <= ReceiptStrokeHalfWidth * ReceiptStrokeHalfWidth) return true;
+            if (ex * ex + ey * ey <= halfWidth * halfWidth) return true;
         }
         return false;
     }
 
     /// <summary>
     /// The receipts' type: capitals, digits and the signs the demo receipts use, as polylines on a
-    /// 4 × 6 grid (x right, y down), "|" between polylines.
+    /// 4 × 6 grid (x right, y down), "|" between polylines. Lowercase letters sit on the grid's
+    /// lower four rows, with ascenders above and descenders below it.
     /// </summary>
     private static readonly Dictionary<char, string> ReceiptGlyphs = new()
     {
@@ -740,6 +742,33 @@ internal static class MockBedRenderer
         ['-'] = "0.5,3 3.5,3",
         ['*'] = "2,1 2,5|0.5,2 3.5,4|3.5,2 0.5,4",
         ['/'] = "4,0 0,6",
+        [','] = "2,5.5 2,6.2 1.4,7.2",
+        ['a'] = "4,2 4,6|4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['b'] = "0,0 0,6|0,3 1,2 3,2 4,3 4,5 3,6 1,6 0,5",
+        ['c'] = "4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['d'] = "4,0 4,6|4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['e'] = "0,4 4,4 4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['f'] = "4,1 3,0 2,0 1,1 1,6|0,2 3,2",
+        ['g'] = "4,2 4,7 3,8 1,8 0,7|4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['h'] = "0,0 0,6|0,3 1,2 3,2 4,3 4,6",
+        ['i'] = "2,2 2,6|2,0.4 2,0.8",
+        ['j'] = "3,2 3,7 2,8 1,8 0,7|3,0.4 3,0.8",
+        ['k'] = "0,0 0,6|3.5,2 0.5,4.3|1.8,3.5 4,6",
+        ['l'] = "1,0 2,0 2,6",
+        ['m'] = "0,2 0,6|0,3 1,2 2,2 2,6|2,3 3,2 4,3 4,6",
+        ['n'] = "0,2 0,6|0,3 1,2 3,2 4,3 4,6",
+        ['o'] = "1,2 3,2 4,3 4,5 3,6 1,6 0,5 0,3 1,2",
+        ['p'] = "0,2 0,8|0,3 1,2 3,2 4,3 4,5 3,6 1,6 0,5",
+        ['q'] = "4,2 4,8|4,3 3,2 1,2 0,3 0,5 1,6 3,6 4,5",
+        ['r'] = "0,2 0,6|0,3.5 1,2 3,2 4,2.5",
+        ['s'] = "4,3 3,2 1,2 0,3 1,4 3,4 4,5 3,6 1,6 0,5",
+        ['t'] = "2,0.5 2,5 3,6 4,6|0.5,2 3.5,2",
+        ['u'] = "0,2 0,5 1,6 3,6 4,5|4,2 4,6",
+        ['v'] = "0,2 2,6 4,2",
+        ['w'] = "0,2 1,6 2,3 3,6 4,2",
+        ['x'] = "0,2 4,6|4,2 0,6",
+        ['y'] = "0,2 2,6|4,2 1,8",
+        ['z'] = "0,2 4,2 0,6 4,6",
     };
 
     /// <summary>The segments (x0, y0, x1, y1) of each character of <see cref="ReceiptGlyphs"/>.</summary>
@@ -975,8 +1004,8 @@ internal static class MockBedRenderer
     // MARK: Document
 
     /// <summary>
-    /// A white page with text-shaped bars (title + paragraph lines). Bar widths derive from
-    /// the macOS demo's actual line lengths so the layout matches visually.
+    /// A white page with a title and a paragraph in the receipts' stroke type, which Windows OCR
+    /// can read.
     /// </summary>
     /// <param name="pageInches">The white page, in inches.</param>
     /// <param name="sheetIndex">When set, sheetIndex + 1 square marks are drawn near the bottom edge so feeder sheets can be told apart.</param>
@@ -987,25 +1016,19 @@ internal static class MockBedRenderer
         double pageH = pageInches.Height * scale;
         FillRect(image, pageX, pageY, pageW, pageH, 255, 255, 255);
 
-        // Line lengths of the macOS demo text, in characters (title, then body).
-        int[] bodyLineChars = [62, 63, 64, 40, 0, 60, 63, 57, 63, 52, 0, 43];
         double pointSize = scale / 72; // 1pt at this dpi
         double left = pageX + 0.75 * scale;
         double y = pageY + 0.9 * scale;
 
-        // Title bar (18pt bold ≈ taller, darker bar).
         double titleSize = 18 * pointSize;
-        FillRect(image, left, y, 30 * 0.5 * titleSize, titleSize * 0.72, 56, 56, 61);
+        DrawText(image, DocumentTitle, left, y, titleSize * StrokeUnitPerSize, BoldStrokeHalfWidth);
         y += titleSize * 2.2;
 
         double bodySize = 12 * pointSize;
         double lineHeight = bodySize * 1.55;
-        foreach (int chars in bodyLineChars)
+        foreach (string line in DocumentBody)
         {
-            if (chars > 0)
-            {
-                FillRect(image, left, y, chars * 0.5 * bodySize, bodySize * 0.6, 56, 56, 61);
-            }
+            DrawText(image, line, left, y, bodySize * StrokeUnitPerSize, ReceiptStrokeHalfWidth);
             y += lineHeight;
         }
 
@@ -1024,6 +1047,66 @@ internal static class MockBedRenderer
         {
             // The flatbed scans the top left of the glass for small papers, so the mark sits in the top margin.
             DrawSample(image, left, pageY + 0.35 * scale, scale);
+        }
+    }
+
+    public const string DocumentTitle = "Lazy Scan Demo Document";
+
+    public static readonly string[] DocumentBody =
+    [
+        "Lazy Scan is a scanning application for flatbed and",
+        "document scanners. It captures multi-page documents, recognizes",
+        "the text with on-device optical character recognition, and saves",
+        "the result as a searchable PDF file.",
+        "",
+        "Photos placed on the scanner glass are detected automatically,",
+        "straightened, and exported as individual image files. This page",
+        "was produced by the built-in demo scanner, which renders a",
+        "synthetic but realistic page so that the whole scanning pipeline",
+        "can be tested without any hardware attached.",
+        "",
+        "The quick brown fox jumps over the lazy dog.",
+    ];
+
+    public static readonly string[] DocumentBackBody =
+    [
+        "This is the back of a demo sheet. Two-sided scans put it",
+        "right after the front of the same sheet, upright, so the",
+        "saved document reads in order from the first page to the",
+        "last one.",
+        "",
+        "The marks below tell the sheets apart.",
+    ];
+
+    /// <summary>The stroke type's unit as a share of the font size: a 12 pt line comes out 0.0183 in per unit.</summary>
+    private const double StrokeUnitPerSize = 0.11;
+    /// <summary>Half the width of a stroke of the title, in units.</summary>
+    private const double BoldStrokeHalfWidth = 0.5;
+
+    /// <summary>Whether the stroke type draws <paramref name="c"/> (a space draws nothing, as it should).</summary>
+    public static bool HasGlyph(char c) => c == ' ' || ReceiptStrokes.ContainsKey(c);
+
+    /// <summary>Draws <paramref name="text"/> in the stroke type, its top-left corner at (<paramref name="x"/>, <paramref name="y"/>) pixels, <paramref name="unit"/> pixels per unit.</summary>
+    private static void DrawText(RgbaImage image, string text, double x, double y, double unit, double halfWidth)
+    {
+        int top = Math.Max(0, (int)(y - halfWidth * unit)), bottom = Math.Min(image.Height, (int)Math.Ceiling(y + 9 * unit));
+        for (int character = 0; character < text.Length; character++)
+        {
+            if (!ReceiptStrokes.ContainsKey(text[character])) continue;
+            int left = Math.Max(0, (int)(x + (character * 5 - halfWidth) * unit)), right = Math.Min(image.Width, (int)Math.Ceiling(x + (character * 5 + 5) * unit));
+            for (int py = top; py < bottom; py++)
+            {
+                for (int px = left; px < right; px++)
+                {
+                    double gu = (px + 0.5 - x) / unit - character * 5, gv = (py + 0.5 - y) / unit;
+                    if (!OnGlyph(text[character], gu, gv, halfWidth)) continue;
+                    int pi = (py * image.Width + px) * 4;
+                    image.Pixels[pi] = 56;
+                    image.Pixels[pi + 1] = 56;
+                    image.Pixels[pi + 2] = 61;
+                    image.Pixels[pi + 3] = 255;
+                }
+            }
         }
     }
 
@@ -1058,7 +1141,7 @@ internal static class MockBedRenderer
     }
 
     /// <summary>
-    /// The back of a demo sheet: a short paragraph (six text bars) and
+    /// The back of a demo sheet: a short paragraph and
     /// <paramref name="sheetIndex"/> + 1 square marks near the bottom right, so backs can be
     /// told from fronts and their orientation seen.
     /// </summary>
@@ -1068,13 +1151,12 @@ internal static class MockBedRenderer
         double pageW = pageInches.Width * scale, pageH = pageInches.Height * scale;
         FillRect(image, pageX, pageY, pageW, pageH, 255, 255, 255);
 
-        int[] lineChars = [48, 55, 51, 30, 0, 44, 22];
         double bodySize = 12 * scale / 72;
         double left = pageX + 0.75 * scale;
         double y = pageY + 0.9 * scale;
-        foreach (int chars in lineChars)
+        foreach (string line in DocumentBackBody)
         {
-            if (chars > 0) FillRect(image, left, y, chars * 0.5 * bodySize, bodySize * 0.6, 56, 56, 61);
+            DrawText(image, line, left, y, bodySize * StrokeUnitPerSize, ReceiptStrokeHalfWidth);
             y += bodySize * 1.55;
         }
 
