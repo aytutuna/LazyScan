@@ -168,7 +168,8 @@ scanners** — including the Epson Perfection V39 II.
   read from the receipt's text in ISO, US, European and Turkish numeric forms (2026-03-12,
   03/12/2026, 12.03.2026, 12-03-26), with month names in English, Turkish, German, French,
   Spanish, Italian, Portuguese and Dutch (12 Mar 2026, 12 Mart 2026, 12. März 2026), and in
-  Chinese, Japanese and Korean, preferring a line that says "Date", "Tarih", "Datum"… and leaving
+  Chinese, Japanese (also era years such as 令和8年3月12日) and Korean, with full-width and
+  Arabic-Indic digits and Buddhist-era years (12/03/2569) read too, preferring a line that says "Date", "Tarih", "Datum"… and leaving
   out expiry and "valid until" dates; today's date is used when none is found. The text is read
   once per receipt, for the date, the PDF's text layer and, if you like, a .txt beside each PDF.
   From the feeder, each sheet is one receipt. Scan more in the review adds the next

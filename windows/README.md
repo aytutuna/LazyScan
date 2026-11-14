@@ -1216,11 +1216,12 @@ their date: 300 dpi, grayscale, Compact PDFs, searchable, named `Receipt {docdat
 - **The date** (`ReceiptDateExtractor`): numeric dates (2026-03-12, 2026/3/5, 12/03/2026,
   03/12/2026, 12.03.2026, 12-03-26), month names and their abbreviations in English, Turkish,
   German, French, Spanish, Italian, Portuguese and Dutch (12 Mar 2026, Mar 12, 2026, 12-MAR-26,
-  12 Mart 2026, 12. März 2026, 12 de marzo de 2026), and 2026年3月12日 / 2026년 3월 12일. A date
+  12 Mart 2026, 12. März 2026, 12 de marzo de 2026), 2026年3月12日 / 2026년 3월 12일 and Japanese era
+  dates (令和8年3月12日), with full-width and Arabic-Indic digits and Buddhist-era years (12/03/2569). A date
   must exist and lie between ten years ago and tomorrow, which rules out times, phone numbers,
   amounts and card expiry dates (two-digit years are this century). Day or month: a part above 12
   is the day; dots (12.03.2026) put the day first; otherwise the user's region decides (the short
-  date pattern of the current culture). The first date on a line that says Date, Datum, Tarih,
+  date pattern of the current culture; where it starts with the year, 26/03/20 is 2026-03-20 unless the day-and-month reading is nearer today). The first date on a line that says Date, Datum, Tarih,
   Tarihi, Fecha, Data, Dated or Issued wins; otherwise the first date in reading order, leaving out
   lines about validity (Exp, Expiry, Valid, Until, Gültig, Son kullanma, SKT, Best before, Use by,
   Return by). A month name is read only where it stands: "Table 4 Sat 18 Apr 2026" is 18 April.

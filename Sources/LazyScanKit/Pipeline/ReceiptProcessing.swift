@@ -512,7 +512,8 @@ public enum ReceiptEnhancer {
 /// (ISO 2026-03-12, 12/03/2026, 03/12/2026, 12.03.2026, 12-03-26), dates with month names in English,
 /// Turkish, German, French, Spanish, Italian, Portuguese and Dutch (12 Mar 2026, Mar 12, 2026,
 /// 12-MAR-26, 12 Mart 2026, 12. März 2026, 12 de marzo de 2026), and Chinese, Japanese and Korean
-/// dates (2026年3月12日). A date must exist and lie between ten years before today and tomorrow, which
+/// dates (2026年3月12日, 令和8年3月12日), with full-width and Arabic-Indic digits and Buddhist-era years
+/// (12/03/2569) read as well. A date must exist and lie between ten years before today and tomorrow, which
 /// rules out times, phone numbers, amounts and card expiry dates. The first date on a line that says
 /// "date" (Date, Datum, Tarih, Fecha, Data…) wins; else the first date in reading order, leaving out
 /// lines about validity (Exp, Valid until, Son kullanma…). Twin of C# `ReceiptDateExtractor`.
@@ -558,8 +559,8 @@ public enum ReceiptDateExtractor {
                                         "gecerlilik", "son kullanma", "skt", "best before", "use by", "return by", "retour"]
 
     // ISO: 2026-03-12, 2026/3/5, 2026.03.12 (the same separator twice).
-    private static let isoPattern = pattern(#"(?<![0-9])((?:19|20)[0-9]{2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{1,2})(?![0-9])(?![.,][0-9])"#)
-    // Day and month as numbers: 12/03/2026, 12.03.26, 1-5-2026.
+    private static let isoPattern = pattern(#"(?<![0-9])((?:19|20|25)[0-9]{2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{1,2})(?![0-9])(?![.,][0-9])"#)
+    // Day and month as numbers: 12/03/2026, 12.03.26, 1-5-2026, 12/03/2569 (Buddhist year).
     private static let numericPattern = pattern(#"(?<![0-9])(?<![0-9][-./])([0-9]{1,2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{4}|[0-9]{2})(?![0-9])(?![.,][0-9])"#)
     // Day, month name, year: 12 Mar 2026, 12-MAR-26, 12. marz 2026, 1st january 2026, 12 de marzo de 2026.
     private static let dayNamePattern = pattern(#"(?<![0-9])([0-9]{1,2})(?:st|nd|rd|th)?\.?[-./ ]{0,2}(?:de )?("#
@@ -570,6 +571,9 @@ public enum ReceiptDateExtractor {
     // Chinese, Japanese, Korean: 2026年3月12日, 2026년 3월 12일.
     private static let cjkPattern = pattern(#"((?:19|20)[0-9]{2}) ?[年년] ?([0-9]{1,2}) ?[月월] ?([0-9]{1,2})(?![0-9])"#)
 
+    // Japanese era years: 令和8年3月12日, 平成30年1月5日, 令和元年5月1日.
+    private static let eraPattern = pattern(#"(令和|平成) ?(元|[0-9]{1,2}) ?年 ?([0-9]{1,2}) ?月 ?([0-9]{1,2})(?![0-9])"#)
+
     private static func pattern(_ source: String) -> NSRegularExpression {
         // The patterns are constants: a failure here is a programming error the tests catch.
         try! NSRegularExpression(pattern: source, options: [])
@@ -578,14 +582,18 @@ public enum ReceiptDateExtractor {
     /// The receipt's date in `lines` (its text in reading order); nil when none is found. `today` bounds
     /// the dates that count; `preferDayFirst` reads 03/04/2026 as 3 April (else as 4 March) when nothing
     /// else tells: a part above 12 is the day, and dots (03.04.2026) always put the day first.
-    public static func findDate(_ lines: [String], today: DocumentDate, preferDayFirst: Bool) -> DocumentDate? {
+    /// `yearFirst` reads a date with three short parts (26/03/20) as year, month, day when that is a date
+    /// in range and nearer today than the day-and-month reading; by default it follows the user's region.
+    public static func findDate(_ lines: [String], today: DocumentDate, preferDayFirst: Bool,
+                                yearFirst: Bool = ReceiptDateExtractor.prefersYearFirst()) -> DocumentDate? {
         let earliest = today.addingYears(-maxAgeYears)
         let latest = today.dayNumber + 1
         var first: DocumentDate?
         for line in lines {
             let folded = fold(line)
             let other = otherDateWords.contains { containsWord(folded, $0) }
-            guard let candidate = datesIn(folded, preferDayFirst: preferDayFirst)
+            guard let candidate = datesIn(folded, preferDayFirst: preferDayFirst, yearFirst: yearFirst,
+                                          range: earliest.dayNumber...latest)
                 .first(where: { $0 >= earliest && $0.dayNumber <= latest }) else { continue }
             if dateWords.contains(where: { containsWord(folded, $0) }) && !other { return candidate }
             if !other && first == nil { first = candidate }
@@ -595,7 +603,8 @@ public enum ReceiptDateExtractor {
 
     /// The dates written on one folded line (`fold`), in the order they appear; the calendar check is
     /// done, the range check is not.
-    static func datesIn(_ folded: String, preferDayFirst: Bool) -> [DocumentDate] {
+    static func datesIn(_ folded: String, preferDayFirst: Bool, yearFirst: Bool = false,
+                        range: ClosedRange<Int> = Int.min...Int.max) -> [DocumentDate] {
         var found: [(index: Int, order: Int, date: DocumentDate)] = []
         let whole = NSRange(folded.startIndex..<folded.endIndex, in: folded)
         func group(_ match: NSTextCheckingResult, _ n: Int) -> String {
@@ -608,15 +617,31 @@ public enum ReceiptDateExtractor {
             }
         }
         for m in isoPattern.matches(in: folded, options: [], range: whole) {
-            add(m, year: number(group(m, 1)), month: number(group(m, 3)), day: number(group(m, 4)))
+            add(m, year: yearOf(group(m, 1)), month: number(group(m, 3)), day: number(group(m, 4)))
         }
         for m in cjkPattern.matches(in: folded, options: [], range: whole) {
             add(m, year: number(group(m, 1)), month: number(group(m, 2)), day: number(group(m, 3)))
+        }
+        for m in eraPattern.matches(in: folded, options: [], range: whole) {
+            let first = group(m, 1) == "令和" ? 2018 : 1988
+            let n = group(m, 2) == "元" ? 1 : number(group(m, 2))
+            add(m, year: first + n, month: number(group(m, 3)), day: number(group(m, 4)))
         }
         for m in numericPattern.matches(in: folded, options: [], range: whole) {
             let a = number(group(m, 1)), b = number(group(m, 3))
             let year = yearOf(group(m, 4))
             let dayFirst = a > 12 ? true : b > 12 ? false : (group(m, 2) == "." || preferDayFirst)
+            let usual = DocumentDate.make(year: year, month: dayFirst ? b : a, day: dayFirst ? a : b)
+            if yearFirst && group(m, 4).count == 2,
+               let date = DocumentDate.make(year: 2000 + a, month: b, day: number(group(m, 4))),
+               range.contains(date.dayNumber) {
+                var nearer = true
+                if let usual, range.contains(usual.dayNumber) { nearer = usual.dayNumber < date.dayNumber }
+                if nearer {
+                    found.append((m.range.location, found.count, date))
+                    continue
+                }
+            }
             add(m, year: year, month: dayFirst ? b : a, day: dayFirst ? a : b)
         }
         for m in dayNamePattern.matches(in: folded, options: [], range: whole) {
@@ -635,8 +660,12 @@ public enum ReceiptDateExtractor {
 
     private static func number(_ digits: String) -> Int { Int(digits) ?? 0 }
 
-    /// A four-digit year as written; a two-digit one in this century.
-    private static func yearOf(_ digits: String) -> Int { digits.count == 2 ? 2000 + number(digits) : number(digits) }
+    /// A four-digit year as written, a Buddhist-era one (2569) as Gregorian; a two-digit one in this century.
+    private static func yearOf(_ digits: String) -> Int {
+        let n = number(digits)
+        if digits.count == 2 { return 2000 + n }
+        return n >= 2400 ? n - 543 : n
+    }
 
     /// Whether `word` stands in `folded` with no letter right before or after it.
     private static func containsWord(_ folded: String, _ word: String) -> Bool {
@@ -654,7 +683,8 @@ public enum ReceiptDateExtractor {
 
     /// The line as the patterns read it: A–Z in lower case, the letters with accents and the Turkish
     /// letters without them (Ş → s, ı and İ → i, ğ → g), combining accents dropped, every kind of space
-    /// a plain space; everything else as it is.
+    /// a plain space, full-width and Arabic-Indic digits as 0-9, full-width / . - as plain ones; everything
+    /// else as it is.
     public static func fold(_ line: String) -> String {
         var scalars = String.UnicodeScalarView()
         for scalar in line.unicodeScalars {
@@ -663,6 +693,8 @@ public enum ReceiptDateExtractor {
                 scalars.append(Unicode.Scalar(value + 32)!)
             } else if value >= 0x300 && value <= 0x36F {
                 continue
+            } else if let ascii = asciiForm(of: value) {
+                scalars.append(ascii)
             } else if value == 9 || value == 0xA0 || value == 0x2007 || value == 0x202F || value == 0x3000 {
                 scalars.append(" ")
             } else if let folded = foldedLetters[Character(scalar)] {
@@ -672,6 +704,18 @@ public enum ReceiptDateExtractor {
             }
         }
         return String(scalars)
+    }
+
+    private static func asciiForm(of value: UInt32) -> Unicode.Scalar? {
+        switch value {
+        case 0xFF10...0xFF19: return Unicode.Scalar(value - 0xFF10 + 48)
+        case 0x660...0x669: return Unicode.Scalar(value - 0x660 + 48)
+        case 0x6F0...0x6F9: return Unicode.Scalar(value - 0x6F0 + 48)
+        case 0xFF0F: return "/"
+        case 0xFF0E: return "."
+        case 0xFF0D: return "-"
+        default: return nil
+        }
     }
 
     private static let foldedLetters: [Character: Unicode.Scalar] = {
@@ -693,6 +737,18 @@ public enum ReceiptDateExtractor {
         guard let day = shortDatePattern.firstIndex(of: "d") else { return false }
         guard let month = shortDatePattern.firstIndex(of: "M") else { return true }
         return day < month
+    }
+
+    /// Whether a short date pattern puts the year first: "yy/MM/dd", "yyyy-MM-dd".
+    public static func prefersYearFirst(_ shortDatePattern: String) -> Bool {
+        guard let year = shortDatePattern.firstIndex(of: "y") else { return false }
+        guard let day = shortDatePattern.firstIndex(of: "d") else { return true }
+        return year < day
+    }
+
+    /// Whether the user's region writes the year first: its pattern for day, month and year.
+    public static func prefersYearFirst(locale: Locale = .current) -> Bool {
+        prefersYearFirst(DateFormatter.dateFormat(fromTemplate: "ddMMyyyy", options: 0, locale: locale) ?? "")
     }
 
     /// Whether the user's region writes the day first: its pattern for day, month and year.

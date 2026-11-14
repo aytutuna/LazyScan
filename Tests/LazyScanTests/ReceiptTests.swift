@@ -35,8 +35,9 @@ private func assertCoversPrint(_ region: DetectedPhotoRegion, _ receipt: TestPag
 
 private let today = DocumentDate(year: 2026, month: 10, day: 19)
 
-private func find(_ text: String, dayFirst: Bool) -> String? {
-    ReceiptDateExtractor.findDate(text.components(separatedBy: "\n"), today: today, preferDayFirst: dayFirst)?.text
+private func find(_ text: String, dayFirst: Bool, yearFirst: Bool = false) -> String? {
+    ReceiptDateExtractor.findDate(text.components(separatedBy: "\n"), today: today, preferDayFirst: dayFirst,
+                                  yearFirst: yearFirst)?.text
 }
 
 final class ReceiptTests: XCTestCase {
@@ -317,12 +318,33 @@ final class ReceiptTests: XCTestCase {
         XCTAssertEqual(names.map(\.count), names.map(\.count).sorted(by: >))
     }
 
+    func test_dates_yearFirstRegionReadsShortDatesYearFirst() {
+        XCTAssertEqual(find("26/03/20", dayFirst: false, yearFirst: true), "2026-03-20")
+        XCTAssertEqual(find("26.03.20", dayFirst: true, yearFirst: true), "2026-03-20")
+        XCTAssertEqual(find("26/03/20", dayFirst: true, yearFirst: false), "2020-03-26")
+        XCTAssertEqual(find("20/03/26", dayFirst: true, yearFirst: true), "2026-03-20")
+        // A year-first reading outside the range, or not a date, falls back to day and month.
+        XCTAssertEqual(find("31/12/25", dayFirst: true, yearFirst: true), "2025-12-31")
+        XCTAssertEqual(find("12/03/2025", dayFirst: false, yearFirst: true), "2025-12-03")
+    }
+
+    func test_dates_eraBuddhistAndFullWidthYears() {
+        XCTAssertEqual(find("令和8年3月12日", dayFirst: false), "2026-03-12")
+        XCTAssertEqual(find("令和元年5月1日", dayFirst: false), "2019-05-01")
+        XCTAssertEqual(find("平成30年1月5日", dayFirst: false), "2018-01-05")
+        XCTAssertEqual(find("12/03/2569", dayFirst: true), "2026-03-12")
+        XCTAssertEqual(find("2569-03-12", dayFirst: true), "2026-03-12")
+        XCTAssertEqual(find("２０２６年３月１２日", dayFirst: false), "2026-03-12")
+        XCTAssertEqual(find("１２／０３／２０２６", dayFirst: true), "2026-03-12")
+        XCTAssertEqual(find("١٢/٠٣/٢٠٢٦", dayFirst: true), "2026-03-12")
+    }
+
     func test_dates_accuracyOnTheTestSet() {
         var misses: [String] = []
         var total = 0
         for c in ReceiptDateCases.all {
             total += 1
-            let got = ReceiptDateExtractor.findDate(c.lines, today: today, preferDayFirst: c.dayFirst)?.text
+            let got = ReceiptDateExtractor.findDate(c.lines, today: today, preferDayFirst: c.dayFirst, yearFirst: false)?.text
             if got != c.expected {
                 misses.append("\(c.category): \(c.lines.joined(separator: " | ")) -> \(got ?? "none") (expected \(c.expected ?? "none"))")
             }
@@ -339,6 +361,16 @@ final class ReceiptTests: XCTestCase {
         XCTAssertEqual(ReceiptDateExtractor.fold("1 février août Eylül Aralık"), "1 fevrier aout eylul aralik")
         XCTAssertEqual(ReceiptDateExtractor.fold("12\u{00A0}Mai"), "12 mai")
         XCTAssertEqual(ReceiptDateExtractor.fold("2026年3月12日"), "2026年3月12日")
+        XCTAssertEqual(ReceiptDateExtractor.fold("１２／０３．２０２６"), "12/03.2026")
+        XCTAssertEqual(ReceiptDateExtractor.fold("٢٠٢٦ ۱۲"), "2026 12")
+    }
+
+    func test_prefersYearFirst_fromTheShortDatePattern() {
+        XCTAssertTrue(ReceiptDateExtractor.prefersYearFirst("yy/MM/dd"))
+        XCTAssertTrue(ReceiptDateExtractor.prefersYearFirst("yyyy-MM-dd"))
+        XCTAssertFalse(ReceiptDateExtractor.prefersYearFirst("dd.MM.yyyy"))
+        XCTAssertFalse(ReceiptDateExtractor.prefersYearFirst("M/d/yyyy"))
+        XCTAssertFalse(ReceiptDateExtractor.prefersYearFirst(""))
     }
 
     func test_prefersDayFirst_fromTheShortDatePattern() {

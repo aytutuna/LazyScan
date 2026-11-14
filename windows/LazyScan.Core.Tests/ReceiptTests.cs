@@ -287,8 +287,8 @@ public class ReceiptTests
 
     private static readonly DocumentDate Today = new(2026, 10, 19);
 
-    private static string? Find(string text, bool dayFirst) =>
-        ReceiptDateExtractor.FindDate(text.Split('\n'), Today, dayFirst)?.ToString();
+    private static string? Find(string text, bool dayFirst, bool yearFirst = false) =>
+        ReceiptDateExtractor.FindDate(text.Split('\n'), Today, dayFirst, yearFirst)?.ToString();
 
     [Fact]
     public void Dates_ThePlanCases()
@@ -337,13 +337,38 @@ public class ReceiptTests
     }
 
     [Fact]
+    public void Dates_YearFirstRegionReadsShortDatesYearFirst()
+    {
+        Assert.Equal("2026-03-20", Find("26/03/20", dayFirst: false, yearFirst: true));
+        Assert.Equal("2026-03-20", Find("26.03.20", dayFirst: true, yearFirst: true));
+        Assert.Equal("2020-03-26", Find("26/03/20", dayFirst: true, yearFirst: false));
+        Assert.Equal("2026-03-20", Find("20/03/26", dayFirst: true, yearFirst: true));
+        // A year-first reading outside the range, or not a date, falls back to day and month.
+        Assert.Equal("2025-12-31", Find("31/12/25", dayFirst: true, yearFirst: true));
+        Assert.Equal("2025-12-03", Find("12/03/2025", dayFirst: false, yearFirst: true));
+    }
+
+    [Fact]
+    public void Dates_EraBuddhistAndFullWidthYears()
+    {
+        Assert.Equal("2026-03-12", Find("令和8年3月12日", dayFirst: false));
+        Assert.Equal("2019-05-01", Find("令和元年5月1日", dayFirst: false));
+        Assert.Equal("2018-01-05", Find("平成30年1月5日", dayFirst: false));
+        Assert.Equal("2026-03-12", Find("12/03/2569", dayFirst: true));
+        Assert.Equal("2026-03-12", Find("2569-03-12", dayFirst: true));
+        Assert.Equal("2026-03-12", Find("２０２６年３月１２日", dayFirst: false));
+        Assert.Equal("2026-03-12", Find("１２／０３／２０２６", dayFirst: true));
+        Assert.Equal("2026-03-12", Find("١٢/٠٣/٢٠٢٦", dayFirst: true));
+    }
+
+    [Fact]
     public void Dates_AccuracyOnTheTestSet()
     {
         var misses = new List<string>();
         var byCategory = new Dictionary<string, (int Right, int Total)>();
         foreach (var c in ReceiptDateCases.All)
         {
-            string? got = ReceiptDateExtractor.FindDate(c.Lines, Today, c.DayFirst)?.ToString();
+            string? got = ReceiptDateExtractor.FindDate(c.Lines, Today, c.DayFirst, yearFirst: false)?.ToString();
             bool right = got == c.Expected;
             var (r, t) = byCategory.GetValueOrDefault(c.Category);
             byCategory[c.Category] = (r + (right ? 1 : 0), t + 1);
@@ -363,6 +388,18 @@ public class ReceiptTests
         Assert.Equal("1 fevrier aout eylul aralik", ReceiptDateExtractor.Fold("1 février août Eylül Aralık"));
         Assert.Equal("12 mai", ReceiptDateExtractor.Fold("12 Mai"));
         Assert.Equal("2026年3月12日", ReceiptDateExtractor.Fold("2026年3月12日"));
+        Assert.Equal("12/03.2026", ReceiptDateExtractor.Fold("１２／０３．２０２６"));
+        Assert.Equal("2026 12", ReceiptDateExtractor.Fold("٢٠٢٦ ۱۲"));
+    }
+
+    [Fact]
+    public void PrefersYearFirst_FromTheShortDatePattern()
+    {
+        Assert.True(ReceiptDateExtractor.PrefersYearFirst("yy/MM/dd"));
+        Assert.True(ReceiptDateExtractor.PrefersYearFirst("yyyy-MM-dd"));
+        Assert.False(ReceiptDateExtractor.PrefersYearFirst("dd.MM.yyyy"));
+        Assert.False(ReceiptDateExtractor.PrefersYearFirst("M/d/yyyy"));
+        Assert.False(ReceiptDateExtractor.PrefersYearFirst(""));
     }
 
     [Fact]

@@ -633,10 +633,10 @@ public static partial class ReceiptDateExtractor
         string.Join("|", MonthNames.Keys.OrderByDescending(name => name.Length).ThenBy(name => name, StringComparer.Ordinal));
 
     // ISO: 2026-03-12, 2026/3/5, 2026.03.12 (the same separator twice).
-    [GeneratedRegex(@"(?<![0-9])((?:19|20)[0-9]{2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{1,2})(?![0-9])(?![.,][0-9])", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<![0-9])((?:19|20|25)[0-9]{2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{1,2})(?![0-9])(?![.,][0-9])", RegexOptions.CultureInvariant)]
     private static partial Regex IsoPattern();
 
-    // Day and month as numbers: 12/03/2026, 12.03.26, 1-5-2026.
+    // Day and month as numbers: 12/03/2026, 12.03.26, 1-5-2026, 12/03/2569 (Buddhist year).
     [GeneratedRegex(@"(?<![0-9])(?<![0-9][-./])([0-9]{1,2})([-./]) ?([0-9]{1,2})\2 ?([0-9]{4}|[0-9]{2})(?![0-9])(?![.,][0-9])", RegexOptions.CultureInvariant)]
     private static partial Regex NumericPattern();
 
@@ -654,14 +654,21 @@ public static partial class ReceiptDateExtractor
     [GeneratedRegex(@"((?:19|20)[0-9]{2}) ?[年년] ?([0-9]{1,2}) ?[月월] ?([0-9]{1,2})(?![0-9])", RegexOptions.CultureInvariant)]
     private static partial Regex CjkPattern();
 
+    // Japanese era years: 令和8年3月12日, 平成30年1月5日, 令和元年5月1日.
+    [GeneratedRegex(@"(令和|平成) ?(元|[0-9]{1,2}) ?年 ?([0-9]{1,2}) ?月 ?([0-9]{1,2})(?![0-9])", RegexOptions.CultureInvariant)]
+    private static partial Regex EraPattern();
+
     /// <summary>
     /// The receipt's date in <paramref name="lines"/> (its text in reading order); null when none is
     /// found. <paramref name="today"/> bounds the dates that count; <paramref name="preferDayFirst"/>
     /// reads 03/04/2026 as 3 April (else as 4 March) when nothing else tells: a part above 12 is the
-    /// day, and dots (03.04.2026) always put the day first.
+    /// day, and dots (03.04.2026) always put the day first. <paramref name="yearFirst"/> reads a date
+    /// with three short parts (26/03/20) as year, month, day when that is a date in range nearer today than the day-and-month reading; null follows
+    /// the user's region.
     /// </summary>
-    public static DocumentDate? FindDate(IReadOnlyList<string> lines, DocumentDate today, bool preferDayFirst)
+    public static DocumentDate? FindDate(IReadOnlyList<string> lines, DocumentDate today, bool preferDayFirst, bool? yearFirst = null)
     {
+        bool yearOrder = yearFirst ?? PrefersYearFirst(CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
         var earliest = today.AddingYears(-MaxAgeYears);
         int latest = today.DayNumber + 1;
         DocumentDate? first = null;
@@ -670,7 +677,7 @@ public static partial class ReceiptDateExtractor
             string folded = Fold(line);
             bool other = OtherDateWords.Any(word => ContainsWord(folded, word));
             DocumentDate? found = null;
-            foreach (var date in DatesIn(folded, preferDayFirst))
+            foreach (var date in DatesIn(folded, preferDayFirst, yearOrder, earliest.DayNumber, latest))
             {
                 if (date < earliest || date.DayNumber > latest) continue;
                 found = date;
@@ -687,7 +694,8 @@ public static partial class ReceiptDateExtractor
     /// The dates written on one folded line (<see cref="Fold"/>), in the order they appear; the
     /// calendar check is done, the range check is not.
     /// </summary>
-    internal static List<DocumentDate> DatesIn(string folded, bool preferDayFirst)
+    internal static List<DocumentDate> DatesIn(string folded, bool preferDayFirst, bool yearFirst = false,
+                                               int earliestDay = int.MinValue, int latestDay = int.MaxValue)
     {
         var found = new List<(int Index, DocumentDate Date)>();
         void Add(int index, int year, int month, int day)
@@ -696,11 +704,17 @@ public static partial class ReceiptDateExtractor
         }
         foreach (Match m in IsoPattern().Matches(folded))
         {
-            Add(m.Index, Number(m.Groups[1].Value), Number(m.Groups[3].Value), Number(m.Groups[4].Value));
+            Add(m.Index, Year(m.Groups[1].Value), Number(m.Groups[3].Value), Number(m.Groups[4].Value));
         }
         foreach (Match m in CjkPattern().Matches(folded))
         {
             Add(m.Index, Number(m.Groups[1].Value), Number(m.Groups[2].Value), Number(m.Groups[3].Value));
+        }
+        foreach (Match m in EraPattern().Matches(folded))
+        {
+            int first = m.Groups[1].Value == "令和" ? 2018 : 1988;
+            int n = m.Groups[2].Value == "元" ? 1 : Number(m.Groups[2].Value);
+            Add(m.Index, first + n, Number(m.Groups[3].Value), Number(m.Groups[4].Value));
         }
         foreach (Match m in NumericPattern().Matches(folded))
         {
@@ -709,6 +723,18 @@ public static partial class ReceiptDateExtractor
             bool dayFirst = a > 12 ? true
                 : b > 12 ? false
                 : m.Groups[2].Value == "." || preferDayFirst;
+            if (yearFirst && m.Groups[4].Value.Length == 2
+                && DocumentDate.TryCreate(2000 + a, b, Number(m.Groups[4].Value)) is { } ordered
+                && ordered.DayNumber >= earliestDay && ordered.DayNumber <= latestDay)
+            {
+                var usual = DocumentDate.TryCreate(year, dayFirst ? b : a, dayFirst ? a : b);
+                if (usual is not { } u || u.DayNumber < earliestDay || u.DayNumber > latestDay
+                    || u.DayNumber < ordered.DayNumber)
+                {
+                    found.Add((m.Index, ordered));
+                    continue;
+                }
+            }
             Add(m.Index, year, dayFirst ? b : a, dayFirst ? a : b);
         }
         foreach (Match m in DayNamePattern.Matches(folded))
@@ -733,8 +759,13 @@ public static partial class ReceiptDateExtractor
 
     private static int Number(string digits) => int.Parse(digits, NumberStyles.None, CultureInfo.InvariantCulture);
 
-    /// <summary>A four-digit year as written; a two-digit one in this century.</summary>
-    private static int Year(string digits) => digits.Length == 2 ? 2000 + Number(digits) : Number(digits);
+    /// <summary>A four-digit year as written, a Buddhist-era one (2569) as Gregorian; a two-digit one in this century.</summary>
+    private static int Year(string digits)
+    {
+        int n = Number(digits);
+        if (digits.Length == 2) return 2000 + n;
+        return n >= 2400 ? n - 543 : n;
+    }
 
     /// <summary>Whether <paramref name="word"/> stands in <paramref name="folded"/> with no letter right before or after it.</summary>
     private static bool ContainsWord(string folded, string word)
@@ -756,7 +787,8 @@ public static partial class ReceiptDateExtractor
     /// <summary>
     /// The line as the patterns read it: A–Z in lower case, the letters with accents and the
     /// Turkish letters without them (Ş → s, ı and İ → i, ğ → g), combining accents dropped, every
-    /// kind of space a plain space; everything else as it is.
+    /// kind of space a plain space, full-width and Arabic-Indic digits as 0-9, full-width / . - as plain
+    /// ones; everything else as it is.
     /// </summary>
     public static string Fold(string line)
     {
@@ -770,10 +802,22 @@ public static partial class ReceiptDateExtractor
             }
             if (c is >= '̀' and <= 'ͯ') continue;
             if (c is '\t' or ' ' or ' ' or ' ' or '　') { builder.Append(' '); continue; }
+            if (AsciiForm(c) is { } ascii) { builder.Append(ascii); continue; }
             builder.Append(FoldedLetter(c) ?? c.ToString());
         }
         return builder.ToString();
     }
+
+    private static char? AsciiForm(char c) => c switch
+    {
+        >= '\uFF10' and <= '\uFF19' => (char)(c - '\uFF10' + '0'),
+        >= '\u0660' and <= '\u0669' => (char)(c - '\u0660' + '0'),
+        >= '\u06F0' and <= '\u06F9' => (char)(c - '\u06F0' + '0'),
+        '\uFF0F' => '/',
+        '\uFF0E' => '.',
+        '\uFF0D' => '-',
+        _ => null,
+    };
 
     private static string? FoldedLetter(char c) => c switch
     {
@@ -798,6 +842,13 @@ public static partial class ReceiptDateExtractor
     {
         int day = shortDatePattern.IndexOf('d'), month = shortDatePattern.IndexOf('M');
         return day >= 0 && (month < 0 || day < month);
+    }
+
+    /// <summary>Whether a short date pattern puts the year first: "yy/MM/dd", "yyyy-MM-dd".</summary>
+    public static bool PrefersYearFirst(string shortDatePattern)
+    {
+        int year = shortDatePattern.IndexOf('y'), day = shortDatePattern.IndexOf('d');
+        return year >= 0 && (day < 0 || year < day);
     }
 }
 
