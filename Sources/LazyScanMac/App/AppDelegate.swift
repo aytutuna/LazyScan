@@ -30,9 +30,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Quit from the Dock or at logout can come while the app is in the background.
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
-        // TODO: let a running save finish its cleanup first (.terminateLater), as Windows does.
-        if state.isBusy { state.cancelScan() }
-        return .terminateNow
+        guard state.isBusy else { return .terminateNow }
+        // The scan or save removes its temporary files and the scanner session closes before the app ends;
+        // the queue is cleared after that, by the will-terminate observer.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            self.replyToQuit()
+        }
+        Task { @MainActor in
+            await state.stopForQuit()
+            self.replyToQuit()
+        }
+        return .terminateLater
+    }
+
+    private var quitReplied = false
+
+    private func replyToQuit() {
+        guard !quitReplied else { return }
+        quitReplied = true
+        NSApp.reply(toApplicationShouldTerminate: true)
     }
 
     /// What quitting would lose, in the words of the Windows question (`UnsavedWorkDescription`): the

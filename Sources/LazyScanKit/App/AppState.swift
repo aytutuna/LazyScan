@@ -1988,6 +1988,14 @@ public final class AppState: ObservableObject {
         answerCorners(.skip)
     }
 
+    /// Quit during work: stops it, waits for the operation to wind down (its temporary files go with it)
+    /// and closes the scanner session. The caller caps the wait.
+    public func stopForQuit() async {
+        cancelScan()
+        while isBusy { try? await Task.sleep(nanoseconds: 50_000_000) }
+        await session?.close()
+    }
+
     // MARK: Saving
 
     /// Saves the collected pages as one file: a PDF (with its text beside it when

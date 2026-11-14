@@ -91,6 +91,13 @@ extension AppState {
         state.keepsSavedForUndo = true
         // The spool earlier builds kept in the temporary folder.
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("LazyScan-pages", isDirectory: true))
+        // Download folders of scans a crash or a forced quit cut short.
+        let temp = FileManager.default.temporaryDirectory
+        for url in (try? FileManager.default.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil)) ?? []
+        where url.lastPathComponent.hasPrefix("LazyScan-")
+            && UUID(uuidString: String(url.lastPathComponent.dropFirst("LazyScan-".count))) != nil {
+            try? FileManager.default.removeItem(at: url)
+        }
         // Pictures from Continuity Camera that a crash or a quit left behind.
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Continuity Camera", isDirectory: true))
         state.cornerModel = FastViTCornerModel.isAvailable ? FastViTCornerModel.shared : nil

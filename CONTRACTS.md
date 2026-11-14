@@ -3513,7 +3513,7 @@ extension AppState { @MainActor static func makeForMac() -> AppState }   // [ICS
 // LazyScanMac/App/AppDelegate.swift: LazyScanApp's @NSApplicationDelegateAdaptor; the window sets its `state` when it appears
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply   // busy or unsaved work: "Stop it and quit?" / "Quit anyway?",
-                                                                                               // Quit and Cancel (Return does not quit); Quit stops a running scan or save
+                                                                                               // Quit and Cancel (Return does not quit); Quit stops a running scan or save and waits up to 3 s for it and the scanner session to close (AppState.stopForQuit); the LazyScan-<uuid> scan folders are swept at launch
     static func unsavedWork(_ state: AppState) -> String?   // the Windows window's closing texts (UnsavedWorkDescription): the queue, else the review, else the ID card
 }
 

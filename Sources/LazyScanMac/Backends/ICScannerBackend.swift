@@ -235,6 +235,18 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
 
     func open() async throws {
         device.delegate = self
+        // A session an earlier attempt opened after its timeout, or one whose close is still
+        // in flight, is closed first so the new open cannot be undone by a late close.
+        if device.hasOpenSession {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                closeContinuation = continuation
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    self?.resumeClose()
+                }
+                device.requestCloseSession()
+            }
+        }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             openContinuation = continuation
             // A sleeping or vanished network scanner may never answer
@@ -244,6 +256,8 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
                 try? await Task.sleep(nanoseconds: 20_000_000_000)
                 guard let self, self.openContinuation != nil else { return }
                 self.device.delegate = nil
+                // An answer that comes after this would open a session nobody owns.
+                self.device.requestCloseSession()
                 self.resumeOpen(.failure(ScanError.deviceUnavailable(reason: { L10n.t("{0} did not respond.", self.info.name) })))
             }
             device.requestOpenSession()
