@@ -292,12 +292,7 @@ final class IOSCameraTasksTests: XCTestCase {
     // MARK: Quick scan
 
     func test_contactFields_findPhonesEmailsAndLinks() {
-        let fields: ContactFields = ContactFields.found(in: "JANE ROE
-Design Lead
-+1 613 555 0142
-+1 (613) 555-0142
-jane@roe.com
-roe.com")
+        let fields: ContactFields = ContactFields.found(in: "JANE ROE\nDesign Lead\n+1 613 555 0142\n+1 (613) 555-0142\njane@roe.com\nroe.com")
         XCTAssertEqual(fields.phones.count, 1)
         XCTAssertEqual(fields.emails, ["jane@roe.com"])
         XCTAssertTrue(fields.links.contains { $0.contains("roe.com") })

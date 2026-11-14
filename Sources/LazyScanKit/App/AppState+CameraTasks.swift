@@ -234,6 +234,7 @@ extension AppState {
                            then: @escaping @MainActor (String) -> Void) {
         guard let page = quickScanPage else { return }
         runExclusive { flag in
+            let before: String = self.statusMessage
             self.statusMessage = L10n.t("Reading the text…")
             let text: String = try await Task.detached(priority: .userInitiated) { () throws -> String in
                 try reading(page)
