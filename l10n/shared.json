@@ -1595,6 +1595,7 @@
   "Overview ready — tap the preview to choose the scan area, then Scan.": {},
   "Overview ready — drag on the preview to select an area, then Scan.": {},
   "Scanning…": {},
+  "Cancelling: the scanner is finishing this pass.": {},
   "The scanner returned no pages.": {},
   "Processing…": {},
   "Processing page {0}…": {},

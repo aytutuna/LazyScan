@@ -37,6 +37,33 @@ public sealed class WiaApartmentTests
         Assert.Equal(7, await WiaApartment.Run(() => 7, TimeSpan.FromSeconds(30), "Acme 5"));
     }
 
+    [Fact]
+    public async Task ACancelPressedWhileTheWiaThreadIsBusyStopsTheScanBeforeItStarts()
+    {
+        using var gate = new ManualResetEventSlim();
+        var busy = WiaApartment.Run(() => { gate.Wait(); return 0; }, TimeSpan.FromSeconds(30), "Acme 5");
+        try
+        {
+            var messages = new List<string>();
+            var session = new WiaScannerSession(new ScannerInfo("wia:1", "Acme 5", "USB"), "none", () => { })
+            {
+                ProgressHandler = progress => messages.Add(progress.Message)
+            };
+            var scan = session.PerformScanAsync(new ScanSettings(), null);
+            session.CancelScan();
+            Assert.Contains("Cancelling: the scanner is finishing this pass.", messages);
+
+            gate.Set();
+            var error = await Assert.ThrowsAsync<ScanException>(() => scan);
+            Assert.Equal(ScanErrorKind.Cancelled, error.Kind);
+        }
+        finally
+        {
+            gate.Set();
+            await busy;
+        }
+    }
+
     private static async Task<int> WaitUntilItRuns(Func<int> work)
     {
         // The flag clears when the hung call returns, which is just after it is released.

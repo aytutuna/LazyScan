@@ -15,7 +15,7 @@ namespace LazyScan.App.Scanning;
 /// against a real device. Known scaffold limitations:
 ///   - hot-plug is detected from WIA connect and disconnect events, with a poll (the watchdog below) as the fallback;
 ///   - Transfer() is synchronous with no progress callbacks — progress is coarse;
-///   - CancelScan() cannot abort an in-flight WIA transfer, it only discards the result.
+///   - CancelScan() cannot abort an in-flight WIA transfer: the pass ends, then the scan stops (a feeder after the current sheet).
 /// </summary>
 public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDiagnostics, IBackendDiagnostics
 {
@@ -543,6 +543,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     public bool? LastScanDuplex => _lastScanDuplex < 0 ? null : _lastScanDuplex == 1;
 
     private volatile bool _cancelRequested;
+    /// <summary>A scan was asked for and has not finished, from the call until the WIA thread is done with it.</summary>
+    private volatile bool _scanning;
     private SizeD _bedInches = new(8.5, 11.7);
     /// <summary>The feeder's largest sheet, when the device reports it.</summary>
     private SizeD? _feederInches;
@@ -633,26 +635,48 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     public Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
     {
         var pages = new List<ScannedPage>();
+        // Reset here, not on the WIA thread: a Cancel pressed while that thread is still busy with
+        // something else must survive until the scan starts.
+        _cancelRequested = false;
+        _scanning = true;
         return RunSta<IReadOnlyList<ScannedPage>>(() =>
         {
-            Scan(settings, selection, pages.Add);
-            return pages;
+            try
+            {
+                Scan(settings, selection, pages.Add);
+                return pages;
+            }
+            finally
+            {
+                _scanning = false;
+            }
         });
     }
 
-    public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage) =>
-        PageHandover.Run(emit => RunSta(() =>
+    public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage)
+    {
+        _cancelRequested = false;
+        _scanning = true;
+        return PageHandover.Run(emit => RunSta(() =>
         {
-            Scan(settings, selection, page => emit(page).GetAwaiter().GetResult());
-            return true;
+            try
+            {
+                Scan(settings, selection, page => emit(page).GetAwaiter().GetResult());
+                return true;
+            }
+            finally
+            {
+                _scanning = false;
+            }
         }), onPage);
+    }
 
     /// <summary>Scans on the WIA thread, passing each page to <paramref name="emit"/> as it transfers.</summary>
     private void Scan(ScanSettings settings, RectD? selection, Action<ScannedPage> emit)
     {
         _lastScanStop = null;
         _lastScanDuplex = -1;
-        _cancelRequested = false;
+        if (_cancelRequested) throw ScanException.Cancelled();
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
         int count = 0;
         ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
@@ -730,7 +754,13 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         }
     }
 
-    public void CancelScan() => _cancelRequested = true;
+    public void CancelScan()
+    {
+        _cancelRequested = true;
+        // A transfer in flight cannot be aborted: the scanner ends this pass (a flatbed scan, or the
+        // sheet in the feeder) and the scan stops after it.
+        if (_scanning) ProgressHandler?.Invoke(new ScanProgress(Loc.T("Cancelling: the scanner is finishing this pass.")));
+    }
 
     public Task CloseAsync() => Task.CompletedTask; // connections are per operation in WIA automation
 
