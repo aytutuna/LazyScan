@@ -195,6 +195,15 @@ final class CompanionNetworkTests: XCTestCase {
         XCTAssertTrue(checks[2].detail.contains("hotspot"))
     }
 
+    func testChecks_OtherNetworkIsATipOnceOneIsReceiving() {
+        let snapshot = CompanionSnapshot(networks: [state(TestNetworks.home(), .privateNetwork), state(TestNetworks.college(), .notTrusted)],
+                                         listen: .listening, port: 52731, firewall: .allowed, pairedCount: 1)
+        let checks = CompanionTroubleshooter.diagnose(snapshot)
+        let other = checks.first { $0.id == "phoneNetwork:\(TestNetworks.college().id)" }
+        XCTAssertEqual(other?.status, .tip)
+        XCTAssertEqual(CompanionTroubleshooter.summary(checks), "Nothing here stops a paired phone from connecting.")
+    }
+
     func testChecks_ApprovedPublicNetworkMentionsTheFirewallQuestion() {
         let snapshot = CompanionSnapshot(networks: [state(TestNetworks.college(), .approved)], listen: .listening, port: 52731,
                                          firewall: .willAsk, pairedCount: 2)

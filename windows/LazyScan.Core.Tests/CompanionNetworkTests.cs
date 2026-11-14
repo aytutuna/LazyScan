@@ -278,6 +278,23 @@ public sealed class CompanionNetworkTests : IDisposable
     }
 
     [Fact]
+    public void Checks_OtherNetworkIsATipOnceOneIsReceiving()
+    {
+        var snapshot = new CompanionSnapshot
+        {
+            Networks = [State(Networks.Home(), NetworkTrust.Private), State(Networks.College(), NetworkTrust.NotTrusted)],
+            Listen = CompanionListenState.Listening,
+            Port = 52731,
+            Firewall = CompanionFirewallVerdict.Allowed,
+            PairedCount = 1,
+        };
+        var checks = CompanionTroubleshooter.Diagnose(snapshot);
+        var other = checks.First(c => c.Id == $"phoneNetwork:{Networks.College().Id}");
+        Assert.Equal(CheckStatus.Tip, other.Status);
+        Assert.Equal("Nothing here stops a paired phone from connecting.", CompanionTroubleshooter.Summary(checks));
+    }
+
+    [Fact]
     public void Checks_ApprovedPublicNetworkMentionsTheFirewallQuestion()
     {
         var snapshot = new CompanionSnapshot

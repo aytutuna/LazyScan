@@ -37,7 +37,9 @@ public static class CompanionTroubleshooter
     {
         var checks = new List<TroubleshootCheck>();
         if (ListenCheck(snapshot) is { } listen) checks.Add(listen);
-        foreach (var state in snapshot.Networks) checks.Add(NetworkCheck(state));
+        bool receiving = snapshot.Listen == CompanionListenState.Listening
+                         && snapshot.Networks.Any(n => n.Trust != NetworkTrust.NotTrusted);
+        foreach (var state in snapshot.Networks) checks.Add(NetworkCheck(state, receiving));
         if (FirewallCheck(snapshot) is { } firewall) checks.Add(firewall);
         if (SyncFolderCheck(snapshot) is { } syncFolder) checks.Add(syncFolder);
         checks.Add(new TroubleshootCheck(
@@ -110,7 +112,7 @@ public static class CompanionTroubleshooter
         _ => null,
     };
 
-    private static TroubleshootCheck NetworkCheck(CompanionNetworkState state)
+    private static TroubleshootCheck NetworkCheck(CompanionNetworkState state, bool receiving)
     {
         var network = state.Network;
         string id = $"phoneNetwork:{network.Id}";
@@ -124,7 +126,7 @@ public static class CompanionTroubleshooter
                 id, CheckStatus.Ok, Loc.T("Receiving allowed: {0}", name),
                 Loc.T("Paired phones on this network can send documents to this PC."), []),
             _ => new TroubleshootCheck(
-                id, CheckStatus.Warning, Loc.T("Not receiving: {0}", name),
+                id, receiving ? CheckStatus.Tip : CheckStatus.Warning, Loc.T("Not receiving: {0}", name),
                 network.Category == CompanionNetworkCategory.Domain
                     ? Loc.T("Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name)
                     : Loc.T("Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name),

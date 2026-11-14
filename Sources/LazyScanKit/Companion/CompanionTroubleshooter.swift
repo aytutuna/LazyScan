@@ -96,8 +96,9 @@ public enum CompanionTroubleshooter {
         let pc = snapshot.platform == .windows
         var checks: [TroubleshootCheck] = []
         if let listen = listenCheck(snapshot, pc: pc) { checks.append(listen) }
+        let receiving = snapshot.listen == .listening && snapshot.networks.contains { $0.trust != .notTrusted }
         for state in snapshot.networks {
-            checks.append(networkCheck(state, platform: snapshot.platform, pc: pc))
+            checks.append(networkCheck(state, platform: snapshot.platform, pc: pc, receiving: receiving))
         }
         if let firewall = firewallCheck(snapshot) { checks.append(firewall) }
         if snapshot.localNetworkDenied { checks.append(localNetworkCheck()) }
@@ -189,7 +190,7 @@ public enum CompanionTroubleshooter {
     }
 
     private static func networkCheck(_ state: CompanionNetworkState, platform: TroubleshootPlatform,
-                                      pc: Bool) -> TroubleshootCheck {
+                                      pc: Bool, receiving: Bool) -> TroubleshootCheck {
         let network = state.network
         let id = "phoneNetwork:\(network.id)"
         let name = network.name.isEmpty ? L10n.t("this network") : network.name
@@ -203,14 +204,15 @@ public enum CompanionTroubleshooter {
                 id: id, status: .ok, title: L10n.t("Receiving allowed: {0}", name),
                 detail: pc ? L10n.t("Paired phones on this network can send documents to this PC.") : L10n.t("Paired phones on this network can send documents to this Mac."), actions: [])
         case .notTrusted:
+            let untrustedStatus: CheckStatus = receiving ? .tip : .warning
             guard platform == .windows else {
                 return TroubleshootCheck(
-                    id: id, status: .warning, title: L10n.t("Not receiving: {0}", name),
+                    id: id, status: untrustedStatus, title: L10n.t("Not receiving: {0}", name),
                     detail: L10n.t("Lazy Scan listens for phones only on networks you allow. If {0} is a network you trust, such as your home Wi-Fi, turn on Allow receiving on this network.", name),
                     actions: [])
             }
             return TroubleshootCheck(
-                id: id, status: .warning, title: L10n.t("Not receiving: {0}", name),
+                id: id, status: untrustedStatus, title: L10n.t("Not receiving: {0}", name),
                 detail: network.category == .domainNetwork
                     ? L10n.t("Windows treats {0} as a work network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name)
                     : L10n.t("Windows treats {0} as a public network, so Lazy Scan does not listen for phones there. If it is your home network, set it to Private in Windows network settings. On a network you trust but cannot change, such as your school's Wi-Fi, turn on Allow receiving on this network.", name),
