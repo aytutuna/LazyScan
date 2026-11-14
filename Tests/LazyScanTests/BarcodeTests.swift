@@ -24,6 +24,24 @@ private final class FakeReader: BarcodeReader {
     }
 }
 
+/// A reader that finds its codes only on an image of at least `minDPI`.
+private final class FineReader: BarcodeReader {
+    let readings: [BarcodeReading]
+    let minDPI: Double
+    var seen: [GrayImage] = []
+    var isAvailable = true
+
+    init(minDPI: Double, _ readings: BarcodeReading...) {
+        self.minDPI = minDPI
+        self.readings = readings
+    }
+
+    func read(_ image: GrayImage) throws -> [BarcodeReading] {
+        seen.append(image)
+        return image.dpi >= minDPI ? readings : []
+    }
+}
+
 private struct ReaderFailure: Error {}
 
 private struct UprightScorer: OrientationScorer {
@@ -146,6 +164,23 @@ final class BarcodeTests: XCTestCase {
         XCTAssertEqual(coarse.seen[0].width, 150)
         XCTAssertEqual(coarse.seen[0].height, 200)
         XCTAssertEqual(same[0].bounds, CGRect(x: 20, y: 40, width: 20, height: 20))
+    }
+
+    func test_read_readsAgainAtTheFullResolution_whenTheReadingResolutionShowsNoCode() throws {
+        let image = RgbaImage.filled(width: 900, height: 1200, r: 250, g: 250, b: 250)
+        let fine = FineReader(minDPI: 300, qr("Lease", x: 30, y: 60))
+        let found = try BarcodeSeparators.read(image, dpi: 300, reader: fine)
+        XCTAssertEqual(fine.seen.map(\.dpi), [200, 300])
+        XCTAssertEqual(found.map(\.text), ["Lease"])
+        XCTAssertEqual(found[0].bounds, CGRect(x: 30, y: 60, width: 20, height: 20))
+        // A page with no code costs one extra read; a finer scan is read at 300 at most.
+        let none = FakeReader()
+        XCTAssertEqual(try BarcodeSeparators.read(image, dpi: 600, reader: none), [])
+        XCTAssertEqual(none.seen.map(\.dpi), [200, 300])
+        // A scan no finer than the reading resolution has nothing finer to read.
+        let coarse = FakeReader()
+        _ = try BarcodeSeparators.read(RgbaImage.filled(width: 150, height: 200, r: 250, g: 250, b: 250), dpi: 150, reader: coarse)
+        XCTAssertEqual(coarse.seen.count, 1)
     }
 
     func test_readPage_readsASpooledPagesPreview_atTheResolutionItHas_boundsInFullSizePixels() throws {

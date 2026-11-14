@@ -3392,7 +3392,8 @@ public protocol BarcodeReader {                           // C# IBarcodeReader (
     func read(_ image: GrayImage) throws -> [BarcodeReading]   // bounds in the image's pixels, any order
 }
 public enum BarcodeSeparators {
-    public static let readingDPI = 200                    // pages are read as gray at 200 dpi (coarser: as they are)
+    public static let readingDPI = 200                    // pages are read as gray at 200 dpi (coarser: as they are); none found: once more at min(dpi, 300)
+    public static let fullReadingDPI = 300                // the finest second pass
     public static let defaultPrefix = "LS-SEP"            // what a separator sheet's code starts with
     public static let unnamedText = "SEPARATOR"           // a sheet that names nothing (compared ignoring a–z case)
     public static let maxNoteTextLength = 40

@@ -24,6 +24,19 @@ public class BarcodeTests
         }
     }
 
+    /// <summary>A reader that finds its codes only on an image of at least <paramref name="minDpi"/>.</summary>
+    private sealed class FineReader(double minDpi, params BarcodeReading[] readings) : IBarcodeReader
+    {
+        public List<GrayImage> Seen { get; } = [];
+        public bool IsAvailable => true;
+
+        public IReadOnlyList<BarcodeReading> Read(GrayImage image, CancellationToken token)
+        {
+            Seen.Add(image);
+            return image.Dpi >= minDpi ? readings : [];
+        }
+    }
+
     private static BarcodeReading Qr(string text, double x = 10, double y = 10) =>
         new(BarcodeSymbology.QrCode, text, new RectD(x, y, 20, 20));
 
@@ -109,6 +122,25 @@ public class BarcodeTests
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         Assert.ThrowsAny<OperationCanceledException>(() => BarcodeSeparators.Read(image, 300, reader, cancelled.Token));
+    }
+
+    [Fact]
+    public void Read_ReadsAgainAtTheFullResolution_WhenTheReadingResolutionShowsNoCode()
+    {
+        var image = RgbaImage.Filled(900, 1200, 250, 250, 250);
+        var fine = new FineReader(300, Qr("Lease", 30, 60));
+        var found = BarcodeSeparators.Read(image, 300, fine, CancellationToken.None);
+        Assert.Equal([200.0, 300.0], fine.Seen.Select(g => g.Dpi));
+        Assert.Equal("Lease", Assert.Single(found).Text);
+        Assert.Equal(new RectD(30, 60, 20, 20), found[0].Bounds);
+        // A page with no code costs one extra read; a finer scan is read at 300 at most.
+        var none = new FakeReader();
+        Assert.Empty(BarcodeSeparators.Read(image, 600, none, CancellationToken.None));
+        Assert.Equal([200.0, 300.0], none.Seen.Select(g => g.Dpi));
+        // A scan no finer than the reading resolution has nothing finer to read.
+        var coarse = new FakeReader();
+        BarcodeSeparators.Read(RgbaImage.Filled(150, 200, 250, 250, 250), 150, coarse, CancellationToken.None);
+        Assert.Single(coarse.Seen);
     }
 
     [Fact]

@@ -60,6 +60,10 @@ public enum BarcodeSeparators {
     /// enough for a 0.01 in bar, coarse enough that the scanner's noise is averaged out.
     public static let readingDPI = 200
 
+    /// The finest a page is read, in a second pass when the `readingDPI` copy shows no code: a 7.5 mil
+    /// bar is under 2 pixels wide at `readingDPI`.
+    public static let fullReadingDPI = 300
+
     /// The text a separator sheet's code starts with (`DocumentOptions.splitBarcodePrefix` by
     /// default): only such a code makes a separator sheet, so the codes printed on the documents
     /// themselves (payment QR codes, order numbers) are not taken for one.
@@ -157,17 +161,32 @@ public enum BarcodeSeparators {
     }
 
     /// The codes on `image`, scanned at `dpi`, read by `reader` on its gray copy (`readingImage`), with
-    /// their bounds in the page's pixels, in reading order (`inReadingOrder`).
+    /// their bounds in the page's pixels, in reading order (`inReadingOrder`). A page with no code there
+    /// is read once more at `min(dpi, fullReadingDPI)`, as fine bars can be lost at `readingDPI`.
     public static func read(_ image: RgbaImage, dpi: Int, reader: any BarcodeReader) throws -> [BarcodeReading] {
         let gray = readingImage(image, dpi: dpi)
-        return try inReadingOrder(reader.read(gray).map { scaled($0, by: 1 / gray.scale) })
+        var found = try reader.read(gray)
+        var scale = gray.scale
+        if found.isEmpty, dpi > readingDPI {
+            let fine = GrayImage.from(image, sourceDPI: dpi, analysisDPI: min(dpi, fullReadingDPI))
+            found = try reader.read(fine)
+            scale = fine.scale
+        }
+        return inReadingOrder(found.map { scaled($0, by: 1 / scale) })
     }
 
     /// The same for a page image (Mac only: read through `GrayImage(cgImage:sourceDPI:analysisDPI:)`,
     /// so the page is never held as RGBA). Empty when the image can't be read.
     public static func read(_ image: CGImage, dpi: Int, reader: any BarcodeReader) throws -> [BarcodeReading] {
         guard let gray = GrayImage(cgImage: image, sourceDPI: dpi, analysisDPI: readingDPI) else { return [] }
-        return try inReadingOrder(reader.read(gray).map { scaled($0, by: 1 / gray.scale) })
+        var found = try reader.read(gray)
+        var scale = gray.scale
+        if found.isEmpty, dpi > readingDPI,
+           let fine = GrayImage(cgImage: image, sourceDPI: dpi, analysisDPI: min(dpi, fullReadingDPI)) {
+            found = try reader.read(fine)
+            scale = fine.scale
+        }
+        return inReadingOrder(found.map { scaled($0, by: 1 / scale) })
     }
 
     /// The codes on a queued page (`read`), read on the pixels it holds (a preview once it is

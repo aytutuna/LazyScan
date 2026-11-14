@@ -70,6 +70,12 @@ public static class BarcodeSeparators
     public const int ReadingDpi = 200;
 
     /// <summary>
+    /// The finest a page is read, in a second pass when the <see cref="ReadingDpi"/> copy shows no code:
+    /// a bar of 7.5 mil is under 2 pixels wide at <see cref="ReadingDpi"/>.
+    /// </summary>
+    public const int FullReadingDpi = 300;
+
+    /// <summary>
     /// The text a separator sheet's code starts with (<see cref="DocumentOptions.SplitBarcodePrefix"/>
     /// by default): only such a code makes a separator sheet, so the codes printed on the documents
     /// themselves (payment QR codes, order numbers) are not taken for one.
@@ -172,13 +178,21 @@ public static class BarcodeSeparators
     /// <summary>
     /// The codes on <paramref name="image"/>, scanned at <paramref name="dpi"/>, read by
     /// <paramref name="reader"/> on its gray copy (<see cref="ReadingImage"/>), with their bounds in
-    /// the page's pixels, in reading order (<see cref="InReadingOrder"/>).
+    /// the page's pixels, in reading order (<see cref="InReadingOrder"/>). A page with no code there is
+    /// read once more at min(<paramref name="dpi"/>, <see cref="FullReadingDpi"/>), as fine bars can be
+    /// lost at <see cref="ReadingDpi"/>.
     /// </summary>
     public static IReadOnlyList<BarcodeReading> Read(RgbaImage image, int dpi, IBarcodeReader reader, CancellationToken token)
     {
         var gray = ReadingImage(image, dpi);
         token.ThrowIfCancellationRequested();
         var found = reader.Read(gray, token);
+        if (found.Count == 0 && dpi > ReadingDpi)
+        {
+            gray = GrayImage.From(image, dpi, Math.Min(dpi, FullReadingDpi));
+            token.ThrowIfCancellationRequested();
+            found = reader.Read(gray, token);
+        }
         return InReadingOrder(found.Select(r => Scaled(r, 1 / gray.Scale)));
     }
 

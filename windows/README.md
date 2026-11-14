@@ -1362,7 +1362,8 @@ unread rather than taken as one without. Cancel keeps what was read and says how
 not; those are read after the next scan or when the split is chosen again. A page the reader fails
 on is not read again until the split is chosen again. The reading (`ZXingBarcodeReader`, ZXing.Net in the
 app only, behind Core's `IBarcodeReader`) works on the page's gray copy at 200 dpi
-(`BarcodeSeparators.ReadingDpi`; a coarser scan as it is): the codes found on the image, then, when
+(`BarcodeSeparators.ReadingDpi`; a coarser scan as it is; a page with no code there is read once more at
+min(scan dpi, 300)): the codes found on the image, then, when
 none was, on the image at half resolution (where the noise inside a large code's modules is averaged
 out; ZXing's local threshold otherwise breaks them up), then, when still none was, on likely Data
 Matrix spots one at a time (cells a quarter inch across about half dark, read in a 2 in window
