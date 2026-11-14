@@ -2283,7 +2283,6 @@
   "Prints one now on {0}, at actual size": {
     "note": "{0} is the printer name."
   },
-  "Prints one now on the printer chosen for copies, at actual size": {},
   "Print QR separator sheet": {},
   "Print separator sheet": {},
   "Prints a QR separator sheet carrying the name above at actual size on {0}, on the paper it has, with no print dialog. Print as many as you need.": {
