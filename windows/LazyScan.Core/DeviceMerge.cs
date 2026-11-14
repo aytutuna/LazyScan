@@ -316,6 +316,21 @@ public static class DeviceMerge
     private static List<string> NamesOf(ScannerInfo device) =>
         string.IsNullOrWhiteSpace(device.Model) ? [device.Name] : [device.Model, device.Name];
 
+    /// <summary>
+    /// The device and instance parts of a Windows device interface path
+    /// (<c>\\?\usb#vid_04a9&amp;pid_1909#5&amp;2b8d2f1c&amp;0&amp;2#{guid}</c>) or PnP device id, the same on every
+    /// connection Windows lists one device on, so it can serve as a hardware id. USB devices only: a network scanner
+    /// is known to the other connections by its own uuid, which this would not match. null otherwise.
+    /// </summary>
+    public static string? PnpInstanceId(string? path)
+    {
+        if (path is null) return null;
+        var parts = path.Replace('#', '\\').Split('\\', StringSplitOptions.RemoveEmptyEntries)
+                        .Where(part => part != "?" && !part.StartsWith('{')).ToList();
+        bool usb = parts.Count >= 3 && parts[0].Equals("usb", StringComparison.OrdinalIgnoreCase);
+        return usb ? parts[1] + "\\" + parts[2] : null;
+    }
+
     /// <summary>A hardware id reduced to lowercase letters and digits ("urn:uuid:" dropped); null when there is none.</summary>
     private static string? NormalizedHardwareId(string? id)
     {

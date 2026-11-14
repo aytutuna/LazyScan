@@ -1815,7 +1815,7 @@ public static class ScanHistory
 /// </param>
 /// <param name="Model">Manufacturer and model as the device reports them, when known; used to match entries.</param>
 /// <param name="HardwareId">
-/// An identifier of the physical device (eSCL UUID, serial number), when known. Two entries
+/// An identifier of the physical device (eSCL UUID, serial number, a USB device's PnP instance on Windows), when known. Two entries
 /// that both have one are the same scanner only when the identifiers match.
 /// </param>
 public sealed record ScannerInfo(string Id, string Name, string Transport, bool IsDemo = false,

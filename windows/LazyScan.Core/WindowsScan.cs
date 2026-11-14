@@ -44,9 +44,13 @@ public static class WindowsScanConnection
 
     public const string IdPrefix = "winrt:";
 
-    /// <summary>The device-list entry of a Windows Scan device: its name as Windows gives it ("Scanner" when it gives none).</summary>
+    /// <summary>
+    /// The device-list entry of a Windows Scan device: its name as Windows gives it ("Scanner" when it gives none),
+    /// and the PnP instance in its id as the hardware id, which pairs it with the same device's WIA entry.
+    /// </summary>
     public static ScannerInfo Info(string deviceId, string? name) =>
-        new(IdPrefix + deviceId, string.IsNullOrWhiteSpace(name) ? Loc.T("Scanner") : name.Trim(), Transport, Backend: Backend);
+        new(IdPrefix + deviceId, string.IsNullOrWhiteSpace(name) ? Loc.T("Scanner") : name.Trim(), Transport, Backend: Backend,
+             HardwareId: DeviceMerge.PnpInstanceId(deviceId));
 
     /// <summary>The Windows device id inside a device-list id; null when the id is not a Windows Scan one.</summary>
     public static string? DeviceId(string id) =>

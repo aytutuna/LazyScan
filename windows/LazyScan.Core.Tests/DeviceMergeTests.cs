@@ -200,6 +200,36 @@ public class DeviceMergeTests
     }
 
     [Fact]
+    public void Group_UsbScannersOfOneModelPairByPnpInstanceWhateverTheListOrder()
+    {
+        const string a = @"\\?\USB#VID_04A9&PID_1909#5&2B8D2F1C&0&2#{6bdd1fc6-810f-11d0-bec7-08002be2092f}";
+        const string b = @"\\?\USB#VID_04A9&PID_1909#5&1A4C7E90&0&3#{6bdd1fc6-810f-11d0-bec7-08002be2092f}";
+        ScannerInfo WiaAt(string path, string id) =>
+            new($"wia:Canon LiDE 300#{id}", "Canon LiDE 300", "WIA", Backend: "wia", HardwareId: DeviceMerge.PnpInstanceId(path));
+        var wiaA = WiaAt(a, "1");
+        var wiaB = WiaAt(b, "2");
+        var winrtA = WindowsScanConnection.Info(a, "Canon LiDE 300");
+        var winrtB = WindowsScanConnection.Info(b, "Canon LiDE 300");
+
+        var groups = DeviceMerge.Group([wiaA, wiaB, winrtB, winrtA], DeviceMerge.WindowsRanking);
+
+        Assert.Equal(2, groups.Count);
+        Assert.Equal([wiaA, winrtA], groups[0].Members);
+        Assert.Equal([wiaB, winrtB], groups[1].Members);
+    }
+
+    [Fact]
+    public void PnpInstanceId_IsTheUsbDeviceAndInstanceOfAnInterfacePath()
+    {
+        Assert.Equal(@"VID_04A9&PID_1909\5&2B8D2F1C&0&2",
+                     DeviceMerge.PnpInstanceId(@"\\?\USB#VID_04A9&PID_1909#5&2B8D2F1C&0&2#{6bdd1fc6-810f-11d0-bec7-08002be2092f}"));
+        Assert.Equal(@"VID_04A9&PID_1909\5&2B8D2F1C&0&2", DeviceMerge.PnpInstanceId(@"USB\VID_04A9&PID_1909\5&2B8D2F1C&0&2"));
+        Assert.Null(DeviceMerge.PnpInstanceId(@"\\?\SWD#IMAGE#0001"));
+        Assert.Null(DeviceMerge.PnpInstanceId(@"{6BDD1FC6-810F-11D0-BEC7-08002BE2092F}\0000"));
+        Assert.Null(DeviceMerge.PnpInstanceId(null));
+    }
+
+    [Fact]
     public void Group_NetworkScannersOfOneModelDoNotTakeEachOthersWiaEntry()
     {
         var wiaA = Wia("HP Color LaserJet MFP M479fdw", id: "1");

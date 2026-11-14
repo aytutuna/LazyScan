@@ -344,7 +344,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
                     string name = TryGetProperty(info.Properties, "Name") as string ?? Loc.T("Scanner");
                     found.Add(new ScannerInfo($"wia:{id}", name, "WIA", Backend: "wia",
                                               Model: ModelOf(TryGetProperty(info.Properties, "Manufacturer") as string,
-                                                             TryGetProperty(info.Properties, "Description") as string)));
+                                                             TryGetProperty(info.Properties, "Description") as string),
+                                              HardwareId: DeviceMerge.PnpInstanceId(TryGetProperty(info.Properties, "PnP ID String") as string)));
                 }
                 catch (Exception e)
                 {
