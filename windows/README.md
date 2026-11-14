@@ -132,9 +132,9 @@ The main window has four tabs, like the macOS app:
   one tile per task in three groups (`TaskCatalog.Sections`): **Documents** (Document to PDF, Stack
   from feeder, Two-sided document, Separate documents, Scan to Word, Email a document, Archive
   document), **Photos & images** (Photos, Restore old photos, Part of the page as an image) and **Other** (ID card,
-  Photocopy, Receipts, Book or magazine). A tile is an icon and a title; what the task does (its
-  one-line subtitle) and what it sets are its tooltip (also on keyboard focus) and its help text for
-  screen readers. Picking a tile sets everything up for that task, keeps the save folder, fits
+  Photocopy, Receipts, Book or magazine). A tile is an icon, a title and the task's one-line
+  subtitle; what it sets is its tooltip (also on keyboard focus), and the subtitle and settings are
+  its help text for screen readers. Picking a tile sets everything up for that task, keeps the save folder, fits
   the settings to the connected scanner and opens **Scan**; a tile the scanner cannot do (the
   feeder task on a flatbed-only scanner, Photocopy without a printer) is greyed out with a short
   reason ("Needs a document feeder", "Needs a printer"). On **Scan** a banner

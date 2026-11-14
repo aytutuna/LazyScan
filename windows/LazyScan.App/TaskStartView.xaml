@@ -4,8 +4,8 @@
              xmlns:loc="clr-namespace:LazyScan.App"
              xmlns:local="clr-namespace:LazyScan.App">
     <!-- The start screen: what are you scanning? The user's presets first (only when there are some),
-         then the tasks in three groups. Each tile is an icon and a title; what a task does and what it
-         sets are its tooltip, shown on hover and on keyboard focus, and its help text for screen
+         then the tasks in three groups. Each tile is an icon, a title and a one-line subtitle; what a
+         task sets is its tooltip, shown on hover and on keyboard focus, and its help text for screen
          readers. All the task tiles are one Tab stop: the arrow keys move between them and Enter or
          Space opens one. The header and the groups share side insets that centre the tiles (see
          UpdateInsets), like the History and Saved tabs. -->
@@ -14,13 +14,10 @@
             <Button x:Name="Card" Style="{StaticResource TaskTileButtonStyle}" Click="TaskCard_Click"
                     IsEnabled="{Binding IsAvailable}"
                     AutomationProperties.Name="{Binding Title}"
-                    AutomationProperties.HelpText="{Binding HelpText}">
+                    AutomationProperties.HelpText="{Binding HelpText}" Height="136">
                 <Button.ToolTip>
-                    <StackPanel MaxWidth="280">
-                        <TextBlock Text="{Binding Subtitle}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding TipDetail}" TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.75"
-                                   Typography.NumeralAlignment="Tabular" />
-                    </StackPanel>
+                    <TextBlock Text="{Binding TipDetail}" TextWrapping="Wrap" MaxWidth="280"
+                               Typography.NumeralAlignment="Tabular" />
                 </Button.ToolTip>
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top">
@@ -30,11 +27,13 @@
                         </Border>
                         <TextBlock x:Name="TileGlyph" Text="{Binding Glyph}" Style="{StaticResource TaskTileGlyphStyle}" />
                     </DockPanel>
-                    <!-- Only an unavailable task has a second line: why. -->
+                    <!-- An unavailable task shows why in the place of its subtitle. -->
                     <TextBlock x:Name="Reason" DockPanel.Dock="Bottom" Text="{Binding ShortReason}" Style="{StaticResource ReasonText}"
-                               Visibility="Collapsed" />
+                               TextTrimming="CharacterEllipsis" MaxHeight="32" Visibility="Collapsed" />
+                    <TextBlock x:Name="SubtitleText" DockPanel.Dock="Bottom" Text="{Binding Subtitle}" Style="{StaticResource ReasonText}"
+                               TextTrimming="CharacterEllipsis" MaxHeight="32" />
                     <TextBlock Text="{Binding Title}" Style="{StaticResource BodyStrongText}" TextWrapping="Wrap"
-                               Margin="0,6,0,0" VerticalAlignment="Top" />
+                               TextTrimming="CharacterEllipsis" MaxHeight="40" Margin="0,6,0,2" VerticalAlignment="Top" />
                 </DockPanel>
             </Button>
             <DataTemplate.Triggers>
@@ -43,6 +42,7 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsAvailable}" Value="False">
                     <Setter TargetName="Reason" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="SubtitleText" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="TileGlyph" Property="Opacity" Value="0.4" />
                 </DataTrigger>
             </DataTemplate.Triggers>
@@ -121,15 +121,15 @@
                  PDF so that Save adds the scanned pages to it (AppViewModel.AppendTarget). -->
             <WrapPanel Margin="{Binding GridMargin, RelativeSource={RelativeSource AncestorType=local:TaskStartView}}">
                 <Button x:Name="AddToPdfTile" Style="{StaticResource TaskTileButtonStyle}" Click="AddToPdfTile_Click"
+                        Height="136"
                         AutomationProperties.Name="{loc:T Add pages to a PDF}"
                         AutomationProperties.HelpText="{loc:T Pick a PDF\, then scan the pages to add}">
-                    <Button.ToolTip>
-                        <TextBlock Text="{loc:T Pick a PDF\, then scan the pages to add}" TextWrapping="Wrap" MaxWidth="280" />
-                    </Button.ToolTip>
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="&#xE8E5;" Style="{StaticResource TaskTileGlyphStyle}" />
+                        <TextBlock DockPanel.Dock="Bottom" Text="{loc:T Pick a PDF\, then scan the pages to add}" Style="{StaticResource ReasonText}"
+                                   TextTrimming="CharacterEllipsis" MaxHeight="32" />
                         <TextBlock Text="{loc:T Add pages to a PDF}" Style="{StaticResource BodyStrongText}" TextWrapping="Wrap"
-                                   Margin="0,6,0,0" VerticalAlignment="Top" />
+                                   TextTrimming="CharacterEllipsis" MaxHeight="40" Margin="0,6,0,2" VerticalAlignment="Top" />
                     </DockPanel>
                 </Button>
             </WrapPanel>

@@ -724,8 +724,9 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource CardFocusVisualStyle}" />
         <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
     </Style>
-    <!-- A tile of the start screen: an icon above a title that wraps to two lines, nothing more. What
-         the task does and what it sets are its tooltip, shown on hover and on keyboard focus. -->
+    <!-- A tile of the start screen: an icon above a title that wraps to two lines; the task tiles add a
+         caption under it and set their own height. What a task sets is its tooltip, shown on hover and
+         on keyboard focus. -->
     <Style x:Key="TaskTileButtonStyle" TargetType="Button" BasedOn="{StaticResource CardButtonStyle}">
         <Setter Property="Width" Value="168" />
         <Setter Property="Height" Value="112" />
