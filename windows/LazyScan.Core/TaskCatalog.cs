@@ -170,7 +170,7 @@ public static class TaskCatalog
             Loc.T("Several at once, small files named by date."),
             "receipt", TaskFlowKind.ReceiptSplit, ScanIntent.Document, null, "Receipt",
             [new TaskStep("scan", Loc.T("Scan the receipts"),
-                          Loc.T("Lay up to six receipts apart and scan."),
+                          Loc.T("Lay up to twelve receipts apart and scan."),
                           Loc.T("Scan receipts"), Repeats: true,
                           Help: Loc.T("Each one is found, straightened and made easy to read. Check them before saving."))],
             TaskGroup.Other),

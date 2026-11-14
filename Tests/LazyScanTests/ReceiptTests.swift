@@ -162,6 +162,10 @@ final class ReceiptTests: XCTestCase {
             assertCoversPrint(only.region, bottom)
         }
         XCTAssertEqual(ReceiptDetector.find(bed, options: ReceiptDetectorOptions(maxReceipts: 1)).count, 1)
+        let capped = ReceiptDetector.findCounting(bed, options: ReceiptDetectorOptions(maxReceipts: 1))
+        XCTAssertEqual(capped.receipts.count, 1)
+        XCTAssertEqual(capped.leftOut, 1)
+        XCTAssertEqual(ReceiptDetector.findCounting(bed).leftOut, 0)
     }
 
     func test_nothingOnTheGlass_findsNoReceipt() {

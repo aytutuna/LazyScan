@@ -205,7 +205,7 @@ public enum TaskCatalog {
                 iconKey: "receipt", flow: .receiptSplit, intent: .document, requiredSource: nil,
                 fileLabel: "Receipt",
                 steps: [TaskStep(id: "scan", title: L10n.t("Scan the receipts"),
-                                 prompt: L10n.t("Lay up to six receipts apart and scan."),
+                                 prompt: L10n.t("Lay up to twelve receipts apart and scan."),
                                  primaryActionLabel: L10n.t("Scan receipts"), repeats: true,
                                  help: L10n.t("Each one is found, straightened and made easy to read. Check them before saving."))],
                 group: .other),

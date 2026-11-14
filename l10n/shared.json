@@ -175,7 +175,7 @@
   "Receipts": {},
   "Several at once, small files named by date.": {},
   "Scan the receipts": {},
-  "Lay up to six receipts apart and scan.": {},
+  "Lay up to twelve receipts apart and scan.": {},
   "Scan receipts": {},
   "Each one is found, straightened and made easy to read. Check them before saving.": {},
   "Separate documents": {},
@@ -802,7 +802,7 @@
   "Hold the phone over the original.": {},
   "Real size only when the page matches a paper size.": {},
   "The text is read into a Word document you can edit.": {},
-  "Lay up to six receipts apart on a dark table.": {},
+  "Lay up to twelve receipts apart on a dark table.": {},
   "Take a document's pages, then tap Split here.": {},
   "Separator sheets work too, once a page matches a paper size. Check the splits in the pages, then save.": {},
   "Take the open book, both pages at once.": {},
@@ -1344,6 +1344,9 @@
   "The text could not be read.": {},
   "Found {0} receipt.": {
     "other": "Found {0} receipts."
+  },
+  "{0} more was left out. Scan them separately.": {
+    "other": "{0} more were left out. Scan them separately."
   },
   "Found no receipts in that scan.": {},
   "Scan more": {},

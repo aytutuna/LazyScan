@@ -109,12 +109,20 @@ public enum ReceiptDetector {
     /// `detectRegions(in:dpi:options:)`, with what each receipt's edges come from.
     public static func find(_ image: RgbaImage, dpi: Int,
                             options: ReceiptDetectorOptions = ReceiptDetectorOptions()) -> [ReceiptRegion] {
-        guard image.width > 0, image.height > 0 else { return [] }
+        findCounting(image, dpi: dpi, options: options).receipts
+    }
+
+    /// `find(_:dpi:options:)`, with how many receipts were left out because more than `maxReceipts` were
+    /// found (the smallest go first).
+    public static func findCounting(_ image: RgbaImage, dpi: Int,
+                                    options: ReceiptDetectorOptions = ReceiptDetectorOptions())
+        -> (receipts: [ReceiptRegion], leftOut: Int) {
+        guard image.width > 0, image.height > 0 else { return ([], 0) }
         let gray = GrayImage.from(image, sourceDPI: max(1, dpi))
-        let found = find(gray, options: options)
+        let (found, leftOut) = findCounting(gray, options: options)
         let scale = gray.scale > 0 ? gray.scale : 1
         let background = Double(DocumentGeometry.backgroundLuminance(gray)) / 255.0
-        return found.map { receipt in
+        let receipts: [ReceiptRegion] = found.map { receipt in
             let r = receipt.region
             let coarse = DetectedPhotoRegion(center: CGPoint(x: Double(r.center.x) / scale, y: Double(r.center.y) / scale),
                                              size: CGSize(width: Double(r.size.width) / scale,
@@ -128,13 +136,20 @@ public enum ReceiptDetector {
                 : coarse
             return ReceiptRegion(region: region, basis: receipt.basis)
         }
+        return (receipts, leftOut)
     }
 
     /// The receipts on `gray` (a scan's gray copy, normally at `GrayImage.analysisDPI`), in its pixels,
     /// sorted top to bottom, then left to right.
     public static func find(_ gray: GrayImage, options: ReceiptDetectorOptions = ReceiptDetectorOptions()) -> [ReceiptRegion] {
+        findCounting(gray, options: options).receipts
+    }
+
+    /// `find(_:options:)`, with how many receipts were left out because more than `maxReceipts` were found.
+    public static func findCounting(_ gray: GrayImage, options: ReceiptDetectorOptions = ReceiptDetectorOptions())
+        -> (receipts: [ReceiptRegion], leftOut: Int) {
         let w = gray.width, h = gray.height
-        guard w >= 16, h >= 16, options.maxReceipts > 0 else { return [] }
+        guard w >= 16, h >= 16, options.maxReceipts > 0 else { return ([], 0) }
         let dpi = gray.dpi > 0 ? gray.dpi : Double(GrayImage.analysisDPI)
 
         // 1. Marks: what differs from the lid.
@@ -154,7 +169,7 @@ public enum ReceiptDetector {
         for component in MaskOps.connectedComponents(mask: mask, width: w, height: h) where Double(component.area) >= minBlock {
             blocks.append(ReceiptBlock(component))
         }
-        guard !blocks.isEmpty else { return [] }
+        guard !blocks.isEmpty else { return ([], 0) }
         // The sheet each block lies on, where the paper shows.
         if !options.singleReceipt {
             let papers = paperLabels(gray, dpi: dpi)
@@ -176,7 +191,8 @@ public enum ReceiptDetector {
             candidates.append((group, rect, hull))
         }
         candidates.sort { Double($0.rect.size.width * $0.rect.size.height) > Double($1.rect.size.width * $1.rect.size.height) }
-        if candidates.count > options.maxReceipts { candidates.removeSubrange(options.maxReceipts...) }
+        let leftOut = max(0, candidates.count - options.maxReceipts)
+        if leftOut > 0 { candidates.removeSubrange(options.maxReceipts...) }
 
         // 5. Each receipt's edges: its paper when that shows and holds all its print, else its print.
         let receipts = candidates.map { edges(gray, group: $0.group, rect: $0.rect, hull: $0.hull, dpi: dpi) }
@@ -184,7 +200,7 @@ public enum ReceiptDetector {
         // Two blocks of one receipt (a wide blank gap between them) both find its paper: one region.
         let merged = PhotoDetector.mergingOverlaps(receipts.map(\.region))
         let sorted = PhotoDetector.sortedRowMajor(merged)
-        return sorted.map { region in
+        let found: [ReceiptRegion] = sorted.map { region in
             if let match = receipts.first(where: { $0.region.id == region.id }) {
                 return ReceiptRegion(region: region, basis: match.basis)
             }
@@ -192,6 +208,7 @@ public enum ReceiptDetector {
             let paper = receipts.contains { $0.basis == .paper && overlaps($0.region, region) }
             return ReceiptRegion(region: region, basis: paper ? .paper : .text)
         }
+        return (found, leftOut)
     }
 
     /// The receipt's region: its paper, looked for around its print (and further when it is not found

@@ -58,12 +58,13 @@ public sealed partial class AppViewModel
     /// The receipts on one scanned page, cut out, upright and cleaned up: several on the glass, the
     /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt. Each one is
     /// given the quarter turns that read upright (<see cref="Receipts.UprightTurns"/>) as its rotation in
-    /// the review.
+    /// the review. <c>LeftOut</c> is how many receipts beyond the limit were not cut out.
     /// </summary>
-    private List<DetectedPhoto> SplitReceipts(ScannedPage page, ScanSettings s, CancellationToken token)
+    private (List<DetectedPhoto> Receipts, int LeftOut) SplitReceipts(ScannedPage page, ScanSettings s, CancellationToken token)
     {
         var options = new ReceiptDetectorOptions { SingleReceipt = s.Source == ScanSource.DocumentFeeder };
-        var regions = ReceiptDetector.DetectRegions(page.Image, page.Dpi, options);
+        var (search, leftOut) = ReceiptDetector.FindCounting(page.Image, page.Dpi, options);
+        var regions = search.Select(r => r.Region).ToList();
         if (regions.Count == 0)
         {
             double w = page.Image.Width, h = page.Image.Height;
@@ -81,7 +82,7 @@ public sealed partial class AppViewModel
                 });
             }
         }
-        return receipts;
+        return (receipts, leftOut);
     }
 
     /// <summary>Opens the review on the receipts found on the pages just scanned.</summary>
@@ -90,16 +91,20 @@ public sealed partial class AppViewModel
         StatusMessage = Loc.T("Finding receipts…");
         NotifyAll();
         bool byDate = Receipts.NamesByDate(s);
-        var found = await Task.Run(() =>
+        var split = await Task.Run(() =>
         {
             var all = new List<PhotoItem>();
+            int cut = 0;
             foreach (var page in processed)
             {
                 token.ThrowIfCancellationRequested();
-                all.AddRange(SplitReceipts(page, s, token).Select(p => new PhotoItem(p) { DatesShown = byDate, IsReceipt = true }));
+                var (receipts, leftOut) = SplitReceipts(page, s, token);
+                all.AddRange(receipts.Select(p => new PhotoItem(p) { DatesShown = byDate, IsReceipt = true }));
+                cut += leftOut;
             }
-            return all;
+            return (Items: all, LeftOut: cut);
         }, token);
+        var (found, leftOutTotal) = split;
         if (_switchGeneration != generation) return;
         token.ThrowIfCancellationRequested();
         if (_scanningMore)
@@ -125,6 +130,11 @@ public sealed partial class AppViewModel
         string foundText = found.Count == 0 && _scanningMore
             ? Loc.T("Found no receipts in that scan.")
             : Loc.Plural(found.Count, "Found {0} receipt.", "Found {0} receipts.");
+        if (leftOutTotal > 0)
+        {
+            foundText += " " + Loc.Plural(leftOutTotal, "{0} more was left out. Scan them separately.",
+                                          "{0} more were left out. Scan them separately.");
+        }
         SetStatus(foundText, new(new StatusHead.Found(found.Count, FileKind.Receipt)));
         if (byDate) foreach (var item in found) ReadReceiptDate(item);
     }

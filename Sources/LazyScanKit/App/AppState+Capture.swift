@@ -55,7 +55,7 @@ extension AppState {
                 continue
             }
             let found: [DetectedPhoto] = flow == .receiptSplit
-                ? splitReceipts(from: page, settings: s)
+                ? splitReceipts(from: page, settings: s).receipts
                 : splitPhotos(from: page, settings: s)
             // A page the search could not read stays whole rather than vanishing.
             if found.isEmpty { listed.append(page) }

@@ -38,21 +38,23 @@ extension AppState {
     /// The receipts on one scanned page, cut out, upright and cleaned up: several on the glass, the
     /// whole sheet as one from the feeder; the whole page when nothing looks like a receipt. With a `scorer`
     /// each one cut from the scan is given the quarter turns that read upright (`Receipts.uprightTurns`) as
-    /// its rotation in the review.
+    /// its rotation in the review. `leftOut` is how many receipts beyond the limit were not cut out.
     nonisolated static func splitReceipts(from page: ScannedPage, settings s: ScanSettings,
                                           scorer: (any OrientationScorer)? = nil,
-                                          shouldContinue: () -> Bool = { true }) -> [DetectedPhoto] {
-        guard let scan = RgbaImage(cgImage: page.image) else { return [] }
+                                          shouldContinue: () -> Bool = { true })
+        -> (receipts: [DetectedPhoto], leftOut: Int) {
+        guard let scan = RgbaImage(cgImage: page.image) else { return ([], 0) }
         // One receipt of a camera's shot, cut out already at its roll's width: the whole page, made easy
         // to read as a receipt found on the glass is.
         if CaptureObjects.isCutOut(page), let quad = page.capture?.quad {
             let cleaned: RgbaImage = ReceiptEnhancer.enhance(scan, dpi: page.dpi)
-            guard let image = cleaned.makeCGImage() else { return [] }
-            return [DetectedPhoto(region: CaptureObjects.region(around: quad), image: image, dpi: page.dpi,
-                                  sourcePageID: page.id)]
+            guard let image = cleaned.makeCGImage() else { return ([], 0) }
+            return ([DetectedPhoto(region: CaptureObjects.region(around: quad), image: image, dpi: page.dpi,
+                                   sourcePageID: page.id)], 0)
         }
         let options = ReceiptDetectorOptions(singleReceipt: s.source == .documentFeeder)
-        var regions = ReceiptDetector.detectRegions(in: scan, dpi: page.dpi, options: options)
+        let search = ReceiptDetector.findCounting(scan, dpi: page.dpi, options: options)
+        var regions: [DetectedPhotoRegion] = search.receipts.map(\.region)
         if regions.isEmpty {
             let w = Double(scan.width), h = Double(scan.height)
             regions = [DetectedPhotoRegion(center: CGPoint(x: w / 2, y: h / 2), size: CGSize(width: w, height: h),
@@ -68,7 +70,7 @@ extension AppState {
                                                                            shouldContinue: shouldContinue) }
             receipts.append(receipt)
         }
-        return receipts
+        return (receipts, search.leftOut)
     }
 
     /// Scans again from the receipts review and adds what is found to the receipts there. The review is
@@ -115,16 +117,20 @@ extension AppState {
                       generation: Int?) async throws {
         statusMessage = L10n.t("Finding receipts…")
         let scorer = orientationScorer
-        let found: [DetectedPhoto] = try await Task.detached(priority: .userInitiated) {
+        let split: (found: [DetectedPhoto], leftOut: Int) = try await Task.detached(priority: .userInitiated) {
             var all: [DetectedPhoto] = []
+            var leftOut = 0
             for page in processed {
                 if flag.isCancelled { throw ScanError.cancelled }
-                all.append(contentsOf: Self.splitReceipts(from: page, settings: s, scorer: scorer,
-                                                           shouldContinue: { !flag.isCancelled }))
+                let one = Self.splitReceipts(from: page, settings: s, scorer: scorer,
+                                             shouldContinue: { !flag.isCancelled })
+                all.append(contentsOf: one.receipts)
+                leftOut += one.leftOut
                 if flag.isCancelled { throw ScanError.cancelled }
             }
-            return all
+            return (all, leftOut)
         }.value
+        let found: [DetectedPhoto] = split.found
         guard isCurrent(generation) else { return }
         if flag.isCancelled { throw ScanError.cancelled }
         // Every page's full-resolution scan stays while the review is open, for Fix crop (a camera's
@@ -149,7 +155,11 @@ extension AppState {
             let message = L10n.t("Found no receipts in that scan.")
             setStatus(message, StatusDetail(body: message))
         } else {
-            let message = L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts.")
+            var message = L10n.plural(found.count, one: "Found {0} receipt.", other: "Found {0} receipts.")
+            if split.leftOut > 0 {
+                message += " " + L10n.plural(split.leftOut, one: "{0} more was left out. Scan them separately.",
+                                              other: "{0} more were left out. Scan them separately.")
+            }
             setStatus(message, StatusDetail(head: .found(found.count, .receipt)))
         }
     }

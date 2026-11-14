@@ -117,11 +117,18 @@ public static class ReceiptDetector
         Find(image, dpi, options).Select(r => r.Region).ToList();
 
     /// <summary><see cref="DetectRegions"/>, with what each receipt's edges come from.</summary>
-    public static List<ReceiptRegion> Find(RgbaImage image, int dpi, ReceiptDetectorOptions? options = null)
+    public static List<ReceiptRegion> Find(RgbaImage image, int dpi, ReceiptDetectorOptions? options = null) =>
+        FindCounting(image, dpi, options).Receipts;
+
+    /// <summary>
+    /// <see cref="Find(RgbaImage, int, ReceiptDetectorOptions?)"/>, with how many receipts were left out
+    /// because more than <see cref="ReceiptDetectorOptions.MaxReceipts"/> were found (the smallest go first).
+    /// </summary>
+    public static (List<ReceiptRegion> Receipts, int LeftOut) FindCounting(RgbaImage image, int dpi, ReceiptDetectorOptions? options = null)
     {
-        if (image.Width <= 0 || image.Height <= 0) return [];
+        if (image.Width <= 0 || image.Height <= 0) return ([], 0);
         var gray = GrayImage.From(image, Math.Max(1, dpi));
-        var found = Find(gray, options);
+        var (found, leftOut) = FindCounting(gray, options);
         double scale = gray.Scale > 0 ? gray.Scale : 1;
         double background = DocumentGeometry.BackgroundLuminance(gray) / 255.0;
         var regions = new List<ReceiptRegion>(found.Count);
@@ -137,18 +144,25 @@ public static class ReceiptDetector
                 : coarse;
             regions.Add(new ReceiptRegion(region, receipt.Basis));
         }
-        return regions;
+        return (regions, leftOut);
     }
 
     /// <summary>
     /// The receipts on <paramref name="gray"/> (a scan's gray copy, normally at
     /// <see cref="GrayImage.AnalysisDpi"/>), in its pixels, sorted top to bottom, then left to right.
     /// </summary>
-    public static List<ReceiptRegion> Find(GrayImage gray, ReceiptDetectorOptions? options = null)
+    public static List<ReceiptRegion> Find(GrayImage gray, ReceiptDetectorOptions? options = null) =>
+        FindCounting(gray, options).Receipts;
+
+    /// <summary>
+    /// <see cref="Find(GrayImage, ReceiptDetectorOptions?)"/>, with how many receipts were left out because
+    /// more than <see cref="ReceiptDetectorOptions.MaxReceipts"/> were found.
+    /// </summary>
+    public static (List<ReceiptRegion> Receipts, int LeftOut) FindCounting(GrayImage gray, ReceiptDetectorOptions? options = null)
     {
         options ??= new ReceiptDetectorOptions();
         int w = gray.Width, h = gray.Height;
-        if (w < 16 || h < 16 || options.MaxReceipts <= 0) return [];
+        if (w < 16 || h < 16 || options.MaxReceipts <= 0) return ([], 0);
         double dpi = gray.Dpi > 0 ? gray.Dpi : GrayImage.AnalysisDpi;
 
         // 1. Marks: what differs from the lid.
@@ -171,7 +185,7 @@ public static class ReceiptDetector
             if (component.Area < minBlock) continue;
             blocks.Add(Block.Of(component));
         }
-        if (blocks.Count == 0) return [];
+        if (blocks.Count == 0) return ([], 0);
         // The sheet each block lies on, where the paper shows.
         if (!options.SingleReceipt)
         {
@@ -195,7 +209,8 @@ public static class ReceiptDetector
             candidates.Add((group, rect, hull));
         }
         candidates.Sort((a, b) => (b.Rect.Size.Width * b.Rect.Size.Height).CompareTo(a.Rect.Size.Width * a.Rect.Size.Height));
-        if (candidates.Count > options.MaxReceipts) candidates.RemoveRange(options.MaxReceipts, candidates.Count - options.MaxReceipts);
+        int leftOut = Math.Max(0, candidates.Count - options.MaxReceipts);
+        if (leftOut > 0) candidates.RemoveRange(options.MaxReceipts, leftOut);
 
         // 5. Each receipt's edges: its paper when that shows and holds all its print, else its print.
         var receipts = new List<ReceiptRegion>();
@@ -207,7 +222,7 @@ public static class ReceiptDetector
         // Two blocks of one receipt (a wide blank gap between them) both find its paper: one region.
         var merged = PhotoDetector.MergeOverlapping(receipts.Select(r => r.Region).ToList());
         var sorted = PhotoDetector.SortRowMajor(merged);
-        return sorted.Select(region =>
+        var found = sorted.Select(region =>
         {
             var match = receipts.FirstOrDefault(r => ReferenceEquals(r.Region, region));
             // A region made by merging two holds paper when either did.
@@ -216,6 +231,7 @@ public static class ReceiptDetector
                             ? ReceiptBasis.Paper : ReceiptBasis.Text);
             return new ReceiptRegion(region, basis);
         }).ToList();
+        return (found, leftOut);
     }
 
     /// <summary>

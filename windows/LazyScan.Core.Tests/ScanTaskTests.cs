@@ -70,7 +70,7 @@ public class ScanTaskTests
                       "Preview, drag over the part you need, then scan.", "Scan each page, then save to email it.",
                       "Load the pages in the feeder and scan.", "Place the card face down near a corner and scan.",
                       "Place the original face down, then copy.", "Scan each page, then save as Word.",
-                      "Lay up to six receipts apart and scan.", "Put a separator sheet before each document, then scan.",
+                      "Lay up to twelve receipts apart and scan.", "Put a separator sheet before each document, then scan.",
                       "Open the book face down, spine centered, and scan.", "Scan each page, then save as PDF/A."],
                      TaskCatalog.All.Select(d => d.Steps[0].Prompt));
         foreach (var definition in TaskCatalog.All)

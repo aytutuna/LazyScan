@@ -86,7 +86,7 @@ public enum CameraTaskCatalog {
             return CameraStepText(prompt: L10n.t("Hold the phone over each page."),
                                   help: L10n.t("The text is read into a Word document you can edit."))
         case .receipt:
-            return CameraStepText(prompt: L10n.t("Lay up to six receipts apart on a dark table."),
+            return CameraStepText(prompt: L10n.t("Lay up to twelve receipts apart on a dark table."),
                                   help: L10n.t("Each one is found, straightened and made easy to read. Check them before saving."))
         case .batch:
             return CameraStepText(prompt: L10n.t("Take a document's pages, then tap Split here."),

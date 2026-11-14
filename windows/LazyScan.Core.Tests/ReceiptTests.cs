@@ -151,6 +151,10 @@ public class ReceiptTests
         AssertCoversPrint(one.Region, top);
         AssertCoversPrint(one.Region, bottom);
         Assert.Single(ReceiptDetector.Find(bed, new ReceiptDetectorOptions { MaxReceipts = 1 }));
+        var (kept, leftOut) = ReceiptDetector.FindCounting(bed, new ReceiptDetectorOptions { MaxReceipts = 1 });
+        Assert.Single(kept);
+        Assert.Equal(1, leftOut);
+        Assert.Equal(0, ReceiptDetector.FindCounting(bed).LeftOut);
     }
 
     [Fact]
