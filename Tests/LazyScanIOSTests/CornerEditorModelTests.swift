@@ -208,5 +208,252 @@ final class CornerEditorModelTests: XCTestCase {
         XCTAssertEqual(editor.corners.topLeft, CGPoint(x: 0, y: 0))
         XCTAssertEqual(editor.cornerValue(0), "0 percent from the left, 0 percent from the top")
     }
+
+    func test_theMiddleOfAnEdge_isAHandle_butACornerInReachWinsOverIt() {
+        let editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        // The top edge runs from (80, 40) to (320, 50): its middle is shown at (224, 219).
+        let top: CGPoint = editor.handlePoint(4, frame: frame)
+        XCTAssertEqual(Double(top.x), 224, accuracy: 1e-9)
+        XCTAssertEqual(Double(top.y), 219, accuracy: 1e-9)
+        XCTAssertEqual(editor.shownEdges(frame: frame), [4, 5, 6, 7])
+        XCTAssertEqual(editor.handle(at: CGPoint(x: 224, y: 219), frame: frame), 4)
+        XCTAssertEqual(editor.handle(at: CGPoint(x: 224 + 20, y: 219 + 15), frame: frame), 4)
+        XCTAssertNil(editor.handle(at: CGPoint(x: 224, y: 219 + 40), frame: frame))
+        XCTAssertEqual(editor.handle(at: editor.handlePoint(7, frame: frame), frame: frame), 7)
+
+        // A touch 20 pt from a corner and 15 pt from the edge's middle takes the corner.
+        let page = Quad(topLeft: CGPoint(x: 100, y: 100), topRight: CGPoint(x: 170, y: 100),
+                        bottomRight: CGPoint(x: 170, y: 200), bottomLeft: CGPoint(x: 100, y: 200))
+        let wide = CornerEditorModel(photoWidth: 400, photoHeight: 300, corners: page)
+        XCTAssertEqual(wide.handle(at: CGPoint(x: 24 + 120, y: 174 + 100), frame: frame), 0)
+
+        // An edge too short to keep its middle clear of both corners has no handle.
+        let close = CornerEditorModel(photoWidth: 400, photoHeight: 300,
+                                      corners: Quad(topLeft: CGPoint(x: 100, y: 100), topRight: CGPoint(x: 140, y: 100),
+                                                    bottomRight: CGPoint(x: 140, y: 140), bottomLeft: CGPoint(x: 100, y: 140)))
+        XCTAssertEqual(close.shownEdges(frame: frame), [])
+        XCTAssertEqual(close.handle(at: CGPoint(x: 24 + 120, y: 174 + 100), frame: frame), 0)
+    }
+
+    func test_anEdge_movesAlongItsNormal_bothCornersFollowing() {
+        var editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        let middle: CGPoint = editor.handlePoint(4, frame: frame)
+        XCTAssertTrue(editor.beginDrag(at: middle, frame: frame))
+        XCTAssertEqual(editor.dragging, 4)
+        XCTAssertEqual(editor.selected, 4)
+        XCTAssertTrue(editor.showsLoupe)
+        editor.drag(from: middle, to: CGPoint(x: middle.x + 30, y: middle.y - 20), frame: frame)
+        // The edge (240, 10) has the normal (-10, 240) / 240.2; only the finger's part along it counts.
+        let length: Double = hypot(240, 10)
+        let nx: Double = -10 / length
+        let ny: Double = 240 / length
+        let along: Double = 30 * nx + -20 * ny
+        XCTAssertEqual(Double(editor.corners.topLeft.x), 80 + along * nx, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topLeft.y), 40 + along * ny, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topRight.x), 320 + along * nx, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topRight.y), 50 + along * ny, accuracy: 1e-6)
+        XCTAssertEqual(editor.corners.bottomRight, start.bottomRight)
+        XCTAssertEqual(editor.corners.bottomLeft, start.bottomLeft)
+        // The magnifier follows the edge's middle.
+        let held: CGPoint = editor.handlePoint(editor.selected, frame: frame)
+        XCTAssertEqual(Double(held.x), 24 + Double(editor.corners.topLeft.x + editor.corners.topRight.x) / 2, accuracy: 1e-6)
+        XCTAssertEqual(Double(held.y), 174 + Double(editor.corners.topLeft.y + editor.corners.topRight.y) / 2, accuracy: 1e-6)
+        editor.endDrag()
+        XCTAssertFalse(editor.showsLoupe)
+    }
+
+    func test_anEdge_stopsAtThePhotosEdge_andWhereTheOutlineWouldFold() {
+        var editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        let middle: CGPoint = editor.handlePoint(4, frame: frame)
+        editor.beginDrag(at: middle, frame: frame)
+        // Out past the top of the photo: the higher corner stops at 0, the other keeps the edge parallel.
+        editor.drag(from: middle, to: CGPoint(x: middle.x, y: middle.y - 500), frame: frame)
+        XCTAssertEqual(Double(editor.corners.topLeft.y), 0, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topRight.y), 10, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topLeft.x - 80), Double(editor.corners.topRight.x - 320), accuracy: 1e-6)
+        editor.endDrag()
+
+        // In through the bottom edge: it stops short of folding the outline, still parallel to where it was.
+        editor.reset()
+        editor.beginDrag(at: middle, frame: frame)
+        editor.drag(from: middle, to: CGPoint(x: middle.x, y: middle.y + 400), frame: frame)
+        XCTAssertTrue(editor.canUseCorners)
+        XCTAssertLessThan(editor.corners.topLeft.y, editor.corners.bottomLeft.y)
+        XCTAssertGreaterThan(editor.corners.topLeft.y, 40)
+        XCTAssertEqual(Double(editor.corners.topLeft.y - 40), Double(editor.corners.topRight.y - 50), accuracy: 1e-6)
+    }
+
+    func test_anEdge_withACornerOnThePhotosBorder_slidesThatCornerAlongIt() {
+        var editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        let corner: CGPoint = editor.handlePoint(3, frame: frame)
+        editor.beginDrag(at: corner, frame: frame)
+        editor.drag(from: corner, to: CGPoint(x: 24 - 100, y: 174 + 400), frame: frame)
+        editor.endDrag()
+        XCTAssertEqual(Double(editor.corners.bottomLeft.x), 0, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.bottomLeft.y), 300, accuracy: 1e-6)
+
+        let left: CGPoint = editor.handlePoint(7, frame: frame)
+        let before: Quad = editor.corners
+        XCTAssertTrue(editor.beginDrag(at: left, frame: frame))
+        editor.drag(from: left, to: CGPoint(x: left.x + 40, y: left.y), frame: frame)
+        XCTAssertNotEqual(editor.corners.topLeft, before.topLeft)
+        XCTAssertEqual(Double(editor.corners.bottomLeft.y), 300, accuracy: 1e-6)
+    }
+
+    func test_zoom_leavesTheCornersInThePhotosPixels() {
+        var editor: CornerEditorModel = model()
+        let before: CGRect = editor.shownFrame(in: viewSize)
+        XCTAssertEqual(before, editor.fittedFrame(in: viewSize))
+        let anchor = CGPoint(x: 400, y: 250)
+        let under: CGPoint = editor.imagePoint(anchor, frame: before)
+        editor.beginPinch()
+        editor.pinch(by: 2, around: anchor, size: viewSize)
+        editor.endPinch()
+        let frame: CGRect = editor.shownFrame(in: viewSize)
+        XCTAssertEqual(Double(editor.zoom), 2, accuracy: 1e-9)
+        XCTAssertEqual(Double(frame.width), 800, accuracy: 1e-9)
+        XCTAssertEqual(Double(frame.height), 600, accuracy: 1e-9)
+        XCTAssertEqual(editor.corners, start)
+        // The point under the fingers stays under them.
+        let still: CGPoint = editor.imagePoint(anchor, frame: frame)
+        XCTAssertEqual(Double(still.x), Double(under.x), accuracy: 1e-6)
+        XCTAssertEqual(Double(still.y), Double(under.y), accuracy: 1e-6)
+        let shown: CGPoint = editor.viewPoint(start.topLeft, frame: frame)
+        let back: CGPoint = editor.imagePoint(shown, frame: frame)
+        XCTAssertEqual(Double(back.x), 80, accuracy: 1e-6)
+        XCTAssertEqual(Double(back.y), 40, accuracy: 1e-6)
+
+        // More than the limit is held at it, less than 1 at 1.
+        editor.beginPinch()
+        editor.pinch(by: 20, around: anchor, size: viewSize)
+        XCTAssertEqual(editor.zoom, CornerEditorModel.maxZoom)
+        editor.pinch(by: 0.1, around: anchor, size: viewSize)
+        XCTAssertEqual(editor.zoom, 1)
+        XCTAssertEqual(editor.pan, .zero)
+        editor.endPinch()
+        XCTAssertFalse(editor.canReset)
+
+        editor.beginPinch()
+        editor.pinch(by: 3, around: anchor, size: viewSize)
+        editor.endPinch()
+        XCTAssertTrue(editor.canReset)
+        editor.reset()
+        XCTAssertEqual(editor.zoom, 1)
+        XCTAssertEqual(editor.pan, .zero)
+        XCTAssertFalse(editor.canReset)
+    }
+
+    func test_thePanKeepsThePhotoOverTheViewsMiddle_atEveryZoom() {
+        let middle = CGPoint(x: 224, y: 324)
+        let away = CGPoint(x: 1, y: 1)
+        for zoom in [1.0, 2.4, 5.0] {
+            var editor: CornerEditorModel = model()
+            editor.beginPinch()
+            editor.pinch(by: CGFloat(zoom), around: CGPoint(x: 400, y: 250), size: viewSize)
+            editor.endPinch()
+            for push in [CGPoint(x: 9000, y: 9000), CGPoint(x: -9000, y: -9000), CGPoint(x: 9000, y: -9000)] {
+                XCTAssertNil(editor.handle(at: away, frame: editor.shownFrame(in: viewSize)))
+                editor.touchMoved(start: away, to: CGPoint(x: away.x + push.x, y: away.y + push.y),
+                                  frame: editor.shownFrame(in: viewSize), size: viewSize)
+                editor.touchEnded()
+                let frame: CGRect = editor.shownFrame(in: viewSize)
+                XCTAssertLessThanOrEqual(Double(frame.minX), Double(middle.x) + 1e-9)
+                XCTAssertGreaterThanOrEqual(Double(frame.maxX), Double(middle.x) - 1e-9)
+                XCTAssertLessThanOrEqual(Double(frame.minY), Double(middle.y) + 1e-9)
+                XCTAssertGreaterThanOrEqual(Double(frame.maxY), Double(middle.y) - 1e-9)
+                XCTAssertEqual(editor.corners, start)
+            }
+            if zoom == 1 {
+                XCTAssertEqual(editor.pan, .zero)
+            } else {
+                XCTAssertNotEqual(editor.pan, .zero)
+            }
+        }
+    }
+
+    func test_aPinch_movesNoCorner_andIsIgnoredWhileAHandleIsHeld() {
+        var editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        let corner: CGPoint = editor.handlePoint(1, frame: frame)
+        editor.touchMoved(start: corner, to: CGPoint(x: corner.x + 10, y: corner.y + 10), frame: frame, size: viewSize)
+        XCTAssertEqual(editor.dragging, 1)
+        editor.beginPinch()
+        XCTAssertFalse(editor.isPinching)
+        editor.pinch(by: 3, around: corner, size: viewSize)
+        XCTAssertEqual(editor.zoom, 1)
+        editor.touchEnded()
+
+        let moved: Quad = editor.corners
+        editor.beginPinch()
+        editor.pinch(by: 3, around: corner, size: viewSize)
+        editor.endPinch()
+        XCTAssertEqual(editor.corners, moved)
+    }
+
+    func test_aCancelledDrag_leavesTheCornerWhereItWas_andTheNextTouchStartsFresh() {
+        var editor: CornerEditorModel = model()
+        let frame: CGRect = editor.fittedFrame(in: viewSize)
+        let topRight: CGPoint = editor.handlePoint(1, frame: frame)
+        let bottomLeft: CGPoint = editor.handlePoint(3, frame: frame)
+        editor.touchMoved(start: topRight, to: CGPoint(x: topRight.x + 10, y: topRight.y + 10), frame: frame, size: viewSize)
+        XCTAssertEqual(editor.corners.topRight, CGPoint(x: 330, y: 60))
+        XCTAssertTrue(editor.showsLoupe)
+        // No end arrives. The next touch comes down on another corner and moves from its own start.
+        editor.touchMoved(start: bottomLeft, to: bottomLeft, frame: frame, size: viewSize)
+        XCTAssertEqual(editor.dragging, 3)
+        XCTAssertEqual(editor.corners.topRight, CGPoint(x: 330, y: 60))
+        XCTAssertEqual(editor.corners.bottomLeft, start.bottomLeft)
+        editor.touchMoved(start: bottomLeft, to: CGPoint(x: bottomLeft.x - 5, y: bottomLeft.y), frame: frame, size: viewSize)
+        XCTAssertEqual(editor.corners.bottomLeft, CGPoint(x: 65, y: 250))
+        XCTAssertEqual(editor.corners.topRight, CGPoint(x: 330, y: 60))
+        // The system's cancel ends the touch: the magnifier goes and a touch away from every handle moves nothing.
+        editor.touchEnded()
+        XCTAssertFalse(editor.showsLoupe)
+        let corners: Quad = editor.corners
+        let away = CGPoint(x: 224, y: 324)
+        editor.touchMoved(start: away, to: CGPoint(x: away.x + 30, y: away.y + 30), frame: frame, size: viewSize)
+        XCTAssertNil(editor.dragging)
+        XCTAssertEqual(editor.corners, corners)
+    }
+
+    func test_voiceOver_namesTheEdges_andStepsThemOutAndIn() {
+        var editor: CornerEditorModel = model()
+        XCTAssertEqual(editor.edgeLabel(4), "Top edge")
+        XCTAssertEqual(editor.edgeLabel(5), "Right edge")
+        XCTAssertEqual(editor.edgeLabel(6), "Bottom edge")
+        XCTAssertEqual(editor.edgeLabel(7), "Left edge")
+        XCTAssertEqual(editor.edgeValue(4), "15 percent from the top")
+        XCTAssertEqual(editor.edgeValue(5), "19 percent from the right")
+        XCTAssertEqual(editor.edgeValue(6), "15 percent from the bottom")
+        XCTAssertEqual(editor.edgeValue(7), "19 percent from the left")
+
+        // The outline turned a quarter turn: the edge from corner 0 to 1 is the page's right one now.
+        let turned = CornerEditorModel(photoWidth: 400, photoHeight: 300,
+                                       corners: Quad(topLeft: start.topRight, topRight: start.bottomRight,
+                                                     bottomRight: start.bottomLeft, bottomLeft: start.topLeft))
+        XCTAssertEqual(turned.edgeLabel(4), "Right edge")
+
+        // A step out moves both corners of the top edge up by a hundredth of the long side, along its normal.
+        editor.nudgeEdge(4, outward: true)
+        XCTAssertEqual(editor.selected, 4)
+        let length: Double = hypot(240, 10)
+        XCTAssertEqual(Double(editor.corners.topLeft.y), 40 - 4 * 240 / length, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topRight.y), 50 - 4 * 240 / length, accuracy: 1e-6)
+        XCTAssertEqual(editor.corners.bottomRight, start.bottomRight)
+        editor.nudgeEdge(4, outward: false)
+        XCTAssertEqual(Double(editor.corners.topLeft.y), 40, accuracy: 1e-6)
+        XCTAssertEqual(Double(editor.corners.topRight.x), 320, accuracy: 1e-6)
+        // Out and out again reaches the photo's edge and stays there.
+        var step: Int = 0
+        while step < 30 {
+            editor.nudgeEdge(4, outward: true)
+            step += 1
+        }
+        XCTAssertEqual(Double(editor.corners.topLeft.y), 0, accuracy: 1e-6)
+    }
 }
 #endif

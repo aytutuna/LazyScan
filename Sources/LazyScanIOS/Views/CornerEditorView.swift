@@ -8,7 +8,9 @@ import SwiftUI
 /// a magnifier shows the photo around it. Use corners cuts the page out along them, Use whole photo takes
 /// the photo as it is, Skip photo leaves it out, and Stop, there while more photos or pages follow, skips it
 /// and ends the import. VoiceOver reads each corner by the name of where it sits now on the outline, with
-/// where it is in the photo. What it does is `CornerEditorModel`; this view draws it.
+/// where it is in the photo. The middle of each edge has a handle too, which moves the edge's two corners
+/// together, and the photo can be pinch-zoomed and, zoomed in, moved with a finger away from every handle.
+/// What it does is `CornerEditorModel`; this view draws it.
 /// A photo our camera just took (`isShot`) has Retake in place of Skip photo, and no caption, since it has no
 /// file name.
 /// For Fix crop in a review (`fixesCrop`, I13) the same editor opens on the picture an object was cut from:
@@ -29,6 +31,14 @@ struct CornerEditorView: View {
     @State private var model: CornerEditorModel
     /// The photo as shown, made smaller when it is large.
     @State private var display: CGImage?
+    /// True while a finger is down or a pinch is under way; they go back to false when the system cancels
+    /// the gesture too, which `onEnded` never reports.
+    @GestureState private var touching: Bool = false
+    @GestureState private var pinching: Bool = false
+    /// How far the first finger has moved, and how far it had when the pinch began: two fingers moving
+    /// together carry the photo along.
+    @State private var fingerShift: CGSize = .zero
+    @State private var shiftAtPinch: CGSize = .zero
 
     init(request: PhotoCornersRequest, onAnswer: @escaping @MainActor (PhotoCornersAnswer) -> Void,
          onStop: (@MainActor () -> Void)? = nil, fixesCrop: Bool = false, isShot: Bool = false) {
@@ -135,7 +145,7 @@ struct CornerEditorView: View {
                 model.reset()
             }
             .disabled(!model.canReset)
-            .accessibilityHint(Text("Back to the starting corners"))
+            .accessibilityHint(Text("Back to the starting corners and zoom"))
             .accessibilityIdentifier("corners.reset")
             Spacer(minLength: 0)
             Button(PhotoImport.wholePhotoLabel) {
@@ -150,8 +160,9 @@ struct CornerEditorView: View {
     // MARK: The photo and its corners
 
     private func stage(size: CGSize) -> some View {
-        let frame: CGRect = model.fittedFrame(in: size)
+        let frame: CGRect = model.shownFrame(in: size)
         let points: [CGPoint] = model.viewCorners(frame: frame)
+        let edges: [Int] = model.shownEdges(frame: frame)
         return ZStack {
             Color.black.opacity(0.85)
             if let display {
@@ -164,17 +175,28 @@ struct CornerEditorView: View {
                 ProgressView()
                     .tint(Color.white)
             }
-            CornerOutline(points: points, frame: frame, selected: model.selected, moving: model.dragging)
+            CornerOutline(points: points, edges: edges, frame: frame, selected: model.selected, moving: model.dragging)
             ForEach(0..<4, id: \.self) { (index: Int) in
                 cornerElement(index, at: points[index])
             }
+            ForEach(4..<8, id: \.self) { (index: Int) in
+                edgeElement(index, at: model.handlePoint(index, frame: frame))
+            }
             if model.showsLoupe, let display {
-                loupe(display, frame: frame, size: size)
+                loupe(display, frame: frame, fitted: model.fittedFrame(in: size), size: size)
             }
         }
         .frame(width: size.width, height: size.height)
+        .clipped()
         .contentShape(Rectangle())
-        .gesture(cornerDrag(frame: frame))
+        .gesture(cornerDrag(frame: frame, size: size))
+        .simultaneousGesture(pinch(size: size))
+        .onChange(of: touching) { (_: Bool, isDown: Bool) in
+            if !isDown { model.touchEnded() }
+        }
+        .onChange(of: pinching) { (_: Bool, isDown: Bool) in
+            if !isDown { model.endPinch() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(PhotoImport.cornersName(request.kind)))
         .accessibilityIdentifier("corners.stage")
@@ -201,24 +223,59 @@ struct CornerEditorView: View {
             .accessibilityIdentifier("corner.\(index)")
     }
 
-    private func cornerDrag(frame: CGRect) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .onChanged { (value: DragGesture.Value) in
-                if model.dragging == nil {
-                    // A finger that came down away from every handle moves nothing.
-                    if !model.beginDrag(at: value.startLocation, frame: frame) { return }
+    /// Edge handle `index` for VoiceOver: swipe up moves the edge outward, down inward.
+    private func edgeElement(_ index: Int, at point: CGPoint) -> some View {
+        Color.clear
+            .frame(width: 44, height: 44)
+            .position(point)
+            .allowsHitTesting(false)
+            .accessibilityElement()
+            .accessibilityLabel(Text(model.edgeLabel(index)))
+            .accessibilityValue(Text(model.edgeValue(index)))
+            .accessibilityHint(Text("Swipe up to move the edge out, down to move it in"))
+            .accessibilityAdjustableAction { (direction: AccessibilityAdjustmentDirection) in
+                switch direction {
+                case .increment:
+                    model.nudgeEdge(index, outward: true)
+                default:
+                    model.nudgeEdge(index, outward: false)
                 }
-                model.drag(from: value.startLocation, to: value.location, frame: frame)
             }
-            .onEnded { (_: DragGesture.Value) in
-                model.endDrag()
+            .accessibilityIdentifier("edge.\(index)")
+    }
+
+    private func cornerDrag(frame: CGRect, size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .updating($touching) { (_: DragGesture.Value, state: inout Bool, _: inout Transaction) in
+                state = true
+            }
+            .onChanged { (value: DragGesture.Value) in
+                fingerShift = value.translation
+                model.touchMoved(start: value.startLocation, to: value.location, frame: frame, size: size)
+            }
+    }
+
+    private func pinch(size: CGSize) -> some Gesture {
+        MagnifyGesture()
+            .updating($pinching) { (_: MagnifyGesture.Value, state: inout Bool, _: inout Transaction) in
+                state = true
+            }
+            .onChanged { (value: MagnifyGesture.Value) in
+                if display == nil { return }
+                if !model.isPinching {
+                    model.beginPinch()
+                    shiftAtPinch = fingerShift
+                }
+                let anchor = CGPoint(x: value.startLocation.x + fingerShift.width - shiftAtPinch.width,
+                                     y: value.startLocation.y + fingerShift.height - shiftAtPinch.height)
+                model.pinch(by: value.magnification, around: anchor, size: size)
             }
     }
 
     /// The magnifier over the moved corner, diagonally away from the page's middle.
-    private func loupe(_ image: CGImage, frame: CGRect, size: CGSize) -> some View {
+    private func loupe(_ image: CGImage, frame: CGRect, fitted: CGRect, size: CGSize) -> some View {
         let center: CGPoint = model.loupeCenter(frame: frame, in: size)
-        let offset: CGSize = model.loupeImageOffset(frame: frame)
+        let offset: CGSize = model.loupeImageOffset(frame: fitted)
         let side: CGFloat = CornerEditorModel.loupeSize
         let zoom: CGFloat = CornerEditorModel.loupeZoom
         return ZStack(alignment: .topLeading) {
@@ -226,7 +283,7 @@ struct CornerEditorView: View {
             Image(decorative: image, scale: 1)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: frame.width * zoom, height: frame.height * zoom)
+                .frame(width: fitted.width * zoom, height: fitted.height * zoom)
                 .offset(x: offset.width, y: offset.height)
         }
         .frame(width: side, height: side, alignment: .topLeading)
@@ -256,10 +313,11 @@ struct CornerEditorView: View {
     }
 }
 
-/// The page's outline over the photo: the photo outside it dimmed, its edges, and the four handles (the
-/// one moved last larger).
+/// The page's outline over the photo: the photo outside it dimmed, its edges, and the handles: a circle on
+/// each corner and a bar on the middle of each edge in `edges` (the one moved last larger).
 private struct CornerOutline: View {
     let points: [CGPoint]
+    let edges: [Int]
     let frame: CGRect
     let selected: Int
     let moving: Int?
@@ -277,6 +335,9 @@ private struct CornerOutline: View {
             .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2))
             ForEach(0..<4, id: \.self) { (index: Int) in
                 handle(index)
+            }
+            ForEach(edges, id: \.self) { (index: Int) in
+                bar(index)
             }
         }
         .allowsHitTesting(false)
@@ -300,6 +361,21 @@ private struct CornerOutline: View {
             .overlay(Circle().strokeBorder(Color.white, lineWidth: big ? 3 : 2))
             .frame(width: side, height: side)
             .position(points[index])
+    }
+
+    private func bar(_ index: Int) -> some View {
+        let a: CGPoint = points[index & 3]
+        let b: CGPoint = points[(index + 1) & 3]
+        let angle: Double = atan2(Double(b.y - a.y), Double(b.x - a.x))
+        let big: Bool = index == selected || index == moving
+        let width: CGFloat = big ? 28 : 22
+        let height: CGFloat = big ? 11 : 8
+        return Capsule()
+            .fill(Color.accentColor.opacity(0.35))
+            .overlay(Capsule().strokeBorder(Color.white, lineWidth: big ? 3 : 2))
+            .frame(width: width, height: height)
+            .rotationEffect(.radians(angle))
+            .position(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
     }
 }
 
