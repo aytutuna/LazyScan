@@ -104,7 +104,7 @@ final class ScanTaskTests: XCTestCase {
                         "Lay up to twelve receipts apart and scan.", "Put a separator sheet before each document, then scan.",
                         "Open the book face down, spine centered, and scan.", "Scan each page, then save as PDF/A."])
         for definition in TaskCatalog.all {
-            XCTAssertTrue((1...7).contains(StatusLine.words(definition.title)), definition.title)
+            XCTAssertTrue((1...6).contains(StatusLine.words(definition.title)), definition.title)
             XCTAssertTrue((1...10).contains(StatusLine.words(definition.subtitle)), definition.subtitle)
             for step in definition.steps {
                 // One short line on the banner; the rest behind its info button.
