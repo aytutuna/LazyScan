@@ -1268,6 +1268,13 @@ struct ScanScreen: View {
                     .font(.caption)
                     .foregroundStyle(Color.orange)
                     .accessibilityIdentifier("scanner.note")
+            } else if IOSShell.asksToPickScanner(source: sourceDevice, realListed: state.hasRealDevices) {
+                Text(IOSShell.demoInUseLine)
+                    .font(.caption)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityIdentifier("scanner.demo")
             }
         }
         .accessibilityElement(children: .combine)

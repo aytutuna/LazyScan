@@ -478,6 +478,7 @@ public struct IOSRootView: View {
             scanner = old
             mode = .printer
         }
+        scanner = IOSShell.rememberedScanner(scanner)
         let remembered: String? = mode == .printer && !scanner.isEmpty ? scanner : nil
         state.start(onlySelecting: remembered)
         if remembered == nil {

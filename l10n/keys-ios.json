@@ -391,6 +391,7 @@
  {"key": "Rotate the back", "comment": ""},
  {"key": "Rotate the front", "comment": ""},
  {"key": "Runs each time a document is saved. Change it any time.", "comment": ""},
+ {"key": "Sample pages. Pick a scanner to scan your own.", "comment": ""},
  {"key": "Saturation", "comment": ""},
  {"key": "Save", "comment": ""},
  {"key": "Save each receipt as its own PDF", "comment": ""},

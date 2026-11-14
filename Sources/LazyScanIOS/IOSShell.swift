@@ -470,6 +470,18 @@ public enum IOSShell {
     /// options.
     public static var noScannerInUse: String { String(localized: "No scanner is in use.") }
     public static var pickScannerLabel: String { String(localized: "Pick a scanner") }
+    /// The scan screen's line while the demo scanner is the source and a real one is listed.
+    public static var demoInUseLine: String { String(localized: "Sample pages. Pick a scanner to scan your own.") }
+
+    /// Whether the scan screen asks to pick a scanner: the source is the demo and a real scanner is listed.
+    public static func asksToPickScanner(source: ScannerInfo?, realListed: Bool) -> Bool {
+        source?.isDemo == true && realListed
+    }
+
+    /// The remembered scanner a launch keeps: a demo scanner picked in an earlier run is not one.
+    public static func rememberedScanner(_ id: String) -> String {
+        id.hasPrefix("mock:") ? "" : id
+    }
     /// What VoiceOver says after the scanner tab's round Scan button.
     public static var scanHint: String { String(localized: "Starts the scanner") }
 

@@ -331,6 +331,21 @@ final class IOSShellTests: XCTestCase {
         XCTAssertNil(IOSShell.printerScanner(.printer, scanner: "escl:x", selected: nil, devices: []))
     }
 
+    func test_rememberedScanner_dropsADemoPickedInAnEarlierRun() {
+        XCTAssertEqual(IOSShell.rememberedScanner("mock:demo"), "")
+        XCTAssertEqual(IOSShell.rememberedScanner("escl:x"), "escl:x")
+        XCTAssertEqual(IOSShell.rememberedScanner(""), "")
+    }
+
+    func test_asksToPickScanner_whenTheDemoIsTheSourceAndARealScannerIsListed() {
+        let network: ScannerInfo = ScannerInfo(id: "escl:x", name: "Office MFP", transport: "Network", backend: "escl")
+        let demo: ScannerInfo = ScannerInfo(id: "mock:demo", name: "Demo Scanner", transport: "Demo", isDemo: true, backend: "mock")
+        XCTAssertTrue(IOSShell.asksToPickScanner(source: demo, realListed: true))
+        XCTAssertFalse(IOSShell.asksToPickScanner(source: demo, realListed: false))
+        XCTAssertFalse(IOSShell.asksToPickScanner(source: network, realListed: true))
+        XCTAssertFalse(IOSShell.asksToPickScanner(source: nil, realListed: true))
+    }
+
     func test_noScannerLine_saysWhereTheSearchIs_orThatNoneIsInUse() {
         XCTAssertEqual(IOSShell.noScannerLine(explained: false, denied: false, offWiFi: false, searching: true, found: false),
                        IOSNetworkText.explanationTitle)
