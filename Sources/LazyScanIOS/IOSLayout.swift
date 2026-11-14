@@ -51,7 +51,7 @@ public struct IOSDraggedPage: Transferable, Codable, Sendable {
     }
 
     public static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: UTType(importedAs: "com.lazyscan.lazyscan.dragged-page"))
+        CodableRepresentation(contentType: UTType(importedAs: "com.lazyscan.lazyscan.dragged-page")).visibility(.ownProcess)
     }
 }
 

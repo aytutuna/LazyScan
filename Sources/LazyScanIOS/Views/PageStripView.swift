@@ -89,7 +89,8 @@ struct PageStripCell: Identifiable {
 /// (`onOpen`), where it is turned, kept or skipped (`PageStripCell.toggle`), split or joined and deleted; a
 /// press and hold starts a new document at the page or joins it to the one before, and names its document. A
 /// page pressed and dragged onto another, or into the gap beside it, goes before it, with a bar on the tile
-/// it will land before, and one dropped past the last goes to the end (`IOSPageDrop`); VoiceOver has Move page earlier and Move page later for the same.
+/// it will land before, and one dropped past the last goes to the end (`IOSPageDrop`); VoiceOver has Move
+/// page earlier and Move page later for the same.
 /// While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it is not dragged.
 struct PageStripView: View {
     @EnvironmentObject private var state: AppState
@@ -109,6 +110,8 @@ struct PageStripView: View {
     @State private var dropTarget: UUID?
     /// A dragged page is over the grid's empty area after the last page.
     @State private var overEnd: Bool = false
+    /// The page being dragged, noted when the drag starts.
+    @State private var dragging: UUID?
 
     static let columnsKey = "pages.columns"
 
@@ -175,10 +178,12 @@ struct PageStripView: View {
                         if let selection {
                             selectTile(cell, selection: selection, compact: compact, spacing: spacing)
                         } else {
-                            tile(cell, bar: insertBar(for: cell, last: cells.last?.id), compact: compact, spacing: spacing)
+                            tile(cell, bar: insertBar(for: cell, in: cells.map { (c: PageStripCell) -> UUID in c.id }), compact: compact, spacing: spacing)
                         }
                     }
                 }
+                .padding(.bottom, 60)
+                .contentShape(Rectangle())
                 .dropDestination(for: IOSDraggedPage.self) { (items: [IOSDraggedPage], _: CGPoint) -> Bool in
                     dropPage(items, before: nil)
                 } isTargeted: { (targeted: Bool) in
@@ -227,15 +232,25 @@ struct PageStripView: View {
 
     /// Where the bar of a dragged page goes: before the tile it is over, or after the last page while it is
     /// over the empty area. Not while an operation runs, since the drop would be refused.
-    private func insertBar(for cell: PageStripCell, last: UUID?) -> InsertBar {
+    private func insertBar(for cell: PageStripCell, in ids: [UUID]) -> InsertBar {
         guard !state.isBusy else { return .none }
         if dropTarget == cell.id {
-            return .before
+            return moves(before: cell.id, in: ids) ? .before : .none
         }
-        if overEnd && dropTarget == nil && cell.id == last {
-            return .after
+        if overEnd && dropTarget == nil && cell.id == ids.last {
+            return moves(before: nil, in: ids) ? .after : .none
         }
         return .none
+    }
+
+    private func moves(before target: UUID?, in ids: [UUID]) -> Bool {
+        guard let dragging else { return true }
+        return IOSPageDrop.offset(moving: dragging, before: target, in: ids) != nil
+    }
+
+    private func dragPayload(_ id: UUID) -> IOSDraggedPage {
+        dragging = id
+        return IOSDraggedPage(id: id)
     }
 
     private func tile(_ cell: PageStripCell, bar: InsertBar, compact: Bool, spacing: CGFloat) -> some View {
@@ -248,7 +263,7 @@ struct PageStripView: View {
             .onTapGesture {
                 onOpen(pageID)
             }
-            .draggable(IOSDraggedPage(id: pageID))
+            .draggable(dragPayload(pageID))
             .contextMenu {
                 DocumentMenuItems(state: state, cell: cell, onName: { namingPage = pageID })
             }
@@ -315,6 +330,7 @@ struct PageStripView: View {
 
     /// A page of the grid dropped before `target`, or past the last page when `target` is nil.
     private func dropPage(_ items: [IOSDraggedPage], before target: UUID?) -> Bool {
+        dragging = nil
         guard let moving = items.first?.id else { return false }
         return IOSPageDrop.move(moving, before: target, in: state)
     }
