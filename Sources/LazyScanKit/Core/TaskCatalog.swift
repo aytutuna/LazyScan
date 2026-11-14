@@ -48,7 +48,7 @@ public struct TaskGroupSection: Equatable, Sendable {
 public struct TaskDefinition: Equatable, Sendable {
     public let task: ScanTask
     public let title: String
-    /// What the task does, in one short line: the tile's tooltip, not shown on the tile.
+    /// What the task does, in one short line: the tile's caption.
     public let subtitle: String
     /// Names the card's icon; each platform maps it to its own symbol: "document", "feeder",
     /// "photos", "restore", "quick", "email", "twoSided", "idCard", "copy", "word", "receipt", "batch", "book",
@@ -124,7 +124,7 @@ public enum TaskCatalog {
                 group: .documents),
             TaskDefinition(
                 task: .photos, title: L10n.t("Photos"),
-                subtitle: L10n.t("Several photos at once, each cropped and straightened."),
+                subtitle: L10n.t("Many photos at once, each straightened."),
                 iconKey: "photos", flow: .photoSplit, intent: .photo, requiredSource: nil,
                 fileLabel: "Photo",
                 steps: [TaskStep(id: "scan", title: L10n.t("Scan the photos"),
@@ -143,8 +143,8 @@ public enum TaskCatalog {
                                  help: L10n.t("Colors are restored automatically. Check each photo before saving."))],
                 group: .photosAndImages),
             TaskDefinition(
-                task: .quickScan, title: L10n.t("Quick scan"),
-                subtitle: L10n.t("Save part of the glass as an image."),
+                task: .quickScan, title: L10n.t("Part of the page as an image"),
+                subtitle: L10n.t("Just the area you drag over, at 150 dpi."),
                 iconKey: "quick", flow: .documentQueue, intent: .document, requiredSource: .flatbed,
                 fileLabel: "Scan",
                 steps: [TaskStep(id: "scan", title: L10n.t("Scan an area"),
@@ -244,7 +244,7 @@ public enum TaskCatalog {
 
     /// The tasks in the order the start screen shows them, group by group: Documents (Document to
     /// PDF, Stack from feeder, Two-sided document, Separate documents, Scan to Word, Email a
-    /// document, Archive document), Photos & images (Photos, Restore old photos, Quick scan), Other
+    /// document, Archive document), Photos & images (Photos, Restore old photos, Part of the page as an image), Other
     /// (ID card, Photocopy, Receipts, Book or magazine).
     public static let startOrder: [ScanTask] = [
         .document, .feeder, .twoSided, .batch, .word, .email,

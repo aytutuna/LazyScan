@@ -30,7 +30,7 @@ public class ScanTaskTests
     public void Catalog_ListsEveryTaskOnce_InStartScreenOrder()
     {
         Assert.Equal(ScanTasks.All, TaskCatalog.All.Select(d => d.Task));
-        Assert.Equal(["Document to PDF", "Stack from feeder", "Photos", "Restore old photos", "Quick scan",
+        Assert.Equal(["Document to PDF", "Stack from feeder", "Photos", "Restore old photos", "Part of the page as an image",
                       "Email a document", "Two-sided document", "ID card", "Photocopy", "Scan to Word", "Receipts",
                       "Separate documents", "Book or magazine", "Archive document"],
                      TaskCatalog.All.Select(d => d.Title));
@@ -58,8 +58,8 @@ public class ScanTaskTests
     public void Catalog_Texts_AreShort_TheFullerGuidanceIsTheHelp()
     {
         Assert.Equal(["Page by page into a searchable PDF.", "A stack through the feeder into one PDF.",
-                      "Several photos at once, each cropped and straightened.", "Brings back faded colors; saved as PNG.",
-                      "Save part of the glass as an image.", "A small PDF, ready to attach.",
+                      "Many photos at once, each straightened.", "Brings back faded colors; saved as PNG.",
+                      "Just the area you drag over, at 150 dpi.", "A small PDF, ready to attach.",
                       "Both sides of every sheet, in page order.", "Both sides on one page, at real size.",
                       "Prints at real size, like a photocopier.", "Printed pages into an editable Word file.",
                       "Several at once, small files named by date.", "One stack, a PDF for each document.",

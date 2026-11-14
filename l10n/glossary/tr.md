@@ -108,7 +108,6 @@ Platform chrome may differ: Cancel is Vazgeç on the iPhone and the Mac, İptal 
 | Document to PDF (task) | Belgeden PDF’ye |
 | Stack from feeder (task) | Besleyiciden deste |
 | Restore old photos (task) | Eski fotoğrafları onar |
-| Quick scan (task) | Hızlı tarama |
 | Email a document (task) | Belgeyi e-postayla gönder |
 | Two-sided document (task) | Çift taraflı belge |
 | Scan to Word (task) | Word’e tara |

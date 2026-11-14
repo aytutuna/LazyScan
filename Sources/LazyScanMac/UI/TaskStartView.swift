@@ -28,10 +28,10 @@ enum TaskSymbols {
 }
 
 /// The start screen: what are you scanning? The user's presets first (when there are any), then one
-/// tile per task (`TaskCatalog.sections`) in its group: an icon and the title. What the task does and
-/// what it sets are the tile's help; a task the connected scanner cannot do is dimmed with one short
-/// line saying why. Picking a tile sets it up and opens the scanner view (`onOpenScanner`). After the
-/// tasks comes "Add pages to a PDF" (`addPagesTile`). Twin of the Windows `TaskStartView`.
+/// tile per task (`TaskCatalog.sections`) in its group: an icon, the title and the subtitle as a
+/// caption. What the task sets is the tile's help; a task the connected scanner cannot do is dimmed
+/// and the caption says why. Picking a tile sets it up and opens the scanner view (`onOpenScanner`).
+/// After the tasks comes "Add pages to a PDF" (`addPagesTile`). Twin of the Windows `TaskStartView`.
 struct TaskStartView: View {
     @EnvironmentObject var state: AppState
 
@@ -108,7 +108,6 @@ struct TaskStartView: View {
     private func taskTile(_ card: TaskCard) -> some View {
         let available: Bool = card.availability.isAvailable
         let subtitle: String = card.definition.subtitle
-        let help: String = subtitle + "\n" + card.summary
         let reason: String = card.availability.reason ?? ""
         let hint: String = available
             ? String(localized: "\(subtitle) \(card.summary).")
@@ -127,12 +126,13 @@ struct TaskStartView: View {
         } label: {
             TaskTileLabel(symbol: TaskSymbols.systemImage(card.definition.iconKey),
                           title: card.definition.title,
-                          reason: available ? nil : reason,
+                          caption: available ? subtitle : reason,
+                          dimmed: !available,
                           isCurrent: card.isCurrent)
         }
         .buttonStyle(TaskCardButtonStyle())
         .disabled(!available || state.isBusy)
-        .help(help)
+        .help(card.summary)
         .accessibilityLabel(Text(card.definition.title))
         .accessibilityHint(Text(hint))
     }
@@ -160,11 +160,10 @@ struct TaskStartView: View {
                 }
             }
         } label: {
-            TaskTileLabel(symbol: "doc.badge.plus", title: title, reason: nil, isCurrent: false)
+            TaskTileLabel(symbol: "doc.badge.plus", title: title, caption: subtitle, dimmed: false, isCurrent: false)
         }
         .buttonStyle(TaskCardButtonStyle())
         .disabled(state.isBusy)
-        .help(subtitle)
         .accessibilityLabel(Text(title))
         .accessibilityHint(Text(subtitle))
     }
@@ -185,7 +184,8 @@ struct TaskStartView: View {
         } label: {
             TaskTileLabel(symbol: TaskSymbols.systemImage(TaskCatalog.definition(task).iconKey),
                           title: preset.name,
-                          reason: nil,
+                          caption: nil,
+                          dimmed: false,
                           isCurrent: false)
         }
         .buttonStyle(TaskCardButtonStyle())
@@ -202,13 +202,16 @@ private struct TaskTileGroup {
     let cards: [TaskCard]
 }
 
-/// The inside of a start-screen tile: the icon, the title (two lines at most, never cut), and for a
-/// task that cannot be started, one line saying why.
+/// The inside of a start-screen tile: the icon, the title (two lines at most, never cut) and a caption
+/// of two lines at most, the task's subtitle or why it cannot be started. Tiles of a row share a height.
 private struct TaskTileLabel: View {
     let symbol: String
     let title: String
-    let reason: String?
+    let caption: String?
+    let dimmed: Bool
     let isCurrent: Bool
+
+    private var minHeight: CGFloat { caption == nil ? 104 : 128 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -217,7 +220,7 @@ private struct TaskTileLabel: View {
                     .font(.system(size: 22))
                     .foregroundStyle(Color.accentColor)
                     .frame(width: 32, height: 32)
-                    .opacity(reason == nil ? 1 : 0.4)
+                    .opacity(dimmed ? 0.4 : 1)
                     .accessibilityHidden(true)
                 Spacer(minLength: 4)
                 if isCurrent {
@@ -233,8 +236,8 @@ private struct TaskTileLabel: View {
                 .font(.headline)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-            if let reason {
-                Text(reason)
+            if let caption {
+                Text(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -244,7 +247,7 @@ private struct TaskTileLabel: View {
         }
         .multilineTextAlignment(.leading)
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: .infinity, alignment: .topLeading)
         .contentShape(RoundedRectangle(cornerRadius: 10))
     }
 }

@@ -131,7 +131,7 @@ The main window has four tabs, like the macOS app:
 - **Start** — "What are you scanning?": the user's presets first (only when there are some), then
   one tile per task in three groups (`TaskCatalog.Sections`): **Documents** (Document to PDF, Stack
   from feeder, Two-sided document, Separate documents, Scan to Word, Email a document, Archive
-  document), **Photos & images** (Photos, Restore old photos, Quick scan) and **Other** (ID card,
+  document), **Photos & images** (Photos, Restore old photos, Part of the page as an image) and **Other** (ID card,
   Photocopy, Receipts, Book or magazine). A tile is an icon and a title; what the task does (its
   one-line subtitle) and what it sets are its tooltip (also on keyboard focus) and its help text for
   screen readers. Picking a tile sets everything up for that task, keeps the save folder, fits

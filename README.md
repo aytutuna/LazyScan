@@ -228,9 +228,9 @@ scanners** — including the Epson Perfection V39 II.
   old photos, black-and-white threshold.
 - **Start screen**: pick what you are scanning, in three groups: **Documents** (Document to PDF,
   Stack from feeder, Two-sided document, Separate documents, Scan to Word, Email a document,
-  Archive document), **Photos & images** (Photos, Restore old photos, Quick scan) and
-  **Other** (ID card, Photocopy, Receipts, Book or magazine). A tile is an icon and a title; what
-  the task does and what it sets are its help. Picking one sets everything up for it, with a one-line
+  Archive document), **Photos & images** (Photos, Restore old photos, Part of the page as an image) and
+  **Other** (ID card, Photocopy, Receipts, Book or magazine). On the Mac a tile is an icon,
+  a title and a short caption; what it sets is its help. Picking one sets everything up for it, with a one-line
   guide on the scan screen and the fuller guidance behind its info button. On the Mac and Windows
   your file name, PDF size and action after saving stay as you set them, except in Email a
   document, Receipts and ID card, which set their own. Tasks the connected

@@ -106,7 +106,7 @@ public static class TaskCatalog
                           Help: Loc.T("Add more stacks if you need to, then save the PDF."))],
             TaskGroup.Documents),
         new(ScanTask.Photos, Loc.T("Photos"),
-            Loc.T("Several photos at once, each cropped and straightened."),
+            Loc.T("Many photos at once, each straightened."),
             "photos", TaskFlowKind.PhotoSplit, ScanIntent.Photo, null, "Photo",
             [new TaskStep("scan", Loc.T("Scan the photos"),
                           Loc.T("Lay the photos on the glass, apart, and scan."),
@@ -121,8 +121,8 @@ public static class TaskCatalog
                           Loc.T("Scan photos"), Repeats: true,
                           Help: Loc.T("Colors are restored automatically. Check each photo before saving."))],
             TaskGroup.PhotosAndImages),
-        new(ScanTask.QuickScan, Loc.T("Quick scan"),
-            Loc.T("Save part of the glass as an image."),
+        new(ScanTask.QuickScan, Loc.T("Part of the page as an image"),
+            Loc.T("Just the area you drag over, at 150 dpi."),
             "quick", TaskFlowKind.DocumentQueue, ScanIntent.Document, ScanSource.Flatbed, "Scan",
             [new TaskStep("scan", Loc.T("Scan an area"),
                           Loc.T("Preview, drag over the part you need, then scan."),
@@ -203,7 +203,7 @@ public static class TaskCatalog
     /// <summary>
     /// The tasks in the order the start screen shows them, group by group: Documents (Document to
     /// PDF, Stack from feeder, Two-sided document, Separate documents, Scan to Word, Email a
-    /// document, Archive document), Photos &amp; images (Photos, Restore old photos, Quick scan),
+    /// document, Archive document), Photos &amp; images (Photos, Restore old photos, Part of the page as an image),
     /// Other (ID card, Photocopy, Receipts, Book or magazine).
     /// </summary>
     public static IReadOnlyList<ScanTask> StartOrder { get; } =
