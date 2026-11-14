@@ -387,7 +387,7 @@ def load():
     data, plist = catalog()
     errors = check_catalog(data) + check_plist_catalog(plist)
     keys = view_keys()
-    errors += [f"keys-notes.json: {key!r} is not in a key list" for key in view_notes() if key not in keys]
+    errors += [f"keys-notes.json: {key!r} is not in a key list" for key in view_notes() if key not in keys and not key.startswith("_")]
     tables, infos, views, warnings = {}, {}, {}, []
     used, _ = keys_in_code()
     for lang in LANGUAGES:

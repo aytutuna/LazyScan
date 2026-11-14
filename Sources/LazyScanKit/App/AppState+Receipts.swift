@@ -17,7 +17,7 @@ extension AppState {
         isReceiptReview ? Receipts.reviewTitle(detectedPhotos.count) : PhotoReview.title(detectedPhotos.count)
     }
 
-    /// The review's save button: "Save 2 Receipts", "Save as One PDF", "Save 3 photos" (`PhotoReview.saveTitle`).
+    /// The review's save button: "Save 2 receipts", "Save as One PDF", "Save 3 photos" (`PhotoReview.saveTitle`).
     public var reviewSaveTitle: String {
         let included = detectedPhotos.filter(\.included).count
         return isReceiptReview

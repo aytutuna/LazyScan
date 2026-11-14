@@ -3,7 +3,7 @@ import LazyScanKit
 import LazyScanModel
 import SwiftUI
 
-/// About: the app's name and version, what it is built with, and where scans stay. Licences is beside it in
+/// About: the app's name and version, what it is built with, and where scans stay. Licenses is beside it in
 /// Help and about.
 struct AboutScreen: View {
     var body: some View {
@@ -30,7 +30,7 @@ struct AboutScreen: View {
 }
 
 /// The licence texts of DocAligner and ONNX Runtime, as they go with the app (`FastViTCornerModel.licence`).
-struct LicencesScreen: View {
+struct LicensesScreen: View {
     var body: some View {
         List {
             licence("DocAligner", file: "DocAligner-LICENSE", id: "licences.docaligner")

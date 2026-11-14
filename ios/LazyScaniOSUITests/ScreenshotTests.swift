@@ -8,7 +8,7 @@ import XCTest
 // with the drawer open), two scanned pages in the page grid (and selecting, one ticked), the Options sheet
 // with the pages queued and its Save as and Share now pages, the Options pages of the scanner tab with
 // Presets, My computer, the file name's editor and Help and about, with the troubleshooter, About and
-// Licences, and the library from camera mode, and a book page's split sheet; and, on runs of
+// Licenses, and the library from camera mode, and a book page's split sheet; and, on runs of
 // their own, a photo of a page in the page viewer with its filters, two prints as the pages of Photos with
 // one in the page viewer and Photos' options, the ID card's review with its menus and
 // the copy screen, a batch's and a two-sided sheet's pages, and the password sheet. The corner editor's
@@ -318,7 +318,7 @@ final class ScreenshotTests: XCTestCase {
         back(app)
     }
 
-    /// Help and about, with the troubleshooter, About and Licences.
+    /// Help and about, with the troubleshooter, About and Licenses.
     @MainActor
     private func helpScreens(_ app: XCUIApplication) {
         guard tapIfThere(app, "options.page.help", for: "11c-help") else { return }

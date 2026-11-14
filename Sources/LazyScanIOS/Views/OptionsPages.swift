@@ -410,7 +410,7 @@ struct ShareNowPage: View {
 }
 
 /// Help and about: Troubleshoot (over the sheet, `onTroubleshoot`), the ruler test page where a printer is
-/// installed, About and Licences.
+/// installed, About and Licenses.
 struct HelpPage: View {
     @EnvironmentObject private var state: AppState
     let onTroubleshoot: () -> Void

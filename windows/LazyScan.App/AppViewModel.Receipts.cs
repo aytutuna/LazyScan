@@ -26,7 +26,7 @@ public sealed partial class AppViewModel
         ? Receipts.ReviewTitle(DetectedPhotos.Count)
         : PhotoReview.Title(DetectedPhotos.Count);
 
-    /// <summary>The review's save button: "Save 2 Receipts", "Save as One PDF", "Save 3 photos".</summary>
+    /// <summary>The review's save button: "Save 2 receipts", "Save as One PDF", "Save 3 photos".</summary>
     public string ReviewSaveTitle
     {
         get

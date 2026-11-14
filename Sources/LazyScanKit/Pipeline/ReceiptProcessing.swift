@@ -782,12 +782,12 @@ public enum Receipts {
         L10n.plural(found, one: "Found {0} receipt", other: "Found {0} receipts")
     }
 
-    /// The review's save button: "Save 3 Receipts", "Save 1 Receipt"; "Save as One PDF" when the
+    /// The review's save button: "Save 3 receipts", "Save 1 receipt"; "Save as One PDF" when the
     /// receipts go into one PDF (`TaskOptions.receiptCombine`, several kept).
     public static func saveTitle(included: Int, combine: Bool, format: OutputFormat) -> String {
         combines(combine, format: format, count: included)
             ? L10n.t("Save as One PDF")
-            : L10n.plural(included, one: "Save {0} Receipt", other: "Save {0} Receipts")
+            : L10n.plural(included, one: "Save {0} receipt", other: "Save {0} receipts")
     }
 
     /// The receipts go into one PDF: asked for, saved as PDF, and more than one.

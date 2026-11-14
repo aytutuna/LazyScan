@@ -1199,7 +1199,7 @@ their date: 300 dpi, grayscale, Compact PDFs, searchable, named `Receipt {docdat
   at most 0.6) stretched to black and 0.9 of the paper to white, then darkened with a power of 1.6.
   Faded print at 0.62 on paper fading from 0.95 to 0.80 comes out at 0.6 or darker on white.
 - **Review**: the photo review, titled "Found 3 receipts", with Keep, turn and Fix crop (a
-  receipt is cut out upright and cleaned up again). **Save 3 Receipts**, or **Save as One PDF**
+  receipt is cut out upright and cleaned up again). **Save 3 receipts**, or **Save as One PDF**
   with **One PDF for all** (inspector, Receipts).
 - **Saving**: each receipt is read with Windows OCR once, as shown (turned), when its date, a
   searchable PDF or the text beside it needs it; the same lines are the PDF's text layer and the

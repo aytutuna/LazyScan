@@ -446,11 +446,11 @@ public class ReceiptTests
     {
         Assert.Equal("Found 4 receipts", Receipts.ReviewTitle(4));
         Assert.Equal("Found 1 receipt", Receipts.ReviewTitle(1));
-        Assert.Equal("Save 3 Receipts", Receipts.SaveTitle(3, combine: false, OutputFormat.Pdf));
-        Assert.Equal("Save 1 Receipt", Receipts.SaveTitle(1, combine: true, OutputFormat.Pdf));
+        Assert.Equal("Save 3 receipts", Receipts.SaveTitle(3, combine: false, OutputFormat.Pdf));
+        Assert.Equal("Save 1 receipt", Receipts.SaveTitle(1, combine: true, OutputFormat.Pdf));
         Assert.Equal("Save as One PDF", Receipts.SaveTitle(3, combine: true, OutputFormat.Pdf));
         Assert.Equal("Save as One PDF", Receipts.SaveTitle(3, combine: true, OutputFormat.Word));
-        Assert.Equal("Save 3 Receipts", Receipts.SaveTitle(3, combine: true, OutputFormat.Jpeg));
+        Assert.Equal("Save 3 receipts", Receipts.SaveTitle(3, combine: true, OutputFormat.Jpeg));
         Assert.Equal("Saved 2 receipts: a.pdf, b.pdf", Receipts.SavedMessage(2, ["a.pdf", "b.pdf"], combined: false, undated: 0));
         Assert.Equal("Saved 3 receipts in one PDF: a.pdf", Receipts.SavedMessage(3, ["a.pdf"], combined: true, undated: 0));
         Assert.Equal("Saved 1 receipt: a.pdf. No date was found on it; it is named by today's date.",

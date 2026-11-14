@@ -414,11 +414,11 @@ final class ReceiptTests: XCTestCase {
     func test_receipts_titlesAndMessages() {
         XCTAssertEqual(Receipts.reviewTitle(4), "Found 4 receipts")
         XCTAssertEqual(Receipts.reviewTitle(1), "Found 1 receipt")
-        XCTAssertEqual(Receipts.saveTitle(included: 3, combine: false, format: .pdf), "Save 3 Receipts")
-        XCTAssertEqual(Receipts.saveTitle(included: 1, combine: true, format: .pdf), "Save 1 Receipt")
+        XCTAssertEqual(Receipts.saveTitle(included: 3, combine: false, format: .pdf), "Save 3 receipts")
+        XCTAssertEqual(Receipts.saveTitle(included: 1, combine: true, format: .pdf), "Save 1 receipt")
         XCTAssertEqual(Receipts.saveTitle(included: 3, combine: true, format: .pdf), "Save as One PDF")
         XCTAssertEqual(Receipts.saveTitle(included: 3, combine: true, format: .word), "Save as One PDF")
-        XCTAssertEqual(Receipts.saveTitle(included: 3, combine: true, format: .jpeg), "Save 3 Receipts")
+        XCTAssertEqual(Receipts.saveTitle(included: 3, combine: true, format: .jpeg), "Save 3 receipts")
         XCTAssertEqual(Receipts.savedMessage(count: 2, fileNames: ["a.pdf", "b.pdf"], combined: false, undated: 0),
                        "Saved 2 receipts: a.pdf, b.pdf")
         XCTAssertEqual(Receipts.savedMessage(count: 3, fileNames: ["a.pdf"], combined: true, undated: 0),

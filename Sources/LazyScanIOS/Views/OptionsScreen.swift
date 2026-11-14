@@ -241,7 +241,7 @@ struct OptionsScreen: View {
         case .about:
             AboutScreen()
         case .licences:
-            LicencesScreen()
+            LicensesScreen()
         }
     }
 

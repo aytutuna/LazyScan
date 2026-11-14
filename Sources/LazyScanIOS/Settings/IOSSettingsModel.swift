@@ -49,8 +49,8 @@ public enum IOSSettingsText {
         String(localized: "Built with Apple's frameworks. Pages are found with DocAligner by DocsaidLab (Apache License 2.0) on ONNX Runtime by Microsoft (MIT License).")
     }
     public static var aboutPrivacy: String { String(localized: "Your scans stay on this device unless you share them.") }
-    /// About's row to the licence texts that go with the app (`LicencesScreen`).
-    public static var licencesLabel: String { String(localized: "Licences") }
+    /// About's row to the licence texts that go with the app (`LicensesScreen`).
+    public static var licencesLabel: String { String(localized: "Licenses") }
     public static var licenceMissing: String { String(localized: "Licence text missing") }
     /// The camera's group, on this device only: the size its photos are taken at.
     public static var cameraTitle: String { String(localized: "Camera") }
@@ -172,7 +172,7 @@ public enum IOSSettingsSections {
 }
 
 /// The pages of the Options sheet, each opened from a row of its list (`OptionsScreen`) with its current
-/// value. The first group follows the settings, the second is the same for every task. About and Licences
+/// value. The first group follows the settings, the second is the same for every task. About and Licenses
 /// are reached from Help and about.
 public enum IOSOptionsPage: String, Hashable, Identifiable {
     case saveAs

@@ -875,13 +875,13 @@ public static class Receipts
     public static string ReviewTitle(int found) => Loc.Plural(found, "Found {0} receipt", "Found {0} receipts");
 
     /// <summary>
-    /// The review's save button: "Save 3 Receipts", "Save 1 Receipt"; "Save as One PDF" when the
+    /// The review's save button: "Save 3 receipts", "Save 1 receipt"; "Save as One PDF" when the
     /// receipts go into one PDF (<see cref="TaskOptions.ReceiptCombine"/>, several kept).
     /// </summary>
     public static string SaveTitle(int included, bool combine, OutputFormat format) =>
         Combines(combine, format, included)
             ? Loc.T("Save as One PDF")
-            : Loc.Plural(included, "Save {0} Receipt", "Save {0} Receipts");
+            : Loc.Plural(included, "Save {0} receipt", "Save {0} receipts");
 
     /// <summary>The caption of a joined receipt: "2 pieces".</summary>
     public static string PiecesCaption(int pieces) => Loc.Plural(pieces, "{0} piece", "{0} pieces");

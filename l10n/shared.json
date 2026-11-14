@@ -545,8 +545,8 @@
   "No date was found on them; the PDF is named by today's date.": {},
   "No date was found on it; it is named by today's date.": {},
   "No date was found on them; they are named by today's date.": {},
-  "Save {0} Receipt": {
-    "other": "Save {0} Receipts"
+  "Save {0} receipt": {
+    "other": "Save {0} receipts"
   },
   "Saved {0} receipt in one PDF: {1}": {
     "other": "Saved {0} receipts in one PDF: {1}"
