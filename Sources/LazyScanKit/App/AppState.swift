@@ -1296,6 +1296,7 @@ public final class AppState: ObservableObject {
     private func switchSession(to id: String?, interactive: Bool) async {
         if let old = session {
             old.progressHandler = nil
+            (old as? ButtonScannerSession)?.buttonHandler = nil
             // Abort any in-flight scan so its results can't land after the switch.
             old.cancelScan()
             await old.close()
@@ -1346,6 +1347,7 @@ public final class AppState: ObservableObject {
                 self?.progress = p
                 if !p.message.isEmpty { self?.statusMessage = p.message }
             }
+            (s as? ButtonScannerSession)?.buttonHandler = { [weak self] in self?.scannerButtonPressed() }
             session = s
             sessionDeviceID = id
             let caps = try await s.capabilities()
@@ -1433,6 +1435,14 @@ public final class AppState: ObservableObject {
                 ? L10n.t("Overview ready — tap the preview to choose the scan area, then Scan.")
                 : L10n.t("Overview ready — drag on the preview to select an area, then Scan.")
         }
+    }
+
+    /// The scanner's own Scan button: starts a scan as the Scan button does, unless one is running.
+    private func scannerButtonPressed() {
+        guard isConnected, !isBusy, errorMessage == nil, cornerReview == nil, !showPhotoReview,
+              !showIdCardReview, !asksSidesOrder, pendingIdCardLeave == nil, !showTroubleshooter,
+              !showAddScanner else { return }
+        performScan()
     }
 
     public func performScan() {

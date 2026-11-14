@@ -12,12 +12,40 @@ import XCTest
 /// Scanners the test lists and takes away, each opened as the demo scanner. The first `failures` opens fail;
 /// an open of `held` waits for `release()` and then fails, as a scanner that does not answer.
 @MainActor
+private final class ButtonSession: ButtonScannerSession {
+    var info: ScannerInfo { inner.info }
+    var progressHandler: ((ScanProgress) -> Void)? {
+        get { inner.progressHandler }
+        set { inner.progressHandler = newValue }
+    }
+    var buttonHandler: (() -> Void)?
+    private(set) var scans: Int = 0
+    private let inner: any ScannerSession
+
+    init(_ inner: any ScannerSession) {
+        self.inner = inner
+    }
+
+    func capabilities() async throws -> ScannerCapabilities { try await inner.capabilities() }
+    func performOverviewScan(settings: ScanSettings) async throws -> CGImage {
+        try await inner.performOverviewScan(settings: settings)
+    }
+    func performScan(settings: ScanSettings, selection: CGRect?) async throws -> [ScannedPage] {
+        scans += 1
+        return try await inner.performScan(settings: settings, selection: selection)
+    }
+    func cancelScan() { inner.cancelScan() }
+    func close() async { await inner.close() }
+}
+
+@MainActor
 private final class ListedScannersBackend: ScannerBackend {
     var onDevicesChanged: (() -> Void)?
     private(set) var devices: [ScannerInfo] = []
     private(set) var opened: [String] = []
     var failures: Int = 0
     var held: String?
+    private(set) var buttonSessions: [ButtonSession] = []
     private var waiting: CheckedContinuation<Void, Never>?
     private let demo: MockScannerBackend = MockScannerBackend()
 
@@ -44,7 +72,9 @@ private final class ListedScannersBackend: ScannerBackend {
             failures -= 1
             throw ScanError.deviceUnavailable("The scanner did not respond.")
         }
-        return try await demo.openSession(deviceID: "mock:demo")
+        let session: ButtonSession = ButtonSession(try await demo.openSession(deviceID: "mock:demo"))
+        buttonSessions.append(session)
+        return session
     }
 
     func release() {
@@ -99,6 +129,29 @@ final class AppStateDeviceTests: XCTestCase {
             }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
+    }
+
+    /// The scanner's own button scans once when the app is idle; it does nothing while a scan runs or once
+    /// another scanner is selected.
+    @MainActor
+    func test_theScannersButton_scansOnlyWhenIdleAndSelected() async throws {
+        let backend: ListedScannersBackend = ListedScannersBackend()
+        backend.list([office, library])
+        let state: AppState = makeState([backend])
+        state.start()
+        try await waitFor(10) { state.capabilities != nil }
+        let session: ButtonSession = try XCTUnwrap(backend.buttonSessions.first)
+
+        session.buttonHandler?()
+        session.buttonHandler?()
+        try await waitFor(10) { session.scans == 1 }
+        try await waitFor(30) { !state.isBusy }
+        XCTAssertEqual(session.scans, 1)
+
+        state.userSelectDevice(library.id)
+        try await waitFor(10) { backend.buttonSessions.count == 2 && state.capabilities != nil }
+        XCTAssertNil(session.buttonHandler)
+        XCTAssertEqual(session.scans, 1)
     }
 
     /// The sidebar says "Looking for scanners…" from the start and after Refresh until a scanner is listed or

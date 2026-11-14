@@ -74,6 +74,11 @@ public protocol ScannerSession: AnyObject {
     func close() async
 }
 
+/// A session whose scanner has a button of its own. The handler is called when it is pressed.
+public protocol ButtonScannerSession: ScannerSession {
+    var buttonHandler: (() -> Void)? { get set }
+}
+
 extension ScannerSession {
     public func performScan(settings: ScanSettings, selection: CGRect?,
                             onPage: @escaping @MainActor (ScannedPage) async -> Void) async throws {

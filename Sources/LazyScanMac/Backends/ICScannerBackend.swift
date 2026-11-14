@@ -198,10 +198,11 @@ public final class ICScannerBackend: NSObject, ScannerBackend, ScannerBackendDia
 /// actor; delegate callbacks (which ImageCaptureCore delivers on the main
 /// thread) are funneled back onto it before touching any state.
 @MainActor
-private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScannerDeviceDelegate {
+private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonScannerSession, ICScannerDeviceDelegate {
 
     let info: ScannerInfo
     var progressHandler: ((ScanProgress) -> Void)?
+    var buttonHandler: (() -> Void)?
     private(set) var lastScanStop: ScanStop?
     private(set) var lastScanDuplex: Bool?
     /// ImageCaptureCore reports two-sided feeding on the feeder unit, once it is selected.
@@ -429,6 +430,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
         var twoSided = false
         var reverseOrder = false
         if unitType == .documentFeeder, let feeder = unit as? ICScannerFunctionalUnitDocumentFeeder {
+            guard feeder.documentLoaded else { throw ScanError.scannerProblem(.feederEmpty) }
             twoSided = settings.duplex == .both && feeder.supportsDuplexScanning
             feeder.duplexScanningEnabled = twoSided
             if let type = Self.documentType(for: settings.paperSize) {
@@ -670,11 +672,19 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
                 return .cancelled
             case .scannerInUseByLocalUser, .scannerInUseByRemoteUser:
                 return .scannerProblem(.busy)
+            case .communicationTimedOut:
+                return .scannerProblem(.communicationError)
             default:
                 break
             }
         }
         if cancelRequested { return .cancelled }
+        // ImageCaptureCore has no codes for a jam or an open cover; the driver only words them.
+        let text = error.localizedDescription.lowercased()
+        let words = Set(text.split(whereSeparator: { !$0.isLetter }).map(String.init))
+        if words.contains("jam") || words.contains("jammed") { return .scannerProblem(.paperJam) }
+        if words.contains("cover") || words.contains("door") || words.contains("lid") { return .scannerProblem(.coverOpen) }
+        if text.contains("not ready") { return .scannerProblem(.needsAttention) }
         return .scanFailed(error.localizedDescription)
     }
 
@@ -778,6 +788,12 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ICScanne
                 return
             }
             self.progressHandler?(ScanProgress(message: message))
+        }
+    }
+
+    nonisolated func device(_ device: ICDevice, didReceiveButtonPress button: String) {
+        performOnMainActor {
+            self.buttonHandler?()
         }
     }
 

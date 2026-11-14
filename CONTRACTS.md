@@ -4453,7 +4453,7 @@ Where an `AppState` keeps its files is `AppStateFiles`: the shells get `standard
 ```swift
 public final class ICScannerBackend: NSObject, ScannerBackend { ... }
 ```
-ImageCaptureCore implementation: `ICDeviceBrowser` (scanner mask, local + bonjour + shared), sessions via `ICScannerDevice` (see task brief).
+ImageCaptureCore implementation: `ICDeviceBrowser` (scanner mask, local + bonjour + shared), sessions via `ICScannerDevice` (see task brief). A feeder scan with no paper loaded (`documentLoaded`) fails with `scannerProblem(.feederEmpty)` before it starts; a timeout, a jam, an open cover or a not-ready scanner become `scannerProblem` cases (the last three by the driver's wording, which ImageCaptureCore has no codes for). The scanner's own button starts a scan through `ButtonScannerSession` and `AppState.scannerButtonPressed()` when connected and idle with no dialog open.
 
 ### Backends/MockScannerBackend.swift
 
