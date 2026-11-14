@@ -349,7 +349,7 @@ public final class IOSCompanionModel: ObservableObject {
     public func pair() async {
         guard canPair else { return }
         isPairing = true
-        let before: PairedDesktop? = state.companionDesktop
+        let before: Date? = state.companionDesktop?.pairedAt
         let codeUsedUp: Bool = await state.pairDesktop(uri: entered, phoneName: phoneName.trimmingCharacters(in: .whitespacesAndNewlines))
         isPairing = false
         // A pairing that went through is the one paired last, with a new pairing time.
