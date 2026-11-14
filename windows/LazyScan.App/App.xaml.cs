@@ -18,11 +18,14 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // A second copy hands its arguments to the first and ends; returning before base.OnStartup keeps
-        // StartupUri from building a MainWindow. When the first does not answer this one starts as usual.
-        _instance = SingleInstance.TryOwn(SingleInstance.DefaultName);
-        if (_instance is null && SingleInstance.Send(SingleInstance.DefaultName, e.Args))
+        // A second copy hands its arguments to the first and ends; a command-line scan runs without a window.
+        // Clearing StartupUri is what keeps either from building a MainWindow. When the first does not answer
+        // this one starts as usual. A command-line scan is its own process: it neither hands over nor takes the name.
+        bool scan = ScanCommand.IsScan(e.Args);
+        _instance = scan ? null : SingleInstance.TryOwn(SingleInstance.DefaultName);
+        if (!scan && _instance is null && SingleInstance.Send(SingleInstance.DefaultName, e.Args))
         {
+            StartupUri = null;
             Shutdown();
             return;
         }
@@ -50,6 +53,27 @@ public partial class App : Application
             Flow = FlowDirection.RightToLeft;
             BoxOptions = MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign;
         }
+        if (scan)
+        {
+            StartupUri = null;
+            RunScanCommand(e.Args);
+            return;
+        }
         base.OnStartup(e);
+    }
+
+    private async void RunScanCommand(string[] args)
+    {
+        int code = ScanCommand.BadArguments;
+        if (ScanCommand.Parse(args) is { } command)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            code = await command.RunAsync(new AppViewModel(), Console.Error);
+        }
+        else
+        {
+            Console.Error.WriteLine(ScanCommand.Usage);
+        }
+        Shutdown(code);
     }
 }

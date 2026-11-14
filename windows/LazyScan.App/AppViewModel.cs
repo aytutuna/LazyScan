@@ -1161,6 +1161,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         !ReferenceEquals(Settings.Document, _syncedDocument) || !Settings.Document.Equals(_syncedOptions)
         || _spreads.Count != _syncedSpreads || !ScannedPages.Select(item => item.Page).SequenceEqual(_syncedPages, ReferenceEqualityComparer.Instance);
 
+    /// <summary>False for a command-line scan, which runs on a preset's settings without making them the user's.</summary>
+    public bool SavesSettings { get; set; } = true;
+
     /// <summary>Call after mutating Settings from the UI: debounced persist + live preview refresh.</summary>
     public void SettingsEdited()
     {
@@ -1182,7 +1185,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         _settingsSaveTimer.Tick += (_, _) =>
         {
             _settingsSaveTimer?.Stop();
-            SettingsStore.Save(snapshot);
+            if (SavesSettings) SettingsStore.Save(snapshot);
         };
         _settingsSaveTimer.Start();
         RequestCanvasRender(debounce: true);
@@ -1192,7 +1195,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void FlushSettings()
     {
         _settingsSaveTimer?.Stop();
-        SettingsStore.Save(Settings);
+        if (SavesSettings) SettingsStore.Save(Settings);
     }
 
     // MARK: Devices

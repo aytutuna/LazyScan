@@ -1680,6 +1680,11 @@
   "Load the turned-over stack in the feeder again and scan the back sides.": {},
   "Scanning one side of each sheet.": {},
   "Applied preset “{0}”.": {},
+  "Usage: scan --preset NAME --output PATH": {},
+  "There is no preset “{0}”.": {},
+  "The preset “{0}” needs the window to finish a scan, so it cannot run from the command line.": {},
+  "The preset “{0}” saved {1} files, and --output names one.": {},
+  "Nothing was saved.": {},
   "Saving to {0}.": {
     "note": "{0} is the name of the folder scans are saved in."
   },

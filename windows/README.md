@@ -613,6 +613,13 @@ and so asks first when pages are queued. Lazy Scan runs once per Windows session
 the window already open (a named mutex and pipe hand the file over) and no second process starts.
 Photos work the same way: Open with on a JPEG, PNG, HEIC or any other photo type imports it as pages in the
 window open (the Store package lists the types of `PhotoImport.FileExtensions`; it does not take the default program).
+`LazyScan.exe scan --preset NAME --output PATH` scans without a window (`ScanCommand.cs`): it applies the saved preset
+(the name is matched without regard to case) on the scanner the app would pick, saves the one file the preset makes
+and moves it to PATH, adding the extension when PATH has none. It exits 0 when the file is written, 1 when the scan or
+the save fails (the reason goes to standard error) and 2 when the arguments are wrong. Only document presets that save
+one file run this way; a preset that opens a photo, receipt, ID card or copy review fails, as does one that asks for a
+PDF password. It does not take part in the one-window rule, so it can run while the window is open, and it never
+writes the settings file.
 
 When the network keeps the phone and this PC apart, the phone can put its documents, sealed with a
 key only this PC and that phone hold, in a folder synced through OneDrive or iCloud Drive; the PC
