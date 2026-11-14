@@ -61,6 +61,31 @@ final class PagesTests: XCTestCase {
         XCTAssertTrue(app.pagesButton.waitForPageCount(1, timeout: 30), "1 page on the pages' button")
     }
 
+    // Mark Up opens from the page viewer with nothing drawn: Undo is off, and Cancel closes it with no question.
+    @MainActor
+    func test_markUp_opensWithUndoOff_andCancelCloses() throws {
+        let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
+                                         "The fixture PDF in the test bundle")
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "batch"]
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
+        app.launch()
+
+        app.openPages(3)
+        app.descendants(matching: .any)["page.1"].firstMatch.tap()
+        let markUp: XCUIElement = app.descendants(matching: .any)["viewer.markup"].firstMatch
+        XCTAssertTrue(markUp.waitForExistence(timeout: 30), "The viewer's Mark Up button")
+        app.waitUntilEnabled(markUp, "Mark Up", timeout: 120)
+        markUp.tap()
+        let undo: XCUIElement = app.descendants(matching: .any)["markup.undo"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 10), "Undo on the Mark Up screen")
+        XCTAssertFalse(undo.isEnabled, "Nothing to undo yet")
+        app.descendants(matching: .any)["markup.cancel"].firstMatch.tap()
+        XCTAssertTrue(markUp.waitForExistence(timeout: 10), "Back on the viewer")
+        app.descendants(matching: .any)["viewer.done"].firstMatch.tap()
+        app.closePages()
+    }
+
     // Pressing the third page and dragging it onto the first puts it first. The demo scanner's pages look
     // alike, so each tile's accessibility value (the page's id, under -demoScanner) tells them apart.
     @MainActor

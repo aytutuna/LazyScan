@@ -19,6 +19,17 @@ enum PageViewerText {
     static var adjustLabel: String { String(localized: "Adjust") }
     static var adjustHint: String { String(localized: "Changes brightness and contrast of this page") }
     static var cropLabel: String { String(localized: "Crop") }
+    static var markUpLabel: String { String(localized: "Mark Up") }
+    static var markUpHint: String { String(localized: "Draws on this page") }
+    static var penLabel: String { String(localized: "Pen") }
+    static var highlighterLabel: String { String(localized: "Highlighter") }
+    static var undoStrokeLabel: String { String(localized: "Undo stroke") }
+    static var discardMarksQuestion: String { String(localized: "Discard these marks?") }
+    static var discardLabel: String { String(localized: "Discard") }
+    static var keepDrawingLabel: String { String(localized: "Keep Drawing") }
+    static var drawingAreaLabel: String { String(localized: "Drawing area for the page") }
+    static var cropRemovesMarksTitle: String { String(localized: "Cropping removes the marks") }
+    static var cropRemovesMarksMessage: String { String(localized: "The marks on this page are taken off when it is cropped.") }
     static var documentLabel: String { String(localized: "Document") }
     static var nameDocumentLabel: String { String(localized: "Name document\u{2026}") }
     static var nameDocumentTitle: String { String(localized: "Name this document") }
@@ -128,6 +139,10 @@ struct PageViewer: View {
     @State private var crop: IOSCropRequest?
     @State private var rectCrop: RectCropRequest?
     @State private var preparesCrop: Bool = false
+    @State private var markUp: MarkUpRequest?
+    @State private var asksCropWithMarks: Bool = false
+    /// The pages' pictures with their marks drawn in, kept until the picture or the marks change.
+    @State private var markedPictures: MarkedPictures = MarkedPictures()
     /// The page's rotation when the corner editor's picture was turned for it.
     @State private var cropRotation: Int = 0
     /// The filter tapped last for each page, shown as chosen while the page is cut again.
@@ -362,6 +377,11 @@ struct PageViewer: View {
         } message: {
             Text(PageViewerText.deleteMessage)
         }
+        .confirmationDialog(PageViewerText.cropRemovesMarksTitle, isPresented: $asksCropWithMarks, titleVisibility: .visible) {
+            Button(PageViewerText.cropLabel, action: openCrop)
+        } message: {
+            Text(PageViewerText.cropRemovesMarksMessage)
+        }
         .modifier(DocumentNameAlert(state: state, page: $namingPage))
         .sheet(item: $textOf) { (shown: PageViewerStart) in
             PageTextSheet(pageID: shown.id)
@@ -376,6 +396,18 @@ struct PageViewer: View {
             RectCropView(image: request.image, start: request.start, onAnswer: { (rect: CGRect?) -> Void in
                 finishRectCrop(request, rect: rect)
             })
+        }
+        .fullScreenCover(item: $markUp) { (request: MarkUpRequest) in
+            MarkUpView(image: request.image, marks: request.marks, quarterTurns: request.quarterTurns,
+                       showsOriginal: request.showsOriginal, canFinish: !state.isBusy, onAnswer: { (marks: PageMarks?) -> Void in
+                finishMarkUp(request, marks: marks)
+            })
+        }
+        .onChange(of: state.scannedPages.count) { (_: Int, _: Int) in
+            markedPictures.keep(Set(state.scannedPages.map { (page: ScannedPage) -> UUID in page.id }))
+            if let request = markUp, !state.scannedPages.contains(where: { (page: ScannedPage) -> Bool in page.id == request.id }) {
+                markUp = nil
+            }
         }
         .onChange(of: selection) { (_: UUID?, _: UUID?) in
             adjustDraft = [:]
@@ -461,6 +493,11 @@ struct PageViewer: View {
 
     /// The page's preview, or its sharper picture once it is read as the page is now.
     private func shownImage(_ page: ScannedPage) -> CGImage {
+        markedPictures.picture(pictureOf(page), of: page)
+    }
+
+    /// The page's picture without its marks.
+    private func pictureOf(_ page: ScannedPage) -> CGImage {
         guard let read = sharpRead(of: page), let sharp = sharpCache.image(for: read) else { return page.image }
         return sharp
     }
@@ -530,11 +567,20 @@ struct PageViewer: View {
         .accessibilityIdentifier("viewer.rotate")
         Spacer()
         if offersCrop {
-            Button(action: openCrop) {
+            Button(action: askCrop) {
                 Label(PageViewerText.cropLabel, systemImage: "crop")
             }
             .disabled(blocked || state.readsQueue)
             .accessibilityIdentifier("viewer.crop")
+            Spacer()
+            let marked: Bool = current.map { (page: ScannedPage) -> Bool in MarkedPictures.shows(page) } ?? false
+            let markUpSymbol: String = marked ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle"
+            Button(action: openMarkUp) {
+                Label(PageViewerText.markUpLabel, systemImage: markUpSymbol)
+            }
+            .disabled(blocked || state.readsQueue)
+            .accessibilityHint(Text(PageViewerText.markUpHint))
+            .accessibilityIdentifier("viewer.markup")
             Spacer()
         }
         if let page = current, let swapLabel = PageCorrections.toggleLabel(page) {
@@ -933,7 +979,32 @@ struct PageViewer: View {
         loadingPreviews = false
     }
 
+    // MARK: Mark Up
+
+    private func openMarkUp() {
+        guard let page = current, !preparesCrop else { return }
+        markUp = MarkUpRequest(id: page.id, image: pictureOf(page), marks: page.marks,
+                               quarterTurns: page.rotationQuarterTurns, showsOriginal: page.showsOriginal)
+    }
+
+    /// Done keeps the strokes on the page; Cancel and a Done with nothing changed leave it as it is.
+    private func finishMarkUp(_ request: MarkUpRequest, marks: PageMarks?) {
+        markUp = nil
+        if let marks {
+            state.setMarks(marks, for: request.id)
+        }
+    }
+
     // MARK: Crop
+
+    /// Crop cuts the page again and takes its marks off, so a marked page asks first.
+    private func askCrop() {
+        if current?.marks != nil {
+            asksCropWithMarks = true
+        } else {
+            openCrop()
+        }
+    }
 
     private func openCrop() {
         guard let id = selection, !preparesCrop else { return }
@@ -1004,6 +1075,43 @@ struct PageViewer: View {
         case .skip:
             break
         }
+    }
+}
+
+/// The page pictures with their marks drawn in (`PageMarkRenderer`), for the viewer to show: one for each page,
+/// made again when the picture or the marks change.
+final class MarkedPictures {
+    private struct Entry {
+        let base: CGImage
+        let marks: PageMarks
+        let turns: Int
+        let picture: CGImage
+    }
+
+    private var entries: [UUID: Entry] = [:]
+
+    /// Whether the marks of `page` are on the version of it that is shown.
+    static func shows(_ page: ScannedPage) -> Bool {
+        guard let marks = page.marks else { return false }
+        return !marks.isEmpty && marks.onOriginal == page.showsOriginal
+    }
+
+    func picture(_ base: CGImage, of page: ScannedPage) -> CGImage {
+        guard Self.shows(page), let marks = page.marks else {
+            entries[page.id] = nil
+            return base
+        }
+        if let entry = entries[page.id], entry.base === base, entry.marks == marks, entry.turns == page.rotationQuarterTurns {
+            return entry.picture
+        }
+        let picture: CGImage = PageMarkRenderer.burned(base, marks: marks, quarterTurns: page.rotationQuarterTurns,
+                                                       showsOriginal: page.showsOriginal)
+        entries[page.id] = Entry(base: base, marks: marks, turns: page.rotationQuarterTurns, picture: picture)
+        return picture
+    }
+
+    func keep(_ ids: Set<UUID>) {
+        entries = entries.filter { (id: UUID, _: Entry) -> Bool in ids.contains(id) }
     }
 }
 

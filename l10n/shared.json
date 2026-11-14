@@ -613,6 +613,9 @@
     "other": "Remove all {0} pages?",
     "note": "Asked when the only page left is removed, so it removes everything; the other form reads 'Remove all {0} pages?'."
   },
+  "{0} mark": {
+    "other": "{0} marks"
+  },
   "{0} file in {1}": {
     "other": "{0} files in {1}",
     "note": "{1} is a folder name."

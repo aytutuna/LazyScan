@@ -17,7 +17,7 @@ public enum MarkInk: String, Codable, Sendable, CaseIterable {
     case black, blue, red, green, yellow, pink, orange
 
     /// Red, green and blue, 0...1.
-    var rgb: (red: Double, green: Double, blue: Double) {
+    public var rgb: (red: Double, green: Double, blue: Double) {
         switch self {
         case .black: return (0.05, 0.05, 0.05)
         case .blue: return (0.1, 0.3, 0.85)
