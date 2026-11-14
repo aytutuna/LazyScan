@@ -7,7 +7,7 @@ extension ImageExporter {
     /// black & white TIFF stays CCITT G4). The turned copy is written beside the file and swapped in
     /// atomically, so a failed write never loses the only copy; a multi-page TIFF is refused rather than
     /// cut to its first page. Returns why it failed, worded for the user, or nil. Twin of the Windows
-    /// `SavedFiles.RotateFile`'s result texts; the caller must not run two turns of one file at once.
+    /// `SavedFiles.RotateClockwiseAsync`'s result texts; the caller must not run two turns of one file at once.
     public static func rotateClockwise(_ url: URL) -> String? {
         let format: OutputFormat
         switch url.pathExtension.lowercased() {
