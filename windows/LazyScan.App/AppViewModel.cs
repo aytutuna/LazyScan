@@ -3160,12 +3160,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ApplyPreset(Preset preset)
     {
         var adapted = SettingsAdapter.Adapt(preset.SettingsOver(Settings), Capabilities);
+        string folderBefore = Settings.ResolveDestination();
         _lowered = null;
         Settings = adapted.Settings;
         _heldCopy = null;
         bool wasBusy = IsBusy;
         SettingsEdited();
         string preface = Loc.T("Applied preset “{0}”.", preset.Name);
+        string folder = Settings.ResolveDestination();
+        if (!string.Equals(folder, folderBefore, StringComparison.OrdinalIgnoreCase))
+        {
+            string name = Path.GetFileName(folder.TrimEnd('\\', '/'));
+            preface += " " + Loc.T("Saving to {0}.", name.Length == 0 ? folder : name);
+        }
         string applied = WithNotes(preface, adapted.Notes);
         // A reading of the queued pages the preset started (split at barcode or QR sheets) says so.
         SetStatus(!wasBusy && IsBusy ? $"{applied} {StatusMessage}" : applied,
