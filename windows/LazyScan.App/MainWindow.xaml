@@ -1209,6 +1209,14 @@
                                                     <TextBlock x:Name="DriverWindowHint" Style="{StaticResource ReasonText}" Text="{loc:T Always on for this driver}" />
                                                 </DockPanel>
                                             </StackPanel>
+                                            <!-- Flatbed scans into the queue: scan the next page by itself after a wait. -->
+                                            <StackPanel x:Name="ScanAgainRow" Visibility="Collapsed">
+                                                <TextBlock Text="{loc:T Scan again after}" Style="{StaticResource FieldLabelText}" Margin="0,12,0,4" />
+                                                <ComboBox x:Name="ScanAgainBox" HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="{loc:T Scan again after}"
+                                                          ToolTip="{loc:T Scans the next page by itself after the wait. Swap the page during the wait. Press Stop to end it.}"
+                                                          SelectionChanged="Setting_Changed" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Expander>
 
@@ -1679,6 +1687,11 @@
                             <Border Grid.Row="1" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                                     BorderThickness="1,1,0,0" Padding="12">
                                 <StackPanel>
+                                    <!-- Between passes of Scan again after; the Scan button below becomes Stop. -->
+                                    <TextBlock x:Name="ScanAgainCountdown" Style="{StaticResource CaptionText}" Visibility="Collapsed"
+                                               HorizontalAlignment="Center" Margin="0,0,0,6" Typography.NumeralAlignment="Tabular"
+                                               AutomationProperties.Name="{loc:T Scanning again countdown}"
+                                               AutomationProperties.LiveSetting="Polite" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />

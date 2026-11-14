@@ -2078,7 +2078,7 @@ sensitivity this version does not know reads as Medium. How the user wants a tas
 `"taskOptions"` object (`"taskOptions": {"idCardPaper": "auto", "idCardSaveSidesAsImages": false}`),
 kept when a task is picked; a file without it, or with a paper this version does not know, reads as
 Automatic without side images. The delay before a flatbed scan repeats by itself is `"scanAgainSeconds"`
-(0 is off); a file without it reads as off. A first run starts without presets: the task
+(0 is off); a file without it reads as off. The Scanner section offers it for flatbed scans into the queue, and while the countdown runs Scan is Stop (Esc and Ctrl+Enter press it). A first run starts without presets: the task
 cards replaced the five starter presets earlier versions wrote, and presets files that already
 hold them keep them. They load across versions the same way as on macOS (`../CONTRACTS.md`, rule 6): a value this version does not understand resets only
 that setting; a file that cannot be decoded is kept next to it as

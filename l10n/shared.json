@@ -3189,6 +3189,15 @@
   "Optional. Saved in each file as its description.": {},
   "Caption": {},
   "Enter a four-digit year, like 1985.": {},
+  "Scan again after": {},
+  "{0} s": {},
+  "{0} seconds": {},
+  "Scans the next page by itself after the wait. Swap the page during the wait. Press Stop to end it.": {},
+  "Scanning again in {0} s": {},
+  "Stop": {},
+  "Stop scanning again (Esc)": {},
+  "Stop scanning again": {},
+  "Scanning again countdown": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

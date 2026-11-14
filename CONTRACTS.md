@@ -258,8 +258,8 @@ Twin of `windows/LazyScan.Core/DeviceMerge.cs` (`HardwareId`, `ConnectionId`): s
 // wants a task done, kept when a task is picked (see Pipeline/IdCard.swift).
 // `scanAgainSeconds: Int` (C# `ScanAgainSeconds`; 0 is off, the app offers 0, 3, 5 and 10; written always,
 // kept when a task is picked, except that Book sets 5 on the desktop apps and gives the earlier value back
-// when it is left) is the delay after a flatbed scan into the queue before `AppState` scans again by
-// itself: it shows `scanAgainRemaining` counting down, and `cancelScan()` (Stop), an error, a scan that
+// when it is left) is the delay after a flatbed scan into the queue before `AppState` (C# `AppViewModel`) scans again by
+// itself: it shows `scanAgainRemaining` (C# `ScanAgainRemaining`) counting down, and `cancelScan()` (Stop), an error, a scan that
 // stopped early, a new task or scan, or a closed or changed scanner ends the loop.
 // `ocrLanguage: String` (C# `OcrLanguage`; "" is Automatic, written always, kept when a task is picked) is the
 // language tag Windows OCR reads with ("en-US", "de-DE"). Only the Windows app reads it (Vision detects the

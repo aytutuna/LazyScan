@@ -57,6 +57,8 @@ public partial class MainWindow
 
     private void PressShortcut(KeyEventArgs e, Key key, ModifierKeys modifiers)
     {
+        // Esc stops the countdown between passes of Scan again after; the Scan button is Stop then.
+        Button[] escape = ViewModel.ScanAgainRemaining is null ? [CancelButton] : [CancelButton, ScanButton];
         Button[] targets = (key, modifiers) switch
         {
             (Key.Enter, ModifierKeys.Control) => [ScanButton, ReviewScanMoreButton],
@@ -65,7 +67,7 @@ public partial class MainWindow
             (Key.S, ModifierKeys.Control) => [SavePdfButton, ReviewSaveButton, IdCardSaveButton],
             (Key.O, ModifierKeys.Control) => [ImportPhotosButton],
             (Key.Z, ModifierKeys.Control) => [SavedUndoButton, UndoButton],
-            (Key.Escape, ModifierKeys.None) => [CancelButton],
+            (Key.Escape, ModifierKeys.None) => escape,
             _ => [],
         };
         foreach (var button in targets)

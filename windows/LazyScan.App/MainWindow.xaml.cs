@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         MainTabs.SelectedItem = ViewModel.IsFirstRun ? StartTab : ScanTab;
 
         ColorModeBox.ItemsSource = Enum.GetValues<ColorMode>().Select(m => m.Label());
+        FillScanAgainChoices();
         FormatBox.ItemsSource = OutputFormats.Offered(ViewModel.Settings.Intent).Select(f => f.Label()).ToList();
         BuildPdfSizeSegments();
         foreach (var size in Enum.GetValues<PdfPageSize>())
@@ -460,6 +461,7 @@ public partial class MainWindow : Window
         SyncSplitOptions();
         SyncBookOptions();
         SyncImportOptions();
+        SyncScanAgain();
         SyncInspectorSections();
         SyncSelectedArea();
         StartView.Refresh();
@@ -1754,6 +1756,7 @@ public partial class MainWindow : Window
             ModeDocument.IsChecked = s.Intent == ScanIntent.Document;
             ModePhotos.IsChecked = s.Intent == ScanIntent.Photo;
             ColorModeBox.SelectedItem = s.ColorMode.Label();
+            SelectScanAgain(s.ScanAgainSeconds);
             SyncFormatChoices();
             MultiPageBox.IsChecked = s.DocumentMultiPage;
             SearchableBox.IsChecked = s.PdfSearchable;
@@ -1823,6 +1826,7 @@ public partial class MainWindow : Window
         {
             s.ColorMode = Enum.GetValues<ColorMode>().FirstOrDefault(v => v.Label() == colorLabel);
         }
+        if (ScanAgainBox.SelectedItem is ComboBoxItem { Tag: int again }) s.ScanAgainSeconds = again;
         s.DocumentMultiPage = MultiPageBox.IsChecked == true;
         s.PdfSearchable = SearchableBox.IsChecked == true;
         s.Output.AlsoSaveText = AlsoSaveTextBox.IsChecked == true;
@@ -2411,7 +2415,11 @@ public partial class MainWindow : Window
     // MARK: - Buttons
 
     private void Preview_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PerformOverview();
-    private void Scan_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PerformScan();
+    private void Scan_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ScanAgainRemaining is not null) ViewModel.StopScanAgain();
+        else _ = ViewModel.PerformScan();
+    }
     private void SavePdf_Click(object sender, RoutedEventArgs e) => _ = ViewModel.SavePdf();
     private void ClearPages_Click(object sender, RoutedEventArgs e)
     {

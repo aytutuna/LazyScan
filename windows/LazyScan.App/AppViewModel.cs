@@ -1094,6 +1094,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>On app exit: flush settings, remove this process's page spill files and end the 32-bit TWAIN helper.</summary>
     public void Shutdown()
     {
+        _scanAgainCts?.Cancel();
         ShutdownCompanion();
         FlushSettings();
         StopQueueRecord();
@@ -1164,6 +1165,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         // A feeder that scans one side turns two-sided scanning into turning over by hand.
         if (Settings.Duplex == DuplexMode.Both && EffectiveDuplex == DuplexMode.Manual) Settings.Duplex = DuplexMode.Manual;
         SyncTaskFlow();
+        if (ScanAgainRemaining is not null && (!OffersScanAgain || Settings.ScanAgainSeconds == 0)) StopScanAgain();
         // A named document whose first page the settings now leave out keeps its name.
         CarryDocumentLabelsAcrossSettings();
         // Split at barcode or QR sheets just chosen: the pages queued before are read too.
@@ -1715,6 +1717,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         // Ignore re-clicks on a device that is already connected or connecting.
         if (!lost && id == SelectedDeviceId && (_session != null || !_switchTask.IsCompleted)) return;
+        StopScanAgain();
         _connectionLost = lost;
         _switchConnection = false;
         SelectedDeviceId = id;
@@ -1988,9 +1991,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // them, so a long stack is never held whole in memory.
             if (TaskCatalog.FlowOf(s) == TaskFlowKind.DocumentQueue && s.DocumentMultiPage)
             {
-                await ScanIntoQueue(session, s, selection, sides, manualSide, generation, token);
+                bool finished = await ScanIntoQueue(session, s, selection, sides, manualSide, generation, token);
                 if (_switchGeneration == generation && Capabilities is null) await ReadCapabilitiesAfterScan(session, generation);
                 NotifyAll();
+                if (finished && _switchGeneration == generation) StartScanAgain(s, generation);
                 return;
             }
             var scanned = await session.PerformScanAsync(copySetup is null ? s : CopyScanSettings(s, copySetup), selection);
@@ -2103,6 +2107,73 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         });
     }
 
+    /// <summary>Seconds left before the next flatbed scan starts by itself; null when no countdown runs. Stop is <see cref="StopScanAgain"/>.</summary>
+    public int? ScanAgainRemaining { get; private set; }
+
+    /// <summary>How long one second of the countdown lasts; shortened by tests.</summary>
+    internal TimeSpan ScanAgainTick { get; set; } = TimeSpan.FromSeconds(1);
+
+    private CancellationTokenSource? _scanAgainCts;
+
+    /// <summary>Scan again after goes with the flatbed and the tasks that collect pages in the queue, scanned without the driver's window.</summary>
+    public bool OffersScanAgain =>
+        Settings.Source == ScanSource.Flatbed && TaskCatalog.FlowOf(Settings) == TaskFlowKind.DocumentQueue
+        && Settings.DocumentMultiPage && !UseDriverWindow;
+
+    /// <summary>
+    /// After a flatbed scan into the queue, counts <see cref="ScanSettings.ScanAgainSeconds"/> down and scans again,
+    /// until Stop, an error or a scan that stopped early, or the scanner is closed or another chosen.
+    /// </summary>
+    private void StartScanAgain(ScanSettings scanned, int generation)
+    {
+        if (scanned.ScanAgainSeconds <= 0 || scanned.Source != ScanSource.Flatbed || UseDriverWindow) return;
+        var cts = new CancellationTokenSource();
+        _scanAgainCts = cts;
+        _ = ScanAfterCountdown(scanned.ScanAgainSeconds, generation, cts);
+    }
+
+    private async Task ScanAfterCountdown(int seconds, int generation, CancellationTokenSource cts)
+    {
+        for (int left = seconds; left > 0; left--)
+        {
+            if (_switchGeneration != generation || !IsConnected)
+            {
+                StopScanAgain();
+                return;
+            }
+            ScanAgainRemaining = left;
+            NotifyAll();
+            try
+            {
+                await Task.Delay(ScanAgainTick, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            if (cts.IsCancellationRequested) return;
+        }
+        ScanAgainRemaining = null;
+        _scanAgainCts = null;
+        if (_switchGeneration == generation && IsConnected && !IsBusy && OffersScanAgain && Settings.ScanAgainSeconds > 0)
+        {
+            _ = PerformScan();
+        }
+        else
+        {
+            NotifyAll();
+        }
+    }
+
+    public void StopScanAgain()
+    {
+        _scanAgainCts?.Cancel();
+        _scanAgainCts = null;
+        if (ScanAgainRemaining is null) return;
+        ScanAgainRemaining = null;
+        NotifyAll();
+    }
+
     /// <summary>A software phase at page <paramref name="index"/> (from 0) of <paramref name="total"/>: the bar fills and the status names the page.</summary>
     private void ShowPageProgress(string message, int index, int total)
     {
@@ -2123,9 +2194,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>
     /// A scan whose pages go to the queue: each page is processed, stored and queued as the scanner
     /// delivers it, so the page strip fills while the feeder goes on and only the page in hand is held in
-    /// full. The pages queued before a Cancel or an error stay in the queue.
+    /// full. The pages queued before a Cancel or an error stay in the queue. Returns whether the scan ended
+    /// on its own and added pages, which is when a scan again may follow.
     /// </summary>
-    private async Task ScanIntoQueue(IScannerSession session, ScanSettings s, RectD? selection, DuplexMode sides,
+    private async Task<bool> ScanIntoQueue(IScannerSession session, ScanSettings s, RectD? selection, DuplexMode sides,
                                      PageSide? manualSide, int generation, CancellationToken token)
     {
         var before = ScannedPages.Select(item => item.Page.Id).ToHashSet();
@@ -2169,7 +2241,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             failure ??= e;
         }
         // Discard results that arrive after the user switched devices.
-        if (_switchGeneration != generation) return;
+        if (_switchGeneration != generation) return false;
         if (failure is null && token.IsCancellationRequested) failure = new OperationCanceledException(token);
         if (failure is not null && received == 0) throw failure;
         if (received == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no pages."));
@@ -2192,9 +2264,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             StatusDetail = detail;
         }
         _rescanAt = null;
-        if (stop is null) return;
+        if (stop is null) return _rescanned is null;
         if (cancelled) StatusMessage = stop.Message(received);
         else ErrorMessage = stop.Message(received);
+        return false;
     }
 
     /// <summary>
@@ -2351,6 +2424,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     public void CancelScan()
     {
+        StopScanAgain();
         _session?.CancelScan();
         _operationCts?.Cancel();
     }
@@ -3333,6 +3407,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public bool StartTask(ScanTask task)
     {
         if (IsBusy) return false;
+        StopScanAgain();
         var availability = TaskCatalog.Availability(task, Capabilities, HasPrinter);
         if (!availability.IsAvailable)
         {
@@ -4961,6 +5036,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     private Task RunExclusive(Func<CancellationToken, Task> operation)
     {
         if (IsBusy) return Task.CompletedTask;
+        StopScanAgain();
         _currentOperation = RunExclusiveCore(operation);
         return _currentOperation;
     }
