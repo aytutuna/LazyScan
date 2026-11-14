@@ -171,6 +171,62 @@ final class CaptureFlowTests: XCTestCase {
     }
 
     @MainActor
+    func test_addedAndDuplicatedPhotos_goAtTheEnd_andSaveAsSeparateFiles() async throws {
+        let state: AppState = makeState(.photos)
+        let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())
+        let pages: [ScannedPage] = CaptureObjects.pages(photo, quads: [ObjectShots.printA, ObjectShots.printB], kind: .photo)
+        XCTAssertTrue(state.ingest(pages, source: .photo))
+        try await waitFor(timeout: 60) { !state.isBusy }
+        XCTAssertEqual(state.detectedPhotos.count, 2)
+        let first: DetectedPhoto = try XCTUnwrap(state.detectedPhotos.first)
+
+        // The editor starts on the middle of the scan, half its width and height.
+        let start: DetectedPhotoRegion = try XCTUnwrap(state.newPhotoRegion)
+        XCTAssertEqual(start.center, CGPoint(x: 450, y: 300))
+        XCTAssertEqual(start.size, CGSize(width: 450, height: 300))
+        XCTAssertEqual(start.angleDegrees, 0)
+
+        // A copy has its own id and the same crop, turn and Keep state, and goes last.
+        state.detectedPhotos[0].rotationQuarterTurns = 1
+        state.detectedPhotos[0].included = false
+        state.duplicateReviewPhoto(id: first.id)
+        XCTAssertEqual(state.detectedPhotos.count, 3)
+        let copy: DetectedPhoto = state.detectedPhotos[2]
+        XCTAssertNotEqual(copy.id, first.id)
+        XCTAssertEqual(copy.region, state.detectedPhotos[0].region)
+        XCTAssertEqual(copy.image.width, 300)
+        XCTAssertEqual(copy.rotationQuarterTurns, 1)
+        XCTAssertFalse(copy.included)
+        XCTAssertEqual(copy.sourcePageID, first.sourcePageID)
+        XCTAssertEqual(state.statusMessage, "Duplicated photo 1 as photo 3.")
+        XCTAssertEqual(state.detectedPhotos[0].id, first.id)
+
+        // The copy is cut again on its own; the original keeps its crop.
+        state.recropPhoto(id: copy.id, region: DetectedPhotoRegion(center: CGPoint(x: 210, y: 180), size: CGSize(width: 240, height: 160), angleDegrees: 0))
+        try await waitFor(timeout: 60) { state.detectedPhotos[2].image.width == 240 }
+        XCTAssertEqual(state.detectedPhotos[0].image.width, 300)
+        try await waitFor(timeout: 60) { state.recropChain == nil }
+
+        // A region cut by hand is added last, kept and not turned.
+        state.appendReviewPhoto(region: DetectedPhotoRegion(center: CGPoint(x: 200, y: 400), size: CGSize(width: 100, height: 80), angleDegrees: 0))
+        try await waitFor(timeout: 60) { state.detectedPhotos.count == 4 }
+        XCTAssertEqual(state.detectedPhotos[3].image.width, 100)
+        XCTAssertEqual(state.detectedPhotos[3].image.height, 80)
+        XCTAssertTrue(state.detectedPhotos[3].included)
+        XCTAssertEqual(state.detectedPhotos[3].rotationQuarterTurns, 0)
+        XCTAssertEqual(state.statusMessage, "Added photo 4.")
+        XCTAssertEqual(state.reviewTitle, "Found 4 photos")
+
+        // Keep the copy too: the second card, the copy and the added photo save as three separate files.
+        state.detectedPhotos[2].included = true
+        state.saveReviewedPhotos()
+        try await waitFor(timeout: 60) { !state.isBusy && !state.showPhotoReview }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(Set(state.lastSavedURLs).count, 3)
+        XCTAssertEqual(fileNames(saved).count, 3)
+    }
+
+    @MainActor
     func test_twoQuickCrops_endWithTheSecond_andASaveRightAfterWritesIt() async throws {
         let state: AppState = makeState(.photos)
         let photo: CGImage = try XCTUnwrap(ObjectShots.twoPrints().makeCGImage())

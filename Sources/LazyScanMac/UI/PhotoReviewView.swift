@@ -11,6 +11,8 @@ struct PhotoReviewView: View {
 
     /// Photo whose crop is being corrected manually (drives the editor sheet).
     @State private var editingPhoto: DetectedPhoto?
+    /// A stand-in for the scan the Add Photo editor opens on, with the region it starts from.
+    @State private var addingPhoto: DetectedPhoto?
     /// Discard is asking before it drops more than one kept photo.
     @State private var asksDiscard = false
     @FocusState private var focusedDate: UUID?
@@ -50,7 +52,19 @@ struct PhotoReviewView: View {
     private var scrollHint: Text {
         showsDate
             ? Text(L10n.t("Untick a receipt to leave it out, fix its crop, or correct its date."))
-            : Text(L10n.t("Untick a photo to leave it out, or fix its crop."))
+            : Text(L10n.t("Uncheck any false detections, rotate if needed, add any that were missed, add a date or caption if you like, then save."))
+    }
+
+    /// Add Photo needs the scan the photos were cut from.
+    private var addHelp: LocalizedStringKey {
+        state.newPhotoRegion == nil ? "The scan is no longer available" : "Add a photo the scan missed (⌘N)"
+    }
+
+    /// The last photo's scan with the default region, for the editor to open on.
+    private func startAdding() {
+        guard let last = state.detectedPhotos.last, let region = state.newPhotoRegion else { return }
+        addingPhoto = DetectedPhoto(region: region, image: last.image, dpi: last.dpi,
+                                    sourcePageID: last.sourcePageID, colorMode: last.colorMode)
     }
 
     var body: some View {
@@ -69,13 +83,20 @@ struct PhotoReviewView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 16)], spacing: 16) {
-                    ForEach(Array(state.detectedPhotos.enumerated()), id: \.element.id) { index, photo in
-                        card(index: index, photo: photo)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 16)], spacing: 16) {
+                        ForEach(Array(state.detectedPhotos.enumerated()), id: \.element.id) { index, photo in
+                            card(index: index, photo: photo)
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: state.detectedPhotos.count) { oldCount, newCount in
+                    if newCount > oldCount, let last = state.detectedPhotos.last {
+                        proxy.scrollTo(last.id)
                     }
                 }
-                .padding()
             }
             .accessibilityHint(scrollHint)
 
@@ -97,6 +118,14 @@ struct PhotoReviewView: View {
                 .fixedSize()
                 .help(state.settings.output.afterSave.hint)
                 .disabled(state.isBusy)
+                if !state.isReceiptReview {
+                    Button("Add Photo") { startAdding() }
+                        .keyboardShortcut("n", modifiers: .command)
+                        .disabled(state.isBusy || state.newPhotoRegion == nil)
+                        .help(addHelp)
+                        .accessibilityLabel(Text("Add a photo"))
+                        .accessibilityHint(Text("Opens the scan so you can mark the photo"))
+                }
                 Button("Discard") {
                     if includedCount > 1 {
                         asksDiscard = true
@@ -132,6 +161,10 @@ struct PhotoReviewView: View {
             PhotoCropEditorView(photo: photo)
                 .environmentObject(state)
         }
+        .sheet(item: $addingPhoto) { photo in
+            PhotoCropEditorView(photo: photo, adds: true)
+                .environmentObject(state)
+        }
         .errorNoticeAlert()
         .alert(discardTitle, isPresented: $asksDiscard) {
             Button("Discard", role: .destructive) { state.cancelPhotoReview() }
@@ -156,6 +189,8 @@ struct PhotoReviewView: View {
             busy: state.isBusy,
             onRotate: { rotate(id: photo.id, by: $0) },
             onAdjustCrop: { editingPhoto = photo },
+            offersDuplicate: !state.isReceiptReview,
+            onDuplicate: { state.duplicateReviewPhoto(id: photo.id) },
             onJoin: { state.joinWithPrevious(id: photo.id) },
             onSplit: { state.splitApart(id: photo.id) })
     }
@@ -208,6 +243,9 @@ fileprivate struct PhotoReviewCard: View {
     let busy: Bool
     let onRotate: (Int) -> Void
     let onAdjustCrop: () -> Void
+    /// A photo can be copied, to crop a merged region twice; a receipt cannot.
+    let offersDuplicate: Bool
+    let onDuplicate: () -> Void
     let onJoin: () -> Void
     let onSplit: () -> Void
 
@@ -268,6 +306,15 @@ fileprivate struct PhotoReviewCard: View {
                 .help(cropHelp)
                 .accessibilityLabel(Text(String(localized: "Fix crop of photo \(number)")))
 
+                if offersDuplicate {
+                    Button(action: onDuplicate) {
+                        Image(systemName: "plus.square.on.square")
+                    }
+                    .disabled(busy)
+                    .help("Duplicate")
+                    .accessibilityLabel(Text(String(localized: "Duplicate photo \(number)")))
+                }
+
                 Button {
                     onRotate(-1)
                 } label: {
@@ -316,6 +363,10 @@ fileprivate struct PhotoReviewCard: View {
                     .disabled(busy)
             }
             Toggle("Keep", isOn: $included)
+            if offersDuplicate {
+                Button("Duplicate", action: onDuplicate)
+                    .disabled(busy)
+            }
             Button("Rotate left") { onRotate(-1) }
             Button("Rotate right") { onRotate(1) }
         }

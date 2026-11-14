@@ -197,6 +197,57 @@ extension AppState {
         readReceipts()
     }
 
+    /// The region the Add Photo editor starts from: the middle of the review's scan, half its width and
+    /// height, not turned. Nil when the scan is no longer kept.
+    public var newPhotoRegion: DetectedPhotoRegion? {
+        guard !isReceiptReview, let last = detectedPhotos.last, let source = photoSource(for: last) else { return nil }
+        let size = CGSize(width: Double(source.width) / 2, height: Double(source.height) / 2)
+        return DetectedPhotoRegion(center: CGPoint(x: Double(source.width) / 2, y: Double(source.height) / 2),
+                                   size: size, angleDegrees: 0)
+    }
+
+    /// Adds a photo the detector missed: cut from the review's scan along `region` and kept at the end.
+    public func appendReviewPhoto(region: DetectedPhotoRegion) {
+        guard !isBusy, !isReceiptReview, let last = detectedPhotos.last,
+              let source = photoSource(for: last) else { return }
+        let sourceRect = CGRect(x: 0, y: 0, width: source.width, height: source.height)
+        guard !region.boundingBox.intersection(sourceRect).isNull else {
+            errorMessage = L10n.t("Could not add that photo.")
+            return
+        }
+        let deskew = settings.photoAutoDeskew
+        let dpi = last.dpi
+        let sourcePageID = last.sourcePageID
+        let colorMode = last.colorMode
+        enqueueRecrop { state in
+            let image = await Task.detached(priority: .userInitiated) {
+                PhotoDetector.extractPhoto(from: source, region: region, deskew: deskew)
+            }.value
+            guard state.showPhotoReview else { return }
+            guard let image else {
+                state.errorMessage = L10n.t("Could not add that photo.")
+                return
+            }
+            state.detectedPhotos.append(DetectedPhoto(region: region, image: image, dpi: dpi,
+                                                      sourcePageID: sourcePageID, colorMode: colorMode))
+            state.setStatus(L10n.t("Added photo {0}.", state.detectedPhotos.count), StatusDetail())
+        }
+    }
+
+    /// Adds a copy of a photo at the end, with the same crop, turn and Keep state, so a merged region can
+    /// be cropped twice. It is a photo of its own: it saves as a separate file.
+    public func duplicateReviewPhoto(id: UUID) {
+        guard !isBusy, !isReceiptReview,
+              let index = detectedPhotos.firstIndex(where: { $0.id == id }) else { return }
+        let old = detectedPhotos[index]
+        var copy = DetectedPhoto(region: old.region, image: old.image, dpi: old.dpi,
+                                 sourcePageID: old.sourcePageID, colorMode: old.colorMode)
+        copy.included = old.included
+        copy.rotationQuarterTurns = old.rotationQuarterTurns
+        detectedPhotos.append(copy)
+        setStatus(L10n.t("Duplicated photo {0} as photo {1}.", index + 1, detectedPhotos.count), StatusDetail())
+    }
+
     /// The text of `image` turned `quarterTurns` quarter turns, and the date found in it when `byDate`. A
     /// receipt whose text cannot be read is still saved: without a text layer, named by the scan date.
     nonisolated static func readReceipt(_ image: CGImage, quarterTurns: Int, byDate: Bool,

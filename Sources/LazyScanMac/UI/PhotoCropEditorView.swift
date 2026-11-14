@@ -13,6 +13,8 @@ struct PhotoCropEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     let photo: DetectedPhoto
+    /// The sheet adds a new photo cut from `photo`'s scan, instead of correcting `photo`'s crop.
+    let adds: Bool
 
     /// The crop being edited, in full-resolution source pixel coordinates.
     @State private var region: DetectedPhotoRegion
@@ -21,8 +23,9 @@ struct PhotoCropEditorView: View {
     @State private var dragMode: DragMode?
     @FocusState private var frameFocused: Bool
 
-    init(photo: DetectedPhoto) {
+    init(photo: DetectedPhoto, adds: Bool = false) {
         self.photo = photo
+        self.adds = adds
         _region = State(initialValue: photo.region)
     }
 
@@ -35,7 +38,7 @@ struct PhotoCropEditorView: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Adjust Crop")
+                    Text(titleKey)
                         .font(.title3.bold())
                     Text("Drag corners to resize, or inside to move.")
                         .font(.caption)
@@ -92,8 +95,12 @@ struct PhotoCropEditorView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Apply") {
-                    state.recropPhoto(id: photo.id, region: region)
+                Button(confirmKey) {
+                    if adds {
+                        state.appendReviewPhoto(region: region)
+                    } else {
+                        state.recropPhoto(id: photo.id, region: region)
+                    }
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
@@ -110,6 +117,10 @@ struct PhotoCropEditorView: View {
             }
         }
     }
+
+    private var titleKey: LocalizedStringKey { adds ? "Add Photo" : "Adjust Crop" }
+
+    private var confirmKey: LocalizedStringKey { adds ? "Add" : "Apply" }
 
     // MARK: - Geometry
 
