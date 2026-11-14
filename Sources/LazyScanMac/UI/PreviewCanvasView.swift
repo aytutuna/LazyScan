@@ -630,10 +630,8 @@ struct PreviewCanvasView: View {
         Group {
             if let caps = state.capabilities {
                 let width = Double(selection.width * caps.flatbedSizeInches.width)
-                    .formatted(.number.precision(.fractionLength(1)))
                 let height = Double(selection.height * caps.flatbedSizeInches.height)
-                    .formatted(.number.precision(.fractionLength(1)))
-                Text("\(width) × \(height) in")
+                Text(ScanSizeText.size(widthInches: width, heightInches: height))
                     .environment(\.layoutDirection, direction)
                     .font(.caption.monospacedDigit())
                     .padding(.horizontal, 8)

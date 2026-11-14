@@ -422,9 +422,8 @@ fileprivate struct PhotoReviewCard: View {
         if isJoined { return L10n.plural(photo.pieceCount, one: "{0} piece", other: "{0} pieces") }
         let w = photo.image.width, h = photo.image.height
         let dpi = Double(max(photo.dpi, 1))
-        let inches = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1))
-        let wide = (Double(w) / dpi).formatted(inches), high = (Double(h) / dpi).formatted(inches)
-        return String(localized: "\(w) × \(h) px · \(wide) × \(high) in")
+        let size = ScanSizeText.size(widthInches: Double(w) / dpi, heightInches: Double(h) / dpi)
+        return String(localized: "\(w) × \(h) px · \(size)")
     }
 }
 

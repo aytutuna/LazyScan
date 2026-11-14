@@ -420,7 +420,7 @@ struct InspectorView: View {
                 })
     }
 
-    private var usesInches: Bool { Locale.current.region?.identifier == "US" }
+    private var usesInches: Bool { ScanSizeText.usesInches() }
 
     private var customSizeInvalid: Bool {
         state.settings.customPaperWidth <= 0 || state.settings.customPaperHeight <= 0
@@ -499,7 +499,7 @@ struct InspectorView: View {
     }
 
     private func customSizeField(_ title: String, accessibility: String, inches: Binding<Double>) -> some View {
-        let perInch: Double = usesInches ? 1 : 25.4
+        let perInch: Double = usesInches ? 1 : ScanSizeText.millimetersPerInch
         let value = Binding<Double>(get: { inches.wrappedValue * perInch },
                                     set: { (new: Double) in inches.wrappedValue = new / perInch })
         let format: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...1))
@@ -774,6 +774,15 @@ struct InspectorView: View {
 
     // MARK: Photos
 
+    /// The smallest photo side in the unit the stepper shows; the setting keeps inches.
+    private var minPhotoSide: Binding<Double> {
+        let perInch: Double = usesInches ? 1 : ScanSizeText.millimetersPerInch
+        return Binding<Double>(get: { state.settings.photoMinSideInches * perInch },
+                               set: { (new: Double) in state.settings.photoMinSideInches = new / perInch })
+    }
+
+    private var minPhotoSideRange: ClosedRange<Double> { usesInches ? 0.5...4 : 15...100 }
+
     /// Photos mode: finding and straightening each photo, the image format and where it is saved. The
     /// smallest photo side and the edge trim show while Find each photo is on: only the finder reads them.
     private var photosSection: some View {
@@ -783,9 +792,9 @@ struct InspectorView: View {
             Toggle("Find each photo", isOn: $state.settings.photoAutoSplit)
                 .help("Finds each photo on the glass and saves it on its own")
             if state.settings.photoAutoSplit {
-                Stepper(value: $state.settings.photoMinSideInches, in: 0.5...4, step: 0.1) {
+                Stepper(value: minPhotoSide, in: minPhotoSideRange, step: usesInches ? 0.1 : 5) {
                     LabeledContent("Min photo side") {
-                        Text("\(state.settings.photoMinSideInches.formatted(.number.precision(.fractionLength(1)))) in")
+                        Text(ScanSizeText.length(inches: state.settings.photoMinSideInches))
                     }
                 }
                 .padding(.leading, 12)
