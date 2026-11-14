@@ -118,9 +118,30 @@ public struct CompanionNotice: Identifiable, Equatable, Sendable {
 }
 
 extension AppState {
+    /// The desktop paired last; nil when there is none. The calls that take no desktop act on it.
+    public var companionDesktop: PairedDesktop? {
+        companionDesktops.first
+    }
+
+    /// Where the link stands overall: that of the desktop that answers, else one being checked, else one
+    /// that does not answer, else one that no longer knows this phone; `.notPaired` without a desktop.
+    public var companionStatus: CompanionStatus {
+        let rank: (CompanionStatus) -> Int = { (status: CompanionStatus) -> Int in
+            switch status {
+            case .reachable: return 0
+            case .checking: return 1
+            case .unreachable: return 2
+            case .unpaired: return 3
+            case .notPaired: return 4
+            }
+        }
+        let all: [CompanionStatus] = companionDesktops.compactMap { companionStatuses[$0.id] }
+        return all.min { rank($0) < rank($1) } ?? .notPaired
+    }
+
     /// Keeps the companion's files in `folder` (companion-desktop.json, the "Outbox" and "Inbox"
     /// folders; the iPhone's network folder, out of backups) and the device secret in `secrets` (the
-    /// Keychain), and loads the paired desktop, `.checking` until `checkDesktop` runs; a package received
+    /// Keychain), and loads the paired desktops, `.checking` until `checkDesktop` runs; a package received
     /// before and not yet taken or dismissed is offered again. Set by the shell; without it the phone
     /// cannot pair.
     public func setUpCompanion(in folder: URL, secrets: any CompanionSecretStore) {
@@ -130,14 +151,13 @@ extension AppState {
         companionStore = store
         companionOutbox = outbox
         companionInbox = folder.appendingPathComponent("Inbox", isDirectory: true)
-        companionClient = nil
-        companionDesktop = store.load()
-        countOutbox()
-        if let desktop = companionDesktop {
-            companionStatus = store.secret(for: desktop) == nil ? .unpaired(byDesktop: desktop.name) : .checking
-        } else {
-            companionStatus = .notPaired
+        companionClients = [:]
+        companionDesktops = store.loadAll()
+        companionStatuses = [:]
+        for desktop in companionDesktops {
+            companionStatuses[desktop.id] = store.secret(for: desktop) == nil ? .unpaired(byDesktop: desktop.name) : .checking
         }
+        countOutbox()
         Task { [weak self] in
             await self?.offerReceivedPackage()
         }
@@ -174,8 +194,6 @@ extension AppState {
         let platform = "macos"
         #endif
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        let before = companionStatus
-        companionStatus = .checking
         let client = CompanionClient(desktop: desktop, secret: nil, protocolClasses: companionProtocolClasses)
         do {
             let response = try await client.pair(token: code.token, phoneId: phoneId, phoneName: phoneName,
@@ -194,7 +212,6 @@ extension AppState {
             let syncKey = CompanionProtocol.decodeBase64Url(response.syncKey)
             try store.save(desktop, secret: secret, syncKey: syncKey?.count == SyncPackage.keyByteCount ? syncKey : nil)
         } catch {
-            companionStatus = before
             if case .unreachable? = error as? CompanionClientError {
                 errorMessage = companionUnreachableReason(desktop)
             } else {
@@ -202,11 +219,11 @@ extension AppState {
             }
             return Self.usesUpCode(error)
         }
-        stopPulling()
-        companionDesktop = desktop
+        stopPulling(of: desktop.id)
+        companionDesktops = [desktop] + companionDesktops.filter { $0.id != desktop.id }
         countOutbox()
-        companionClient = client
-        companionStatus = .reachable(desktopName: desktop.name, queuedPages: 0)
+        companionClients[desktop.id] = client
+        companionStatuses[desktop.id] = .reachable(desktopName: desktop.name, queuedPages: 0)
         statusMessage = CompanionText.pairedMessage(desktop.name)
         return false
     }
@@ -227,64 +244,91 @@ extension AppState {
         return spent.contains(refusal.code)
     }
 
-    /// Tells the desktop to forget this phone (best effort: it may be off), then forgets the desktop
-    /// and its secret. Documents waiting to be sent stay, for that desktop only.
-    public func unpairDesktop() async {
-        guard let desktop = companionDesktop else { return }
-        stopPulling()
-        if let client = desktopClient() {
+    /// Tells `desktop` (the one paired last when nil) to forget this phone (best effort: it may be off),
+    /// then forgets it and its secret; the other desktops stay paired. Documents waiting to be sent stay,
+    /// for that desktop only.
+    public func unpairDesktop(_ desktop: PairedDesktop? = nil) async {
+        guard let desktop = desktop ?? companionDesktop else { return }
+        stopPulling(of: desktop.id)
+        if let client = desktopClient(for: desktop) {
             try? await client.unpair()
         }
         companionStore?.remove(desktop)
-        companionClient = nil
-        companionDesktop = companionStore?.load()
+        companionClients[desktop.id] = nil
+        companionStatuses[desktop.id] = nil
+        companionDesktops = companionDesktops.filter { $0.id != desktop.id }
         countOutbox()
-        if let next = companionDesktop, let store = companionStore {
-            companionStatus = store.secret(for: next) == nil ? .unpaired(byDesktop: next.name) : .checking
-        } else {
-            companionStatus = .notPaired
-        }
         statusMessage = CompanionText.unpairedMessage(desktop.name)
     }
 
-    /// Asks the desktop how it is (`hello`) at its addresses: `.reachable` with its queue, keeping the
+    /// Checks every paired desktop (`checkDesktop(_:)`) at once.
+    public func checkDesktop() async {
+        let desktops = companionDesktops
+        await withTaskGroup(of: Void.self) { group in
+            for desktop in desktops {
+                group.addTask { @MainActor in await self.checkDesktop(desktop) }
+            }
+        }
+    }
+
+    /// Checks every paired desktop and gives those that answered, in the paired order.
+    public func answeringDesktops() async -> [PairedDesktop] {
+        await checkDesktop()
+        return companionDesktops.filter {
+            if case .reachable? = companionStatuses[$0.id] { return true }
+            return false
+        }
+    }
+
+    /// The paired desktops that did not answer the last check.
+    public var unreachableDesktops: [PairedDesktop] {
+        companionDesktops.filter {
+            if case .unreachable? = companionStatuses[$0.id] { return true }
+            return false
+        }
+    }
+
+    /// The desktop a document goes to when none was picked and none answers: the one seen last, else the
+    /// one paired last, among those that still have their secret.
+    public var likelyDesktop: PairedDesktop? {
+        companionDesktops.filter { companionStore?.secret(for: $0) != nil }
+            .max { ($0.lastSeen ?? .distantPast) < ($1.lastSeen ?? .distantPast) }
+    }
+
+    /// Asks `desktop` how it is (`hello`) at its addresses: `.reachable` with its queue, keeping the
     /// name it gives now; a desktop that no longer knows this phone (401) loses its secret here and is
     /// `.unpaired`; one that does not answer is `.unreachable` with the reason
     /// (`companionUnreachableReason`), everything kept.
-    public func checkDesktop() async {
-        guard let desktop = companionDesktop else {
-            companionStatus = .notPaired
+    public func checkDesktop(_ desktop: PairedDesktop) async {
+        guard let client = desktopClient(for: desktop) else {
+            companionStatuses[desktop.id] = .unpaired(byDesktop: desktop.name)
             return
         }
-        guard let client = desktopClient() else {
-            companionStatus = .unpaired(byDesktop: desktop.name)
-            return
-        }
-        let before = companionStatus
-        companionStatus = .checking
+        let before = companionStatuses[desktop.id]
+        companionStatuses[desktop.id] = .checking
         do {
             let hello = try await client.hello()
             // Unpaired or found at new addresses meanwhile: only what the answer says is kept.
-            guard var current = companionDesktop, current.id == desktop.id else { return }
+            guard var current = pairedDesktop(desktop.id) else { return }
             if !hello.desktopName.isEmpty { current.name = hello.desktopName }
             current.lastSeen = Date()
-            companionStore?.update(current)
-            companionDesktop = current
-            companionStatus = .reachable(desktopName: current.name, queuedPages: hello.queuedPages)
+            keep(current)
+            companionStatuses[desktop.id] = .reachable(desktopName: current.name, queuedPages: hello.queuedPages)
         } catch is CancellationError {
-            companionStatus = before
+            companionStatuses[desktop.id] = before
         } catch {
             companionFailed(error, desktop)
         }
     }
 
-    /// Writes the queue as a `.lsdoc` (`exportPackage`) into the outbox for the paired desktop and sends
-    /// what waits there (`drainOutbox`); the queue is not touched. A document that cannot be sent now
-    /// waits in the outbox for the next time. A cancelled send stops quietly. True when the document
-    /// this send queued is still in the outbox.
+    /// Writes the queue as a `.lsdoc` (`exportPackage`) into the outbox for `desktop` (`likelyDesktop` when
+    /// nil) and sends what waits there for it (`drainOutbox`); the queue is not touched. A document that
+    /// cannot be sent now waits in the outbox for the next time. A cancelled send stops quietly. True when
+    /// the document this send queued is still in the outbox.
     @discardableResult
-    public func sendQueueToDesktop(target: CompanionTarget) async -> Bool {
-        guard let outbox = companionOutbox, let desktop = companionDesktop, desktopClient() != nil else {
+    public func sendQueueToDesktop(target: CompanionTarget, to desktop: PairedDesktop? = nil) async -> Bool {
+        guard let outbox = companionOutbox, let desktop = desktop ?? likelyDesktop,
+              desktopClient(for: desktop) != nil else {
             errorMessage = CompanionText.notPairedMessage
             return false
         }
@@ -309,7 +353,7 @@ extension AppState {
         }
         countOutbox()
         let noticeBefore = companionNotice
-        await drainOutbox()
+        await drainOutbox(for: desktop)
         if settings.output.protect, errorMessage == nil, !Task.isCancelled, companionNotice != noticeBefore {
             statusMessage += " " + Self.noPasswordNote
             companionNotice = CompanionNotice(text: statusMessage)
@@ -317,9 +361,9 @@ extension AppState {
         return outbox.items.contains { $0.id == queued.id }
     }
 
-    /// Sends the documents waiting in the outbox for the paired desktop one by one, oldest first (those
-    /// queued for a desktop paired before wait for it), each removed once the desktop has it (a duplicate
-    /// counts: it had it already). One the desktop refuses (too large, not readable) stays, said in
+    /// Sends the documents waiting in the outbox for `target` (each paired desktop in turn when nil) one
+    /// by one, oldest first (those queued for a desktop no longer paired wait for it), each removed once
+    /// the desktop has it (a duplicate counts: it had it already). One the desktop refuses (too large, not readable) stays, said in
     /// `errorMessage` once and never tried again, and the next is sent; when the desktop is busy or no longer knows this phone, the
     /// rest wait. When it does not answer, the rest go through the sync folder if the desktop handed out
     /// a sync key and a folder is set (`sendThroughSyncFolder`), except those it refused as too large or
@@ -328,20 +372,25 @@ extension AppState {
     /// before tries the folder first. One in the folder leaves once its file has left it (the desktop took
     /// it), or once it is sent over the network, its file then taken out of the folder. "3 pages sent to
     /// Office PC."
-    public func drainOutbox() async {
-        guard !companionDraining, let outbox = companionOutbox, let desktop = companionDesktop,
-              let client = desktopClient() else { return }
-        companionDraining = true
-        defer {
-            companionDraining = false
-            countOutbox()
+    public func drainOutbox(for target: PairedDesktop? = nil) async {
+        guard companionOutbox != nil else { return }
+        defer { countOutbox() }
+        for desktop in target.map({ [$0] }) ?? companionDesktops {
+            if Task.isCancelled { return }
+            guard companionDrainingIds.insert(desktop.id).inserted else { continue }
+            defer { companionDrainingIds.remove(desktop.id) }
+            await drain(desktop)
         }
+    }
+
+    private func drain(_ desktop: PairedDesktop) async {
+        guard let outbox = companionOutbox, let client = desktopClient(for: desktop) else { return }
         var tried: Set<String> = []
         var pages = 0
         while let item = outbox.next(excluding: tried) {
             tried.insert(item.id)
             guard item.desktopId == desktop.id else { continue }
-            if item.inSyncFolder, let folder = openSyncFolder(), !syncFolder(folder, holds: item.id) {
+            if item.inSyncFolder, let folder = openSyncFolder(for: desktop), !syncFolder(folder, holds: item.id) {
                 outbox.markSent(item.id)
                 countOutbox()
                 continue
@@ -360,7 +409,7 @@ extension AppState {
             }
             do {
                 let response = try await client.send(packageId: item.id, data: data, target: item.target)
-                if item.inSyncFolder, let folder = openSyncFolder() {
+                if item.inSyncFolder, let folder = openSyncFolder(for: desktop) {
                     try? AppState.coordinateWriting(folder.appendingPathComponent(SyncPackage.fileName(item.id)),
                                                     options: .forDeleting) { try FileManager.default.removeItem(at: $0) }
                 }
@@ -394,27 +443,33 @@ extension AppState {
         if pages > 0 {
             statusMessage = CompanionText.sentMessage(pages, desktopName: desktop.name)
             companionNotice = CompanionNotice(text: statusMessage)
-            if !Task.isCancelled { await checkDesktop() }
+            if !Task.isCancelled { await checkDesktop(desktop) }
         }
     }
 
-    /// The paired desktop handed out a sync key, so documents can go through a cloud sync folder.
+    /// The desktop paired last handed out a sync key, so documents can go through a cloud sync folder.
     public var canUseSyncFolder: Bool {
         guard let desktop = companionDesktop else { return false }
-        return companionStore?.syncKey(for: desktop) != nil
+        return canUseSyncFolder(for: desktop)
     }
 
-    /// The documents waiting in the outbox for the paired desktop that are in the sync folder, for the desktop
+    /// `desktop` handed out a sync key.
+    public func canUseSyncFolder(for desktop: PairedDesktop) -> Bool {
+        companionStore?.syncKey(for: desktop) != nil
+    }
+
+    /// The documents waiting in the outbox for a paired desktop that are in the sync folder, for the desktop
     /// to take from there.
     public var companionInSyncFolderCount: Int {
         companionOutbox?.items.filter { $0.inSyncFolder && isForPairedDesktop($0) }.count ?? 0
     }
 
     /// Keeps `bookmark` (made by the shell of the folder picked in My computer, in iCloud Drive or
-    /// OneDrive) as the paired desktop's sync folder; nil forgets it. The desktop watches the same folder.
-    /// Documents put in the folder set before go again, into this one or over the network.
-    public func setSyncFolder(bookmark: Data?) {
-        guard var desktop = companionDesktop else { return }
+    /// OneDrive) as the sync folder of `desktop` (the one paired last when nil); nil forgets it. The
+    /// desktop watches the same folder. Documents put in the folder set before go again, into this one or
+    /// over the network.
+    public func setSyncFolder(bookmark: Data?, for desktop: PairedDesktop? = nil) {
+        guard var desktop = (desktop ?? companionDesktop).flatMap({ pairedDesktop($0.id) }) else { return }
         if bookmark != desktop.syncFolderBookmark, let outbox = companionOutbox {
             for item in outbox.items where item.desktopId == desktop.id && item.inSyncFolder {
                 outbox.markInSyncFolder(item.id, false)
@@ -422,39 +477,37 @@ extension AppState {
             countOutbox()
         }
         desktop.syncFolderBookmark = bookmark
-        companionStore?.update(desktop)
-        companionDesktop = desktop
+        keep(desktop)
     }
 
-    /// The sync folder of the paired desktop, opened through `resolveSyncFolderBookmark`, its bookmark
-    /// brought up to date; nil without a folder or a resolver, or when it does not resolve now (the
-    /// bookmark is kept).
-    public func openSyncFolder() -> URL? {
-        guard var desktop = companionDesktop, let bookmark = desktop.syncFolderBookmark,
+    /// The sync folder of `desktop` (the one paired last when nil), opened through
+    /// `resolveSyncFolderBookmark`, its bookmark brought up to date; nil without a folder or a resolver, or
+    /// when it does not resolve now (the bookmark is kept).
+    public func openSyncFolder(for desktop: PairedDesktop? = nil) -> URL? {
+        guard var desktop = (desktop ?? companionDesktop).flatMap({ pairedDesktop($0.id) }),
+              let bookmark = desktop.syncFolderBookmark,
               let resolve = resolveSyncFolderBookmark, let resolved = resolve(bookmark) else { return nil }
         if resolved.bookmark != bookmark {
             desktop.syncFolderBookmark = resolved.bookmark
-            companionStore?.update(desktop)
-            companionDesktop = desktop
+            keep(desktop)
         }
         return resolved.folder
     }
 
-    /// Seals the waiting document `itemId` with the paired desktop's sync key (`SyncPackage`) and puts it
+    /// Seals the waiting document `itemId` with its desktop's sync key (`SyncPackage`) and puts it
     /// in the sync folder as "<id>.lssync", written whole in a coordinated write, so the provider (iCloud
     /// Drive, OneDrive) takes it as a new file and the desktop never takes half of it; it stays in the
-    /// outbox, marked in the folder, until the desktop has it (`drainOutbox`). False when it is not for the
+    /// outbox, marked in the folder, until the desktop has it (`drainOutbox`). False when it is not for a
     /// paired desktop, the desktop refused it, it is in the folder already, or there is no key or folder;
     /// a folder that does not open or a write that fails is said in `errorMessage`, and the document waits,
     /// to try the folder first the next time (one too large to seal counts as refused). "Put Scan 12 in the
     /// cloud folder for Office PC."
     @discardableResult
     public func sendThroughSyncFolder(itemId: String) -> Bool {
-        guard let outbox = companionOutbox, let desktop = companionDesktop,
-              let item = outbox.items.first(where: { $0.id == itemId }), item.desktopId == desktop.id,
-              !item.refused, !item.inSyncFolder,
+        guard let outbox = companionOutbox, let item = outbox.items.first(where: { $0.id == itemId }),
+              let desktop = pairedDesktop(item.desktopId), !item.refused, !item.inSyncFolder,
               let key = companionStore?.syncKey(for: desktop), desktop.syncFolderBookmark != nil else { return false }
-        guard let folder = openSyncFolder() else {
+        guard let folder = openSyncFolder(for: desktop) else {
             outbox.markViaSyncFolder(item.id)
             errorMessage = CompanionText.syncFolderUnavailableMessage
             return false
@@ -483,8 +536,8 @@ extension AppState {
         return true
     }
 
-    /// Starts taking what the desktop holds for this phone: a long poll (`outbox(wait: 25)`) for as long
-    /// as it runs. A `.lsdoc` is downloaded into the inbox folder and offered on the banner as one opened
+    /// Starts taking what each paired desktop holds for this phone: a long poll (`outbox(wait: 25)`) for
+    /// each, for as long as it runs. A `.lsdoc` is downloaded into the inbox folder and offered on the banner as one opened
     /// by hand (`openPackage(at:)`) once nothing else is offered, its file kept until it is taken or
     /// dismissed (`offerReceivedPackage`); any other file goes to the save folder and is said. Each is
     /// acknowledged once written, so the desktop drops it, and its id kept (`PairedDesktop.received`):
@@ -492,18 +545,25 @@ extension AppState {
     /// phone stops it (`.unpaired`); other failures wait 5 s, then 30 s each, and try again. Nothing
     /// while it runs.
     public func pullFromDesktop() {
-        guard companionPull == nil, companionDesktop != nil, companionInbox != nil else { return }
-        companionPull = Task { [weak self] in
-            await self?.pullLoop()
+        guard companionInbox != nil else { return }
+        for desktop in companionDesktops where companionPulls[desktop.id] == nil {
+            companionPulls[desktop.id] = Task { [weak self] in
+                await self?.pullLoop(desktop.id)
+            }
         }
     }
 
     public func stopPulling() {
-        companionPull?.cancel()
-        companionPull = nil
+        for pull in companionPulls.values { pull.cancel() }
+        companionPulls = [:]
     }
 
-    /// Removes the documents waiting to be sent to the paired desktop (all of them while none is paired),
+    func stopPulling(of desktopId: String) {
+        companionPulls[desktopId]?.cancel()
+        companionPulls[desktopId] = nil
+    }
+
+    /// Removes the documents waiting to be sent to the paired desktops (all of them while none is paired),
     /// unsent.
     public func clearOutbox() {
         guard let outbox = companionOutbox else { return }
@@ -519,7 +579,7 @@ extension AppState {
         countOutbox()
     }
 
-    /// Removes the documents waiting for a desktop no longer paired while another is, unsent.
+    /// Removes the documents waiting for a desktop no longer paired while others are, unsent.
     public func clearOtherOutbox() {
         guard let outbox = companionOutbox else { return }
         for item in outbox.items where !isForPairedDesktop(item) {
@@ -529,12 +589,12 @@ extension AppState {
     }
 
     /// The desktop with this id was found on the network (its DNS-SD service, TXT `id`) at `addresses`
-    /// and `port`. When that is the paired desktop and they differ from the ones kept (a new DHCP
+    /// and `port`. When that is a paired desktop and they differ from the ones kept (a new DHCP
     /// lease), they replace them, IPv4 first, once the pinned certificate answers there, since anyone
     /// can advertise that id; the next request looks for its address anew. Returns whether they did.
     @discardableResult
     public func desktopFound(id: String, addresses: [String], port: Int) async -> Bool {
-        guard let desktop = companionDesktop, desktop.id == id, (1...65535).contains(port) else { return false }
+        guard let desktop = pairedDesktop(id), (1...65535).contains(port) else { return false }
         var ipv4: [String] = []
         var ipv6: [String] = []
         for address in addresses where PairingUri.isValidAddress(address) && !ipv4.contains(address)
@@ -551,12 +611,11 @@ extension AppState {
         moved.addresses = found
         moved.port = port
         let probe = CompanionClient(desktop: moved, secret: nil, protocolClasses: companionProtocolClasses)
-        guard (try? await probe.health()) != nil, var current = companionDesktop, current.id == id else { return false }
+        guard (try? await probe.health()) != nil, var current = pairedDesktop(id) else { return false }
         current.addresses = found
         current.port = port
-        companionStore?.update(current)
-        companionDesktop = current
-        companionClient = nil
+        keep(current)
+        companionClients[id] = nil
         return true
     }
 
@@ -616,22 +675,33 @@ extension AppState {
 
     // MARK: - Private
 
-    /// The client of the paired desktop, made with its secret the first time; nil without either.
-    private func desktopClient() -> CompanionClient? {
-        if let client = companionClient { return client }
-        guard let desktop = companionDesktop, let secret = companionStore?.secret(for: desktop) else { return nil }
-        let client = CompanionClient(desktop: desktop, secret: secret, protocolClasses: companionProtocolClasses)
-        companionClient = client
+    /// The desktop paired with that has this id, as kept now.
+    private func pairedDesktop(_ id: String) -> PairedDesktop? {
+        companionDesktops.first { $0.id == id }
+    }
+
+    /// Writes what changed about a paired desktop, and keeps it in the list in its place.
+    private func keep(_ desktop: PairedDesktop) {
+        companionStore?.update(desktop)
+        guard let index = companionDesktops.firstIndex(where: { $0.id == desktop.id }) else { return }
+        companionDesktops[index] = desktop
+    }
+
+    /// The client of `desktop`, made with its secret the first time; nil without one.
+    private func desktopClient(for desktop: PairedDesktop) -> CompanionClient? {
+        if let client = companionClients[desktop.id] { return client }
+        guard let current = pairedDesktop(desktop.id), let secret = companionStore?.secret(for: current) else { return nil }
+        let client = CompanionClient(desktop: current, secret: secret, protocolClasses: companionProtocolClasses)
+        companionClients[desktop.id] = client
         return client
     }
 
-    /// Whether `item` waits for the paired desktop; while none is paired, every one does.
+    /// Whether `item` waits for a paired desktop; while none is paired, every one does.
     private func isForPairedDesktop(_ item: PhoneOutboxItem) -> Bool {
-        guard let desktop = companionDesktop else { return true }
-        return item.desktopId == desktop.id
+        companionDesktops.isEmpty || companionDesktops.contains { $0.id == item.desktopId }
     }
 
-    /// Counts what waits in the outbox for the paired desktop, and apart what waits for another.
+    /// Counts what waits in the outbox for the paired desktops, and apart what waits for another.
     private func countOutbox() {
         let items = companionOutbox?.items ?? []
         let waiting = items.filter { isForPairedDesktop($0) }
@@ -644,7 +714,7 @@ extension AppState {
     /// key and a folder is set; with a key but no folder, the status says where to set one, once.
     private func putInSyncFolder(for desktop: PairedDesktop) {
         guard let outbox = companionOutbox, companionStore?.syncKey(for: desktop) != nil else { return }
-        guard companionDesktop?.syncFolderBookmark != nil else {
+        guard pairedDesktop(desktop.id)?.syncFolderBookmark != nil else {
             if !companionSyncFolderHinted {
                 companionSyncFolderHinted = true
                 statusMessage = CompanionText.cannotReachMessage(desktop.name) + " " + CompanionText.syncFolderHint
@@ -655,7 +725,7 @@ extension AppState {
         for item in outbox.items where item.desktopId == desktop.id && !item.inSyncFolder && !item.refused {
             if sendThroughSyncFolder(itemId: item.id) {
                 put += 1
-            } else if openSyncFolder() == nil {
+            } else if openSyncFolder(for: desktop) == nil {
                 break
             }
         }
@@ -699,24 +769,24 @@ extension AppState {
 
     /// What a failed request means for the link.
     private func companionFailed(_ error: Error, _ desktop: PairedDesktop) {
-        // Unpaired, or another desktop paired, while the request ran.
-        guard companionDesktop?.id == desktop.id else { return }
+        // Unpaired while the request ran.
+        guard pairedDesktop(desktop.id) != nil else { return }
         switch error as? CompanionClientError {
         case .unauthorized?:
-            stopPulling()
+            stopPulling(of: desktop.id)
             companionStore?.forgetSecret(of: desktop)
-            companionClient = nil
-            companionStatus = .unpaired(byDesktop: desktop.name)
+            companionClients[desktop.id] = nil
+            companionStatuses[desktop.id] = .unpaired(byDesktop: desktop.name)
         case .unreachable?:
-            companionStatus = .unreachable(reason: companionUnreachableReason(desktop))
+            companionStatuses[desktop.id] = .unreachable(reason: companionUnreachableReason(desktop))
         default:
-            companionStatus = .unreachable(reason: error.localizedDescription)
+            companionStatuses[desktop.id] = .unreachable(reason: error.localizedDescription)
         }
     }
 
-    private func pullLoop() async {
+    private func pullLoop(_ desktopId: String) async {
         var failures = 0
-        while !Task.isCancelled, let desktop = companionDesktop, let client = desktopClient() {
+        while !Task.isCancelled, let desktop = pairedDesktop(desktopId), let client = desktopClient(for: desktop) {
             var wait: TimeInterval = 0
             do {
                 let list = try await client.outbox(wait: CompanionProtocol.maxOutboxWaitSeconds)
@@ -727,8 +797,8 @@ extension AppState {
                 let recovered = failures > 0
                 failures = 0
                 if recovered {
-                    await checkDesktop()
-                    await drainOutbox()
+                    await checkDesktop(desktop)
+                    await drainOutbox(for: desktop)
                 }
             } catch is CancellationError {
                 return
@@ -748,14 +818,14 @@ extension AppState {
                 try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
             }
         }
-        if !Task.isCancelled { companionPull = nil }
+        if !Task.isCancelled { companionPulls[desktopId] = nil }
     }
 
     /// Downloads one document the desktop holds, keeps it (a package in the inbox folder until it is
     /// answered, any other file in the save folder), notes its id and acknowledges it, then offers or
     /// says it. One received before is only acknowledged again.
     private func receive(_ item: OutboxItem, from client: CompanionClient, desktop: PairedDesktop) async throws {
-        if companionDesktop?.received.contains(item.id) == true {
+        if pairedDesktop(desktop.id)?.received.contains(item.id) == true {
             try await acknowledge(item.id, from: client)
             return
         }
@@ -775,10 +845,9 @@ extension AppState {
                                            fileExtension: fileExtension)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-        if var current = companionDesktop, current.id == desktop.id {
+        if var current = pairedDesktop(desktop.id) {
             current.noteReceived(item.id)
-            companionStore?.update(current)
-            companionDesktop = current
+            keep(current)
         }
         // Acknowledged before the offer, which decodes every picture: the file is kept already.
         var failure: Error?

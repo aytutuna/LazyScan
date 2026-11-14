@@ -499,10 +499,13 @@ public final class AppState: ObservableObject {
     var companionStore: PairedDesktopStore?
     var companionOutbox: PhoneOutbox?
     var companionInbox: URL?
-    var companionClient: CompanionClient?
-    /// The long poll for what the desktop holds (`pullFromDesktop`); nil when it does not run.
-    var companionPull: Task<Void, Never>?
-    @Published public internal(set) var companionDraining = false
+    var companionClients: [String: CompanionClient] = [:]
+    /// The long polls for what each desktop holds (`pullFromDesktop`), by desktop id; none for a desktop that
+    /// is not polled.
+    var companionPulls: [String: Task<Void, Never>] = [:]
+    /// The desktops whose outbox is being sent right now.
+    @Published var companionDrainingIds: Set<String> = []
+    public var companionDraining: Bool { !companionDrainingIds.isEmpty }
     /// URLProtocol stubs for the companion client's sessions (tests).
     var companionProtocolClasses: [AnyClass] = []
     /// The desktop's side of C1 on the Mac (AppState+CompanionHost.swift): the platform's pieces the
@@ -650,9 +653,10 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var pendingPackage: PendingPackage?
     /// Counts the `.lsdoc` files opened, so a slow read does not replace a file opened after it.
     var packageOpens = 0
-    /// The desktop this phone is paired with (AppState+Companion.swift); nil when there is none.
-    @Published public internal(set) var companionDesktop: PairedDesktop?
-    @Published public internal(set) var companionStatus = CompanionStatus.notPaired
+    /// The desktops this phone is paired with, the one paired last first (AppState+Companion.swift).
+    @Published public internal(set) var companionDesktops: [PairedDesktop] = []
+    /// Where the link to each of them stands, by desktop id.
+    @Published public internal(set) var companionStatuses: [String: CompanionStatus] = [:]
     /// Documents waiting in the outbox to be sent to the paired desktop; all of them while none is paired.
     @Published public internal(set) var companionOutboxCount = 0
     /// Those documents themselves, oldest first, the refused ones too.

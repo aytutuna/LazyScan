@@ -7,11 +7,13 @@ import UniformTypeIdentifiers
 /// My computer, a page of the Options sheet (`IOSCompanionModel`): with no computer paired, Pair with a computer
 /// (the camera looking for its code, the computers nearby to pick and type the short code shown on one, the
 /// code's text to paste instead, the check code to compare, the name the computer will list the phone
-/// under, Pair); once paired, the computer's name and state
-/// (checked when the screen opens, and on Refresh), Unpair (asked first), and the documents waiting to be
-/// sent, each with its date and why it has not gone, removable by a swipe, with Send again and Remove all
-/// (asked first), and those in the cloud folder the computer has not taken yet. For a computer that
-/// handed out a sync key, the cloud folder (Choose…, Clear) documents go to when it cannot be reached. A
+/// under, Pair); once paired, each computer's name and state
+/// (all checked when the screen opens, and on Refresh), Unpair (asked first), Pair another computer, which
+/// opens the pairing form again, and the documents waiting to be
+/// sent, each with its date, its computer when several are paired, and why it has not gone, removable by a
+/// swipe, with Send again and Remove all
+/// (asked first), and those in the cloud folders the computers have not taken yet. For a computer that
+/// handed out a sync key, its cloud folder (Choose…, Clear) documents go to when it cannot be reached. A
 /// computer that no longer knows the phone is shown with pairing offered again. Local Network access that
 /// is off is said with Open Settings. Documents left for a computer no longer paired have a line and a Remove
 /// all of their own.
@@ -19,7 +21,10 @@ struct CompanionScreen: View {
     @EnvironmentObject private var state: AppState
     @StateObject private var model: IOSCompanionModel
     @State private var choosingFolder: Bool = false
-    @State private var confirmingUnpair: Bool = false
+    /// The computer the cloud folder being picked is for.
+    @State private var folderDesktop: PairedDesktop?
+    /// The computer Unpair was tapped for, until it is answered.
+    @State private var unpairing: PairedDesktop?
     @State private var confirmingRemoveAll: Bool = false
     @State private var confirmingRemoveOther: Bool = false
     @State private var scanning: Bool = false
@@ -38,42 +43,16 @@ struct CompanionScreen: View {
                     ExplanationCard(title: IOSNetworkText.companionTitle, onContinue: model.continueAfterExplanation)
                 }
             }
-            if let desktop = state.companionDesktop {
+            ForEach(state.companionDesktops, id: \.id) { (desktop: PairedDesktop) in
+                computerSection(desktop)
+            }
+            if state.companionDesktops.count > 1 {
                 Section {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(desktop.name)
-                            .font(.headline)
-                            .accessibilityIdentifier("companion.name")
-                        Text(IOSCompanionText.status(state.companionStatus))
-                            .font(.subheadline)
-                            .foregroundStyle(Color.secondary)
-                            .accessibilityIdentifier("companion.status")
+                    if model.canRefresh {
+                        refreshButton
                     }
-                    .accessibilityElement(children: .combine)
-                    if !model.needsPairing {
-                        Button {
-                            Task { await model.refresh() }
-                        } label: {
-                            Label(IOSCompanionText.refreshButton, systemImage: "arrow.clockwise")
-                        }
-                        .disabled(state.companionStatus == .checking || model.needsExplanation)
-                        .accessibilityIdentifier("companion.refresh")
-                    }
-                    Button(role: .destructive) {
-                        confirmingUnpair = true
-                    } label: {
-                        Label(IOSCompanionText.unpairButton, systemImage: "xmark.circle")
-                    }
-                    .disabled(model.isPairing)
-                    .accessibilityIdentifier("companion.unpair")
-                    .confirmationDialog(IOSCompanionText.unpairTitle(desktop.name), isPresented: $confirmingUnpair,
-                                        titleVisibility: .visible) {
-                        Button(IOSCompanionText.unpairButton, role: .destructive) {
-                            Task { await model.unpair() }
-                        }
-                        .accessibilityIdentifier("companion.unpair.confirm")
-                    } message: {
-                        Text(IOSCompanionText.unpairMessage(waiting: state.companionOutboxCount))
+                    if model.offersPairAnother {
+                        pairAnotherButton
                     }
                 }
             }
@@ -86,8 +65,10 @@ struct CompanionScreen: View {
             if state.companionOtherOutboxCount > 0 {
                 otherOutboxSection
             }
-            if model.offersCloudFolder && !model.needsPairing {
-                cloudFolderSection
+            ForEach(state.companionDesktops, id: \.id) { (desktop: PairedDesktop) in
+                if model.offersCloudFolder(of: desktop) && model.pairedIds.contains(desktop.id) {
+                    cloudFolderSection(desktop)
+                }
             }
             if let browser = model.browser {
                 CompanionNetworkLine(browser: browser)
@@ -110,6 +91,25 @@ struct CompanionScreen: View {
         .onChange(of: model.nearbyCode) { _, _ in
             Task { await model.codeEdited() }
         }
+        .confirmationDialog(IOSCompanionText.unpairTitle(unpairing?.name ?? ""), isPresented: unpairShown,
+                            titleVisibility: .visible, presenting: unpairing) { (desktop: PairedDesktop) in
+            Button(IOSCompanionText.unpairButton, role: .destructive) {
+                Task { await model.unpair(desktop) }
+            }
+            .accessibilityIdentifier("companion.unpair.confirm" + identifierSuffix(desktop))
+        } message: { (desktop: PairedDesktop) in
+            Text(IOSCompanionText.unpairMessage(waiting: waitingCount(for: desktop)))
+        }
+        .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [UTType.folder]) { (result: Result<URL, Error>) in
+            switch result {
+            case .success(let url):
+                if let desktop = folderDesktop {
+                    model.chooseCloudFolder(url, for: desktop)
+                }
+            case .failure(let error):
+                state.errorMessage = error.localizedDescription
+            }
+        }
         .onChange(of: model.isCheckingCode) { _, checking in
             if !checking && model.chosen != nil { codeFocused = true }
         }
@@ -121,9 +121,83 @@ struct CompanionScreen: View {
     private func takePairingCode() {
         guard let code = state.pendingPairingCode else { return }
         state.pendingPairingCode = nil
-        if model.needsPairing {
-            model.scanned(code)
+        if !model.needsPairing {
+            model.addingComputer = true
         }
+        model.scanned(code)
+    }
+
+    /// With several computers paired, an identifier names the computer it is for.
+    private func identifierSuffix(_ desktop: PairedDesktop) -> String {
+        state.companionDesktops.count > 1 ? "." + desktop.id : ""
+    }
+
+    private func waitingCount(for desktop: PairedDesktop) -> Int {
+        state.companionWaiting.filter { (item: PhoneOutboxItem) -> Bool in item.desktopId == desktop.id }.count
+    }
+
+    private var unpairShown: Binding<Bool> {
+        let asked: Binding<PairedDesktop?> = $unpairing
+        return Binding<Bool>(
+            get: { asked.wrappedValue != nil },
+            set: { (isShown: Bool) in
+                if !isShown { asked.wrappedValue = nil }
+            })
+    }
+
+    /// A computer's name and state, with Unpair; with one computer paired, Refresh and Pair another computer
+    /// are in the same section.
+    private func computerSection(_ desktop: PairedDesktop) -> some View {
+        let suffix: String = identifierSuffix(desktop)
+        let single: Bool = state.companionDesktops.count == 1
+        let status: CompanionStatus = state.companionStatuses[desktop.id] ?? CompanionStatus.notPaired
+        let unpairName: String = single ? IOSCompanionText.unpairButton : IOSCompanionText.unpairLabel(desktop.name)
+        return Section {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(desktop.name)
+                    .font(.headline)
+                    .accessibilityIdentifier("companion.name" + suffix)
+                Text(IOSCompanionText.status(status))
+                    .font(.subheadline)
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityIdentifier("companion.status" + suffix)
+            }
+            .accessibilityElement(children: .combine)
+            if single && model.canRefresh {
+                refreshButton
+            }
+            Button(role: .destructive) {
+                unpairing = desktop
+            } label: {
+                Label(IOSCompanionText.unpairButton, systemImage: "xmark.circle")
+            }
+            .disabled(model.isPairing)
+            .accessibilityLabel(Text(unpairName))
+            .accessibilityIdentifier("companion.unpair" + suffix)
+            if single && model.offersPairAnother {
+                pairAnotherButton
+            }
+        }
+    }
+
+    private var refreshButton: some View {
+        Button {
+            Task { await model.refresh() }
+        } label: {
+            Label(IOSCompanionText.refreshButton, systemImage: "arrow.clockwise")
+        }
+        .disabled(model.isChecking || model.needsExplanation)
+        .accessibilityIdentifier("companion.refresh")
+    }
+
+    private var pairAnotherButton: some View {
+        Button {
+            model.addingComputer.toggle()
+        } label: {
+            Label(IOSCompanionText.pairAnotherButton, systemImage: "plus.circle")
+        }
+        .disabled(model.isPairing)
+        .accessibilityIdentifier("companion.pairAnother")
     }
 
     private var outboxSection: some View {
@@ -135,7 +209,7 @@ struct CompanionScreen: View {
                 Button(IOSCompanionText.sendAgainButton) {
                     Task { await model.sendAgain() }
                 }
-                .disabled(model.needsPairing)
+                .disabled(!model.canRefresh)
                 .accessibilityIdentifier("companion.sendAgain")
             }
             if state.companionOutboxCount > 0 {
@@ -150,7 +224,7 @@ struct CompanionScreen: View {
                     }
                     .accessibilityIdentifier("companion.remove.confirm")
                 } message: {
-                    Text(IOSCompanionText.removeAllMessage(state.companionOutboxCount, computer: state.companionDesktop?.name))
+                    Text(IOSCompanionText.removeAllMessage(state.companionOutboxCount, computer: removeAllComputer))
                 }
             }
             if model.inCloudFolder > 0 {
@@ -163,8 +237,15 @@ struct CompanionScreen: View {
         }
     }
 
+    /// The computer the documents waiting are for, named once only one is paired.
+    private var removeAllComputer: String? {
+        state.companionDesktops.count == 1 ? state.companionDesktop?.name : nil
+    }
+
     private func waitingRow(_ item: PhoneOutboxItem) -> some View {
         let name: String = URL(fileURLWithPath: item.fileName).deletingPathExtension().lastPathComponent
+        let computer: String? = state.companionDesktops.count > 1
+            ? state.companionDesktops.first { (desktop: PairedDesktop) -> Bool in desktop.id == item.desktopId }?.name : nil
         let reason: String = waitingReason(item)
         let reasonColor: Color = item.refused ? Color.red : Color.secondary
         let reasonLines: Int? = dynamicTypeSize.isAccessibilitySize ? nil : 2
@@ -173,6 +254,11 @@ struct CompanionScreen: View {
             Text(name)
             if let created = item.created {
                 Text(created.formatted(date: .abbreviated, time: .shortened))
+                    .font(.footnote)
+                    .foregroundStyle(Color.secondary)
+            }
+            if let computer {
+                Text(computer)
                     .font(.footnote)
                     .foregroundStyle(Color.secondary)
             }
@@ -221,39 +307,48 @@ struct CompanionScreen: View {
         }
     }
 
-    private var cloudFolderSection: some View {
-        Section {
-            LabeledContent(IOSCompanionText.cloudFolderLabel) {
-                Text(model.cloudFolderValue)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+    /// A computer's cloud folder; with several computers paired its header names the computer.
+    @ViewBuilder private func cloudFolderSection(_ desktop: PairedDesktop) -> some View {
+        if state.companionDesktops.count > 1 {
+            Section {
+                cloudFolderRows(desktop)
+            } header: {
+                Text(IOSCompanionText.cloudFolderFor(desktop.name))
+            } footer: {
+                Text(CompanionText.syncFolderLine)
             }
-            .accessibilityIdentifier("companion.cloudFolder")
-            HStack {
-                Button(IOSCompanionText.chooseFolderButton) {
-                    choosingFolder = true
-                }
-                .accessibilityIdentifier("companion.cloudFolder.choose")
-                if state.companionDesktop?.syncFolderBookmark != nil {
-                    Spacer()
-                    Button(IOSCompanionText.clearButton) {
-                        model.clearCloudFolder()
-                    }
-                    .accessibilityIdentifier("companion.cloudFolder.clear")
-                }
+        } else {
+            Section {
+                cloudFolderRows(desktop)
+            } footer: {
+                Text(CompanionText.syncFolderLine)
             }
-            .buttonStyle(.borderless)
-            .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [UTType.folder]) { (result: Result<URL, Error>) in
-                switch result {
-                case .success(let url):
-                    model.chooseCloudFolder(url)
-                case .failure(let error):
-                    state.errorMessage = error.localizedDescription
-                }
-            }
-        } footer: {
-            Text(CompanionText.syncFolderLine)
         }
+    }
+
+    @ViewBuilder private func cloudFolderRows(_ desktop: PairedDesktop) -> some View {
+        let suffix: String = identifierSuffix(desktop)
+        LabeledContent(IOSCompanionText.cloudFolderLabel) {
+            Text(model.cloudFolderValue(of: desktop))
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .accessibilityIdentifier("companion.cloudFolder" + suffix)
+        HStack {
+            Button(IOSCompanionText.chooseFolderButton) {
+                folderDesktop = desktop
+                choosingFolder = true
+            }
+            .accessibilityIdentifier("companion.cloudFolder.choose" + suffix)
+            if desktop.syncFolderBookmark != nil {
+                Spacer()
+                Button(IOSCompanionText.clearButton) {
+                    model.clearCloudFolder(of: desktop)
+                }
+                .accessibilityIdentifier("companion.cloudFolder.clear" + suffix)
+            }
+        }
+        .buttonStyle(.borderless)
     }
 
     @ViewBuilder private var pairSections: some View {
@@ -269,7 +364,7 @@ struct CompanionScreen: View {
                 Text(IOSCompanionText.pairTitle)
             }
             if let browser = model.browser, !model.needsExplanation {
-                CompanionNearbySection(browser: browser, model: model, codeFocused: $codeFocused)
+                CompanionNearbySection(browser: browser, model: model, paired: model.pairedIds, codeFocused: $codeFocused)
             }
             Section {
                 textField
@@ -371,20 +466,26 @@ struct CompanionScreen: View {
 private struct CompanionNearbySection: View {
     @ObservedObject var browser: IOSCompanionBrowser
     @ObservedObject var model: IOSCompanionModel
+    /// The computers paired already, left out of the list.
+    let paired: Set<String>
     var codeFocused: FocusState<Bool>.Binding
     @State private var waited: Bool = false
 
+    private var computers: [NearbyComputer] {
+        browser.computers.filter { (computer: NearbyComputer) -> Bool in !paired.contains(computer.id) }
+    }
+
     private var showsCode: Bool {
-        browser.computers.contains { (computer: NearbyComputer) -> Bool in computer.id == model.chosen?.id }
+        computers.contains { (computer: NearbyComputer) -> Bool in computer.id == model.chosen?.id }
     }
 
     var body: some View {
         if !browser.accessDenied {
             Section {
-                if browser.computers.isEmpty {
+                if computers.isEmpty {
                     emptyRow
                 }
-                ForEach(browser.computers) { (computer: NearbyComputer) in
+                ForEach(computers) { (computer: NearbyComputer) in
                     computerRow(computer)
                     if model.chosen?.id == computer.id {
                         codeRows(computer)

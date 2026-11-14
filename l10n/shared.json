@@ -597,8 +597,10 @@
     "other": "{0} documents waiting to be sent stay here until you pair it again."
   },
   "Unpair {0}?": {},
+  "Unpair {0}": {},
   "Not sent: {0}": {},
   "Pair with {0}": {},
+  "Cloud folder for {0}": {},
   "Code on {0}": {},
   "Type the 6 digits shown on {0}": {},
   "New document every {0} sheet": {

@@ -459,6 +459,42 @@ final class IOSCompanionTests: XCTestCase {
     }
 
     @MainActor
+    func test_severalComputers_pairingIsOfferedOnlyWhenAsked_orWhenOneForgotThePhone() throws {
+        let secrets = MemorySecrets()
+        let companionFolder: URL = folder.appendingPathComponent("Network", isDirectory: true)
+        try FileManager.default.createDirectory(at: companionFolder, withIntermediateDirectories: true)
+        let store = PairedDesktopStore(directory: companionFolder, secrets: secrets)
+        let secret = Data(repeating: 3, count: PairedDeviceStore.secretByteCount)
+        var laptop: PairedDesktop = pairedDesktop()
+        laptop.id = "desk-0002-other"
+        laptop.name = "Laptop"
+        try store.save(pairedDesktop(), secret: secret)
+        try store.save(laptop, secret: secret)
+        let state: AppState = makeState()
+        state.setUpCompanion(in: companionFolder, secrets: secrets)
+        let model = IOSCompanionModel(state: state, browser: nil)
+
+        XCTAssertEqual(state.companionDesktops.map(\.name), ["Laptop", "Office PC"])
+        XCTAssertFalse(model.needsPairing)
+        XCTAssertTrue(model.offersPairAnother)
+        XCTAssertTrue(model.canRefresh)
+        XCTAssertEqual(model.pairedIds, [IOSCompanionTests.desktopId, "desk-0002-other"])
+
+        model.addingComputer = true
+        XCTAssertTrue(model.needsPairing)
+        model.addingComputer = false
+
+        // One of them was removed on the computer: pairing shows for it, and it is not left out of the list.
+        try secrets.delete(for: "desk-0002-other")
+        state.setUpCompanion(in: companionFolder, secrets: secrets)
+        XCTAssertTrue(model.needsPairing)
+        XCTAssertTrue(model.hasUnpaired)
+        XCTAssertFalse(model.offersPairAnother)
+        XCTAssertTrue(model.canRefresh)
+        XCTAssertEqual(model.pairedIds, [IOSCompanionTests.desktopId])
+    }
+
+    @MainActor
     func test_cloudFolderRow_none_cannotBeOpened_thenThePickedFolder() throws {
         let secrets = MemorySecrets()
         let companionFolder: URL = folder.appendingPathComponent("Network", isDirectory: true)
@@ -474,36 +510,37 @@ final class IOSCompanionTests: XCTestCase {
         defer { IOSSyncFolder.close() }
         let model = IOSCompanionModel(state: state, browser: nil)
 
+        let desktop: PairedDesktop = try XCTUnwrap(state.companionDesktop)
         model.lookAtCloudFolder()
-        XCTAssertTrue(model.offersCloudFolder)
+        XCTAssertTrue(model.offersCloudFolder(of: desktop))
         XCTAssertEqual(IOSCompanionText.cloudFolderLabel, "Cloud folder")
         XCTAssertEqual(IOSCompanionText.chooseFolderButton, "Choose\u{2026}")
         XCTAssertEqual(IOSCompanionText.clearButton, "Clear")
         XCTAssertEqual(CompanionText.syncFolderLine,
                        "A folder in iCloud Drive or OneDrive that your computer also syncs. Documents go here, encrypted, when the computer cannot be reached.")
-        XCTAssertEqual(model.cloudFolderValue, "None")
+        XCTAssertEqual(model.cloudFolderValue(of: desktop), "None")
         XCTAssertEqual(model.inCloudFolder, 0)
 
         // Set, but it does not open now: kept, and said.
         state.setSyncFolder(bookmark: Data("not a bookmark".utf8))
         model.lookAtCloudFolder()
-        XCTAssertEqual(model.cloudFolderValue, "Cannot be opened")
+        XCTAssertEqual(model.cloudFolderValue(of: try XCTUnwrap(state.companionDesktop)), "Cannot be opened")
         XCTAssertEqual(state.companionDesktop?.syncFolderBookmark, Data("not a bookmark".utf8))
 
-        model.clearCloudFolder()
+        model.clearCloudFolder(of: desktop)
         XCTAssertNil(state.companionDesktop?.syncFolderBookmark)
-        XCTAssertEqual(model.cloudFolderValue, "None")
+        XCTAssertEqual(model.cloudFolderValue(of: try XCTUnwrap(state.companionDesktop)), "None")
 
         let picked: URL = folder.appendingPathComponent("OneDrive", isDirectory: true)
         try FileManager.default.createDirectory(at: picked, withIntermediateDirectories: true)
         try Data([1]).write(to: picked.appendingPathComponent(SyncPackage.fileName("pkg_one_0001")))
-        model.chooseCloudFolder(picked)
+        model.chooseCloudFolder(picked, for: desktop)
         XCTAssertNotNil(state.companionDesktop?.syncFolderBookmark)
         XCTAssertNil(state.errorMessage)
-        guard model.cloudFolderName != nil else {
+        guard model.cloudFolders[desktop.id]?.name != nil else {
             throw XCTSkip("A bookmark of a temporary folder does not resolve here.")
         }
-        XCTAssertEqual(model.cloudFolderValue, "OneDrive")
+        XCTAssertEqual(model.cloudFolderValue(of: try XCTUnwrap(state.companionDesktop)), "OneDrive")
         XCTAssertEqual(model.inCloudFolder, 1)
         XCTAssertNotNil(PairedDesktopStore(directory: companionFolder, secrets: secrets).load()?.syncFolderBookmark)
     }
@@ -521,8 +558,9 @@ final class IOSCompanionTests: XCTestCase {
 
         model.lookAtCloudFolder()
 
-        XCTAssertFalse(model.offersCloudFolder)
-        XCTAssertNil(model.cloudFolderName)
+        let desktop: PairedDesktop = try XCTUnwrap(state.companionDesktop)
+        XCTAssertFalse(model.offersCloudFolder(of: desktop))
+        XCTAssertNil(model.cloudFolders[desktop.id]?.name)
     }
 
     // MARK: The shell's wiring
@@ -560,10 +598,10 @@ final class IOSCompanionTests: XCTestCase {
 
         XCTAssertEqual(state.companionDesktop, desktop)
         XCTAssertEqual(state.companionStatus, .checking)
-        XCTAssertNil(state.companionPull)
+        XCTAssertTrue(state.companionPulls.isEmpty)
 
         center.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        try await waitUntil(timeout: 5) { state.companionPull != nil }
+        try await waitUntil(timeout: 5) { !state.companionPulls.isEmpty }
         // The check browses while it runs, and a few seconds more when the desktop does not answer.
         try await waitUntil(timeout: 30) {
             state.companionStatus == .unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network.")
@@ -574,7 +612,7 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertEqual(browsers.made.count, 1)
 
         center.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-        try await waitUntil(timeout: 5) { state.companionPull == nil }
+        try await waitUntil(timeout: 5) { state.companionPulls.isEmpty }
 
         // Seen on the network, at a new address where the desktop answers.
         state.companionProtocolClasses = [MovedDesktopProtocol.self]
@@ -609,7 +647,7 @@ final class IOSCompanionTests: XCTestCase {
         center.post(name: UIApplication.didBecomeActiveNotification, object: nil)
         try await Task.sleep(nanoseconds: 200_000_000)
 
-        XCTAssertNil(state.companionPull)
+        XCTAssertTrue(state.companionPulls.isEmpty)
         XCTAssertEqual(state.companionStatus, .notPaired)
     }
 

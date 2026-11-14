@@ -34,11 +34,14 @@ public enum IOSCompanionText {
     public static var removeButton: String { String(localized: "Remove") }
     public static var removeAllButton: String { String(localized: "Remove all") }
     public static var unpairButton: String { String(localized: "Unpair") }
+    public static var pairAnotherButton: String { String(localized: "Pair another computer") }
     public static var notPaired: String { String(localized: "Not paired") }
     public static var checking: String { String(localized: "Checking\u{2026}") }
     public static var connected: String { String(localized: "Connected") }
     public static var nothingWaiting: String { String(localized: "Nothing waiting to be sent") }
     public static var cloudFolderLabel: String { String(localized: "Cloud folder") }
+    /// The header of a computer's cloud folder while several are paired.
+    public static func cloudFolderFor(_ computer: String) -> String { L10n.t("Cloud folder for {0}", computer) }
     public static var noCloudFolder: String { String(localized: "None") }
     public static var cloudFolderOutOfReach: String { String(localized: "Cannot be opened") }
     public static var chooseFolderButton: String { String(localized: "Choose\u{2026}") }
@@ -46,6 +49,7 @@ public enum IOSCompanionText {
     /// The scan screen's button and its question.
     public static var sendButton: String { String(localized: "Send to computer") }
     public static var sendQuestion: String { String(localized: "Send the pages to the computer") }
+    public static var chooseComputerQuestion: String { String(localized: "Send to which computer?") }
     public static var newDocument: String { String(localized: "New document") }
     public static var intoOpenDocument: String { String(localized: "Into the open document") }
     /// Under After saving's Send to computer while it is dimmed.
@@ -92,6 +96,11 @@ public enum IOSCompanionText {
         L10n.t("Unpair {0}?", computer)
     }
 
+    /// The Unpair button's spoken name while several computers are paired.
+    public static func unpairLabel(_ computer: String) -> String {
+        L10n.t("Unpair {0}", computer)
+    }
+
     /// What unpairing does, with the documents that stay when any wait.
     @MainActor public static func unpairMessage(waiting count: Int) -> String {
         let line: String = String(localized: "The computer will no longer take documents from this \(UIDevice.current.model).")
@@ -124,9 +133,19 @@ public enum IOSCompanionText {
     }
 }
 
+/// One computer's cloud folder as last read (`IOSCompanionModel.lookAtCloudFolder`).
+public struct IOSCloudFolder: Equatable {
+    /// The computer handed out a sync key, so a cloud folder can be set.
+    public var offered: Bool
+    /// The folder's name; nil when none is set or it does not open now.
+    public var name: String?
+    /// The documents in the folder the computer has not taken yet.
+    public var waiting: Int
+}
+
 /// My computer: pairing with a computer from its code (scanned, or its text entered, with the check code
-/// to compare), then the paired computer's state, what waits to be sent to it, the cloud folder documents
-/// go to when it cannot be reached (`IOSSyncFolder`, for a computer that handed out a sync key), and
+/// to compare), then the paired computers' state, what waits to be sent to them, the cloud folder documents
+/// go to when a computer cannot be reached (`IOSSyncFolder`, for one that handed out a sync key), and
 /// unpairing. While the screen is shown the desktops on the network are browsed (`IOSCompanionBrowser`).
 @MainActor
 public final class IOSCompanionModel: ObservableObject {
@@ -137,12 +156,10 @@ public final class IOSCompanionModel: ObservableObject {
     @Published public var phoneName: String
     /// The desktop is asked (it asks its user first: up to two minutes).
     @Published public private(set) var isPairing: Bool = false
-    /// The paired computer handed out a sync key, so a cloud folder can be set (`AppState.canUseSyncFolder`).
-    @Published public private(set) var offersCloudFolder: Bool = false
-    /// The cloud folder's name; nil when none is set or it does not open now.
-    @Published public private(set) var cloudFolderName: String?
-    /// The documents in the cloud folder the computer has not taken yet.
-    @Published public private(set) var inCloudFolder: Int = 0
+    /// Pair another computer is open: the pairing form shows beside the computers paired.
+    @Published public var addingComputer: Bool = false
+    /// Each paired computer's cloud folder, by desktop id.
+    @Published public private(set) var cloudFolders: [String: IOSCloudFolder] = [:]
 
     /// The computer picked in the nearby list; its code row is open.
     @Published public private(set) var chosen: NearbyComputer?
@@ -193,23 +210,61 @@ public final class IOSCompanionModel: ObservableObject {
         return SpkiFingerprint.formatCheckCode(SpkiFingerprint.checkCode(fingerprint))
     }
 
-    /// Pairing is offered: no computer is paired, or the paired one no longer knows this phone.
+    /// Pairing is offered: no computer is paired, one no longer knows this phone, or another is being added.
     public var needsPairing: Bool {
-        if state.companionDesktop == nil { return true }
-        if case .unpaired = state.companionStatus { return true }
-        return false
+        state.companionDesktops.isEmpty || addingComputer || hasUnpaired
+    }
+
+    /// A paired computer no longer knows this phone.
+    public var hasUnpaired: Bool {
+        state.companionDesktops.contains { (desktop: PairedDesktop) -> Bool in
+            if case .unpaired? = state.companionStatuses[desktop.id] { return true }
+            return false
+        }
+    }
+
+    /// The ids of the computers that are paired and know this phone, left out of the nearby list.
+    public var pairedIds: Set<String> {
+        Set(state.companionDesktops.filter { (desktop: PairedDesktop) -> Bool in
+            if case .unpaired? = state.companionStatuses[desktop.id] { return false }
+            return true
+        }.map(\.id))
+    }
+
+    /// Refresh has a computer to check.
+    public var canRefresh: Bool {
+        !pairedIds.isEmpty
+    }
+
+    /// Pair another computer is offered: some are paired, and all of them know this phone.
+    public var offersPairAnother: Bool {
+        !state.companionDesktops.isEmpty && !hasUnpaired
+    }
+
+    /// A computer's link is being checked.
+    public var isChecking: Bool {
+        state.companionStatuses.values.contains(.checking)
+    }
+
+    /// Whether a cloud folder can be set for `desktop`.
+    public func offersCloudFolder(of desktop: PairedDesktop) -> Bool {
+        cloudFolders[desktop.id]?.offered ?? false
+    }
+
+    /// The cloud folder of `desktop`, as its row says: the folder's name, "None", or "Cannot be opened" for
+    /// one set that does not open now.
+    public func cloudFolderValue(of desktop: PairedDesktop) -> String {
+        if let name = cloudFolders[desktop.id]?.name { return name }
+        return desktop.syncFolderBookmark == nil ? IOSCompanionText.noCloudFolder : IOSCompanionText.cloudFolderOutOfReach
+    }
+
+    /// The documents in every cloud folder the computers have not taken yet.
+    public var inCloudFolder: Int {
+        cloudFolders.values.reduce(0) { (total: Int, folder: IOSCloudFolder) -> Int in total + folder.waiting }
     }
 
     public var canPair: Bool {
         code != nil && !isPairing && !needsExplanation
-    }
-
-    /// The cloud folder row's value: the folder's name, "None", or "Cannot be opened" for one set that
-    /// does not open now.
-    public var cloudFolderValue: String {
-        if let name = cloudFolderName { return name }
-        return state.companionDesktop?.syncFolderBookmark == nil
-            ? IOSCompanionText.noCloudFolder : IOSCompanionText.cloudFolderOutOfReach
     }
 
     /// The camera read a pairing code.
@@ -250,7 +305,7 @@ public final class IOSCompanionModel: ObservableObject {
         isCheckingCode = false
     }
 
-    /// The screen is shown: browsing starts, and the paired desktop is checked (to the end, even when the
+    /// The screen is shown: browsing starts, and the paired desktops are checked (to the end, even when the
     /// screen goes first), once the explanation card is read.
     public func appear() {
         isShown = true
@@ -277,7 +332,7 @@ public final class IOSCompanionModel: ObservableObject {
         guard isShown, !needsExplanation, !isBrowsing else { return }
         isBrowsing = true
         browser?.begin()
-        guard state.companionDesktop != nil else { return }
+        guard !state.companionDesktops.isEmpty else { return }
         let appState: AppState = state
         Task { @MainActor in
             await appState.checkDesktop()
@@ -294,10 +349,13 @@ public final class IOSCompanionModel: ObservableObject {
     public func pair() async {
         guard canPair else { return }
         isPairing = true
+        let before: PairedDesktop? = state.companionDesktop
         let codeUsedUp: Bool = await state.pairDesktop(uri: entered, phoneName: phoneName.trimmingCharacters(in: .whitespacesAndNewlines))
         isPairing = false
-        if case .reachable = state.companionStatus {
+        // A pairing that went through is the one paired last, with a new pairing time.
+        if state.companionDesktop?.pairedAt != before {
             text = ""
+            addingComputer = false
             state.pullFromDesktop()
         } else if codeUsedUp {
             text = ""
@@ -310,36 +368,38 @@ public final class IOSCompanionModel: ObservableObject {
         lookAtCloudFolder()
     }
 
-    /// `folder`, picked in Files, becomes the cloud folder.
-    public func chooseCloudFolder(_ folder: URL) {
+    /// `folder`, picked in Files, becomes the cloud folder of `desktop`.
+    public func chooseCloudFolder(_ folder: URL, for desktop: PairedDesktop) {
         do {
             let bookmark: Data = try IOSSyncFolder.bookmark(of: folder)
-            state.setSyncFolder(bookmark: bookmark)
+            state.setSyncFolder(bookmark: bookmark, for: desktop)
         } catch {
             state.errorMessage = error.localizedDescription
         }
         lookAtCloudFolder()
     }
 
-    public func clearCloudFolder() {
-        state.setSyncFolder(bookmark: nil)
+    public func clearCloudFolder(of desktop: PairedDesktop) {
+        state.setSyncFolder(bookmark: nil, for: desktop)
         IOSSyncFolder.close()
         lookAtCloudFolder()
     }
 
-    /// Reads again whether a cloud folder can be set, its name and what waits in it.
+    /// Reads again, for each paired computer, whether a cloud folder can be set, its name and what waits in it.
     public func lookAtCloudFolder() {
-        offersCloudFolder = state.canUseSyncFolder
-        guard let folder = state.openSyncFolder() else {
-            cloudFolderName = nil
-            inCloudFolder = 0
-            return
+        var folders: [String: IOSCloudFolder] = [:]
+        for desktop in state.companionDesktops {
+            var folder: IOSCloudFolder = IOSCloudFolder(offered: state.canUseSyncFolder(for: desktop), name: nil, waiting: 0)
+            if let opened = state.openSyncFolder(for: desktop) {
+                folder.name = opened.lastPathComponent
+                folder.waiting = IOSSyncFolder.waitingCount(in: opened)
+            }
+            folders[desktop.id] = folder
         }
-        cloudFolderName = folder.lastPathComponent
-        inCloudFolder = IOSSyncFolder.waitingCount(in: folder)
+        cloudFolders = folders
     }
 
-    /// The documents waiting for the paired computer, refused ones included.
+    /// The documents waiting for the paired computers, refused ones included.
     public var waitingItems: [PhoneOutboxItem] {
         state.companionWaiting
     }
@@ -361,8 +421,9 @@ public final class IOSCompanionModel: ObservableObject {
         state.clearOtherOutbox()
     }
 
-    public func unpair() async {
-        await state.unpairDesktop()
+    public func unpair(_ desktop: PairedDesktop) async {
+        await state.unpairDesktop(desktop)
+        if state.companionDesktops.isEmpty { addingComputer = false }
         IOSSyncFolder.close()
         lookAtCloudFolder()
     }

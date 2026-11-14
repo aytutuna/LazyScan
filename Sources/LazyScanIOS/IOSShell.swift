@@ -900,11 +900,12 @@ public enum IOSShell {
 
     /// The companion (I20): its files in `folder` (the network folder, out of backups), the device secret
     /// in `secrets` (the Keychain), whether a desktop that does not answer is on the network and where it
-    /// is now from `browser`'s DNS-SD browse. While the app is in front with a desktop paired, what the
+    /// is now from `browser`'s DNS-SD browse. While the app is in front with a desktop paired, what each
     /// desktop holds for the phone is taken (`pullFromDesktop`, from becoming active until the app goes to
-    /// the background); each time it comes to the front the desktop is checked, browsing while the check
-    /// runs and, when it did not answer, a few seconds more before it is checked again, and what waits in
-    /// the outbox is sent. A desktop that did not answer and is found at new addresses is checked there.
+    /// the background); each time it comes to the front the desktops are checked, browsing while the check
+    /// runs and, for those that did not answer, a few seconds more before they are checked again, and what
+    /// waits in the outbox is sent. A desktop that did not answer and is found at new addresses is checked
+    /// there.
     @MainActor
     static func setUpCompanion(_ state: AppState, folder: URL, secrets: any CompanionSecretStore,
                                browser: IOSCompanionBrowser?, lifecycle: any PlatformLifecycle) {
@@ -920,24 +921,24 @@ public enum IOSShell {
                 guard let state else { return }
                 Task { @MainActor in
                     if await state.desktopFound(id: desktopId, addresses: addresses, port: port),
-                       case .unreachable = state.companionStatus {
-                        await state.checkDesktop()
-                        await state.drainOutbox()
+                       let desktop = state.unreachableDesktops.first(where: { (found: PairedDesktop) -> Bool in found.id == desktopId }) {
+                        await state.checkDesktop(desktop)
+                        await state.drainOutbox(for: desktop)
                     }
                 }
             }
         }
         lifecycle.observeDidBecomeActive { [weak state] in
-            guard let state, state.companionDesktop != nil else { return }
+            guard let state, !state.companionDesktops.isEmpty else { return }
             state.pullFromDesktop()
             Task { @MainActor in
                 browser?.begin()
                 await state.checkDesktop()
-                if browser != nil, case .unreachable = state.companionStatus {
+                if browser != nil, !state.unreachableDesktops.isEmpty {
                     // A refusal comes sooner than the browse: let it see the desktop, or find it elsewhere.
                     try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    if case .unreachable = state.companionStatus {
-                        await state.checkDesktop()
+                    for desktop in state.unreachableDesktops {
+                        await state.checkDesktop(desktop)
                     }
                 }
                 browser?.end()

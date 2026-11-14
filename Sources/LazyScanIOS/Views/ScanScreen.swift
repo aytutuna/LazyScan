@@ -105,8 +105,12 @@ struct ScanScreen: View {
     @State private var sharesPackage: Bool = false
     /// Send to computer asks where the pages go.
     @State private var asksSendTarget: Bool = false
+    /// Several computers answered Send to computer: which one gets the pages is asked.
+    @State private var computerChoice: ComputerChoice?
     /// The queue is being written and sent to the paired computer.
     @State private var sendsToComputer: Bool = false
+    /// The computer the send under way goes to, named on its card.
+    @State private var sendingName: String = ""
     /// The send this screen started, which Cancel on the sending card stops.
     @State private var sendTask: Task<Void, Never>?
     /// Save waits for the copy screen After saving's Print opened, then emails when `emailsAfterPrint`.
@@ -207,8 +211,8 @@ struct ScanScreen: View {
             } message: {
                 Text(IOSShell.finishStackLine)
             }
-            .modifier(SaveDialogs(state: state, asksSendTarget: $asksSendTarget, picksPDF: $picksPDF,
-                                  onSend: sendToComputer))
+            .modifier(SaveDialogs(state: state, asksSendTarget: $asksSendTarget, computerChoice: $computerChoice,
+                                  picksPDF: $picksPDF, onSend: sendToComputer))
     }
 
     /// The screen of the mode in use: camera mode, or the printer screen (beside the scanners on a wide
@@ -421,8 +425,8 @@ struct ScanScreen: View {
         let optionsFill: Bool = openGroup == .options && verticalSizeClass == .compact
         let presented: Bool = cover != nil || openGroup == .scanner || pairing || pagesShown || picksPDF || spreadEditor != nil
             || optionsFill
-        let asked: Bool = askedToDiscard || leavingPages != nil || asksSendTarget || state.errorMessage != nil
-            || state.showTroubleshooter
+        let asked: Bool = askedToDiscard || leavingPages != nil || asksSendTarget || computerChoice != nil
+            || state.errorMessage != nil || state.showTroubleshooter
         return rests || presented || asked
     }
 
@@ -657,7 +661,7 @@ struct ScanScreen: View {
 
     /// A send to the computer under way, named after it, with Cancel when this screen started it.
     private var sendingCard: some View {
-        let name: String = state.companionDesktop?.name ?? ""
+        let name: String = sendsToComputer ? sendingName : (state.companionDesktop?.name ?? "")
         let text: String = CompanionText.sendingMessage(name)
         return HStack(spacing: 12) {
             ProgressView()
@@ -1557,28 +1561,52 @@ struct ScanScreen: View {
         }
         let appState: AppState = state
         sendsToComputer = true
+        sendingName = appState.likelyDesktop?.name ?? ""
         sendTask = Task { @MainActor in
-            let noticeBefore: CompanionNotice? = appState.companionNotice
-            let pages: [UUID] = appState.scannedPages.map(\.id)
-            let kept: Bool = await appState.sendQueueToDesktop(target: .new)
-            let cancelled: Bool = Task.isCancelled
-            if cancelled {
-                reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
-            } else {
-                reportUnsent(appState)
-                rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
-            }
-            sendsToComputer = false
-            sendTask = nil
-            if cancelled {
+            let answering: [PairedDesktop] = await appState.answeringDesktops()
+            if answering.count > 1 && !Task.isCancelled {
+                sendsToComputer = false
+                sendTask = nil
+                computerChoice = ComputerChoice(computers: answering) { (desktop: PairedDesktop) -> Void in
+                    sendsToComputer = true
+                    sendTask = Task { @MainActor in
+                        await sendAndSave(steps, to: desktop)
+                    }
+                } cancel: {
+                    statusAfterBusy = CompanionText.cancelledNothingSentMessage
+                }
                 return
             }
-            if appState.errorMessage != nil {
-                stepsAfterAlert = steps
-                return
-            }
-            printThenSave(steps)
+            await sendAndSave(steps, to: answering.first)
         }
+    }
+
+    /// The send of After saving's Send to computer to `desktop` (the computer likeliest to answer when nil),
+    /// then the steps after it.
+    private func sendAndSave(_ steps: [IOSAfterSave], to desktop: PairedDesktop?) async {
+        let appState: AppState = state
+        let target: PairedDesktop? = desktop ?? appState.likelyDesktop
+        sendingName = target?.name ?? ""
+        let noticeBefore: CompanionNotice? = appState.companionNotice
+        let pages: [UUID] = appState.scannedPages.map(\.id)
+        let kept: Bool = await appState.sendQueueToDesktop(target: .new, to: target)
+        let cancelled: Bool = Task.isCancelled
+        if cancelled {
+            reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
+        } else {
+            reportUnsent(appState, desktop: target)
+            rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
+        }
+        sendsToComputer = false
+        sendTask = nil
+        if cancelled {
+            return
+        }
+        if appState.errorMessage != nil {
+            stepsAfterAlert = steps
+            return
+        }
+        printThenSave(steps)
     }
 
     /// After saving's Print, handed to Lazy Print where it is installed, else on the copy screen the save waits
@@ -1690,19 +1718,42 @@ struct ScanScreen: View {
     private func sendToComputer(_ target: CompanionTarget) {
         sendsToComputer = true
         let appState: AppState = state
+        sendingName = appState.likelyDesktop?.name ?? ""
         sendTask = Task { @MainActor in
-            let noticeBefore: CompanionNotice? = appState.companionNotice
-            let pages: [UUID] = appState.scannedPages.map(\.id)
-            let kept: Bool = await appState.sendQueueToDesktop(target: target)
-            if Task.isCancelled {
-                reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
-            } else {
-                reportUnsent(appState)
-                rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
+            let answering: [PairedDesktop] = await appState.answeringDesktops()
+            if answering.count > 1 && !Task.isCancelled {
+                sendsToComputer = false
+                sendTask = nil
+                computerChoice = ComputerChoice(computers: answering) { (desktop: PairedDesktop) -> Void in
+                    sendsToComputer = true
+                    sendTask = Task { @MainActor in
+                        await send(target, to: desktop)
+                    }
+                } cancel: {
+                    statusAfterBusy = CompanionText.cancelledNothingSentMessage
+                }
+                return
             }
-            sendsToComputer = false
-            sendTask = nil
+            await send(target, to: answering.first)
         }
+    }
+
+    /// Sends the queue to `desktop` (the computer likeliest to answer when nil) as a new or the open document.
+    private func send(_ target: CompanionTarget, to desktop: PairedDesktop?) async {
+        let appState: AppState = state
+        let computer: PairedDesktop? = desktop ?? appState.likelyDesktop
+        sendingName = computer?.name ?? ""
+        let noticeBefore: CompanionNotice? = appState.companionNotice
+        let pages: [UUID] = appState.scannedPages.map(\.id)
+        let kept: Bool = await appState.sendQueueToDesktop(target: target, to: computer)
+        if Task.isCancelled {
+            reportCancelled(appState, kept: kept, noticeBefore: noticeBefore)
+        } else {
+            reportUnsent(appState, desktop: computer)
+            rememberSent(appState, pages: pages, kept: kept, noticeBefore: noticeBefore)
+        }
+        sendsToComputer = false
+        sendTask = nil
     }
 
     /// A cancelled send says where the document is: in the outbox when it is still there, nowhere when it was
@@ -1719,17 +1770,21 @@ struct ScanScreen: View {
     /// phone, says so in an alert, naming the cloud folder when the document went there, unless it failed with
     /// an error of its own. A computer that did not answer, with a sync key and no folder set, has the alert
     /// say where to set one and offer My computer.
-    private func reportUnsent(_ appState: AppState) {
-        guard appState.errorMessage == nil else { return }
+    private func reportUnsent(_ appState: AppState, desktop: PairedDesktop?) {
+        guard appState.errorMessage == nil, let desktop else { return }
+        let status: CompanionStatus = appState.companionStatuses[desktop.id] ?? CompanionStatus.notPaired
         var unreachable: Bool = false
-        if case .unreachable = appState.companionStatus {
+        if case .unreachable = status {
             unreachable = true
         }
-        let hint: Bool = unreachable && appState.canUseSyncFolder && appState.companionDesktop?.syncFolderBookmark == nil
-        let message: String? = IOSAfterSave.notSentMessage(appState.companionStatus,
-                                                           waiting: appState.companionOutboxCount,
-                                                           inFolder: appState.companionInSyncFolderCount,
-                                                           folderHint: hint)
+        let waiting: [PhoneOutboxItem] = appState.companionWaiting.filter { (item: PhoneOutboxItem) -> Bool in
+            item.desktopId == desktop.id
+        }
+        let inFolder: Int = waiting.filter { (item: PhoneOutboxItem) -> Bool in item.inSyncFolder }.count
+        let noFolder: Bool = appState.companionDesktops.first { (kept: PairedDesktop) -> Bool in
+            kept.id == desktop.id }?.syncFolderBookmark == nil
+        let hint: Bool = unreachable && appState.canUseSyncFolder(for: desktop) && noFolder
+        let message: String? = IOSAfterSave.notSentMessage(status, waiting: waiting.count, inFolder: inFolder, folderHint: hint)
         appState.errorMessage = message
         appState.errorSuggestsCompanion = message != nil && hint
     }
@@ -1821,12 +1876,20 @@ enum ScanOptionGroup: String, Identifiable {
     }
 }
 
-/// The confirmation asking where Send to computer sends the pages, and Files to pick the PDF the Options sheet
-/// adds them to; on the screen whichever mode is shown.
+/// The computers that answered Send to computer, and what sends the pages to the one picked.
+struct ComputerChoice {
+    let computers: [PairedDesktop]
+    let send: @MainActor (PairedDesktop) -> Void
+    let cancel: @MainActor () -> Void
+}
+
+/// The confirmation asking where Send to computer sends the pages, the one asking which computer when several
+/// answered, and Files to pick the PDF the Options sheet adds them to; on the screen whichever mode is shown.
 @MainActor
 private struct SaveDialogs: ViewModifier {
     @ObservedObject var state: AppState
     @Binding var asksSendTarget: Bool
+    @Binding var computerChoice: ComputerChoice?
     @Binding var picksPDF: Bool
     let onSend: (CompanionTarget) -> Void
 
@@ -1842,9 +1905,31 @@ private struct SaveDialogs: ViewModifier {
                 }
                 .accessibilityIdentifier("send.computer.current")
             }
+            .confirmationDialog(IOSCompanionText.chooseComputerQuestion, isPresented: choiceShown, titleVisibility: .visible,
+                                presenting: computerChoice) { (choice: ComputerChoice) in
+                ForEach(choice.computers, id: \.id) { (desktop: PairedDesktop) in
+                    Button(desktop.name) {
+                        computerChoice = nil
+                        choice.send(desktop)
+                    }
+                    .accessibilityIdentifier("send.computer.choose." + desktop.id)
+                }
+            }
             .fileImporter(isPresented: $picksPDF, allowedContentTypes: [UTType.pdf]) { (result: Result<URL, Error>) in
                 picked(result)
             }
+    }
+
+    private var choiceShown: Binding<Bool> {
+        let asked: Binding<ComputerChoice?> = $computerChoice
+        return Binding<Bool>(
+            get: { asked.wrappedValue != nil },
+            set: { (isShown: Bool) in
+                if !isShown, let choice = asked.wrappedValue {
+                    asked.wrappedValue = nil
+                    choice.cancel()
+                }
+            })
     }
 
     private func picked(_ result: Result<URL, Error>) {

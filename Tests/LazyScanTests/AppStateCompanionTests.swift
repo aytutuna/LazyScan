@@ -741,7 +741,7 @@ final class AppStateCompanionTests: XCTestCase {
         state.pullFromDesktop()
         try await waitUntil(timeout: 30) { state.companionStatus == .unpaired(byDesktop: "Office PC") }
 
-        XCTAssertNil(state.companionPull)
+        XCTAssertTrue(state.companionPulls.isEmpty)
         XCTAssertEqual(fake.requests("GET " + CompanionProtocol.outboxPath).count, 1)
     }
 
@@ -977,5 +977,167 @@ final class AppStateCompanionTests: XCTestCase {
         state.companionDesktopSeenOnNetwork = { _ in false }
         await state.checkDesktop()
         XCTAssertEqual(state.companionStatus, .unreachable(reason: "Office PC was not found. Lazy Scan may not be open on it, or it is on another network."))
+    }
+
+    // MARK: Several desktops
+
+    private static let laptopId = "desk-0002-other"
+    private static let laptopAddress = "192.168.1.21"
+
+    private func laptopHello(queuedPages: Int = 0) -> CompanionStubAnswer {
+        .json(200, HelloResponse(desktopId: AppStateCompanionTests.laptopId, desktopName: "Laptop",
+                                 protocolVersion: CompanionProtocol.version, queuedPages: queuedPages,
+                                 maxUploadBytes: CompanionProtocol.maxUploadBytes).toJSON())
+    }
+
+    /// Pairs with a second desktop, "Laptop", at its own address.
+    @MainActor
+    private func pairLaptop(_ state: AppState, with fake: CompanionFakeDesktop) async throws {
+        fake.on("POST " + CompanionProtocol.pairPath,
+                .json(200, PairResponse(desktopId: AppStateCompanionTests.laptopId, desktopName: "Laptop",
+                                        deviceSecret: CompanionVectors.secretText,
+                                        protocolVersion: CompanionProtocol.version).toJSON()))
+        let uri = try PairingUri(desktopId: AppStateCompanionTests.laptopId, name: "Laptop",
+                                 fingerprint: CompanionVectors.fingerprintText,
+                                 addresses: [AppStateCompanionTests.laptopAddress], port: fake.port,
+                                 token: CompanionVectors.tokenText).format()
+        await state.pairDesktop(uri: uri, phoneName: "Test phone")
+        XCTAssertNil(state.errorMessage)
+    }
+
+    @MainActor
+    func test_twoDesktops_arePairedAtOnce_andUnpairingOneKeepsTheOther() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState()
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+
+        XCTAssertEqual(state.companionDesktops.map(\.id), [AppStateCompanionTests.laptopId, CompanionLink.desktopId])
+        XCTAssertEqual(state.companionDesktop?.name, "Laptop")
+        XCTAssertEqual(state.companionStatuses.count, 2)
+        XCTAssertEqual(secrets.count, 2)
+
+        office.on("DELETE " + CompanionProtocol.deviceSelfPath, .empty(204))
+        await state.unpairDesktop(try XCTUnwrap(state.companionDesktops.last))
+
+        XCTAssertEqual(office.requests("DELETE " + CompanionProtocol.deviceSelfPath).count, 1)
+        XCTAssertEqual(laptop.requests("DELETE " + CompanionProtocol.deviceSelfPath).count, 0)
+        XCTAssertEqual(state.companionDesktops.map(\.id), [AppStateCompanionTests.laptopId])
+        XCTAssertEqual(secrets.count, 1)
+        XCTAssertEqual(PairedDesktopStore(directory: companionFolder, secrets: secrets).loadAll().map(\.id),
+                       [AppStateCompanionTests.laptopId])
+    }
+
+    @MainActor
+    func test_answeringDesktops_listsOnlyThoseOnTheNetwork() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState()
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+        office.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello())
+        laptop.on("GET " + CompanionProtocol.helloPath, laptopHello())
+
+        let both = await state.answeringDesktops()
+        XCTAssertEqual(Set(both.map(\.id)), [CompanionLink.desktopId, AppStateCompanionTests.laptopId])
+
+        office.downHosts = [CompanionLink.address]
+        let one = await state.answeringDesktops()
+        XCTAssertEqual(one.map(\.id), [AppStateCompanionTests.laptopId])
+        XCTAssertEqual(state.companionStatuses[CompanionLink.desktopId],
+                       .unreachable(reason: CompanionText.notOnNetworkReason("Office PC")))
+
+        laptop.downHosts = [AppStateCompanionTests.laptopAddress]
+        let none = await state.answeringDesktops()
+        XCTAssertEqual(none, [])
+    }
+
+    @MainActor
+    func test_likelyDesktop_skipsOneThatForgotThePhone() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState()
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+        laptop.downHosts = [AppStateCompanionTests.laptopAddress]
+        office.on("GET " + CompanionProtocol.helloPath, CompanionLink.unauthorized)
+
+        await state.checkDesktop()
+
+        XCTAssertEqual(state.likelyDesktop?.id, AppStateCompanionTests.laptopId)
+    }
+
+    @MainActor
+    func test_sendQueueToDesktop_toTheOneThatAnswers_leavesTheOtherAlone() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState(pages: 1)
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+        office.downHosts = [CompanionLink.address]
+        laptop.on("GET " + CompanionProtocol.helloPath, laptopHello())
+        laptop.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+            let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
+            return .json(201, InboxResponse(packageId: id, pageCount: 1, duplicate: false).toJSON())
+        }
+
+        let answering = await state.answeringDesktops()
+        let kept = await state.sendQueueToDesktop(target: .new, to: try XCTUnwrap(answering.first))
+
+        XCTAssertFalse(kept)
+        XCTAssertEqual(laptop.requests.filter { $0.method == "PUT" }.count, 1)
+        XCTAssertEqual(office.requests.filter { $0.method == "PUT" }.count, 0)
+        XCTAssertEqual(state.companionOutboxCount, 0)
+        XCTAssertEqual(state.statusMessage, "1 page sent to Laptop.")
+    }
+
+    @MainActor
+    func test_drainOutbox_sendsEachDocumentToItsOwnDesktop() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState()
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+        for fake in [office, laptop] {
+            fake.on("PUT " + CompanionProtocol.inboxPrefix + "*") { request in
+                let id = String(request.path.dropFirst(CompanionProtocol.inboxPrefix.count))
+                return .json(201, InboxResponse(packageId: id, pageCount: 1, duplicate: false).toJSON())
+            }
+        }
+        office.on("GET " + CompanionProtocol.helloPath, CompanionLink.hello())
+        laptop.on("GET " + CompanionProtocol.helloPath, laptopHello())
+        let outbox = try XCTUnwrap(state.companionOutbox)
+        for (name, desktopId) in [("For office", CompanionLink.desktopId), ("For laptop", AppStateCompanionTests.laptopId)] {
+            let file = folder.appendingPathComponent(name + ".lsdoc")
+            try Data("package".utf8).write(to: file)
+            try outbox.enqueue(file, target: .new, desktopId: desktopId)
+        }
+        XCTAssertEqual(state.companionOtherOutboxCount, 0)
+
+        await state.drainOutbox()
+
+        XCTAssertEqual(office.requests.filter { $0.method == "PUT" }.count, 1)
+        XCTAssertEqual(laptop.requests.filter { $0.method == "PUT" }.count, 1)
+        XCTAssertEqual(outbox.items.count, 0)
+    }
+
+    @MainActor
+    func test_checkDesktop_401_onOneDesktop_leavesTheOtherReachable() async throws {
+        let office = CompanionFakeDesktop()
+        let laptop = CompanionFakeDesktop()
+        let state = try await makeState()
+        try await pair(state, with: office)
+        try await pairLaptop(state, with: laptop)
+        office.on("GET " + CompanionProtocol.helloPath, CompanionLink.unauthorized)
+        laptop.on("GET " + CompanionProtocol.helloPath, laptopHello(queuedPages: 1))
+
+        await state.checkDesktop()
+
+        XCTAssertEqual(state.companionStatuses[CompanionLink.desktopId], .unpaired(byDesktop: "Office PC"))
+        XCTAssertEqual(state.companionStatuses[AppStateCompanionTests.laptopId], .reachable(desktopName: "Laptop", queuedPages: 1))
+        XCTAssertEqual(state.companionStatus, .reachable(desktopName: "Laptop", queuedPages: 1))
+        XCTAssertNil(try secrets.load(for: CompanionLink.desktopId))
+        XCTAssertNotNil(try secrets.load(for: AppStateCompanionTests.laptopId))
     }
 }
