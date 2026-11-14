@@ -336,6 +336,8 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var idCardLayoutCaption = ""
     /// Set when the sides had to be made smaller to fit the page (`IdCardLayout.notRealSizeMessage`).
     @Published public internal(set) var idCardSizeWarning: String?
+    /// Set when the back was turned a quarter turn to match the front (`IdCardLayout.backTurnedMessage`).
+    @Published public internal(set) var idCardBackTurnedNote: String?
     /// The scans the ID card's sides were cut from, by scanned-page id, so a crop can be fixed. In
     /// memory only (ID card scans are never spooled), and dropped with the sides.
     var idCardSourceImages: [UUID: CGImage] = [:]

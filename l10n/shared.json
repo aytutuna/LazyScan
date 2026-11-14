@@ -1200,6 +1200,7 @@
   "The card did not stand out on this scan, so the place of the front was used. Check the crop.": {},
   "No card was found, so the whole glass was kept. Fix the crop, or scan again with the lid closed.": {},
   "Too large for the page at real size, so it was made smaller to fit. It is not at real size.": {},
+  "The back was turned to match the front. Use Rotate to change it.": {},
   "One {0} page, real size": {
     "note": "{0} is a paper size name such as Letter or A4."
   },

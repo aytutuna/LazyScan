@@ -312,6 +312,14 @@ public static class IdCardLayout
     /// <summary>The warning shown when the sides were made smaller to fit the page.</summary>
     public static string NotRealSizeMessage => Loc.T("Too large for the page at real size, so it was made smaller to fit. It is not at real size.");
 
+    /// <summary>The note shown when the back was turned to match the front.</summary>
+    public static string BackTurnedMessage => Loc.T("The back was turned to match the front. Use Rotate to change it.");
+
+    /// <summary>One side is landscape and the other portrait (as they lie now): the back is a quarter turn off. A square side matches either.</summary>
+    public static bool BackNeedsTurn(SizeD front, SizeD back) =>
+        (front.Width > front.Height && back.Height > back.Width)
+        || (front.Height > front.Width && back.Width > back.Height);
+
     /// <summary>
     /// The places of a front <paramref name="front"/> and back <paramref name="back"/> (inches) on
     /// <paramref name="paper"/>: centred across, the front 1 in from the top, the back 0.5 in under

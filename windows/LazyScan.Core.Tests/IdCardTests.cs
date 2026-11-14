@@ -220,6 +220,20 @@ public class IdCardTests
     }
 
     [Fact]
+    public void BackNeedsTurn_OnlyWhenOneSideIsLandscapeAndTheOtherPortrait()
+    {
+        var portrait = new SizeD(Card.Height, Card.Width);
+        Assert.True(IdCardLayout.BackNeedsTurn(Card, portrait));
+        Assert.True(IdCardLayout.BackNeedsTurn(portrait, Card));
+        Assert.False(IdCardLayout.BackNeedsTurn(Card, Card));
+        Assert.False(IdCardLayout.BackNeedsTurn(portrait, portrait));
+        // A square side matches either.
+        var square = new SizeD(2, 2);
+        Assert.False(IdCardLayout.BackNeedsTurn(Card, square));
+        Assert.False(IdCardLayout.BackNeedsTurn(square, portrait));
+    }
+
+    [Fact]
     public void Layout_TooLarge_IsScaledToFit()
     {
         var large = new SizeD(7, 5);

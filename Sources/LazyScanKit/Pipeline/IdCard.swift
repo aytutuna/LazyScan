@@ -315,6 +315,16 @@ public enum IdCardLayout {
     /// The warning shown when the sides were made smaller to fit the page.
     public static var notRealSizeMessage: String { L10n.t("Too large for the page at real size, so it was made smaller to fit. It is not at real size.") }
 
+    /// The note shown when the back was turned to match the front.
+    public static var backTurnedMessage: String { L10n.t("The back was turned to match the front. Use Rotate to change it.") }
+
+    /// One side is landscape and the other portrait (as they lie now): the back is a quarter turn off.
+    /// A square side matches either.
+    public static func backNeedsTurn(front: CGSize, back: CGSize) -> Bool {
+        (front.width > front.height && back.height > back.width)
+            || (front.height > front.width && back.width > back.height)
+    }
+
     /// The places of a front `front` and back `back` (inches) on `paper`: centred across, the front
     /// 1 in from the top, the back 0.5 in under it, both at real size. When they would come closer
     /// than 0.25 in to an edge, both are made smaller by the same factor (`scaledToFit`).

@@ -212,6 +212,18 @@ final class IdCardTests: XCTestCase {
         assertRect(CGRect(x: (8.5 - 2.125) / 2, y: 1.0, width: 2.125, height: 3.370), portrait.front)
     }
 
+    func test_backNeedsTurn_onlyWhenOneSideIsLandscapeAndTheOtherPortrait() {
+        let portrait = CGSize(width: card.height, height: card.width)
+        XCTAssertTrue(IdCardLayout.backNeedsTurn(front: card, back: portrait))
+        XCTAssertTrue(IdCardLayout.backNeedsTurn(front: portrait, back: card))
+        XCTAssertFalse(IdCardLayout.backNeedsTurn(front: card, back: card))
+        XCTAssertFalse(IdCardLayout.backNeedsTurn(front: portrait, back: portrait))
+        // A square side matches either.
+        let square = CGSize(width: 2, height: 2)
+        XCTAssertFalse(IdCardLayout.backNeedsTurn(front: card, back: square))
+        XCTAssertFalse(IdCardLayout.backNeedsTurn(front: square, back: portrait))
+    }
+
     func test_layout_tooLarge_isScaledToFit() {
         let large = CGSize(width: 7, height: 5)
         // Front only: 1 + 5 in fits in 11 − 0.25 in.

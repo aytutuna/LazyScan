@@ -60,6 +60,7 @@ extension AppState {
         let check = note.map { " \($0)" } ?? ""
         if taskFlow?.current?.id == IdCardSteps.reviewStepID {
             statusMessage = (side == .front ? L10n.t("Front scanned. Check the sides, then save.") : L10n.t("Back scanned. Check the sides, then save.")) + check
+            matchIdCardBackToFront()
             openIdCardReview()
         } else {
             statusMessage = L10n.t("Front scanned. Turn the card over where it lies and scan the back, or skip it.") + check
@@ -98,6 +99,24 @@ extension AppState {
         if idCardFront?.id == id { return .front }
         if idCardBack?.id == id { return .back }
         return nil
+    }
+
+    /// Turns the back a quarter turn clockwise when it lies the other way round from the front, and
+    /// says so. Runs as the review opens after a scan, never after the user's own turns.
+    private func matchIdCardBackToFront() {
+        idCardBackTurnedNote = nil
+        guard let front = idCardFront, var back = idCardBack,
+              IdCardLayout.backNeedsTurn(front: Self.idCardTurnedSize(front), back: Self.idCardTurnedSize(back))
+        else { return }
+        back.rotationQuarterTurns = (back.rotationQuarterTurns + 1) % 4
+        idCardBack = back
+        idCardBackTurnedNote = IdCardLayout.backTurnedMessage
+    }
+
+    /// A side's pixel size as it lies now, after the user's turns.
+    private static func idCardTurnedSize(_ photo: DetectedPhoto) -> CGSize {
+        let size = CGSize(width: photo.image.width, height: photo.image.height)
+        return photo.rotationQuarterTurns % 2 == 0 ? size : CGSize(width: size.height, height: size.width)
     }
 
     /// Opens the review of the ID card's sides, once there is a front.
@@ -156,6 +175,7 @@ extension AppState {
         } else if side == .back, var photo = idCardBack {
             photo.rotationQuarterTurns = (photo.rotationQuarterTurns + 1) % 4
             idCardBack = photo
+            idCardBackTurnedNote = nil
         } else {
             return
         }
@@ -170,6 +190,7 @@ extension AppState {
         idCardFrontNote = idCardBackNote
         idCardBack = front
         idCardBackNote = frontNote
+        idCardBackTurnedNote = nil
         statusMessage = L10n.t("Front and back swapped.")
         refreshIdCardPreview()
     }
@@ -180,6 +201,7 @@ extension AppState {
         guard !isBusy, isIdCardFlow, taskFlow != nil else { return }
         taskFlow?.retake(stepID: IdCardSteps.stepID(side))
         setIdCardSide(side, photo: nil, note: nil)
+        idCardBackTurnedNote = nil
         showIdCardReview = false
         idCardPreview = nil
         idCardPreviewRevision += 1
@@ -354,6 +376,7 @@ extension AppState {
         idCardPreview = nil
         idCardLayoutCaption = ""
         idCardSizeWarning = nil
+        idCardBackTurnedNote = nil
         idCardPreviewRevision += 1
         if clearCanvas { resetPageView() }
         if clearCanvas && (overviewImage != nil || lastScanImage != nil) {
