@@ -987,7 +987,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         ICornerModel? cornerModel = null)
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
-        var saved = SettingsStore.Load();
+        var saved = SettingsStore.Load(out var settingsNotice);
         IsFirstRun = saved is null;
         // A task saved last time is still active: its banner comes back with the settings.
         Settings = saved ?? new ScanSettings();
@@ -1014,6 +1014,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         _qrEncoder = qrEncoder ?? new ZXingQrEncoder();
         _cornerModel = cornerModel ?? OnnxCornerModel.Load();
         foreach (var preset in _presetStore.Load()) Presets.Add(preset);
+        // Said once at launch, in the error bar, since the status line is overwritten by the scanner search.
+        var notices = new[] { settingsNotice, _presetStore.LoadNotice }.OfType<StoreLoadNotice>().Select(n => n.Message).ToList();
+        if (notices.Count > 0) ErrorMessage = string.Join("\n\n", notices);
         _renderTimer = new DispatcherTimer(DispatcherPriority.Normal, _dispatcher) { Interval = CanvasRenderDebounce };
         _renderTimer.Tick += (_, _) =>
         {
@@ -3929,7 +3932,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         string trimmed = name.Trim();
         if (trimmed.Length == 0) return;
         Presets.Add(new Preset(trimmed, Settings.Clone()));
-        _presetStore.Save([.. Presets]);
+        if (!_presetStore.Save([.. Presets])) ErrorMessage = Loc.T("The preset “{0}” could not be saved.", trimmed);
         NotifyAll();
     }
 
