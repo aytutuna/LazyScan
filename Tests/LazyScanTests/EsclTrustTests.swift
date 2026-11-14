@@ -233,6 +233,35 @@ final class EsclTrustTests: XCTestCase {
         XCTAssertEqual(entry(reloaded, fingerprint(2))?.addresses, ["192.168.1.30:443", "192.168.1.32:443"])
     }
 
+    func testForgettingACertificateAsksForTrustAgain() throws {
+        let store: EsclTrustStore = makeStore()
+        try store.trust(fingerprint(0), deviceUuid: uuid, authority: "192.168.1.20:443", name: "S")
+        try store.trust(fingerprint(1), deviceUuid: otherUuid, authority: "192.168.1.30:443", name: "Y")
+
+        XCTAssertTrue(store.remove(fingerprint: fingerprint(0)))
+        XCTAssertEqual(fingerprints(store.certificates), [fingerprint(1)])
+        XCTAssertEqual(fingerprints(makeStore().certificates), [fingerprint(1)])
+        XCTAssertEqual(store.check(fingerprint(0), deviceUuid: uuid, authority: "192.168.1.20:443").verdict, .unknown)
+        XCTAssertFalse(store.isPinned(deviceUuid: uuid, authority: "192.168.1.20:443"))
+        XCTAssertEqual(store.check(fingerprint(1), deviceUuid: otherUuid, authority: "192.168.1.30:443").verdict, .trusted)
+
+        XCTAssertTrue(store.remove(fingerprint: fingerprint(7)))
+        XCTAssertEqual(fingerprints(store.certificates), [fingerprint(1)])
+    }
+
+    func testACertificateStaysWhenForgettingCannotBeSaved() throws {
+        let store: EsclTrustStore = makeStore()
+        try store.trust(fingerprint(0), deviceUuid: uuid, authority: "192.168.1.20:443", name: "S")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        try XCTSkipIf(FileManager.default.isWritableFile(atPath: directory.path),
+                      "The tests run with permissions that ignore a read-only folder.")
+        XCTAssertFalse(store.remove(fingerprint: fingerprint(0)))
+        XCTAssertEqual(fingerprints(store.certificates), [fingerprint(0)])
+        XCTAssertEqual(fingerprints(makeStore().certificates), [fingerprint(0)])
+        XCTAssertEqual(store.check(fingerprint(0), deviceUuid: uuid, authority: "192.168.1.20:443").verdict, .trusted)
+    }
+
     func testAnUndecodableTrustFileIsKeptAside() throws {
         try "{ not json".write(to: trustFileURL, atomically: true, encoding: .utf8)
         let store: EsclTrustStore = makeStore()

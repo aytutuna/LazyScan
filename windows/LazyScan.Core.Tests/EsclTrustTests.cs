@@ -220,6 +220,38 @@ public sealed class EsclTrustTests : IDisposable
     }
 
     [Fact]
+    public void ForgettingACertificateAsksForTrustAgain()
+    {
+        var store = new EsclTrustStore(_directory);
+        store.Trust(Fingerprint(0), Uuid, "192.168.1.20:443", "S");
+        store.Trust(Fingerprint(1), OtherUuid, "192.168.1.30:443", "Y");
+
+        Assert.True(store.Remove(Fingerprint(0)));
+        Assert.Equal([Fingerprint(1)], store.Certificates.Select(c => c.Fingerprint));
+        Assert.Equal([Fingerprint(1)], new EsclTrustStore(_directory).Certificates.Select(c => c.Fingerprint));
+        Assert.Equal(EsclTrustVerdict.Unknown, store.Check(Fingerprint(0), Uuid, "192.168.1.20:443", out _));
+        Assert.False(store.IsPinned(Uuid, "192.168.1.20:443"));
+        Assert.Equal(EsclTrustVerdict.Trusted, store.Check(Fingerprint(1), OtherUuid, "192.168.1.30:443", out _));
+
+        Assert.True(store.Remove(Fingerprint(7)));
+        Assert.Equal([Fingerprint(1)], store.Certificates.Select(c => c.Fingerprint));
+    }
+
+    [Fact]
+    public void ACertificateStaysWhenForgettingCannotBeSaved()
+    {
+        string path = Path.Combine(_directory, "escl-trust.json");
+        var store = new EsclTrustStore(_directory);
+        store.Trust(Fingerprint(0), Uuid, "192.168.1.20:443", "S");
+
+        Directory.CreateDirectory(path + ".tmp");
+        Assert.False(store.Remove(Fingerprint(0)));
+        Assert.Equal([Fingerprint(0)], store.Certificates.Select(c => c.Fingerprint));
+        Assert.Equal([Fingerprint(0)], new EsclTrustStore(_directory).Certificates.Select(c => c.Fingerprint));
+        Assert.Equal(EsclTrustVerdict.Trusted, store.Check(Fingerprint(0), Uuid, "192.168.1.20:443", out _));
+    }
+
+    [Fact]
     public void AnUndecodableTrustFileIsKeptAside()
     {
         string path = Path.Combine(_directory, "escl-trust.json");

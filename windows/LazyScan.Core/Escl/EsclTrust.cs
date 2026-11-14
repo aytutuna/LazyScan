@@ -196,6 +196,24 @@ public sealed class EsclTrustStore
         }
     }
 
+    /// <summary>
+    /// Forgets the certificate with <paramref name="fingerprint"/> and saves the file, so the next
+    /// connection to that scanner asks for trust again. False when the file could not be written:
+    /// the certificate stays.
+    /// </summary>
+    public bool Remove(string fingerprint)
+    {
+        lock (_gate)
+        {
+            Reload();
+            var before = _file.Certificates.ToList();
+            if (_file.Certificates.RemoveAll(c => c.Fingerprint == fingerprint) == 0) return true;
+            if (Save()) return true;
+            _file.Certificates = before;
+            return false;
+        }
+    }
+
     /// <summary>The trusted certificates (copies).</summary>
     public IReadOnlyList<EsclTrustedCertificate> Certificates
     {

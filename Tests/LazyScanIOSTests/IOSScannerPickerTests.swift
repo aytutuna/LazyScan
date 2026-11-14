@@ -225,6 +225,25 @@ final class IOSScannerPickerTests: XCTestCase {
     }
 
     @MainActor
+    func test_trustedScanners_listNewestFirst_andForgetRemovesOne() throws {
+        prepare()
+        let trust: EsclTrustStore = EsclTrustStore(directory: folder)
+        try trust.trust("aa", deviceUuid: nil, authority: "192.168.1.50:443", name: "Office")
+        try trust.trust("bb", deviceUuid: nil, authority: "192.168.1.60:443", name: "")
+        let network: IOSNetworkScanners = makeNetwork()
+
+        let listed: [EsclTrustedCertificate] = network.trustedScanners
+        XCTAssertEqual(listed.map { $0.fingerprint }, ["bb", "aa"])
+        XCTAssertEqual(IOSNetworkText.trustedName(listed[0]), "192.168.1.60:443")
+        XCTAssertEqual(IOSNetworkText.trustedName(listed[1]), "Office")
+        XCTAssertTrue(IOSNetworkText.trustedDetail(listed[1]).hasPrefix("192.168.1.50:443"))
+
+        XCTAssertTrue(network.forget("bb"))
+        XCTAssertEqual(network.trustedScanners.map { $0.fingerprint }, ["aa"])
+        XCTAssertEqual(trust.check("bb", deviceUuid: nil, authority: "192.168.1.60:443").verdict, .unknown)
+    }
+
+    @MainActor
     func test_picker_saysItIsLooking_beforeItSaysNoScannerFound() async throws {
         prepare()
         defaults.set(true, forKey: IOSNetworkScanners.explainedKey)

@@ -24,6 +24,9 @@ struct TroubleshooterScreen: View {
     @State private var showsAdd: Bool = false
     @State private var addedID: String?
     @State private var asksAboutCard: Bool = false
+    @State private var trusted: [EsclTrustedCertificate] = []
+    @State private var forgetting: EsclTrustedCertificate?
+    @State private var asksToForget: Bool = false
 
     /// The screen's title, as the Windows window's.
     static var title: String { String(localized: "Why isn't my scanner listed?") }
@@ -47,6 +50,7 @@ struct TroubleshooterScreen: View {
                         }
                     }
                 }
+                TrustedScannersSection(scanners: trusted, canForget: !state.isBusy, onForget: askToForget)
                 if let footer {
                     Section {
                         Text(footer)
@@ -87,12 +91,46 @@ struct TroubleshooterScreen: View {
                         .environmentObject(state)
                 }
             }
+            .confirmationDialog(forgetTitle, isPresented: $asksToForget, titleVisibility: .visible,
+                                presenting: forgetting) { (certificate: EsclTrustedCertificate) in
+                Button(IOSNetworkText.forget, role: .destructive) {
+                    forget(certificate)
+                }
+                .accessibilityIdentifier("trusted.forget.confirm")
+            } message: { (_: EsclTrustedCertificate) in
+                Text(IOSNetworkText.forgetMessage)
+            }
         }
         .modifier(IdCardDiscardQuestion(state: state, asked: $asksAboutCard))
     }
 
     private func reload() {
         snapshot = state.troubleshootSnapshot()
+        trusted = network?.trustedScanners ?? []
+    }
+
+    private var forgetTitle: String {
+        guard let forgetting else { return "" }
+        return IOSNetworkText.forgetTitle(IOSNetworkText.trustedName(forgetting))
+    }
+
+    private func askToForget(_ certificate: EsclTrustedCertificate) {
+        forgetting = certificate
+        asksToForget = true
+    }
+
+    /// Forgets a trusted scanner; one in use stays connected until its next connection.
+    private func forget(_ certificate: EsclTrustedCertificate) {
+        guard let network, !state.isBusy else { return }
+        let forgotten: Bool = network.forget(certificate.fingerprint)
+        if forgotten {
+            footer = nil
+        } else {
+            footer = IOSNetworkText.forgetFailed
+        }
+        withAnimation {
+            reload()
+        }
     }
 
     private func perform(_ action: TroubleshootAction, for check: TroubleshootCheck? = nil) {
@@ -168,6 +206,78 @@ private struct ExplanationSection: View {
     private func continueAfterExplanation() {
         network.continueAfterExplanation()
         onContinue()
+    }
+}
+
+/// The scanners whose certificate was trusted, each with Forget (swipe, long press or VoiceOver). Hidden
+/// while there are none.
+private struct TrustedScannersSection: View {
+    let scanners: [EsclTrustedCertificate]
+    let canForget: Bool
+    let onForget: (EsclTrustedCertificate) -> Void
+
+    var body: some View {
+        if !scanners.isEmpty {
+            Section {
+                ForEach(scanners, id: \.fingerprint) { (scanner: EsclTrustedCertificate) in
+                    TrustedScannerRow(scanner: scanner, canForget: canForget, onForget: onForget)
+                }
+            } header: {
+                Text(IOSNetworkText.trustedTitle)
+            } footer: {
+                Text(IOSNetworkText.trustedFooter)
+            }
+        }
+    }
+}
+
+private struct TrustedScannerRow: View {
+    let scanner: EsclTrustedCertificate
+    let canForget: Bool
+    let onForget: (EsclTrustedCertificate) -> Void
+
+    var body: some View {
+        let name: String = IOSNetworkText.trustedName(scanner)
+        let detail: String = IOSNetworkText.trustedDetail(scanner)
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+            Spacer()
+            Image(systemName: "lock")
+                .foregroundStyle(Color.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(name), \(detail)"))
+        .accessibilityIdentifier("trusted.row.\(scanner.fingerprint)")
+        .accessibilityAction(named: Text(IOSNetworkText.forget)) {
+            if canForget {
+                onForget(scanner)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if canForget {
+                Button(role: .destructive) {
+                    onForget(scanner)
+                } label: {
+                    Label(IOSNetworkText.forget, systemImage: "trash")
+                }
+                .accessibilityIdentifier("trusted.forget")
+            }
+        }
+        .contextMenu {
+            if canForget {
+                Button(role: .destructive) {
+                    onForget(scanner)
+                } label: {
+                    Label(IOSNetworkText.forget, systemImage: "trash")
+                }
+            }
+        }
     }
 }
 

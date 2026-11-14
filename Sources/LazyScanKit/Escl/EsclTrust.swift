@@ -196,6 +196,25 @@ public final class EsclTrustStore: @unchecked Sendable {
         }
     }
 
+    /// Forgets the certificate with `fingerprint` and saves the file, so the next connection to that
+    /// scanner asks for trust again. False when the file could not be written: the certificate stays.
+    @discardableResult
+    public func remove(fingerprint: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        reload()
+        let before: [EsclTrustedCertificate] = file.certificates
+        file.certificates.removeAll(where: { $0.fingerprint == fingerprint })
+        if file.certificates.count == before.count {
+            return true
+        }
+        guard save() else {
+            file.certificates = before
+            return false
+        }
+        return true
+    }
+
     /// The trusted certificates.
     public var certificates: [EsclTrustedCertificate] {
         lock.lock()

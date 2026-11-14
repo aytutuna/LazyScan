@@ -479,6 +479,18 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                          authority: certificate.authority, name: name)
     }
 
+    /// The trusted scanner certificates (the troubleshooter lists them).
+    public var trustedCertificates: [EsclTrustedCertificate] {
+        trust.certificates
+    }
+
+    /// Forgets a trusted certificate, so the next connection to that scanner asks for trust again. False
+    /// when the trust file could not be written.
+    @discardableResult
+    public func forgetCertificate(fingerprint: String) -> Bool {
+        trust.remove(fingerprint: fingerprint)
+    }
+
     // MARK: The device list
 
     /// One entry per scanner: the endpoints given and the discovered ones in discovery order (two with the

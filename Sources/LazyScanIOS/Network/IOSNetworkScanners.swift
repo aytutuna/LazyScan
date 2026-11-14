@@ -51,6 +51,36 @@ public enum IOSNetworkText {
     public static var trustNew: String { String(localized: "Trust the new certificate") }
     public static var notTrusted: String { String(localized: "The scanner was not added, because its certificate was not trusted.") }
 
+    /// The troubleshooter's list of scanners whose certificate was trusted.
+    public static var trustedTitle: String { String(localized: "Trusted scanners") }
+    public static var trustedFooter: String { String(localized: "A trusted scanner connects without asking again. Forget one to be asked next time.") }
+    public static var forget: String { String(localized: "Forget") }
+    public static var forgetMessage: String { String(localized: "The next time you connect to it, Lazy Scan will ask whether to trust it.") }
+    public static var forgetFailed: String { String(localized: "Could not forget it.") }
+
+    /// "Forget Office Brother MFC?"
+    public static func forgetTitle(_ name: String) -> String {
+        String(localized: "Forget \(name)?")
+    }
+
+    /// The row's name: the scanner's name, or its address when the entry has none.
+    public static func trustedName(_ certificate: EsclTrustedCertificate) -> String {
+        certificate.name.isEmpty ? trustedHost(certificate) : certificate.name
+    }
+
+    /// The first address the certificate was seen at ("192.168.1.50:443").
+    public static func trustedHost(_ certificate: EsclTrustedCertificate) -> String {
+        certificate.addresses.first ?? ""
+    }
+
+    /// "192.168.1.50:443 · Trusted Nov 4, 2026"; the address alone when the date is not known.
+    public static func trustedDetail(_ certificate: EsclTrustedCertificate) -> String {
+        let host: String = trustedHost(certificate)
+        guard let date = certificate.trusted else { return host }
+        let day: String = date.formatted(date: .abbreviated, time: .omitted)
+        return String(localized: "\(host) \u{00B7} Trusted \(day)")
+    }
+
     /// "Connecting to 192.168.1.50…"
     public static func connecting(_ address: ScannerAddress) -> String {
         let host: String = "\(address)"
@@ -202,6 +232,22 @@ public final class IOSNetworkScanners: ObservableObject {
     /// A connection was refused for Local Network access (`IOSLocalNetworkProbe`).
     public func reportDenied() {
         backend.discovery?.reportDenied()
+    }
+
+    // MARK: Trusted scanners
+
+    /// The scanners whose certificate is trusted, the newest first.
+    public var trustedScanners: [EsclTrustedCertificate] {
+        backend.trustedCertificates.sorted { (a: EsclTrustedCertificate, b: EsclTrustedCertificate) -> Bool in
+            (a.trusted ?? Date.distantPast) > (b.trusted ?? Date.distantPast)
+        }
+    }
+
+    /// Forgets a trusted scanner, so the next connection to it asks for trust again. False when the trust
+    /// file could not be written.
+    @discardableResult
+    public func forget(_ fingerprint: String) -> Bool {
+        backend.forgetCertificate(fingerprint: fingerprint)
     }
 
     // MARK: A changed certificate
