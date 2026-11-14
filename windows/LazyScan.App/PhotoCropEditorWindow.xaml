@@ -39,7 +39,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Margin="0,0,16,0">
-                <TextBlock Text="{loc:T Adjust crop}" Style="{StaticResource SubtitleText}" TextWrapping="NoWrap" />
+                <TextBlock x:Name="HeaderTitle" Text="{loc:T Adjust crop}" Style="{StaticResource SubtitleText}" TextWrapping="NoWrap" />
                 <DockPanel Margin="0,4,0,0" HorizontalAlignment="Left">
                     <ui:InfoButton DockPanel.Dock="Right" Label="{loc:T keyboard use}" Heading="{loc:T Keyboard}" Margin="4,-4,0,-4"
                                    InfoText="{loc:T Arrow keys move the frame\, Ctrl+arrow keys resize it\, Shift takes bigger steps.}" />
@@ -69,7 +69,7 @@
                     ui:Icon.Glyph="&#xE7A7;" Margin="-11,0,0,0" Click="Reset_Click" IsEnabled="False"
                     ToolTip="{loc:T Go back to the detected crop}" />
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <Button Content="{loc:T Apply}" IsDefault="True" MinWidth="96"
+                <Button x:Name="ApplyButton" Content="{loc:T Apply}" IsDefault="True" MinWidth="96"
                         Style="{StaticResource AccentButtonStyle}" Click="Apply_Click" />
                 <Button Content="{loc:T Cancel}" IsCancel="True" MinWidth="96" Margin="8,0,0,0" />
             </StackPanel>

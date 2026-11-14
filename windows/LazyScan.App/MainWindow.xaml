@@ -1817,8 +1817,14 @@
                             <TextBlock x:Name="ReviewHint" DockPanel.Dock="Top" Style="{StaticResource SecondaryBodyText}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button x:Name="ReviewAddPhotoButton" Style="{StaticResource IconTextButtonStyle}"
+                                        local:Icon.Glyph="&#xE710;" Content="{loc:T Add photo}" MinWidth="120"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        AutomationProperties.Name="{loc:T Add a photo}"
+                                        AutomationProperties.HelpText="{loc:T Opens the scan so you can mark the photo}"
+                                        Visibility="Collapsed" Click="ReviewAddPhoto_Click" />
                                 <Button x:Name="ReviewDiscardButton" Style="{StaticResource IconTextButtonStyle}"
-                                        local:Icon.Glyph="&#xE74D;" Content="{loc:T Discard}" MinWidth="120"
+                                        local:Icon.Glyph="&#xE74D;" Content="{loc:T Discard}" MinWidth="120" Margin="8,0,0,0"
                                         Click="ReviewCancel_Click" />
                                 <Button x:Name="ReviewScanMoreButton" Style="{StaticResource IconTextButtonStyle}"
                                         local:Icon.Glyph="&#xE8FE;" Content="{loc:T Scan more}" MinWidth="120" Margin="8,0,0,0"
@@ -1892,18 +1898,25 @@
                                                         <TextBlock Grid.Row="1" Style="{StaticResource CaptionText}" Text="{Binding PiecesCaption}"
                                                                    Margin="0,6,0,0" Visibility="{Binding IsJoined, Converter={StaticResource BoolToVisibility}}" />
                                                         <DockPanel Grid.Row="3" Margin="0,8,0,0">
-                                                            <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
-                                                                    Content="&#xE7AD;" ToolTip="{loc:T Rotate}"
-                                                                    AutomationProperties.Name="{Binding RotateName}"
-                                                                    Click="ReviewRotate_Click" />
-                                                            <Button DockPanel.Dock="Right" Style="{StaticResource SmallIconButtonStyle}"
-                                                                    Content="&#xE7A8;" ToolTip="{Binding CropTip}" IsEnabled="{Binding CropEnabled}"
-                                                                    ToolTipService.ShowOnDisabled="True"
-                                                                    AutomationProperties.Name="{Binding CropName}"
-                                                                    Click="ReviewCrop_Click" />
-                                                            <CheckBox Content="{loc:T Keep}" IsChecked="{Binding Included}" Click="ReviewKeep_Click"
+                                                            <CheckBox DockPanel.Dock="Left" Content="{loc:T Keep}" IsChecked="{Binding Included}" Click="ReviewKeep_Click"
                                                                       AutomationProperties.Name="{Binding KeepName}"
                                                                       VerticalAlignment="Center" />
+                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                                <Button Style="{StaticResource SmallIconButtonStyle}"
+                                                                        Content="&#xE7A8;" ToolTip="{Binding CropTip}" IsEnabled="{Binding CropEnabled}"
+                                                                        ToolTipService.ShowOnDisabled="True"
+                                                                        AutomationProperties.Name="{Binding CropName}"
+                                                                        Click="ReviewCrop_Click" />
+                                                                <Button Style="{StaticResource SmallIconButtonStyle}"
+                                                                        Content="&#xE8C8;" ToolTip="{loc:T Duplicate}"
+                                                                        Visibility="{Binding DuplicateShown, Converter={StaticResource BoolToVisibility}}"
+                                                                        AutomationProperties.Name="{Binding DuplicateName}"
+                                                                        Click="ReviewDuplicate_Click" />
+                                                                <Button Style="{StaticResource SmallIconButtonStyle}"
+                                                                        Content="&#xE7AD;" ToolTip="{loc:T Rotate}"
+                                                                        AutomationProperties.Name="{Binding RotateName}"
+                                                                        Click="ReviewRotate_Click" />
+                                                            </StackPanel>
                                                         </DockPanel>
                                                         <!-- After the Keep row in the file so Tab reaches it last; Grid.Row puts it above. -->
                                                         <DockPanel Grid.Row="2" Margin="0,8,0,0"

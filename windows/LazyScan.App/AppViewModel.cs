@@ -341,7 +341,7 @@ public sealed class PhotoItem : INotifyPropertyChanged
 
     private void NotifyPosition()
     {
-        foreach (var name in (string[])[nameof(CardName), nameof(KeepName), nameof(CropName), nameof(RotateName), nameof(CanJoin),
+        foreach (var name in (string[])[nameof(CardName), nameof(KeepName), nameof(CropName), nameof(RotateName), nameof(DuplicateName), nameof(DuplicateShown), nameof(CanJoin),
                                         nameof(JoinShown), nameof(SplitShown), nameof(IsJoined), nameof(CropEnabled), nameof(CropTip),
                                         nameof(JoinTip), nameof(PiecesCaption), nameof(SecondThumbnail), nameof(SecondRotationDegrees)])
         {
@@ -360,6 +360,8 @@ public sealed class PhotoItem : INotifyPropertyChanged
     public string KeepName => Loc.T("Keep photo {0}", Number);
     public string CropName => Loc.T("Fix crop of photo {0}", Number);
     public string RotateName => Loc.T("Rotate photo {0} clockwise", Number);
+    public string DuplicateName => Loc.T("Duplicate photo {0}", Number);
+    public bool DuplicateShown => !IsReceipt;
 
     public bool Included
     {
@@ -2767,6 +2769,92 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             return true;
         }
     }
+
+    /// <summary>The scan the photo review was cut from, for adding a photo the detector missed (null once it is gone).</summary>
+    public RgbaImage? ReviewSource => !IsReceiptReview && DetectedPhotos.Count > 0 ? PhotoSource(DetectedPhotos[^1].Photo) : null;
+
+    /// <summary>
+    /// Cuts a photo the detector missed from the review's scan and appends it, kept, at the end.
+    /// Returns false when nothing was added (busy, review closed, or the region is off the scan).
+    /// </summary>
+    public Task<bool> AppendReviewPhoto(DetectedPhotoRegion region)
+    {
+        if (IsBusy || IsRecropPending || ReviewSource is not { } source)
+        {
+            return Task.FromResult(false);
+        }
+        var last = DetectedPhotos[^1].Photo;
+        var batch = DetectedPhotos;
+        bool deskew = Settings.PhotoAutoDeskew;
+        var added = new DetectedPhotoRegion(region.Center, region.Size, region.AngleDegrees);
+        var task = Run();
+        _recropChain = Settled(task);
+        NotifyAll();
+        return task;
+
+        async Task<bool> Run()
+        {
+            StatusMessage = Loc.T("Updating crop…");
+            NotifyAll();
+            (RgbaImage, BitmapSource)? result;
+            try
+            {
+                result = await Task.Run(() =>
+                {
+                    var image = PhotoDetector.ExtractPhoto(source, added, deskew);
+                    return image is null
+                        ? ((RgbaImage, BitmapSource)?)null
+                        : (image, WpfImageCodec.ToThumbnail(image, PhotoItem.ThumbnailMaxSide));
+                });
+            }
+            catch (Exception e)
+            {
+                ErrorMessage = Loc.T("The crop could not be applied: {0}", e.Message);
+                StatusMessage = Loc.T("Ready.");
+                NotifyAll();
+                return false;
+            }
+            if (!ReferenceEquals(batch, DetectedPhotos)) return false;
+            if (result is not { } r)
+            {
+                ErrorMessage = Loc.T("Could not add that photo.");
+                StatusMessage = Loc.T("Ready.");
+                NotifyAll();
+                return false;
+            }
+            var photo = new DetectedPhoto(added, r.Item1, last.Dpi, sourcePageId: last.SourcePageId, colorMode: last.ColorMode);
+            AddReviewItem(new PhotoItem(photo, r.Item2));
+            return true;
+        }
+    }
+
+    /// <summary>Appends a copy of a card, with its crop, turn and thumbnail, so the same region can be cropped twice.</summary>
+    public void DuplicateReviewPhoto(PhotoItem item)
+    {
+        if (IsBusy || IsRecropPending || item.IsJoined) return;
+        var original = item.Photo;
+        var region = new DetectedPhotoRegion(original.Region.Center, original.Region.Size, original.Region.AngleDegrees);
+        var image = new RgbaImage(original.Image.Width, original.Image.Height, (byte[])original.Image.Pixels.Clone());
+        var copy = new DetectedPhoto(region, image, original.Dpi, sourcePageId: original.SourcePageId, colorMode: original.ColorMode)
+        {
+            RotationQuarterTurns = original.RotationQuarterTurns,
+        };
+        AddReviewItem(new PhotoItem(copy, item.Thumbnail), item.Number);
+    }
+
+    private void AddReviewItem(PhotoItem item, int? copiedFrom = null)
+    {
+        DetectedPhotos.Add(item);
+        PhotoItem.Renumber(DetectedPhotos);
+        StatusMessage = copiedFrom is { } number
+            ? Loc.T("Duplicated photo {0} as photo {1}.", number, item.Number)
+            : Loc.T("Added photo {0}.", item.Number);
+        NewReviewPhoto = item;
+        NotifyAll();
+    }
+
+    /// <summary>The card just added, so the review can scroll to it and focus it; the view clears it.</summary>
+    public PhotoItem? NewReviewPhoto { get; set; }
 
     /// <summary>True while a crop correction is still being extracted.</summary>
     public bool IsRecropPending => !_recropChain.IsCompleted;

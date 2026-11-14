@@ -45,10 +45,19 @@ public partial class PhotoCropEditorWindow : Window
     /// axis-aligned bounding box, so the editor edits exactly that box (angle 0) — what you
     /// frame is what you get.
     /// </param>
-    public PhotoCropEditorWindow(RgbaImage source, DetectedPhotoRegion region, bool deskew)
+    /// <param name="adding">
+    /// The region is a starting frame for a photo the detector missed, not an existing crop.
+    /// </param>
+    public PhotoCropEditorWindow(RgbaImage source, DetectedPhotoRegion region, bool deskew, bool adding = false)
     {
         FlowDirection = App.Flow;
         InitializeComponent();
+        if (adding)
+        {
+            Title = HeaderTitle.Text = Loc.T("Add photo");
+            ApplyButton.Content = Loc.T("Add");
+            ResetButton.ToolTip = Loc.T("Go back to the starting crop");
+        }
         _source = source;
         var start = CropGeometry.Copy(region);
         if (!deskew && start.AngleDegrees != 0)

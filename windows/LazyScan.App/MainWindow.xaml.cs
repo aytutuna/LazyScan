@@ -520,6 +520,15 @@ public partial class MainWindow : Window
             ReviewScanMoreButton.IsEnabled = !ViewModel.IsBusy && ViewModel.IsConnected;
             ReviewHint.Visibility = receiptsOnly;
             ReviewHint.Text = Receipts.ScanMoreHint(ViewModel.Settings.Source);
+            ReviewAddPhotoButton.Visibility = receipts ? Visibility.Collapsed : Visibility.Visible;
+            bool hasSource = ViewModel.ReviewSource is not null;
+            ReviewAddPhotoButton.IsEnabled = !ViewModel.IsBusy && hasSource;
+            ReviewAddPhotoButton.ToolTip = hasSource ? Loc.T("Add a photo the scan missed") : Loc.T("The scan is no longer available");
+            if (ViewModel.NewReviewPhoto is { } added)
+            {
+                ViewModel.NewReviewPhoto = null;
+                Dispatcher.BeginInvoke(() => FocusReviewCard(added), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
         }
 
         // The Saved tab re-reads the folder after every save (lazily, once it is visible).
@@ -2996,6 +3005,31 @@ public partial class MainWindow : Window
             e.Handled = true;
             item.RevertDateText();
         }
+    }
+
+    private void ReviewAddPhoto_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsBusy || ViewModel.IsRecropPending || ViewModel.ReviewSource is not { } source) return;
+        double width = source.Width / 2.0, height = source.Height / 2.0;
+        var start = new DetectedPhotoRegion(new PointD(source.Width / 2.0, source.Height / 2.0), new SizeD(width, height), 0);
+        var editor = new PhotoCropEditorWindow(source, start, ViewModel.Settings.PhotoAutoDeskew, adding: true)
+        {
+            Owner = this,
+        };
+        if (editor.ShowDialog() == true) _ = ViewModel.AppendReviewPhoto(editor.Region);
+    }
+
+    private void ReviewDuplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoItem item }) ViewModel.DuplicateReviewPhoto(item);
+    }
+
+    /// <summary>Scrolls the grid to a card just added and puts the keyboard on its Keep box.</summary>
+    private void FocusReviewCard(PhotoItem item)
+    {
+        if (PhotoGrid.ItemContainerGenerator.ContainerFromItem(item) is not FrameworkElement card) return;
+        card.BringIntoView();
+        FindDescendant<CheckBox>(card)?.Focus();
     }
 
     private void ReviewCrop_Click(object sender, RoutedEventArgs e)
