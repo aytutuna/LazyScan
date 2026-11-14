@@ -18,6 +18,7 @@ public sealed class CompanionRouterTests : IDisposable
     private readonly CompanionOutbox _outbox;
     private readonly CompanionRouter _router;
     private PairingSession? _pairing;
+    private Func<Task>? _watchClosed;
 
     public CompanionRouterTests()
     {
@@ -56,7 +57,7 @@ public sealed class CompanionRouterTests : IDisposable
         if (length is not null) list.Add(new("Content-Length", length.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         var head = new HttpRequestHead(method, target, list, length, false);
         var stream = new MemoryStream(body ?? []);
-        return await _router.HandleAsync(new CompanionRequest(head, new CompanionRequestBody(stream, length ?? 0), from ?? Phone),
+        return await _router.HandleAsync(new CompanionRequest(head, new CompanionRequestBody(stream, length ?? 0), from ?? Phone, _watchClosed),
                                          CancellationToken.None);
     }
 
@@ -154,6 +155,55 @@ public sealed class CompanionRouterTests : IDisposable
         };
         var unanswered = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
         Assert.Equal(CompanionErrorCode.Declined, CompanionError.FromJson(unanswered.Body)!.Code);
+    }
+
+    [Fact]
+    public async Task Pair_DeclinesWhenThePhoneClosesTheConnectionDuringTheQuestion()
+    {
+        _pairing = new PairingSession(_now);
+        var asked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool cancelled = false;
+        _watchClosed = () => closed.Task;
+        _router.ApprovePairing = async (_, cancellation) =>
+        {
+            asked.SetResult();
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                throw;
+            }
+            return true;
+        };
+        int paired = 0;
+        _router.DevicePaired += (_, _) => paired++;
+        var pairing = Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
+        await asked.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        closed.SetResult();
+        var response = await pairing.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(CompanionErrorCode.Declined, CompanionError.FromJson(response.Body)!.Code);
+        Assert.True(cancelled);
+        Assert.Empty(_devices.Devices);
+        Assert.Equal(0, paired);
+        Assert.Equal(0, _router.AwaitingApproval);
+    }
+
+    [Fact]
+    public async Task Pair_ForgetsThePhoneWhenItsAnswerCouldNotBeSent()
+    {
+        _pairing = new PairingSession(_now);
+        var response = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
+        Assert.Equal(200, response.Status);
+        Assert.Single(_devices.Devices);
+        PairedDevice? removed = null;
+        _router.DeviceRemoved += (_, device) => removed = device;
+        response.WriteFailed!();
+        Assert.Empty(_devices.Devices);
+        Assert.Equal("phone-0001", removed?.Id);
     }
 
     [Fact]

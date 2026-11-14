@@ -265,8 +265,14 @@ public final class CompanionServer: @unchecked Sendable {
                                         sendContinue: sendContinue) { (maxLength: Int) in
             try await link.receive(maxLength: maxLength, timeout: idle)
         }
-        let response = await router.handle(CompanionRequest(head: head, body: body, remote: remote))
-        try await write(response, to: link)
+        let request = CompanionRequest(head: head, body: body, remote: remote) { await link.untilClosed() }
+        let response = await router.handle(request)
+        do {
+            try await write(response, to: link)
+        } catch {
+            response.onWriteFailed?()
+            throw error
+        }
         // Leave the client its whole send when it is small, so closing does not cut off the answer.
         _ = try? await body.discard(maxBytes: options.maxDiscardBytes)
     }
@@ -402,6 +408,11 @@ private final class CompanionLink: @unchecked Sendable {
                 }
             }
         }
+    }
+
+    /// Returns once the peer has closed or the connection failed; anything it sends meanwhile is dropped.
+    func untilClosed() async {
+        while let chunk = try? await receive(maxLength: 1024, timeout: 86400), !chunk.isEmpty {}
     }
 
     func send(_ data: Data, timeout: TimeInterval) async throws {

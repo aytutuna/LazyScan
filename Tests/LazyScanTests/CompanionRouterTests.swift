@@ -57,6 +57,8 @@ final class CompanionRouterTests: XCTestCase {
         try? FileManager.default.removeItem(at: directory)
     }
 
+    private var watchClosed: (() async -> Void)?
+
     private func send(_ method: String, _ target: String, body: Data? = nil, device: String? = nil, secret: String? = nil,
                       from: NWEndpoint.Host? = nil, headers: [HttpHeader] = []) async -> CompanionResponse {
         var list = [HttpHeader("Host", "192.168.1.20:52731")]
@@ -70,7 +72,7 @@ final class CompanionRouterTests: XCTestCase {
         }
         let head = HttpRequestHead(method: method, target: target, headers: list, contentLength: length, expectsContinue: false)
         let requestBody = CompanionRequestBody(length: length ?? 0, prefix: body ?? Data()) { _ in Data() }
-        return await router.handle(CompanionRequest(head: head, body: requestBody, remote: from ?? phone))
+        return await router.handle(CompanionRequest(head: head, body: requestBody, remote: from ?? phone, watchClosed: watchClosed))
     }
 
     private func pairPhone(_ id: String = "phone-0001") async throws -> String {
@@ -188,6 +190,42 @@ final class CompanionRouterTests: XCTestCase {
         }
         let unanswered = await send("POST", CompanionProtocol.pairPath, body: pairRequest(pairing!.token))
         XCTAssertEqual(code(unanswered), CompanionErrorCode.declined)
+    }
+
+    func testPair_DeclinesWhenThePhoneClosesTheConnectionDuringTheQuestion() async throws {
+        pairing = try PairingSession(opened: now)
+        let (closes, close) = AsyncStream.makeStream(of: Void.self)
+        let asked = Guarded(false)
+        let paired = Guarded(0)
+        watchClosed = {
+            for await _ in closes { break }
+        }
+        router.onDevicePaired = { _ in paired.value += 1 }
+        router.approvePairing = { _ in
+            asked.value = true
+            try? await Task.sleep(nanoseconds: 60_000_000_000)
+            return true
+        }
+        let request = Task { await self.send("POST", CompanionProtocol.pairPath, body: self.pairRequest(self.pairing!.token)) }
+        while !asked.value { try await Task.sleep(nanoseconds: 5_000_000) }
+        close.yield()
+        let response = await request.value
+        XCTAssertEqual(code(response), CompanionErrorCode.declined)
+        XCTAssertTrue(devices.devices.isEmpty)
+        XCTAssertEqual(paired.value, 0)
+        XCTAssertEqual(router.awaitingApproval, 0)
+    }
+
+    func testPair_ForgetsThePhoneWhenItsAnswerCouldNotBeSent() async throws {
+        pairing = try PairingSession(opened: now)
+        let response = await send("POST", CompanionProtocol.pairPath, body: pairRequest(pairing!.token))
+        XCTAssertEqual(response.status, 200)
+        XCTAssertEqual(devices.devices.count, 1)
+        let removed = Guarded<PairedDevice?>(nil)
+        router.onDeviceRemoved = { removed.value = $0 }
+        response.onWriteFailed?()
+        XCTAssertTrue(devices.devices.isEmpty)
+        XCTAssertEqual(removed.value?.id, "phone-0001")
     }
 
     func testPair_CountsEveryTokenCheckUntilItEnds() async throws {

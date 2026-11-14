@@ -81,11 +81,16 @@ public struct CompanionRequest {
     public var head: HttpRequestHead
     public var body: CompanionRequestBody
     public var remote: NWEndpoint.Host
+    /// Returns once the peer has closed the connection. Called only after the whole body is read, since
+    /// it reads from the connection; nil where the connection cannot be watched (tests).
+    public var watchClosed: (() async -> Void)?
 
-    public init(head: HttpRequestHead, body: CompanionRequestBody, remote: NWEndpoint.Host) {
+    public init(head: HttpRequestHead, body: CompanionRequestBody, remote: NWEndpoint.Host,
+                watchClosed: (() async -> Void)? = nil) {
         self.head = head
         self.body = body
         self.remote = remote
+        self.watchClosed = watchClosed
     }
 }
 
@@ -98,6 +103,8 @@ public struct CompanionResponse {
     /// A file to send instead of `body`; the server closes it.
     public let bodyFile: FileHandle?
     public let length: Int64
+    /// Called by the server when sending this response failed.
+    public var onWriteFailed: (() -> Void)?
 
     public static func json(_ status: Int, _ json: String, headers: [HttpHeader] = []) -> CompanionResponse {
         let body = Data(json.utf8)
@@ -276,11 +283,11 @@ public final class CompanionRouter: @unchecked Sendable {
         }
         let name = PairedDeviceStore.cleanName(pair.phoneName)
         pair.phoneName = name.isEmpty ? "Phone" : name
-        return await approveAndPair(pair)
+        return await approveAndPair(pair, watchClosed: request.watchClosed)
     }
 
-    private func approveAndPair(_ pair: PairRequest) async -> CompanionResponse {
-        guard await approve(pair) else { return .error(403, .declined) }
+    private func approveAndPair(_ pair: PairRequest, watchClosed: (() async -> Void)?) async -> CompanionResponse {
+        guard await approve(pair, watchClosed: watchClosed) else { return .error(403, .declined) }
         let secret: String
         do {
             secret = try devices.pair(id: pair.phoneId, name: pair.phoneName, platform: pair.platform,
@@ -290,14 +297,24 @@ public final class CompanionRouter: @unchecked Sendable {
         } catch {
             return .error(500, .serverError)
         }
-        if let device = devices.devices.first(where: { $0.id == pair.phoneId }) { onDevicePaired?(device) }
-        return .json(200, PairResponse(desktopId: devices.desktopId, desktopName: desktopName(), deviceSecret: secret,
-                                       protocolVersion: CompanionProtocol.version,
-                                       syncKey: (try? devices.syncKey(for: pair.phoneId)).map(CompanionProtocol.encodeBase64Url)).toJSON())
+        let device = devices.devices.first(where: { $0.id == pair.phoneId })
+        if let device { onDevicePaired?(device) }
+        var response = CompanionResponse.json(200, PairResponse(desktopId: devices.desktopId, desktopName: desktopName(),
+                                                                deviceSecret: secret, protocolVersion: CompanionProtocol.version,
+                                                                syncKey: (try? devices.syncKey(for: pair.phoneId)).map(CompanionProtocol.encodeBase64Url)).toJSON())
+        // The phone never got its secret, so it does not know this desktop.
+        response.onWriteFailed = { [weak self] in
+            guard let self, self.devices.remove(pair.phoneId) else { return }
+            self.outbox.removeDevice(pair.phoneId)
+            self.inbox.removeDevice(pair.phoneId)
+            if let device { self.onDeviceRemoved?(device) }
+        }
+        return response
     }
 
-    /// The user's answer; false when none came within `approvalTimeout` or the request was cut off.
-    private func approve(_ pair: PairRequest) async -> Bool {
+    /// The user's answer; false when none came within `approvalTimeout`, the request was cut off or the
+    /// phone closed the connection meanwhile.
+    private func approve(_ pair: PairRequest, watchClosed: (() async -> Void)?) async -> Bool {
         let ask = approvePairing
         let timeout = approvalTimeout
         let (answers, answer) = AsyncStream.makeStream(of: Bool.self)
@@ -308,6 +325,12 @@ public final class CompanionRouter: @unchecked Sendable {
             try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0) * 1_000_000_000))
             answer.yield(false)
         }
+        let watcher = watchClosed.map { watch in
+            Task {
+                await watch()
+                answer.yield(false)
+            }
+        }
         var approved = false
         for await value in answers {
             approved = value
@@ -316,6 +339,7 @@ public final class CompanionRouter: @unchecked Sendable {
         answer.finish()
         asking.cancel()
         timer.cancel()
+        watcher?.cancel()
         return approved
     }
 

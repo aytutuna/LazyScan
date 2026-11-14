@@ -108,8 +108,14 @@ public sealed class CompanionRequestBody : Stream
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 }
 
-/// <summary>One request to the companion server: its head, its body and where it came from.</summary>
-public sealed record CompanionRequest(HttpRequestHead Head, CompanionRequestBody Body, IPAddress Remote);
+/// <summary>
+/// One request to the companion server: its head, its body and where it came from.
+/// <paramref name="WatchClosed"/> returns a task that completes once the peer has closed the
+/// connection; it may be called only after the whole body is read, since it reads from the
+/// connection. Null where the connection cannot be watched (tests).
+/// </summary>
+public sealed record CompanionRequest(HttpRequestHead Head, CompanionRequestBody Body, IPAddress Remote,
+                                      Func<Task>? WatchClosed = null);
 
 /// <summary>A response: its status, headers and body (bytes, or a file streamed and then closed).</summary>
 public sealed class CompanionResponse
@@ -130,6 +136,8 @@ public sealed class CompanionResponse
     /// <summary>A file to send instead of <see cref="Body"/>; the server disposes of it.</summary>
     public Stream? BodyStream { get; }
     public long Length { get; }
+    /// <summary>Called by the server when sending this response failed.</summary>
+    public Action? WriteFailed { get; set; }
 
     public static CompanionResponse Json(int status, string json, params KeyValuePair<string, string>[] headers)
     {
@@ -320,7 +328,7 @@ public sealed class CompanionRouter
             }
             string name = PairedDeviceStore.CleanName(pair.PhoneName);
             pair = pair with { PhoneName = name.Length > 0 ? name : "Phone" };
-            return await ApproveAndPairAsync(pair, cancellation).ConfigureAwait(false);
+            return await ApproveAndPairAsync(pair, request.WatchClosed, cancellation).ConfigureAwait(false);
         }
         finally
         {
@@ -329,7 +337,8 @@ public sealed class CompanionRouter
         }
     }
 
-    private async Task<CompanionResponse> ApproveAndPairAsync(PairRequest pair, CancellationToken cancellation)
+    private async Task<CompanionResponse> ApproveAndPairAsync(PairRequest pair, Func<Task>? watchClosed,
+                                                              CancellationToken cancellation)
     {
         bool approved;
         using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
@@ -337,7 +346,18 @@ public sealed class CompanionRouter
             timeout.CancelAfter(ApprovalTimeout);
             try
             {
-                approved = await ApprovePairing(pair, timeout.Token).ConfigureAwait(false);
+                var answer = ApprovePairing(pair, timeout.Token);
+                if (watchClosed is not null)
+                {
+                    var closed = watchClosed();
+                    if (await Task.WhenAny(answer, closed).ConfigureAwait(false) == closed)
+                    {
+                        timeout.Cancel();
+                        await answer.ConfigureAwait(false);
+                        return CompanionResponse.Error(403, CompanionError.Declined);
+                    }
+                }
+                approved = await answer.ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
             {
@@ -358,7 +378,8 @@ public sealed class CompanionRouter
         {
             return CompanionResponse.Error(500, CompanionError.ServerError);
         }
-        if (_devices.Devices.FirstOrDefault(d => d.Id == pair.PhoneId) is { } device) DevicePaired?.Invoke(this, device);
+        var stored = _devices.Devices.FirstOrDefault(d => d.Id == pair.PhoneId);
+        if (stored is not null) DevicePaired?.Invoke(this, stored);
         string? syncKey = null;
         try
         {
@@ -368,8 +389,17 @@ public sealed class CompanionRouter
         {
             // Paired without the sync folder.
         }
-        return CompanionResponse.Json(200, new PairResponse(_devices.DesktopId, DesktopName(), secret, CompanionProtocol.Version,
-                                                            syncKey).ToJson());
+        var response = CompanionResponse.Json(200, new PairResponse(_devices.DesktopId, DesktopName(), secret,
+                                                                    CompanionProtocol.Version, syncKey).ToJson());
+        // The phone never got its secret, so it does not know this desktop.
+        response.WriteFailed = () =>
+        {
+            if (!_devices.Remove(pair.PhoneId)) return;
+            _outbox.RemoveDevice(pair.PhoneId);
+            _inbox.RemoveDevice(pair.PhoneId);
+            if (stored is not null) DeviceRemoved?.Invoke(this, stored);
+        };
+        return response;
     }
 
     private async Task<CompanionResponse> InboxAsync(CompanionRequest request, string packageId, DateTimeOffset now,

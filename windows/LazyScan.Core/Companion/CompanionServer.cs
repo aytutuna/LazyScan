@@ -273,7 +273,8 @@ public sealed class CompanionServer : IAsyncDisposable
         CompanionResponse response;
         try
         {
-            response = await _router.HandleAsync(new CompanionRequest(head, body, remote), stop).ConfigureAwait(false);
+            response = await _router.HandleAsync(new CompanionRequest(head, body, remote, () => WatchClosedAsync(tls, stop)), stop)
+                                    .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not (IOException or OperationCanceledException))
         {
@@ -281,9 +282,31 @@ public sealed class CompanionServer : IAsyncDisposable
             System.Diagnostics.Trace.TraceError($"A companion request failed: {e}");
             response = CompanionResponse.Error(500, CompanionError.ServerError);
         }
-        await WriteAsync(idle, response, stop).ConfigureAwait(false);
+        try
+        {
+            await WriteAsync(idle, response, stop).ConfigureAwait(false);
+        }
+        catch
+        {
+            response.WriteFailed?.Invoke();
+            throw;
+        }
         // Leave the client its whole send when it is small, so closing does not cut off the answer.
         await body.DiscardAsync(_options.MaxDiscardBytes, stop).ConfigureAwait(false);
+    }
+
+    /// <summary>Completes once the peer has closed or the connection failed; anything it sends meanwhile is dropped.</summary>
+    private static async Task WatchClosedAsync(Stream tls, CancellationToken stop)
+    {
+        var buffer = new byte[1024];
+        try
+        {
+            while (await tls.ReadAsync(buffer, stop).ConfigureAwait(false) > 0) { }
+        }
+        catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException
+                                      or InvalidOperationException)
+        {
+        }
     }
 
     private static async Task WriteAsync(Stream stream, CompanionResponse response, CancellationToken stop)
