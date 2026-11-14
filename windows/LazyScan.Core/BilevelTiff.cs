@@ -23,10 +23,14 @@ public static class BilevelTiff
         format is OutputFormat.Tiff or OutputFormat.TiffPages && mode == ColorMode.BlackWhite;
 
     /// <summary>A one-page file.</summary>
-    public static byte[] Make(RgbaImage image, int dpi) => Make([new BilevelTiffPage(image, dpi)]);
+    public static byte[] Make(RgbaImage image, int dpi, PhotoDetails? details = null) =>
+        Make([new BilevelTiffPage(image, dpi)], details);
 
-    /// <summary>A file with every page, in order.</summary>
-    public static byte[] Make(IReadOnlyList<BilevelTiffPage> pages)
+    /// <summary>
+    /// A file with every page, in order. <paramref name="details"/> adds ImageDescription and an Exif
+    /// directory with DateTimeOriginal to every page's directory, each only when it has a value.
+    /// </summary>
+    public static byte[] Make(IReadOnlyList<BilevelTiffPage> pages, PhotoDetails? details = null)
     {
         if (pages.Count == 0) throw new ArgumentException("A TIFF needs at least one page.", nameof(pages));
         using var output = new MemoryStream();
@@ -34,6 +38,9 @@ public static class BilevelTiff
         output.Write(new byte[4]); // the first directory's offset, filled in below
         long linkOffset = 4;
         bool multiPage = pages.Count > 1;
+        // Zero-terminated, and at least 5 bytes so that the value is an offset, not stored in the entry.
+        byte[]? caption = details?.ExifCaption is { } captionText ? Terminated(captionText, 5) : null;
+        byte[]? date = details?.ExifDate is { } dateText ? Terminated(dateText, 0) : null;
         var link = new byte[4];
         for (int index = 0; index < pages.Count; index++)
         {
@@ -50,6 +57,7 @@ public static class BilevelTiff
             entries.Add((258, Short, 1, 1));                         // BitsPerSample
             entries.Add((259, Short, 1, 4));                         // Compression: CCITT T.6
             entries.Add((262, Short, 1, 0));                         // PhotometricInterpretation: WhiteIsZero
+            if (caption != null) entries.Add((270, Ascii, (uint)caption.Length, 0)); // ImageDescription (offset after the directory)
             entries.Add((273, Long, 1, checked((uint)stripOffset))); // StripOffsets
             entries.Add((277, Short, 1, 1));                         // SamplesPerPixel
             entries.Add((278, Long, 1, (uint)page.Image.Height));    // RowsPerStrip: one strip
@@ -63,9 +71,14 @@ public static class BilevelTiff
                 // PageNumber: two shorts, this page (from 0) and the page count.
                 entries.Add((297, Short, 2, (uint)index | ((uint)pages.Count << 16)));
             }
+            if (date != null) entries.Add((34665, Long, 1, 0)); // Exif directory (offset after the directory)
 
             long directory = output.Position;
             long resolution = directory + 2 + entries.Count * 12 + 4; // two rationals after the directory
+            // Then the description (padded to a word), the date and a one-entry Exif directory.
+            long descriptionOffset = resolution + 16;
+            long dateOffset = descriptionOffset + ((caption?.Length ?? 0) + 1) / 2 * 2;
+            long exifOffset = dateOffset + 20;
             var bytes = new byte[2 + entries.Count * 12 + 4 + 16];
             BinaryPrimitives.WriteUInt16LittleEndian(bytes, (ushort)entries.Count);
             for (int e = 0; e < entries.Count; e++)
@@ -76,6 +89,8 @@ public static class BilevelTiff
                 BinaryPrimitives.WriteUInt16LittleEndian(entry[2..], type);
                 BinaryPrimitives.WriteUInt32LittleEndian(entry[4..], count);
                 if (type == Rational) value = checked((uint)(resolution + (tag == 282 ? 0 : 8)));
+                if (tag == 270) value = checked((uint)descriptionOffset);
+                if (tag == 34665) value = checked((uint)exifOffset);
                 if (type == Short && count == 1) BinaryPrimitives.WriteUInt16LittleEndian(entry[8..], (ushort)value);
                 else BinaryPrimitives.WriteUInt32LittleEndian(entry[8..], value); // a long, two shorts, an offset
             }
@@ -87,6 +102,22 @@ public static class BilevelTiff
             BinaryPrimitives.WriteUInt32LittleEndian(rationals[8..], dpi);
             BinaryPrimitives.WriteUInt32LittleEndian(rationals[12..], 1);
             output.Write(bytes);
+            if (caption != null)
+            {
+                output.Write(caption);
+                if (caption.Length % 2 == 1) output.WriteByte(0);
+            }
+            if (date != null)
+            {
+                output.Write(date);
+                var exif = new byte[18];
+                BinaryPrimitives.WriteUInt16LittleEndian(exif, 1);
+                BinaryPrimitives.WriteUInt16LittleEndian(exif.AsSpan(2), 36867); // DateTimeOriginal
+                BinaryPrimitives.WriteUInt16LittleEndian(exif.AsSpan(4), Ascii);
+                BinaryPrimitives.WriteUInt32LittleEndian(exif.AsSpan(6), (uint)date.Length);
+                BinaryPrimitives.WriteUInt32LittleEndian(exif.AsSpan(10), checked((uint)dateOffset));
+                output.Write(exif);
+            }
 
             long end = output.Position;
             output.Position = linkOffset;
@@ -98,5 +129,13 @@ public static class BilevelTiff
         return output.ToArray();
     }
 
-    private const ushort Short = 3, Long = 4, Rational = 5;
+    private static byte[] Terminated(string text, int minLength)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        var result = new byte[Math.Max(bytes.Length + 1, minLength)];
+        bytes.CopyTo(result, 0);
+        return result;
+    }
+
+    private const ushort Ascii = 2, Short = 3, Long = 4, Rational = 5;
 }

@@ -26,17 +26,21 @@ public enum BilevelTIFF {
     }
 
     /// A one-page file.
-    public static func make(_ image: RgbaImage, dpi: Int) -> Data {
-        make([BilevelTIFFPage(image: image, dpi: dpi)])
+    public static func make(_ image: RgbaImage, dpi: Int, details: PhotoDetails = .none) -> Data {
+        make([BilevelTIFFPage(image: image, dpi: dpi)], details: details)
     }
 
     /// A file with every page, in order. `pages` must not be empty (a TIFF needs a page; C# throws
-    /// ArgumentException there).
-    public static func make(_ pages: [BilevelTIFFPage]) -> Data {
+    /// ArgumentException there). `details` adds ImageDescription and an Exif directory with
+    /// DateTimeOriginal to every page's directory, each only when it has a value.
+    public static func make(_ pages: [BilevelTIFFPage], details: PhotoDetails = .none) -> Data {
         precondition(!pages.isEmpty, "A TIFF needs at least one page.")
         var output: [UInt8] = [0x49, 0x49, 0x2A, 0x00, 0, 0, 0, 0] // "II*\0", then the first directory's offset
         var linkOffset = 4
         let multiPage = pages.count > 1
+        // Zero-terminated, and at least 5 bytes so that the value is an offset, not stored in the entry.
+        let caption = details.exifCaption.map { Array($0.utf8) + [UInt8](repeating: 0, count: max(1, 5 - $0.utf8.count)) }
+        let date = details.exifDate.map { Array($0.utf8) + [0] }
         for index in 0..<pages.count {
             let page = pages[index]
             let strip = CCITTG4Encoder.encode(page.image)
@@ -51,6 +55,7 @@ public enum BilevelTIFF {
             entries.append(Entry(tag: 258, type: short, count: 1, value: 1))                 // BitsPerSample
             entries.append(Entry(tag: 259, type: short, count: 1, value: 4))                 // Compression: CCITT T.6
             entries.append(Entry(tag: 262, type: short, count: 1, value: 0))                 // PhotometricInterpretation: WhiteIsZero
+            if let caption { entries.append(Entry(tag: 270, type: ascii, count: caption.count, value: 0)) } // ImageDescription (offset after the directory)
             entries.append(Entry(tag: 273, type: long, count: 1, value: stripOffset))        // StripOffsets
             entries.append(Entry(tag: 277, type: short, count: 1, value: 1))                 // SamplesPerPixel
             entries.append(Entry(tag: 278, type: long, count: 1, value: page.image.height))  // RowsPerStrip: one strip
@@ -64,9 +69,14 @@ public enum BilevelTIFF {
                 let pageNumber = index | (pages.count << 16)
                 entries.append(Entry(tag: 297, type: short, count: 2, value: pageNumber))
             }
+            if date != nil { entries.append(Entry(tag: 34665, type: long, count: 1, value: 0)) } // Exif directory (offset after the directory)
 
             let directory = output.count
             let resolution = directory + 2 + entries.count * 12 + 4 // two rationals after the directory
+            // Then the description (padded to a word), the date and a one-entry Exif directory.
+            let descriptionOffset = resolution + 16
+            let dateOffset = descriptionOffset + ((caption?.count ?? 0) + 1) / 2 * 2
+            let exifOffset = dateOffset + 20
             appendUInt16(&output, entries.count)
             for entry in entries {
                 appendUInt16(&output, entry.tag)
@@ -74,6 +84,8 @@ public enum BilevelTIFF {
                 appendUInt32(&output, entry.count)
                 var value = entry.value
                 if entry.type == rational { value = resolution + (entry.tag == 282 ? 0 : 8) }
+                if entry.tag == 270 { value = descriptionOffset }
+                if entry.tag == 34665 { value = exifOffset }
                 if entry.type == short && entry.count == 1 {
                     appendUInt16(&output, value)
                     appendUInt16(&output, 0)
@@ -88,6 +100,19 @@ public enum BilevelTIFF {
             appendUInt32(&output, 1)
             appendUInt32(&output, dpi)
             appendUInt32(&output, 1)
+            if let caption {
+                output.append(contentsOf: caption)
+                if caption.count % 2 == 1 { output.append(0) }
+            }
+            if let date {
+                output.append(contentsOf: date)
+                appendUInt16(&output, 1)
+                appendUInt16(&output, 36867) // DateTimeOriginal
+                appendUInt16(&output, ascii)
+                appendUInt32(&output, date.count)
+                appendUInt32(&output, dateOffset)
+                appendUInt32(&output, 0)
+            }
 
             writeUInt32(&output, at: linkOffset, directory)
             linkOffset = directory + 2 + entries.count * 12
@@ -95,6 +120,7 @@ public enum BilevelTIFF {
         return Data(output)
     }
 
+    private static let ascii = 2
     private static let short = 3
     private static let long = 4
     private static let rational = 5

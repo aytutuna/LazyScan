@@ -100,7 +100,7 @@ public static class WpfImageCodec
         SaveErrors.Describe(e, Path.GetDirectoryName(Path.GetFullPath(path))!);
 
     private static BitmapEncoder CreateEncoder(RgbaImage image, OutputFormat format, int dpi, double jpegQuality,
-                                               ColorMode colorMode = ColorMode.Color)
+                                               ColorMode colorMode = ColorMode.Color, PhotoDetails? details = null)
     {
         BitmapEncoder encoder = format switch
         {
@@ -116,8 +116,30 @@ public static class WpfImageCodec
         if (colorMode == ColorMode.BlackWhite && format == OutputFormat.Png) frame = BilevelWithDpi(image, dpi);
         else if (colorMode != ColorMode.Color) frame = GrayWithDpi(image, dpi);
         else frame = WithDpi(image, dpi);
-        encoder.Frames.Add(BitmapFrame.Create(frame));
+        encoder.Frames.Add(BitmapFrame.Create(frame, null, Metadata(format, details), null));
         return encoder;
+    }
+
+    /// <summary>
+    /// EXIF DateTimeOriginal and ImageDescription for jpeg and tiff; WIC's PNG encoder has no EXIF, so a
+    /// png gets the Creation Time and Description text chunks. Null when <paramref name="details"/> has nothing.
+    /// </summary>
+    private static BitmapMetadata? Metadata(OutputFormat format, PhotoDetails? details)
+    {
+        string? date = details?.ExifDate, caption = details?.ExifCaption;
+        if (date == null && caption == null) return null;
+        if (format == OutputFormat.Png)
+        {
+            var text = new BitmapMetadata("png");
+            if (caption != null) text.SetQuery("/tEXt/{str=Description}", caption);
+            if (date != null) text.SetQuery((caption == null ? "/tEXt" : "/[1]tEXt") + "/{str=Creation Time}", date);
+            return text;
+        }
+        string ifd = format == OutputFormat.Jpeg ? "/app1/ifd" : "/ifd";
+        var exif = new BitmapMetadata(format == OutputFormat.Jpeg ? "jpg" : "tiff");
+        if (caption != null) exif.SetQuery(ifd + "/{ushort=270}", caption);
+        if (date != null) exif.SetQuery(ifd + "/exif/{ushort=36867}", date);
+        return exif;
     }
 
     /// <summary>
@@ -127,19 +149,21 @@ public static class WpfImageCodec
     /// or interrupted write never leaves a truncated file under the final name.
     /// Returns the path actually written. A black &amp; white page (<paramref name="colorMode"/>) saved
     /// as TIFF is a 1-bit CCITT G4 file (<see cref="BilevelTiff"/>); everything else is written by WIC.
+    /// <paramref name="details"/> (date taken and caption) is written as EXIF tags when it has any.
     /// </summary>
     public static string SaveAsNew(RgbaImage image, string path, OutputFormat format, int dpi,
-                                   double jpegQuality, ColorMode colorMode = ColorMode.Color)
+                                   double jpegQuality, ColorMode colorMode = ColorMode.Color,
+                                   PhotoDetails? details = null)
     {
         Action<Stream> write;
         if (BilevelTiff.Applies(format, colorMode))
         {
-            byte[] tiff = BilevelTiff.Make(image, dpi);
+            byte[] tiff = BilevelTiff.Make(image, dpi, details);
             write = stream => stream.Write(tiff);
         }
         else
         {
-            write = CreateEncoder(image, format, dpi, jpegQuality, colorMode).Save;
+            write = CreateEncoder(image, format, dpi, jpegQuality, colorMode, details).Save;
         }
         return WriteNew(path, write);
     }

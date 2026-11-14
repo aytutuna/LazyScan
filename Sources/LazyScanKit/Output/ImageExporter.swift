@@ -4,7 +4,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 public enum ImageExporter {
-    /// Write jpeg/png/tiff with DPI metadata. Throws ScanError.unsupported for .pdf, .text and .word.
+    /// Write jpeg/png/tiff with DPI metadata, and `details` (the date taken and a caption) as EXIF
+    /// DateTimeOriginal and ImageDescription when it has any. Throws ScanError.unsupported for .pdf, .text and .word.
     /// A black & white page (`colorMode`, the mode it was scanned in) saved as TIFF is a 1-bit CCITT
     /// G4 file (`BilevelTIFF`); everything else is written by ImageIO, TIFFs as LZW. Twin of C#
     /// `WpfImageCodec.SaveAsNew`'s choice.
@@ -13,15 +14,17 @@ public enum ImageExporter {
     /// and nothing is replaced; returns where the file went.
     @discardableResult
     public static func write(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                             colorMode: ColorMode = .color, keepingExisting: Bool = false) throws -> URL {
+                             colorMode: ColorMode = .color, details: PhotoDetails = .none,
+                             keepingExisting: Bool = false) throws -> URL {
         guard keepingExisting else {
-            try encode(image, to: url, format: format, dpi: dpi, jpegQuality: jpegQuality, colorMode: colorMode)
+            try encode(image, to: url, format: format, dpi: dpi, jpegQuality: jpegQuality, colorMode: colorMode,
+                       details: details)
             return url
         }
         let tmp = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
         do {
             try encode(image, to: tmp, format: format, dpi: dpi, jpegQuality: jpegQuality, colorMode: colorMode,
-                       shownAs: url)
+                       details: details, shownAs: url)
             return try NamingTemplate.moveToFreeURL(tmp, to: url)
         } catch {
             try? FileManager.default.removeItem(at: tmp)
@@ -30,7 +33,7 @@ public enum ImageExporter {
     }
 
     private static func encode(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                               colorMode: ColorMode, shownAs: URL? = nil) throws {
+                               colorMode: ColorMode, details: PhotoDetails, shownAs: URL? = nil) throws {
         let shown = shownAs ?? url
         let fileName = shown.lastPathComponent
         let folder = shown.deletingLastPathComponent()
@@ -48,7 +51,7 @@ public enum ImageExporter {
                 throw ScanError.exportFailed(L10n.t("Could not read the page to write {0}.", fileName))
             }
             do {
-                try BilevelTIFF.make(pixels, dpi: dpi).write(to: url, options: .atomic)
+                try BilevelTIFF.make(pixels, dpi: dpi, details: details).write(to: url, options: .atomic)
             } catch {
                 throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
             }
@@ -65,15 +68,27 @@ public enum ImageExporter {
             kCGImagePropertyDPIWidth: dpi,
             kCGImagePropertyDPIHeight: dpi,
         ]
+        var tiff: [CFString: Any] = [:]
         switch format {
         case .jpeg:
             properties[kCGImageDestinationLossyCompressionQuality] = jpegQuality
         case .tiff, .tiffPages:
             // 5 = LZW compression.
-            properties[kCGImagePropertyTIFFDictionary] = [kCGImagePropertyTIFFCompression: 5]
+            tiff[kCGImagePropertyTIFFCompression] = 5
         case .png, .pdf, .text, .word:
             break
         }
+        var png: [CFString: Any] = [:]
+        if let date = details.exifDate {
+            properties[kCGImagePropertyExifDictionary] = [kCGImagePropertyExifDateTimeOriginal: date]
+            png[kCGImagePropertyPNGCreationTime] = date
+        }
+        if let caption = details.exifCaption {
+            tiff[kCGImagePropertyTIFFImageDescription] = caption
+            png[kCGImagePropertyPNGDescription] = caption
+        }
+        if format == .png && !png.isEmpty { properties[kCGImagePropertyPNGDictionary] = png }
+        if !tiff.isEmpty { properties[kCGImagePropertyTIFFDictionary] = tiff }
 
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else {

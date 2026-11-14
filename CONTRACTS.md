@@ -3203,11 +3203,19 @@ public enum ImageExporter {
     /// A black & white page (`colorMode`, the mode it was scanned in) saved as TIFF is a 1-bit CCITT
     /// G4 file (`BilevelTIFF.make`); every other TIFF is LZW (ImageIO). `.tiffPages` is written as `.tiff`
     /// (a queue's one file is `AppState.writeTIFFAtomically`).
+    /// With `details` (`PhotoDetails`: year, optional month and day, caption) the file gets EXIF
+    /// DateTimeOriginal ("yyyy:MM:dd 00:00:00"; a month or day that is missing or out of range is 1; no
+    /// four-digit year, no date) and ImageDescription (the trimmed caption; blank, none). A PNG also gets
+    /// the Creation Time and Description text chunks. Empty details write no tags. A black & white TIFF gets both tags from
+    /// `BilevelTIFF.make(_:dpi:details:)`, an ImageDescription entry and an Exif directory with the date.
+    /// Windows writes the same tags through `WpfImageCodec.SaveAsNew(..., details:)`; WIC's PNG encoder has
+    /// no EXIF, so a PNG there gets only the text chunks.
     /// With `keepingExisting` the image goes to a hidden temp file, is moved to `url` or the next free
     /// name, and that name is returned.
     @discardableResult
     public static func write(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                             colorMode: ColorMode = .color, keepingExisting: Bool = false) throws -> URL
+                             colorMode: ColorMode = .color, details: PhotoDetails = .none,
+                             keepingExisting: Bool = false) throws -> URL
 }
 ```
 
