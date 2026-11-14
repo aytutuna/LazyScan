@@ -38,12 +38,12 @@ final class MacStoreShotsTests: XCTestCase {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    /// The public-domain scans the website shows, read from site/assets/demo in the repository.
+    /// The public-domain scans the website shows, read from store/demo in the repository.
     private func demoPages() throws -> [ScannedPage] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent()
         return try ["document", "faded-photo", "bed"].map { name in
-            let url = root.appendingPathComponent("site/assets/demo/\(name).jpg")
+            let url = root.appendingPathComponent("store/demo/\(name).jpg")
             let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil), "\(url.path) is missing")
             let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
             return ScannedPage(image: image, dpi: 300, colorMode: .color)
