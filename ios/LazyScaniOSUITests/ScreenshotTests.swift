@@ -648,6 +648,9 @@ final class ScreenshotTests: XCTestCase {
             shot("14-spread")
             if tapIfThere(app, "spread.split", for: "14-spread") {
                 waitUntilGone(cut)
+                if tapIfThere(app, "pages.done", for: "14-spread-pages-closed") {
+                    waitUntilGone(element(app, "pages.done"))
+                }
             }
         } else {
             shot("skipped-14-spread")

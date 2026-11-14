@@ -58,6 +58,8 @@ struct ScanScreen: View {
     let picker: IOSScannerPickerModel
     @Binding var cover: ScanCover?
     @Binding var spreadEditor: SpreadEditorSource?
+    /// Counts the split sheet's closings, so the page strip it was opened from can come back.
+    var spreadClosed: Int = 0
     /// The iPad's sidebar lists the scanners and the tasks, so the Scanner options only name the source and
     /// the top row is left out.
     var pickerInSidebar: Bool = false
@@ -83,6 +85,8 @@ struct ScanScreen: View {
     @State private var pagesShown: Bool = false
     /// A book page whose spread is split again once the page strip's sheet has closed.
     @State private var spreadAfterPages: UUID?
+    /// The split sheet came from the page strip, which opens again once the sheet has closed.
+    @State private var reopenPages: Bool = false
     @State private var savesAfterPages: Bool = false
     /// The option group open in a sheet.
     @State private var openGroup: ScanOptionGroup?
@@ -309,6 +313,12 @@ struct ScanScreen: View {
                     openGroup = nil
                 }
             }
+            .onChange(of: spreadClosed) { (_: Int, _: Int) in
+                if reopenPages {
+                    reopenPages = false
+                    pagesShown = true
+                }
+            }
             .onChange(of: importer.isImporting) { (_: Bool, importing: Bool) in
                 // The root's corner editor cannot show over a sheet (files opened in the app, the companion);
                 // a spread's split can be started again from the page strip.
@@ -317,6 +327,7 @@ struct ScanScreen: View {
                     pagesShown = false
                     picksPDF = false
                     spreadEditor = nil
+                    reopenPages = false
                 } else if !state.copyPages.isEmpty {
                     showReview(true, as: .copy)
                 }
@@ -1212,6 +1223,7 @@ struct ScanScreen: View {
         }
         guard let pageID = spreadAfterPages else { return }
         spreadAfterPages = nil
+        reopenPages = true
         openSpreadEditor(pageID)
     }
 
@@ -1272,10 +1284,17 @@ struct ScanScreen: View {
 
     /// The split sheet for the spread the page was cut from, once its picture is read.
     private func openSpreadEditor(_ pageID: UUID) {
-        guard !state.isBusy else { return }
+        guard !state.isBusy else {
+            reopenPages = false
+            return
+        }
         let appState: AppState = state
         Task { @MainActor in
-            spreadEditor = await appState.spreadEditor(for: pageID)
+            let editor: SpreadEditorSource? = await appState.spreadEditor(for: pageID)
+            if editor == nil {
+                reopenPages = false
+            }
+            spreadEditor = editor
         }
     }
 
@@ -2240,10 +2259,11 @@ struct ScanCovers: ViewModifier {
     @ObservedObject var state: AppState
     @Binding var cover: ScanCover?
     @Binding var spreadEditor: SpreadEditorSource?
+    @Binding var spreadClosed: Int
 
     func body(content: Content) -> some View {
         content
-            .sheet(item: $spreadEditor) { (source: SpreadEditorSource) in
+            .sheet(item: $spreadEditor, onDismiss: spreadDismissed) { (source: SpreadEditorSource) in
                 SpreadSplitSheet(source: source, onClose: closeSpreadEditor)
                     .environmentObject(state)
             }
@@ -2271,6 +2291,10 @@ struct ScanCovers: ViewModifier {
 
     private func closeSpreadEditor() {
         spreadEditor = nil
+    }
+
+    private func spreadDismissed() {
+        spreadClosed += 1
     }
 }
 #endif

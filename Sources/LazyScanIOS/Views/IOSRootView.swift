@@ -47,6 +47,7 @@ public struct IOSRootView: View {
     @State private var detail: IOSDetail = IOSDetail.start
     @State private var scanCover: ScanCover?
     @State private var spreadEditor: SpreadEditorSource?
+    @State private var spreadClosed: Int = 0
     @State private var columns: NavigationSplitViewVisibility = NavigationSplitViewVisibility.all
     @State private var started: Bool = false
     @StateObject private var lock: IOSAppLock = IOSAppLock()
@@ -166,7 +167,7 @@ public struct IOSRootView: View {
             }
         }
         .modifier(FileActionPresenters(fileActions: fileActions, state: state))
-        .modifier(ScanCovers(state: state, cover: $scanCover, spreadEditor: $spreadEditor))
+        .modifier(ScanCovers(state: state, cover: $scanCover, spreadEditor: $spreadEditor, spreadClosed: $spreadClosed))
         .overlay {
             if cameraIntroDue && showsScanner {
                 CameraIntroCard(onContinue: continueToCamera, onScanner: useScanner, onNotNow: skipCamera)
@@ -191,7 +192,7 @@ public struct IOSRootView: View {
     /// library so its shortcuts (Save, the shutter, Options) stay quiet.
     private var stackLayout: some View {
         NavigationStack {
-            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, companion: companion,
+            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, spreadClosed: spreadClosed, companion: companion,
                        onOpenLibrary: openLibrary, waitsForIntro: !started || cameraIntroDue || cameraAllowPending,
                        allowPending: cameraAllowPending, onAllow: allowCamera, rests: cameraRests)
         }
@@ -223,7 +224,8 @@ public struct IOSRootView: View {
     @ViewBuilder
     private var splitDetail: some View {
         if showsScanner {
-            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, pickerInSidebar: true,
+            ScanScreen(picker: picker, cover: $scanCover, spreadEditor: $spreadEditor, spreadClosed: spreadClosed,
+                       pickerInSidebar: true,
                        companion: companion, waitsForIntro: !started || cameraIntroDue || cameraAllowPending,
                        allowPending: cameraAllowPending, onAllow: allowCamera, rests: cameraRests)
         } else {
