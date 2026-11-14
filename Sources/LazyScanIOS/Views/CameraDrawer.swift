@@ -275,7 +275,7 @@ private struct StraightenToggle: View {
     }
 }
 
-/// The filter new pages get on the camera tab (Original, Enhanced, Grayscale, B&W; `IOSShell.drawerFilter`,
+/// The filter new pages get on the camera tab (Original, Enhanced, Whiteboard, Grayscale, B&W; `IOSShell.drawerFilter`,
 /// `settingDrawerFilter`): the drawer's Filter group and the Look page are two places for the one setting.
 struct CaptureFilterPicker: View {
     @EnvironmentObject private var state: AppState
@@ -311,7 +311,7 @@ private struct DrawerCaption: ViewModifier {
     }
 }
 
-/// The drawer's Colour group: on the camera tab the filter new pages get (Original, Enhanced, Grayscale, B&W)
+/// The drawer's Colour group: on the camera tab the filter new pages get (Original, Enhanced, Whiteboard, Grayscale, B&W)
 /// for the kinds that collect pages, else the colour mode, and for Photos whether faded colours are restored.
 private struct ColourDrawer: View {
     @EnvironmentObject private var state: AppState

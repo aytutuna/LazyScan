@@ -290,6 +290,43 @@ public class DocumentEnhancerTests
     }
 
     [Fact]
+    public void AWhiteboardIsEvenedOutAndItsPrintIsNotStretchedToBlack()
+    {
+        var page = EnhancerPages.Shadowed();
+        var board = DocumentEnhancer.Enhance(page, DocumentEnhanceMode.Whiteboard);
+        Assert.Equal(DocumentEnhanceMode.Whiteboard, board.Mode);
+        Assert.Equal((page.Width, page.Height), (board.Image.Width, board.Image.Height));
+        Assert.True(Lumas(board.Image, 0).Min >= 245);
+        Assert.True(Lumas(board.Image, 1).Min > 30);
+        Assert.True(Lumas(DocumentEnhancer.Enhance(page, DocumentEnhanceMode.Color).Image, 1).Max <= 10);
+    }
+
+    [Fact]
+    public void AWhiteboardPushesItsColorsAwayFromGray()
+    {
+        // A white board with a pale red mark: the mark's channels end up further apart than the flattened ones.
+        var pixels = new byte[64 * 64 * 4];
+        for (int y = 0; y < 64; y++)
+        {
+            for (int x = 0; x < 64; x++)
+            {
+                bool mark = x >= 22 && x < 42 && y >= 22 && y < 42;
+                int i = (y * 64 + x) * 4;
+                pixels[i] = (byte)(mark ? 150 : 230);
+                pixels[i + 1] = (byte)(mark ? 130 : 230);
+                pixels[i + 2] = (byte)(mark ? 130 : 230);
+                pixels[i + 3] = 255;
+            }
+        }
+        var board = DocumentEnhancer.Enhance(new RgbaImage(64, 64, pixels), DocumentEnhanceMode.Whiteboard).Image;
+        int mid = (32 * 64 + 32) * 4;
+        int chroma = board.Pixels[mid] - board.Pixels[mid + 1];
+        Assert.InRange(chroma, 30, 45);
+        Assert.Equal(board.Pixels[mid + 1], board.Pixels[mid + 2]);
+        Assert.True(Luma(board, 4, 4) >= 250);
+    }
+
+    [Fact]
     public void TheBytesAreTheSameOnBothPlatforms()
     {
         var page = EnhancerPages.Shadowed();
@@ -577,6 +614,8 @@ public class DocumentEnhancerTests
         Assert.Equal(DocumentEnhanceMode.Gray, DocumentEnhancer.ModeFor(settings));
         settings.TaskOptions.CameraFilter = CaptureFilter.BlackAndWhite;
         Assert.Equal(DocumentEnhanceMode.BlackAndWhite, DocumentEnhancer.ModeFor(settings));
+        settings.TaskOptions.CameraFilter = CaptureFilter.Whiteboard;
+        Assert.Equal(DocumentEnhanceMode.Whiteboard, DocumentEnhancer.ModeFor(settings));
         // The task's color mode comes first.
         settings.TaskOptions.CameraFilter = CaptureFilter.Original;
         settings.ColorMode = ColorMode.Grayscale;
@@ -590,15 +629,16 @@ public class DocumentEnhancerTests
         Assert.Equal(DocumentEnhanceMode.Auto, DocumentEnhancer.ModeFor(TaskCatalog.Apply(ScanTask.IdCard, settings)));
         Assert.Equal(DocumentEnhanceMode.Auto, DocumentEnhancer.ModeFor(TaskCatalog.Apply(ScanTask.Copy, settings)));
         Assert.Null(DocumentEnhancer.ModeFor(TaskCatalog.Apply(ScanTask.Book, settings)));
-        Assert.Equal([CaptureFilter.Original, CaptureFilter.Enhanced, CaptureFilter.Grayscale, CaptureFilter.BlackAndWhite],
+        Assert.Equal([CaptureFilter.Original, CaptureFilter.Enhanced, CaptureFilter.Whiteboard, CaptureFilter.Grayscale, CaptureFilter.BlackAndWhite],
                      CaptureFilters.DisplayOrder);
-        Assert.Equal(["Original", "Enhanced", "Grayscale", "B&W"], CaptureFilters.DisplayOrder.Select(f => f.Label()));
-        Assert.Equal(new DocumentEnhanceMode?[] { null, DocumentEnhanceMode.Auto, DocumentEnhanceMode.Gray, DocumentEnhanceMode.BlackAndWhite },
+        Assert.Equal(["Original", "Enhanced", "Whiteboard", "Grayscale", "B&W"], CaptureFilters.DisplayOrder.Select(f => f.Label()));
+        Assert.Equal(new DocumentEnhanceMode?[] { null, DocumentEnhanceMode.Auto, DocumentEnhanceMode.Whiteboard, DocumentEnhanceMode.Gray, DocumentEnhanceMode.BlackAndWhite },
                      CaptureFilters.DisplayOrder.Select(f => f.Mode()));
         Assert.Equal(CaptureFilter.Enhanced, CaptureFilters.Of(DocumentEnhanceMode.Auto));
         Assert.Equal(CaptureFilter.Enhanced, CaptureFilters.Of(DocumentEnhanceMode.Color));
         Assert.Equal(CaptureFilter.Grayscale, CaptureFilters.Of(DocumentEnhanceMode.Gray));
         Assert.Equal(CaptureFilter.BlackAndWhite, CaptureFilters.Of(DocumentEnhanceMode.BlackAndWhite));
+        Assert.Equal(CaptureFilter.Whiteboard, CaptureFilters.Of(DocumentEnhanceMode.Whiteboard));
         Assert.Null(CaptureFilters.Of(DocumentEnhanceMode.Photo));
     }
 

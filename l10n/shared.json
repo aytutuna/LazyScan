@@ -1207,6 +1207,7 @@
   "Each book scan becomes two pages, cut at the spine.": {},
   "This does not look like the shape of an ID card, so it is not at real size. Fix the crop, or take it again.": {},
   "Enhanced": {},
+  "Whiteboard": {},
   "Original": {},
   "Cropped and straightened {0}": {
     "note": "{0} is an angle such as '2.5°'."

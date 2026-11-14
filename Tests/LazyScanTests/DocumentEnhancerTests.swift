@@ -293,6 +293,41 @@ final class DocumentEnhancerTests: XCTestCase {
         return RgbaImage(width: width, height: 1, pixels: pixels)
     }
 
+    func testAWhiteboardIsEvenedOutAndItsPrintIsNotStretchedToBlack() {
+        let page: RgbaImage = EnhancerPages.shadowed()
+        let board: DocumentEnhancement = DocumentEnhancer.enhance(page, mode: .whiteboard)
+        XCTAssertEqual(board.mode, .whiteboard)
+        XCTAssertEqual(board.image.width, page.width)
+        XCTAssertEqual(board.image.height, page.height)
+        XCTAssertGreaterThanOrEqual(lumas(board.image, 0).min, 245)
+        XCTAssertGreaterThan(lumas(board.image, 1).min, 30)
+        XCTAssertLessThanOrEqual(lumas(DocumentEnhancer.enhance(page, mode: .color).image, 1).max, 10)
+    }
+
+    func testAWhiteboardPushesItsColorsAwayFromGray() {
+        // A white board with a pale red mark: the mark's channels end up further apart than the flattened ones.
+        var pixels: [UInt8] = [UInt8](repeating: 255, count: 64 * 64 * 4)
+        var y: Int = 0
+        while y < 64 {
+            var x: Int = 0
+            while x < 64 {
+                let mark: Bool = x >= 22 && x < 42 && y >= 22 && y < 42
+                let i: Int = (y * 64 + x) * 4
+                pixels[i] = mark ? 150 : 230
+                pixels[i + 1] = mark ? 130 : 230
+                pixels[i + 2] = mark ? 130 : 230
+                x += 1
+            }
+            y += 1
+        }
+        let board: RgbaImage = DocumentEnhancer.enhance(RgbaImage(width: 64, height: 64, pixels: pixels), mode: .whiteboard).image
+        let mid: Int = (32 * 64 + 32) * 4
+        let chroma: Int = Int(board.pixels[mid]) - Int(board.pixels[mid + 1])
+        XCTAssertTrue((30...45).contains(chroma), "chroma \(chroma)")
+        XCTAssertEqual(board.pixels[mid + 1], board.pixels[mid + 2])
+        XCTAssertGreaterThanOrEqual(lumaAt(board, 4, 4), 250)
+    }
+
     func testTheBytesAreTheSameOnBothPlatforms() {
         let page: RgbaImage = EnhancerPages.shadowed()
         XCTAssertEqual(PhotoScenes.checksum(DocumentEnhancer.enhance(page, mode: .auto).image), 0x7060_4295)
@@ -582,6 +617,8 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertEqual(DocumentEnhancer.mode(for: settings), .gray)
         settings.taskOptions.cameraFilter = .blackAndWhite
         XCTAssertEqual(DocumentEnhancer.mode(for: settings), .blackAndWhite)
+        settings.taskOptions.cameraFilter = .whiteboard
+        XCTAssertEqual(DocumentEnhancer.mode(for: settings), .whiteboard)
         // The task's color mode comes first.
         settings.taskOptions.cameraFilter = .original
         settings.colorMode = .grayscale
@@ -595,13 +632,14 @@ final class DocumentEnhancerTests: XCTestCase {
         XCTAssertEqual(DocumentEnhancer.mode(for: TaskCatalog.apply(.idCard, to: settings)), .auto)
         XCTAssertEqual(DocumentEnhancer.mode(for: TaskCatalog.apply(.copy, to: settings)), .auto)
         XCTAssertNil(DocumentEnhancer.mode(for: TaskCatalog.apply(.book, to: settings)))
-        XCTAssertEqual(CaptureFilter.displayOrder, [.original, .enhanced, .grayscale, .blackAndWhite])
-        XCTAssertEqual(CaptureFilter.displayOrder.map(\.label), ["Original", "Enhanced", "Grayscale", "B&W"])
-        XCTAssertEqual(CaptureFilter.displayOrder.map(\.mode), [nil, .auto, .gray, .blackAndWhite])
+        XCTAssertEqual(CaptureFilter.displayOrder, [.original, .enhanced, .whiteboard, .grayscale, .blackAndWhite])
+        XCTAssertEqual(CaptureFilter.displayOrder.map(\.label), ["Original", "Enhanced", "Whiteboard", "Grayscale", "B&W"])
+        XCTAssertEqual(CaptureFilter.displayOrder.map(\.mode), [nil, .auto, .whiteboard, .gray, .blackAndWhite])
         XCTAssertEqual(CaptureFilter(mode: .auto), .enhanced)
         XCTAssertEqual(CaptureFilter(mode: .color), .enhanced)
         XCTAssertEqual(CaptureFilter(mode: .gray), .grayscale)
         XCTAssertEqual(CaptureFilter(mode: .blackAndWhite), .blackAndWhite)
+        XCTAssertEqual(CaptureFilter(mode: .whiteboard), .whiteboard)
         XCTAssertNil(CaptureFilter(mode: .photo))
     }
 

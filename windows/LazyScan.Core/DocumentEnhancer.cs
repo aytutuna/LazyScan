@@ -16,12 +16,14 @@ public enum DocumentEnhanceMode
     BlackAndWhite,
     /// <summary>A photo: its levels stretched as a whole, nothing evened out.</summary>
     Photo,
+    /// <summary>As <see cref="Color"/>, with the print left as dark as it is and its colors made stronger: a board of marker.</summary>
+    Whiteboard,
 }
 
 /// <summary>
 /// The look of a document page taken by a camera, chosen page by page: cleaned up (<see cref="DocumentEnhancer"/>
-/// in <see cref="DocumentEnhanceMode.Auto"/>), as the camera saw it (cut out, nothing else), or cleaned up in
-/// gray or in black and white. Stored by its camelCase name; the first is the default and the fallback.
+/// in <see cref="DocumentEnhanceMode.Auto"/>), as the camera saw it (cut out, nothing else), cleaned up in
+/// gray or in black and white, or cleaned up as a whiteboard. Stored by its camelCase name; the first is the default and the fallback.
 /// </summary>
 public enum CaptureFilter
 {
@@ -29,19 +31,21 @@ public enum CaptureFilter
     Original,
     Grayscale,
     BlackAndWhite,
+    Whiteboard,
 }
 
 public static class CaptureFilters
 {
     /// <summary>The order the filters are offered in.</summary>
     public static IReadOnlyList<CaptureFilter> DisplayOrder { get; } =
-        [CaptureFilter.Original, CaptureFilter.Enhanced, CaptureFilter.Grayscale, CaptureFilter.BlackAndWhite];
+        [CaptureFilter.Original, CaptureFilter.Enhanced, CaptureFilter.Whiteboard, CaptureFilter.Grayscale, CaptureFilter.BlackAndWhite];
 
     public static string Label(this CaptureFilter filter) => filter switch
     {
         CaptureFilter.Original => Loc.T("Original"),
         CaptureFilter.Grayscale => Loc.T("Grayscale"),
         CaptureFilter.BlackAndWhite => Loc.T("B&W"),
+        CaptureFilter.Whiteboard => Loc.T("Whiteboard"),
         _ => Loc.T("Enhanced"),
     };
 
@@ -51,6 +55,7 @@ public static class CaptureFilters
         CaptureFilter.Original => null,
         CaptureFilter.Grayscale => DocumentEnhanceMode.Gray,
         CaptureFilter.BlackAndWhite => DocumentEnhanceMode.BlackAndWhite,
+        CaptureFilter.Whiteboard => DocumentEnhanceMode.Whiteboard,
         _ => DocumentEnhanceMode.Auto,
     };
 
@@ -60,6 +65,7 @@ public static class CaptureFilters
         DocumentEnhanceMode.Auto or DocumentEnhanceMode.Color => CaptureFilter.Enhanced,
         DocumentEnhanceMode.Gray => CaptureFilter.Grayscale,
         DocumentEnhanceMode.BlackAndWhite => CaptureFilter.BlackAndWhite,
+        DocumentEnhanceMode.Whiteboard => CaptureFilter.Whiteboard,
         _ => null,
     };
 }
@@ -94,8 +100,10 @@ public readonly record struct PaperWhiteBalance(double R, double G, double B)
 /// where each pixel is, the threshold follows the lighting, and print in a shadow stays black. Photos are only stretched as a whole
 /// (<see cref="DocumentEnhanceMode.Photo"/>). A page whose ground is dark with light print on it (a
 /// chalkboard, a dark flyer, a slide: <see cref="IsLightOnDark"/>) has no paper to even out against, so it
-/// is stretched as a whole like a photo and then made gray or black and white as the mode says. The
-/// samples (white balance, black point, light on dark) are every <see cref="SampleStep"/>-th pixel of
+/// is stretched as a whole like a photo and then made gray or black and white as the mode says. A
+/// whiteboard (<see cref="DocumentEnhanceMode.Whiteboard"/>) is evened out in color but not stretched to a
+/// black point, so a marker keeps its own darkness, and each channel is then pushed away from the pixel's
+/// luma by <see cref="WhiteboardSaturation"/>. The samples (white balance, black point, light on dark) are every <see cref="SampleStep"/>-th pixel of
 /// every <see cref="SampleStep"/>-th row. Pure arithmetic in a fixed order: the same bytes on both platforms.
 /// </summary>
 public static class DocumentEnhancer
@@ -143,6 +151,8 @@ public static class DocumentEnhancer
     public const double LightContrast = 1.5;
     /// <summary>A page is light on dark only with at least this share of the samples light print.</summary>
     public const double MinLightShare = 0.005;
+    /// <summary>A whiteboard's channels are moved this many times as far from the pixel's luma.</summary>
+    public const double WhiteboardSaturation = 1.5;
 
     /// <summary>
     /// The mode for the pages of a task with <paramref name="settings"/>: <see cref="DocumentEnhanceMode.Photo"/>
@@ -286,8 +296,8 @@ public static class DocumentEnhancer
         var gray = GrayImage.Luma(image);
         if (IsLightOnDark(gray)) return LightOnDark(image, mode, threshold);
         var paper = PaperMap(gray);
-        var lut = Stretch(BlackPoint(gray, paper), WhitePoint);
-        bool color = mode is DocumentEnhanceMode.Auto or DocumentEnhanceMode.Color;
+        var lut = Stretch(mode == DocumentEnhanceMode.Whiteboard ? 0 : BlackPoint(gray, paper), WhitePoint);
+        bool color = mode is DocumentEnhanceMode.Auto or DocumentEnhanceMode.Color or DocumentEnhanceMode.Whiteboard;
         var balance = color ? WhiteBalance(image, gray, paper) : PaperWhiteBalance.Neutral;
         var src = image.Pixels;
         int blackBelow = (int)Math.Floor(BlackShare(threshold) * Levels + 0.5);
@@ -303,6 +313,13 @@ public static class DocumentEnhancer
                     output[i] = lut[Level(src[i] * balance.R, background)];
                     output[i + 1] = lut[Level(src[i + 1] * balance.G, background)];
                     output[i + 2] = lut[Level(src[i + 2] * balance.B, background)];
+                    if (mode == DocumentEnhanceMode.Whiteboard)
+                    {
+                        int luma = (299 * output[i] + 587 * output[i + 1] + 114 * output[i + 2] + 500) / 1000;
+                        output[i] = Saturated(output[i], luma);
+                        output[i + 1] = Saturated(output[i + 1], luma);
+                        output[i + 2] = Saturated(output[i + 2], luma);
+                    }
                 }
                 else
                 {
@@ -350,7 +367,7 @@ public static class DocumentEnhancer
     {
         var stretched = Photo(image, capped: false);
         int w = stretched.Width, h = stretched.Height;
-        if (mode == DocumentEnhanceMode.Color) return new DocumentEnhancement(stretched, DocumentEnhanceMode.Color);
+        if (mode is DocumentEnhanceMode.Color or DocumentEnhanceMode.Whiteboard) return new DocumentEnhancement(stretched, mode);
         if (mode == DocumentEnhanceMode.Auto && !ColorAnalysis.IsEffectivelyGray(stretched.Pixels, w, h))
         {
             return new DocumentEnhancement(stretched, DocumentEnhanceMode.Color);
@@ -437,6 +454,10 @@ public static class DocumentEnhancer
         }
         return lut;
     }
+
+    /// <summary><paramref name="value"/> moved <see cref="WhiteboardSaturation"/> times as far from <paramref name="luma"/>, within 0...255.</summary>
+    private static byte Saturated(byte value, int luma) =>
+        (byte)Math.Clamp(luma + Math.Floor((value - luma) * WhiteboardSaturation + 0.5), 0, 255);
 
     private static double Gain(long luma, long channel) => Math.Clamp((double)luma / channel, MinGain, MaxGain);
 

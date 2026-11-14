@@ -573,6 +573,10 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(enhanced.colorMode, .color)
         XCTAssertEqual(enhanced.taskOptions.cameraFilter, .enhanced)
         XCTAssertEqual(DocumentEnhancer.mode(for: enhanced), .auto)
+        let board: ScanSettings = IOSShell.settingDrawerFilter(.whiteboard, in: bw)
+        XCTAssertEqual(board.colorMode, .color)
+        XCTAssertEqual(IOSShell.drawerFilter(board), .whiteboard)
+        XCTAssertEqual(DocumentEnhancer.mode(for: board), .whiteboard)
         XCTAssertEqual(enhanced.task, .document)
     }
 
@@ -593,7 +597,7 @@ final class IOSFlowTests: XCTestCase {
         for filter in CaptureFilter.displayOrder {
             names.append(PageViewerText.filterName(filter))
         }
-        XCTAssertEqual(names, ["Original", "Enhanced", "Grayscale", "B&W"])
+        XCTAssertEqual(names, ["Original", "Enhanced", "Whiteboard", "Grayscale", "B&W"])
     }
 
     func test_pageGrid_isTwoAcrossAPhone_untilPinched_andStaysWithinTheWidth() {

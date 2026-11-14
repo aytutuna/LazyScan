@@ -1166,7 +1166,7 @@ public enum IOSShell {
     }
 
     /// `filter` picked in the Colour group: Grayscale and B&W set the colour mode (the camera's filter kept for
-    /// when colour comes back), Original and Enhanced set colour and the camera's filter.
+    /// when colour comes back), Original, Enhanced and Whiteboard set colour and the camera's filter.
     public static func settingDrawerFilter(_ filter: CaptureFilter, in settings: ScanSettings) -> ScanSettings {
         var s: ScanSettings = settings
         switch filter {
@@ -1174,7 +1174,7 @@ public enum IOSShell {
             s.colorMode = .grayscale
         case .blackAndWhite:
             s.colorMode = .blackWhite
-        case .original, .enhanced:
+        case .original, .enhanced, .whiteboard:
             s.colorMode = .color
             s.taskOptions.cameraFilter = filter
         }

@@ -13,19 +13,23 @@ public enum DocumentEnhanceMode: String, CaseIterable, Codable, Sendable {
     case blackAndWhite
     /// A photo: its levels stretched as a whole, nothing evened out.
     case photo
+    /// As `.color`, with the print left as dark as it is and its colors made stronger: a board of marker.
+    case whiteboard
 }
 
 /// The look of a document page taken by a camera, chosen page by page: cleaned up (`DocumentEnhancer` in
-/// `.auto`), as the camera saw it (cut out, nothing else), or cleaned up in gray or in black and white. Stored
+/// `.auto`), as the camera saw it (cut out, nothing else), cleaned up in gray or in black and white, or cleaned
+/// up as a whiteboard (`.whiteboard`). Stored
 /// by its raw value; the first is the default and the fallback. Twin of C# `CaptureFilter`.
 public enum CaptureFilter: String, CaseIterable, Codable, Sendable {
     case enhanced
     case original
     case grayscale
     case blackAndWhite
+    case whiteboard
 
     /// The order the filters are offered in.
-    public static let displayOrder: [CaptureFilter] = [.original, .enhanced, .grayscale, .blackAndWhite]
+    public static let displayOrder: [CaptureFilter] = [.original, .enhanced, .whiteboard, .grayscale, .blackAndWhite]
 
     public var label: String {
         switch self {
@@ -33,6 +37,7 @@ public enum CaptureFilter: String, CaseIterable, Codable, Sendable {
         case .original: return L10n.t("Original")
         case .grayscale: return L10n.t("Grayscale")
         case .blackAndWhite: return L10n.t("B&W")
+        case .whiteboard: return L10n.t("Whiteboard")
         }
     }
 
@@ -43,6 +48,7 @@ public enum CaptureFilter: String, CaseIterable, Codable, Sendable {
         case .original: return nil
         case .grayscale: return .gray
         case .blackAndWhite: return .blackAndWhite
+        case .whiteboard: return .whiteboard
         }
     }
 
@@ -53,6 +59,7 @@ public enum CaptureFilter: String, CaseIterable, Codable, Sendable {
         case .auto, .color: self = .enhanced
         case .gray: self = .grayscale
         case .blackAndWhite: self = .blackAndWhite
+        case .whiteboard: self = .whiteboard
         case .photo: return nil
         }
     }
@@ -104,7 +111,9 @@ public struct PaperWhiteBalance: Equatable, Sendable {
 /// pixel is, the threshold follows the lighting, and print in a shadow stays black. Photos are only
 /// stretched as a whole (`.photo`). A page whose ground is dark with light print on it (a chalkboard, a
 /// dark flyer, a slide: `isLightOnDark`) has no paper to even out against, so it is stretched as a whole
-/// like a photo and then made gray or black and white as the mode says. The samples (white balance, black
+/// like a photo and then made gray or black and white as the mode says. A whiteboard (`.whiteboard`) is
+/// evened out in color but not stretched to a black point, so a marker keeps its own darkness, and each
+/// channel is then pushed away from the pixel's luma by `whiteboardSaturation`. The samples (white balance, black
 /// point, light on dark) are every `sampleStep`-th pixel of every `sampleStep`-th row. Pure arithmetic in a
 /// fixed order: the same bytes as the C# twin (`windows/LazyScan.Core/DocumentEnhancer.cs`).
 public enum DocumentEnhancer {
@@ -152,6 +161,8 @@ public enum DocumentEnhancer {
     public static let lightContrast: Double = 1.5
     /// A page is light on dark only with at least this share of the samples light print.
     public static let minLightShare: Double = 0.005
+    /// A whiteboard's channels are moved this many times as far from the pixel's luma.
+    public static let whiteboardSaturation: Double = 1.5
 
     /// The mode for the pages of a task with `settings`: `.photo` for photo tasks; else by the color mode:
     /// gray, black and white, or `.auto` for color (color where the page has color). A color task that
@@ -318,8 +329,9 @@ public enum DocumentEnhancer {
             let resolved: DocumentEnhanceMode = mode == .auto ? DocumentEnhanceMode.color : mode
             return DocumentEnhancement(image: image, mode: resolved)
         }
-        let lut: [UInt8] = stretch(blackPoint(gray, paper: paper), whitePoint)
-        let color: Bool = mode == .auto || mode == .color
+        let black: Double = mode == .whiteboard ? 0 : blackPoint(gray, paper: paper)
+        let lut: [UInt8] = stretch(black, whitePoint)
+        let color: Bool = mode == .auto || mode == .color || mode == .whiteboard
         var balance: PaperWhiteBalance = PaperWhiteBalance.neutral
         if color {
             balance = whiteBalance(image, gray: gray, paper: paper)
@@ -339,6 +351,12 @@ public enum DocumentEnhancer {
                             out[i] = lut[level(Double(src[i]) * balance.r, background)]
                             out[i + 1] = lut[level(Double(src[i + 1]) * balance.g, background)]
                             out[i + 2] = lut[level(Double(src[i + 2]) * balance.b, background)]
+                            if mode == .whiteboard {
+                                let luma: Int = (299 * Int(out[i]) + 587 * Int(out[i + 1]) + 114 * Int(out[i + 2]) + 500) / 1000
+                                out[i] = saturated(out[i], around: luma)
+                                out[i + 1] = saturated(out[i + 1], around: luma)
+                                out[i + 2] = saturated(out[i + 2], around: luma)
+                            }
                         } else {
                             let share: Int = level(Double(lumas[p]), background)
                             var v: UInt8 = lut[share]
@@ -386,8 +404,8 @@ public enum DocumentEnhancer {
         let stretched: RgbaImage = photo(image, capped: false)
         let w: Int = stretched.width
         let h: Int = stretched.height
-        if mode == .color {
-            return DocumentEnhancement(image: stretched, mode: .color)
+        if mode == .color || mode == .whiteboard {
+            return DocumentEnhancement(image: stretched, mode: mode)
         }
         if mode == .auto && !ColorAnalysis.isEffectivelyGray(rgba: stretched.pixels, width: w, height: h) {
             return DocumentEnhancement(image: stretched, mode: .color)
@@ -475,6 +493,12 @@ public enum DocumentEnhancer {
             k += 1
         }
         return lut
+    }
+
+    /// `value` moved `whiteboardSaturation` times as far from `luma`, within 0...255.
+    private static func saturated(_ value: UInt8, around luma: Int) -> UInt8 {
+        let moved: Double = Double(luma) + floor(Double(Int(value) - luma) * whiteboardSaturation + 0.5)
+        return UInt8(min(max(moved, 0), 255))
     }
 
     private static func gain(_ luma: Int, _ channel: Int) -> Double {
