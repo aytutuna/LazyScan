@@ -102,7 +102,11 @@ public struct IOSImportSource {
         let expected: IOSImportItem.Kind = IOSImportItem.kind(forFileName: name, data: Data())
         return IOSImportSource(name: name, expectedKind: expected, asksOnlyWhenUnsure: true) { () async -> Result<IOSImportItem, IOSImportError> in
             await Task.detached(priority: .userInitiated) { () -> Result<IOSImportItem, IOSImportError> in
-                IOSImportSource.readFile(url)
+                let read: Result<IOSImportItem, IOSImportError> = IOSImportSource.readFile(url)
+                if case .success = read {
+                    IOSShell.removeIfInInbox(url)
+                }
+                return read
             }.value
         }
     }

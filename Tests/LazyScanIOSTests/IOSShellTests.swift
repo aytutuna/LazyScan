@@ -1016,5 +1016,37 @@ final class IOSShellTests: XCTestCase {
         }
         XCTAssertEqual(read?.standardizedFileURL.path, url.standardizedFileURL.path)
     }
+
+    func testInboxFilesAreRemovedAndOtherFilesKept() throws {
+        let documents: URL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: documents) }
+        let inbox: URL = IOSShell.inboxFolder(in: documents)
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        let received: URL = inbox.appendingPathComponent("Scan.pdf")
+        let elsewhere: URL = documents.appendingPathComponent("Scan.pdf")
+        try Data([1]).write(to: received)
+        try Data([1]).write(to: elsewhere)
+
+        IOSShell.removeIfInInbox(elsewhere, documents: documents)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: elsewhere.path))
+        IOSShell.removeIfInInbox(received, documents: documents)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: received.path))
+    }
+
+    func testInboxSweepKeepsRecentEntries() throws {
+        let documents: URL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: documents) }
+        let inbox: URL = IOSShell.inboxFolder(in: documents)
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        let old: URL = inbox.appendingPathComponent("Old.pdf")
+        let recent: URL = inbox.appendingPathComponent("Recent.pdf")
+        try Data([1]).write(to: old)
+        try Data([1]).write(to: recent)
+        try FileManager.default.setAttributes([.creationDate: Date().addingTimeInterval(-2 * 86400)], ofItemAtPath: old.path)
+
+        IOSShell.sweepInbox(documents: documents)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recent.path))
+    }
 }
 #endif

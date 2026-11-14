@@ -767,10 +767,43 @@ public enum IOSShell {
         switch copied {
         case .success(let copy):
             await state.openPackage(at: copy)
+            removeIfInInbox(url)
             try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
         case .failure(let error):
             state.errorMessage = PhotoImport.unreadableMessage(url.lastPathComponent, detail: error.localizedDescription)
         }
+    }
+
+    /// The folder iOS copies the files opened from AirDrop or Mail into.
+    static func inboxFolder(in documents: URL) -> URL {
+        documents.appendingPathComponent("Inbox", isDirectory: true)
+    }
+
+    /// Deletes the file at `url` when it lies in the Inbox of `documents`; a file opened in place (iCloud Drive,
+    /// Files) is never touched.
+    static func removeIfInInbox(_ url: URL, documents: URL? = nil) {
+        let root: URL = inboxFolder(in: documents ?? defaultDocuments).resolvingSymlinksInPath()
+        let file: URL = url.resolvingSymlinksInPath()
+        guard file.path.hasPrefix(root.path + "/") else { return }
+        try? FileManager.default.removeItem(at: file)
+    }
+
+    /// Deletes what a killed import left in the Inbox. Entries created a day ago or more, since a file opened at launch
+    /// arrives there before the app has read it.
+    static func sweepInbox(documents: URL? = nil) {
+        let manager: FileManager = FileManager.default
+        let cutoff: Date = Date().addingTimeInterval(-86400)
+        let folder: URL = inboxFolder(in: documents ?? defaultDocuments)
+        let entries: [URL] = (try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey])) ?? []
+        for url in entries {
+            if let created = try? url.resourceValues(forKeys: [.creationDateKey]).creationDate, created < cutoff {
+                try? manager.removeItem(at: url)
+            }
+        }
+    }
+
+    private static var defaultDocuments: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
     /// A copy of the file at `url`, under its own name, in a new folder in the temporary folder.
