@@ -165,7 +165,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
                               + "        \"cameraFrontsFirst\" : true,\n        \"cameraSpreads\" : true,\n"
                               + "        \"copyAlsoSavePdf\" : true,\n        \"copyCenter\" : false,\n        \"copyCount\" : 3,\n"
                               + "        \"copyFitToPage\" : true,\n        \"copyPrinterName\" : \"Office printer\",\n"
-                              + "        \"copyScale\" : \"fit\",\n        \"copyScalePercent\" : 100,\n        \"idCardPaper\" : \"letter\",\n"
+                              + "        \"copyScale\" : \"fit\",\n        \"copyScalePercent\" : 100,\n        \"copyShowPrintDialog\" : false,\n        \"idCardPaper\" : \"letter\",\n"
                               + "        \"idCardSaveSidesAsImages\" : true,\n        \"receiptCombine\" : true,\n"
                               + "        \"receiptEachFile\" : false,\n        \"receiptNameByDate\" : false\n      }")
 
@@ -1212,7 +1212,7 @@ final class ModelsCompatTests: XCTestCase {
                 let written = try XCTUnwrap(try jsonObject(data)["taskOptions"] as? [String: Any])
                 // No printer chosen: the key is left out (C# leaves out a null too).
                 XCTAssertEqual(Set(written.keys), ["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage",
-                                                   "copyScale", "copyScalePercent", "copyCenter", "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine", "receiptEachFile",
+                                                   "copyScale", "copyScalePercent", "copyCenter", "copyAlsoSavePdf", "copyShowPrintDialog", "receiptNameByDate", "receiptCombine", "receiptEachFile",
                                                    "bookRightToLeft", "bookRotationQuarterTurns", "bookCutAt",
                                                    "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst",
                                                    "cameraSpreads"])
@@ -1225,10 +1225,12 @@ final class ModelsCompatTests: XCTestCase {
         copyOptions.taskOptions.copyFitToPage = true
         copyOptions.taskOptions.copyPrinterName = "Microsoft Print to PDF"
         copyOptions.taskOptions.copyAlsoSavePdf = true
+        copyOptions.taskOptions.copyShowPrintDialog = true
         let copyData = try encode(copyOptions)
         let writtenCopy = try XCTUnwrap(try jsonObject(copyData)["taskOptions"] as? [String: Any])
         XCTAssertEqual(writtenCopy["copyCount"] as? Int, 12)
         XCTAssertEqual(writtenCopy["copyPrinterName"] as? String, "Microsoft Print to PDF")
+        XCTAssertEqual(writtenCopy["copyShowPrintDialog"] as? Bool, true)
         XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: copyData).taskOptions, copyOptions.taskOptions)
 
         let original = nonDefaultSettings()
@@ -1253,6 +1255,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertFalse(options.copyCenter)
         XCTAssertNil(options.copyPrinterName)
         XCTAssertFalse(options.copyAlsoSavePdf)
+        XCTAssertFalse(options.copyShowPrintDialog)
         // Files of the ID card version have task options without the copy keys.
         let idCardOnly = try decode(ScanSettings.self,
                                     #"{"taskOptions": {"idCardPaper": "a4", "idCardSaveSidesAsImages": true}}"#).taskOptions

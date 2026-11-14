@@ -4,7 +4,8 @@ import Foundation
 // Printing: the Copy task, the ID card's page and the ruler test page. The pages are laid out with
 // `PrintLayout` on a PDF the size of the paper (`PrintDocument`) and printed through a `PrintService`
 // each app shell passes in. The Mac's, `SystemPrintService` (LazyScanMac), prints through the
-// standard print panel at 100 %, already set to the printer, the paper and the number of copies.
+// standard print panel at 100 %, already set to the printer, the paper and the number of copies (for a
+// copy only when `copyShowPrintDialog` is on).
 // Twin of the Windows `Services/PrintService.cs`, which prints with no panel.
 
 /// One page of a print job: the image as scanned, its resolution, and where it goes on the paper.
@@ -32,18 +33,21 @@ public struct PrinterSetup: Equatable, Sendable {
 }
 
 /// A print job: the document's pages are on `paper`; `copies` is asked of the printer (the print
-/// panel shows it). `printerName` nil is the default printer.
+/// panel shows it). `printerName` nil is the default printer. `showsPanel` is whether the Mac opens the
+/// print panel before printing; the iPhone always presents the AirPrint sheet.
 public struct PrintJob {
     public let printerName: String?
     public let jobName: String
     public let paper: PrinterPaper
     public let copies: Int
+    public let showsPanel: Bool
 
-    public init(printerName: String?, jobName: String, paper: PrinterPaper, copies: Int) {
+    public init(printerName: String?, jobName: String, paper: PrinterPaper, copies: Int, showsPanel: Bool = true) {
         self.printerName = printerName
         self.jobName = jobName
         self.paper = paper
         self.copies = copies
+        self.showsPanel = showsPanel
     }
 }
 

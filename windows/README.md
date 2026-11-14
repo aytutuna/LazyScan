@@ -1713,9 +1713,10 @@ Known divergences from the macOS app (all documented in the source):
   is always there; Windows needs an OCR language installed. The turn button sits under the page in
   the Mac strip and on the page on Windows.
 - Printing: the layout is the same code on both platforms. Windows prints straight to the chosen
-  printer with no dialog; the Mac shows the standard print panel (platform convention), already
-  set to the printer, the paper, the copies and 100 %, and saves the copy's PDF only once the user
-  printed. The Mac's printer makes the copies itself; Windows repeats the pages for a printer that
+  printer with no dialog; the Mac does too unless its "Show the print dialog" switch is on, which
+  opens the standard print panel first, already set to the printer, the paper, the copies and
+  100 %, and the Mac saves the copy's PDF only once the user printed. The Mac's printer makes the
+  copies itself; Windows repeats the pages for a printer that
   cannot make that many. The Windows test project for the print document has no Swift twin; the Mac
   checks its print PDF in `PrintDocumentTests.swift`.
 - ID card: the detector, layout and page are the same code on both platforms; the side is cut out

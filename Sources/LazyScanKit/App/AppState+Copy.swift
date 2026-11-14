@@ -130,6 +130,12 @@ extension AppState {
         settings.taskOptions.copyAlsoSavePdf = save
     }
 
+    /// The Mac opens the system print dialog before each copy (true), or prints straight on the printer.
+    public func setCopyShowPrintDialog(_ show: Bool) {
+        guard settings.taskOptions.copyShowPrintDialog != show else { return }
+        settings.taskOptions.copyShowPrintDialog = show
+    }
+
     /// On the glass with nothing selected and Automatic paper, the part of the glass the printer's
     /// paper covers from the corner (a copier copies the sheet it prints on); nil otherwise.
     func copyScanArea(_ s: ScanSettings, setup: PrinterSetup) -> CGRect? {
@@ -218,7 +224,8 @@ extension AppState {
         }
         let copies = PrintCopies.clamp(options.copyCount)
         statusMessage = L10n.t("Printing on {0}…", setup.printerName)
-        let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("Copy|print job name"), paper: setup.paper, copies: copies)
+        let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("Copy|print job name"), paper: setup.paper, copies: copies,
+                           showsPanel: options.copyShowPrintDialog)
         var printError: Error?
         do {
             let printed: Bool
@@ -397,7 +404,8 @@ extension AppState {
     private func printHeldCopy(reusePrinter: Bool) {
         let pages = copyPages
         guard !pages.isEmpty else { return }
-        let s = settings
+        var s = settings
+        if !reusePrinter { s.taskOptions.copyShowPrintDialog = true }
         let areaSelected = copyAreaSelected
         runExclusive { flag in
             guard let setup = self.setupForPrinting(s, requestedPaper: Self.requestedPaper(s)) else {
@@ -462,7 +470,8 @@ extension AppState {
                                                         height: Double(paperInches.height)),
                                            scale: 1, quarterTurns: 0, clippedInches: clipped)
             self.statusMessage = L10n.t("Printing the ID card on {0}…", setup.printerName)
-            let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("ID card"), paper: setup.paper, copies: 1)
+            let job = PrintJob(printerName: setup.printerName, jobName: L10n.t("ID card"), paper: setup.paper, copies: 1,
+                               showsPanel: s.taskOptions.copyShowPrintDialog)
             guard try await self.printService.print(drawn.0, job: job) else {
                 self.statusMessage = L10n.t("Printing cancelled.")
                 return

@@ -6,9 +6,9 @@ import Foundation
 import PDFKit
 
 /// The macOS implementation: the printers from `NSPrinter`, the paper from `NSPrintInfo`, printing
-/// through `PDFDocument`'s print operation with the standard print panel.
+/// through `PDFDocument`'s print operation, with the standard print panel when the job asks for it.
 @MainActor public final class SystemPrintService: PrintService {
-    /// The printer the panel was last confirmed on, for `printAgain`.
+    /// The printer the last print went to, for `printAgain`.
     private var lastPrinterName: String?
 
     public init() {}
@@ -42,7 +42,7 @@ import PDFKit
     }
 
     public func print(_ document: Data, job: PrintJob) async throws -> Bool {
-        try run(document, job: job, printerName: job.printerName, showsPanel: true)
+        try run(document, job: job, printerName: job.printerName, showsPanel: job.showsPanel)
     }
 
     /// Prints on the printer the panel was last confirmed on (else the job's), without the panel.

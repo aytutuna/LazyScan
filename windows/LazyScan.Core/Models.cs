@@ -737,6 +737,13 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     public bool CopyAlsoSavePdf { get; set; } = false;
 
     /// <summary>
+    /// The Mac opens the system print dialog before each copy (and the ID card's print). Off: they print
+    /// straight on the chosen printer. Off unless chosen; the Windows app prints with no dialog and keeps it
+    /// as it is.
+    /// </summary>
+    public bool CopyShowPrintDialog { get; set; } = false;
+
+    /// <summary>
     /// The Receipts task names each file by the date printed on the receipt (the {docdate} token),
     /// read from its text; the scan date when none is found. On unless turned off, also for
     /// settings written before it existed.
@@ -819,6 +826,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         && CopyCount == other.CopyCount && CopyScale == other.CopyScale
         && CopyScalePercent == other.CopyScalePercent && CopyCenter == other.CopyCenter
         && CopyPrinterName == other.CopyPrinterName && CopyAlsoSavePdf == other.CopyAlsoSavePdf
+        && CopyShowPrintDialog == other.CopyShowPrintDialog
         && ReceiptNameByDate == other.ReceiptNameByDate && ReceiptCombine == other.ReceiptCombine
         && ReceiptEachFile == other.ReceiptEachFile
         && BookRightToLeft == other.BookRightToLeft && BookRotationQuarterTurns == other.BookRotationQuarterTurns
@@ -838,6 +846,7 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(CopyCenter);
         hash.Add(CopyPrinterName);
         hash.Add(CopyAlsoSavePdf);
+        hash.Add(CopyShowPrintDialog);
         hash.Add(ReceiptNameByDate);
         hash.Add(ReceiptCombine);
         hash.Add(ReceiptEachFile);

@@ -158,8 +158,9 @@ scanners** — including the Epson Perfection V39 II.
   and an area selected on the preview is centred on the paper. The app says when the printer's
   margins cut the edges ("Edges may lose up to 5 mm"). **Also save a PDF** keeps a copy as a
   file too. **Print test ruler** prints a 1-inch grid with centimetre ticks to check the size
-  with a ruler. On the Mac the standard print panel opens, already set to the printer, the paper,
-  the copies and 100 %; on Windows the copy goes straight to the printer with no dialog.
+  with a ruler. On the Mac the copy goes straight to the printer; **Show the print dialog** opens the
+  standard print panel first, already set to the printer, the paper, the copies and 100 %. On
+  Windows the copy goes straight to the printer with no dialog.
 - **Receipts**: lay several receipts on the glass (with a little space between them) and scan
   once. Each receipt is found, cut out along its paper (or, for thermal paper that hardly shows on
   a white lid, around its print), straightened, and cleaned up for faded thermal print: gray, the

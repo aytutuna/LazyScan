@@ -199,6 +199,11 @@ struct InspectorView: View {
                     set: { state.setCopyCount($0) }), in: 1...PrintCopies.maxCount) {
                     Text("Copies: \(PrintCopies.clamp(state.settings.taskOptions.copyCount))")
                 }
+                Toggle("Show the print dialog", isOn: Binding(
+                    get: { state.settings.taskOptions.copyShowPrintDialog },
+                    set: { state.setCopyShowPrintDialog($0) }))
+                    .help("On: the system print dialog opens before each copy. Off: copies print straight on the chosen printer.")
+                    .accessibilityHint("The system print dialog opens before each copy when this is on.")
                 Toggle("Fit to page", isOn: Binding(
                     get: { state.settings.taskOptions.copyFitToPage },
                     set: { state.setCopyFitToPage($0) }))

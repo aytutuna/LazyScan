@@ -93,6 +93,29 @@ final class AppStateMacCopyTests: XCTestCase {
     }
 
     @MainActor
+    func test_aCopyPrintsWithoutThePanel_unlessTheDialogSwitchIsOn() async throws {
+        let printer = MacCopyPrintService()
+        let state: AppState = makeState(printer)
+        XCTAssertTrue(state.ingest([copyPage()], source: .photo))
+        try await idle(state)
+        XCTAssertEqual(printer.jobs.map(\.showsPanel), [false])
+
+        state.setCopyShowPrintDialog(true)
+        XCTAssertTrue(state.ingest([copyPage()], source: .photo))
+        try await idle(state)
+        XCTAssertEqual(printer.jobs.map(\.showsPanel), [false, true])
+    }
+
+    @MainActor
+    func test_theRulerTestPage_alwaysShowsThePanel() async throws {
+        let printer = MacCopyPrintService()
+        let state: AppState = makeState(printer)
+        state.printRulerPage()
+        try await idle(state)
+        XCTAssertEqual(printer.jobs.map(\.showsPanel), [true])
+    }
+
+    @MainActor
     func test_aCancelledPrintPanel_keepsThePages_andPrintAgainPrintsThem() async throws {
         let printer = MacCopyPrintService()
         printer.answer = false
@@ -135,6 +158,7 @@ final class AppStateMacCopyTests: XCTestCase {
         try await idle(state)
         XCTAssertEqual(printer.againCount, 0)
         XCTAssertEqual(printer.jobs.count, 1)
+        XCTAssertEqual(printer.jobs.last?.showsPanel, true)
         XCTAssertNil(state.errorMessage)
         XCTAssertNil(state.copyPrintFailure)
         XCTAssertTrue(state.copyPages.isEmpty)

@@ -159,7 +159,7 @@ internal static class CompatFixtures
         + "      \"taskOptions\": {\n        \"idCardPaper\": \"letter\",\n        \"idCardSaveSidesAsImages\": true,\n"
         + "        \"copyCount\": 3,\n        \"copyScale\": \"fit\",\n        \"copyScalePercent\": 100,\n        \"copyCenter\": false,\n"
         + "        \"copyFitToPage\": true,\n        \"copyPrinterName\": \"Office printer\",\n"
-        + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n        \"receiptEachFile\": false,\n"
+        + "        \"copyAlsoSavePdf\": true,\n        \"copyShowPrintDialog\": false,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n        \"receiptEachFile\": false,\n"
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
         + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
         + "        \"bookFlattenCurves\": false,\n        \"bookFillFingers\": false,\n"
@@ -1320,7 +1320,7 @@ public class ModelsCompatTests
                 using var written = JsonDocument.Parse(json);
                 // No printer chosen: the key is left out, as Swift leaves out a nil.
                 Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyScale", "copyScalePercent",
-                              "copyCenter", "copyFitToPage", "copyAlsoSavePdf",
+                              "copyCenter", "copyFitToPage", "copyAlsoSavePdf", "copyShowPrintDialog",
                               "receiptNameByDate", "receiptCombine", "receiptEachFile", "bookRightToLeft", "bookRotationQuarterTurns",
                               "bookCutAt", "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst", "cameraSpreads"],
                              written.RootElement.GetProperty("taskOptions").EnumerateObject().Select(p => p.Name));
@@ -1332,12 +1332,14 @@ public class ModelsCompatTests
         copy.TaskOptions.CopyFitToPage = true;
         copy.TaskOptions.CopyPrinterName = "Microsoft Print to PDF";
         copy.TaskOptions.CopyAlsoSavePdf = true;
+        copy.TaskOptions.CopyShowPrintDialog = true;
         string copyJson = CompatFixtures.Encode(copy);
         using (var written = JsonDocument.Parse(copyJson))
         {
             var options = written.RootElement.GetProperty("taskOptions");
             Assert.Equal(12, options.GetProperty("copyCount").GetInt32());
             Assert.Equal("Microsoft Print to PDF", options.GetProperty("copyPrinterName").GetString());
+            Assert.True(options.GetProperty("copyShowPrintDialog").GetBoolean());
         }
         Assert.Equal(copy.TaskOptions, Decode<ScanSettings>(copyJson).TaskOptions);
         var original = CompatFixtures.NonDefaultSettings();
@@ -1359,6 +1361,7 @@ public class ModelsCompatTests
         Assert.Equal((1, false, (string?)null, false),
                      (options.CopyCount, options.CopyFitToPage, options.CopyPrinterName, options.CopyAlsoSavePdf));
         Assert.Equal((CopyScale.Actual, 100, false), (options.CopyScale, options.CopyScalePercent, options.CopyCenter));
+        Assert.False(options.CopyShowPrintDialog);
         // Files of the ID card version have task options without the copy keys.
         var idCardOnly = Decode<ScanSettings>("""{"taskOptions": {"idCardPaper": "a4", "idCardSaveSidesAsImages": true}}""").TaskOptions;
         Assert.Equal((IdCardPaper.A4, true), (idCardOnly.IdCardPaper, idCardOnly.IdCardSaveSidesAsImages));
