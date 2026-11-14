@@ -5,7 +5,7 @@ using LazyScan.Core;
 namespace LazyScan.App;
 
 /// <summary>
-/// The Scans tab's Add to queue and Save: a history card's page, kept in a file for the session
+/// The History tab's Add to queue and Save: a history card's page, kept in a file for the session
 /// (<see cref="ScanHistoryEntry.PageFile"/>), goes back to the end of the queue or is saved on its own
 /// with the current save settings. The Mac does the same (Sources/LazyScanKit/App/AppState.swift,
 /// AppState+HistorySave.swift).

@@ -220,9 +220,9 @@ public static class StatusLine
                     ? MakePiece(() => Loc.Plural(found.Count, "Found {0} receipt", "Found {0} receipts"))
                     : MakePiece(() => Loc.Plural(found.Count, "Found {0} photo", "Found {0} photos"));
             case StatusHead.QueueCleared { Count: 0 }:
-                return MakePiece(() => Loc.T("Queue cleared"));
+                return MakePiece(() => Loc.T("Pages removed"));
             case StatusHead.QueueCleared cleared:
-                return MakePiece(() => Loc.Plural(cleared.Count, "Cleared {0} page", "Cleared {0} pages"));
+                return MakePiece(() => Loc.Plural(cleared.Count, "Page removed", "{0} pages removed"));
             case StatusHead.PagesRemoved removed:
                 return MakePiece(() => Loc.Plural(removed.Count, "Page removed", "{0} pages removed"));
             case StatusHead.ReadingPage reading:

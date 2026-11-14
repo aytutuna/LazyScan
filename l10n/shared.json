@@ -51,12 +51,8 @@
   },
   "Ready": {},
   "Page {0} added": {},
-  "Queue cleared": {},
   "Page removed": {
     "other": "{0} pages removed"
-  },
-  "Cleared {0} page": {
-    "other": "Cleared {0} pages"
   },
   "Page restored": {
     "other": "{0} pages restored"
@@ -1640,7 +1636,6 @@
   "Page {0} will be left out when you save. {1}.": {},
   "Page {0} will be saved. {1}.": {},
   "Page {0} retaken": {},
-  "Page queue cleared.": {},
   "Lazy Scan found {0} page from a session that did not close properly. Restore it? If you choose No, it is deleted.": {
     "other": "Lazy Scan found {0} pages from a session that did not close properly. Restore them? If you choose No, they are deleted."
   },
@@ -2613,7 +2608,6 @@
   "Remove every page from the queue": {},
   "Save a new PDF instead": {},
   "Save a new PDF instead of adding to this one": {},
-  "Scans": {},
   "Saved|tab": {
     "note": "Title of the tab that lists files already saved; the past participle used as a name."
   },
@@ -2743,8 +2737,6 @@
   "Join the two pages: the spread is saved as one page.": {},
   "Spread": {},
   "Current": {},
-  "Go to Scanner": {},
-  "Open the Scanner tab without changing your settings": {},
   "Add to queue": {},
   "Add this scan to the queue": {},
   "Save this scan": {},
@@ -3050,6 +3042,9 @@
   },
   "Fill page": {},
   "Larger than the paper: up to {0} mm is cut off. Choose Fit to page to print all of it.": {},
+  "History": {},
+  "Go to Scan": {},
+  "Open the Scan tab without changing your settings": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

@@ -3,7 +3,7 @@ using System.Windows;
 namespace LazyScan.App;
 
 /// <summary>
-/// Side insets for the card grids of the Scans and Saved tabs. The width left over after the
+/// Side insets for the card grids of the History and Saved tabs. The width left over after the
 /// last whole column is split between both sides, so the grid sits centred instead of leaving
 /// a dead gutter on the right, and the tab's header lines up with the grid's outer card edges.
 /// </summary>

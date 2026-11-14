@@ -539,7 +539,6 @@ public sealed partial class AppViewModel
             }
         }
         _removed.AddRange(held);
-        _removedByClear = false;
         _flowBefore = null;
         _queueLength = ScannedPages.Count;
     }

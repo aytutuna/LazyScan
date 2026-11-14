@@ -411,7 +411,7 @@ instructions and current status.
 ## Using it
 
 1. Pick your scanner in the sidebar (or **Demo Scanner** to explore).
-2. On **Start**, pick a task; or go to **Scanner** and choose a mode yourself:
+2. On **Start**, pick a task; or go to **Scan** and choose a mode yourself:
    - **Document** — each Scan adds a page to the strip at the bottom; press **Save PDF**
      when done. Turn on *Searchable PDF* for selectable text.
    - **Photos** — place several photos on the glass with a little space between them, press

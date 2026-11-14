@@ -29,9 +29,9 @@ public class StatusLineTests
             ("Found 1 receipt.", new(new StatusHead.Found(1, FileKind.Receipt)), "Found 1 receipt"),
             ("Front scanned. Turn the card over where it lies and scan the back, or skip it.", new(), "Front scanned"),
             ("Back scanned. Check the sides, then save.", new(), "Back scanned"),
-            ("Page queue cleared.", new(new StatusHead.QueueCleared()), "Queue cleared"),
-            ("Cleared 12 pages.", new(new StatusHead.QueueCleared(12)), "Cleared 12 pages"),
-            ("Cleared 1 page.", new(new StatusHead.QueueCleared(1)), "Cleared 1 page"),
+            ("Pages removed.", new(new StatusHead.QueueCleared()), "Pages removed"),
+            ("12 pages removed.", new(new StatusHead.QueueCleared(12)), "12 pages removed"),
+            ("Page removed.", new(new StatusHead.QueueCleared(1)), "Page removed"),
             ("Page removed.", new(new StatusHead.PagesRemoved(1)), "Page removed"),
             ("3 pages removed.", new(new StatusHead.PagesRemoved(3)), "3 pages removed"),
             ("Save undone: the pages are in the queue again.", new(), "Save undone"),
@@ -205,7 +205,7 @@ public class StatusLineTests
             ["Page {0} added"] = "{0}. sayfa eklendi",
             ["Saved {0} photo|other"] = "{0} fotoğraf kaydedildi",
             ["Saved"] = "Kaydedildi",
-            ["Queue cleared"] = "Sıra temizlendi",
+            ["Pages removed"] = "Sayfalar kaldırıldı",
             ["{0} dpi used"] = "{0} dpi kullanıldı",
             ["One side only"] = "Tek yüz",
             ["one side only|after another fact"] = "tek yüz",
@@ -218,7 +218,7 @@ public class StatusLineTests
             Assert.Equal("5. sayfa eklendi", StatusLine.Short("Kuyruğa bir sayfa eklendi.", Added(1, 5)));
             Assert.Equal("3 fotoğraf kaydedildi",
                          StatusLine.Short("3 fotoğraf kaydedildi: C:\\x", new(new StatusHead.SavedFiles(3, FileKind.Photo))));
-            Assert.Equal("Sıra temizlendi", StatusLine.Short("Sıra temizlendi.", new(new StatusHead.QueueCleared())));
+            Assert.Equal("Sayfalar kaldırıldı", StatusLine.Short("Sayfalar kaldırıldı.", new(new StatusHead.QueueCleared())));
             // Under the saved files' bar: "Saved", with the warnings.
             Assert.Equal("Kaydedildi · 600 dpi kullanıldı",
                          StatusLine.Shown("Dosya kaydedildi.", new(new StatusHead.Saved(), [new StatusWarning.DpiUsed(600)]), null,

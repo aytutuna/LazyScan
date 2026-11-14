@@ -11,7 +11,7 @@ using LazyScan.Core;
 namespace LazyScan.App;
 
 /// <summary>
-/// The Scans tab: every scan of this session, newest first, as preview cards; click a card
+/// The History tab: every scan of this session, newest first, as preview cards; click a card
 /// to enlarge it. History holds small previews in memory; each page is also kept in a file for the
 /// session, so a card can put it back in the queue or save it. Port of UI/ScanHistoryView.swift.
 /// </summary>

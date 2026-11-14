@@ -1797,7 +1797,7 @@ public sealed class DetectedPhoto
 public sealed record ReceiptReading(int QuarterTurns, IReadOnlyList<OcrLine>? Lines, string? Problem, DocumentDate? Date);
 
 /// <summary>
-/// One entry in the session's scan history ("Scans" tab): a small preview of every scan
+/// One entry in the session's scan history ("History" tab): a small preview of every scan
 /// as it happened, newest first.
 /// </summary>
 public sealed class ScanHistoryEntry

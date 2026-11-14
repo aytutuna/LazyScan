@@ -135,9 +135,9 @@ The main window has four tabs, like the macOS app:
   Photocopy, Receipts, Book or magazine). A tile is an icon and a title; what the task does (its
   one-line subtitle) and what it sets are its tooltip (also on keyboard focus) and its help text for
   screen readers. Picking a tile sets everything up for that task, keeps the save folder, fits
-  the settings to the connected scanner and opens **Scanner**; a tile the scanner cannot do (the
+  the settings to the connected scanner and opens **Scan**; a tile the scanner cannot do (the
   feeder task on a flatbed-only scanner, Photocopy without a printer) is greyed out with a short
-  reason ("Needs a document feeder", "Needs a printer"). On **Scanner** a banner
+  reason ("Needs a document feeder", "Needs a printer"). On **Scan** a banner
   names the active task and says what to do in one line, with the fuller guidance behind its ⓘ
   (`TaskStep.Prompt` and `Help`, worded for the settings by `TaskCatalog.ShownStep`: with the
   feeder as the source Document to PDF asks to load the pages and its button reads **Scan stack**,
@@ -145,9 +145,9 @@ The main window has four tabs, like the macOS app:
   **Change task** goes back to Start and the close button leaves the task (its settings stay, but sides
   turned over by hand go with it while no stack is under way).
   The task is saved with the settings, so a restart comes back to it. A first run opens on Start,
-  later runs on Scanner. The task tiles are one Tab stop, the presets another; the arrow keys move
+  later runs on Scan. The task tiles are one Tab stop, the presets another; the arrow keys move
   between tiles and Enter or Space picks one.
-- **Scanner** — preview canvas, page queue and the settings inspector (Preview/Scan stay pinned
+- **Scan** — preview canvas, page queue and the settings inspector (Preview/Scan stay pinned
   at the bottom). Adjustment sliders are centered (-100…+100, 0 = neutral) and preview live
   on the canvas; queued pages can be reordered, rotated 90° or removed; detected photos open
   in a review where each crop can be corrected by hand. Scan (Ctrl+Enter or F5), Preview
@@ -165,7 +165,7 @@ The main window has four tabs, like the macOS app:
   **Cancel** works in every busy phase
   (scanning, processing, photo detection, OCR, PDF writing, exports) and never leaves a
   partial file behind.
-- **Scans** — this session's scans, newest first; click one to enlarge it. A card shows the
+- **History** — this session's scans, newest first; click one to enlarge it. A card shows the
   scan's mode as an icon and the time; resolution, pixel size and how long ago are its tooltip.
   Each scan's page is also kept in a file for the session (inside the spool folder, so it goes at quit), and a
   card's hover bar and the enlarged view have **Add to queue** (the page goes to the end of the queue as a page of its
@@ -715,7 +715,7 @@ margins reach a card. The review stays open, so the card can still be saved or d
 reads **Review** at that step, opens it again.
 
 ID cards are sensitive, so the task keeps as little as it can: the scans are never written to the
-page spool and never added to the Scans tab, they stay in memory only while the review needs them,
+page spool and never added to the History tab, they stay in memory only while the review needs them,
 and saving, discarding, leaving the task or picking a task again drops them and clears the preview
 on the stage (also a scan whose card was never found, a cancelled one, or a preview of the glass). The PDF gets no searchable text layer unless it is turned on (the numbers on an ID
 are better not indexed by search). Files go only to the chosen folder; nothing is sent anywhere,
@@ -745,7 +745,7 @@ the preview is centred on the paper; the feeder copies a whole stack. The status
 ("Sent 2 pages to Office Laser, 3 copies.") and what the printer's margins cut off ("Edges may be cut
 by up to 5 mm (printer margins).", or "Larger than the paper: …" for a scan larger than the paper);
 the inspector says it before copying ("Edges may lose up to 5 mm", with a warning glyph, while Fit
-to page is off). Copies are scanned like any scan (they are in the Scans
+to page is off). Copies are scanned like any scan (they are in the History
 tab) but never queued or spooled, so they are printed as scanned: no page is left out as blank,
 cropped or straightened (the Pages and Split sections are hidden for the task, and so are Format,
 Collect pages before saving and After saving, since a copy saves a PDF or nothing, and PDF size

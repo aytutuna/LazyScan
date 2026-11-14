@@ -505,7 +505,7 @@ public sealed class DeviceRow(ScannerInfo info, DeviceGroup group, string? chose
                                .. Group.Members.Select(m => m.Id)]);
 }
 
-/// <summary>One card in the Scans tab: a history entry plus its display bitmap.</summary>
+/// <summary>One card in the History tab: a history entry plus its display bitmap.</summary>
 public sealed class HistoryItem(ScanHistoryEntry entry, BitmapSource thumbnail) : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -633,7 +633,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>Set when the sides had to be made smaller to fit the page (<see cref="IdCardLayout.NotRealSizeMessage"/>).</summary>
     public string? IdCardSizeWarning { get; private set; }
 
-    /// <summary>This session's scans, newest first (small previews only) — the Scans tab.</summary>
+    /// <summary>This session's scans, newest first (small previews only) — the History tab.</summary>
     public ObservableCollection<HistoryItem> History { get; } = [];
 
     public bool IsBusy { get; private set; }
@@ -2821,8 +2821,6 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private readonly List<(PageItem Item, int Index)> _removed = [];
 
-    private bool _removedByClear;
-
     /// <summary>The task's steps before the first removal in the hold, put back with the pages when they still match.</summary>
     private TaskFlow? _flowBefore;
 
@@ -2835,15 +2833,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>Pages were taken out of the queue and can be put back.</summary>
     public bool CanUndoRemove => _removed.Count > 0;
 
-    private string RemovedTitle() => _removedByClear
-        ? Loc.Plural(_removed.Count, "Cleared {0} page", "Cleared {0} pages")
-        : Loc.Plural(_removed.Count, "Page removed", "{0} pages removed");
+    private string RemovedTitle() => Loc.Plural(_removed.Count, "Page removed", "{0} pages removed");
 
     /// <summary>
     /// Takes the pages out of the queue into the hold, keeping their spool files. A hold already there grows, so one
     /// Undo puts back everything removed since the last scan, save or task change, newest first.
     /// </summary>
-    private int HoldRemoved(ICollection<Guid> ids, bool cleared = false, TaskFlow? flowBefore = null)
+    private int HoldRemoved(ICollection<Guid> ids, TaskFlow? flowBefore = null)
     {
         // Pages removed after a reorder: the reorder can no longer be undone as a whole.
         if (_reorderedTo.Count > 0)
@@ -2860,7 +2856,6 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         if (taken.Count == 0) return 0;
         if (_removed.Count == 0)
         {
-            _removedByClear = cleared;
             _flowBefore = flowBefore ?? Flow?.Copy();
         }
         _removed.AddRange(taken);
@@ -3141,11 +3136,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ClearPages()
     {
         if (IsBusy) return;
-        int cleared = HoldRemoved(ScannedPages.Select(p => p.Page.Id).ToHashSet(), cleared: true);
+        int cleared = HoldRemoved(ScannedPages.Select(p => p.Page.Id).ToHashSet());
         ResetFlow();
         SaveName = "";
         if (cleared > 0) SetStatus(RemovedTitle(), new(new StatusHead.QueueCleared(_removed.Count)));
-        else SetStatus(Loc.T("Page queue cleared."), new(new StatusHead.QueueCleared()));
+        else SetStatus(Loc.T("Pages removed."), new(new StatusHead.QueueCleared()));
         NotifyAll();
     }
 

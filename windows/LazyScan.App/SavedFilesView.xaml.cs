@@ -263,7 +263,7 @@ public partial class SavedFilesView : UserControl
 
     /// <summary>
     /// Centre the rows in the scroll viewport and line the header up with them, exactly as the
-    /// Scans tab does, so switching between the two tabs does not shift the grid.
+    /// History tab does, so switching between the two tabs does not shift the grid.
     /// </summary>
     private void UpdateInsets()
     {

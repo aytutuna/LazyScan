@@ -128,7 +128,7 @@
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Same header as the Scans tab: title and caption, actions on the right, all lined up
+        <!-- Same header as the History tab: title and caption, actions on the right, all lined up
              with the centred card grid (see UpdateInsets). -->
         <DockPanel x:Name="Header" DockPanel.Dock="Top" Margin="16,16,16,8">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"

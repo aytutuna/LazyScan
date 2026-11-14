@@ -5,7 +5,7 @@ using Xunit;
 
 namespace LazyScan.App.Tests;
 
-// Add to queue and Save on a card of the Scans tab (AppViewModel.History.cs), on the Demo Scanner in a temporary
+// Add to queue and Save on a card of the History tab (AppViewModel.History.cs), on the Demo Scanner in a temporary
 // profile. The Mac has the same rules in AppState.swift and AppState+HistorySave.swift.
 [Collection(WallClockCollection.Name)]
 public class HistoryPageTests
