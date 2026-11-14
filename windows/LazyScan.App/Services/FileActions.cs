@@ -112,10 +112,23 @@ public sealed class WindowsFileActions : IFileActions
 
     public void CopyText(string text)
     {
+        // copy: true keeps the text on the clipboard after the app exits.
+        Clipboard.SetDataObject(TextData(text), copy: true);
+    }
+
+    /// <summary>The clipboard data for <paramref name="text"/>, kept out of Win+V history and cloud sync.</summary>
+    internal static DataObject TextData(string text)
+    {
         var data = new DataObject();
         data.SetText(text, TextDataFormat.UnicodeText);
-        // copy: true keeps the text on the clipboard after the app exits.
-        Clipboard.SetDataObject(data, copy: true);
+        ExcludeFromHistory(data);
+        return data;
+    }
+
+    /// <summary>Marks the data so Windows keeps it out of clipboard history, cloud sync and clipboard monitors; pasting here still works.</summary>
+    private static void ExcludeFromHistory(DataObject data)
+    {
+        foreach (string format in HistoryExclusionFormats) data.SetData(format, new MemoryStream(new byte[4]));
     }
 
     /// <summary>
@@ -131,6 +144,7 @@ public sealed class WindowsFileActions : IFileActions
         // DROPEFFECT_COPY: paste copies the files instead of moving them.
         data.SetData(PreferredDropEffect, new MemoryStream(BitConverter.GetBytes(DropEffectCopy)));
         if (content.ImageFile is { } image && loadImage(image) is { } picture) data.SetImage(picture);
+        ExcludeFromHistory(data);
         return data;
     }
 
@@ -153,6 +167,13 @@ public sealed class WindowsFileActions : IFileActions
     }
 
     internal const string PreferredDropEffect = "Preferred DropEffect";
+
+    internal static readonly string[] HistoryExclusionFormats =
+    {
+        "CanIncludeInClipboardHistory",
+        "CanUploadToCloudClipboard",
+        "ExcludeClipboardContentFromMonitorProcessing",
+    };
     private const int DropEffectCopy = 1;
 
     private const int OaifAllowRegistration = 0x1;

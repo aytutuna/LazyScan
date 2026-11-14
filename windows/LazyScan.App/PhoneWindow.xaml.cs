@@ -312,7 +312,7 @@ public partial class PhoneWindow : Window
     {
         try
         {
-            Clipboard.SetText(PairingTextBox.Text);
+            Clipboard.SetDataObject(WindowsFileActions.TextData(PairingTextBox.Text), copy: true);
             ShowStatus(Loc.T("Copied to the clipboard."));
         }
         catch (COMException error)

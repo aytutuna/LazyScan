@@ -1079,6 +1079,7 @@ Nothing leaves the PC without the user choosing where it goes:
 - **Open with…** is the Windows "Open with" dialog for the file.
 - **Copy** puts the files on the clipboard (pasting into a folder copies them); for one image
   file its picture goes on the clipboard too, for pasting into a document or an image editor.
+  Copy, Copy text and the pairing address are marked so they stay out of Win+V history and cloud sync.
 
 **After saving** (in the inspector's More options section, and next to the photo review's Save
 button) runs one of these on its own once a save has finished: **Do nothing** (the default),
