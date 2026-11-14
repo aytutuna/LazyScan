@@ -313,7 +313,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 quickLabel(symbol, on: on)
             }
             .buttonStyle(.plain)
-            .disabled(!model.lifecycle.isLive || state.isBusy || importer.isImporting)
+            .disabled(!model.lifecycle.isLive || model.reducedLoad || state.isBusy || importer.isImporting)
             .accessibilityLabel(Text(IOSCameraText.flashLabel))
             .accessibilityValue(Text(value))
             .accessibilityIdentifier("camera.torchQuick")
@@ -393,7 +393,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     private var flashButton: some View {
         if model.showsPreview, model.hasTorch {
             let on: Bool = model.torchOn
-            let enabled: Bool = model.lifecycle.isLive && !state.isBusy
+            let enabled: Bool = model.lifecycle.isLive && !model.reducedLoad && !state.isBusy
             let glyphColour: Color = on ? Color.yellow : Color.primary
             let backing: Color = on ? Color.black.opacity(0.75) : Color.clear
             Button {
@@ -430,7 +430,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The look the viewfinder shows over the preview: the saved page's filter and adjustments, while the
     /// camera runs in the front; nil for Original with nothing adjusted, where the plain preview is all there is.
     private var filterLook: LiveLook? {
-        guard scenePhase == .active, model.lifecycle.isLive else { return nil }
+        guard scenePhase == .active, model.lifecycle.isLive, !model.reducedLoad else { return nil }
         let look: LiveLook = LiveLook(settings: state.settings)
         return look.isFiltering ? look : nil
     }
@@ -702,7 +702,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
 
     /// The frame is dark and the camera has a light that is off: the wait line can turn it on.
     private var offersLight: Bool {
-        model.hasTorch && !model.torchOn && model.lifecycle.isLive && model.live?.quality == CaptureQuality.dark
+        model.hasTorch && !model.torchOn && !model.reducedLoad && model.lifecycle.isLive && model.live?.quality == CaptureQuality.dark
     }
 
     /// Whether a page held still waits, and the wait line as shown (nil while a message or the glare hint

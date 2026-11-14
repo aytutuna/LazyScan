@@ -69,7 +69,7 @@ public enum IOSCameraCommand: Equatable, Sendable {
 }
 
 /// When our camera runs: only while its screen is shown, the app is in the front, the camera is allowed
-/// and set up, the device is not too warm (thermal state `.serious` or worse stops it) and no photo is in
+/// and set up, the device is not too warm (thermal state `.critical` stops it) and no photo is in
 /// the corner editor. It starts again as soon as all of that holds. An interruption (a call, Control
 /// Center, another app using the camera) is the system stopping the session: it is not stopped again
 /// here, so AVFoundation starts it again by itself when the interruption ends; meanwhile the camera is
@@ -157,9 +157,10 @@ public struct IOSCameraLifecycle: Equatable, Sendable {
         return nil
     }
 
-    /// The camera may run at this thermal state: nominal or fair, not serious or critical.
+    /// The camera may run at this thermal state: everything but critical. From fair on it runs at reduced load
+    /// (`IOSCameraModel.reducedLoad`).
     public static func thermalAllows(_ state: ProcessInfo.ThermalState) -> Bool {
-        state.rawValue < ProcessInfo.ThermalState.serious.rawValue
+        state.rawValue < ProcessInfo.ThermalState.critical.rawValue
     }
 
     private mutating func settle() -> IOSCameraCommand {

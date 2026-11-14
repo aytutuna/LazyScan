@@ -12,7 +12,8 @@ import Foundation
 /// (`modelPage`, the page in the small frame's pixels) and handed to the tracker on a queue of its own, so a
 /// model run never holds up the frames behind it. The model sees the frame turned upright, the tracker the
 /// frame as the sensor gives it, since its outline is in the sensor's frame. Frames that come sooner than
-/// `LiveQuadTracker.minFrameGapMs` after the last one handed over are passed over before any work, and so are
+/// `LiveQuadTracker.minFrameGapMs` (`minObjectGapMs` while the phone is warm) after the last one handed over
+/// are passed over before any work, and so are
 /// frames that come while the tracker still works on one; the small copy is all the tracker and the model
 /// keep, never the camera's buffer. Without the model the frames go to the tracker's own search alone. Every
 /// frame is also drawn by the viewfinder (`LiveViewfinder`) when it has a look to show, and the same small
@@ -50,7 +51,9 @@ final class IOSFrameFeed: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
         let handler: (@Sendable (IOSCameraFrame) -> Void)? = deliver
         let finder: LiveViewfinder? = viewfinder
         var due: Bool = handler != nil && !tracking
-        if let last = lastMs, ms >= last, ms - last < LiveQuadTracker.minFrameGapMs {
+        let warm: Bool = ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.fair.rawValue
+        let gap: Double = warm ? LiveQuadTracker.minObjectGapMs : LiveQuadTracker.minFrameGapMs
+        if let last = lastMs, ms >= last, ms - last < gap {
             due = false
         }
         lock.unlock()

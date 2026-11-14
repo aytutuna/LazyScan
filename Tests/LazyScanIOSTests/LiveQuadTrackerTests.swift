@@ -481,6 +481,20 @@ final class LiveQuadTrackerTests: XCTestCase {
         XCTAssertEqual(LiveQuadTracker.liveOptions.analysisLongSide, 480)
     }
 
+    func test_aWarmPhone_searchesThePageAboutFourTimesASecond() {
+        let count = SearchCount()
+        let tracker = LiveQuadTracker(detector: countingDetector(count))
+        tracker.setReduced(true)
+        XCTAssertNotNil(tracker.process(plainFrame(1000)))
+        XCTAssertNil(tracker.process(plainFrame(1100)))
+        XCTAssertNil(tracker.process(plainFrame(1224.9)))
+        XCTAssertNotNil(tracker.process(plainFrame(1225)))
+        tracker.setReduced(false)
+        XCTAssertNil(tracker.process(plainFrame(1300)))
+        XCTAssertNotNil(tracker.process(plainFrame(1315)))
+        XCTAssertEqual(count.value, 3)
+    }
+
     func test_aPageMissedForAMoment_keepsItsOutline_andTheSearchGetsItAsAHint() {
         let hints = TrackerLog()
         let found: Set<Int> = [0, 100]

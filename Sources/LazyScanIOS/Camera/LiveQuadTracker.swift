@@ -160,6 +160,8 @@ public final class LiveQuadTracker: @unchecked Sendable {
     private var search: LiveSearch = .page
     private var objects: LiveObjectSet
     private var largestOnly: Bool = false
+    /// The phone is warm: pages are searched as seldom as objects are.
+    private var reduced: Bool = false
 
     /// `detector` nil: the shared page search with `liveOptions`; `quality` nil: `FrameQuality.measure`;
     /// `objectFinder` nil: `IOSObjectFinder.find` (tests may pass their own).
@@ -199,6 +201,13 @@ public final class LiveQuadTracker: @unchecked Sendable {
         search = next
         clearState()
         generation += 1
+    }
+
+    /// While the phone is warm the page is searched about four times a second (`objectIntervalMs`).
+    public func setReduced(_ on: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        reduced = on
     }
 
     /// Only the largest object found is kept, as a shot with Items in frame set to One keeps it.
@@ -243,7 +252,7 @@ public final class LiveQuadTracker: @unchecked Sendable {
             return nil
         }
         var gap: Double = LiveQuadTracker.minFrameGapMs
-        if search != .page {
+        if search != .page || reduced {
             gap = LiveQuadTracker.minObjectGapMs
         }
         if let last = lastSearchedMs {

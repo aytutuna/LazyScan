@@ -425,12 +425,13 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertFalse(life.isRunning)
         XCTAssertNil(life.pauseReason)
         XCTAssertEqual(life.handle(.foreground), .start)
-        // Too warm: stopped at .serious and .critical, started again once it cools down.
+        // Too warm: stopped at .critical only, started again once it cools down.
         XCTAssertEqual(life.handle(.thermal(.fair)), .keep)
-        XCTAssertEqual(life.handle(.thermal(.serious)), .stop)
+        XCTAssertEqual(life.handle(.thermal(.serious)), .keep)
+        XCTAssertNil(life.pauseReason)
+        XCTAssertEqual(life.handle(.thermal(.critical)), .stop)
         XCTAssertEqual(life.pauseReason, "Paused: too warm")
-        XCTAssertEqual(life.handle(.thermal(.critical)), .keep)
-        XCTAssertEqual(life.handle(.thermal(.fair)), .start)
+        XCTAssertEqual(life.handle(.thermal(.serious)), .start)
         XCTAssertNil(life.pauseReason)
         // An interruption: the system stops the session and starts it again; it is not stopped here.
         XCTAssertEqual(life.handle(.interrupted(.inUse)), .keep)
@@ -475,7 +476,7 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertFalse(life.isRunning)
         // Too warm when shown: waits.
         var warm = IOSCameraLifecycle()
-        XCTAssertEqual(warm.handle(.thermal(.serious)), .keep)
+        XCTAssertEqual(warm.handle(.thermal(.critical)), .keep)
         XCTAssertEqual(warm.handle(.shown), .keep)
         XCTAssertEqual(warm.handle(.ready(true)), .keep)
         XCTAssertEqual(warm.handle(.thermal(.nominal)), .start)
@@ -489,7 +490,7 @@ final class IOSCameraTests: XCTestCase {
     func test_theThermalStates_andTheInterruptions_eachHaveTheirLine() {
         XCTAssertTrue(IOSCameraLifecycle.thermalAllows(.nominal))
         XCTAssertTrue(IOSCameraLifecycle.thermalAllows(.fair))
-        XCTAssertFalse(IOSCameraLifecycle.thermalAllows(.serious))
+        XCTAssertTrue(IOSCameraLifecycle.thermalAllows(.serious))
         XCTAssertFalse(IOSCameraLifecycle.thermalAllows(.critical))
         XCTAssertEqual(IOSCameraInterruption.from(.videoDeviceInUseByAnotherClient), .inUse)
         XCTAssertEqual(IOSCameraInterruption.from(.videoDeviceNotAvailableDueToSystemPressure), .tooWarm)
@@ -681,6 +682,12 @@ final class IOSCameraTests: XCTestCase {
         // Heat, as the system reports it.
         access.thermal = .serious
         center.post(name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
+        try await ImportTestSupport.waitUntil(timeout: 10) { model.reducedLoad }
+        XCTAssertFalse(model.lifecycle.isTooWarm)
+        XCTAssertEqual(driver.stops, 1)
+        XCTAssertNil(model.message)
+        access.thermal = .critical
+        center.post(name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
         try await ImportTestSupport.waitUntil(timeout: 10) { model.lifecycle.isTooWarm }
         XCTAssertEqual(driver.stops, 2)
         XCTAssertEqual(model.message, "Paused: too warm")
@@ -767,6 +774,32 @@ final class IOSCameraTests: XCTestCase {
         XCTAssertFalse(dark.torchOn)
         model.disappear()
         dark.disappear()
+    }
+
+    @MainActor
+    func test_aWarmPhone_putsTheTorchOutAndKeepsItOffUntilItCoolsDown() async throws {
+        let driver = FakeCameraDriver()
+        let access = FakeCameraAccess(status: .authorized, grants: true)
+        let center = NotificationCenter()
+        let model: IOSCameraModel = makeModel(driver, access: access, hasCamera: true, center: center)
+        await model.appear()
+        await model.toggleTorch()
+        XCTAssertTrue(model.torchOn)
+        access.thermal = .serious
+        center.post(name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
+        try await ImportTestSupport.waitUntil(timeout: 10) { !model.torchOn }
+        try await ImportTestSupport.waitUntil(timeout: 10) { !driver.torch }
+        XCTAssertTrue(model.reducedLoad)
+        XCTAssertTrue(model.canShoot)
+        // No light while warm.
+        await model.toggleTorch()
+        XCTAssertFalse(model.torchOn)
+        // It comes back by itself once the phone is cool.
+        access.thermal = .nominal
+        center.post(name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
+        try await ImportTestSupport.waitUntil(timeout: 10) { model.torchOn }
+        XCTAssertFalse(model.reducedLoad)
+        model.disappear()
     }
 
     @MainActor

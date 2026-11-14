@@ -91,6 +91,9 @@ public final class IOSCameraModel: ObservableObject {
     /// The kind has several objects to a shot but the live search for them is off (the phone is warm or
     /// saving power): no outlines, no automatic shutter, the shutter is tapped.
     @Published public private(set) var tapToTake: Bool = false
+    /// The phone is warm (thermal state fair or worse): the page is searched less often, the viewfinder
+    /// drops the filter and the torch stays off, until it cools down. The camera stops only at critical.
+    @Published public private(set) var reducedLoad: Bool = false
     /// Where the automatic shutter's photos go (the scan screen: `IOSImportSession.importShot`); nil: the
     /// automatic shutter takes nothing.
     public var onAutoShot: (@MainActor (IOSCameraShot) async -> Void)?
@@ -330,6 +333,10 @@ public final class IOSCameraModel: ObservableObject {
 
     /// Takes `event` in and starts or stops the session as `IOSCameraLifecycle` answers.
     public func apply(_ event: IOSCameraEvent) {
+        if case .thermal(let state) = event {
+            reducedLoad = state.rawValue >= ProcessInfo.ThermalState.fair.rawValue
+            tracker.setReduced(reducedLoad)
+        }
         var next: IOSCameraLifecycle = lifecycle
         let command: IOSCameraCommand = next.handle(event)
         lifecycle = next
@@ -341,11 +348,23 @@ public final class IOSCameraModel: ObservableObject {
         case .keep:
             break
         }
+        if case .thermal = event {
+            if reducedLoad {
+                if torchOn {
+                    torchOn = false
+                    Task { @MainActor [weak self] in
+                        _ = await self?.driver.setTorch(false)
+                    }
+                }
+            } else if command == .keep, torchWanted, lifecycle.isLive {
+                relightTorch()
+            }
+        }
         if case .interrupted = event {
             // The system may put the torch out while it holds the camera; the light comes back when the
             // interruption ends.
             torchOn = false
-        } else if event == .interruptionEnded, torchWanted, lifecycle.isLive {
+        } else if event == .interruptionEnded, torchWanted, lifecycle.isLive, !reducedLoad {
             relightTorch()
         }
         if !lifecycle.isLive {
@@ -356,9 +375,12 @@ public final class IOSCameraModel: ObservableObject {
     /// Turns the torch on or off. Turned on, it is lit again each time the session starts after a rest (a
     /// review, the corner editor, a sheet, the background), until it is turned off or the screen is left.
     public func toggleTorch() async {
-        guard hasTorch, lifecycle.isLive else { return }
+        guard hasTorch, lifecycle.isLive, !reducedLoad else { return }
         let wanted: Bool = !torchOn
         torchOn = await driver.setTorch(wanted)
+        if reducedLoad, torchOn {
+            torchOn = await driver.setTorch(false)
+        }
         torchWanted = torchOn
     }
 
@@ -421,7 +443,7 @@ public final class IOSCameraModel: ObservableObject {
             }
         }
         driver.startRunning()
-        if torchWanted {
+        if torchWanted, !reducedLoad {
             relightTorch()
         }
     }
@@ -430,8 +452,11 @@ public final class IOSCameraModel: ObservableObject {
     /// session runs; one that cannot light now (too warm) is tried again at the next start.
     private func relightTorch() {
         Task { @MainActor [weak self] in
-            guard let model = self, model.lifecycle.isLive else { return }
+            guard let model = self, model.lifecycle.isLive, !model.reducedLoad else { return }
             model.torchOn = await model.driver.setTorch(true)
+            if model.reducedLoad, model.torchOn {
+                model.torchOn = await model.driver.setTorch(false)
+            }
         }
     }
 

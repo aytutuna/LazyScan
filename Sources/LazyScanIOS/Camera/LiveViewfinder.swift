@@ -135,9 +135,8 @@ final class LiveViewfinder: @unchecked Sendable {
         let flipped: Bool = mirrored
         lock.unlock()
         guard let current = wanted, current.mode == nil || measured != nil else { return }
-        // Warm or saving power: half the frames, which puts off the point where the camera has to stop.
-        let info: ProcessInfo = ProcessInfo.processInfo
-        if info.isLowPowerModeEnabled || info.thermalState != .nominal {
+        // Saving power: half the frames. A warm phone gets no filter at all (`CameraScreen.filterLook`).
+        if ProcessInfo.processInfo.isLowPowerModeEnabled {
             skipsFrame.toggle()
             if skipsFrame { return }
         }
