@@ -1,5 +1,6 @@
 #if os(macOS)
 import LazyScanKit
+import CoreWLAN
 import Darwin
 import Foundation
 import Network
@@ -12,9 +13,12 @@ import SystemConfiguration
 /// of its own, identified by the interface's BSD name, the subnet and the network signature of the
 /// interface's IPv4 service ("en0 192.168.1.0/24 IPv4.Router=192.168.1.1;IPv4.RouterHardwareAddress=…",
 /// so another network handing out the same subnet is another network) and named by the interface's
-/// display name ("Wi-Fi (192.168.1.0/24)"). Each is its own adapter too, so an untrusted subnet on the
-/// same interface does not shut out the approved one. Loopback interfaces and link-local
-/// addresses (169.254/16) never count. There are no categories (`.publicNetwork`), so every network
+/// Wi-Fi name when macOS lets the app read it (it needs Location access, which the app does not ask
+/// for, so usually it does not) or else the interface's display name and the router's address
+/// ("Wi-Fi (192.168.1.1)"). Each is its own adapter too, so an untrusted subnet on the
+/// same interface does not shut out the approved one. Loopback and point-to-point interfaces (VPNs),
+/// interfaces without a display name (virtual adapters) and link-local addresses (169.254/16)
+/// never count. There are no categories (`.publicNetwork`), so every network
 /// needs the user's approval once. Changes are seen from `NWPathMonitor` and a check every
 /// `pollInterval`, as on Windows. Only reads; never changes a network setting.
 final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
@@ -52,7 +56,9 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
         while let entry = cursor {
             cursor = entry.pointee.ifa_next
             let flags = Int32(bitPattern: entry.pointee.ifa_flags)
+            let bsdName = String(cString: entry.pointee.ifa_name)
             guard flags & IFF_UP != 0, flags & IFF_RUNNING != 0, flags & IFF_LOOPBACK == 0,
+                  flags & IFF_POINTOPOINT == 0, let displayName = names[bsdName],
                   let address = entry.pointee.ifa_addr, let mask = entry.pointee.ifa_netmask,
                   address.pointee.sa_family == sa_family_t(AF_INET) else { continue }
             let bytes = MacNetworkSource.ipv4Bytes(address)
@@ -64,7 +70,6 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
                 prefix += maskBytes[i].nonzeroBitCount
                 subnet.append(bytes[i] & maskBytes[i])
             }
-            let bsdName = String(cString: entry.pointee.ifa_name)
             var parts: [String] = []
             for byte in subnet {
                 parts.append(String(byte))
@@ -74,9 +79,10 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
             // network has no id, so it cannot be approved: an approval must never carry over to another
             // network on the same interface and subnet.
             let id: String = signatures[bsdName].map { "\(bsdName) \(range) \($0)" } ?? ""
+            let name = MacNetworkSource.wifiName(bsdName) ?? "\(displayName) (\(MacNetworkSource.router(signatures[bsdName]) ?? range))"
             let adapter = CompanionNetworkInterface(index: Int(if_nametoindex(entry.pointee.ifa_name)), adapterId: "\(bsdName) \(range)",
                                                     addresses: [LocalSubnet(address: .ipv4(ipv4), prefixLength: prefix)])
-            found.append(CompanionNetwork(id: id, name: "\(names[bsdName] ?? bsdName) (\(range))",
+            found.append(CompanionNetwork(id: id, name: name,
                                           category: .publicNetwork, interfaces: [adapter]))
         }
         return found
@@ -141,6 +147,21 @@ final class MacNetworkSource: CompanionNetworkSource, @unchecked Sendable {
             found[bsdName] = signature
         }
         return found
+    }
+
+    /// The Wi-Fi name of the interface, when it is Wi-Fi and macOS gives it out.
+    private static func wifiName(_ bsdName: String) -> String? {
+        guard let ssid = CWWiFiClient.shared().interface(withName: bsdName)?.ssid(), !ssid.isEmpty else { return nil }
+        return ssid
+    }
+
+    /// The router's address in a NetworkSignature ("IPv4.Router=192.168.1.1;…").
+    private static func router(_ signature: String?) -> String? {
+        guard let signature else { return nil }
+        for part in signature.split(separator: ";") where part.hasPrefix("IPv4.Router=") {
+            return String(part.dropFirst("IPv4.Router=".count))
+        }
+        return nil
     }
 
     /// "Wi-Fi", "Ethernet", "Thunderbolt Bridge" by BSD name.
