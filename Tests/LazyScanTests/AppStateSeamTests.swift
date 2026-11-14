@@ -234,6 +234,19 @@ final class AppStateSeamTests: XCTestCase {
         XCTAssertFalse(try String(contentsOf: diagnostics, encoding: .utf8).isEmpty)
     }
 
+    @MainActor
+    func test_settingsFileThatDoesNotLoad_isNamedInTheLaunchMessage() throws {
+        try Data([0xFF, 0x00, 0x7B]).write(to: folder.appendingPathComponent("settings.json"))
+
+        let state = AppState(presetStore: PresetStore(directory: folder), orientationScorer: SeamScorer(),
+                             barcodeReader: SeamBarcodes(), files: AppStateFiles.all(in: folder))
+
+        let kept = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            .filter { $0.hasPrefix("settings.unreadable-") }
+        XCTAssertEqual(kept.count, 1)
+        XCTAssertEqual(state.errorMessage?.contains(kept[0]), true)
+    }
+
     // MARK: PlatformLifecycle
 
     @MainActor

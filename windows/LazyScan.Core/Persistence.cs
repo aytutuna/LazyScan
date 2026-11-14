@@ -15,6 +15,9 @@ public sealed class PresetStore
 {
     private readonly string _directory;
 
+    /// <summary>What the last <see cref="Load"/> did to a file it could not use; null when it loaded or there was none.</summary>
+    public StoreLoadNotice? LoadNotice { get; private set; }
+
     public PresetStore() : this(StoreFiles.DefaultDirectory) { }
 
     /// <summary>Stores presets.json in <paramref name="directory"/> instead of %APPDATA% (tests).</summary>
@@ -36,6 +39,7 @@ public sealed class PresetStore
     public List<Preset> Load()
     {
         var result = StoreFiles.Read<List<Preset>>(PresetsPath);
+        LoadNotice = null;
         switch (result.Status)
         {
             case StoreReadStatus.Loaded:
@@ -43,10 +47,10 @@ public sealed class PresetStore
             case StoreReadStatus.Missing:
                 break;
             case StoreReadStatus.Corrupt:
-                StoreFiles.KeepUnreadable(PresetsPath, result.Error!);
+                LoadNotice = StoreFiles.KeepUnreadable(PresetsPath, result.Error!);
                 break;
             case StoreReadStatus.Inaccessible:
-                StoreFiles.LeaveInaccessible(PresetsPath, result.Error!);
+                LoadNotice = StoreFiles.LeaveInaccessible(PresetsPath, result.Error!);
                 return BuiltInPresets();
         }
         var builtIns = BuiltInPresets();
@@ -54,10 +58,8 @@ public sealed class PresetStore
         return builtIns;
     }
 
-    public void Save(List<Preset> presets)
-    {
-        StoreFiles.Write(presets, PresetsPath);
-    }
+    /// <summary>Whether the file was written; false when it is protected or the write failed.</summary>
+    public bool Save(List<Preset> presets) => StoreFiles.Write(presets, PresetsPath);
 
     // MARK: First run
 
@@ -76,13 +78,18 @@ public static class SettingsStore
     /// that does not decode is moved aside as settings.unreadable-&lt;yyyyMMdd-HHmmss&gt;.json;
     /// a file that cannot be read at all is left in place and not overwritten this session.
     /// </summary>
-    public static ScanSettings? Load() => Load(StoreFiles.DefaultDirectory);
+    public static ScanSettings? Load() => Load(StoreFiles.DefaultDirectory, out _);
+
+    /// <summary>Same as <see cref="Load()"/>, also reporting what was done to a file that could not be used.</summary>
+    public static ScanSettings? Load(out StoreLoadNotice? notice) => Load(StoreFiles.DefaultDirectory, out notice);
 
     public static void Save(ScanSettings settings) => Save(settings, StoreFiles.DefaultDirectory);
 
     /// <summary>Same as <see cref="Load()"/>, reading settings.json from <paramref name="directory"/> (tests).</summary>
-    internal static ScanSettings? Load(string directory) =>
-        StoreFiles.Load<ScanSettings>(StoreFiles.SettingsPath(directory));
+    internal static ScanSettings? Load(string directory) => Load(directory, out _);
+
+    internal static ScanSettings? Load(string directory, out StoreLoadNotice? notice) =>
+        StoreFiles.Load<ScanSettings>(StoreFiles.SettingsPath(directory), out notice);
 
     /// <summary>Same as <see cref="Save(ScanSettings)"/>, writing settings.json into <paramref name="directory"/> (tests).</summary>
     internal static void Save(ScanSettings settings, string directory) =>
@@ -156,6 +163,18 @@ public static class AppPreferencesStore
     /// <summary>Same as <see cref="Save(AppPreferences)"/>, writing preferences.json into <paramref name="directory"/> (tests).</summary>
     internal static void Save(AppPreferences preferences, string directory) =>
         StoreFiles.Write(preferences, StoreFiles.PreferencesPath(directory));
+}
+
+/// <summary>
+/// A settings or presets file that was not used when the app started, for the one-time message.
+/// <paramref name="Kept"/> is the name the unreadable file was moved to; null when it could not be
+/// read or moved aside, and is left alone and not written this session.
+/// </summary>
+public sealed record StoreLoadNotice(string File, string? Kept = null)
+{
+    public string Message => Kept is null
+        ? Loc.T("{0} could not be read, so the app is using its defaults. Changes to it are not saved until the app is reopened.", File)
+        : Loc.T("{0} could not be read, so the app started with its defaults. The old file was kept as {1}.", File, Kept);
 }
 
 internal enum StoreReadStatus
@@ -265,18 +284,21 @@ internal static class StoreFiles
     /// The decoded value, or null when there is none yet or the file could not be loaded; an
     /// undecodable file is moved aside and an unreadable one is protected from writes.
     /// </summary>
-    internal static T? Load<T>(string path) where T : class
+    internal static T? Load<T>(string path) where T : class => Load<T>(path, out _);
+
+    internal static T? Load<T>(string path, out StoreLoadNotice? notice) where T : class
     {
+        notice = null;
         var result = Read<T>(path);
         switch (result.Status)
         {
             case StoreReadStatus.Loaded:
                 return result.Value;
             case StoreReadStatus.Corrupt:
-                KeepUnreadable(path, result.Error!);
+                notice = KeepUnreadable(path, result.Error!);
                 break;
             case StoreReadStatus.Inaccessible:
-                LeaveInaccessible(path, result.Error!);
+                notice = LeaveInaccessible(path, result.Error!);
                 break;
         }
         return null;
@@ -348,20 +370,21 @@ internal static class StoreFiles
     /// Leaves a file that could not be read where it is and refuses further writes to it
     /// for the rest of the session, so a transient failure never replaces valid contents.
     /// </summary>
-    internal static void LeaveInaccessible(string path, Exception error)
+    internal static StoreLoadNotice LeaveInaccessible(string path, Exception error)
     {
         ProtectedFiles.Protect(path);
         Trace.TraceError($"Could not read {Path.GetFileName(path)} ({error.Message}); "
                          + "left it in place and will not overwrite it this session");
+        return new StoreLoadNotice(Path.GetFileName(path));
     }
 
     /// <summary>
     /// Moves a file that does not decode aside to &lt;name&gt;.unreadable-&lt;yyyyMMdd-HHmmss&gt;.json
     /// in the same folder (adding -2, -3, ... when that name is taken). When it cannot be
     /// moved, further writes to <paramref name="path"/> are refused instead, unless the move
-    /// failed because the file is already gone.
+    /// failed because the file is already gone. Returns what happened, null when the file was gone.
     /// </summary>
-    internal static void KeepUnreadable(string path, Exception error)
+    internal static StoreLoadNotice? KeepUnreadable(string path, Exception error)
     {
         string stem = Path.GetFileNameWithoutExtension(path) + ".unreadable-"
                       + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
@@ -376,16 +399,19 @@ internal static class StoreFiles
         {
             File.Move(path, target);
             Trace.TraceError($"{problem}; kept it as {Path.GetFileName(target)}");
+            return new StoreLoadNotice(Path.GetFileName(path), Path.GetFileName(target));
         }
         catch (Exception moveError) when (IsNoSuchFile(moveError))
         {
             Trace.TraceError($"{problem}; it was removed before it could be kept ({moveError.Message})");
+            return null;
         }
         catch (Exception moveError)
         {
             ProtectedFiles.Protect(path);
             Trace.TraceError($"{problem} and could not move it aside ({moveError.Message}); "
                              + "it will not be overwritten");
+            return new StoreLoadNotice(Path.GetFileName(path));
         }
     }
 

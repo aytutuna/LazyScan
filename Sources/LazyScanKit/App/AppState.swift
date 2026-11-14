@@ -805,7 +805,7 @@ public final class AppState: ObservableObject {
         self.diagnosticsFile = files.diagnosticsFile
         self.keepsQueue = files.keepsQueue
         self.discardsQueueAtQuit = files.discardsQueueAtQuit
-        let saved = SettingsStore.load(directory: files.settingsDirectory)
+        let (saved, settingsNotice) = SettingsStore.loadReporting(directory: files.settingsDirectory)
         self.isFirstRun = saved == nil
         // A task saved last time is still active: its banner comes back with the settings.
         var initial = saved ?? ScanSettings()
@@ -833,6 +833,10 @@ public final class AppState: ObservableObject {
         } else {
             QueueRecord.clear(files.spoolDirectory, keeping: kept)
         }
+        // Said once at launch; the status line is overwritten by the scanner search.
+        var notices: [String] = [settingsNotice, presetStore.loadNotice].compactMap { $0?.message }
+        if let queueMessage = errorMessage { notices.append(queueMessage) }
+        if !notices.isEmpty { errorMessage = notices.joined(separator: "\n\n") }
         if files.keepsQueue {
             QueueRecord.keepOutOfBackups(files.spoolDirectory)
         }
@@ -2871,7 +2875,9 @@ public final class AppState: ObservableObject {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         presets.append(Preset(name: trimmed, settings: settings))
-        presetStore.save(presets)
+        if !presetStore.save(presets) {
+            errorMessage = L10n.t("The preset “{0}” could not be saved.", trimmed)
+        }
     }
 
     public func deletePreset(id: UUID) {

@@ -1881,6 +1881,51 @@ final class PresetStoreFileTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: settingsURL.path))
     }
 
+    func test_unreadablePresetsFile_reportsTheKeptCopy() throws {
+        try Data([0xFF, 0x00, 0x7B]).write(to: presetsURL)
+        let store = PresetStore(directory: directory)
+
+        _ = store.load()
+
+        let kept = try keptFiles(prefix: "presets.unreadable-")
+        XCTAssertEqual(store.loadNotice, .reset(file: "presets.json", kept: kept[0]))
+        XCTAssertEqual(store.loadNotice?.message.contains(kept[0]), true)
+    }
+
+    func test_unreadableSettingsFile_reportsTheKeptCopy() throws {
+        try Data([0xFF, 0x00, 0x7B]).write(to: settingsURL)
+
+        let loaded = SettingsStore.loadReporting(directory: directory)
+
+        let kept = try keptFiles(prefix: "settings.unreadable-")
+        XCTAssertNil(loaded.settings)
+        XCTAssertEqual(loaded.notice, .reset(file: "settings.json", kept: kept[0]))
+    }
+
+    func test_inaccessibleFiles_reportProtectedAndRefuseWrites() throws {
+        PresetStore(directory: directory).save([Preset(id: sampleID, name: "Receipts", settings: nonDefaultSettings())])
+        SettingsStore.save(nonDefaultSettings(), directory: directory)
+        let store = PresetStore(directory: directory)
+
+        try withoutReadPermission(presetsURL) { _ = store.load() }
+        try withoutReadPermission(settingsURL) {
+            XCTAssertEqual(SettingsStore.loadReporting(directory: directory).notice, .protected(file: "settings.json"))
+        }
+
+        XCTAssertEqual(store.loadNotice, .protected(file: "presets.json"))
+        XCTAssertFalse(store.save([]))
+    }
+
+    func test_filesThatLoadOrAreMissing_reportNothing() throws {
+        XCTAssertNil(SettingsStore.loadReporting(directory: directory).notice)
+        let store = PresetStore(directory: directory)
+        _ = store.load()
+        XCTAssertNil(store.loadNotice)
+        SettingsStore.save(nonDefaultSettings(), directory: directory)
+        XCTAssertNil(SettingsStore.loadReporting(directory: directory).notice)
+        XCTAssertTrue(store.save([]))
+    }
+
     func test_settingsSaveThenLoad_roundTrips() throws {
         SettingsStore.save(nonDefaultSettings(), directory: directory)
         XCTAssertEqual(SettingsStore.load(directory: directory), nonDefaultSettings())

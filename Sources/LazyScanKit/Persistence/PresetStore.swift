@@ -5,6 +5,8 @@ import os
 
 public final class PresetStore {
     private let directory: URL
+    /// What the last `load()` did to a file it could not use; nil when it loaded or there was none.
+    public private(set) var loadNotice: StoreLoadNotice?
 
     public init() {
         directory = StoreFiles.defaultDirectory
@@ -24,15 +26,16 @@ public final class PresetStore {
     /// an empty list is returned without saving and writes to it are refused for the
     /// session, so the user's file is never overwritten.
     public func load() -> [Preset] {
+        loadNotice = nil
         switch StoreFiles.read([Preset].self, from: presetsURL) {
         case .loaded(let presets):
             return presets
         case .missing:
             break
         case .corrupt(let error):
-            StoreFiles.keepUnreadable(presetsURL, error: error)
+            loadNotice = StoreFiles.keepUnreadable(presetsURL, error: error)
         case .inaccessible(let error):
-            StoreFiles.leaveInaccessible(presetsURL, error: error)
+            loadNotice = StoreFiles.leaveInaccessible(presetsURL, error: error)
             return PresetStore.builtInPresets()
         }
         let builtIns = PresetStore.builtInPresets()
@@ -40,7 +43,9 @@ public final class PresetStore {
         return builtIns
     }
 
-    public func save(_ presets: [Preset]) {
+    /// Whether the file was written; false when it is protected or the write failed.
+    @discardableResult
+    public func save(_ presets: [Preset]) -> Bool {
         StoreFiles.write(presets, to: presetsURL)
     }
 
@@ -70,18 +75,21 @@ public enum SettingsStore {
 
     /// Same as `load()`, reading `settings.json` from `directory` (tests).
     static func load(directory: URL) -> ScanSettings? {
+        loadReporting(directory: directory).settings
+    }
+
+    /// Same as `load(directory:)`, with what it did to a file it could not use.
+    static func loadReporting(directory: URL) -> (settings: ScanSettings?, notice: StoreLoadNotice?) {
         let url = StoreFiles.settingsURL(in: directory)
         switch StoreFiles.read(ScanSettings.self, from: url) {
         case .loaded(let settings):
-            return settings
+            return (settings, nil)
         case .missing:
-            return nil
+            return (nil, nil)
         case .corrupt(let error):
-            StoreFiles.keepUnreadable(url, error: error)
-            return nil
+            return (nil, StoreFiles.keepUnreadable(url, error: error))
         case .inaccessible(let error):
-            StoreFiles.leaveInaccessible(url, error: error)
-            return nil
+            return (nil, StoreFiles.leaveInaccessible(url, error: error))
         }
     }
 
@@ -94,6 +102,23 @@ public enum SettingsStore {
 // MARK: - Shared file plumbing
 
 private let storeLog = Logger(subsystem: "LazyScan", category: "Persistence")
+
+/// A settings or presets file that was not used when the app started, for the one-time message.
+public enum StoreLoadNotice: Equatable, Sendable {
+    /// The file did not decode and was moved aside as `kept`; the app started with defaults.
+    case reset(file: String, kept: String)
+    /// The file could not be read or moved aside; it is left alone and not written this session.
+    case protected(file: String)
+
+    public var message: String {
+        switch self {
+        case .reset(let file, let kept):
+            return L10n.t("{0} could not be read, so the app started with its defaults. The old file was kept as {1}.", file, kept)
+        case .protected(let file):
+            return L10n.t("{0} could not be read, so the app is using its defaults. Changes to it are not saved until the app is reopened.", file)
+        }
+    }
+}
 
 enum StoreReadResult<Value> {
     /// No file yet (first run).
@@ -331,17 +356,21 @@ enum StoreFiles {
 
     /// Leaves a file that could not be read where it is and refuses further writes to it
     /// for the rest of the session, so a transient failure never replaces valid contents.
-    static func leaveInaccessible(_ url: URL, error: Error) {
+    @discardableResult
+    static func leaveInaccessible(_ url: URL, error: Error) -> StoreLoadNotice {
         ProtectedFiles.shared.protect(url)
         let message = "Could not read \(url.lastPathComponent) (\(error)); "
             + "left it in place and will not overwrite it this session"
         storeLog.error("\(message, privacy: .public)")
+        return .protected(file: url.lastPathComponent)
     }
 
     /// Moves a file that does not decode aside to `<name>.unreadable-<yyyyMMdd-HHmmss>.json`
     /// in the same folder. When it cannot be moved, further writes to `url` are refused
-    /// instead, unless the move failed because the file is already gone.
-    static func keepUnreadable(_ url: URL, error: Error) {
+    /// instead, unless the move failed because the file is already gone. Returns what happened, nil
+    /// when the file was gone.
+    @discardableResult
+    static func keepUnreadable(_ url: URL, error: Error) -> StoreLoadNotice? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd-HHmmss"
@@ -358,13 +387,16 @@ enum StoreFiles {
             try FileManager.default.moveItem(at: url, to: target)
             let message = "\(problem); kept it as \(target.lastPathComponent)"
             storeLog.error("\(message, privacy: .public)")
+            return .reset(file: url.lastPathComponent, kept: target.lastPathComponent)
         } catch let moveError where isNoSuchFile(moveError) {
             let message = "\(problem); it was removed before it could be kept (\(moveError))"
             storeLog.error("\(message, privacy: .public)")
+            return nil
         } catch let moveError {
             ProtectedFiles.shared.protect(url)
             let message = "\(problem) and could not move it aside (\(moveError)); it will not be overwritten"
             storeLog.fault("\(message, privacy: .public)")
+            return .protected(file: url.lastPathComponent)
         }
     }
 

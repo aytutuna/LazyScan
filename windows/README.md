@@ -2046,7 +2046,9 @@ hold them keep them. They load across versions the same way as on macOS (`../CON
 that setting; a file that cannot be decoded is kept next to it as
 `<name>.unreadable-<yyyyMMdd-HHmmss>.json` before defaults are written; and a file that cannot
 be read at all (for example, locked by another program) is left alone and not overwritten
-until the app restarts.
+until the app restarts. Both cases come back as a `StoreLoadNotice` (`PresetStore.LoadNotice`,
+`SettingsStore.Load(out notice)`) whose `Message` names the file and the kept copy, and
+`PresetStore.Save` returns whether the file was written.
 
 The queued pages are spooled under `%LOCALAPPDATA%\Lazy Scan\pages`, a folder for each running
 copy of the app, and the queue is recorded beside them (`queue.json`: each page's spool files,

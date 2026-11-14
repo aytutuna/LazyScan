@@ -445,6 +445,9 @@
     "other": "Opened {1}: {0} pages"
   },
   "The pages kept from last time could not be read.": {},
+  "{0} could not be read, so the app started with its defaults. The old file was kept as {1}.": {},
+  "{0} could not be read, so the app is using its defaults. Changes to it are not saved until the app is reopened.": {},
+  "The preset “{0}” could not be saved.": {},
   "Storage is full: these pages are lost if the app closes.": {},
   "Bringing back {0} page…": {
     "other": "Bringing back {0} pages…"

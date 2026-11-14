@@ -2137,6 +2137,62 @@ public sealed class PresetStoreFileTests : IDisposable
     }
 
     [Fact]
+    public void UnreadablePresetsFile_ReportsTheKeptCopy()
+    {
+        File.WriteAllBytes(PresetsPath, Garbage);
+        var store = new PresetStore(_directory);
+
+        store.Load();
+
+        string kept = Assert.Single(KeptFiles("presets.unreadable-"));
+        Assert.Equal(new StoreLoadNotice("presets.json", kept), store.LoadNotice);
+        Assert.Contains(kept, store.LoadNotice!.Message);
+    }
+
+    [Fact]
+    public void UnreadableSettingsFile_ReportsTheKeptCopy()
+    {
+        File.WriteAllBytes(SettingsPath, Garbage);
+
+        Assert.Null(SettingsStore.Load(_directory, out var notice));
+
+        string kept = Assert.Single(KeptFiles("settings.unreadable-"));
+        Assert.Equal(new StoreLoadNotice("settings.json", kept), notice);
+    }
+
+    [Fact]
+    public void InaccessibleFiles_ReportProtectedAndRefuseWrites()
+    {
+        new PresetStore(_directory).Save([new Preset("Receipts", CompatFixtures.NonDefaultSettings()) { Id = CompatFixtures.SampleId }]);
+        SettingsStore.Save(CompatFixtures.NonDefaultSettings(), _directory);
+        var store = new PresetStore(_directory);
+
+        WithoutReadAccess(PresetsPath, () => store.Load());
+        WithoutReadAccess(SettingsPath, () =>
+        {
+            SettingsStore.Load(_directory, out var notice);
+            Assert.Equal(new StoreLoadNotice("settings.json"), notice);
+        });
+
+        Assert.Equal(new StoreLoadNotice("presets.json"), store.LoadNotice);
+        Assert.False(store.Save([]));
+    }
+
+    [Fact]
+    public void FilesThatLoadOrAreMissing_ReportNothing()
+    {
+        SettingsStore.Load(_directory, out var notice);
+        Assert.Null(notice);
+        var store = new PresetStore(_directory);
+        store.Load();
+        Assert.Null(store.LoadNotice);
+        SettingsStore.Save(CompatFixtures.NonDefaultSettings(), _directory);
+        SettingsStore.Load(_directory, out notice);
+        Assert.Null(notice);
+        Assert.True(store.Save([]));
+    }
+
+    [Fact]
     public void SettingsSaveThenLoad_RoundTrips()
     {
         SettingsStore.Save(CompatFixtures.NonDefaultSettings(), _directory);
