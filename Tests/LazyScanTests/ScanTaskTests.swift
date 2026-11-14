@@ -297,14 +297,14 @@ final class ScanTaskTests: XCTestCase {
         XCTAssertTrue(TaskCatalog.apply(.twoSided, to: ScanSettings()).document.removeBlankPages)
     }
 
-    func test_apply_onlyTheTwoSidedTaskStraightens_noTaskCrops() {
+    func test_apply_onlyTheDocumentTaskCrops_documentTwoSidedAndBookStraighten() {
         var current = customized()
         current.document.autoCrop = true
         current.document.autoStraighten = true
         for task in ScanTask.allCases {
             let s = TaskCatalog.apply(task, to: current)
-            XCTAssertFalse(s.document.autoCrop, task.rawValue)
-            XCTAssertEqual(s.document.autoStraighten, task == .twoSided || task == .book, task.rawValue)
+            XCTAssertEqual(s.document.autoCrop, task == .document, task.rawValue)
+            XCTAssertEqual(s.document.autoStraighten, task == .document || task == .twoSided || task == .book, task.rawValue)
         }
         XCTAssertTrue(current.document.autoCrop)
         XCTAssertTrue(TaskCatalog.apply(.twoSided, to: ScanSettings()).document.autoStraighten)

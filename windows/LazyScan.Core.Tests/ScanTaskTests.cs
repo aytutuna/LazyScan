@@ -335,7 +335,7 @@ public class ScanTaskTests
     }
 
     [Fact]
-    public void Apply_OnlyTheTwoSidedAndBookTasksStraighten_NoTaskCrops()
+    public void Apply_OnlyTheDocumentTaskCrops_DocumentTwoSidedAndBookStraighten()
     {
         var current = Customized();
         current.Document.AutoCrop = true;
@@ -343,8 +343,8 @@ public class ScanTaskTests
         foreach (var task in ScanTasks.All)
         {
             var s = TaskCatalog.Apply(task, current);
-            Assert.False(s.Document.AutoCrop);
-            Assert.Equal(task is ScanTask.TwoSided or ScanTask.Book, s.Document.AutoStraighten);
+            Assert.Equal(task == ScanTask.Document, s.Document.AutoCrop);
+            Assert.Equal(task is ScanTask.Document or ScanTask.TwoSided or ScanTask.Book, s.Document.AutoStraighten);
         }
         Assert.True(current.Document.AutoCrop);
         Assert.True(TaskCatalog.Apply(ScanTask.TwoSided, new ScanSettings()).Document.AutoStraighten);

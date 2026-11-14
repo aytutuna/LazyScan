@@ -108,7 +108,7 @@ scanners** — including the Epson Perfection V39 II.
   without a visible edge, by its lines of text. Both are cautious: a page whose edges or text are
   unclear is left as scanned, a crop never cuts into the sheet, and turning a page never cuts off
   anything in its corners. A changed page has a small arrow in the page strip that shows it as
-  scanned, and back. The Two-sided document task straightens pages.
+  scanned, and back. The Document to PDF task crops and straightens pages, and the Two-sided document and Book or magazine tasks straighten them.
 - **Photos of documents**: no scanner needed. **Import photos of documents…** (or drop photo files
   on the window) adds phone photos of pages (JPEG, PNG, HEIC, TIFF, BMP, WebP) to the page queue:
   each photo is turned upright by its orientation tag, the page's four corners are found, and the

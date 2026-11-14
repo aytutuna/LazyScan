@@ -299,7 +299,7 @@ public enum TaskCatalog {
     /// (the empty backs of one-sided sheets), straightens pages the feeder pulled in at a slant and
     /// turns upright the sheets put in the wrong way round; the Book or magazine task splits each spread
     /// into its facing pages, straightens each page, softens the shadow along the spine and turns upright a book lying sideways (its reading
-    /// order and turn, in `taskOptions`, are kept); no task crops yet; `SettingsAdapter` turns `.both` into turning over by hand on a feeder that
+    /// order and turn, in `taskOptions`, are kept); the Document task also crops each page to the sheet and straightens it, and no other task crops; `SettingsAdapter` turns `.both` into turning over by hand on a feeder that
     /// scans one side. The ID card task makes no searchable PDF: the numbers on an ID are better not
     /// indexed; neither does the Copy task, whose PDF (when one is saved too) is a record of the paper
     /// copy. The Receipts task scans in grayscale (thermal print has no color) into Compact PDFs, named
@@ -328,8 +328,8 @@ public enum TaskCatalog {
         if task == .archive { s.output.protect = false }
         s.duplex = .off
         s.document.removeBlankPages = task == .twoSided || task == .batch
-        s.document.autoCrop = false
-        s.document.autoStraighten = task == .twoSided || task == .book
+        s.document.autoCrop = task == .document
+        s.document.autoStraighten = task == .document || task == .twoSided || task == .book
         s.document.autoRotate = task == .twoSided || task == .book
         s.document.splitMode = task == .batch ? .separatorSheet : SplitMode.none
         s.document.splitFacingPages = task == .book

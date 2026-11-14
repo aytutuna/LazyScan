@@ -244,8 +244,8 @@ public static class TaskCatalog
     /// pages (the empty backs of one-sided sheets), straightens pages the feeder pulled in at a
     /// slant and turns upright the sheets put in the wrong way round; the Book or magazine task splits
     /// each spread into its facing pages, straightens each page, softens the shadow along the spine and
-    /// turns upright a book lying sideways (its reading order and turn, in <see cref="ScanSettings.TaskOptions"/>, are kept); no
-    /// task crops yet; <see cref="SettingsAdapter"/> turns
+    /// turns upright a book lying sideways (its reading order and turn, in <see cref="ScanSettings.TaskOptions"/>, are kept); the
+    /// Document task also crops each page to the sheet and straightens it, and no other task crops; <see cref="SettingsAdapter"/> turns
     /// <see cref="DuplexMode.Both"/> into turning over by hand on a feeder that scans one side.
     /// The ID card task makes no searchable PDF: the numbers on an ID are better not indexed; neither
     /// does the Copy task, whose PDF (when one is saved too) is a record of the paper copy. The
@@ -279,8 +279,8 @@ public static class TaskCatalog
         if (task == ScanTask.Archive) s.Output.Protect = false;
         s.Duplex = DuplexMode.Off;
         s.Document.RemoveBlankPages = task is ScanTask.TwoSided or ScanTask.Batch;
-        s.Document.AutoCrop = false;
-        s.Document.AutoStraighten = task is ScanTask.TwoSided or ScanTask.Book;
+        s.Document.AutoCrop = task == ScanTask.Document;
+        s.Document.AutoStraighten = task is ScanTask.Document or ScanTask.TwoSided or ScanTask.Book;
         s.Document.AutoRotate = task is ScanTask.TwoSided or ScanTask.Book;
         s.Document.SplitMode = task == ScanTask.Batch ? SplitMode.SeparatorSheet : SplitMode.None;
         s.Document.SplitFacingPages = task == ScanTask.Book;

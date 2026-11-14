@@ -369,8 +369,8 @@ sheet (a thin line 0.3 to 0.7 in from the edge counts as ink and makes the back 
 
 **Crop to page** cuts each page out of the scanner's background, and **Straighten pages** turns a
 page that lies at a slant straight (the inspector's **Pages** section, under the blank-page
-settings). Both are off unless a task turns them on: the **Two-sided document** task straightens,
-since feeders pull sheets in at a slant; no task crops yet. Like the blank-page check they run on
+settings). Both are off unless a task turns them on: the **Document to PDF** task crops and straightens, and the **Two-sided document** and
+**Book or magazine** tasks straighten, since feeders pull sheets in at a slant. Like the blank-page check they run on
 pages collected in the queue only, after the blank-page check and before the adjustments, and a
 page saved at once is never changed, so the switches are greyed out then. A changed page carries a
 small arrow at its top right in the page strip, always shown, whose tooltip says what was done
