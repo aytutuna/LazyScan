@@ -1728,7 +1728,26 @@
   "The document from {0} could not be added: there is not enough memory for its pictures.": {
     "note": "{0} is the name of a phone."
   },
-  "The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.": {
+  "The document from {0} could not be added to the queue now ({1}). It is kept in the waiting list.": {
+    "note": "{0} is the name of a phone."
+  },
+  "{1} · {0} page": {
+    "other": "{1} · {0} pages",
+    "note": "A row of the list of phone documents waiting to be added. {1} is the name of a phone."
+  },
+  "Waiting, {0} document": {
+    "other": "Waiting, {0} documents",
+    "note": "Read aloud for the list of phone documents waiting to be added."
+  },
+  "Add {0} page from {1} now": {
+    "other": "Add {0} pages from {1} now",
+    "note": "Read aloud for a button. {1} is the name of a phone."
+  },
+  "Discard {0} page from {1}": {
+    "other": "Discard {0} pages from {1}",
+    "note": "Read aloud for a button. {1} is the name of a phone."
+  },
+  "Discarded the document from {0}.": {
     "note": "{0} is the name of a phone."
   },
   "The document from {0} could not be added to the queue now ({1}). It is kept on this PC and added the next time Lazy Scan starts.": {
@@ -1887,8 +1906,8 @@
   },
   "From phone": {},
   "Sent from a paired phone": {},
-  "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {
-    "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+  "Cancelled. The page from {1} was not added. It is kept in the waiting list.": {
+    "other": "Cancelled. The {0} pages from {1} were not added. They are kept in the waiting list.",
     "note": "{1} is the name of a phone."
   },
   "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {

@@ -164,12 +164,12 @@ public static class CompanionProtocol
 
     /// <summary>
     /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
-    /// time Lazy Scan starts." <paramref name="onMac"/> says "Mac" instead of "PC".
+    /// time Lazy Scan starts." <paramref name="onMac"/> says "They are kept in the waiting list." instead.
     /// </summary>
     public static string KeptMessage(int pageCount, string phoneName, bool onMac) => onMac
         ? Loc.Plural(pageCount,
-            "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.",
-            "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+            "Cancelled. The page from {1} was not added. It is kept in the waiting list.",
+            "Cancelled. The {0} pages from {1} were not added. They are kept in the waiting list.",
             phoneName)
         : Loc.Plural(pageCount,
             "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.",

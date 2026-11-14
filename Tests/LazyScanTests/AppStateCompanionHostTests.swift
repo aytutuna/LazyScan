@@ -205,6 +205,45 @@ final class AppStateCompanionHostTests: XCTestCase {
         XCTAssertNil(state.phoneDocumentsWaitingMessage)
     }
 
+    @MainActor
+    func test_keptDocument_isListedAndAddedNow() async throws {
+        let state = try await makeState(pages: 0)
+        let package = try received()
+        let message = CompanionProtocol.keptMessage(2, phoneName: "Aytu's iPhone", onMac: true)
+        state.keepPhoneDocument(package, phoneName: "Aytu's iPhone", message: message)
+        state.keepPhoneDocument(package, phoneName: "Aytu's iPhone", message: message)
+        XCTAssertEqual(state.keptPhoneDocuments.count, 1)
+        XCTAssertTrue(state.keptPhoneDocumentsOpen)
+        XCTAssertEqual(state.phoneBarMessage, "Cancelled. The 2 pages from Aytu's iPhone were not added. They are kept in the waiting list.")
+        state.addKeptPhoneDocument(state.keptPhoneDocuments[0])
+        XCTAssertTrue(state.keptPhoneDocuments.isEmpty)
+        try await waitUntil(timeout: 60) { !state.isBusy && state.scannedPages.count == 2 }
+        XCTAssertEqual(state.phoneBarMessage, "2 pages from Aytu's iPhone added to the queue.")
+    }
+
+    @MainActor
+    func test_keptDocument_discardLeavesTheList() async throws {
+        let state = try await makeState(pages: 0)
+        let package = try received()
+        state.keepPhoneDocument(package, phoneName: "Aytu's iPhone",
+                                message: CompanionHostText.notAddedMessage("Aytu's iPhone", reason: "disk full"))
+        XCTAssertEqual(state.phoneBarMessage,
+                       "The document from Aytu's iPhone could not be added to the queue now (disk full). It is kept in the waiting list.")
+        state.discardKeptPhoneDocument(state.keptPhoneDocuments[0])
+        XCTAssertTrue(state.keptPhoneDocuments.isEmpty)
+        XCTAssertEqual(state.phoneBarMessage, "Discarded the document from Aytu's iPhone.")
+        XCTAssertTrue(state.scannedPages.isEmpty)
+    }
+
+    func test_keptTexts_countPagesAndDocuments() {
+        XCTAssertEqual(CompanionHostText.keptRowText(pageCount: 1, phoneName: "Sam's iPad"), "Sam's iPad · 1 page")
+        XCTAssertEqual(CompanionHostText.keptRowText(pageCount: 3, phoneName: "Aytu's iPhone"), "Aytu's iPhone · 3 pages")
+        XCTAssertEqual(CompanionHostText.keptListLabel(count: 1), "Waiting, 1 document")
+        XCTAssertEqual(CompanionHostText.keptListLabel(count: 2), "Waiting, 2 documents")
+        XCTAssertEqual(CompanionHostText.keptAddLabel(pageCount: 3, phoneName: "Aytu's iPhone"), "Add 3 pages from Aytu's iPhone now")
+        XCTAssertEqual(CompanionHostText.keptDiscardLabel(pageCount: 1, phoneName: "Aytu's iPhone"), "Discard 1 page from Aytu's iPhone")
+    }
+
     func test_waitingMessage_countsAndNames() {
         XCTAssertEqual(CompanionHostText.waitingMessage(pageCount: 1, from: "your phones", collectsPages: true),
                        "1 page from your phones will be added to the queue when the current step is done.")

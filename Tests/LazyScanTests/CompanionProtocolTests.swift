@@ -71,7 +71,7 @@ final class CompanionProtocolTests: XCTestCase {
             "Cancelled. The page from Aytu's iPhone was not added; it is kept on this PC and is added the next time Lazy Scan starts.")
         XCTAssertEqual(
             CompanionProtocol.keptMessage(5, phoneName: "Pixel", onMac: true),
-            "Cancelled. The 5 pages from Pixel were not added; they are kept on this Mac and are added the next time Lazy Scan starts.")
+            "Cancelled. The 5 pages from Pixel were not added. They are kept in the waiting list.")
     }
 
     func testMessages_HaveTheirExactJson() {

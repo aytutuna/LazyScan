@@ -100,7 +100,7 @@ public class CompanionProtocolTests
             "Cancelled. The page from Aytu's iPhone was not added; it is kept on this PC and is added the next time Lazy Scan starts.",
             CompanionProtocol.KeptMessage(1, "Aytu's iPhone", false));
         Assert.Equal(
-            "Cancelled. The 5 pages from Pixel were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+            "Cancelled. The 5 pages from Pixel were not added. They are kept in the waiting list.",
             CompanionProtocol.KeptMessage(5, "Pixel", true));
     }
 

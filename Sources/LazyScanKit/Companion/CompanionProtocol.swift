@@ -155,12 +155,12 @@ public enum CompanionProtocol {
     }
 
     /// "Cancelled. The 3 pages from Aytu's iPhone were not added; they are kept on this PC and are added the next
-    /// time Lazy Scan starts." `onMac` says "Mac" instead of "PC".
+    /// time Lazy Scan starts." `onMac` says "They are kept in the waiting list." instead.
     public static func keptMessage(_ pageCount: Int, phoneName: String, onMac: Bool) -> String {
         if onMac {
             return L10n.plural(pageCount,
-                               one: "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.",
-                               other: "Cancelled. The {0} pages from {1} were not added; they are kept on this Mac and are added the next time Lazy Scan starts.",
+                               one: "Cancelled. The page from {1} was not added. It is kept in the waiting list.",
+                               other: "Cancelled. The {0} pages from {1} were not added. They are kept in the waiting list.",
                                phoneName)
         }
         return L10n.plural(pageCount,

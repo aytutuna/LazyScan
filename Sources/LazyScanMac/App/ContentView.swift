@@ -72,8 +72,8 @@ struct ContentView: View {
                     Divider()
                 }
                 // A paired phone's document added to the queue, or waiting for it (AppState+CompanionHost.swift).
-                if let message = state.phoneBarMessage {
-                    PhoneBarView(message: message)
+                if state.phoneBarMessage != nil || !state.keptPhoneDocuments.isEmpty {
+                    PhoneBarView(message: state.phoneBarMessage)
                     Divider()
                 }
                 switch detailTab {

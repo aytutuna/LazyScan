@@ -523,6 +523,12 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var phoneDocumentsWaitingMessage: String?
     /// Documents from phones waiting to be added to the queue, oldest first, with the phone's name.
     var phoneDocuments: [(package: ReceivedPackage, phoneName: String)] = []
+    /// Documents from phones whose adding was cancelled or failed, oldest first; they stay in the inbox
+    /// until `addKeptPhoneDocument` or `discardKeptPhoneDocument`, and are added again at the next start.
+    @Published public internal(set) var keptPhoneDocuments: [KeptPhoneDocument] = []
+    /// Whether the bar lists the kept documents; opens by itself the first time one is kept.
+    @Published public var keptPhoneDocumentsOpen = false
+    var keptPhoneListShown = false
     /// Tries the waiting documents again shortly; nil when nothing waits.
     var phoneRetry: Task<Void, Never>?
 

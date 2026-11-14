@@ -59,10 +59,35 @@ public enum CompanionHostText {
         L10n.t("The document from {0} could not be added: one of its pictures could not be read.", phoneName)
     }
 
-    /// The document could not be read now; it stays in the inbox.
+    /// The document could not be read or added now; it stays in the inbox and in the waiting list.
     public static func notAddedMessage(_ phoneName: String, reason: String) -> String {
-        L10n.t("The document from {0} could not be added to the queue now ({1}). It is kept on this Mac and added the next time Lazy Scan starts.",
+        L10n.t("The document from {0} could not be added to the queue now ({1}). It is kept in the waiting list.",
                phoneName, reason)
+    }
+
+    /// "Aytu's iPhone · 3 pages": a row of the waiting list.
+    public static func keptRowText(pageCount: Int, phoneName: String) -> String {
+        L10n.plural(pageCount, one: "{1} · {0} page", other: "{1} · {0} pages", phoneName)
+    }
+
+    /// The waiting list's label for a screen reader: "Waiting, 2 documents".
+    public static func keptListLabel(count: Int) -> String {
+        L10n.plural(count, one: "Waiting, {0} document", other: "Waiting, {0} documents")
+    }
+
+    /// "Add 3 pages from Aytu's iPhone now"
+    public static func keptAddLabel(pageCount: Int, phoneName: String) -> String {
+        L10n.plural(pageCount, one: "Add {0} page from {1} now", other: "Add {0} pages from {1} now", phoneName)
+    }
+
+    /// "Discard 3 pages from Aytu's iPhone"
+    public static func keptDiscardLabel(pageCount: Int, phoneName: String) -> String {
+        L10n.plural(pageCount, one: "Discard {0} page from {1}", other: "Discard {0} pages from {1}", phoneName)
+    }
+
+    /// "Discarded the document from Aytu's iPhone."
+    public static func discardedMessage(_ phoneName: String) -> String {
+        L10n.t("Discarded the document from {0}.", phoneName)
     }
 
     /// "Waiting for Aytu's iPhone to fetch it": a file is in the phone's outbox.
@@ -74,6 +99,14 @@ public enum CompanionHostText {
     public static func sentToPhoneMessage(_ phoneName: String) -> String {
         L10n.t("Sent to {0}", phoneName)
     }
+}
+
+/// A phone's document that was cancelled or could not be added; its package is still in the inbox.
+public struct KeptPhoneDocument: Identifiable {
+    public var package: ReceivedPackage
+    public var phoneName: String
+
+    public var id: URL { package.url }
 }
 
 /// A file put in a paired phone's outbox (`AppState.sendToPhone`) and whether the phone has fetched it.
@@ -264,7 +297,8 @@ extension AppState {
     /// Decodes the document's pictures and queues its pages (`ingestPages`, as a phone's pages); the
     /// package is then released from the inbox and the bar says what arrived. A document with a picture
     /// that cannot be read is released too (it never will be); one that could not be read now, or
-    /// whose adding was cancelled, stays in the inbox and is added the next time the app starts.
+    /// whose adding was cancelled or failed, stays in the inbox and joins `keptPhoneDocuments`; it is added
+    /// again at the next start unless it is discarded.
     private func addPhoneDocument(_ package: ReceivedPackage, phoneName: String) {
         // The pages go to the page list whatever the task: the task and Collect pages stay as they are.
         let s: ScanSettings = {
@@ -294,7 +328,8 @@ extension AppState {
                 self.statusMessage = L10n.t("Ready.")
                 return
             case .failure(let error):
-                self.errorMessage = CompanionHostText.notAddedMessage(phoneName, reason: error.localizedDescription)
+                self.keepPhoneDocument(package, phoneName: phoneName,
+                                       message: CompanionHostText.notAddedMessage(phoneName, reason: error.localizedDescription))
                 self.statusMessage = L10n.t("Ready.")
                 return
             }
@@ -305,7 +340,12 @@ extension AppState {
             } catch ScanError.cancelled, is CancellationError {
                 let kept = CompanionProtocol.keptMessage(pages.count, phoneName: phoneName, onMac: true)
                 self.statusMessage = kept
-                self.phoneBarMessage = kept
+                self.keepPhoneDocument(package, phoneName: phoneName, message: kept)
+                return
+            } catch {
+                self.keepPhoneDocument(package, phoneName: phoneName,
+                                       message: CompanionHostText.notAddedMessage(phoneName, reason: error.localizedDescription))
+                self.statusMessage = L10n.t("Ready.")
                 return
             }
             let count = pages.count
@@ -315,6 +355,33 @@ extension AppState {
             self.companionService?.inbox.release(package)
             self.phoneBarMessage = CompanionProtocol.addedMessage(count, phoneName: phoneName)
         }
+    }
+
+    /// Lists a document that was cancelled or could not be added, and says so on the bar.
+    func keepPhoneDocument(_ package: ReceivedPackage, phoneName: String, message: String) {
+        if !keptPhoneDocuments.contains(where: { $0.id == package.url }) {
+            keptPhoneDocuments.append(KeptPhoneDocument(package: package, phoneName: phoneName))
+        }
+        if !keptPhoneListShown {
+            keptPhoneListShown = true
+            keptPhoneDocumentsOpen = true
+        }
+        phoneBarMessage = message
+    }
+
+    /// Adds a kept document as a new one arriving; when the app is busy it joins the waiting documents.
+    public func addKeptPhoneDocument(_ kept: KeptPhoneDocument) {
+        guard let index = keptPhoneDocuments.firstIndex(where: { $0.id == kept.id }) else { return }
+        keptPhoneDocuments.remove(at: index)
+        queuePhoneDocument(kept.package, phoneName: kept.phoneName)
+    }
+
+    /// Deletes a kept document from the inbox, so it is not added at the next start.
+    public func discardKeptPhoneDocument(_ kept: KeptPhoneDocument) {
+        guard let index = keptPhoneDocuments.firstIndex(where: { $0.id == kept.id }) else { return }
+        keptPhoneDocuments.remove(at: index)
+        companionService?.inbox.release(kept.package)
+        phoneBarMessage = CompanionHostText.discardedMessage(kept.phoneName)
     }
 
     /// Asks `confirmPhonePairing`; allows the pairing when nobody is there to ask.
