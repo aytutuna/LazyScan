@@ -11,6 +11,7 @@ import SwiftUI
 /// demo scanner alone and never searches the network, for scanners or for the computer the phone pairs
 /// with (`IOSCompanionBrowser`).
 public struct LazyScanIOSApp: App {
+    @UIApplicationDelegateAdaptor(IOSAppDelegate.self) private var appDelegate: IOSAppDelegate
     @StateObject private var fileActions: IOSFileActions
     @StateObject private var state: AppState
     @StateObject private var importer: IOSImportSession

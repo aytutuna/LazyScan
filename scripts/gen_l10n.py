@@ -293,8 +293,8 @@ def check_plist_catalog(plist):
             if not (isinstance(text, str) and text.strip()):
                 errors.append(f"infoplist {platform} {key!r}: must be text")
             elif f"<key>{key}</key>" not in source and not re.search(
-                    r"<key>CFBundleTypeName</key>\s*<string>" + re.escape(key) + "</string>", source):
-                errors.append(f"infoplist {platform} {key!r}: is not a key or a CFBundleTypeName in the Info.plist")
+                    r"<key>(?:CFBundleTypeName|UIApplicationShortcutItemTitle)</key>\s*<string>" + re.escape(key) + "</string>", source):
+                errors.append(f"infoplist {platform} {key!r}: is not a key, a CFBundleTypeName or a UIApplicationShortcutItemTitle in the Info.plist")
     return errors
 
 

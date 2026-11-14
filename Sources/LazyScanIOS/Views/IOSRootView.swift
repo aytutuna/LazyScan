@@ -32,6 +32,7 @@ public struct IOSRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
     @ObservedObject private var fileActions: IOSFileActions
     @ObservedObject private var importer: IOSImportSession
+    @ObservedObject private var quickActions: IOSQuickActions = IOSQuickActions.shared
     private let launchImports: [IOSImportItem]
     private let launchTask: ScanTask?
     private let picker: IOSScannerPickerModel
@@ -82,6 +83,8 @@ public struct IOSRootView: View {
                 stackLayout
             }
         }
+        .modifier(KeepPagesQuestion(state: state, leave: $leavingPages, blocked: importer.isImporting))
+        .modifier(IdCardDiscardQuestion(state: state, asked: $askedToDiscard))
         .onChange(of: showsScanner) { (_: Bool, shown: Bool) in
             // Pages of an import must not land in a task picked after leaving its scan screen.
             if !shown {
@@ -158,6 +161,11 @@ public struct IOSRootView: View {
             promptForLock()
             keepAwake()
         }
+        .onChange(of: quickActions.pending) { (_: IOSQuickAction?, _: IOSQuickAction?) in
+            if started {
+                runQuickAction()
+            }
+        }
         .onOpenURL { (url: URL) in
             if url.isFileURL {
                 openFiles([url])
@@ -220,8 +228,6 @@ public struct IOSRootView: View {
                 splitDetail
             }
         }
-        .modifier(KeepPagesQuestion(state: state, leave: $leavingPages, blocked: importer.isImporting))
-        .modifier(IdCardDiscardQuestion(state: state, asked: $askedToDiscard))
     }
 
     @ViewBuilder
@@ -531,6 +537,56 @@ public struct IOSRootView: View {
             }
         } else if !IOSLayout.usesSidebar(sizeClass, pad: isPad) {
             showsScanner = true
+        }
+        runQuickAction()
+    }
+
+    /// The Home Screen icon's item chosen: the saved files, or the camera on the kind (camera mode, as the
+    /// kind is only a camera one there), started as the task list's tile would.
+    private func runQuickAction() {
+        guard let action = quickActions.pending else { return }
+        quickActions.pending = nil
+        guard let kind = action.kind else {
+            if IOSLayout.usesSidebar(sizeClass, pad: isPad) {
+                showDetail(.saved)
+            } else {
+                openLibrary()
+            }
+            return
+        }
+        // Dropped, as a tap on a control that is off, while the app's own controls would not change the kind.
+        guard !state.isBusy, !importer.isImporting, !state.readsQueue, scanCover == nil, spreadEditor == nil,
+              !state.showIdCardReview, state.copyPages.isEmpty, !TurnedOverButtons.showsAny(state) else { return }
+        if mode != .camera {
+            mode = .camera
+            if state.selectedDeviceID != nil && selectionCanMove {
+                state.userSelectNoDevice()
+            }
+        }
+        if state.activeTask != nil && kind == IOSShell.shownKind(state.settings) {
+            openScanner()
+            return
+        }
+        if state.pagesLeftBehind(by: kind.task) > 0 {
+            leavingPages = PagesLeave(reason: IOSShell.keepPagesReason(kind)) { (discarding: Bool) in
+                startKind(kind, discardingPages: discarding)
+            }
+        } else {
+            startKind(kind, discardingPages: false)
+        }
+    }
+
+    private func startKind(_ kind: IOSScanKind, discardingPages: Bool) {
+        let appState: AppState = state
+        let open: @MainActor () -> Void = openScanner
+        appState.leaveIdCard {
+            if IOSShell.startKind(kind, in: appState, discardingPages: discardingPages, defaults: UserDefaults.standard) {
+                appState.clearAppendTarget()
+                open()
+            }
+        }
+        if appState.pendingIdCardLeave != nil {
+            askedToDiscard = true
         }
     }
 

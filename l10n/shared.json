@@ -3159,7 +3159,11 @@
       "NSPhotoLibraryAddUsageDescription": "Lazy Scan adds a scan to your photo library only when you choose Photos after saving or in the saved row.",
       "Lazy Scan document": "Lazy Scan document",
       "PDF document": "PDF document",
-      "Image": "Image"
+      "Image": "Image",
+      "Document": "Document",
+      "Receipts": "Receipts",
+      "ID card": "ID card",
+      "Saved files": "Saved files"
     },
     "mac": {
       "NSLocalNetworkUsageDescription": "Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and receives documents from your paired phone.",
