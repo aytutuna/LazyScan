@@ -699,7 +699,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
 
     /// The page is outlined in the viewfinder, for the kinds that take one page; the others say their count.
     private var pageSeen: Bool {
-        !CaptureObjects.findsSeveral(kind) && model.live?.outline != nil
+        model.autoShutter && canShoot && !CaptureObjects.findsSeveral(kind) && model.live?.outline != nil
     }
 
     /// The step the camera asks for now, as the card or the task line says it; nil while a page is retaken.
