@@ -8,7 +8,7 @@ private struct ScanSettingsShownKey: FocusedValueKey {
 }
 
 extension FocusedValues {
-    /// Whether the scan settings column is shown; set while the Scanner tab is up, where the column lives.
+    /// Whether the scan settings column is shown; set while the Scan tab is up, where the column lives.
     var scanSettingsShown: Binding<Bool>? {
         get { self[ScanSettingsShownKey.self] }
         set { self[ScanSettingsShownKey.self] = newValue }
@@ -103,7 +103,7 @@ struct UndoCommands: Commands {
         if state.canUndoSave { return String(localized: "Undo Save") }
         if !state.canUndoRemove { return String(localized: "Undo") }
         if state.removedByReorder { return String(localized: "Undo Spread Update") }
-        return state.removedByClear ? String(localized: "Undo Clear") : String(localized: "Undo Remove Page")
+        return state.removedByClear ? String(localized: "Undo Remove All") : String(localized: "Undo Remove Page")
     }
 
     /// The menu is not re-evaluated when focus moves into a text field, so Undo and Redo stay on unless

@@ -35,7 +35,7 @@ enum TaskSymbols {
 struct TaskStartView: View {
     @EnvironmentObject var state: AppState
 
-    /// Opens the scanner view (after a tile was set up, or for "Go to Scanner").
+    /// Opens the scanner view (after a tile was set up, or for "Go to Scan").
     var onOpenScanner: () -> Void
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 150, maximum: 190), spacing: 12, alignment: .top)]
@@ -92,7 +92,7 @@ struct TaskStartView: View {
             Button {
                 onOpenScanner()
             } label: {
-                Label("Go to Scanner", systemImage: "scanner")
+                Label("Go to Scan", systemImage: "scanner")
             }
             .help("Open the scanner without changing your settings")
         }

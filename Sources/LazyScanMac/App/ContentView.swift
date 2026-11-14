@@ -21,7 +21,7 @@ struct ContentView: View {
     /// Photo files are dragged over the scanner view: it says where they go.
     @State private var dropTargeted = false
     @State private var openedPhotos: [URL] = []
-    /// The Scans tab's enlarged view is open: its sheet shows the error alert itself.
+    /// The History tab's enlarged view is open: its sheet shows the error alert itself.
     @State private var historyEnlarged: ScanHistoryEntry?
 
     var body: some View {
@@ -36,8 +36,8 @@ struct ContentView: View {
                 HStack {
                     Picker("View", selection: $detailTab) {
                         Text("Start").tag(DetailTab.start)
-                        Text("Scanner").tag(DetailTab.scanner)
-                        Text("Scans").tag(DetailTab.scans)
+                        Text("Scan").tag(DetailTab.scanner)
+                        Text("History").tag(DetailTab.scans)
                         Text("Saved").tag(DetailTab.saved)
                     }
                     .pickerStyle(.segmented)
@@ -147,7 +147,7 @@ struct ContentView: View {
         .task { state.startWithLastScanner() }
     }
 
-    /// Offered to View > Show Scan Settings only while the Scanner tab, which has the column, is up.
+    /// Offered to View > Show Scan Settings only while the Scan tab, which has the column, is up.
     private var settingsBinding: Binding<Bool>? {
         guard detailTab == .scanner else { return nil }
         return $showInspector
@@ -208,7 +208,7 @@ struct ContentView: View {
         }
     }
 
-    /// A scan started on the Scanner tab goes on when another tab is up: its progress and Cancel stay in reach.
+    /// A scan started on the Scan tab goes on when another tab is up: its progress and Cancel stay in reach.
     @ViewBuilder
     private var runningScanBar: some View {
         if state.isBusy {

@@ -289,7 +289,7 @@ struct PagesStripView: View {
     }
 
     private var clearButton: some View {
-        Button("Clear") {
+        Button("Remove") {
             if state.scannedPages.count > 1 {
                 asksClear = true
             } else {

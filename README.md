@@ -147,7 +147,7 @@ scanners** — including the Epson Perfection V39 II.
   go one to a page, still at real size): the paper in your default printer when it holds
   A4 or Letter, else the paper usual where you live, unless you pick the other. Check the sides, turn or re-crop one, swap them or scan one again, then save a PDF, or a
   JPEG, PNG or TIFF of the page, and if you like each side as an image too. ID cards are sensitive,
-  so nothing leaves the Mac: the scans are kept in memory only, never in the Scans tab, and are
+  so nothing leaves the Mac: the scans are kept in memory only, never in the History tab, and are
   cleared as soon as the card is saved or discarded; the PDF has no searchable text layer unless you
   turn it on. **Print** prints the page at real size on the printer chosen for copies.
 - **Photocopy**: a photocopier from a scanner and a printer. Put the original on the glass (or a stack in

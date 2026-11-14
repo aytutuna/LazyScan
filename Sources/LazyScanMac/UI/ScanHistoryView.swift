@@ -4,7 +4,7 @@ import LazyScanKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The "Scans" tab: every scan of this session, newest first, as preview cards. The card shows a
+/// The "History" tab: every scan of this session, newest first, as preview cards. The card shows a
 /// small preview; the page itself is in a temp file of the session (`ScanHistoryEntry.pageFile`), which
 /// Add to queue and Save read.
 struct ScanHistoryView: View {
