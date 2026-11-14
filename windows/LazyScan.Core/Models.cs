@@ -406,6 +406,7 @@ public static class ModelLabels
         FileAction.Email => Loc.T("Email…"),
         FileAction.LazyPrint => Loc.T("Lazy Print"),
         FileAction.Copy => Loc.T("Copy"),
+        FileAction.SendToPhone => Loc.T("Send to {0}", Loc.T("a phone")),
         _ => action.ToString(),
     };
 

@@ -4114,10 +4114,11 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// The actions offered for these files: Lazy Print only when it is installed and can read them,
-    /// Email only when a mail message can be started (otherwise it is the same window as Share).
+    /// Email only when a mail message can be started (otherwise it is the same window as Share), Send to phone only
+    /// while a phone is paired.
     /// </summary>
     public IReadOnlyList<FileAction> OfferedFor(IReadOnlyList<string> paths) =>
-        SaveActions.Offered(paths.Count, SaveActions.CanPrintWithLazyPrint(paths) && _fileActions.LazyPrintInstalled())
+        SaveActions.Offered(paths.Count, SaveActions.CanPrintWithLazyPrint(paths) && _fileActions.LazyPrintInstalled(), SendPhone is not null)
             .Where(a => a != FileAction.Email || _fileActions.SendProbe.CanCompose).ToList();
 
     /// <summary>
@@ -4142,6 +4143,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             SavedRevision++;
             NotifyAll();
             return false;
+        }
+        if (action == FileAction.SendToPhone)
+        {
+            bool sent = SendToPhone(paths);
+            NotifyAll();
+            return sent;
         }
         try
         {

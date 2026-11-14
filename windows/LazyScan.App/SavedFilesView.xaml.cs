@@ -586,15 +586,24 @@ public partial class SavedFilesView : UserControl
     private void SetSelectionButtonText(Button button, FileAction action, int count)
     {
         string label = action == FileAction.Share ? Loc.T("Share") : action.Label();
+        bool waiting = false;
+        if (action == FileAction.SendToPhone && _viewModel?.SendPhone is { } phone)
+        {
+            label = Loc.T("Send to {0}", AppViewModel.PhoneNameOf(phone));
+            waiting = _viewModel.IsWaitingForPhone(SelectedPaths());
+        }
         string hint = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, count);
+        if (waiting) hint = Loc.T("Waiting for {0} to fetch the last file.", AppViewModel.PhoneNameOf(_viewModel!.SendPhone!));
         button.Content = label;
+        button.IsEnabled = !waiting;
+        ToolTipService.SetShowOnDisabled(button, true);
         button.ToolTip = hint;
         AutomationProperties.SetName(button, Loc.T("{0} {1}", label, Loc.Plural(count, "{0} file", "{0} files")));
         AutomationProperties.SetHelpText(button, hint);
     }
 
     /// <summary>The bar is shown for two or more selected files, with the actions offered for all of them.</summary>
-    private void UpdateSelectionBar()
+    internal void UpdateSelectionBar()
     {
         var paths = SelectedPaths();
         if (paths.Count < 2 || _viewModel is null)
@@ -719,8 +728,16 @@ public partial class SavedFilesView : UserControl
     private ContextMenu BuildSelectionMenu()
     {
         var paths = SelectedPaths();
-        return FileActionMenu.Build(_viewModel?.OfferedFor(paths) ?? SaveActions.Offered(paths.Count), paths.Count,
-                                    action => _viewModel?.RunFileAction(action, paths));
+        var menu = FileActionMenu.Build(_viewModel?.OfferedFor(paths) ?? SaveActions.Offered(paths.Count), paths.Count,
+                                        action => _viewModel?.RunFileAction(action, paths));
+        NamePhone(menu, paths);
+        return menu;
+    }
+
+    /// <summary>Names the phone on the menu's Send to phone item; it is off while the files wait for the phone.</summary>
+    private void NamePhone(ContextMenu menu, IReadOnlyList<string> paths)
+    {
+        if (_viewModel?.SendPhone is { } phone) FileActionMenu.NamePhone(menu, AppViewModel.PhoneNameOf(phone), _viewModel.IsWaitingForPhone(paths));
     }
 
     /// <summary>Every action on one saved file, then Rotate for image files or Add the scanned pages for a PDF.</summary>
@@ -743,7 +760,9 @@ public partial class SavedFilesView : UserControl
             add.IsEnabled = viewModel.CanAppendPages;
             extra.Add(add);
         }
-        return FileActionMenu.Build(_viewModel?.OfferedFor([item.File.Path]) ?? SaveActions.Offered(1), 1, action => Run(action, item), extra);
+        var menu = FileActionMenu.Build(_viewModel?.OfferedFor([item.File.Path]) ?? SaveActions.Offered(1), 1, action => Run(action, item), extra);
+        NamePhone(menu, [item.File.Path]);
+        return menu;
     }
 
     /// <summary>Carries out an action on the card's file; problems are reported in the InfoBar.</summary>

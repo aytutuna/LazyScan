@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Interop;
+using LazyScan.Core;
 
 namespace LazyScan.App;
 
@@ -16,6 +17,11 @@ public partial class MainWindow
     private void SetUpPhone()
     {
         ViewModel.PhoneDocumentArrived += ShowPhoneBar;
+        ViewModel.PhoneSendChanged += ShowPhoneSend;
+        ViewModel.PhoneSendCleared += () =>
+        {
+            if (_phoneBarShowsSend) PhoneBar.Visibility = Visibility.Collapsed;
+        };
     }
 
     private void PhoneButton_Click(object sender, RoutedEventArgs e)
@@ -24,13 +30,26 @@ public partial class MainWindow
     }
 
     /// <summary>Shows <paramref name="message"/> in the bar above the window content and announces it.</summary>
-    private void ShowPhoneBar(string message)
+    private void ShowPhoneBar(string message) => ShowPhoneBar(Loc.T("From your phone"), message, send: false);
+
+    private void ShowPhoneBar(string lead, string message, bool send)
     {
+        _phoneBarShowsSend = send;
+        PhoneBarLead.Text = lead;
         PhoneBarMessage.Text = message;
         PhoneBar.Visibility = Visibility.Visible;
         var peer = UIElementAutomationPeer.FromElement(PhoneBarText) ?? UIElementAutomationPeer.CreatePeerForElement(PhoneBarText);
         peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
         if (!IsActive && IsVisible) FlashTaskbarButton();
+    }
+
+    /// <summary>Whether the bar says where a file sent to a phone is, not what a phone sent.</summary>
+    private bool _phoneBarShowsSend;
+
+    /// <summary>Shows the state of files sent to a phone in the same bar: <paramref name="lead"/>, then the files.</summary>
+    private void ShowPhoneSend(string lead, IReadOnlyList<string> paths)
+    {
+        ShowPhoneBar(lead, "· " + SavedBarLine(paths), send: true);
     }
 
     private void PhoneBarClose_Click(object sender, RoutedEventArgs e) => PhoneBar.Visibility = Visibility.Collapsed;

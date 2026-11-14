@@ -504,13 +504,17 @@ public sealed class CompanionLoopbackTests : IAsyncLifetime
         File.WriteAllBytes(file, Encoding.ASCII.GetBytes("%PDF-1.7 hello"));
         var waiting = phone.SendAsync(HttpMethod.Get, CompanionProtocol.OutboxPath + "?wait=10");
         await Task.Delay(200);
-        var item = _service.Outbox.Add(phone.Id, file, "Scan.pdf", "application/pdf", _now);
+        var fetched = new List<string>();
+        _service.SentFetched += (_, e) => fetched.Add(e.Device.Id + "/" + e.Id);
+        var item = _service.Outbox.Add(phone.Id, file, "Scan.pdf", CompanionOutbox.ContentTypeFor(file), _now);
         var list = OutboxList.FromJson(await (await waiting.WaitAsync(TimeSpan.FromSeconds(10))).Content.ReadAsByteArrayAsync());
         Assert.Equal(item, Assert.Single(list!.Items));
         var download = await phone.SendAsync(HttpMethod.Get, CompanionProtocol.OutboxPrefix + item.Id);
         Assert.Equal("application/pdf", download.Content.Headers.ContentType?.MediaType);
         Assert.Equal("%PDF-1.7 hello", await download.Content.ReadAsStringAsync());
+        Assert.Empty(fetched);
         Assert.Equal(HttpStatusCode.NoContent, (await phone.SendAsync(HttpMethod.Delete, CompanionProtocol.OutboxPrefix + item.Id)).StatusCode);
+        Assert.Equal([phone.Id + "/" + item.Id], fetched);
     }
 
     [Fact]

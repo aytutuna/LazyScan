@@ -26,7 +26,7 @@ public class SaveActionsTests
         Assert.Equal(["Do nothing", "Open", "Show in folder", "Share…"],
                      Enum.GetValues<AfterSaveAction>().Select(a => a.Label()));
         Assert.All(Enum.GetValues<AfterSaveAction>(), a => Assert.False(string.IsNullOrEmpty(a.Hint())));
-        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Lazy Print", "Copy"],
+        Assert.Equal(["Open", "Open with…", "Show in folder", "Share…", "Email…", "Lazy Print", "Copy", "Send to a phone"],
                      Enum.GetValues<FileAction>().Select(a => a.Label()));
     }
 
@@ -115,6 +115,18 @@ public class SaveActionsTests
                      SaveActions.Offered(3, lazyPrint: true));
         Assert.Empty(SaveActions.Offered(0, lazyPrint: true));
         Assert.DoesNotContain(FileAction.LazyPrint, SaveActions.Offered(1));
+    }
+
+    [Fact]
+    public void Offered_AddsSendToPhoneAfterCopyOnlyWhenAsked()
+    {
+        Assert.Equal([FileAction.Open, FileAction.OpenWith, FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.Copy, FileAction.SendToPhone],
+                     SaveActions.Offered(1, sendToPhone: true));
+        Assert.Equal([FileAction.Reveal, FileAction.Share, FileAction.Email, FileAction.LazyPrint, FileAction.Copy, FileAction.SendToPhone],
+                     SaveActions.Offered(3, lazyPrint: true, sendToPhone: true));
+        Assert.Empty(SaveActions.Offered(0, sendToPhone: true));
+        Assert.DoesNotContain(FileAction.SendToPhone, SaveActions.Offered(1));
+        Assert.DoesNotContain(FileAction.SendToPhone, SaveActions.Offered(3));
     }
 
     [Fact]

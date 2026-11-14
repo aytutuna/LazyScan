@@ -402,13 +402,28 @@ public sealed class CompanionRouterTests : IDisposable
             Assert.Equal("%PDF-1.7 test", await reader.ReadToEndAsync());
         }
         Assert.Contains(download.Headers, h => h.Key == "Content-Type" && h.Value == "application/pdf");
+        var fetched = new List<(PairedDevice Device, string Id)>();
+        _router.OutboxFetched += (_, e) => fetched.Add(e);
         Assert.Equal(204, (await Send("DELETE", CompanionProtocol.OutboxPrefix + item.Id, device: "phone-0001", secret: secret)).Status);
+        Assert.Equal(("phone-0001", item.Id), (fetched.Single().Device.Id, fetched.Single().Id));
         Assert.Equal(404, (await Send("DELETE", CompanionProtocol.OutboxPrefix + item.Id, device: "phone-0001", secret: secret)).Status);
+        Assert.Single(fetched);
         Assert.Equal(404, (await Send("GET", CompanionProtocol.OutboxPrefix + item.Id, device: "phone-0001", secret: secret)).Status);
         // Another phone sees nothing of it.
         string other = await PairPhone("phone-0002");
         _outbox.Add("phone-0001", file, "Scan 2.pdf", "application/pdf", _now);
         Assert.Empty(OutboxList.FromJson((await Send("GET", CompanionProtocol.OutboxPath, device: "phone-0002", secret: other)).Body)!.Items);
+    }
+
+    [Fact]
+    public void Outbox_ContentTypeComesFromTheExtension()
+    {
+        Assert.Equal("application/pdf", CompanionOutbox.ContentTypeFor(@"C:\Scans\Scan 1.PDF"));
+        Assert.Equal("image/jpeg", CompanionOutbox.ContentTypeFor("Photo.jpeg"));
+        Assert.Equal("image/png", CompanionOutbox.ContentTypeFor("a.png"));
+        Assert.Equal("image/tiff", CompanionOutbox.ContentTypeFor("a.tif"));
+        Assert.Equal("application/vnd.openxmlformats-officedocument.wordprocessingml.document", CompanionOutbox.ContentTypeFor("a.docx"));
+        Assert.Equal("application/octet-stream", CompanionOutbox.ContentTypeFor("a.xyz"));
     }
 
     [Fact]

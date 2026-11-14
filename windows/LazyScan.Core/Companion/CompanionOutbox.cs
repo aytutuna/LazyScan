@@ -44,6 +44,18 @@ public sealed class CompanionOutbox
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "Lazy Scan", "Companion", "Outbox");
 
+    /// <summary>The content type the phone is told for a file: from its extension, "application/octet-stream" when unknown.</summary>
+    public static string ContentTypeFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".pdf" => "application/pdf",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        ".tif" or ".tiff" => "image/tiff",
+        ".txt" => "text/plain",
+        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        _ => "application/octet-stream",
+    };
+
     /// <summary>Copies <paramref name="sourcePath"/> into the phone's outbox under <paramref name="name"/>.</summary>
     public OutboxItem Add(string deviceId, string sourcePath, string name, string contentType, DateTimeOffset now)
     {

@@ -79,6 +79,7 @@ public sealed class CompanionService : IAsyncDisposable
         };
         Router.PackageReceived += (_, e) => PackageReceived?.Invoke(this, e);
         Router.DeviceRemoved += (_, _) => _ = RefreshQuietlyAsync();
+        Router.OutboxFetched += (_, e) => SentFetched?.Invoke(this, e);
         // A declined (or cut off) pairing no longer keeps the host listening.
         Router.ApprovalSettled += (_, _) => _ = RefreshQuietlyAsync();
         Host.StatusChanged += (_, _) => Changed?.Invoke(this, EventArgs.Empty);
@@ -125,6 +126,9 @@ public sealed class CompanionService : IAsyncDisposable
     /// pool thread). Release it from <see cref="Inbox"/> once imported.
     /// </summary>
     public event EventHandler<CompanionPackageReceivedEventArgs>? PackageReceived;
+
+    /// <summary>A phone fetched a file put in its <see cref="Outbox"/> (on the request's thread): the phone and the item's id.</summary>
+    public event EventHandler<(PairedDevice Device, string Id)>? SentFetched;
 
     /// <summary>A file in the sync folder could not be read: the message for the status, once per file.</summary>
     public event EventHandler<string>? SyncFolderProblem;

@@ -212,6 +212,8 @@ public sealed class CompanionRouter
     public event EventHandler<CompanionPackageReceivedEventArgs>? PackageReceived;
     /// <summary>A phone forgot this desktop (<c>DELETE /v1/devices/self</c>).</summary>
     public event EventHandler<PairedDevice>? DeviceRemoved;
+    /// <summary>A phone acknowledged a file of its outbox (<c>DELETE /v1/outbox/{id}</c>): it has it.</summary>
+    public event EventHandler<(PairedDevice Device, string Id)>? OutboxFetched;
 
     /// <summary>
     /// Phones that presented a valid token and wait for the user's answer (their session is used
@@ -476,7 +478,9 @@ public sealed class CompanionRouter
     private CompanionResponse OutboxDelete(CompanionRequest request, string id, DateTimeOffset now)
     {
         if (Authenticate(request, now) is not { } device) return Unauthorized();
-        return _outbox.Remove(device.Id, id) ? CompanionResponse.Empty(204) : CompanionResponse.Error(404, CompanionError.NotFound);
+        if (!_outbox.Remove(device.Id, id)) return CompanionResponse.Error(404, CompanionError.NotFound);
+        OutboxFetched?.Invoke(this, (device, id));
+        return CompanionResponse.Empty(204);
     }
 
     private CompanionResponse RemoveSelf(CompanionRequest request, DateTimeOffset now)

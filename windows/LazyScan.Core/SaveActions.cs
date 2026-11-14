@@ -28,6 +28,7 @@ public enum FileAction
     Email,
     LazyPrint,
     Copy,
+    SendToPhone,
 }
 
 /// <summary>The step an after-save action comes down to for the files just saved.</summary>
@@ -108,11 +109,13 @@ public static class SaveActions
     /// <summary>
     /// The actions offered for <paramref name="fileCount"/> saved files, in menu order. Open
     /// and Open with work on one file; showing, sharing, emailing and copying take several. Lazy Print is
-    /// offered only when <paramref name="lazyPrint"/> says it can be.
+    /// offered only when <paramref name="lazyPrint"/> says it can be, Send to phone only when <paramref name="sendToPhone"/>
+    /// says a phone is paired; it comes after Copy.
     /// </summary>
-    public static IReadOnlyList<FileAction> Offered(int fileCount, bool lazyPrint = false)
+    public static IReadOnlyList<FileAction> Offered(int fileCount, bool lazyPrint = false, bool sendToPhone = false)
     {
         FileAction[] tail = lazyPrint ? [FileAction.LazyPrint, FileAction.Copy] : [FileAction.Copy];
+        if (sendToPhone) tail = [.. tail, FileAction.SendToPhone];
         return fileCount switch
         {
             <= 0 => [],

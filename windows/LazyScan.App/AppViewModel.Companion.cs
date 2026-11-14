@@ -27,6 +27,20 @@ public sealed partial class AppViewModel
     private DispatcherTimer? _phoneRetryTimer;
     /// <summary>The queue's page count, for phones asking from the server's threads.</summary>
     private volatile int _queuedPageCount;
+    /// <summary>The paired phones when the link is not running (it has its own store once started).</summary>
+    private PairedDeviceStore? _pairedPhones;
+    /// <summary>Files put in phones' outboxes, the latest 20; each says which of its files the phone has yet to fetch.</summary>
+    private readonly List<PhoneSend> _phoneSends = [];
+
+    /// <summary>One Send to phone: the files copied into a phone's outbox and the outbox items still waiting.</summary>
+    private sealed class PhoneSend(string phoneId, string phoneName, IReadOnlyList<string> paths)
+    {
+        public string PhoneId { get; } = phoneId;
+        public string PhoneName { get; } = phoneName;
+        public IReadOnlyList<string> Paths { get; } = paths;
+        /// <summary>Outbox item id to the file it holds.</summary>
+        public Dictionary<string, string> Waiting { get; } = [];
+    }
 
     /// <summary>The phone link; null until it is started, and when another window of the app has it.</summary>
     public CompanionService? Companion => _companion;
@@ -51,6 +65,15 @@ public sealed partial class AppViewModel
 
     /// <summary>Raised on the UI thread when the link's status, phones or networks changed.</summary>
     public event Action? CompanionChanged;
+
+    /// <summary>
+    /// Raised on the UI thread when files were put in a phone's outbox, or the phone has fetched them: the bar's lead
+    /// ("Waiting for Aytu's iPhone to fetch it", "Sent to Aytu's iPhone") and the files.
+    /// </summary>
+    public event Action<string, IReadOnlyList<string>>? PhoneSendChanged;
+
+    /// <summary>Raised on the UI thread when the phone that files were waiting for was removed.</summary>
+    public event Action? PhoneSendCleared;
 
     /// <summary>"3 pages from Aytu's iPhone are waiting: …"; null when nothing waits.</summary>
     public string? PhoneDocumentsWaitingMessage { get; private set; }
@@ -118,7 +141,13 @@ public sealed partial class AppViewModel
             companion.Router.QueuedPages = () => _queuedPageCount;
             companion.PackageReceived += (_, e) =>
                 _dispatcher.BeginInvoke(() => QueuePhoneDocument(e.Package, e.Device.Name));
-            companion.Changed += (_, _) => _dispatcher.BeginInvoke(() => CompanionChanged?.Invoke());
+            companion.Changed += (_, _) => _dispatcher.BeginInvoke(() =>
+            {
+                DropSendsToRemovedPhones();
+                NotifyAll();
+                CompanionChanged?.Invoke();
+            });
+            companion.SentFetched += (_, e) => _dispatcher.BeginInvoke(() => PhoneFetched(e.Id));
             companion.SyncFolderProblem += (_, message) => _dispatcher.BeginInvoke(() =>
             {
                 SyncFolderProblem = message;
@@ -139,6 +168,100 @@ public sealed partial class AppViewModel
             System.Diagnostics.Trace.TraceError($"The phone link did not start: {e}");
         }
         return _companion;
+    }
+
+    /// <summary>
+    /// The phone Send to phone goes to: the one seen last of the paired phones; null when none is paired.
+    /// </summary>
+    public PairedDevice? SendPhone
+    {
+        get
+        {
+            var devices = (_companion?.Devices ?? (_pairedPhones ??= new PairedDeviceStore(CompanionSettingsDirectory))).Devices;
+            return devices.OrderByDescending(d => d.LastSeen ?? d.Paired).FirstOrDefault();
+        }
+    }
+
+    /// <summary>The name Send to phone shows for <paramref name="phone"/>.</summary>
+    public static string PhoneNameOf(PairedDevice phone) => phone.Name.Length > 0 ? phone.Name : Loc.T("Phone");
+
+    /// <summary>Every one of these files was sent to a phone and the phone has not fetched it yet.</summary>
+    public bool IsWaitingForPhone(IReadOnlyList<string> paths)
+    {
+        DropFetchedFiles();
+        return paths.Count > 0 && paths.All(p => _phoneSends.Any(s => s.Waiting.ContainsValue(p)));
+    }
+
+    /// <summary>
+    /// Forgets the files the outbox no longer lists: the fetch was seen by another window of the app, or the outbox
+    /// dropped the file after <see cref="CompanionOutbox.KeepFor"/>.
+    /// </summary>
+    private void DropFetchedFiles()
+    {
+        if (_phoneSends.Count == 0) return;
+        var outbox = _companion?.Outbox ?? new CompanionOutbox(Path.Combine(CompanionDataDirectory, "Outbox"));
+        foreach (var send in _phoneSends.Where(s => s.Waiting.Count > 0))
+        {
+            var listed = outbox.List(send.PhoneId, DateTimeOffset.Now).Select(i => i.Id).ToHashSet();
+            foreach (var id in send.Waiting.Keys.Where(id => !listed.Contains(id)).ToList()) send.Waiting.Remove(id);
+        }
+    }
+
+    /// <summary>
+    /// Copies the files into the phone's outbox, where its next poll takes them, and says so in the phone bar. The link is
+    /// started if it was not; when another window of the app has it, or it cannot start, the files wait all the same. A file
+    /// that cannot be copied is reported in the InfoBar. Returns whether every file was put there.
+    /// </summary>
+    private bool SendToPhone(IReadOnlyList<string> paths)
+    {
+        if (SendPhone is not { } phone) return false;
+        var outbox = EnsureCompanion()?.Outbox ?? new CompanionOutbox(Path.Combine(CompanionDataDirectory, "Outbox"));
+        string phoneName = PhoneNameOf(phone);
+        var send = new PhoneSend(phone.Id, phoneName, [.. paths.Where(p => !IsWaitingForPhone([p]))]);
+        bool failed = false;
+        foreach (var path in send.Paths)
+        {
+            try
+            {
+                var item = outbox.Add(phone.Id, path, Path.GetFileName(path), CompanionOutbox.ContentTypeFor(path), DateTimeOffset.Now);
+                send.Waiting[item.Id] = path;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                ErrorTitle = Loc.T("Could not send");
+                ErrorMessage = Loc.T("Could not send {0} to {1}: {2}", Path.GetFileName(path), phoneName, e.Message.TrimEnd('.'));
+                failed = true;
+                break;
+            }
+        }
+        if (send.Waiting.Count > 0)
+        {
+            _phoneSends.Add(send);
+            if (_phoneSends.Count > 20) _phoneSends.RemoveAt(0);
+            PhoneSendChanged?.Invoke(CompanionProtocol.WaitingToFetchMessage(phoneName), [.. send.Waiting.Values]);
+        }
+        return !failed;
+    }
+
+    /// <summary>A phone acknowledged an outbox file: once it has all of a send's files, the phone bar says so.</summary>
+    private void PhoneFetched(string itemId)
+    {
+        var send = _phoneSends.FirstOrDefault(s => s.Waiting.ContainsKey(itemId));
+        if (send is null) return;
+        send.Waiting.Remove(itemId);
+        if (send.Waiting.Count == 0) PhoneSendChanged?.Invoke(CompanionProtocol.SentToPhoneMessage(send.PhoneName), send.Paths);
+        NotifyAll();
+    }
+
+    /// <summary>A phone that was removed no longer fetches anything (its outbox is deleted): its sends go and the bar clears.</summary>
+    private void DropSendsToRemovedPhones()
+    {
+        if (_companion is not { } companion || _phoneSends.Count == 0) return;
+        var paired = companion.Devices.Devices.Select(d => d.Id).ToHashSet();
+        var gone = _phoneSends.Where(s => !paired.Contains(s.PhoneId)).ToList();
+        if (gone.Count == 0) return;
+        _phoneSends.RemoveAll(gone.Contains);
+        if (gone.Any(s => s.Waiting.Count > 0)) PhoneSendCleared?.Invoke();
     }
 
     /// <summary>Chooses the cloud folder phones put documents in (null: none); false when that could not be saved.</summary>

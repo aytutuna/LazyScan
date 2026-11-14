@@ -618,6 +618,12 @@ in the Phone window, which also says whether it is being watched and names the l
 not read; when no paired phone has connected for three days and no folder is chosen, the connection
 checks suggest one.
 
+The other way works too. While a phone is paired, the bar after a save and the Saved tab's menus offer **Send to**
+the phone seen last, named on the button (no picker). The file is copied into the phone's outbox, so it may
+move or go afterwards, and the phone fetches it the next time Lazy Scan is open on it. The same bar as for
+documents from a phone says **Waiting for the phone to fetch it** and then **Sent to the phone**; Send is off
+while a file waits. A file that cannot be copied is reported in the error bar.
+
 How it is kept safe: the phone and the PC talk directly (HTTP over TLS 1.2/1.3) with no server or
 account in between. The PC's certificate (an ECDSA P-256 key of its own in the user's certificate
 store, made the first time a pairing code is shown) is pinned by the phone from the QR code, so the first

@@ -127,6 +127,9 @@
                         <Button x:Name="SavedShareButton" Style="{StaticResource SubtleButtonStyle}"
                                 local:Icon.Glyph="&#xE72D;" Content="{loc:T Share}" Tag="Share"
                                 ToolTip="{loc:T Send with Mail\, Outlook\, nearby sharing or another app}" Click="SavedBarAction_Click" />
+                        <Button x:Name="SavedSendToPhoneButton" Style="{StaticResource SubtleButtonStyle}"
+                                local:Icon.Glyph="&#xE8EA;" Tag="SendToPhone" MaxWidth="180" Visibility="Collapsed"
+                                AutomationProperties.AutomationId="SavedSendToPhoneButton" ToolTipService.ShowOnDisabled="True" Click="SavedBarAction_Click" />
                         <Button x:Name="SavedMoreButton" Style="{StaticResource SmallIconButtonStyle}" Content="&#xE712;"
                                 Width="32" Height="32"
                                 ToolTip="{loc:T More}" AutomationProperties.Name="{loc:T More actions}"
@@ -153,7 +156,7 @@
                     <TextBlock x:Name="PhoneBarText" Style="{StaticResource BodyText}" TextWrapping="Wrap"
                                VerticalAlignment="Center" Padding="0,4"
                                AutomationProperties.LiveSetting="Polite"><Run
-                            Text="{loc:T From your phone}" FontWeight="SemiBold" /><Run Text="  " /><Run x:Name="PhoneBarMessage" /></TextBlock>
+                            x:Name="PhoneBarLead" Text="{loc:T From your phone}" FontWeight="SemiBold" /><Run Text="  " /><Run x:Name="PhoneBarMessage" /></TextBlock>
                 </DockPanel>
             </Border>
 

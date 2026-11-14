@@ -158,6 +158,12 @@ public static class CompanionProtocol
     /// <summary>The <c>X-Target</c> value for <paramref name="target"/>.</summary>
     public static string TargetValue(CompanionTarget target) => target == CompanionTarget.Current ? "current" : "new";
 
+    /// <summary>"Waiting for Aytu's iPhone to fetch it": a file is in the phone's outbox.</summary>
+    public static string WaitingToFetchMessage(string phoneName) => Loc.T("Waiting for {0} to fetch it", phoneName);
+
+    /// <summary>"Sent to Aytu's iPhone": the phone has the file.</summary>
+    public static string SentToPhoneMessage(string phoneName) => Loc.T("Sent to {0}", phoneName);
+
     /// <summary>"3 pages from Aytu's iPhone added to the queue."</summary>
     public static string AddedMessage(int pageCount, string phoneName) =>
         Loc.Plural(pageCount, "{0} page from {1} added to the queue.", "{0} pages from {1} added to the queue.", phoneName);

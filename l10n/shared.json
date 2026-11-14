@@ -3109,6 +3109,9 @@
   "Waiting for {0} to fetch the last file.": {
     "note": "{0} is the name of a phone. Help on a disabled button: the file sent before has not been downloaded yet."
   },
+  "Could not send": {
+    "note": "Title of the error bar when a file could not be put in a phone's outbox."
+  },
   "Could not send {0} to {1}: {2}": {
     "note": "{0} is a file name, {1} the name of a phone and {2} the reason."
   },

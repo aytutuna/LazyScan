@@ -533,6 +533,7 @@ public partial class MainWindow : Window
         }
         HistoryView.Refresh();
         SyncSavedBar();
+        SavedView.UpdateSelectionBar();
         SyncPackageBar();
 
         // Capabilities-driven pickers.
@@ -654,11 +655,26 @@ public partial class MainWindow : Window
             button.Visibility = offered.Contains(action) ? Visibility.Visible : Visibility.Collapsed;
             button.ToolTip = action == FileAction.Share ? Loc.T("Send by email or to an app") : FileActionMenu.Hint(action, paths.Count);
         }
+        SyncSendToPhoneButton(paths, offered);
         SavedUndoButton.Visibility = ViewModel.CanUndoSave ? Visibility.Visible : Visibility.Collapsed;
         SavedUndoButton.IsEnabled = !ViewModel.IsBusy;
         SavedUndoButton.ToolTip = ViewModel.CanUndoSave ? UndoSaveTooltip() : null;
         SavedBar.Visibility = Visibility.Visible;
         if (isNew) AnnounceWhenShown(SavedBarText);
+    }
+
+    /// <summary>The bar's Send to phone button: named for the phone, off while the files wait for it to fetch them or the app is busy.</summary>
+    private void SyncSendToPhoneButton(IReadOnlyList<string> paths, IReadOnlyList<FileAction> offered)
+    {
+        if (!offered.Contains(FileAction.SendToPhone) || ViewModel.SendPhone is not { } phone) return;
+        string label = Loc.T("Send to {0}", AppViewModel.PhoneNameOf(phone));
+        bool waiting = ViewModel.IsWaitingForPhone(paths);
+        SavedSendToPhoneButton.Content = label;
+        AutomationProperties.SetName(SavedSendToPhoneButton, label);
+        AutomationProperties.SetHelpText(SavedSendToPhoneButton, FileActionMenu.Hint(FileAction.SendToPhone, paths.Count));
+        SavedSendToPhoneButton.IsEnabled = !waiting && !ViewModel.IsBusy;
+        if (waiting) SavedSendToPhoneButton.ToolTip = Loc.T("Waiting for {0} to fetch the last file.", AppViewModel.PhoneNameOf(phone));
+        else SavedSendToPhoneButton.ToolTip = label + Environment.NewLine + FileActionMenu.Hint(FileAction.SendToPhone, paths.Count);
     }
 
     private string UndoSaveTooltip()
@@ -687,7 +703,9 @@ public partial class MainWindow : Window
     internal ContextMenu? BuildSavedBarMenu()
     {
         if (ViewModel.SavedBarPaths is not { } paths) return null;
-        return FileActionMenu.Build(ViewModel.SavedBarActions, paths.Count, action => ViewModel.RunFileAction(action, paths));
+        var menu = FileActionMenu.Build(ViewModel.SavedBarActions, paths.Count, action => ViewModel.RunFileAction(action, paths));
+        if (ViewModel.SendPhone is { } phone) FileActionMenu.NamePhone(menu, AppViewModel.PhoneNameOf(phone), ViewModel.IsWaitingForPhone(paths));
+        return menu;
     }
 
     private void SavedBarClose_Click(object sender, RoutedEventArgs e)
