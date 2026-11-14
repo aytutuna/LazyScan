@@ -2015,6 +2015,8 @@ private struct SavedFilesRow: View {
                             .labelStyle(.iconOnly)
                     }
                     .font(.subheadline)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .accessibilityLabel(Text("Undo"))
                 .accessibilityHint(Text("Puts the pages back, deleting the saved files or restoring the PDF they were added to. Files already shared or sent stay where they went."))
@@ -2030,6 +2032,8 @@ private struct SavedFilesRow: View {
                 } label: {
                     Label(printName, systemImage: "printer")
                         .labelStyle(.iconOnly)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .accessibilityLabel(Text(printName))
                 .accessibilityIdentifier("saved.print")
@@ -2042,6 +2046,8 @@ private struct SavedFilesRow: View {
             } label: {
                 Label("Share", systemImage: "square.and.arrow.up")
                     .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .accessibilityLabel(Text("Share"))
             .accessibilityIdentifier("share.button")
@@ -2050,6 +2056,8 @@ private struct SavedFilesRow: View {
             } label: {
                 Label("Show in Files", systemImage: "folder")
                     .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .accessibilityLabel(Text("Show in Files"))
             .accessibilityIdentifier("reveal.button")
@@ -2069,10 +2077,10 @@ private struct SavedFilesRow: View {
         } label: {
             Label(FileAction.addPages.label, systemImage: IOSSavedFiles.symbol(FileAction.addPages))
                 .labelStyle(.iconOnly)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .disabled(checkingAppend)
-        .frame(minWidth: 44, minHeight: 44)
-        .contentShape(Rectangle())
         .accessibilityLabel(Text(FileAction.addPages.label))
         .accessibilityHint(Text(SaveActions.addPagesHint))
         .accessibilityIdentifier("saved.addpages")
@@ -2088,15 +2096,17 @@ private struct SavedFilesRow: View {
         return Button {
             Task { @MainActor in await actions.addToPhotos(urls) }
         } label: {
-            if adding {
-                ProgressView()
-            } else {
-                Label(name, systemImage: icon)
-                    .labelStyle(.iconOnly)
+            Group {
+                if adding {
+                    ProgressView()
+                } else {
+                    Label(name, systemImage: icon)
+                        .labelStyle(.iconOnly)
+                }
             }
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .frame(minWidth: 44, minHeight: 44)
-        .contentShape(Rectangle())
         .disabled(added || adding)
         .accessibilityLabel(Text(name))
         .accessibilityHint(Text(IOSAfterSave.photosButtonHint))
@@ -2153,6 +2163,8 @@ private struct PackageBanner: View {
                 } label: {
                     Label("Close", systemImage: "xmark")
                         .labelStyle(.iconOnly)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .accessibilityLabel(Text("Close"))
                 .accessibilityIdentifier("package.close")

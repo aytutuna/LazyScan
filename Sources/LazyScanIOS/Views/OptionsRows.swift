@@ -275,6 +275,8 @@ struct SaveFolderRow: View {
                     state.revealInFinder(folder)
                 } label: {
                     Image(systemName: "folder")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel(Text(IOSSavedFiles.revealLabel))

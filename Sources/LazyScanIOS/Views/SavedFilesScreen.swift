@@ -244,6 +244,8 @@ private struct SavedFileRow: View {
                 onAction(FileAction.share, file)
             } label: {
                 Image(systemName: IOSSavedFiles.symbol(FileAction.share))
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .accessibilityLabel(Text("Share"))
@@ -258,6 +260,8 @@ private struct SavedFileRow: View {
                 actionMenu
             } label: {
                 Image(systemName: "ellipsis.circle")
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .accessibilityLabel(Text(IOSSavedFiles.moreLabel))
             .accessibilityIdentifier("saved.more")
