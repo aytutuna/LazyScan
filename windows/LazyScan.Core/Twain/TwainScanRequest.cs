@@ -3,7 +3,7 @@ namespace LazyScan.Core;
 /// <summary>The settings of one TWAIN acquisition, chosen from what the source offers.</summary>
 /// <param name="Feeder">Scan from the document feeder (CAP_FEEDERENABLED, CAP_AUTOFEED).</param>
 /// <param name="PixelType">A <see cref="TwainPixelTypes"/> value.</param>
-/// <param name="BitDepth">ICAP_BITDEPTH: bits per sample (1 for black &amp; white, 8 otherwise).</param>
+/// <param name="BitDepth">ICAP_BITDEPTH: bits per sample (1 for black &amp; white, 16 for a high bit depth photo scan, 8 otherwise).</param>
 /// <param name="Resolution">Dots per inch, one the source lists when it lists any.</param>
 /// <param name="FrameInches">DAT_IMAGELAYOUT frame in inches, origin top-left; null leaves the source's own.</param>
 /// <param name="TransferCount">CAP_XFERCOUNT: -1 (as many as the source sends: a feeder batch, or whatever the driver's window starts) or 1.</param>
@@ -64,6 +64,8 @@ public static class TwainScanRequests
             FlatbedSizeInches = caps.FlatbedSizeInches ?? DefaultBedInches,
             FeederSizeInches = caps.HasFeeder ? caps.FeederSizeInches ?? TwainSizes.Largest(caps.SupportedSizes) : null,
             SupportsDuplex = caps.HasFeeder && caps.DuplexKind != TwainDuplexKinds.None,
+            // Only memory transfers carry more than 8 bits (a native bitmap has no 16-bit form).
+            SupportsHighBitDepth = caps.HighBitDepth && caps.MemoryTransfer,
         };
     }
 
@@ -81,6 +83,8 @@ public static class TwainScanRequests
     /// TWSS size when the source lists that size); for Automatic its own largest sheet, at most
     /// <see cref="EsclScanRequest.MaxFeederHeightInches"/> tall, like the other backends; for
     /// Long paper its largest sheet at the height it reports.</item>
+    /// <item>16 bits per sample when <see cref="ScanSettings.WantsHighBitDepth"/> and the source reports them, in
+    /// color or gray through memory transfers only; everything else asks for 8.</item>
     /// <item>Slides and negatives scan the whole bed through the transparency unit (ICAP_LIGHTPATH), when the source has one.</item>
     /// <item>Two-sided when asked for (<see cref="DuplexMode.Both"/>) on a feeder that can (CAP_DUPLEX).</item>
     /// <item>The source's own window is used when asked for or when the source cannot scan without it.
@@ -118,10 +122,12 @@ public static class TwainScanRequests
             frame = Frame(bed, selection);
         }
         bool driverWindow = showDriverWindow || !caps.UIControllable;
+        bool deep = settings.WantsHighBitDepth && caps.HighBitDepth && caps.MemoryTransfer && !preferNative
+                    && pixelType != TwainPixelTypes.BlackWhite;
         return new TwainScanRequest(
             Feeder: feeder,
             PixelType: pixelType,
-            BitDepth: pixelType == TwainPixelTypes.BlackWhite ? 1 : 8,
+            BitDepth: pixelType == TwainPixelTypes.BlackWhite ? 1 : deep ? 16 : 8,
             Resolution: Nearest(caps.Resolutions, settings.Resolution),
             FrameInches: frame,
             TransferCount: feeder || driverWindow ? -1 : 1,

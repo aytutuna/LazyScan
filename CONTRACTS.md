@@ -2973,8 +2973,15 @@ carries `DeepPixels.cropped(to: region.boundingBox)` when it needs no turning (S
 under 0.05 degrees); a photo cut again by hand has none. Saving writes it with `ImageExporter.write(..., deepPixels:)`
 turned by the photo's quarter turns (`DeepPixels.rotated(quarterTurns:)`). The Mac inspector's Output section shows "High bit depth TIFF" under Format when the
 format is TIFF and the unit reports 16 bits (hidden otherwise, the stored value kept), with a caption while it is on;
-`InspectorSections.outputSummary` / `outputChanged` take `highBitDepth:` and read "TIFF 16-bit". The Windows switch and
-the TWAIN request (16) are not part of this.
+`InspectorSections.outputSummary` / `outputChanged` take `highBitDepth:` and read "TIFF 16-bit".
+Windows asks through TWAIN: `ScanSettings.WantsHighBitDepth` is the twin of `wantsHighBitDepth` (which also leaves out Negatives and
+any adjustment, since the inversion and the adjustments are page steps); `TwainDeviceCaps.HighBitDepth` (ICAP_BITDEPTH lists 16 for color or gray, sent by the
+helper since protocol version 4) becomes `ScannerCapabilities.SupportsHighBitDepth` when memory transfers are offered, since a native bitmap
+has no 16-bit form. `TwainScanRequests.ForScan` then sets `BitDepth` 16 (never for black & white, the overview or a native retry), and
+`TwainImageAssembler` reads 16-bit gray and 48-bit RGB strips (little-endian samples) into `TwainPage.Deep` next to the 8-bit view, which
+`AppViewModel` cuts per photo like the Mac (`DeepPixels.Cropped`, `Rotated`). The WIA and eSCL paths stay 8-bit. The switch is the Output
+section's "High bit depth TIFF" under Format (`HighBitDepthRow`), shown for the photo flow with TIFF when the scanner reports it, with the
+same texts as the Mac; a scan that came back 8-bit adds "This scanner gave 8-bit pages instead." to the Found line.
 
 ### Output/OCRText.swift, TextExport.swift, DocxWriter.swift, ZipStore.swift (+ OutputFormat, OutputOptions in Core/Models.swift)
 

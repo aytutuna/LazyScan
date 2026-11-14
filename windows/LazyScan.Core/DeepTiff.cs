@@ -30,6 +30,41 @@ public sealed class DeepPixels
         Channels = channels;
         Samples = samples;
     }
+
+    /// <summary>The part inside <paramref name="rect"/> (pixels, top-left origin, clipped to the page); null when nothing is left.</summary>
+    public DeepPixels? Cropped(RectD rect)
+    {
+        var r = rect.Standardized.Integral.Intersection(new RectD(0, 0, Width, Height));
+        int left = (int)r.MinX, top = (int)r.MinY, w = (int)r.Width, h = (int)r.Height;
+        if (w < 1 || h < 1) return null;
+        var part = new ushort[w * h * Channels];
+        for (int row = 0; row < h; row++)
+            Array.Copy(Samples, ((top + row) * Width + left) * Channels, part, row * w * Channels, w * Channels);
+        return new DeepPixels(w, h, Channels, part);
+    }
+
+    /// <summary>Turned clockwise by <paramref name="quarterTurns"/> steps of 90 degrees, like <see cref="ImagePipeline.Rotate"/>.</summary>
+    public DeepPixels Rotated(int quarterTurns)
+    {
+        int turns = ((quarterTurns % 4) + 4) % 4;
+        if (turns == 0) return this;
+        int newWidth = turns == 2 ? Width : Height, newHeight = turns == 2 ? Height : Width;
+        var turned = new ushort[Samples.Length];
+        for (int y = 0; y < newHeight; y++)
+        {
+            for (int x = 0; x < newWidth; x++)
+            {
+                (int sourceX, int sourceY) = turns switch
+                {
+                    1 => (y, Height - 1 - x),
+                    2 => (Width - 1 - x, Height - 1 - y),
+                    _ => (Width - 1 - y, x),
+                };
+                Array.Copy(Samples, (sourceY * Width + sourceX) * Channels, turned, (y * newWidth + x) * Channels, Channels);
+            }
+        }
+        return new DeepPixels(newWidth, newHeight, Channels, turned);
+    }
 }
 
 /// <summary>

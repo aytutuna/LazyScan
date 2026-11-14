@@ -110,9 +110,46 @@ public class TwainRasterTests
         Assert.Equal((8, 8, 8, 255), Pixel(image, 1, 0));
     }
 
+    [Fact]
+    public void SixteenBitGray_KeepsTheSamplesAndTheirHighBytesAsTheView()
+    {
+        var info = new TwainImageInfo(2, 1, TwainPixelTypes.Gray, 16);
+        var assembler = new TwainImageAssembler(info);
+        assembler.Add(Strip(2, 1, 0, 4, 0x34, 0x12, 0xFF, 0xFF));
+        var (image, deep) = assembler.ToPixels();
+        Assert.Equal((0x12, 0x12, 0x12, 255), Pixel(image, 0, 0));
+        Assert.Equal((255, 255, 255, 255), Pixel(image, 1, 0));
+        Assert.NotNull(deep);
+        Assert.Equal((2, 1, 1), (deep.Width, deep.Height, deep.Channels));
+        Assert.Equal([0x1234, 0xFFFF], deep.Samples);
+    }
+
+    [Fact]
+    public void SixteenBitColor_StripsOfUnknownLengthKeepEverySample()
+    {
+        var info = new TwainImageInfo(1, 0, TwainPixelTypes.Rgb, 48);
+        var assembler = new TwainImageAssembler(info);
+        assembler.Add(Strip(1, 1, 0, 6, 0x01, 0x80, 0x02, 0x40, 0x03, 0x20));
+        assembler.Add(Strip(1, 1, 1, 6, 0x00, 0x00, 0xFF, 0xFF, 0x10, 0x00));
+        var (image, deep) = assembler.ToPixels();
+        Assert.Equal((0x80, 0x40, 0x20, 255), Pixel(image, 0, 0));
+        Assert.NotNull(deep);
+        Assert.Equal((1, 2, 3), (deep.Width, deep.Height, deep.Channels));
+        Assert.Equal([0x8001, 0x4002, 0x2003, 0, 0xFFFF, 0x0010], deep.Samples);
+    }
+
+    [Fact]
+    public void EightBitPages_HaveNoDeepPixels()
+    {
+        var assembler = new TwainImageAssembler(new TwainImageInfo(1, 1, TwainPixelTypes.Gray, 8));
+        assembler.Add(Strip(1, 1, 0, 1, 7));
+        Assert.Null(assembler.ToPixels().Deep);
+    }
+
     [Theory]
-    [InlineData(TwainPixelTypes.Gray, 16, TwainCompression.None, false)]
-    [InlineData(TwainPixelTypes.Rgb, 48, TwainCompression.None, false)]
+    [InlineData(TwainPixelTypes.Gray, 12, TwainCompression.None, false)]
+    [InlineData(TwainPixelTypes.Rgb, 32, TwainCompression.None, false)]
+    [InlineData(TwainPixelTypes.Rgb, 48, TwainCompression.None, true)]
     [InlineData(TwainPixelTypes.Rgb, 24, 6, false)] // JPEG
     [InlineData(TwainPixelTypes.Rgb, 24, TwainCompression.None, true)]
     [InlineData(3, 8, TwainCompression.None, false)] // palette

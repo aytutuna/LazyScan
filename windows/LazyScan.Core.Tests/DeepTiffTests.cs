@@ -61,6 +61,58 @@ public class DeepTiffTests
     private static ScannedPage Page() => new(new RgbaImage(1, 1, [255, 255, 255, 255]), 300, ColorMode.Color);
 
     [Fact]
+    public void Cropped_KeepsTheRowsAndColumnsInsideTheRect()
+    {
+        var pixels = new DeepPixels(2, 2, 3, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+        var part = pixels.Cropped(new RectD(1, 0, 5, 1))!;
+        Assert.Equal((1, 1, 3), (part.Width, part.Height, part.Channels));
+        Assert.Equal([3, 4, 5], part.Samples);
+        Assert.Null(pixels.Cropped(new RectD(2, 0, 1, 1)));
+    }
+
+    [Fact]
+    public void Rotated_TurnsTheSamplesByQuarterTurns()
+    {
+        var pixels = new DeepPixels(2, 1, 3, [1, 2, 3, 4, 5, 6]);
+        Assert.Same(pixels, pixels.Rotated(0));
+        AssertTurned(pixels.Rotated(1), 1, 2, [1, 2, 3, 4, 5, 6]);
+        AssertTurned(pixels.Rotated(2), 2, 1, [4, 5, 6, 1, 2, 3]);
+        AssertTurned(pixels.Rotated(3), 1, 2, [4, 5, 6, 1, 2, 3]);
+        Assert.Equal(pixels.Rotated(3).Samples, pixels.Rotated(-1).Samples);
+    }
+
+    private static void AssertTurned(DeepPixels turned, int width, int height, ushort[] samples)
+    {
+        Assert.Equal((width, height), (turned.Width, turned.Height));
+        Assert.Equal(samples, turned.Samples);
+    }
+
+    [Fact]
+    public void PhotoFlow_AsksForSixteenBitsOnlyForATiffInColorOrGray()
+    {
+        var s = new ScanSettings { Intent = ScanIntent.Photo, Format = OutputFormat.Tiff };
+        Assert.False(s.WantsHighBitDepth);
+        s.PhotoHighBitDepth = true;
+        Assert.True(s.WantsHighBitDepth);
+        s.ColorMode = ColorMode.Grayscale;
+        Assert.True(s.WantsHighBitDepth);
+        s.ColorMode = ColorMode.BlackWhite;
+        Assert.False(s.WantsHighBitDepth);
+        s.ColorMode = ColorMode.Color;
+        s.Source = ScanSource.Negatives;
+        Assert.False(s.WantsHighBitDepth);
+        s.Source = ScanSource.Flatbed;
+        s.Adjustments.RestoreFadedColors = true;
+        Assert.False(s.WantsHighBitDepth);
+        s.Adjustments.RestoreFadedColors = false;
+        s.Format = OutputFormat.Png;
+        Assert.False(s.WantsHighBitDepth);
+        s.Format = OutputFormat.Tiff;
+        s.Intent = ScanIntent.Document;
+        Assert.False(s.WantsHighBitDepth);
+    }
+
+    [Fact]
     public void PageSteps_LeaveAPageWithDeepPixelsAlone()
     {
         var deep = new DeepPixels(1, 1, 3, [65535, 65535, 65535]);

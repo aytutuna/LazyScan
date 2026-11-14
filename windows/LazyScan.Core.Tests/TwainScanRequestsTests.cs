@@ -25,6 +25,11 @@ public class TwainScanRequestsTests
                                          int dpi = 300) =>
         new() { Source = source, ColorMode = mode, Resolution = dpi };
 
+    private static ScanSettings HighBitDepth(ColorMode mode = ColorMode.Color) => new()
+    {
+        Intent = ScanIntent.Photo, Format = OutputFormat.Tiff, PhotoHighBitDepth = true, ColorMode = mode,
+    };
+
     // MARK: - Capabilities
 
     [Fact]
@@ -49,6 +54,46 @@ public class TwainScanRequestsTests
         var caps = TwainScanRequests.Capabilities(new TwainDeviceCaps { HasTransparency = true });
         Assert.Equal([ScanSource.Flatbed, ScanSource.Slides, ScanSource.Negatives], caps.Sources);
         Assert.True(caps.SupportsOverview);
+    }
+
+    [Fact]
+    public void Capabilities_ReportHighBitDepthOnlyWithMemoryTransfers()
+    {
+        Assert.False(TwainScanRequests.Capabilities(FlatbedAndFeeder()).SupportsHighBitDepth);
+        Assert.True(TwainScanRequests.Capabilities(new TwainDeviceCaps { HighBitDepth = true }).SupportsHighBitDepth);
+        Assert.False(TwainScanRequests.Capabilities(new TwainDeviceCaps { HighBitDepth = true, MemoryTransfer = false }).SupportsHighBitDepth);
+    }
+
+    [Theory]
+    [InlineData(ColorMode.Color, 16)]
+    [InlineData(ColorMode.Grayscale, 16)]
+    [InlineData(ColorMode.BlackWhite, 8)]
+    public void ForScan_AsksFor16BitsInColorOrGrayWhenTheSourceReportsThem(ColorMode mode, int bits)
+    {
+        var caps = new TwainDeviceCaps
+        {
+            HasFlatbed = true, HighBitDepth = true,
+            PixelTypes = [TwainPixelTypes.Gray, TwainPixelTypes.Rgb],
+        };
+        var request = TwainScanRequests.ForScan(HighBitDepth(mode), null, caps);
+        Assert.Equal(bits, request.BitDepth);
+    }
+
+    [Fact]
+    public void ForScan_KeepsEightBitsWhenSixteenCannotBeUsed()
+    {
+        var caps = new TwainDeviceCaps { HasFlatbed = true, HighBitDepth = true };
+        Assert.Equal(16, TwainScanRequests.ForScan(HighBitDepth(), null, caps).BitDepth);
+        Assert.Equal(8, TwainScanRequests.ForScan(HighBitDepth(), null, caps, preferNative: true).BitDepth);
+        Assert.Equal(8, TwainScanRequests.ForScan(HighBitDepth(), null, new TwainDeviceCaps { HasFlatbed = true }).BitDepth);
+        Assert.Equal(8, TwainScanRequests.ForScan(HighBitDepth(), null, new TwainDeviceCaps { HasFlatbed = true, HighBitDepth = true, MemoryTransfer = false }).BitDepth);
+        var off = HighBitDepth();
+        off.PhotoHighBitDepth = false;
+        Assert.Equal(8, TwainScanRequests.ForScan(off, null, caps).BitDepth);
+        var jpeg = HighBitDepth();
+        jpeg.Format = OutputFormat.Jpeg;
+        Assert.Equal(8, TwainScanRequests.ForScan(jpeg, null, caps).BitDepth);
+        Assert.Equal(8, TwainScanRequests.ForOverview(caps).BitDepth);
     }
 
     [Theory]
@@ -311,7 +356,9 @@ public class TwainScanRequestsTests
     [Theory]
     [InlineData(true, true, TwainPixelTypes.Rgb, 8, TwainTransferMechanisms.Memory)]
     [InlineData(true, true, TwainPixelTypes.BlackWhite, 1, TwainTransferMechanisms.Memory)]
-    [InlineData(true, true, TwainPixelTypes.Gray, 16, TwainTransferMechanisms.Native)]
+    [InlineData(true, true, TwainPixelTypes.Gray, 16, TwainTransferMechanisms.Memory)]
+    [InlineData(true, true, TwainPixelTypes.Rgb, 16, TwainTransferMechanisms.Memory)]
+    [InlineData(true, true, TwainPixelTypes.Gray, 12, TwainTransferMechanisms.Native)]
     [InlineData(false, true, TwainPixelTypes.Rgb, 8, TwainTransferMechanisms.Native)]
     [InlineData(true, false, TwainPixelTypes.Rgb, 8, TwainTransferMechanisms.Native)]
     public void TransferMechanism_IsMemoryOnlyWhenTheAppCanReadTheStrips(bool offered, bool preferred, int pixelType,

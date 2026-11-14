@@ -11,8 +11,8 @@ public sealed record TwainLoopTimeouts(TimeSpan FirstImage, TimeSpan NextEvent, 
         new(TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(3), TimeSpan.FromSeconds(15));
 }
 
-/// <summary>One page a TWAIN acquisition delivered.</summary>
-public sealed record TwainPage(RgbaImage Image, int Dpi, ColorMode ColorMode);
+/// <summary>One page a TWAIN acquisition delivered; <paramref name="Deep"/> holds its samples when the source sent 16 bits per sample.</summary>
+public sealed record TwainPage(RgbaImage Image, int Dpi, ColorMode ColorMode, DeepPixels? Deep = null);
 
 /// <summary>How a TWAIN acquisition ended.</summary>
 public sealed class TwainScanResult
@@ -183,7 +183,8 @@ public static class TwainScanLoop
             {
                 try
                 {
-                    Deliver(Page(done.ToImage(), currentInfo, request));
+                    var (image, deep) = done.ToPixels();
+                    Deliver(Page(image, currentInfo, request, request.BitDepth > 8 ? deep : null));
                     progress?.Invoke(new ScanProgress(Loc.T("Transferred page {0}…", pageCount)));
                 }
                 catch (FormatException e)
@@ -351,7 +352,7 @@ public static class TwainScanLoop
     /// window may change it), else the requested one; its color mode follows the image's
     /// pixel type when known, else the request's.
     /// </summary>
-    private static TwainPage Page(RgbaImage image, TwainImageInfo? info, TwainScanRequest request)
+    private static TwainPage Page(RgbaImage image, TwainImageInfo? info, TwainScanRequest request, DeepPixels? deep = null)
     {
         int dpi = info is { XResolution: > 0 } ? (int)Math.Round(info.XResolution) : request.Resolution;
         var mode = info is null ? request.ColorMode : info.PixelType switch
@@ -361,6 +362,6 @@ public static class TwainScanLoop
             TwainPixelTypes.Rgb => ColorMode.Color,
             _ => request.ColorMode,
         };
-        return new TwainPage(image, dpi > 0 ? dpi : request.Resolution, mode);
+        return new TwainPage(image, dpi > 0 ? dpi : request.Resolution, mode, deep);
     }
 }

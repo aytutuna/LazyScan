@@ -29,8 +29,9 @@ public sealed record TwainStrip(int Columns, int Rows, int XOffset, int YOffset,
 /// <summary>
 /// Builds one page from the strips of a TWAIN memory transfer. Reads 1-bit black &amp; white
 /// (packed, most significant bit first unless told otherwise), 8-bit gray and 24-bit RGB,
-/// uncompressed and interleaved, honoring ICAP_PIXELFLAVOR for the first two. Pixels no strip
-/// covered stay white. When the source announced the size, strips are written straight into
+/// and 16-bit gray and 48-bit RGB (little-endian samples, kept whole as <see cref="DeepPixels"/>
+/// next to their 8-bit view), uncompressed and interleaved, honoring ICAP_PIXELFLAVOR for all but
+/// color. Pixels no strip covered stay white. When the source announced the size, strips are written straight into
 /// the page; otherwise they are kept until <see cref="ToImage"/> knows how big it is.
 /// </summary>
 public sealed class TwainImageAssembler
@@ -39,6 +40,7 @@ public sealed class TwainImageAssembler
     private readonly bool _vanilla;
     private readonly bool _msbFirst;
     private readonly byte[]? _pixels;
+    private readonly ushort[]? _deep;
     private readonly List<TwainStrip>? _pending;
 
     /// <exception cref="FormatException">The format is not one <see cref="TwainRaster.CanAssemble(TwainImageInfo)"/> accepts.</exception>
@@ -58,6 +60,7 @@ public sealed class TwainImageAssembler
         if (info.Width > 0 && info.Height > 0)
         {
             _pixels = TwainRaster.WhitePixels(info.Width, info.Height);
+            _deep = WhiteSamples(info.Width, info.Height);
         }
         else
         {
@@ -88,25 +91,46 @@ public sealed class TwainImageAssembler
         int bytesPerRow = strip.BytesPerRow > 0 ? strip.BytesPerRow : TwainRaster.MinimumBytesPerRow(strip.Columns, _info.BitsPerPixel);
         int rowsCarried = (int)Math.Min(strip.Rows, ((long)strip.Data.Length + bytesPerRow - 1) / bytesPerRow);
         if (strip.YOffset <= _rowsCovered) _rowsCovered = Math.Max(_rowsCovered, strip.YOffset + rowsCarried);
-        if (_pixels is not null) Blit(_pixels, _info.Width, _info.Height, strip);
+        if (_pixels is not null) Blit(_pixels, _deep, _info.Width, _info.Height, strip);
         else _pending!.Add(strip);
     }
 
     /// <summary>The page assembled so far.</summary>
     /// <exception cref="InvalidOperationException">No strip arrived (see <see cref="HasData"/>).</exception>
-    public RgbaImage ToImage()
+    public RgbaImage ToImage() => ToPixels().Image;
+
+    /// <summary>
+    /// The page assembled so far, and its samples as the source sent them when it sent 16 bits per sample
+    /// (null otherwise).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No strip arrived (see <see cref="HasData"/>).</exception>
+    public (RgbaImage Image, DeepPixels? Deep) ToPixels()
     {
         if (!HasData) throw new InvalidOperationException("No image data arrived.");
-        if (_pixels is not null) return new RgbaImage(_info.Width, _info.Height, _pixels);
+        if (_pixels is not null) return (new RgbaImage(_info.Width, _info.Height, _pixels), Deep(_info.Width, _info.Height, _deep));
         int width = _info.Width > 0 ? _info.Width : _pending!.Max(s => s.XOffset + s.Columns);
         int height = _info.Height > 0 ? _info.Height : _pending!.Max(s => s.YOffset + s.Rows);
         TwainRaster.CheckSize(width, height);
         var pixels = TwainRaster.WhitePixels(width, height);
-        foreach (var strip in _pending!) Blit(pixels, width, height, strip);
-        return new RgbaImage(width, height, pixels);
+        var deep = WhiteSamples(width, height);
+        foreach (var strip in _pending!) Blit(pixels, deep, width, height, strip);
+        return (new RgbaImage(width, height, pixels), Deep(width, height, deep));
     }
 
-    private void Blit(byte[] pixels, int width, int height, TwainStrip strip)
+    private int Channels => _info.PixelType == TwainPixelTypes.Rgb ? 3 : 1;
+
+    private ushort[]? WhiteSamples(int width, int height)
+    {
+        if (_info.BitsPerPixel is not (16 or 48)) return null;
+        var samples = new ushort[width * height * Channels];
+        Array.Fill(samples, ushort.MaxValue);
+        return samples;
+    }
+
+    private DeepPixels? Deep(int width, int height, ushort[]? samples) =>
+        samples is null ? null : new DeepPixels(width, height, Channels, samples);
+
+    private void Blit(byte[] pixels, ushort[]? deep, int width, int height, TwainStrip strip)
     {
         byte[] data = strip.Data;
         int bytesPerRow = strip.BytesPerRow > 0 ? strip.BytesPerRow : TwainRaster.MinimumBytesPerRow(strip.Columns, _info.BitsPerPixel);
@@ -146,6 +170,28 @@ public sealed class TwainImageAssembler
                         pixels[o] = pixels[o + 1] = pixels[o + 2] = value;
                         break;
                     }
+                    case 16:
+                    {
+                        int index = src + column * 2;
+                        if (index + 1 >= data.Length) goto NextRow;
+                        ushort sample = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(index));
+                        if (_vanilla) sample = (ushort)(ushort.MaxValue - sample);
+                        deep![y * width + x] = sample;
+                        pixels[o] = pixels[o + 1] = pixels[o + 2] = (byte)(sample >> 8);
+                        break;
+                    }
+                    case 48:
+                    {
+                        int index = src + column * 6;
+                        if (index + 5 >= data.Length) goto NextRow;
+                        for (int c = 0; c < 3; c++)
+                        {
+                            ushort sample = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(index + c * 2));
+                            deep![(y * width + x) * 3 + c] = sample;
+                            pixels[o + c] = (byte)(sample >> 8);
+                        }
+                        break;
+                    }
                     default: // 24-bit RGB
                     {
                         int index = src + column * 3;
@@ -172,12 +218,12 @@ public static class TwainRaster
     public static bool CanAssemble(TwainImageInfo info) =>
         info.Compression == TwainCompression.None && !info.Planar && CanAssemble(info.PixelType, info.BitsPerPixel);
 
-    /// <summary>1-bit black &amp; white, 8-bit gray or 24-bit RGB.</summary>
+    /// <summary>1-bit black &amp; white, 8 or 16-bit gray, or 24 or 48-bit RGB.</summary>
     public static bool CanAssemble(int pixelType, int bitsPerPixel) => (pixelType, bitsPerPixel) switch
     {
         (TwainPixelTypes.BlackWhite, 1) => true,
-        (TwainPixelTypes.Gray, 8) => true,
-        (TwainPixelTypes.Rgb, 24) => true,
+        (TwainPixelTypes.Gray, 8 or 16) => true,
+        (TwainPixelTypes.Rgb, 24 or 48) => true,
         _ => false,
     };
 

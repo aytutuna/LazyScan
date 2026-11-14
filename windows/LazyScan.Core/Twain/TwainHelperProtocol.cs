@@ -316,7 +316,7 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
 public static class TwainHelperProtocol
 {
     /// <summary>The protocol version; the app and the helper are built together and must agree.</summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     /// <summary>"LSTW": the first field of <see cref="TwainHelperHello"/> and its reply.</summary>
     public const uint Magic = 0x5754534C;
@@ -584,6 +584,7 @@ public static class TwainHelperProtocol
         w.OptionalSize(caps.FeederSizeInches);
         w.Ints(caps.SupportedSizes);
         w.Bool(caps.MemoryTransfer);
+        w.Bool(caps.HighBitDepth);
     }
 
     private static TwainDeviceCaps ReadCaps(ref Reader r) => new()
@@ -601,6 +602,7 @@ public static class TwainHelperProtocol
         FeederSizeInches = r.OptionalSize(),
         SupportedSizes = r.Ints(),
         MemoryTransfer = r.Bool(),
+        HighBitDepth = r.Bool(),
     };
 
     private static TwainHelperSourceList ReadSourceList(ref Reader r)

@@ -961,6 +961,16 @@ public sealed class ScanSettings
     /// (<see cref="ScannerCapabilities.SupportsHighBitDepth"/>); every other path stays 8-bit. Off unless chosen.
     /// </summary>
     public bool PhotoHighBitDepth { get; set; } = false;
+    /// <summary>
+    /// The photo flow with a TIFF in color or gray and the switch on: the scan asks the unit for 16 bits when it
+    /// reports them (<see cref="ScannerCapabilities.SupportsHighBitDepth"/>). Black &amp; white stays 8-bit,
+    /// thresholded by the app, and so do negatives and any adjustment: no page step runs on 16-bit pixels.
+    /// </summary>
+    [JsonIgnore]
+    public bool WantsHighBitDepth =>
+        PhotoHighBitDepth && TaskCatalog.FlowOf(this) == TaskFlowKind.PhotoSplit
+        && OutputFormats.ImageFormatOrJpeg(Format) == OutputFormat.Tiff
+        && ColorMode != ColorMode.BlackWhite && Source != ScanSource.Negatives && Adjustments.IsIdentity;
 
     // Document / PDF mode
     /// <summary>
@@ -1794,6 +1804,11 @@ public sealed class DetectedPhoto
     public bool Included { get; set; } = true;
     /// <summary>Extra user-requested rotation applied at save time (0...3 quarter turns clockwise).</summary>
     public int RotationQuarterTurns { get; set; } = 0;
+    /// <summary>
+    /// The photo's pixels at 16 bits per sample, cut from a page scanned with <see cref="ScanSettings.PhotoHighBitDepth"/>
+    /// and saved as a 16-bit TIFF while the photo is not turned; null for every other photo.
+    /// </summary>
+    public DeepPixels? DeepPixels { get; set; }
     /// <summary>A receipt's text and date as read from the image turned as shown (<see cref="IsRead"/>); null until it is read.</summary>
     public ReceiptReading? Reading { get; set; }
     /// <summary>The date as typed in the receipt review; null until the user edits it, and then it replaces the one found.</summary>

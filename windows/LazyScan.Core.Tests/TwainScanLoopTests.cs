@@ -131,6 +131,38 @@ public class TwainScanLoopTests
     }
 
     [Fact]
+    public void SixteenBitMemoryScan_DeliversTheSamplesWithThePage()
+    {
+        var info = new TwainImageInfo(1, 1, TwainPixelTypes.Gray, 16, 300, 300);
+        var transport = new FakeTransport(
+            new TwainImageReady(info),
+            new TwainStripReceived(new TwainStrip(1, 1, 0, 0, 2, [0x34, 0x12])),
+            new TwainFinished());
+        var result = Run(transport, Flatbed() with { BitDepth = 16 });
+
+        Assert.Null(result.Error);
+        var page = Assert.Single(result.Pages);
+        Assert.Equal(0x12, page.Image.Pixels[0]);
+        Assert.Equal([0x1234], page.Deep!.Samples);
+        Assert.Equal(ColorMode.Grayscale, page.ColorMode);
+    }
+
+    [Fact]
+    public void SixteenBitStripOnAnEightBitRequest_KeepsOnlyTheEightBitView()
+    {
+        var info = new TwainImageInfo(1, 1, TwainPixelTypes.Gray, 16, 300, 300);
+        var transport = new FakeTransport(
+            new TwainImageReady(info),
+            new TwainStripReceived(new TwainStrip(1, 1, 0, 0, 2, [0x34, 0x12])),
+            new TwainFinished());
+        var result = Run(transport, Flatbed());
+
+        Assert.Null(result.Error);
+        var page = Assert.Single(result.Pages);
+        Assert.Null(page.Deep);
+    }
+
+    [Fact]
     public void FeederScan_ReturnsEverySheetInOrder()
     {
         var transport = new FakeTransport([.. GrayPage(1), .. GrayPage(2), .. GrayPage(3), new TwainFinished()]);
@@ -650,7 +682,7 @@ public class TwainScanLoopTests
     public void UnreadableMemoryFormat_SwitchesToNativeTransfers()
     {
         var transport = new FakeTransport(
-            new TwainImageReady(new TwainImageInfo(2, 2, TwainPixelTypes.Gray, 16)),
+            new TwainImageReady(new TwainImageInfo(2, 2, TwainPixelTypes.Gray, 12)),
             new TwainFinished());
         var result = Run(transport, Flatbed());
 

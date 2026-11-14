@@ -50,6 +50,7 @@ public class TwainHelperProtocolTests
             FeederSizeInches = null,
             SupportedSizes = [1, 3, 5],
             MemoryTransfer = false,
+            HighBitDepth = true,
         }) { RequestId = 4 },
         new TwainHelperCapabilities(new TwainDeviceCaps()) { RequestId = 4 },
         new TwainHelperApplied(new TwainApplied(TwainTransferMechanisms.Memory, TwainPixelFlavors.Vanilla, false, false, true)) { RequestId = 5 },
@@ -108,6 +109,7 @@ public class TwainHelperProtocolTests
         var caps = Assert.IsType<TwainHelperCapabilities>(RoundTrip(Samples().OfType<TwainHelperCapabilities>().First())).Caps;
         Assert.Equal((false, false, false, true, 1, 600, false), (caps.Online, caps.UIControllable, caps.HasFlatbed, caps.HasFeeder,
                                                                   caps.DuplexKind, caps.NativeResolution, caps.MemoryTransfer));
+        Assert.True(caps.HighBitDepth);
         Assert.Equal([100, 200, 300], caps.Resolutions);
         Assert.Equal(new SizeD(8.5, 11.7), caps.FlatbedSizeInches);
         Assert.Null(caps.FeederSizeInches);

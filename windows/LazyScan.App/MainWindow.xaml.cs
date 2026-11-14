@@ -1476,6 +1476,7 @@ public partial class MainWindow : Window
             SourceBox.SelectedItem = ViewModel.Settings.Source.Label();
             SyncSidesOptions();
             SyncPaperSizeOptions();
+            SyncHighBitDepth();
         }
         finally
         {
@@ -1767,6 +1768,7 @@ public partial class MainWindow : Window
             ArchivalBox.IsChecked = s.Output.Archival && !s.Output.Protect;
             AutoSplitBox.IsChecked = s.PhotoAutoSplit;
             DeskewBox.IsChecked = s.PhotoAutoDeskew;
+            HighBitDepthBox.IsChecked = s.PhotoHighBitDepth;
             AutoEnhanceBox.IsChecked = s.Adjustments.AutoEnhance;
             PushAdjustmentSliders();
             DescreenBox.IsChecked = s.Adjustments.Descreen;
@@ -1840,6 +1842,7 @@ public partial class MainWindow : Window
         }
         s.PhotoAutoSplit = AutoSplitBox.IsChecked == true;
         s.PhotoAutoDeskew = DeskewBox.IsChecked == true;
+        s.PhotoHighBitDepth = HighBitDepthBox.IsChecked == true;
         s.Adjustments.AutoEnhance = AutoEnhanceBox.IsChecked == true;
         // The four sliders are written only by Adjustment_Changed, and only for the slider
         // the user moved: re-deriving them here would round-trip every value through the
@@ -2089,6 +2092,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// The 16-bit TIFF switch sits under the format in the photo flow, for a scanner that reports 16 bits. It is
+    /// hidden, not greyed out, otherwise; the stored choice is kept for when such a scanner returns.
+    /// </summary>
+    private void SyncHighBitDepth()
+    {
+        var s = ViewModel.Settings;
+        bool offered = TaskCatalog.FlowOf(s) == TaskFlowKind.PhotoSplit && InspectorSections.ShownFormat(s) == OutputFormat.Tiff
+            && ViewModel.Capabilities is { SupportsHighBitDepth: true };
+        HighBitDepthRow.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
+        HighBitDepthNote.Visibility = offered && s.PhotoHighBitDepth ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
     /// The size choice is shown for PDF output, with the chosen size's hint under it, and for the
     /// page pictures of a Word document (the switch above it), which are stored at that size. The
     /// text beside a PDF can be asked for whenever a save of document pages writes a PDF: the ID
@@ -2111,6 +2127,7 @@ public partial class MainWindow : Window
         WordPageImagesBox.ToolTip = pageImagesHint;
         AutomationProperties.SetHelpText(WordPageImagesBox, pageImagesHint);
         JpegQualityRow.Visibility = shownFormat == OutputFormat.Jpeg ? Visibility.Visible : Visibility.Collapsed;
+        SyncHighBitDepth();
         PhotoSteppers.Visibility = s.PhotoAutoSplit ? Visibility.Visible : Visibility.Collapsed;
         PdfSizeOptions.Visibility = pdf || (word && s.Output.WordPageImages) ? Visibility.Visible : Visibility.Collapsed;
         PageSizeOptions.Visibility = pdf ? Visibility.Visible : Visibility.Collapsed;

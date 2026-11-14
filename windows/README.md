@@ -1938,6 +1938,11 @@ same scanners through ImageCaptureCore.
   format the app cannot read, the session switches to native (bitmap) transfers. Black & white
   is scanned as 8-bit gray, as with eSCL, and thresholded by the app (a source that lists only
   1-bit is asked for that); WIA scans it with the gray intent.
+  Photos with **High bit depth TIFF** on ask a source that lists 16 bits in `ICAP_BITDEPTH` for color or gray
+  for 16 bits per sample; those come as 16-bit gray or 48-bit color memory strips (little-endian)
+  and are kept whole next to the 8-bit view (`DeepPixels`) and saved as a 16-bit TIFF. Native
+  transfers, WIA and eSCL stay 8-bit, and so do the other modes. **Unverified with real drivers:**
+  the byte order and how drivers list 16 bits (per sample or as 48 for color).
 - **Feeder.** A feeder batch scans until the feeder is empty. An empty feeder before the
   first sheet says "Load paper in the feeder"; a jam or double feed later keeps the sheets
   already scanned and says why. Two-sided scanning (`CAP_DUPLEXENABLED`) is switched on only

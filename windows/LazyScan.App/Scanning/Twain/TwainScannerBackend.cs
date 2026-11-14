@@ -395,7 +395,7 @@ internal sealed class TwainScannerSession(ScannerInfo info, TwainThread thread, 
             result = await Acquire(request, page =>
             {
                 _waitingForDriverWindow = false;
-                deliver(new ScannedPage(page.Image, page.Dpi, page.ColorMode));
+                deliver(new ScannedPage(page.Image, page.Dpi, page.ColorMode) { DeepPixels = page.Deep });
             }, duplex => { if (duplexAsked) _lastScanDuplex = duplex; });
         }
         finally

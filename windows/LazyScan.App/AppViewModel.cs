@@ -2102,7 +2102,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     RecordCaptures(found.Select(item => item.Photo.Id));
                     ShowPhotoReview = found.Count > 0;
                     if (!ShowPhotoReview) _photoSourceImages = [];
-                    SetStatus(Loc.Plural(found.Count, "Found {0} photo.", "Found {0} photos."), new(new StatusHead.Found(found.Count, FileKind.Photo)));
+                    string foundMessage = Loc.Plural(found.Count, "Found {0} photo.", "Found {0} photos.");
+                    bool askedDeep = s.WantsHighBitDepth && Capabilities?.SupportsHighBitDepth == true;
+                    if (askedDeep && processed.All(page => page.DeepPixels is null))
+                    {
+                        foundMessage += " " + Loc.T("This scanner gave 8-bit pages instead.");
+                    }
+                    else if (askedDeep && found.Any(item => item.Photo.DeepPixels is null))
+                    {
+                        foundMessage += " " + Loc.T("Photos that were straightened save as 8-bit files.");
+                    }
+                    SetStatus(foundMessage, new(new StatusHead.Found(found.Count, FileKind.Photo)));
                     break;
                 case TaskFlowKind.IdCard:
                     if (!IsIdCardFlow)
@@ -2423,7 +2433,13 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             token.ThrowIfCancellationRequested();
             if (PhotoDetector.ExtractPhoto(page.Image, region, s.PhotoAutoDeskew) is { } image)
             {
-                photos.Add(new DetectedPhoto(region, image, page.Dpi, sourcePageId: page.Id, colorMode: page.ColorMode));
+                var photo = new DetectedPhoto(region, image, page.Dpi, sourcePageId: page.Id, colorMode: page.ColorMode);
+                // Only a region that needs no turning is cut from the 16-bit data as well.
+                if (page.DeepPixels is { } deep && (!s.PhotoAutoDeskew || Math.Abs(region.AngleDegrees) < 0.05))
+                {
+                    photo.DeepPixels = deep.Cropped(region.BoundingBox());
+                }
+                photos.Add(photo);
             }
         }
         return photos;
@@ -2433,7 +2449,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         double w = page.Image.Width, h = page.Image.Height;
         var region = new DetectedPhotoRegion(new PointD(w / 2, h / 2), new SizeD(w, h), 0);
-        return new DetectedPhoto(region, page.Image, page.Dpi, sourcePageId: page.Id, colorMode: page.ColorMode);
+        return new DetectedPhoto(region, page.Image, page.Dpi, sourcePageId: page.Id, colorMode: page.ColorMode)
+        {
+            DeepPixels = page.DeepPixels,
+        };
     }
 
     public bool CanShowScannerWindow => IsBusy && _session is Scanning.IDriverWindowControl { WaitingForDriverWindow: true };
@@ -2724,8 +2743,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                         var image = photo.RotationQuarterTurns == 0
                             ? photo.Image
                             : ImagePipeline.Rotate(photo.Image, photo.RotationQuarterTurns);
+                        var deep = photo.DeepPixels?.Rotated(photo.RotationQuarterTurns);
                         // The mode the photo was scanned in: a black & white TIFF is G4.
-                        return WpfImageCodec.SaveAsNew(image, path, format, photo.Dpi, s.JpegQuality, photo.ColorMode, details);
+                        return WpfImageCodec.SaveAsNew(image, path, format, photo.Dpi, s.JpegQuality, photo.ColorMode, details, deep);
                     }));
                 }
             });

@@ -827,10 +827,11 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     /// Twin of C# `ScanSettings.PhotoHighBitDepth`.
     public var photoHighBitDepth: Bool = false
     /// The photo flow with a TIFF in color or gray and the switch on: the scan asks the unit for 16 bits when it
-    /// reports them (`ScannerCapabilities.supportsHighBitDepth`). Black & white stays 8-bit, thresholded by the app.
+    /// reports them (`ScannerCapabilities.supportsHighBitDepth`). Black & white stays 8-bit, thresholded by the app,
+    /// and so do negatives and any adjustment: no page step runs on 16-bit pixels.
     public var wantsHighBitDepth: Bool {
         photoHighBitDepth && TaskCatalog.flow(of: self) == .photoSplit && format.imageFormatOrJPEG == .tiff
-            && colorMode != .blackWhite
+            && colorMode != .blackWhite && source != .negatives && adjustments.isIdentity
     }
 
     // Document / PDF mode

@@ -109,6 +109,7 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
                 FeederSizeInches = feederSize,
                 SupportedSizes = sizes,
                 MemoryTransfer = MemoryOffered(caps),
+                HighBitDepth = Reports16Bits(caps),
             };
         }
         catch (Exception e) when (e is not TwainException)
@@ -123,6 +124,22 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
         double width = caps.ICapPhysicalWidth.GetCurrent();
         double height = caps.ICapPhysicalHeight.GetCurrent();
         return width > 0 && height > 0 ? new SizeD(width, height) : null;
+    }
+
+    /// <summary>Whether color or gray lists 16 bits per sample; the bit depths offered depend on the pixel type, so each is tried.</summary>
+    private static bool Reports16Bits(ICapabilities caps)
+    {
+        if (!caps.ICapPixelType.IsSupported || !caps.ICapBitDepth.IsSupported) return false;
+        var offered = caps.ICapPixelType.GetValues();
+        foreach (var type in new[] { PixelType.RGB, PixelType.Gray })
+        {
+            if (offered.Contains(type) && caps.ICapPixelType.SetValue(type) == ReturnCode.Success
+                && caps.ICapBitDepth.GetValues().Contains(16))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool MemoryOffered(ICapabilities caps) =>
@@ -223,6 +240,11 @@ internal sealed class NTwainDriver : ITwainTransport, IDisposable
             if (mechanism == TwainTransferMechanisms.Native && caps.ICapXferMech.IsSupported)
             {
                 caps.ICapXferMech.SetValue(XferMech.Native);
+            }
+            // A native bitmap has no 16-bit form: the page stays 8-bit when memory transfers did not work out.
+            if (mechanism == TwainTransferMechanisms.Native && request.BitDepth > 8 && caps.ICapBitDepth.IsSupported)
+            {
+                caps.ICapBitDepth.SetValue(8);
             }
 
             int flavor = caps.ICapPixelFlavor.IsSupported ? (int)caps.ICapPixelFlavor.GetCurrent() : TwainPixelFlavors.Chocolate;

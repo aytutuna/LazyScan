@@ -34,6 +34,8 @@ public sealed class TwainDeviceCaps
     public IReadOnlyList<int> SupportedSizes { get; init; } = [];
     /// <summary>ICAP_XFERMECH offers memory transfers.</summary>
     public bool MemoryTransfer { get; init; } = true;
+    /// <summary>ICAP_BITDEPTH lists 16 for color or gray.</summary>
+    public bool HighBitDepth { get; init; }
 }
 
 /// <summary>What <see cref="ITwainTransport.Apply"/> set up, as the source reports it back.</summary>
