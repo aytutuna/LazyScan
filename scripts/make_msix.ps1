@@ -6,6 +6,10 @@ packages, with one just that package. Build it on this PC; the package is not a 
   pwsh scripts/make_msix.ps1 -Out <folder> [-Arch x64,arm64] -IdentityName Aytu.LazyScan
        -Publisher 'CN=54BA56B9-1B6C-4B6E-886D-07694CF02BF5' -PublisherDisplayName Aytu
 
+With -Register the staged layout for this PC's architecture is kept in <Out>\stage-<arch> and registered for the
+current user with Add-AppxPackage -Register, for testing the manifest locally (needs Developer Mode). An earlier
+registration of the package is removed first.
+
 The identity values are the ones in Partner Center, Product identity. They default to the STORE_IDENTITY_NAME,
 STORE_PUBLISHER and STORE_PUBLISHER_DISPLAY_NAME environment variables. The script stops without all three: a
 package with placeholder names would only be refused by the Store.
@@ -25,7 +29,8 @@ param(
     [ValidateSet('x64', 'arm64')] [string[]] $Arch = @('x64', 'arm64'),
     [string] $IdentityName = $env:STORE_IDENTITY_NAME,
     [string] $Publisher = $env:STORE_PUBLISHER,
-    [string] $PublisherDisplayName = $env:STORE_PUBLISHER_DISPLAY_NAME
+    [string] $PublisherDisplayName = $env:STORE_PUBLISHER_DISPLAY_NAME,
+    [switch] $Register
 )
 
 $ErrorActionPreference = 'Stop'
@@ -53,6 +58,8 @@ function Find-SdkTool([string] $name) {
 $makeappx = Find-SdkTool 'makeappx.exe'
 $makepri = Find-SdkTool 'makepri.exe'
 $nuget = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $HOME '.nuget\packages' }
+$pcArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+if ($Register -and $Arch -notcontains $pcArch) { throw "-Register needs -Arch to include $pcArch, the architecture of this PC" }
 $work = Join-Path ([IO.Path]::GetTempPath()) ('lazyscan-msix-' + [guid]::NewGuid().ToString('N'))
 
 function Invoke-Tool([string] $tool, [string[]] $arguments) {
@@ -160,6 +167,15 @@ try {
     Move-Item $zip $target -Force
     Copy-Item $packages $Out -Force
     Write-Host "wrote $target"
+
+    if ($Register) {
+        $keep = Join-Path $Out "stage-$pcArch"
+        Get-AppxPackage $IdentityName | Remove-AppxPackage
+        if (Test-Path $keep) { Remove-Item $keep -Recurse -Force }
+        Move-Item (Join-Path $work "stage-$pcArch") $keep
+        Add-AppxPackage -Register (Join-Path $keep 'AppxManifest.xml')
+        Write-Host "registered $keep"
+    }
 } finally {
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }

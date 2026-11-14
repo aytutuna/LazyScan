@@ -91,3 +91,11 @@ The package declares `runFullTrust` and nothing else. Partner Center asks for a 
 4. Age ratings: answer the questionnaire as in the table above.
 5. Give the `runFullTrust` reason above when asked, paste the listing text and logos, add the certification notes.
 6. Submit, set to publish manually after certification, so nothing goes live before a test on a real scanner.
+
+## Testing the package on this PC
+
+The `.msix` files are unsigned and carry the Store publisher, so they cannot be installed. To test the manifest (the `lazyscan:` address, the `.lsdoc` association, the firewall rule and the helper paths), turn on Developer Mode in Settings, Privacy & security, For developers, then run the script with `-Register` and `-Arch` set to this PC's architecture:
+
+    pwsh scripts/make_msix.ps1 -Out <folder> -Arch x64 -Register -IdentityName Aytu.LazyScan -Publisher 'CN=54BA56B9-1B6C-4B6E-886D-07694CF02BF5' -PublisherDisplayName Aytu
+
+The staged layout stays in `<folder>\stage-x64` and is registered for the current user. Check that `lazyscan:` opens the app from Win+R, and that Open With on a `.lsdoc` file in a folder with spaces in its name starts the app with that file. Running the script again replaces the registration. Remove it with `Get-AppxPackage Aytu.LazyScan | Remove-AppxPackage`.
