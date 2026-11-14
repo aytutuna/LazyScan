@@ -107,6 +107,7 @@ public final class CompanionService: @unchecked Sendable {
         router.desktopName = { name }
         // The session as it is (used or expired too), so a phone is told why its code no longer works.
         router.currentPairing = { [weak self] in self?.currentSession }
+        router.currentPairingText = { [weak self] in try? self?.pairingCode()?.format() }
         router.queuedPages = { [weak self] in self?.queuedPages ?? 0 }
         router.onDevicePaired = { [weak self] device in
             guard let self else { return }
@@ -117,6 +118,7 @@ public final class CompanionService: @unchecked Sendable {
         }
         router.onPackageReceived = { [weak self] package, device in self?.onPackageReceived?(package, device) }
         router.onDeviceRemoved = { [weak self] _ in self?.refreshQuietly() }
+        router.onPairingClosed = { [weak self] in self?.refreshQuietly() }
         router.onOutboxFetched = { [weak self] device, id in self?.onSentFetched?(device, id) }
         // A declined (or cut off) pairing no longer keeps the host listening.
         router.onApprovalSettled = { [weak self] in self?.refreshQuietly() }

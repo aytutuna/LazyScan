@@ -13,6 +13,14 @@ public enum IOSCompanionText {
     public static var openLine: String { String(localized: "2. On it, open Phone and pair a phone. Use the same Wi-Fi.") }
     public static var scanButton: String { String(localized: "Scan the code") }
     public static var pasteCaption: String { String(localized: "Or paste the pairing link") }
+    public static var nearbyTitle: String { String(localized: "Computers nearby") }
+    public static var codeFooter: String { String(localized: "Enter the code shown on the computer.") }
+    public static var checkingCode: String { String(localized: "Checking the code") }
+    public static var noComputers: String { String(localized: "No computers found") }
+    public static var lookingForComputers: String { String(localized: "Looking for computers\u{2026}") }
+    public static var nearbyHint: String { String(localized: "Opens the code field") }
+    public static func codeLabel(_ name: String) -> String { L10n.t("Code on {0}", name) }
+    public static func codeAnnouncement(_ name: String) -> String { L10n.t("Type the 6 digits shown on {0}", name) }
     public static func pairWith(_ name: String) -> String { L10n.t("Pair with {0}", name) }
     public static var textLabel: String { String(localized: "Enter pairing text") }
     public static var textPlaceholder: String { String(localized: "Pairing link") }
@@ -136,6 +144,15 @@ public final class IOSCompanionModel: ObservableObject {
     /// The documents in the cloud folder the computer has not taken yet.
     @Published public private(set) var inCloudFolder: Int = 0
 
+    /// The computer picked in the nearby list; its code row is open.
+    @Published public private(set) var chosen: NearbyComputer?
+    /// The digits typed in the code row; the sixth sends them (`codeEdited`).
+    @Published public var nearbyCode: String = ""
+    /// The code is with the computer.
+    @Published public private(set) var isCheckingCode: Bool = false
+    /// Why the last code did not give a pairing text.
+    @Published public private(set) var codeProblem: String?
+
     /// The explanation card has not been read yet: nothing is browsed or checked until it is.
     @Published public private(set) var needsExplanation: Bool
 
@@ -198,6 +215,39 @@ public final class IOSCompanionModel: ObservableObject {
     /// The camera read a pairing code.
     public func scanned(_ value: String) {
         text = value
+    }
+
+    /// A computer of the nearby list was tapped: its code row opens, here or instead of another's.
+    public func choose(_ computer: NearbyComputer) {
+        guard !isCheckingCode else { return }
+        chosen = computer
+        nearbyCode = ""
+        codeProblem = nil
+        UIAccessibility.post(notification: .announcement, argument: IOSCompanionText.codeAnnouncement(computer.name))
+    }
+
+    /// The code row's text changed: only the digits stay, and the sixth is sent to the chosen computer. Its
+    /// answer is the pairing text a scan would give (`scanned`), or why not.
+    public func codeEdited() async {
+        let digits: String = String(nearbyCode.filter { $0.isASCII && $0.isNumber }.prefix(PairingSession.codeDigitCount))
+        guard digits == nearbyCode else {
+            nearbyCode = digits
+            return
+        }
+        guard digits.count == PairingSession.codeDigitCount, let computer = chosen, !isCheckingCode else { return }
+        isCheckingCode = true
+        codeProblem = nil
+        do {
+            let found: String = try await state.fetchPairingText(code: digits, addresses: computer.addresses, port: computer.port)
+            chosen = nil
+            nearbyCode = ""
+            scanned(found)
+        } catch {
+            nearbyCode = ""
+            codeProblem = error.localizedDescription
+            UIAccessibility.post(notification: .announcement, argument: error.localizedDescription)
+        }
+        isCheckingCode = false
     }
 
     /// The screen is shown: browsing starts, and the paired desktop is checked (to the end, even when the

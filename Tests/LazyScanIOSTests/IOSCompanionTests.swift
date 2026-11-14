@@ -124,6 +124,63 @@ private final class MovedDesktopProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+/// A desktop that shows the code 482913: its health check answers, and that code gives the pairing text.
+private final class CodeDesktopProtocol: URLProtocol {
+    static let text: String = "lazyscan://pair?v=1&id=desk-0001-abcd"
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url, let response = reply(url) else {
+            client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
+            return
+        }
+        client?.urlProtocol(self, didReceive: response.0, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(response.1.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private func reply(_ url: URL) -> (HTTPURLResponse, String)? {
+        var status: Int = 200
+        var body: String = HealthResponse(protocolVersion: CompanionProtocol.version, paired: false).toJSON()
+        if url.path == CompanionProtocol.pairCodePath {
+            if CodeDesktopProtocol.code(of: request) == "482913" {
+                body = PairCodeResponse(text: CodeDesktopProtocol.text).toJSON()
+            } else {
+                status = 403
+                body = CompanionError.codeInvalid.toJSON()
+            }
+        }
+        guard let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: nil) else {
+            return nil
+        }
+        return (response, body)
+    }
+
+    private static func code(of request: URLRequest) -> String? {
+        var data: Data = request.httpBody ?? Data()
+        if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var buffer: [UInt8] = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable {
+                let count: Int = stream.read(&buffer, maxLength: buffer.count)
+                if count <= 0 { break }
+                data.append(contentsOf: buffer[0..<count])
+            }
+        }
+        return PairCodeRequest.fromJSON(data)?.code
+    }
+}
+
 @MainActor
 private func waitUntil(timeout: TimeInterval, _ condition: () -> Bool,
                        file: StaticString = #filePath, line: UInt = #line) async throws {
@@ -284,6 +341,8 @@ final class IOSCompanionTests: XCTestCase {
         XCTAssertEqual(IOSCompanionText.status(.unpaired(byDesktop: "Office PC")),
                        "This device is no longer paired with Office PC.")
         XCTAssertEqual(IOSCompanionText.pairWith("Studio iMac"), "Pair with Studio iMac")
+        XCTAssertEqual(IOSCompanionText.codeLabel("Office PC"), "Code on Office PC")
+        XCTAssertEqual(IOSCompanionText.codeAnnouncement("Office PC"), "Type the 6 digits shown on Office PC")
         XCTAssertEqual(IOSCompanionText.waiting(0), "Nothing waiting to be sent")
         XCTAssertEqual(IOSCompanionText.waiting(1), "1 document waiting to be sent")
         XCTAssertEqual(IOSCompanionText.waiting(4), "4 documents waiting to be sent")
@@ -552,6 +611,106 @@ final class IOSCompanionTests: XCTestCase {
 
         XCTAssertNil(state.companionPull)
         XCTAssertEqual(state.companionStatus, .notPaired)
+    }
+
+    @MainActor
+    func test_nearbyComputers_areListedByNameAndFollowTheBrowse() throws {
+        let resolver = StubCompanionResolver()
+        resolver.service = EsclResolvedService(hostName: nil, port: 52731, addresses: ["192.168.1.20"])
+        let browsers = StubCompanionBrowsers()
+        let browser = IOSCompanionBrowser(makeBrowser: { () -> any EsclServiceBrowsing in
+            browsers.make()
+        }, resolver: resolver)
+        func result(_ name: String, _ id: String) -> EsclBrowseResult {
+            EsclBrowseResult(name: name, type: CompanionProtocol.serviceType, domain: "local.", txt: ["id=" + id, "v=1"])
+        }
+
+        browser.begin()
+        let running: StubCompanionBrowser = try XCTUnwrap(browsers.made.last)
+        XCTAssertTrue(browser.computers.isEmpty)
+        running.onResults?([result("Living room Mac", "desk-0002-other"), result("Office PC", "desk-0001-abcd"),
+                            EsclBrowseResult(name: "No id", type: CompanionProtocol.serviceType, domain: "local.",
+                                             txt: ["v=1"])])
+        XCTAssertEqual(browser.computers.map { $0.name }, ["Living room Mac", "Office PC"])
+        XCTAssertEqual(browser.computers.map { $0.id }, ["desk-0002-other", "desk-0001-abcd"])
+        XCTAssertEqual(browser.computers.first?.addresses, ["192.168.1.20"])
+        XCTAssertEqual(browser.computers.first?.port, 52731)
+
+        running.onResults?([result("Office PC", "desk-0001-abcd")])
+        XCTAssertEqual(browser.computers.map { $0.name }, ["Office PC"])
+
+        browser.end()
+        browser.begin()
+        XCTAssertTrue(browser.computers.isEmpty)
+        browser.end()
+    }
+
+    @MainActor
+    func test_codeRow_sendsTheSixthDigit_andEntersTheTextItGives() async throws {
+        let state: AppState = makeState()
+        state.companionProtocolClasses = [CodeDesktopProtocol.self]
+        let model = IOSCompanionModel(state: state, browser: nil)
+        let computer = NearbyComputer(id: IOSCompanionTests.desktopId, name: "Office PC", addresses: ["192.168.1.20"],
+                                      port: CompanionProtocol.defaultPort)
+
+        model.choose(computer)
+        XCTAssertEqual(model.chosen, computer)
+        model.nearbyCode = "48 29-1"
+        await model.codeEdited()
+        XCTAssertEqual(model.nearbyCode, "48291")
+        await model.codeEdited()
+        XCTAssertFalse(model.isCheckingCode)
+        XCTAssertEqual(model.text, "")
+
+        model.nearbyCode = "4829137"
+        await model.codeEdited()
+        XCTAssertEqual(model.nearbyCode, "482913")
+        await model.codeEdited()
+        XCTAssertEqual(model.text, CodeDesktopProtocol.text)
+        XCTAssertNil(model.chosen)
+        XCTAssertEqual(model.nearbyCode, "")
+        XCTAssertNil(model.codeProblem)
+        XCTAssertFalse(model.isCheckingCode)
+    }
+
+    @MainActor
+    func test_codeRow_aWrongCodeIsSaidAndClearsTheField() async throws {
+        let state: AppState = makeState()
+        state.companionProtocolClasses = [CodeDesktopProtocol.self]
+        let model = IOSCompanionModel(state: state, browser: nil)
+        let computer = NearbyComputer(id: IOSCompanionTests.desktopId, name: "Office PC", addresses: ["192.168.1.20"],
+                                      port: CompanionProtocol.defaultPort)
+
+        model.choose(computer)
+        model.nearbyCode = "111111"
+        await model.codeEdited()
+
+        XCTAssertEqual(model.codeProblem, "That code is not right.")
+        XCTAssertEqual(model.nearbyCode, "")
+        XCTAssertEqual(model.chosen, computer)
+        XCTAssertEqual(model.text, "")
+        XCTAssertFalse(model.isCheckingCode)
+
+        // Choosing again starts clean.
+        model.choose(computer)
+        XCTAssertNil(model.codeProblem)
+    }
+
+    @MainActor
+    func test_codeRow_aComputerThatDoesNotAnswerIsSaidWithTheUnreachableText() async throws {
+        let state: AppState = makeState()
+        state.companionProtocolClasses = [MovedDesktopProtocol.self]
+        let model = IOSCompanionModel(state: state, browser: nil)
+        // MovedDesktopProtocol answers only on the default port.
+        let computer = NearbyComputer(id: IOSCompanionTests.desktopId, name: "Office PC", addresses: ["192.168.1.20"], port: 9)
+
+        model.choose(computer)
+        model.nearbyCode = "482913"
+        await model.codeEdited()
+
+        XCTAssertEqual(model.codeProblem, CompanionText.unreachableMessage)
+        XCTAssertEqual(model.nearbyCode, "")
+        XCTAssertFalse(model.isCheckingCode)
     }
 
     func test_desktopIdInTheTXTRecord() {

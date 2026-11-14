@@ -542,4 +542,83 @@ final class CompanionRouterTests: XCTestCase {
         let paired = await send("POST", CompanionProtocol.pairPath, body: pairRequest(session.token))
         XCTAssertEqual(paired.status, 200)
     }
+
+    private func pairCodeRequest(_ code: String) -> Data {
+        Data(PairCodeRequest(code: code).toJSON().utf8)
+    }
+
+    func testPairCode_GivesThePairingTextForTheRightCode() async throws {
+        let session = try PairingSession(opened: now, token: CompanionVectors.token, code: "482913")
+        pairing = session
+        router.currentPairingText = { "lazyscan://pair?v=1" }
+        let spaced = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482 913"))
+        XCTAssertEqual(spaced.status, 200)
+        XCTAssertEqual(PairCodeResponse.fromJSON(spaced.body)?.text, "lazyscan://pair?v=1")
+        let plain = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482913"))
+        XCTAssertEqual(plain.status, 200)
+        // The token is still there for the pairing that follows.
+        XCTAssertEqual(session.state(at: now), .open)
+        XCTAssertEqual(session.failedCodes, 0)
+    }
+
+    func testPairCode_RefusesWithoutAnOpenSessionOrTheRightCode() async throws {
+        router.currentPairingText = { "lazyscan://pair?v=1" }
+        let closed = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482913"))
+        XCTAssertEqual(closed.status, 403)
+        XCTAssertEqual(code(closed), CompanionErrorCode.pairingClosed)
+        let session = try PairingSession(opened: now, token: CompanionVectors.token, code: "482913")
+        pairing = session
+        let wrong = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482914"))
+        XCTAssertEqual(wrong.status, 403)
+        XCTAssertEqual(code(wrong), CompanionErrorCode.codeInvalid)
+        XCTAssertEqual(CompanionError.fromJSON(wrong.body)?.message, "That code is not right.")
+        _ = await send("POST", CompanionProtocol.pairPath, body: pairRequest(CompanionVectors.tokenText))
+        let used = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482913"))
+        XCTAssertEqual(code(used), CompanionErrorCode.tokenUsed)
+        pairing = try PairingSession(opened: now, token: CompanionVectors.token, code: "482913")
+        now = now.addingTimeInterval(6 * 60)
+        let expired = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482913"))
+        XCTAssertEqual(code(expired), CompanionErrorCode.tokenExpired)
+    }
+
+    func testPairCode_ClosesTheSessionAtTheFifthWrongCodeWhateverTheAddress() async throws {
+        let session = try PairingSession(opened: now, token: CompanionVectors.token, code: "482913")
+        pairing = session
+        router.currentPairingText = { "lazyscan://pair?v=1" }
+        let closedCount = Guarded(0)
+        router.onPairingClosed = { closedCount.value += 1 }
+        for i in 1...4 {
+            let wrong = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("000000"),
+                                   from: companionHost("192.168.1.4\(i)"))
+            XCTAssertEqual(code(wrong), CompanionErrorCode.codeInvalid)
+        }
+        XCTAssertEqual(closedCount.value, 0)
+        let fifth = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("000000"),
+                               from: companionHost("192.168.1.45"))
+        XCTAssertEqual(fifth.status, 429)
+        XCTAssertEqual(code(fifth), CompanionErrorCode.rateLimited)
+        XCTAssertTrue(fifth.headers.contains { $0.name == "Retry-After" })
+        XCTAssertEqual(closedCount.value, 1)
+        XCTAssertEqual(session.state(at: now), .closed)
+        let right = await send("POST", CompanionProtocol.pairCodePath, body: pairCodeRequest("482913"))
+        XCTAssertEqual(code(right), CompanionErrorCode.pairingClosed)
+        let token = await send("POST", CompanionProtocol.pairPath, body: pairRequest(CompanionVectors.tokenText))
+        XCTAssertEqual(code(token), CompanionErrorCode.pairingClosed)
+        XCTAssertTrue(devices.devices.isEmpty)
+    }
+
+    func testPairCode_RefusesMalformedRequests() async throws {
+        let session = try PairingSession(opened: now, code: "482913")
+        pairing = session
+        let notJson = await send("POST", CompanionProtocol.pairCodePath, body: Data("not json".utf8))
+        XCTAssertEqual(notJson.status, 400)
+        let noLength = await send("POST", CompanionProtocol.pairCodePath)
+        XCTAssertEqual(noLength.status, 411)
+        let tooLarge = await send("POST", CompanionProtocol.pairCodePath, body: Data(count: CompanionProtocol.maxJsonBodyBytes + 1))
+        XCTAssertEqual(tooLarge.status, 413)
+        let wrongMethod = await send("GET", CompanionProtocol.pairCodePath)
+        XCTAssertEqual(wrongMethod.status, 405)
+        XCTAssertTrue(wrongMethod.headers.contains { $0.name == "Allow" && $0.value == "POST" })
+        XCTAssertEqual(session.failedCodes, 0)
+    }
 }

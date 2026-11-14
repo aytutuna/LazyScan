@@ -196,6 +196,9 @@ public sealed class CompanionRouter
     /// <summary>The pairing session open now; null when pairing is not open.</summary>
     public Func<PairingSession?> CurrentPairing { get; set; } = () => null;
 
+    /// <summary>The pairing code's text for the open session (what the QR code carries); null when there is none.</summary>
+    public Func<string?> CurrentPairingText { get; set; } = () => null;
+
     /// <summary>
     /// Asks the user whether the phone that presented a valid token may pair. Without an answer
     /// within <see cref="ApprovalTimeout"/> the pairing is declined. The default allows it: the
@@ -209,6 +212,8 @@ public sealed class CompanionRouter
     public Func<int> QueuedPages { get; set; } = () => 0;
 
     public event EventHandler<PairedDevice>? DevicePaired;
+    /// <summary>The session's last allowed wrong short code closed it.</summary>
+    public event EventHandler? PairingClosed;
     public event EventHandler<CompanionPackageReceivedEventArgs>? PackageReceived;
     /// <summary>A phone forgot this desktop (<c>DELETE /v1/devices/self</c>).</summary>
     public event EventHandler<PairedDevice>? DeviceRemoved;
@@ -240,6 +245,8 @@ public sealed class CompanionRouter
                 return head.Method == "GET" ? Health(request, now) : NotAllowed("GET");
             case CompanionProtocol.PairPath:
                 return head.Method == "POST" ? await PairAsync(request, now, cancellation).ConfigureAwait(false) : NotAllowed("POST");
+            case CompanionProtocol.PairCodePath:
+                return head.Method == "POST" ? await PairCodeAsync(request, now, cancellation).ConfigureAwait(false) : NotAllowed("POST");
             case CompanionProtocol.HelloPath:
                 return head.Method == "GET" ? Hello(request, now) : NotAllowed("GET");
             case CompanionProtocol.OutboxPath:
@@ -337,6 +344,36 @@ public sealed class CompanionRouter
             Interlocked.Decrement(ref _awaitingApproval);
             ApprovalSettled?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private async Task<CompanionResponse> PairCodeAsync(CompanionRequest request, DateTimeOffset now, CancellationToken cancellation)
+    {
+        if (request.Head.ContentLength is not { } length) return CompanionResponse.Error(411, CompanionError.LengthRequired);
+        if (length > CompanionProtocol.MaxJsonBodyBytes) return CompanionResponse.Error(413, CompanionError.TooLarge);
+        byte[]? body = await ReadAllAsync(request.Body, length, cancellation).ConfigureAwait(false);
+        if (body is null || PairCodeRequest.FromJson(body) is not { } fetch)
+        {
+            return CompanionResponse.Error(400, CompanionError.BadRequest);
+        }
+        if (CurrentPairing() is not { } session) return CompanionResponse.Error(403, CompanionError.PairingClosed);
+        switch (session.CheckCode(fetch.Code, now))
+        {
+            case PairingCodeResult.Wrong:
+                _limiter.RecordFailure(request.Remote, now);
+                return CompanionResponse.Error(403, CompanionError.CodeInvalid);
+            case PairingCodeResult.TooManyAttempts:
+                _limiter.RecordFailure(request.Remote, now);
+                PairingClosed?.Invoke(this, EventArgs.Empty);
+                return CompanionResponse.Error(429, CompanionError.RateLimited, Header("Retry-After", "60"));
+            case PairingCodeResult.Expired:
+                return CompanionResponse.Error(403, CompanionError.TokenExpired);
+            case PairingCodeResult.AlreadyUsed:
+                return CompanionResponse.Error(403, CompanionError.TokenUsed);
+            case PairingCodeResult.Closed:
+                return CompanionResponse.Error(403, CompanionError.PairingClosed);
+        }
+        if (CurrentPairingText() is not { } text) return CompanionResponse.Error(403, CompanionError.PairingClosed);
+        return CompanionResponse.Json(200, new PairCodeResponse(text).ToJson());
     }
 
     private async Task<CompanionResponse> ApproveAndPairAsync(PairRequest pair, Func<Task>? watchClosed,

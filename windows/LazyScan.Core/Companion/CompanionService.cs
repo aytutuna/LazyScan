@@ -58,6 +58,7 @@ public sealed class CompanionService : IAsyncDisposable
             {
                 lock (_gate) return _pairing;
             },
+            CurrentPairingText = () => PairingCode()?.Format(),
         };
         Host = new CompanionHost(Certificate, Router, Limiter, options.Networks, TrustedNetworks.IsApproved, options.Advertiser,
                                  IsWanted, new CompanionHostOptions
@@ -79,6 +80,7 @@ public sealed class CompanionService : IAsyncDisposable
         };
         Router.PackageReceived += (_, e) => PackageReceived?.Invoke(this, e);
         Router.DeviceRemoved += (_, _) => _ = RefreshQuietlyAsync();
+        Router.PairingClosed += (_, _) => _ = RefreshQuietlyAsync();
         Router.OutboxFetched += (_, e) => SentFetched?.Invoke(this, e);
         // A declined (or cut off) pairing no longer keeps the host listening.
         Router.ApprovalSettled += (_, _) => _ = RefreshQuietlyAsync();

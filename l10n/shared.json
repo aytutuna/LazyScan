@@ -599,6 +599,8 @@
   "Unpair {0}?": {},
   "Not sent: {0}": {},
   "Pair with {0}": {},
+  "Code on {0}": {},
+  "Type the 6 digits shown on {0}": {},
   "New document every {0} sheet": {
     "other": "New document every {0} sheets"
   },
@@ -1807,6 +1809,7 @@
   "This computer no longer recognizes this phone. Pair it again.": {},
   "Pairing is not open on this computer. Choose Pair a phone there and scan the new code.": {},
   "This pairing code is not valid. Scan the code shown on the computer again.": {},
+  "That code is not right.": {},
   "This pairing code has expired. Show a new code on the computer.": {},
   "This pairing code was already used. Show a new code on the computer.": {},
   "Pairing was declined on the computer.": {},

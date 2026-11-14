@@ -47,17 +47,20 @@ public enum CompanionClientError: Error, LocalizedError {
     }
 }
 
-/// Accepts a desktop's TLS certificate only when its key is the pinned one (`CompanionClient.accepts`).
-/// The system's trust is not asked: the certificate is self-signed. A refusal cancels the connection
+/// Accepts a desktop's TLS certificate only when its key is the pinned one (`CompanionClient.accepts`),
+/// or any certificate for the one call that fetches the pinned key (`pinned` false). The system's trust
+/// is not asked: the certificate is self-signed. A refusal cancels the connection
 /// before any request is sent and is kept for its host, so the client can tell it from a desktop that
 /// does not answer.
 final class CompanionTrustDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     let fingerprint: Data?
+    let pinned: Bool
     private let lock = NSLock()
     private var refusedHosts: Set<String> = []
 
-    init(fingerprint: Data?) {
+    init(fingerprint: Data?, pinned: Bool = true) {
         self.fingerprint = fingerprint
+        self.pinned = pinned
         super.init()
     }
 
@@ -72,7 +75,7 @@ final class CompanionTrustDelegate: NSObject, URLSessionTaskDelegate, @unchecked
         if let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate], let leaf = chain.first {
             certificateDER = SecCertificateCopyData(leaf) as Data
         }
-        if CompanionClient.accepts(certificateDER, pinned: fingerprint) {
+        if !pinned || CompanionClient.accepts(certificateDER, pinned: fingerprint) {
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
             lock.lock()
@@ -117,11 +120,13 @@ public final class CompanionClient: @unchecked Sendable {
     private var current: String?
 
     /// `protocolClasses` go first in the session's configuration (tests stub the desktop with them).
-    public init(desktop: PairedDesktop, secret: Data?, protocolClasses: [AnyClass] = []) {
+    /// `pinned` false accepts any certificate, for `pairingText` only: the desktop's key is what that
+    /// call brings.
+    public init(desktop: PairedDesktop, secret: Data?, protocolClasses: [AnyClass] = [], pinned: Bool = true) {
         self.desktop = desktop
         self.phoneId = desktop.phoneId
         self.secret = secret
-        trust = CompanionTrustDelegate(fingerprint: desktop.fingerprintBytes)
+        trust = CompanionTrustDelegate(fingerprint: desktop.fingerprintBytes, pinned: pinned)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = CompanionClient.requestTimeout
         configuration.waitsForConnectivity = false
@@ -192,6 +197,18 @@ public final class CompanionClient: @unchecked Sendable {
         self.secret = secret
         lock.unlock()
         return response
+    }
+
+    /// `POST /v1/pair/code`: the text of the pairing code (`PairingUri`) for the short code shown on the
+    /// desktop. A client made with `pinned` false, since the fingerprint is part of what comes back.
+    public func pairingText(code: String) async throws -> String {
+        let (data, _) = try await perform("POST", CompanionProtocol.pairCodePath,
+                                          body: Data(PairCodeRequest(code: code).toJSON().utf8),
+                                          contentType: CompanionProtocol.jsonContentType)
+        guard let response = PairCodeResponse.fromJSON(data), !response.text.isEmpty else {
+            throw CompanionClientError.badResponse
+        }
+        return response.text
     }
 
     /// `GET /v1/hello`.

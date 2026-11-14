@@ -313,4 +313,37 @@ final class CompanionClientTests: XCTestCase {
         XCTAssertEqual(CompanionClient.url("fe80::1", port: 52731, path: "/v1/hello")?.absoluteString,
                        "https://[fe80::1]:52731/v1/hello")
     }
+
+    func test_pairingText_postsTheCodeAndReadsTheTextWithoutAPinnedCertificate() async throws {
+        let fake = CompanionFakeDesktop()
+        fake.on("POST " + CompanionProtocol.pairCodePath, .json(200, PairCodeResponse(text: "lazyscan://pair?v=1").toJSON()))
+        let desktop = PairedDesktop(id: "", name: "", fingerprint: "", addresses: [CompanionLink.address], port: fake.port,
+                                    phoneId: "")
+        let client = CompanionClient(desktop: desktop, secret: nil, protocolClasses: [CompanionStubProtocol.self], pinned: false)
+
+        let text = try await client.pairingText(code: "482913")
+
+        XCTAssertEqual(text, "lazyscan://pair?v=1")
+        let sent = try XCTUnwrap(fake.requests("POST " + CompanionProtocol.pairCodePath).first)
+        XCTAssertEqual(PairCodeRequest.fromJSON(sent.body), PairCodeRequest(code: "482913"))
+        XCTAssertEqual(sent.header("Content-Type"), CompanionProtocol.jsonContentType)
+        XCTAssertNil(sent.header("Authorization"))
+    }
+
+    func test_pairingText_aWrongCodeIsRefusedWithTheDesktopsWords() async {
+        let fake = CompanionFakeDesktop()
+        fake.on("POST " + CompanionProtocol.pairCodePath, .error(403, CompanionError.codeInvalid))
+        let desktop = PairedDesktop(id: "", name: "", fingerprint: "", addresses: [CompanionLink.address], port: fake.port,
+                                    phoneId: "")
+        let client = CompanionClient(desktop: desktop, secret: nil, protocolClasses: [CompanionStubProtocol.self], pinned: false)
+        do {
+            _ = try await client.pairingText(code: "000000")
+            XCTFail("A wrong code was taken")
+        } catch {
+            guard case .refused(let status, let refusal)? = error as? CompanionClientError else { return XCTFail("\(error)") }
+            XCTAssertEqual(status, 403)
+            XCTAssertEqual(refusal.code, CompanionErrorCode.codeInvalid)
+            XCTAssertEqual(error.localizedDescription, "That code is not right.")
+        }
+    }
 }

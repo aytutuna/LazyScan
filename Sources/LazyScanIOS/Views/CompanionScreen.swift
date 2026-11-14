@@ -5,8 +5,9 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// My computer, a page of the Options sheet (`IOSCompanionModel`): with no computer paired, Pair with a computer
-/// (the camera looking for its code, the code's text to enter instead, the check code to compare, the
-/// name the computer will list the phone under, Pair); once paired, the computer's name and state
+/// (the camera looking for its code, the computers nearby to pick and type the short code shown on one, the
+/// code's text to paste instead, the check code to compare, the name the computer will list the phone
+/// under, Pair); once paired, the computer's name and state
 /// (checked when the screen opens, and on Refresh), Unpair (asked first), and the documents waiting to be
 /// sent, each with its date and why it has not gone, removable by a swipe, with Send again and Remove all
 /// (asked first), and those in the cloud folder the computer has not taken yet. For a computer that
@@ -23,6 +24,7 @@ struct CompanionScreen: View {
     @State private var confirmingRemoveOther: Bool = false
     @State private var scanning: Bool = false
     @State private var textExpanded: Bool = false
+    @FocusState private var codeFocused: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(state: AppState, browser: IOSCompanionBrowser?, network: IOSNetworkScanners?) {
@@ -76,7 +78,7 @@ struct CompanionScreen: View {
                 }
             }
             if model.needsPairing {
-                pairSection
+                pairSections
             }
             if state.companionDesktop != nil || state.companionOutboxCount > 0 {
                 outboxSection
@@ -101,6 +103,15 @@ struct CompanionScreen: View {
         }
         .onChange(of: state.companionOutboxCount) { (_: Int, _: Int) in
             model.lookAtCloudFolder()
+        }
+        .onChange(of: model.code == nil) { _, isEmpty in
+            if isEmpty { textExpanded = false }
+        }
+        .onChange(of: model.nearbyCode) { _, _ in
+            Task { await model.codeEdited() }
+        }
+        .onChange(of: model.isCheckingCode) { _, checking in
+            if !checking && model.chosen != nil { codeFocused = true }
         }
         .onDisappear {
             model.disappear()
@@ -245,27 +256,41 @@ struct CompanionScreen: View {
         }
     }
 
-    private var pairSection: some View {
-        Section {
-            if model.code == nil {
+    @ViewBuilder private var pairSections: some View {
+        if model.code == nil {
+            Section {
                 steps
                 if !model.needsExplanation {
                     PairingScannerView(started: scanning, onStart: { scanning = true }, onCode: { (value: String) in
                         model.scanned(value)
                     })
                 }
-                Text(IOSCompanionText.pasteCaption)
-                    .font(.footnote)
-                    .foregroundStyle(Color.secondary)
-                    .accessibilityIdentifier("companion.textCaption")
+            } header: {
+                Text(IOSCompanionText.pairTitle)
+            }
+            if let browser = model.browser, !model.needsExplanation {
+                CompanionNearbySection(browser: browser, model: model, codeFocused: $codeFocused)
+            }
+            Section {
                 textField
+                if let problem = model.problem {
+                    Text(problem)
+                        .font(.footnote)
+                        .foregroundStyle(Color.red)
+                        .accessibilityIdentifier("companion.problem")
+                }
+                pairButton
+            } header: {
+                Text(IOSCompanionText.pasteCaption)
+                    .accessibilityIdentifier("companion.textCaption")
             }
-            if let problem = model.problem {
-                Text(problem)
-                    .font(.footnote)
-                    .foregroundStyle(Color.red)
-                    .accessibilityIdentifier("companion.problem")
-            }
+        } else {
+            pairedCodeSection
+        }
+    }
+
+    private var pairedCodeSection: some View {
+        Section {
             if let check = model.checkCode {
                 VStack(alignment: .leading, spacing: 4) {
                     if let name = model.code?.name {
@@ -287,36 +312,36 @@ struct CompanionScreen: View {
                     .accessibilityLabel(Text(IOSCompanionText.phoneNameLabel))
                     .accessibilityIdentifier("companion.phoneName")
             }
-            if model.code != nil {
-                DisclosureGroup(IOSCompanionText.textLabel, isExpanded: $textExpanded) {
-                    textField
-                }
-                .disabled(model.isPairing)
-                .accessibilityIdentifier("companion.textDisclosure")
+            DisclosureGroup(IOSCompanionText.textLabel, isExpanded: $textExpanded) {
+                textField
             }
-            if model.isPairing {
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text(IOSCompanionText.waitingLine)
-                        .font(.footnote)
-                }
-                .accessibilityElement(children: .combine)
-            }
-            Button {
-                Task { await model.pair() }
-            } label: {
-                Text(IOSCompanionText.pairButton)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!model.canPair)
-            .accessibilityIdentifier("companion.pair")
+            .disabled(model.isPairing)
+            .accessibilityIdentifier("companion.textDisclosure")
+            pairButton
         } header: {
             Text(IOSCompanionText.pairTitle)
         }
-        .onChange(of: model.code == nil) { _, isEmpty in
-            if isEmpty { textExpanded = false }
+    }
+
+    /// Pair, with the line that says the computer is asking its user while it waits.
+    @ViewBuilder private var pairButton: some View {
+        if model.isPairing {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text(IOSCompanionText.waitingLine)
+                    .font(.footnote)
+            }
+            .accessibilityElement(children: .combine)
         }
+        Button {
+            Task { await model.pair() }
+        } label: {
+            Text(IOSCompanionText.pairButton)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(!model.canPair)
+        .accessibilityIdentifier("companion.pair")
     }
 
     private var steps: some View {
@@ -337,6 +362,111 @@ struct CompanionScreen: View {
             .disabled(model.isPairing || model.needsExplanation)
             .accessibilityLabel(Text(IOSCompanionText.textLabel))
             .accessibilityIdentifier("companion.text")
+    }
+}
+
+/// The computers seen on the network, one row each; the one tapped opens a row for the short code shown on
+/// it, and the sixth digit sends it. Not drawn while Local Network access is off (the line below the form
+/// says why).
+private struct CompanionNearbySection: View {
+    @ObservedObject var browser: IOSCompanionBrowser
+    @ObservedObject var model: IOSCompanionModel
+    var codeFocused: FocusState<Bool>.Binding
+    @State private var waited: Bool = false
+
+    private var showsCode: Bool {
+        browser.computers.contains { (computer: NearbyComputer) -> Bool in computer.id == model.chosen?.id }
+    }
+
+    var body: some View {
+        if !browser.accessDenied {
+            Section {
+                if browser.computers.isEmpty {
+                    emptyRow
+                }
+                ForEach(browser.computers) { (computer: NearbyComputer) in
+                    computerRow(computer)
+                    if model.chosen?.id == computer.id {
+                        codeRows(computer)
+                    }
+                }
+            } header: {
+                Text(IOSCompanionText.nearbyTitle)
+                    .accessibilityIdentifier("companion.nearby")
+            } footer: {
+                if showsCode {
+                    Text(IOSCompanionText.codeFooter)
+                }
+            }
+        }
+    }
+
+    private var emptyRow: some View {
+        HStack(spacing: 8) {
+            if waited {
+                Text(IOSCompanionText.noComputers)
+            } else {
+                ProgressView()
+                Text(IOSCompanionText.lookingForComputers)
+            }
+        }
+        .foregroundStyle(Color.secondary)
+        .task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            waited = true
+        }
+    }
+
+    private func computerRow(_ computer: NearbyComputer) -> some View {
+        let isChosen: Bool = model.chosen?.id == computer.id
+        let symbol: String = isChosen ? "checkmark" : "chevron.right"
+        let tint: Color = isChosen ? Color.accentColor : Color.secondary
+        let traits: AccessibilityTraits = isChosen ? AccessibilityTraits.isSelected : AccessibilityTraits()
+        return Button {
+            model.choose(computer)
+            codeFocused.wrappedValue = true
+        } label: {
+            HStack {
+                Text(computer.name)
+                    .foregroundStyle(Color.primary)
+                Spacer()
+                Image(systemName: symbol)
+                    .foregroundStyle(tint)
+            }
+        }
+        .disabled(model.isCheckingCode && !isChosen)
+        .accessibilityHint(Text(IOSCompanionText.nearbyHint))
+        .accessibilityAddTraits(traits)
+        .accessibilityIdentifier("companion.nearby.row.\(computer.id)")
+    }
+
+    @ViewBuilder private func codeRows(_ computer: NearbyComputer) -> some View {
+        let label: String = IOSCompanionText.codeLabel(computer.name)
+        LabeledContent(label) {
+            TextField("", text: $model.nearbyCode)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .font(.body.monospacedDigit())
+                .multilineTextAlignment(.trailing)
+                .focused(codeFocused)
+                .disabled(model.isCheckingCode)
+                .accessibilityLabel(Text(label))
+                .accessibilityIdentifier("companion.code")
+        }
+        if model.isCheckingCode {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text(IOSCompanionText.checkingCode)
+                    .font(.footnote)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        if let problem = model.codeProblem {
+            Text(problem)
+                .font(.footnote)
+                .foregroundStyle(Color.red)
+                .accessibilityIdentifier("companion.code.problem")
+        }
     }
 }
 

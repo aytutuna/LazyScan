@@ -73,4 +73,66 @@ final class PairingSessionTests: XCTestCase {
         used.close()
         XCTAssertEqual(used.state(at: opened), .used)
     }
+
+    func testCode_IsTheGivenDigitsOrRandom() throws {
+        let session = try PairingSession(opened: opened, token: CompanionVectors.token, code: "482913")
+        XCTAssertEqual(session.code, "482913")
+        XCTAssertEqual(session.formattedCode, "482 913")
+        let random = try PairingSession(opened: opened)
+        XCTAssertEqual(random.code.count, 6)
+        XCTAssertTrue(random.code.allSatisfy { $0 >= "0" && $0 <= "9" })
+        XCTAssertEqual(try PairingSession(opened: opened, code: "000042").formattedCode, "000 042")
+        for bad in ["", "12345", "1234567", "12a456", "12 456"] {
+            XCTAssertThrowsError(try PairingSession(opened: opened, code: bad))
+        }
+    }
+
+    func testRightCode_KeepsTheSessionOpenForTheToken() throws {
+        let session = try PairingSession(opened: opened, token: CompanionVectors.token, code: "482913")
+        XCTAssertEqual(session.checkCode("482913", now: minutes(1)), .right)
+        XCTAssertEqual(session.checkCode("482 913", now: minutes(2)), .right)
+        XCTAssertEqual(session.state(at: minutes(2)), .open)
+        XCTAssertEqual(session.failedCodes, 0)
+        XCTAssertEqual(session.redeem(CompanionVectors.tokenText, now: minutes(3)), .accepted)
+        XCTAssertEqual(session.checkCode("482913", now: minutes(3)), .alreadyUsed)
+    }
+
+    func testWrongCodes_CloseTheSessionAtTheFifth() throws {
+        let session = try PairingSession(opened: opened, token: CompanionVectors.token, code: "482913")
+        for i in 1...4 {
+            XCTAssertEqual(session.checkCode("482914", now: opened), .wrong)
+            XCTAssertEqual(session.failedCodes, i)
+            XCTAssertEqual(session.state(at: opened), .open)
+        }
+        XCTAssertEqual(session.checkCode("000000", now: opened), .tooManyAttempts)
+        XCTAssertEqual(session.state(at: opened), .closed)
+        XCTAssertEqual(session.checkCode("482913", now: opened), .closed)
+        XCTAssertEqual(session.redeem(CompanionVectors.tokenText, now: opened), .closed)
+    }
+
+    func testRightCode_DoesNotWipeTheWrongOnes() throws {
+        let session = try PairingSession(opened: opened, code: "482913")
+        for _ in 1...4 {
+            XCTAssertEqual(session.checkCode("111111", now: opened), .wrong)
+        }
+        XCTAssertEqual(session.checkCode("482913", now: opened), .right)
+        XCTAssertEqual(session.checkCode("111111", now: opened), .tooManyAttempts)
+    }
+
+    func testMalformedCodes_CountAsWrong() throws {
+        let session = try PairingSession(opened: opened, code: "482913")
+        XCTAssertEqual(session.checkCode(nil, now: opened), .wrong)
+        XCTAssertEqual(session.checkCode("", now: opened), .wrong)
+        XCTAssertEqual(session.checkCode("48291", now: opened), .wrong)
+        XCTAssertEqual(session.checkCode("4829133", now: opened), .wrong)
+        XCTAssertEqual(session.failedCodes, 4)
+        XCTAssertEqual(session.failedAttempts, 0)
+    }
+
+    func testCode_ExpiresWithTheSession() throws {
+        let session = try PairingSession(opened: opened, code: "482913")
+        XCTAssertEqual(session.checkCode("482913", now: minutes(5)), .expired)
+        XCTAssertEqual(session.checkCode("482913", now: minutes(1)), .expired)
+        XCTAssertEqual(session.failedCodes, 0)
+    }
 }

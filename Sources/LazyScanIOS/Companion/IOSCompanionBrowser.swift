@@ -2,6 +2,15 @@
 import LazyScanKit
 import Foundation
 
+/// A desktop seen on the network and resolved: its id, the name it advertises (the computer's name) and
+/// where it listens.
+public struct NearbyComputer: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let addresses: [String]
+    public let port: Int
+}
+
 /// The desktops a phone pairs with, seen on the network: their `CompanionProtocol.serviceType` services
 /// (TXT `id`), browsed with `EsclNWBrowser` and resolved with `EsclDnssdResolver` as network scanners
 /// are, only while something needs it (`begin`, `end`): the companion screen while it is open, a check of
@@ -12,6 +21,8 @@ import Foundation
 public final class IOSCompanionBrowser: ObservableObject {
     /// The browser waits for Local Network access, which is off for the app.
     @Published public private(set) var accessDenied: Bool = false
+    /// The desktops seen and resolved, by name; the nearby list of My computer.
+    @Published public private(set) var computers: [NearbyComputer] = []
     /// A desktop resolved: its id, addresses and port. Once for each desktop while browsing runs.
     public var onFound: ((String, [String], Int) -> Void)?
 
@@ -20,6 +31,7 @@ public final class IOSCompanionBrowser: ObservableObject {
     private var browser: (any EsclServiceBrowsing)?
     private var users: Int = 0
     private var seen: Set<String> = []
+    private var names: [String: String] = [:]
     private var resolving: [String: any EsclCancellable] = [:]
     private var done: Set<String> = []
 
@@ -44,6 +56,8 @@ public final class IOSCompanionBrowser: ObservableObject {
         guard browser == nil else { return }
         seen = []
         done = []
+        names = [:]
+        computers = []
         let made: any EsclServiceBrowsing = makeBrowser()
         made.onStatus = { [weak self] (status: EsclBrowserStatus) -> Void in
             self?.statusChanged(status)
@@ -102,6 +116,7 @@ public final class IOSCompanionBrowser: ObservableObject {
         for result in results {
             guard let id = IOSCompanionBrowser.desktopId(result) else { continue }
             ids.insert(id)
+            names[id] = result.name
             guard !done.contains(id), resolving[id] == nil else { continue }
             let operation: any EsclCancellable = resolver.resolve(result) { [weak self] (outcome: EsclResolveOutcome) -> Void in
                 self?.resolved(id, outcome)
@@ -112,6 +127,8 @@ public final class IOSCompanionBrowser: ObservableObject {
             }
         }
         seen = ids
+        done.formIntersection(ids)
+        computers = computers.filter { ids.contains($0.id) }
     }
 
     private func resolved(_ id: String, _ outcome: EsclResolveOutcome) {
@@ -119,6 +136,11 @@ public final class IOSCompanionBrowser: ObservableObject {
         done.insert(id)
         if case .resolved(let service) = outcome {
             onFound?(id, service.addresses, service.port)
+            let computer: NearbyComputer = NearbyComputer(id: id, name: names[id] ?? "", addresses: service.addresses,
+                                                          port: service.port)
+            computers = (computers.filter { $0.id != id } + [computer]).sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
         }
     }
 }

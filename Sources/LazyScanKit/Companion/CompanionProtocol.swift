@@ -12,6 +12,9 @@ import Foundation
 ///   says whether the phone is still paired, a wrong secret gets 401).
 /// - `POST /v1/pair`: the one call an unpaired phone may make, with the pairing code's token
 ///   (`PairRequest` → `PairResponse`).
+/// - `POST /v1/pair/code`: the other, with the short code the desktop shows beside the QR code
+///   (`PairCodeRequest` → `PairCodeResponse`, the pairing code's text); the pinned certificate is what
+///   is being fetched, so this call is not pinned and the check code is the confirmation.
 /// - `GET /v1/hello`: the desktop's name, its queue and its upload limit (`HelloResponse`).
 /// - `PUT /v1/inbox/{packageId}`: a `.lsdoc` package (`CompanionPackage`), idempotent by package id
 ///   (`InboxResponse`); `X-Target: new|current`.
@@ -31,6 +34,8 @@ public enum CompanionProtocol {
 
     public static let healthPath = "/v1/health"
     public static let pairPath = "/v1/pair"
+    /// The short code in, the pairing text out, while a pairing session is open.
+    public static let pairCodePath = "/v1/pair/code"
     public static let helloPath = "/v1/hello"
     /// Followed by the package id.
     public static let inboxPrefix = "/v1/inbox/"
@@ -193,6 +198,7 @@ public enum CompanionErrorCode {
     public static let unauthorized = "unauthorized"
     public static let pairingClosed = "pairingClosed"
     public static let tokenInvalid = "tokenInvalid"
+    public static let codeInvalid = "codeInvalid"
     public static let tokenExpired = "tokenExpired"
     public static let tokenUsed = "tokenUsed"
     public static let declined = "declined"
@@ -235,6 +241,9 @@ public struct CompanionError: Equatable, Sendable {
     }
     public static var tokenInvalid: CompanionError {
         CompanionError(code: CompanionErrorCode.tokenInvalid, message: L10n.t("This pairing code is not valid. Scan the code shown on the computer again."))
+    }
+    public static var codeInvalid: CompanionError {
+        CompanionError(code: CompanionErrorCode.codeInvalid, message: L10n.t("That code is not right."))
     }
     public static var tokenExpired: CompanionError {
         CompanionError(code: CompanionErrorCode.tokenExpired, message: L10n.t("This pairing code has expired. Show a new code on the computer."))
@@ -279,6 +288,7 @@ public struct CompanionError: Equatable, Sendable {
         case CompanionErrorCode.unauthorized: return unauthorized
         case CompanionErrorCode.pairingClosed: return pairingClosed
         case CompanionErrorCode.tokenInvalid: return tokenInvalid
+        case CompanionErrorCode.codeInvalid: return codeInvalid
         case CompanionErrorCode.tokenExpired: return tokenExpired
         case CompanionErrorCode.tokenUsed: return tokenUsed
         case CompanionErrorCode.declined: return declined
@@ -293,6 +303,42 @@ public struct CompanionError: Equatable, Sendable {
         case CompanionErrorCode.serverError: return serverError
         default: return nil
         }
+    }
+}
+
+/// The body of `POST /v1/pair/code`: the short code shown on the desktop.
+public struct PairCodeRequest: Equatable, Sendable {
+    public var code: String
+
+    public init(code: String) {
+        self.code = code
+    }
+
+    public func toJSON() -> String {
+        "{\"code\":\(CompanionPackage.quote(code))}"
+    }
+
+    public static func fromJSON(_ json: Data) -> PairCodeRequest? {
+        guard let dto = CompanionProtocol.decode(PairCodeRequestDTO.self, json) else { return nil }
+        return PairCodeRequest(code: dto.code)
+    }
+}
+
+/// The answer to a right short code: the text of the pairing code the QR code carries (`PairingUri`).
+public struct PairCodeResponse: Equatable, Sendable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+
+    public func toJSON() -> String {
+        "{\"text\":\(CompanionPackage.quote(text))}"
+    }
+
+    public static func fromJSON(_ json: Data) -> PairCodeResponse? {
+        guard let dto = CompanionProtocol.decode(PairCodeResponseDTO.self, json) else { return nil }
+        return PairCodeResponse(text: dto.text)
     }
 }
 
@@ -497,6 +543,28 @@ private struct ErrorDTO: Decodable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         error = c.decodeLenient(forKey: .error, default: error)
         message = c.decodeLenient(forKey: .message, default: message)
+    }
+}
+
+private struct PairCodeRequestDTO: Decodable {
+    var code = ""
+
+    enum CodingKeys: String, CodingKey { case code }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        code = c.decodeLenient(forKey: .code, default: code)
+    }
+}
+
+private struct PairCodeResponseDTO: Decodable {
+    var text = ""
+
+    enum CodingKeys: String, CodingKey { case text }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = c.decodeLenient(forKey: .text, default: text)
     }
 }
 

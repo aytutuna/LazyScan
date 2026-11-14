@@ -130,8 +130,9 @@ public struct CompanionResponse {
 }
 
 /// What the companion server does with each request (see `CompanionProtocol` for the endpoints).
-/// Unpaired clients may only check reachability and pair with the open pairing session's token;
-/// everything else needs a paired phone's id and secret, and a wrong secret gets 401. Every request
+/// Unpaired clients may only check reachability, pair with the open pairing session's token and fetch
+/// the pairing text with its short code; everything else needs a paired phone's id and secret, and a
+/// wrong secret gets 401. Every request
 /// counts towards the sender's rate limit, every failed secret or token towards its failure limit.
 /// The `on…` closures are called on the request's task.
 public final class CompanionRouter: @unchecked Sendable {
@@ -158,6 +159,9 @@ public final class CompanionRouter: @unchecked Sendable {
     /// The pairing session open now; nil when pairing is not open.
     public var currentPairing: () -> PairingSession? = { nil }
 
+    /// The pairing code's text for the open session (what the QR code carries); nil when there is none.
+    public var currentPairingText: () -> String? = { nil }
+
     /// Asks the user whether the phone that presented a valid token may pair. Without an answer within
     /// `approvalTimeout` the pairing is declined and the task asking is cancelled. The default allows
     /// it: the token was only on this desktop's screen.
@@ -169,6 +173,8 @@ public final class CompanionRouter: @unchecked Sendable {
     public var queuedPages: () -> Int = { 0 }
 
     public var onDevicePaired: ((PairedDevice) -> Void)?
+    /// The session's last allowed wrong short code closed it.
+    public var onPairingClosed: (() -> Void)?
     public var onPackageReceived: ((ReceivedPackage, PairedDevice) -> Void)?
     /// A phone forgot this desktop (`DELETE /v1/devices/self`).
     public var onDeviceRemoved: ((PairedDevice) -> Void)?
@@ -199,6 +205,9 @@ public final class CompanionRouter: @unchecked Sendable {
         case CompanionProtocol.pairPath:
             guard head.method == "POST" else { return CompanionRouter.notAllowed("POST") }
             return await pair(request, now: now)
+        case CompanionProtocol.pairCodePath:
+            guard head.method == "POST" else { return CompanionRouter.notAllowed("POST") }
+            return await pairCode(request, now: now)
         case CompanionProtocol.helloPath:
             return head.method == "GET" ? hello(request, now: now) : CompanionRouter.notAllowed("GET")
         case CompanionProtocol.outboxPath:
@@ -286,6 +295,34 @@ public final class CompanionRouter: @unchecked Sendable {
         let name = PairedDeviceStore.cleanName(pair.phoneName)
         pair.phoneName = name.isEmpty ? "Phone" : name
         return await approveAndPair(pair, watchClosed: request.watchClosed)
+    }
+
+    private func pairCode(_ request: CompanionRequest, now: Date) async -> CompanionResponse {
+        guard let length = request.head.contentLength else { return .error(411, .lengthRequired) }
+        guard length <= Int64(CompanionProtocol.maxJsonBodyBytes) else { return .error(413, .tooLarge) }
+        guard let body = await CompanionRouter.readAll(request.body, length: length),
+              let fetch = PairCodeRequest.fromJSON(body)
+        else { return .error(400, .badRequest) }
+        guard let session = currentPairing() else { return .error(403, .pairingClosed) }
+        switch session.checkCode(fetch.code, now: now) {
+        case .wrong:
+            limiter.recordFailure(request.remote, now: now)
+            return .error(403, .codeInvalid)
+        case .tooManyAttempts:
+            limiter.recordFailure(request.remote, now: now)
+            onPairingClosed?()
+            return .error(429, .rateLimited, headers: [HttpHeader("Retry-After", "60")])
+        case .expired:
+            return .error(403, .tokenExpired)
+        case .alreadyUsed:
+            return .error(403, .tokenUsed)
+        case .closed:
+            return .error(403, .pairingClosed)
+        case .right:
+            break
+        }
+        guard let text = currentPairingText() else { return .error(403, .pairingClosed) }
+        return .json(200, PairCodeResponse(text: text).toJSON())
     }
 
     private func approveAndPair(_ pair: PairRequest, watchClosed: (() async -> Void)?) async -> CompanionResponse {

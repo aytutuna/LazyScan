@@ -211,6 +211,15 @@ extension AppState {
         return false
     }
 
+    /// The pairing text of the desktop at `addresses` and `port` for the short code it shows (the
+    /// computers nearby list's way to a pairing code); throws the desktop's refusal or why it was not
+    /// reached. Nothing is kept: `pairDesktop` takes it from here, as after a scan.
+    public func fetchPairingText(code: String, addresses: [String], port: Int) async throws -> String {
+        let desktop = PairedDesktop(id: "", name: "", fingerprint: "", addresses: addresses, port: port, phoneId: "")
+        let client = CompanionClient(desktop: desktop, secret: nil, protocolClasses: companionProtocolClasses, pinned: false)
+        return try await client.pairingText(code: code)
+    }
+
     private static func usesUpCode(_ error: Error) -> Bool {
         guard case .refused(_, let refusal)? = error as? CompanionClientError else { return false }
         let spent = [CompanionErrorCode.declined, CompanionErrorCode.tokenExpired,

@@ -84,4 +84,81 @@ public class PairingSessionTests
         used.Close();
         Assert.Equal(PairingSessionState.Used, used.StateAt(Opened));
     }
+
+    [Fact]
+    public void Code_IsTheGivenDigitsOrRandom()
+    {
+        var session = new PairingSession(Opened, CompanionVectors.Token, "482913");
+        Assert.Equal("482913", session.Code);
+        Assert.Equal("482 913", session.FormattedCode);
+        var random = new PairingSession(Opened);
+        Assert.Equal(6, random.Code.Length);
+        Assert.All(random.Code, c => Assert.InRange(c, '0', '9'));
+        Assert.Equal("000 042", new PairingSession(Opened, code: "000042").FormattedCode);
+        foreach (string bad in new[] { "", "12345", "1234567", "12a456", "12 456" })
+        {
+            Assert.Throws<ArgumentException>(() => new PairingSession(Opened, code: bad));
+        }
+    }
+
+    [Fact]
+    public void RightCode_KeepsTheSessionOpenForTheToken()
+    {
+        var session = new PairingSession(Opened, CompanionVectors.Token, "482913");
+        Assert.Equal(PairingCodeResult.Right, session.CheckCode("482913", Opened.AddMinutes(1)));
+        Assert.Equal(PairingCodeResult.Right, session.CheckCode("482 913", Opened.AddMinutes(2)));
+        Assert.Equal(PairingSessionState.Open, session.StateAt(Opened.AddMinutes(2)));
+        Assert.Equal(0, session.FailedCodes);
+        Assert.Equal(PairingRedeemResult.Accepted, session.Redeem(CompanionVectors.TokenText, Opened.AddMinutes(3)));
+        Assert.Equal(PairingCodeResult.AlreadyUsed, session.CheckCode("482913", Opened.AddMinutes(3)));
+    }
+
+    [Fact]
+    public void WrongCodes_CloseTheSessionAtTheFifth()
+    {
+        var session = new PairingSession(Opened, CompanionVectors.Token, "482913");
+        for (int i = 1; i <= 4; i++)
+        {
+            Assert.Equal(PairingCodeResult.Wrong, session.CheckCode("482914", Opened));
+            Assert.Equal(i, session.FailedCodes);
+            Assert.Equal(PairingSessionState.Open, session.StateAt(Opened));
+        }
+        Assert.Equal(PairingCodeResult.TooManyAttempts, session.CheckCode("000000", Opened));
+        Assert.Equal(PairingSessionState.Closed, session.StateAt(Opened));
+        Assert.Equal(PairingCodeResult.Closed, session.CheckCode("482913", Opened));
+        Assert.Equal(PairingRedeemResult.Closed, session.Redeem(CompanionVectors.TokenText, Opened));
+    }
+
+    [Fact]
+    public void RightCode_DoesNotWipeTheWrongOnes()
+    {
+        var session = new PairingSession(Opened, code: "482913");
+        for (int i = 0; i < 4; i++)
+        {
+            Assert.Equal(PairingCodeResult.Wrong, session.CheckCode("111111", Opened));
+        }
+        Assert.Equal(PairingCodeResult.Right, session.CheckCode("482913", Opened));
+        Assert.Equal(PairingCodeResult.TooManyAttempts, session.CheckCode("111111", Opened));
+    }
+
+    [Fact]
+    public void MalformedCodes_CountAsWrong()
+    {
+        var session = new PairingSession(Opened, code: "482913");
+        Assert.Equal(PairingCodeResult.Wrong, session.CheckCode(null, Opened));
+        Assert.Equal(PairingCodeResult.Wrong, session.CheckCode("", Opened));
+        Assert.Equal(PairingCodeResult.Wrong, session.CheckCode("48291", Opened));
+        Assert.Equal(PairingCodeResult.Wrong, session.CheckCode("4829133", Opened));
+        Assert.Equal(4, session.FailedCodes);
+        Assert.Equal(0, session.FailedAttempts);
+    }
+
+    [Fact]
+    public void Code_ExpiresWithTheSession()
+    {
+        var session = new PairingSession(Opened, code: "482913");
+        Assert.Equal(PairingCodeResult.Expired, session.CheckCode("482913", Opened.AddMinutes(5)));
+        Assert.Equal(PairingCodeResult.Expired, session.CheckCode("482913", Opened.AddMinutes(1)));
+        Assert.Equal(0, session.FailedCodes);
+    }
 }

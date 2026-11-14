@@ -80,6 +80,8 @@ final class CompanionProtocolTests: XCTestCase {
             PairRequest(token: CompanionVectors.tokenText, phoneId: "phone-0001", phoneName: "Aytu's iPhone", platform: "ios",
                         appVersion: "1.0").toJSON(),
             #"{"token":"AAECAwQFBgcICQoLDA0ODw","phoneId":"phone-0001","phoneName":"Aytu's iPhone","platform":"ios","appVersion":"1.0"}"#)
+        XCTAssertEqual(PairCodeRequest(code: "482913").toJSON(), #"{"code":"482913"}"#)
+        XCTAssertEqual(PairCodeResponse(text: "lazyscan://pair?v=1").toJSON(), #"{"text":"lazyscan://pair?v=1"}"#)
         XCTAssertEqual(
             PairResponse(desktopId: desktopId, desktopName: "AYTU-PC", deviceSecret: CompanionVectors.secretText, protocolVersion: 1).toJSON(),
             #"{"protocolVersion":1,"desktopId":"0123456789abcdef0123456789abcdef","desktopName":"AYTU-PC","deviceSecret":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"}"#)
@@ -107,6 +109,10 @@ final class CompanionProtocolTests: XCTestCase {
         let pair = PairRequest(token: CompanionVectors.tokenText, phoneId: "phone-0001", phoneName: "naïve 日本 \u{1}", platform: "ios",
                                appVersion: "1.0")
         XCTAssertEqual(PairRequest.fromJSON(utf8(pair.toJSON())), pair)
+        let code = PairCodeRequest(code: "482913")
+        XCTAssertEqual(PairCodeRequest.fromJSON(utf8(code.toJSON())), code)
+        let text = PairCodeResponse(text: "lazyscan://pair?v=1&n=na%C3%AFve")
+        XCTAssertEqual(PairCodeResponse.fromJSON(utf8(text.toJSON())), text)
         let response = PairResponse(desktopId: desktopId, desktopName: "AYTU-PC", deviceSecret: CompanionVectors.secretText, protocolVersion: 1)
         XCTAssertEqual(PairResponse.fromJSON(utf8(response.toJSON())), response)
         var withKey = response
@@ -134,6 +140,9 @@ final class CompanionProtocolTests: XCTestCase {
         XCTAssertEqual(old, PairResponse(desktopId: "d", desktopName: "PC", deviceSecret: "s", protocolVersion: 1))
         XCTAssertNil(old?.syncKey)
         XCTAssertNil(PairResponse.fromJSON(utf8(#"{"deviceSecret":"s","syncKey":5}"#))?.syncKey)
+        XCTAssertEqual(PairCodeRequest.fromJSON(utf8(#"{"code":5,"extra":true}"#)), PairCodeRequest(code: ""))
+        XCTAssertNil(PairCodeRequest.fromJSON(utf8("not json")))
+        XCTAssertNil(PairCodeResponse.fromJSON(utf8("[]")))
         // Not an object at all.
         XCTAssertNil(PairRequest.fromJSON(utf8("[]")))
         XCTAssertNil(PairRequest.fromJSON(utf8("null")))

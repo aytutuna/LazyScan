@@ -517,4 +517,80 @@ public sealed class CompanionRouterTests : IDisposable
         var paired = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(_pairing.Token, "phone-0001", "P", "ios", "1")));
         Assert.Equal(200, paired.Status);
     }
+
+    private static byte[] CodeJson(string code) => Encoding.UTF8.GetBytes(new PairCodeRequest(code).ToJson());
+
+    [Fact]
+    public async Task PairCode_GivesThePairingTextForTheRightCode()
+    {
+        _pairing = new PairingSession(_now, CompanionVectors.Token, "482913");
+        _router.CurrentPairingText = () => "lazyscan://pair?v=1";
+        var spaced = await Send("POST", CompanionProtocol.PairCodePath, CodeJson("482 913"));
+        Assert.Equal(200, spaced.Status);
+        Assert.Equal("lazyscan://pair?v=1", PairCodeResponse.FromJson(spaced.Body)!.Text);
+        Assert.Equal(200, (await Send("POST", CompanionProtocol.PairCodePath, CodeJson("482913"))).Status);
+        // The token is still there for the pairing that follows.
+        Assert.Equal(PairingSessionState.Open, _pairing.StateAt(_now));
+        Assert.Equal(0, _pairing.FailedCodes);
+    }
+
+    [Fact]
+    public async Task PairCode_RefusesWithoutAnOpenSessionOrTheRightCode()
+    {
+        async Task<CompanionResponse> Code(string code) => await Send("POST", CompanionProtocol.PairCodePath, CodeJson(code));
+        string? Name(CompanionResponse response) => CompanionError.FromJson(response.Body)?.Code;
+        _router.CurrentPairingText = () => "lazyscan://pair?v=1";
+        var closed = await Code("482913");
+        Assert.Equal(403, closed.Status);
+        Assert.Equal(CompanionErrorCode.PairingClosed, Name(closed));
+        _pairing = new PairingSession(_now, CompanionVectors.Token, "482913");
+        var wrong = await Code("482914");
+        Assert.Equal(403, wrong.Status);
+        Assert.Equal(CompanionErrorCode.CodeInvalid, Name(wrong));
+        Assert.Equal("That code is not right.", CompanionError.FromJson(wrong.Body)!.Message);
+        await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(CompanionVectors.TokenText, "phone-0001", "P", "ios", "1")));
+        Assert.Equal(CompanionErrorCode.TokenUsed, Name(await Code("482913")));
+        _pairing = new PairingSession(_now, CompanionVectors.Token, "482913");
+        _now = _now.AddMinutes(6);
+        Assert.Equal(CompanionErrorCode.TokenExpired, Name(await Code("482913")));
+    }
+
+    [Fact]
+    public async Task PairCode_ClosesTheSessionAtTheFifthWrongCodeWhateverTheAddress()
+    {
+        _pairing = new PairingSession(_now, CompanionVectors.Token, "482913");
+        _router.CurrentPairingText = () => "lazyscan://pair?v=1";
+        int closedCount = 0;
+        _router.PairingClosed += (_, _) => closedCount++;
+        for (int i = 1; i <= 4; i++)
+        {
+            var wrong = await Send("POST", CompanionProtocol.PairCodePath, CodeJson("000000"), from: IPAddress.Parse($"192.168.1.4{i}"));
+            Assert.Equal(CompanionErrorCode.CodeInvalid, CompanionError.FromJson(wrong.Body)!.Code);
+        }
+        Assert.Equal(0, closedCount);
+        var fifth = await Send("POST", CompanionProtocol.PairCodePath, CodeJson("000000"), from: IPAddress.Parse("192.168.1.45"));
+        Assert.Equal(429, fifth.Status);
+        Assert.Equal(CompanionErrorCode.RateLimited, CompanionError.FromJson(fifth.Body)!.Code);
+        Assert.Contains(fifth.Headers, h => h.Key == "Retry-After");
+        Assert.Equal(1, closedCount);
+        Assert.Equal(PairingSessionState.Closed, _pairing.StateAt(_now));
+        var right = await Send("POST", CompanionProtocol.PairCodePath, CodeJson("482913"));
+        Assert.Equal(CompanionErrorCode.PairingClosed, CompanionError.FromJson(right.Body)!.Code);
+        var token = await Send("POST", CompanionProtocol.PairPath, Json(new PairRequest(CompanionVectors.TokenText, "phone-0001", "P", "ios", "1")));
+        Assert.Equal(CompanionErrorCode.PairingClosed, CompanionError.FromJson(token.Body)!.Code);
+        Assert.Empty(_devices.Devices);
+    }
+
+    [Fact]
+    public async Task PairCode_RefusesMalformedRequests()
+    {
+        _pairing = new PairingSession(_now, code: "482913");
+        Assert.Equal(400, (await Send("POST", CompanionProtocol.PairCodePath, Encoding.UTF8.GetBytes("not json"))).Status);
+        Assert.Equal(411, (await Send("POST", CompanionProtocol.PairCodePath)).Status);
+        Assert.Equal(413, (await Send("POST", CompanionProtocol.PairCodePath, new byte[CompanionProtocol.MaxJsonBodyBytes + 1])).Status);
+        var wrongMethod = await Send("GET", CompanionProtocol.PairCodePath);
+        Assert.Equal(405, wrongMethod.Status);
+        Assert.Contains(wrongMethod.Headers, h => h.Key == "Allow" && h.Value == "POST");
+        Assert.Equal(0, _pairing.FailedCodes);
+    }
 }

@@ -19,6 +19,9 @@ namespace LazyScan.Core;
 /// credentials it also says whether the phone is still paired, a wrong secret gets 401).</item>
 /// <item><c>POST /v1/pair</c>: the one call an unpaired phone may make, with the pairing code's token
 /// (<see cref="PairRequest"/> → <see cref="PairResponse"/>).</item>
+/// <item><c>POST /v1/pair/code</c>: the other, with the short code the desktop shows beside the QR code
+/// (<see cref="PairCodeRequest"/> → <see cref="PairCodeResponse"/>, the pairing code's text); the pinned
+/// certificate is what is being fetched, so this call is not pinned and the check code is the confirmation.</item>
 /// <item><c>GET /v1/hello</c>: the desktop's name, its queue and its upload limit (<see cref="HelloResponse"/>).</item>
 /// <item><c>PUT /v1/inbox/{packageId}</c>: a <c>.lsdoc</c> package (<see cref="CompanionPackage"/>),
 /// idempotent by package id (<see cref="InboxResponse"/>); <c>X-Target: new|current</c>.</item>
@@ -43,6 +46,8 @@ public static class CompanionProtocol
 
     public const string HealthPath = "/v1/health";
     public const string PairPath = "/v1/pair";
+    /// <summary>The short code in, the pairing text out, while a pairing session is open.</summary>
+    public const string PairCodePath = "/v1/pair/code";
     public const string HelloPath = "/v1/hello";
     /// <summary>Followed by the package id.</summary>
     public const string InboxPrefix = "/v1/inbox/";
@@ -223,6 +228,7 @@ public static class CompanionErrorCode
     public const string Unauthorized = "unauthorized";
     public const string PairingClosed = "pairingClosed";
     public const string TokenInvalid = "tokenInvalid";
+    public const string CodeInvalid = "codeInvalid";
     public const string TokenExpired = "tokenExpired";
     public const string TokenUsed = "tokenUsed";
     public const string Declined = "declined";
@@ -250,6 +256,7 @@ public sealed record CompanionError(string Code, string Message)
     public static CompanionError Unauthorized => new(CompanionErrorCode.Unauthorized, Loc.T("This computer no longer recognizes this phone. Pair it again."));
     public static CompanionError PairingClosed => new(CompanionErrorCode.PairingClosed, Loc.T("Pairing is not open on this computer. Choose Pair a phone there and scan the new code."));
     public static CompanionError TokenInvalid => new(CompanionErrorCode.TokenInvalid, Loc.T("This pairing code is not valid. Scan the code shown on the computer again."));
+    public static CompanionError CodeInvalid => new(CompanionErrorCode.CodeInvalid, Loc.T("That code is not right."));
     public static CompanionError TokenExpired => new(CompanionErrorCode.TokenExpired, Loc.T("This pairing code has expired. Show a new code on the computer."));
     public static CompanionError TokenUsed => new(CompanionErrorCode.TokenUsed, Loc.T("This pairing code was already used. Show a new code on the computer."));
     public static CompanionError Declined => new(CompanionErrorCode.Declined, Loc.T("Pairing was declined on the computer."));
@@ -267,6 +274,34 @@ public sealed record CompanionError(string Code, string Message)
     {
         public string Error { get; set; } = "";
         public string Message { get; set; } = "";
+    }
+}
+
+/// <summary>The body of <c>POST /v1/pair/code</c>: the short code shown on the desktop.</summary>
+public sealed record PairCodeRequest(string Code)
+{
+    public string ToJson() => $"{{\"code\":{CompanionPackage.Quote(Code)}}}";
+
+    public static PairCodeRequest? FromJson(ReadOnlySpan<byte> json) =>
+        CompanionProtocol.Decode<Dto>(json) is { } dto ? new PairCodeRequest(dto.Code) : null;
+
+    private sealed class Dto
+    {
+        public string Code { get; set; } = "";
+    }
+}
+
+/// <summary>The answer to a right short code: the text of the pairing code the QR code carries (<see cref="PairingUri"/>).</summary>
+public sealed record PairCodeResponse(string Text)
+{
+    public string ToJson() => $"{{\"text\":{CompanionPackage.Quote(Text)}}}";
+
+    public static PairCodeResponse? FromJson(ReadOnlySpan<byte> json) =>
+        CompanionProtocol.Decode<Dto>(json) is { } dto ? new PairCodeResponse(dto.Text) : null;
+
+    private sealed class Dto
+    {
+        public string Text { get; set; } = "";
     }
 }
 

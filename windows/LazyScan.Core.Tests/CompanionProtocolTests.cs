@@ -111,6 +111,8 @@ public class CompanionProtocolTests
         Assert.Equal(
             """{"token":"AAECAwQFBgcICQoLDA0ODw","phoneId":"phone-0001","phoneName":"Aytu's iPhone","platform":"ios","appVersion":"1.0"}""",
             new PairRequest(CompanionVectors.TokenText, "phone-0001", "Aytu's iPhone", "ios", "1.0").ToJson());
+        Assert.Equal("""{"code":"482913"}""", new PairCodeRequest("482913").ToJson());
+        Assert.Equal("""{"text":"lazyscan://pair?v=1"}""", new PairCodeResponse("lazyscan://pair?v=1").ToJson());
         Assert.Equal(
             """{"protocolVersion":1,"desktopId":"0123456789abcdef0123456789abcdef","desktopName":"AYTU-PC","deviceSecret":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"}""",
             new PairResponse(DesktopId, "AYTU-PC", CompanionVectors.SecretText, 1).ToJson());
@@ -135,6 +137,10 @@ public class CompanionProtocolTests
         Assert.Equal(error, CompanionError.FromJson(Utf8(error.ToJson())));
         var pair = new PairRequest(CompanionVectors.TokenText, "phone-0001", "naïve 日本 \u0001", "ios", "1.0");
         Assert.Equal(pair, PairRequest.FromJson(Utf8(pair.ToJson())));
+        var code = new PairCodeRequest("482913");
+        Assert.Equal(code, PairCodeRequest.FromJson(Utf8(code.ToJson())));
+        var text = new PairCodeResponse("lazyscan://pair?v=1&n=na%C3%AFve");
+        Assert.Equal(text, PairCodeResponse.FromJson(Utf8(text.ToJson())));
         var response = new PairResponse(DesktopId, "AYTU-PC", CompanionVectors.SecretText, 1);
         Assert.Equal(response, PairResponse.FromJson(Utf8(response.ToJson())));
         var withKey = response with { SyncKey = CompanionVectors.SecretText };
@@ -161,6 +167,9 @@ public class CompanionProtocolTests
         Assert.Equal(new PairResponse("d", "PC", "s", 1), old);
         Assert.Null(old!.SyncKey);
         Assert.Null(PairResponse.FromJson(Utf8("""{"deviceSecret":"s","syncKey":5}"""))!.SyncKey);
+        Assert.Equal(new PairCodeRequest(""), PairCodeRequest.FromJson(Utf8("""{"code":5,"extra":true}""")));
+        Assert.Null(PairCodeRequest.FromJson(Utf8("not json")));
+        Assert.Null(PairCodeResponse.FromJson(Utf8("[]")));
         // Not an object at all.
         Assert.Null(PairRequest.FromJson(Utf8("[]")));
         Assert.Null(PairRequest.FromJson(Utf8("null")));
