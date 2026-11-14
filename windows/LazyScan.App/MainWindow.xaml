@@ -1231,7 +1231,7 @@
                                                          ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
                                                          ScrollViewer.ScrollChanged="DestinationBox_ScrollChanged"
                                                          LostKeyboardFocus="DestinationBox_LostKeyboardFocus"
-                                                         AutomationProperties.Name="{loc:T Save to}" LostFocus="Setting_Changed" />
+                                                         AutomationProperties.Name="{loc:T Save to}" LostFocus="DestinationBox_LostFocus" />
                                             </DockPanel>
                                         </StackPanel>
                                     </Expander>

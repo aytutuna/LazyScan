@@ -2914,6 +2914,14 @@
   "The folder “{0}” was not found. Choose another folder.": {},
   "Could not save in “{0}”.": {},
   "The path of the save folder is too long. Choose a folder with a shorter path.": {},
+  "Save folder not changed": {},
+  "Type the full path of the folder, starting with a drive letter or a network name.": {},
+  "The folder “{0}” cannot be used. Check the path or choose another folder.": {
+    "note": "{0} is a folder path."
+  },
+  "The folder “{0}” does not exist. Create it?": {
+    "note": "{0} is a folder path."
+  },
   "JPEG quality": {},
   "B&W threshold": {},
   "Min photo side": {},

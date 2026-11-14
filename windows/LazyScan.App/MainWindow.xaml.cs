@@ -1773,11 +1773,6 @@ public partial class MainWindow : Window
         s.Adjustments.Descreen = DescreenBox.IsChecked == true;
         s.Adjustments.RestoreFadedColors = RestoreBox.IsChecked == true;
         s.Adjustments.CleanUp = CleanUpBox.IsChecked == true;
-        if (!string.IsNullOrWhiteSpace(DestinationBox.Text) && DestinationBox.Text != s.ResolveDestination())
-        {
-            s.DestinationPath = DestinationBox.Text;
-            _savedTabStale = true;
-        }
         if (!string.IsNullOrWhiteSpace(TemplateBox.Text)) s.NamingTemplate = TemplateBox.Text;
 
         DocumentOptions.Visibility = s.Intent == ScanIntent.Document ? Visibility.Visible : Visibility.Collapsed;
@@ -2604,6 +2599,107 @@ public partial class MainWindow : Window
     private void DestinationBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) =>
         DestinationBox.ScrollToHorizontalOffset(
             Math.Max(0, DestinationBox.ExtentWidth - DestinationBox.ViewportWidth));
+
+    private enum DestinationCheck { Usable, Missing, Relative, Unusable }
+
+    private static DestinationCheck CheckDestination(string expanded)
+    {
+        if (!System.IO.Path.IsPathFullyQualified(expanded)) return DestinationCheck.Relative;
+        try
+        {
+            string full = System.IO.Path.GetFullPath(expanded);
+            string root = System.IO.Path.GetPathRoot(full)!;
+            if (full[root.Length..].Split('\\').Any(p => p.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0))
+                return DestinationCheck.Unusable;
+            if (System.IO.File.Exists(full)) return DestinationCheck.Unusable;
+            if (System.IO.Directory.Exists(full)) return DestinationCheck.Usable;
+            return System.IO.Directory.Exists(System.IO.Path.GetPathRoot(full)) ? DestinationCheck.Missing : DestinationCheck.Unusable;
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or System.IO.IOException)
+        {
+            return DestinationCheck.Unusable;
+        }
+    }
+
+    private static bool IsNetworkPath(string expanded)
+    {
+        if (!System.IO.Path.IsPathFullyQualified(expanded)) return false;
+        string root = System.IO.Path.GetPathRoot(expanded) ?? "";
+        if (root.StartsWith(@"\\", StringComparison.Ordinal)) return true;
+        try { return new System.IO.DriveInfo(root).DriveType == System.IO.DriveType.Network; }
+        catch (ArgumentException) { return false; }
+    }
+
+    private static bool TryCreateFolder(string expanded)
+    {
+        try { System.IO.Directory.CreateDirectory(expanded); return true; }
+        catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Take the typed save folder only when it is usable; otherwise say why and show the old one
+    /// again. The folder checks can block on a network drive, so they run off the UI thread.
+    /// </summary>
+    private bool Superseded(string typed, string current) =>
+        DestinationBox.Text.Trim() != typed || ViewModel.Settings.ResolveDestination() != current;
+
+    private async void DestinationBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        string current = ViewModel.Settings.ResolveDestination();
+        string typed = DestinationBox.Text.Trim();
+        if (typed == current) return;
+        if (typed.Length == 0)
+        {
+            ShowDestination(current);
+            return;
+        }
+
+        string expanded = Environment.ExpandEnvironmentVariables(typed);
+        string title = Loc.T("Save folder not changed");
+        var check = IsNetworkPath(expanded) ? await Task.Run(() => CheckDestination(expanded)) : CheckDestination(expanded);
+        if (Superseded(typed, current)) return;
+        bool usable = check == DestinationCheck.Usable;
+        if (check == DestinationCheck.Relative)
+        {
+            ShowError(Loc.T("Type the full path of the folder, starting with a drive letter or a network name."), title);
+        }
+        else if (check == DestinationCheck.Unusable)
+        {
+            ShowError(Loc.T("The folder “{0}” cannot be used. Check the path or choose another folder.", typed), title);
+        }
+        else if (check == DestinationCheck.Missing)
+        {
+            var answer = MessageBox.Show(this, Loc.T("The folder “{0}” does not exist. Create it?", typed), "Lazy Scan",
+                                         MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes, App.BoxOptions);
+            if (Superseded(typed, current)) return;
+            if (answer != MessageBoxResult.Yes)
+            {
+                ShowDestination(current);
+                return;
+            }
+            usable = await Task.Run(() => TryCreateFolder(expanded));
+            if (Superseded(typed, current)) return;
+            if (!usable)
+            {
+                ShowError(Loc.T("The folder “{0}” cannot be used. Check the path or choose another folder.", typed), title);
+            }
+        }
+
+        if (usable)
+        {
+            ViewModel.Settings.DestinationPath = typed;
+            _savedTabStale = true;
+            ViewModel.SettingsEdited();
+        }
+        else
+        {
+            ShowDestination(current);
+        }
+    }
 
     private void BrowseDestination_Click(object sender, RoutedEventArgs e)
     {
