@@ -42,7 +42,9 @@ scanners** — including the Epson Perfection V39 II.
   and pages scanned in color that have no color, are stored as gray. The page size stays the
   same and text recognition always reads the full scan. The size alone sets the JPEG quality
   of PDF pages (Best 0.9, Standard 0.8, Compact 0.65 / 0.7 gray, Smallest 0.5 / 0.55 gray);
-  the JPEG quality setting is for JPEG files.
+  the JPEG quality setting is for JPEG files. **Page size** (As scanned, A4 or Letter) gives every
+  page of a PDF that paper size instead: a larger page image is scaled down to fit and centered,
+  a smaller one is centered at its own size, and the text layer moves with it.
   **Behavior change:** Standard is the new default for everyone, including existing settings
   and presets; earlier versions always wrote full-resolution color JPEGs (choose Best for
   that). On the Mac each page is encoded as a JPEG with ImageIO and stored unchanged by the

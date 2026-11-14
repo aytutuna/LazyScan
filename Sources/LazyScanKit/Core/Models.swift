@@ -204,6 +204,46 @@ public enum PDFSizePreset: String, Codable, CaseIterable, Identifiable, Sendable
     public static let displayOrder: [PDFSizePreset] = [.best, .standard, .compact, .smallest]
 }
 
+/// The size of each page of a saved PDF (`OutputOptions.pageSize`): the size each page was scanned at, or
+/// a standard paper size that every page gets, its image scaled down to fit when it is larger and
+/// centered (`PDFWriter`). Twin of C# `PdfPageSize`.
+public enum PDFPageSize: String, Codable, CaseIterable, Identifiable, Sendable {
+    case asScanned
+    case a4
+    case letter
+
+    public var id: String { rawValue }
+
+    /// The row's name in the options.
+    public static var optionLabel: String { L10n.t("Page size") }
+
+    public var label: String {
+        switch self {
+        case .asScanned: return L10n.t("As scanned")
+        case .a4: return L10n.t("A4")
+        case .letter: return L10n.t("Letter")
+        }
+    }
+
+    /// What the choice does, for VoiceOver and tooltips.
+    public var hint: String {
+        switch self {
+        case .asScanned: return L10n.t("Each page keeps the size it was scanned at")
+        case .a4: return L10n.t("Every page is 210 by 297 millimeters. Pages that are larger are scaled down to fit and centered.")
+        case .letter: return L10n.t("Every page is 8.5 by 11 inches. Pages that are larger are scaled down to fit and centered.")
+        }
+    }
+
+    /// The page in points (A4 is 595 by 842, Letter 612 by 792); nil: the size the page was scanned at.
+    public var points: (width: Double, height: Double)? {
+        switch self {
+        case .asScanned: return nil
+        case .a4: return (595, 842)
+        case .letter: return (612, 792)
+        }
+    }
+}
+
 /// Which sides of each sheet a feeder scan captures (`ScanSettings.duplex`). Only the document
 /// feeder scans two-sided; on the flatbed the setting is ignored. See `DocumentSides`. Twin of C#
 /// `DuplexMode` (`ModelLabels.Label` / `Hint`).
@@ -469,6 +509,8 @@ public struct OutputOptions: Codable, Equatable, Sendable {
     /// (`DocxWriter`), stored as `pdfSize` stores a PDF page. On by default, also for settings
     /// without it; picking a task keeps it, as the user's choice.
     public var wordPageImages: Bool = true
+    /// The size of each page of a saved PDF (`PDFPageSize`). Settings without it get `.asScanned`.
+    public var pageSize: PDFPageSize = .asScanned
 
     public init() {}
 
@@ -480,6 +522,7 @@ public struct OutputOptions: Codable, Equatable, Sendable {
         case archival
         case protect
         case wordPageImages
+        case pageSize
     }
 }
 
@@ -494,6 +537,7 @@ extension OutputOptions {
         archival = container.decodeLenient(forKey: .archival, default: archival)
         protect = container.decodeLenient(forKey: .protect, default: protect)
         wordPageImages = container.decodeLenient(forKey: .wordPageImages, default: wordPageImages)
+        pageSize = container.decodeLenient(forKey: .pageSize, default: pageSize)
     }
 }
 

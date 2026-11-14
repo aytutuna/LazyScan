@@ -967,6 +967,14 @@ public class ScanTaskTests
     }
 
     [Fact]
+    public void Apply_KeepsThePageSizeChoice()
+    {
+        var current = Customized();
+        current.Output.PageSize = PdfPageSize.A4;
+        Assert.All(ScanTasks.All, task => Assert.Equal(PdfPageSize.A4, TaskCatalog.Apply(task, current).Output.PageSize));
+    }
+
+    [Fact]
     public void Apply_KeepsThePageImagesChoice()
     {
         // On unless the user turned it off; Scan to Word starts with it on for a new user.

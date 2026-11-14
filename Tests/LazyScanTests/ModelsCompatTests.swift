@@ -55,6 +55,7 @@ private func nonDefaultSettings() -> ScanSettings {
     settings.output.archival = true
     settings.output.protect = true
     settings.output.wordPageImages = false
+    settings.output.pageSize = .a4
     settings.duplex = .manual
     settings.backBinding = .shortEdge
     settings.paperSize = .a4
@@ -146,7 +147,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
     .replacingOccurrences(
         of: "\"pdfSearchable\" : false",
         with: "\"output\" : {\n        \"afterSave\" : \"share\",\n        \"alsoSaveText\" : true,\n        \"archival\" : true,\n"
-            + "        \"pdfSize\" : \"compact\",\n        \"protect\" : true,\n        \"wordPageImages\" : false\n      },\n"
+            + "        \"pageSize\" : \"a4\",\n        \"pdfSize\" : \"compact\",\n        \"protect\" : true,\n        \"wordPageImages\" : false\n      },\n"
             + "      \"customPaperHeight\" : 11,\n      \"customPaperWidth\" : 8.5,\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
     .replacingOccurrences(of: "\"brightness\" : 0.25,", with: "\"brightness\" : 0.25,\n        \"cleanUp\" : false,")
@@ -479,6 +480,7 @@ final class ModelsCompatTests: XCTestCase {
         expected.output.archival = false
         expected.output.protect = false
         expected.output.wordPageImages = true
+        expected.output.pageSize = .asScanned
         expected.duplex = .off
         expected.backBinding = .longEdge
         expected.paperSize = .auto
@@ -509,7 +511,7 @@ final class ModelsCompatTests: XCTestCase {
             settings.output.pdfSize = size
             let data = try encode(settings)
             let output = try XCTUnwrap(try jsonObject(data)["output"] as? [String: Any])
-            XCTAssertEqual(Set(output.keys), ["pdfSize", "afterSave", "alsoSaveText", "archival", "protect", "wordPageImages"])
+            XCTAssertEqual(Set(output.keys), ["pdfSize", "afterSave", "alsoSaveText", "archival", "protect", "wordPageImages", "pageSize"])
             XCTAssertEqual(output["pdfSize"] as? String, size.rawValue)
             XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: data).output.pdfSize, size)
         }
@@ -614,6 +616,25 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(written["taskId"] as? String, "archive")
         let output = try XCTUnwrap(written["output"] as? [String: Any])
         XCTAssertEqual(output["archival"] as? Bool, true)
+    }
+
+    // MARK: Page size of saved PDFs
+
+    /// Twin of `PageSize_AsScannedByDefault_AndInFilesWithoutIt`.
+    func test_pageSize_asScannedByDefault_andInFilesWithoutIt() throws {
+        XCTAssertEqual(ScanSettings().output.pageSize, .asScanned)
+        XCTAssertEqual(try decode([Preset].self, presetsJSONBeforePDFSize)[0].settings.output.pageSize, .asScanned)
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"output": {"pdfSize": "compact"}}"#).output.pageSize, .asScanned)
+        XCTAssertEqual(try decode(ScanSettings.self, #"{"output": {"pageSize": "letter"}}"#).output.pageSize, .letter)
+        for value in [#""legal""#, #""A4""#, "2", "null", "true", "{}"] {
+            let settings = try decode(ScanSettings.self,
+                                      #"{"output": {"pdfSize": "best", "pageSize": "# + value + #", "alsoSaveText": true}, "resolution": 150}"#)
+            XCTAssertEqual(settings.output.pageSize, .asScanned, value)
+            XCTAssertEqual(settings.output.pdfSize, .best, value)
+            XCTAssertTrue(settings.output.alsoSaveText, value)
+            XCTAssertEqual(settings.resolution, 150, value)
+        }
+        XCTAssertEqual(PDFPageSize.allCases.map(\.rawValue), ["asScanned", "a4", "letter"])
     }
 
     // MARK: Page pictures in Word documents (CONTRACTS.md, rule 6)

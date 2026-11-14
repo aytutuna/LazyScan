@@ -75,6 +75,12 @@ final class InspectorSectionsTests: XCTestCase {
         XCTAssertTrue(InspectorSections.outputChanged(compact, shownFormat: .pdf))
         compact.intent = .photo
         XCTAssertFalse(InspectorSections.outputChanged(compact, shownFormat: .jpeg))
+        // A page size other than as scanned is shown after the size, and is a change.
+        var a4 = ScanSettings()
+        a4.output.pageSize = .a4
+        XCTAssertEqual(InspectorSections.outputSummary(a4, shownFormat: .pdf), "PDF \u{00B7} Standard \u{00B7} A4")
+        XCTAssertTrue(InspectorSections.outputChanged(a4, shownFormat: .pdf))
+        XCTAssertFalse(InspectorSections.outputChanged(a4, shownFormat: .jpeg))
         XCTAssertEqual(InspectorSections.outputSummary(s, shownFormat: .text), "Text")
 
         s.adjustments.autoEnhance = true

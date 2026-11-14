@@ -88,6 +88,33 @@ struct PDFPageSource {
     }
 }
 
+/// Where a page's image goes on its PDF page, in points: the page's size, and the image's size and
+/// lower left corner. Twin of C# `PdfPagePlacement`.
+struct PDFPagePlacement: Equatable {
+    let pageWidth: Double
+    let pageHeight: Double
+    let width: Double
+    let height: Double
+    let x: Double
+    let y: Double
+}
+
+extension PDFPageSize {
+    /// The page for an image of the given size: the image's own size for `.asScanned`, else the fixed
+    /// page with the image scaled down to fit (never up, never cropped) and centered.
+    func placement(widthPts: Double, heightPts: Double) -> PDFPagePlacement {
+        guard let page = points else {
+            return PDFPagePlacement(pageWidth: widthPts, pageHeight: heightPts, width: widthPts, height: heightPts,
+                                    x: 0, y: 0)
+        }
+        let scale: Double = min(1.0, min(page.width / widthPts, page.height / heightPts))
+        let width: Double = widthPts * scale
+        let height: Double = heightPts * scale
+        return PDFPagePlacement(pageWidth: page.width, pageHeight: page.height, width: width, height: height,
+                                x: max(0, (page.width - width) / 2), y: max(0, (page.height - height) / 2))
+    }
+}
+
 /// The dependency-free PDF writer of scanned pages, ported from C# `PdfBuilder`. It writes PDF 1.4,
 /// PDF/A-2b for keeping, or a PDF 1.7 file that opens only with a password (AES-256), as
 /// `PDFWriteOptions` ask.
@@ -251,7 +278,7 @@ public enum PDFWriter {
             let pageObject = firstPageObject + i * 3
             try writePage(w, pageObject: pageObject, imageObject: pageObject + 1, contentsObject: pageObject + 2,
                           parent: "2 0 R", index: i, page: try pages.page(i), fontObject: fontObject, codes: codes,
-                          extraEntries: "")
+                          pageSize: settings.pageSize, extraEntries: "")
         }
 
         var trailer = "/Root 1 0 R"
@@ -284,29 +311,30 @@ public enum PDFWriter {
 
     /// One page's three objects: the page (child of `parent`, its image named "Im{index}", the font
     /// `fontObject` as /F1 when it has text, then `extraEntries` at the end of its dictionary), the
-    /// image XObject and the content stream.
+    /// image XObject and the content stream. The media box is the page's own size, or `pageSize`'s with the
+    /// image scaled down to fit and centered (`PDFPageSize.placement`).
     static func writePage(_ w: PDFObjectWriter, pageObject: Int, imageObject: Int, contentsObject: Int,
                           parent: String, index: Int, page: PDFPageInput, fontObject: Int,
-                          codes: GlyphlessCodes, extraEntries: String) throws {
+                          codes: GlyphlessCodes, pageSize: PDFPageSize, extraEntries: String) throws {
         // PDF media box in points: pixels / dpi × 72.
         let dpi = Double(max(page.dpi, 1))
-        let widthPts = Double(page.pixelWidth) / dpi * 72.0
-        let heightPts = Double(page.pixelHeight) / dpi * 72.0
+        let place = pageSize.placement(widthPts: Double(page.pixelWidth) / dpi * 72.0,
+                                       heightPts: Double(page.pixelHeight) / dpi * 72.0)
         let lines: [OCRLine] = page.ocrLines ?? []
         let pageHasText = !lines.isEmpty
 
         let fontResource = pageHasText ? " /Font <</F1 \(fontObject) 0 R>>" : ""
-        var dictionary = "<</Type /Page /Parent \(parent) /MediaBox [0 0 \(f(widthPts)) \(f(heightPts))] "
+        var dictionary = "<</Type /Page /Parent \(parent) /MediaBox [0 0 \(f(place.pageWidth)) \(f(place.pageHeight))] "
         dictionary += "/Resources <</XObject <</Im\(index) \(imageObject) 0 R>>\(fontResource)>> "
         dictionary += "/Contents \(contentsObject) 0 R\(extraEntries)>>"
         try w.writeObject(pageObject, dictionary)
 
         // The XObject declares the image's own dimensions, which differ from the page's pixel size
         // when only a preview was available or the image was downsampled; the content stream's cm
-        // scales the unit-square image onto the full media box either way.
+        // scales the unit-square image onto its place on the media box either way.
         try w.writeStream(imageObject, imageEntries(page), page.image.data)
 
-        let contents = contentStream(index, widthPts: widthPts, heightPts: heightPts, lines: lines, codes: codes)
+        let contents = contentStream(index, place: place, lines: lines, codes: codes)
         try w.writeStream(contentsObject, "", contents)
     }
 
@@ -377,17 +405,17 @@ public enum PDFWriter {
 
     // MARK: - Content stream
 
-    private static func contentStream(_ pageIndex: Int, widthPts: Double, heightPts: Double,
+    private static func contentStream(_ pageIndex: Int, place: PDFPagePlacement,
                                       lines: [OCRLine], codes: GlyphlessCodes) -> Data {
-        // Draw the page image across the full media box.
-        var text = "q\n\(f(widthPts)) 0 0 \(f(heightPts)) 0 0 cm\n/Im\(pageIndex) Do\nQ\n"
+        var text = "q\n\(f(place.width)) 0 0 \(f(place.height)) \(f(place.x)) \(f(place.y)) cm\n/Im\(pageIndex) Do\nQ\n"
         if !lines.isEmpty {
             // Invisible text layer: mode 3 = neither fill nor stroke, but selectable/searchable.
             // OCR boxes are normalized with a bottom-left origin, the same origin as PDF user
             // space, so they map straight into points with no flip.
             text += "BT\n3 Tr\n"
             for line in lines {
-                guard let placed = textLayerLine(line, codes: codes, widthPts: widthPts, heightPts: heightPts) else {
+                guard let placed = textLayerLine(line, codes: codes, widthPts: place.width, heightPts: place.height,
+                                                 originX: place.x, originY: place.y) else {
                     continue
                 }
                 text += "/F1 \(f(placed.fontSize)) Tf\n"
@@ -413,9 +441,10 @@ public enum PDFWriter {
         let baseline: Double
     }
 
-    /// The placement of `line` on a page of the given size; nil for an empty line or box.
+    /// The placement of `line` on an image of the given size whose lower left corner is at (`originX`,
+    /// `originY`) on the page; nil for an empty line or box.
     static func textLayerLine(_ line: OCRLine, codes: GlyphlessCodes, widthPts: Double,
-                              heightPts: Double) -> PlacedLine? {
+                              heightPts: Double, originX: Double = 0, originY: Double = 0) -> PlacedLine? {
         if line.text.isEmpty { return nil }
         let box = line.boundingBox.standardized
         let targetWidth = Double(box.width) * widthPts
@@ -424,8 +453,8 @@ public enum PDFWriter {
         let codeCount = codes.codes(line.text).count
         let measuredWidth = GlyphlessFont.textWidth(codeCount: codeCount, fontSize: fontSize)
         let scale = min(max(targetWidth / measuredWidth, 0.2), 5.0)
-        let x = Double(box.minX) * widthPts
-        let baseline = Double(box.minY) * heightPts
+        let x = originX + Double(box.minX) * widthPts
+        let baseline = originY + Double(box.minY) * heightPts
         return PlacedLine(fontSize: fontSize, horizontalScale: scale, x: x, baseline: baseline)
     }
 

@@ -63,6 +63,7 @@ internal static class CompatFixtures
         settings.Output.Archival = true;
         settings.Output.Protect = true;
         settings.Output.WordPageImages = false;
+        settings.Output.PageSize = PdfPageSize.A4;
         settings.Duplex = DuplexMode.Manual;
         settings.BackBinding = DuplexBinding.ShortEdge;
         settings.PaperSize = PaperSize.A4;
@@ -149,7 +150,7 @@ internal static class CompatFixtures
         "      ],\n      \"adjustments\"", "      ],\n      \"ocrLanguage\": \"de-DE\",\n      \"adjustments\"").Replace(
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
         "        \"blackWhiteThreshold\": 0.375,\n        \"cleanUp\": false\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
-        + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false\n      },\n"
+        + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false,\n        \"pageSize\": \"a4\"\n      },\n"
         + "      \"duplex\": \"manual\",\n      \"backBinding\": \"shortEdge\",\n      \"paperSize\": \"a4\",\n      \"customPaperWidth\": 8.5,\n      \"customPaperHeight\": 11,\n"
         + "      \"document\": {\n        \"removeBlankPages\": true,\n        \"blankSensitivity\": \"high\",\n"
         + "        \"autoCrop\": true,\n        \"autoStraighten\": true,\n        \"splitMode\": \"sheetCount\",\n"
@@ -530,6 +531,7 @@ public class ModelsCompatTests
         expected.Output.Archival = false;
         expected.Output.Protect = false;
         expected.Output.WordPageImages = true;
+        expected.Output.PageSize = PdfPageSize.AsScanned;
         expected.Duplex = DuplexMode.Off;
         expected.BackBinding = DuplexBinding.LongEdge;
         expected.PaperSize = PaperSize.Auto;
@@ -565,7 +567,7 @@ public class ModelsCompatTests
             settings.Output.PdfSize = size;
             string json = CompatFixtures.Encode(settings);
             using var written = JsonDocument.Parse(json);
-            Assert.Equal(["pdfSize", "afterSave", "alsoSaveText", "archival", "protect", "wordPageImages"], written.RootElement.GetProperty("output").EnumerateObject().Select(p => p.Name));
+            Assert.Equal(["pdfSize", "afterSave", "alsoSaveText", "archival", "protect", "wordPageImages", "pageSize"], written.RootElement.GetProperty("output").EnumerateObject().Select(p => p.Name));
             Assert.Equal(size, Decode<ScanSettings>(json).Output.PdfSize);
         }
     }
@@ -682,6 +684,25 @@ public class ModelsCompatTests
         using var written = JsonDocument.Parse(CompatFixtures.Encode(settings));
         Assert.Equal("archive", written.RootElement.GetProperty("taskId").GetString());
         Assert.True(written.RootElement.GetProperty("output").GetProperty("archival").GetBoolean());
+    }
+
+    // MARK: - Page size of saved PDFs
+
+    [Fact]
+    public void PageSize_AsScannedByDefault_AndInFilesWithoutIt()
+    {
+        Assert.Equal(PdfPageSize.AsScanned, new ScanSettings().Output.PageSize);
+        Assert.Equal(PdfPageSize.AsScanned, Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize)[0].Settings.Output.PageSize);
+        Assert.Equal(PdfPageSize.AsScanned, Decode<ScanSettings>("""{"output": {"pdfSize": "compact"}}""").Output.PageSize);
+        Assert.Equal(PdfPageSize.Letter, Decode<ScanSettings>("""{"output": {"pageSize": "letter"}}""").Output.PageSize);
+        foreach (string value in new[] { "\"legal\"", "\"A4\"", "2", "null", "true", "{}" })
+        {
+            var settings = Decode<ScanSettings>($$"""{"output": {"pdfSize": "best", "pageSize": {{value}}, "alsoSaveText": true}, "resolution": 150}""");
+            Assert.Equal(PdfPageSize.AsScanned, settings.Output.PageSize);
+            Assert.Equal(PdfSizePreset.Best, settings.Output.PdfSize);
+            Assert.True(settings.Output.AlsoSaveText);
+            Assert.Equal(150, settings.Resolution);
+        }
     }
 
     // MARK: - Page pictures in Word documents (CONTRACTS.md, rule 6)

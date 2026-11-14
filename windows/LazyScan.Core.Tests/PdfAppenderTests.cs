@@ -194,6 +194,23 @@ public class PdfAppenderTests
     }
 
     [Fact]
+    public void PageSize_NewPagesGetTheFixedBox_AndTheTextFollows()
+    {
+        byte[] original = PdfFixture.Inherited();
+        var line = new OcrLine("Merhaba", new RectD(0.1, 0.5, 0.4, 0.05), 0.9f);
+        var page = new PdfPageInput(PdfBuilderTests.TinyJpeg, 600, 900, 300, [line]);
+        byte[] appended = PdfAppender.Append(original, [page], new PdfAppendOptions { PageSize = PdfPageSize.A4 });
+        CheckAppended(original, appended, 1);
+        string update = Update(original, appended);
+        Assert.Contains("/MediaBox [0 0 595 842]", update);
+        Assert.Contains("/CropBox [0 0 595 842]>>", update);
+        Assert.Contains("q\n144 0 0 216 225.5 313 cm\n/Im0 Do\nQ\n", update);
+        Assert.Contains("1 0 0 1 239.9 421 Tm\n", update);
+        // Without the option the page keeps its own size.
+        Assert.Contains("/MediaBox [0 0 144 216]", Update(original, PdfAppender.Append(original, [page])));
+    }
+
+    [Fact]
     public void InheritedAttributes_DoNotReachTheNewPages()
     {
         byte[] original = PdfFixture.Inherited();

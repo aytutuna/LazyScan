@@ -446,7 +446,7 @@ public enum InspectorSections {
     public static func openedBy(_ scanTask: ScanTask) -> String?       // .photoRestore adjustments, .book pages, .batch split, .archive archive
     public static func scannerSummary(_ s: ScanSettings) -> String     // "Flatbed · 300 dpi · Color", "Feeder · both sides · 200 dpi · Gray"
     public static func scannerChanged(_ s: ScanSettings) -> Bool
-    public static func outputSummary(_ s: ScanSettings, shownFormat: OutputFormat) -> String   // "PDF · Standard", "Word", "JPEG"
+    public static func outputSummary(_ s: ScanSettings, shownFormat: OutputFormat) -> String   // "PDF · Standard", "PDF · Standard · A4", "Word", "JPEG"
     public static func outputChanged(_ s: ScanSettings, shownFormat: OutputFormat) -> Bool
     public static func adjustmentsSummary(_ a: AdjustmentSettings) -> String    // "Edited", "Auto" or ""
     public static func pagesSummary(_ d: DocumentOptions) -> String             // "Skip blank · Upright +1"
@@ -2465,6 +2465,7 @@ public struct PDFWriteOptions: @unchecked Sendable {        // PDFWriteOptions.s
     var conformance: PDFConformance; var title: String?; var creationDate: Date? /* nil: now */
     var timeZone: TimeZone? /* nil: the current one */; var documentId: [UInt8]? /* 16 bytes; nil: random */
     var protection: PDFProtection?; internal var random: PDFRandomSource?   // tests; nil: SecRandomCopyBytes
+    var pageSize: PDFPageSize          // .asScanned; forOutput takes it from `output.pageSize`
     var isArchival: Bool; var isProtected: Bool
     init(conformance: = .standard, title: = nil, creationDate: = nil, timeZone: = nil, documentId: = nil, protection: = nil)
     static func forOutput(_ output: OutputOptions, title: String?, protection: PDFProtection? = nil) throws -> PDFWriteOptions
@@ -2624,7 +2625,7 @@ public sealed record PdfAppendTarget(string Path, int PageCount, bool IsSigned, 
                                      bool IsCertified = false)
     { bool IsPdfA; IReadOnlyList<string> GetWarnings(bool protecting = false); string? GetConfirmMessage(bool protecting = false); }
 public sealed record PdfAppendResult(string Path, int PagesBefore, int PagesAdded, long Bytes) { int PageCount; }
-public sealed record PdfAppendOptions { byte[]? DocumentId; }                      // tests: the new identifier half
+public sealed record PdfAppendOptions { byte[]? DocumentId; PdfPageSize PageSize; }   // DocumentId: tests, the new identifier half; PageSize: the new pages' size
 public static class PdfAppender {
     const string ButtonLabel = "Add to existing PDF…", ButtonHint, SavedMenuLabel = "Add the scanned pages to this PDF",
                  SavedMenuHint, PickerTitle, ConfirmQuestion = "Add the pages anyway?";
@@ -2664,7 +2665,7 @@ public struct PDFAppendError: LocalizedError { problem: PDFAppendProblem; messag
 public struct PDFAppendTarget { path; pageCount; isSigned; pdfAPart; pdfAConformance; keepsPdfA; isCertified = false
                                 isPdfA; warnings(protecting: Bool = false) -> [String]; confirmMessage(protecting: Bool = false) -> String? }
 public struct PDFAppendResult { path; pagesBefore; pagesAdded; bytes; pageCount }
-public struct PDFAppendOptions { documentId: [UInt8]? }                      // tests: the new identifier half
+public struct PDFAppendOptions { documentId: [UInt8]?; pageSize: PDFPageSize }   // documentId: tests, the new identifier half; pageSize: the new pages' size
 public enum PDFAppender {
     static let buttonLabel, buttonHint, savedMenuLabel, savedMenuHint, pickerTitle, confirmQuestion,
                saveAsNewLabel                                                        // Mac and iPhone only
@@ -2896,6 +2897,8 @@ public enum TextExport {
     public static func copiedMessage(pageNumber: Int, hasText: Bool) -> String
 }
 public struct TextOutputError: LocalizedError, Equatable { public init(_ message: String) }   // not a ScanError
+// OutputOptions gains `pageSize: PDFPageSize` ("pageSize" in the "output" object, read leniently; .asScanned by default
+// and for files written before it existed; kept when a task is picked): see "Page size of a PDF" below.
 // OutputOptions gains `wordPageImages: Bool` ("wordPageImages" in the "output" object; true by default
 // and for files written before it existed; kept when a task is picked): a Word document shows each
 // page's picture before its text, stored as `pdfSize` stores a PDF page.
@@ -2957,6 +2960,23 @@ public enum PDFSizePreset: String, Codable, CaseIterable, Identifiable, Sendable
     public var detail: String                  // how the size stores the pages: the segment's help (VoiceOver)
     public static let displayOrder: [PDFSizePreset]   // [.best, .standard, .compact, .smallest]
 }
+
+public enum PDFPageSize: String, Codable, CaseIterable, Identifiable, Sendable {   // C# PdfPageSize { AsScanned, A4, Letter }
+    case asScanned, a4, letter                 // stored as "asScanned", "a4", "letter"; first case = default and fallback
+    public static var optionLabel: String      // "Page size"
+    public var label: String                   // "As scanned", "A4", "Letter"
+    public var hint: String                    // "Each page keeps the size it was scanned at", "Every page is 210 by 297 millimeters. Pages that are
+                                               // larger are scaled down to fit and centered.", "Every page is 8.5 by 11 inches. Pages that are ..."
+    public var points: (width: Double, height: Double)?   // nil, (595, 842), (612, 792)
+}
+// Page size of a PDF: with .a4 or .letter every page of a PDF the app writes (plain, PDF/A, protected, and the new pages
+// added to an existing PDF) has that MediaBox (and the CropBox of an added page, when the root has one). The page image
+// is scaled down to fit (never up, never cropped) and centered: scale = min(1, pageW / w, pageH / h), at
+// ((pageW - w') / 2, (pageH - h') / 2) clamped at 0, in the content stream's cm. The invisible text layer is placed on the
+// image's own box (its size and corner), so it lines up. .asScanned writes the bytes it always did. Twin placement:
+// `PDFPageSize.placement(widthPts:heightPts:)` (C# `PdfPageSizes.Placement`, a `PdfPagePlacement` of page size, image
+// size and corner). Tests (both platforms): the `PageSize…` cases of the PDF writer and appender tests, and in the compat
+// tests `PageSize_AsScannedByDefault_AndInFilesWithoutIt`.
 
 public enum ColorAnalysis {
     public static let sampleStep: Int          // 4: every 4th pixel of every 4th row

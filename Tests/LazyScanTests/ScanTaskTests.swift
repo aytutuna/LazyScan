@@ -924,6 +924,15 @@ final class ScanTaskTests: XCTestCase {
         XCTAssertFalse(current.output.wordPageImages)
     }
 
+    /// Twin of `Apply_KeepsThePageSizeChoice`.
+    func test_apply_keepsThePageSizeChoice() {
+        var current = customized()
+        current.output.pageSize = .a4
+        for task in ScanTask.allCases {
+            XCTAssertEqual(TaskCatalog.apply(task, to: current).output.pageSize, .a4, task.rawValue)
+        }
+    }
+
     /// Twin of `Archive_IsABestSizeSearchablePdfA_AndEndsWithAPlainPdf`.
     func test_archive_isABestSizeSearchablePdfA_andEndsWithAPlainPdf() throws {
         let definition = TaskCatalog.definition(.archive)

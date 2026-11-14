@@ -68,23 +68,26 @@ public static class InspectorSections
         s.Source != Defaults.Source || s.Duplex != Defaults.Duplex || s.PaperSize != Defaults.PaperSize
         || s.Resolution != Defaults.Resolution || s.ColorMode != Defaults.ColorMode;
 
-    /// <summary>"PDF · Standard", "Word", "JPEG": the format the save uses, and a PDF's size.</summary>
+    /// <summary>"PDF · Standard", "PDF · Standard · A4", "Word", "JPEG": the format the save uses, a PDF's size and, when it is not as scanned, its page size.</summary>
     /// <param name="shownFormat">The format the column shows (photos save an image, receipts and the ID card a PDF or an image).</param>
     public static string OutputSummary(ScanSettings s, OutputFormat shownFormat)
     {
         string format = shownFormat switch { OutputFormat.Word => "Word", OutputFormat.Text => Loc.T("Text|format"), var f => f.Label() };
-        return shownFormat == OutputFormat.Pdf && s.Intent == ScanIntent.Document ? $"{format} · {s.Output.PdfSize.Label()}" : format;
+        if (shownFormat != OutputFormat.Pdf || s.Intent != ScanIntent.Document) return format;
+        string summary = $"{format} · {s.Output.PdfSize.Label()}";
+        return s.Output.PageSize == PdfPageSize.AsScanned ? summary : $"{summary} · {s.Output.PageSize.Label()}";
     }
 
     /// <summary>
     /// The format differs from a fresh install's for the mode (JPEG for photos, PDF otherwise), or a PDF
-    /// shown has a size other than a fresh install's.
+    /// shown has a size or page size other than a fresh install's.
     /// </summary>
     public static bool OutputChanged(ScanSettings s, OutputFormat shownFormat)
     {
         var defaultFormat = s.Intent == ScanIntent.Photo ? OutputFormat.Jpeg : Defaults.Format;
         return shownFormat != defaultFormat
-               || (shownFormat == OutputFormat.Pdf && s.Output.PdfSize != Defaults.Output.PdfSize);
+               || (shownFormat == OutputFormat.Pdf
+                   && (s.Output.PdfSize != Defaults.Output.PdfSize || s.Output.PageSize != Defaults.Output.PageSize));
     }
 
     /// <summary>"Edited" when a slider or a switch other than Auto enhance is changed, "Auto" for Auto enhance alone, else "".</summary>

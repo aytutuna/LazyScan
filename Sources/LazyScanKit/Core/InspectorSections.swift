@@ -74,7 +74,8 @@ public enum InspectorSections {
             || s.resolution != d.resolution || s.colorMode != d.colorMode
     }
 
-    /// "PDF · Standard", "Word", "JPEG": the format the save uses, and a PDF's size. `shownFormat`: the
+    /// "PDF · Standard", "PDF · Standard · A4", "Word", "JPEG": the format the save uses, and a PDF's size
+    /// and, when it is not as scanned, its page size. `shownFormat`: the
     /// format the column shows (photos save an image, receipts and the ID card a PDF or an image).
     public static func outputSummary(_ s: ScanSettings, shownFormat: OutputFormat) -> String {
         let format: String
@@ -84,18 +85,20 @@ public enum InspectorSections {
         default: format = shownFormat.label
         }
         if shownFormat == .pdf && s.intent == .document {
-            return format + " \u{00B7} " + s.output.pdfSize.label
+            var summary: String = format + " \u{00B7} " + s.output.pdfSize.label
+            if s.output.pageSize != .asScanned { summary += " \u{00B7} " + s.output.pageSize.label }
+            return summary
         }
         return format
     }
 
     /// The format differs from a fresh install's for the mode (JPEG for photos, PDF otherwise), or a
-    /// PDF shown has a size other than a fresh install's.
+    /// PDF shown has a size or page size other than a fresh install's.
     public static func outputChanged(_ s: ScanSettings, shownFormat: OutputFormat) -> Bool {
         let d: ScanSettings = ScanSettings()
         let defaultFormat: OutputFormat = s.intent == .photo ? .jpeg : d.format
         return shownFormat != defaultFormat
-            || (shownFormat == .pdf && s.output.pdfSize != d.output.pdfSize)
+            || (shownFormat == .pdf && (s.output.pdfSize != d.output.pdfSize || s.output.pageSize != d.output.pageSize))
     }
 
     /// "Edited" when a slider or a switch other than Auto enhance is changed, "Auto" for Auto enhance

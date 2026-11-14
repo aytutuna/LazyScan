@@ -808,6 +808,12 @@ the PDF size and the action after saving the user chose, except where the task n
 document: Best). The task banner says what the task set, and leaving the task puts the user's
 choices back.
 
+The output settings also hold a **Page size** (As scanned, A4 or Letter; `OutputOptions.PageSize`, "pageSize" in the settings
+file). With A4 (595 x 842 points) or Letter (612 x 792) every page of a PDF has that media box, in every PDF the app writes
+(plain, PDF/A, protected, pages added to an existing PDF): the page image is scaled down to fit and centered, never scaled up or
+cropped, and the text layer sits on the image. As scanned keeps each page's own size. The inspector's summary adds the size
+after the PDF size ("PDF · Standard · A4").
+
 **Behavior change:** Standard is the default for everyone, including existing settings and
 presets, which have no size stored; earlier versions always wrote full-resolution RGB JPEGs
 at quality 0.9 (Best gives that again, except that gray pages are now stored gray). A size

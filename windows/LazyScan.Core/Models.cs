@@ -63,6 +63,18 @@ public enum PdfSizePreset
 }
 
 /// <summary>
+/// The size of each page of a saved PDF (<see cref="OutputOptions.PageSize"/>): the size each page
+/// was scanned at, or a standard paper size that every page gets, its image scaled down to fit when
+/// it is larger and centered (<see cref="PdfPageSizes.Placement"/>). Twin of Swift `PDFPageSize`.
+/// </summary>
+public enum PdfPageSize
+{
+    AsScanned,
+    A4,
+    Letter,
+}
+
+/// <summary>
 /// Which sides of each sheet a feeder scan captures (<see cref="ScanSettings.Duplex"/>). Only
 /// the document feeder scans two-sided; on the flatbed the setting is ignored. See
 /// <see cref="DocumentSides"/>.
@@ -241,6 +253,26 @@ public static class ModelLabels
         PdfSizePreset.Best => Loc.T("Full quality, largest files"),
         PdfSizePreset.Compact => Loc.T("Smaller, for email and uploads"),
         PdfSizePreset.Smallest => Loc.T("Smallest, for strict size limits"),
+        _ => "",
+    };
+
+    /// <summary>The page size row's name in the options.</summary>
+    public static string PageSizeOptionLabel => Loc.T("Page size");
+
+    public static string Label(this PdfPageSize size) => size switch
+    {
+        PdfPageSize.AsScanned => Loc.T("As scanned"),
+        PdfPageSize.A4 => Loc.T("A4"),
+        PdfPageSize.Letter => Loc.T("Letter"),
+        _ => size.ToString(),
+    };
+
+    /// <summary>What the page size does, for screen readers and tooltips.</summary>
+    public static string Hint(this PdfPageSize size) => size switch
+    {
+        PdfPageSize.AsScanned => Loc.T("Each page keeps the size it was scanned at"),
+        PdfPageSize.A4 => Loc.T("Every page is 210 by 297 millimeters. Pages that are larger are scaled down to fit and centered."),
+        PdfPageSize.Letter => Loc.T("Every page is 8.5 by 11 inches. Pages that are larger are scaled down to fit and centered."),
         _ => "",
     };
 
@@ -546,14 +578,17 @@ public sealed class OutputOptions : IEquatable<OutputOptions>
     /// </summary>
     public bool WordPageImages { get; set; } = true;
 
+    /// <summary>The size of each page of a saved PDF (<see cref="PdfPageSize"/>). Settings without it get AsScanned.</summary>
+    public PdfPageSize PageSize { get; set; } = PdfPageSize.AsScanned;
+
     public OutputOptions Clone() => (OutputOptions)MemberwiseClone();
 
     public bool Equals(OutputOptions? other) =>
         other is not null && PdfSize == other.PdfSize && AfterSave == other.AfterSave
         && AlsoSaveText == other.AlsoSaveText && Archival == other.Archival && Protect == other.Protect
-        && WordPageImages == other.WordPageImages;
+        && WordPageImages == other.WordPageImages && PageSize == other.PageSize;
     public override bool Equals(object? obj) => Equals(obj as OutputOptions);
-    public override int GetHashCode() => HashCode.Combine(PdfSize, AfterSave, AlsoSaveText, Archival, Protect, WordPageImages);
+    public override int GetHashCode() => HashCode.Combine(PdfSize, AfterSave, AlsoSaveText, Archival, Protect, WordPageImages, PageSize);
 }
 
 /// <summary>

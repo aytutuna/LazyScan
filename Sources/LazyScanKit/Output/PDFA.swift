@@ -46,6 +46,9 @@ public struct PDFWriteOptions: @unchecked Sendable {
     /// file anyone can open. A PDF/A file can't have one: `PDFWriter` refuses options asking for both.
     public var protection: PDFProtection?
 
+    /// The size of each page (`PDFPageSize`); the size each page was scanned at by default.
+    public var pageSize: PDFPageSize = .asScanned
+
     /// Where a protected file's key, salts and IVs come from (tests); nil: `SecRandomCopyBytes`.
     var random: PDFRandomSource?
 
@@ -77,6 +80,7 @@ public struct PDFWriteOptions: @unchecked Sendable {
         options.conformance = output.archival && !output.protect ? .pdfA2b : .standard
         options.title = title
         options.protection = output.protect ? protection : nil
+        options.pageSize = output.pageSize
         return options
     }
 }

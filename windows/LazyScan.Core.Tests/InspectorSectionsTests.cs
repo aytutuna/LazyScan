@@ -78,6 +78,12 @@ public class InspectorSectionsTests
         Assert.True(InspectorSections.OutputChanged(compact, OutputFormat.Pdf));
         compact.Intent = ScanIntent.Photo;
         Assert.False(InspectorSections.OutputChanged(compact, OutputFormat.Jpeg));
+        // A page size other than as scanned is shown after the size, and is a change.
+        var a4 = new ScanSettings();
+        a4.Output.PageSize = PdfPageSize.A4;
+        Assert.Equal("PDF · Standard · A4", InspectorSections.OutputSummary(a4, OutputFormat.Pdf));
+        Assert.True(InspectorSections.OutputChanged(a4, OutputFormat.Pdf));
+        Assert.False(InspectorSections.OutputChanged(a4, OutputFormat.Jpeg));
         Assert.Equal("Text", InspectorSections.OutputSummary(s, OutputFormat.Text));
 
         s.Adjustments.AutoEnhance = true;

@@ -3702,6 +3702,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (IdCardFront is null) return Task.CompletedTask;
         var s = Settings.Clone();
+        // The card is drawn at its paper's real size; a page size would scale it.
+        s.Output.PageSize = PdfPageSize.AsScanned;
         // The card is a picture: a PDF or an image, never a text format.
         var pageFormat = OutputFormats.PageFormat(s.Format);
         var paper = IdCardPaperSize;

@@ -260,6 +260,23 @@ final class PDFAppenderTests: XCTestCase {
         XCTAssertTrue(Self.update(original, appended).contains("\nxref\n2 1\n"))
     }
 
+    func test_pageSize_newPagesGetTheFixedBox_andTheTextFollows() throws {
+        let original = PDFFixture.inherited()
+        let line = OCRLine(text: "Merhaba", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.4, height: 0.05), confidence: 0.9)
+        let page = PDFPageInput(jpegData: PDFWriterTests.tinyJPEGData, pixelWidth: 600, pixelHeight: 900, dpi: 300,
+                                ocrLines: [line])
+        let appended = try append(original, [page], PDFAppendOptions(pageSize: .a4))
+        try checkAppended(original, appended, 1)
+        let update = Self.update(original, appended)
+        XCTAssertTrue(update.contains("/MediaBox [0 0 595 842]"))
+        XCTAssertTrue(update.contains("/CropBox [0 0 595 842]>>"))
+        XCTAssertTrue(update.contains("q\n144 0 0 216 225.5 313 cm\n/Im0 Do\nQ\n"))
+        XCTAssertTrue(update.contains("1 0 0 1 239.9 421 Tm\n"))
+        // Without the option the page keeps its own size.
+        let plain = Self.update(original, try append(original, [page]))
+        XCTAssertTrue(plain.contains("/MediaBox [0 0 144 216]"))
+    }
+
     func test_inheritedAttributes_doNotReachTheNewPages() throws {
         let original = PDFFixture.inherited()
         let appended = try append(original, [Self.page()])

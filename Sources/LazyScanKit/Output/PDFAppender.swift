@@ -138,13 +138,17 @@ public struct PDFAppendResult: Equatable, Sendable {
     public var pageCount: Int { pagesBefore + pagesAdded }
 }
 
-/// Fixed values for tests: the update's new file identifier.
+/// How the new pages are written, and fixed values for tests (the update's new file identifier).
 public struct PDFAppendOptions: Sendable {
     /// The identifier's second half after the update (16 bytes); nil: random.
     public var documentId: [UInt8]?
 
-    public init(documentId: [UInt8]? = nil) {
+    /// The size the new pages get (`PDFPageSize`); the pages already in the file keep theirs.
+    public var pageSize: PDFPageSize
+
+    public init(documentId: [UInt8]? = nil, pageSize: PDFPageSize = .asScanned) {
         self.documentId = documentId
+        self.pageSize = pageSize
     }
 }
 
@@ -354,6 +358,7 @@ public enum PDFAppender {
         }
         let w = try PDFObjectWriter(position: position, output: output)
         let codes = GlyphlessCodes.of(texts)
+        let pageSize: PDFPageSize = options?.pageSize ?? .asScanned
         var next = reader.nextObjectNumber
         let fontObject = hasText ? next : 0
         if hasText { next += 6 }
@@ -373,14 +378,14 @@ public enum PDFAppender {
             var extra = " /Rotate 0"
             if rootHasCropBox {
                 let dpi = Double(max(page.dpi, 1))
-                let width = PDFWriter.f(Double(page.pixelWidth) / dpi * 72.0)
-                let height = PDFWriter.f(Double(page.pixelHeight) / dpi * 72.0)
-                extra += " /CropBox [0 0 \(width) \(height)]"
+                let place = pageSize.placement(widthPts: Double(page.pixelWidth) / dpi * 72.0,
+                                               heightPts: Double(page.pixelHeight) / dpi * 72.0)
+                extra += " /CropBox [0 0 \(PDFWriter.f(place.pageWidth)) \(PDFWriter.f(place.pageHeight))]"
             }
             let pageObject = firstPage + i * 3
             try PDFWriter.writePage(w, pageObject: pageObject, imageObject: pageObject + 1,
                                     contentsObject: pageObject + 2, parent: parent, index: i, page: page,
-                                    fontObject: fontObject, codes: codes, extraEntries: extra)
+                                    fontObject: fontObject, codes: codes, pageSize: pageSize, extraEntries: extra)
             kids.append(PDFReference(pageObject, 0))
         }
 

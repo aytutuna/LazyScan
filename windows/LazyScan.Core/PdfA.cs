@@ -43,6 +43,9 @@ public sealed record PdfWriteOptions
     /// </summary>
     public PdfProtection? Protection { get; init; }
 
+    /// <summary>The size of each page (<see cref="PdfPageSize"/>); the size each page was scanned at by default.</summary>
+    public PdfPageSize PageSize { get; init; } = PdfPageSize.AsScanned;
+
     /// <summary>Where a protected file's key, salts and IVs come from (tests); null: the system's cryptographic random generator.</summary>
     internal Action<Span<byte>>? Random { get; init; }
 
@@ -68,6 +71,7 @@ public sealed record PdfWriteOptions
             Conformance = output.Archival && !output.Protect ? PdfConformance.PdfA2b : PdfConformance.Standard,
             Title = title,
             Protection = output.Protect ? protection : null,
+            PageSize = output.PageSize,
         };
     }
 }

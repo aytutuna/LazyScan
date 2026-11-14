@@ -256,7 +256,9 @@ extension AppState {
                     // The password before the file is named, which takes the running number.
                     _ = try await self.protectionFor(s)
                     let planned = try self.outputURL(fileExtension: "pdf")
-                    let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
+                    var options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
+                    // The card is drawn at its paper's real size; a page size would scale it.
+                    options.pageSize = .asScanned
                     let page = ScannedPage(image: composed.page, dpi: pageDPI, colorMode: pageMode)
                     url = try await Task.detached(priority: .userInitiated) {
                         try AppState.writePDFAtomically(pages: [page], searchable: s.pdfSearchable,

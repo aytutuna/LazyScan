@@ -147,7 +147,8 @@ public sealed partial class AppViewModel
                     catch (Exception e) when (e is IOException or UnauthorizedAccessException) { backup = null; }
                     try
                     {
-                        return PdfAppender.AppendToFile(targetPath, inputs, progress: null, token, protection: protection);
+                        return PdfAppender.AppendToFile(targetPath, inputs, progress: null, token,
+                                                 new PdfAppendOptions { PageSize = s.Output.PageSize }, protection);
                     }
                     catch
                     {

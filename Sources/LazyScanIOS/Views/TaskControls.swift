@@ -430,7 +430,7 @@ private struct OptionReason: View {
 }
 
 /// The PDF's choices while a save writes one (`IOSSettingsSections.writesPDF`): its size (Best, Standard,
-/// Compact, Smallest), Searchable PDF (not for the ID card), Archive (PDF/A) and Password, which exclude each
+/// Compact, Smallest), its page size (As scanned, A4, Letter), Searchable PDF (not for the ID card), Archive (PDF/A) and Password, which exclude each
 /// other (`IOSPDFOptions`), and the pages' text in a .txt file beside the PDF (`OutputOptions.alsoSaveText`, as
 /// on the Mac). The password itself is asked for when saving (`IOSPasswordPrompt`) and never kept.
 struct PDFOptionsSection: View {
@@ -450,6 +450,14 @@ struct PDFOptionsSection: View {
             .pickerStyle(.segmented)
             .accessibilityHint(Text("\(output.pdfSize.hint). \(output.pdfSize.detail)"))
             .accessibilityIdentifier("pdf.size")
+            Picker(PDFPageSize.optionLabel, selection: pageSize) {
+                ForEach(PDFPageSize.allCases) { (size: PDFPageSize) in
+                    Text(size.label).tag(size)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityHint(Text(output.pageSize.hint))
+            .accessibilityIdentifier("pdf.pageSize")
         }
         if IOSSettingsSections.writesPDF(s) {
             if flow != TaskFlowKind.copy && flow != TaskFlowKind.idCard {
@@ -495,6 +503,15 @@ struct PDFOptionsSection: View {
             get: { appState.settings.output.pdfSize },
             set: { (size: PDFSizePreset) in
                 appState.settings.output.pdfSize = size
+            })
+    }
+
+    private var pageSize: Binding<PDFPageSize> {
+        let appState: AppState = state
+        return Binding<PDFPageSize>(
+            get: { appState.settings.output.pageSize },
+            set: { (size: PDFPageSize) in
+                appState.settings.output.pageSize = size
             })
     }
 

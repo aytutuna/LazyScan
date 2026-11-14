@@ -1168,6 +1168,13 @@
   "90° clockwise": {},
   "90° counterclockwise": {},
   "As scanned": {},
+  "Page size": {},
+  "A4": {
+    "same": true
+  },
+  "Each page keeps the size it was scanned at": {},
+  "Every page is 210 by 297 millimeters. Pages that are larger are scaled down to fit and centered.": {},
+  "Every page is 8.5 by 11 inches. Pages that are larger are scaled down to fit and centered.": {},
   "Copies print every page as scanned: spreads are not split.": {},
   "Receipts are found on the glass one by one.": {},
   "Only for pages collected before saving: a scan saved at once is kept as scanned.": {},

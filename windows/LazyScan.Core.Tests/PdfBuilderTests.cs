@@ -408,6 +408,79 @@ public class PdfBuilderTests
         Assert.Contains("612 0 0 792 0 0 cm", text); // the image is stretched over the whole page
     }
 
+    private static PdfPageInput Scanned(int width, int height, IReadOnlyList<OcrLine>? lines = null) =>
+        new(TinyJpeg, width, height, 300, lines);
+
+    [Fact]
+    public void PageSizeA4_GivesEveryPageOneBox_ScalesDownOnly_AndCenters()
+    {
+        // A Letter page (612 x 792 pt), a small one (144 x 216 pt) and a wide one (960 x 720 pt).
+        var pages = new[] { Scanned(2550, 3300), Scanned(600, 900), Scanned(4000, 3000) };
+        string text = Encoding.Latin1.GetString(PdfBuilder.Make(pages, options: new PdfWriteOptions { PageSize = PdfPageSize.A4 }));
+        Assert.Equal(3, CountOccurrences(text, "/MediaBox [0 0 595 842]"));
+        Assert.Contains("q\n595 0 0 770 0 36 cm\n/Im0 Do\nQ\n", text);
+        Assert.Contains("q\n144 0 0 216 225.5 313 cm\n/Im1 Do\nQ\n", text);
+        Assert.Contains("q\n595 0 0 446.25 0 197.875 cm\n/Im2 Do\nQ\n", text);
+    }
+
+    [Fact]
+    public void PageSizeLetter_ScalesAnA4PageDown()
+    {
+        // An A4 page at 300 dpi is 595.2 x 841.92 pt.
+        string text = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(2480, 3508)], options: new PdfWriteOptions { PageSize = PdfPageSize.Letter }));
+        Assert.Contains("/MediaBox [0 0 612 792]", text);
+        Assert.Contains("q\n559.9088 0 0 792 26.0456 0 cm\n/Im0 Do\nQ\n", text);
+    }
+
+    [Fact]
+    public void PageSizeAsScanned_IsTheDefault_AndChangesNothing()
+    {
+        var pages = new[] { Scanned(2550, 3300, [new("Şehir", new RectD(0.1, 0.5, 0.8, 0.05), 0.9f)]), Scanned(600, 900) };
+        Assert.Equal(PdfBuilder.Make(pages), PdfBuilder.Make(pages, options: new PdfWriteOptions { PageSize = PdfPageSize.AsScanned }));
+        Assert.Equal(PdfPageSize.AsScanned, new PdfWriteOptions().PageSize);
+    }
+
+    [Fact]
+    public void PageSize_TextLayerFollowsTheImage()
+    {
+        // The Letter page on A4 is 595 x 770 pt with its corner at (0, 36).
+        var line = new OcrLine("Şehir İçi ığdır", new RectD(0.1, 0.5, 0.8, 0.05), 0.9f);
+        var options = new PdfWriteOptions { PageSize = PdfPageSize.A4 };
+        string text = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(2550, 3300, [line])], options: options));
+        Assert.Contains("/F1 38.5 Tf\n", text);
+        Assert.Contains("1 0 0 1 59.5 421 Tm\n", text);
+        Assert.Contains("164.8485 Tz\n", text);
+        string small = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(600, 900, [line])], options: options));
+        // 144 x 216 pt at (225.5, 313): 0.1 * 144 + 225.5 and 0.5 * 216 + 313.
+        Assert.Contains("1 0 0 1 239.9 421 Tm\n", small);
+    }
+
+    [Fact]
+    public void PageSize_Placement_IsPureGeometry()
+    {
+        Assert.Equal(new PdfPagePlacement(595, 842, 595, 842, 0, 0), PdfPageSize.A4.Placement(595, 842));
+        Assert.Equal(new PdfPagePlacement(612, 792, 100, 100, 256, 346), PdfPageSize.Letter.Placement(100, 100));
+        Assert.Equal(new PdfPagePlacement(100, 150, 100, 150, 0, 0), PdfPageSize.AsScanned.Placement(100, 150));
+        Assert.Equal(["AsScanned", "A4", "Letter"], Enum.GetNames<PdfPageSize>());
+    }
+
+    [Fact]
+    public void PageSizeArchival_UsesTheSameBox()
+    {
+        var options = new PdfWriteOptions { Conformance = PdfConformance.PdfA2b, PageSize = PdfPageSize.A4 };
+        string text = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(2550, 3300), Scanned(600, 900)], options: options));
+        Assert.Equal(2, CountOccurrences(text, "/MediaBox [0 0 595 842]"));
+        Assert.Contains("/Metadata", text);
+    }
+
+    [Fact]
+    public void PageSize_IsTakenFromTheOutputSettings()
+    {
+        var output = new OutputOptions { PageSize = PdfPageSize.Letter };
+        Assert.Equal(PdfPageSize.Letter, PdfWriteOptions.For(output, "Scan").PageSize);
+        Assert.Equal(PdfPageSize.AsScanned, PdfWriteOptions.For(new OutputOptions(), "Scan").PageSize);
+    }
+
     [Fact]
     public void UnreadableJpegFallsBackToPagePixelSize()
     {

@@ -132,6 +132,7 @@ extension AppState {
                     do {
                         let added: PDFAppendResult = try PDFAppender.appendToFile(path: file.path, pages: inputs,
                                                                                   shouldContinue: { !flag.isCancelled },
+                                                                                  options: PDFAppendOptions(pageSize: s.output.pageSize),
                                                                                   protection: protection)
                         return (added, copied, FileStamp(of: file))
                     } catch {

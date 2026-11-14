@@ -89,11 +89,14 @@ public sealed record PdfAppendResult(string Path, int PagesBefore, int PagesAdde
     public int PageCount => PagesBefore + PagesAdded;
 }
 
-/// <summary>Fixed values for tests: the update's new file identifier.</summary>
+/// <summary>How the new pages are written, and fixed values for tests (the update's new file identifier).</summary>
 public sealed record PdfAppendOptions
 {
     /// <summary>The identifier's second half after the update (16 bytes); null: random.</summary>
     public byte[]? DocumentId { get; init; }
+
+    /// <summary>The size the new pages get (<see cref="PdfPageSize"/>); the pages already in the file keep theirs.</summary>
+    public PdfPageSize PageSize { get; init; } = PdfPageSize.AsScanned;
 }
 
 /// <summary>
@@ -273,6 +276,7 @@ public static class PdfAppender
         int rootGeneration = reader.GenerationOf(root.Number);
         string parent = $"{root.Number} {rootGeneration} R";
         bool rootHasCropBox = rootDictionary.ContainsKey("CropBox");
+        var pageSize = options?.PageSize ?? PdfPageSize.AsScanned;
 
         if (hasText) PdfBuilder.WriteTextFont(w, fontObject, codes);
         var kids = new List<PdfObject>(oldKids.Items);
@@ -285,10 +289,11 @@ public static class PdfAppender
             if (rootHasCropBox)
             {
                 double dpi = Math.Max(page.Dpi, 1);
-                extra += $" /CropBox [0 0 {PdfBuilder.F(page.PixelWidth / dpi * 72.0)} {PdfBuilder.F(page.PixelHeight / dpi * 72.0)}]";
+                var place = pageSize.Placement(page.PixelWidth / dpi * 72.0, page.PixelHeight / dpi * 72.0);
+                extra += $" /CropBox [0 0 {PdfBuilder.F(place.PageWidth)} {PdfBuilder.F(place.PageHeight)}]";
             }
             int pageObject = firstPage + i * 3;
-            PdfBuilder.WritePage(w, pageObject, pageObject + 1, pageObject + 2, parent, i, page, fontObject, codes, extra);
+            PdfBuilder.WritePage(w, pageObject, pageObject + 1, pageObject + 2, parent, i, page, fontObject, codes, pageSize, extra);
             kids.Add(new PdfReference(pageObject, 0));
         }
 

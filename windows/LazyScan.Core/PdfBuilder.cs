@@ -97,6 +97,29 @@ public sealed record PdfPageInput(PdfImageData Image, int PixelWidth, int PixelH
 }
 
 /// <summary>
+/// Where a page's image goes on its PDF page, in points: the page's size, and the image's size and lower
+/// left corner. Twin of Swift `PDFPagePlacement`.
+/// </summary>
+internal readonly record struct PdfPagePlacement(double PageWidth, double PageHeight, double Width, double Height, double X, double Y);
+
+internal static class PdfPageSizes
+{
+    /// <summary>
+    /// The page for an image of the given size: the image's own size for AsScanned, else the fixed page
+    /// with the image scaled down to fit (never up, never cropped) and centered.
+    /// </summary>
+    internal static PdfPagePlacement Placement(this PdfPageSize size, double widthPts, double heightPts)
+    {
+        if (size == PdfPageSize.AsScanned) return new(widthPts, heightPts, widthPts, heightPts, 0, 0);
+        (double pageWidth, double pageHeight) = size == PdfPageSize.A4 ? (595.0, 842.0) : (612.0, 792.0);
+        double scale = Math.Min(1.0, Math.Min(pageWidth / widthPts, pageHeight / heightPts));
+        double width = widthPts * scale;
+        double height = heightPts * scale;
+        return new(pageWidth, pageHeight, width, height, Math.Max(0, (pageWidth - width) / 2), Math.Max(0, (pageHeight - height) / 2));
+    }
+}
+
+/// <summary>
 /// Minimal, dependency-free PDF writer for scanned pages (its object level, with PDF/A and the
 /// password, has a Swift twin, Sources/LazyScanKit/Output/PDFWriter.swift, through which the
 /// Mac and the iPhone write every PDF, byte for byte as here). It writes PDF 1.4, PDF/A-2b for
@@ -369,7 +392,7 @@ public static class PdfBuilder
         {
             if (cancellationToken.IsCancellationRequested) throw ScanException.Cancelled();
             progress?.Invoke(Loc.T("Writing page {0} of {1}…", i + 1, pages.Count));
-            WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), "2 0 R", i, pages[i], fontObject, codes, "");
+            WritePage(w, ObjPage(i), ObjImage(i), ObjContents(i), "2 0 R", i, pages[i], fontObject, codes, options.PageSize, "");
         }
 
         string trailer = "/Root 1 0 R";
@@ -397,27 +420,27 @@ public static class PdfBuilder
     /// content stream. Shared by <see cref="Write"/> and <see cref="PdfAppender"/>.
     /// </summary>
     internal static void WritePage(PdfObjectWriter w, int pageObject, int imageObject, int contentsObject, string parent,
-                                   int index, PdfPageInput page, int fontObject, GlyphlessCodes codes, string extraEntries)
+                                   int index, PdfPageInput page, int fontObject, GlyphlessCodes codes, PdfPageSize pageSize,
+                                   string extraEntries)
     {
         // PDF media box in points: pixels / dpi × 72.
         double dpi = Math.Max(page.Dpi, 1);
-        double widthPts = page.PixelWidth / dpi * 72.0;
-        double heightPts = page.PixelHeight / dpi * 72.0;
+        var place = pageSize.Placement(page.PixelWidth / dpi * 72.0, page.PixelHeight / dpi * 72.0);
         bool pageHasText = page.OcrLines is { Count: > 0 };
 
         string fontResource = pageHasText ? $" /Font <</F1 {fontObject} 0 R>>" : "";
         w.WriteObject(pageObject,
-            $"<</Type /Page /Parent {parent} /MediaBox [0 0 {F(widthPts)} {F(heightPts)}] " +
+            $"<</Type /Page /Parent {parent} /MediaBox [0 0 {F(place.PageWidth)} {F(place.PageHeight)}] " +
             $"/Resources <</XObject <</Im{index} {imageObject} 0 R>>{fontResource}>> " +
             $"/Contents {contentsObject} 0 R{extraEntries}>>");
 
         // The XObject must declare the image's own dimensions, which differ from the page's
         // pixel size when only a preview was available or the image was downsampled; the
-        // content stream's cm scales the unit-square image onto the full media box either way.
+        // content stream's cm scales the unit-square image onto its place on the media box either way.
         byte[] data = page.Image.Data;
         w.WriteStream(imageObject, ImageEntries(page, data), data);
 
-        w.WriteStream(contentsObject, "", BuildContentStream(index, widthPts, heightPts, page.OcrLines, codes));
+        w.WriteStream(contentsObject, "", BuildContentStream(index, place, page.OcrLines, codes));
     }
 
     /// <summary>
@@ -533,12 +556,11 @@ public static class PdfBuilder
 
     // MARK: - Content stream
 
-    private static byte[] BuildContentStream(int pageIndex, double widthPts, double heightPts,
+    private static byte[] BuildContentStream(int pageIndex, PdfPagePlacement place,
                                              IReadOnlyList<OcrLine>? lines, GlyphlessCodes codes)
     {
         var sb = new StringBuilder();
-        // Draw the page image across the full media box.
-        sb.Append($"q\n{F(widthPts)} 0 0 {F(heightPts)} 0 0 cm\n/Im{pageIndex} Do\nQ\n");
+        sb.Append($"q\n{F(place.Width)} 0 0 {F(place.Height)} {F(place.X)} {F(place.Y)} cm\n/Im{pageIndex} Do\nQ\n");
 
         if (lines is { Count: > 0 })
         {
@@ -548,7 +570,7 @@ public static class PdfBuilder
             sb.Append("BT\n3 Tr\n");
             foreach (var line in lines)
             {
-                if (TextLayerLine(line, codes, widthPts, heightPts) is not { } placed) continue;
+                if (TextLayerLine(line, codes, place.Width, place.Height, place.X, place.Y) is not { } placed) continue;
                 sb.Append($"/F1 {F(placed.FontSize)} Tf\n");
                 sb.Append($"{F(placed.HorizontalScale * 100)} Tz\n");
                 sb.Append($"1 0 0 1 {F(placed.X)} {F(placed.Baseline)} Tm\n");
@@ -569,8 +591,12 @@ public static class PdfBuilder
     /// </summary>
     internal readonly record struct PlacedLine(double FontSize, double HorizontalScale, double X, double Baseline);
 
-    /// <summary>The placement of <paramref name="line"/> on a page of the given size; null for an empty line or box.</summary>
-    internal static PlacedLine? TextLayerLine(OcrLine line, GlyphlessCodes codes, double widthPts, double heightPts)
+    /// <summary>
+    /// The placement of <paramref name="line"/> on an image of the given size whose lower left corner is at
+    /// (<paramref name="originX"/>, <paramref name="originY"/>) on the page; null for an empty line or box.
+    /// </summary>
+    internal static PlacedLine? TextLayerLine(OcrLine line, GlyphlessCodes codes, double widthPts, double heightPts,
+                                              double originX = 0, double originY = 0)
     {
         if (string.IsNullOrEmpty(line.Text)) return null;
         var box = line.BoundingBox.Standardized;
@@ -579,7 +605,7 @@ public static class PdfBuilder
         if (fontSize <= 0 || targetWidth <= 0) return null;
         double measuredWidth = GlyphlessFont.TextWidth(codes.Codes(line.Text).Count, fontSize);
         double scale = Math.Clamp(targetWidth / measuredWidth, 0.2, 5.0);
-        return new PlacedLine(fontSize, scale, box.MinX * widthPts, box.MinY * heightPts);
+        return new PlacedLine(fontSize, scale, originX + box.MinX * widthPts, originY + box.MinY * heightPts);
     }
 
     /// <summary>Culture-invariant number formatting — PDF syntax requires '.' decimals.</summary>

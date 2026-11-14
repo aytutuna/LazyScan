@@ -419,6 +419,77 @@ final class PDFWriterTests: XCTestCase {
         XCTAssertTrue(Self.has(pdf, "612 0 0 792 0 0 cm")) // the image is stretched over the whole page
     }
 
+    // MARK: - Page size (PdfBuilderTests.PageSize_*)
+
+    private static func scanned(_ width: Int, _ height: Int, _ lines: [OCRLine]? = nil) -> PDFPageInput {
+        PDFPageInput(jpegData: tinyJPEGData, pixelWidth: width, pixelHeight: height, dpi: 300, ocrLines: lines)
+    }
+
+    private static func options(_ size: PDFPageSize, conformance: PDFConformance = .standard) -> PDFWriteOptions {
+        var options = PDFWriteOptions(conformance: conformance)
+        options.pageSize = size
+        return options
+    }
+
+    func test_pageSize_a4_givesEveryPageOneBox_scalesDownOnly_andCenters() throws {
+        // A Letter page (612 x 792 pt), a small one (144 x 216 pt) and a wide one (960 x 720 pt).
+        let pages = [Self.letterPage(), Self.scanned(600, 900), Self.scanned(4000, 3000)]
+        let pdf = try PDFWriter.make(pages, options: Self.options(.a4))
+        XCTAssertEqual(Self.count(pdf, "/MediaBox [0 0 595 842]"), 3)
+        XCTAssertTrue(Self.has(pdf, "q\n595 0 0 770 0 36 cm\n/Im0 Do\nQ\n"))
+        XCTAssertTrue(Self.has(pdf, "q\n144 0 0 216 225.5 313 cm\n/Im1 Do\nQ\n"))
+        XCTAssertTrue(Self.has(pdf, "q\n595 0 0 446.25 0 197.875 cm\n/Im2 Do\nQ\n"))
+    }
+
+    func test_pageSize_letter_scalesAnA4PageDown() throws {
+        // An A4 page at 300 dpi is 595.2 x 841.92 pt.
+        let pdf = try PDFWriter.make([Self.scanned(2480, 3508)], options: Self.options(.letter))
+        XCTAssertTrue(Self.has(pdf, "/MediaBox [0 0 612 792]"))
+        XCTAssertTrue(Self.has(pdf, "q\n559.9088 0 0 792 26.0456 0 cm\n/Im0 Do\nQ\n"))
+    }
+
+    func test_pageSize_asScanned_isTheDefault_andChangesNothing() throws {
+        let pages = [Self.letterPage([Self.line("Şehir", 0.1, 0.5, 0.8, 0.05)]), Self.scanned(600, 900)]
+        XCTAssertEqual(try PDFWriter.make(pages, options: Self.options(.asScanned)), try PDFWriter.make(pages))
+        XCTAssertEqual(PDFWriteOptions().pageSize, .asScanned)
+    }
+
+    func test_pageSize_textLayerFollowsTheImage() throws {
+        // The Letter page on A4 is 595 x 770 pt with its corner at (0, 36).
+        let line = Self.line("Şehir İçi ığdır", 0.1, 0.5, 0.8, 0.05)
+        let pdf = try PDFWriter.make([Self.letterPage([line])], options: Self.options(.a4))
+        XCTAssertTrue(Self.has(pdf, "/F1 38.5 Tf\n"))
+        XCTAssertTrue(Self.has(pdf, "1 0 0 1 59.5 421 Tm\n"))
+        XCTAssertTrue(Self.has(pdf, "164.8485 Tz\n"))
+        let small = try PDFWriter.make([Self.scanned(600, 900, [line])], options: Self.options(.a4))
+        // 144 x 216 pt at (225.5, 313): 0.1 * 144 + 225.5 and 0.5 * 216 + 313.
+        XCTAssertTrue(Self.has(small, "1 0 0 1 239.9 421 Tm\n"))
+    }
+
+    func test_pageSize_placement_isPureGeometry() {
+        let exact = PDFPageSize.a4.placement(widthPts: 595, heightPts: 842)
+        XCTAssertEqual(exact, PDFPagePlacement(pageWidth: 595, pageHeight: 842, width: 595, height: 842, x: 0, y: 0))
+        let tiny = PDFPageSize.letter.placement(widthPts: 100, heightPts: 100)
+        XCTAssertEqual(tiny, PDFPagePlacement(pageWidth: 612, pageHeight: 792, width: 100, height: 100, x: 256, y: 346))
+        let own = PDFPageSize.asScanned.placement(widthPts: 100, heightPts: 150)
+        XCTAssertEqual(own, PDFPagePlacement(pageWidth: 100, pageHeight: 150, width: 100, height: 150, x: 0, y: 0))
+        XCTAssertEqual(PDFPageSize.allCases.map(\.rawValue), ["asScanned", "a4", "letter"])
+    }
+
+    func test_pageSize_archival_usesTheSameBox() throws {
+        let pdf = try PDFWriter.make([Self.letterPage(), Self.scanned(600, 900)],
+                                     options: Self.options(.a4, conformance: .pdfA2b))
+        XCTAssertEqual(Self.count(pdf, "/MediaBox [0 0 595 842]"), 2)
+        XCTAssertTrue(Self.has(pdf, "/Metadata"))
+    }
+
+    func test_pageSize_isTakenFromTheOutputSettings() throws {
+        var output = OutputOptions()
+        output.pageSize = .letter
+        XCTAssertEqual(try PDFWriteOptions.forOutput(output, title: "Scan").pageSize, .letter)
+        XCTAssertEqual(try PDFWriteOptions.forOutput(OutputOptions(), title: "Scan").pageSize, .asScanned)
+    }
+
     // MARK: - Cancellation
 
     func test_cancelledBeforeFirstPage_throwsCancelled() {
