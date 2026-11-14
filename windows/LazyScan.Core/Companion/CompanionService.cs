@@ -212,6 +212,7 @@ public sealed class CompanionService : IAsyncDisposable
     {
         Devices.Remove(id);
         Outbox.RemoveDevice(id);
+        Inbox.RemoveDevice(id);
         await Host.RefreshAsync().ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -234,7 +235,11 @@ public sealed class CompanionService : IAsyncDisposable
             _pairing = null;
             _pairingTimer?.Cancel();
         }
-        foreach (var device in Devices.Devices) Outbox.RemoveDevice(device.Id);
+        foreach (var device in Devices.Devices)
+        {
+            Outbox.RemoveDevice(device.Id);
+            Inbox.RemoveDevice(device.Id);
+        }
         Devices.RemoveAll();
         await Host.RefreshAsync(restart: true).ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);

@@ -273,6 +273,22 @@ public sealed class CompanionRouterTests : IDisposable
     }
 
     [Fact]
+    public void Inbox_PendingDeletesLeftoverPartFiles()
+    {
+        string folder = Path.Combine(_directory, "Inbox", "phone-0001");
+        Directory.CreateDirectory(folder);
+        string stale = Path.Combine(folder, "package-0001.part");
+        string running = Path.Combine(folder, "package-0002.part");
+        File.WriteAllText(stale, "half");
+        File.WriteAllText(running, "half");
+        Assert.True(_inbox.TryBegin("phone-0001", "package-0002"));
+
+        Assert.Empty(_inbox.Pending());
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(running));
+    }
+
+    [Fact]
     public void Inbox_PendingCountsPagesWithoutReadingThePictures()
     {
         string folder = Path.Combine(_directory, "Inbox", "phone-0001");
@@ -381,6 +397,18 @@ public sealed class CompanionRouterTests : IDisposable
         Assert.Equal("phone-0001", removed?.Id);
         Assert.Empty(_devices.Devices);
         Assert.Equal(401, (await Send("GET", CompanionProtocol.HelloPath, device: "phone-0001", secret: secret)).Status);
+    }
+
+    [Fact]
+    public async Task DeviceSelf_DeletesThePhonesInboxFolder()
+    {
+        string secret = await PairPhone();
+        string folder = Path.Combine(_directory, "Inbox", "phone-0001");
+        Directory.CreateDirectory(folder);
+        File.WriteAllBytes(Path.Combine(folder, "package-0001.lsdoc"), CompanionPackage.Make(CompanionFixtures.Minimal));
+        Assert.Equal(204, (await Send("DELETE", CompanionProtocol.DeviceSelfPath, device: "phone-0001", secret: secret)).Status);
+        Assert.False(Directory.Exists(folder));
+        Assert.Empty(_inbox.Pending());
     }
 
     [Fact]

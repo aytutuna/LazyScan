@@ -317,6 +317,20 @@ final class CompanionRouterTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: locked.path))
     }
 
+    func testInbox_PendingDeletesLeftoverPartFiles() throws {
+        let folder = directory.appendingPathComponent("Inbox/phone-0001", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let stale = folder.appendingPathComponent("package-0001.part")
+        let running = folder.appendingPathComponent("package-0002.part")
+        try Data("half".utf8).write(to: stale)
+        try Data("half".utf8).write(to: running)
+        XCTAssertTrue(inbox.tryBegin(deviceId: "phone-0001", packageId: "package-0002"))
+
+        XCTAssertTrue(inbox.pending().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stale.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: running.path))
+    }
+
     func testInbox_PendingCountsPagesWithoutReadingThePictures() throws {
         let folder = directory.appendingPathComponent("Inbox/phone-0001", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -422,6 +436,17 @@ final class CompanionRouterTests: XCTestCase {
         XCTAssertTrue(devices.devices.isEmpty)
         let hello = await send("GET", CompanionProtocol.helloPath, device: "phone-0001", secret: secret)
         XCTAssertEqual(hello.status, 401)
+    }
+
+    func testDeviceSelf_DeletesThePhonesInboxFolder() async throws {
+        let secret = try await pairPhone()
+        let folder = directory.appendingPathComponent("Inbox/phone-0001", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try CompanionPackage.make(CompanionFixtures.minimal).write(to: folder.appendingPathComponent("package-0001.lsdoc"))
+        let response = await send("DELETE", CompanionProtocol.deviceSelfPath, device: "phone-0001", secret: secret)
+        XCTAssertEqual(response.status, 204)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path))
+        XCTAssertTrue(inbox.pending().isEmpty)
     }
 
     func testUnknownPaths_AreNotFound() async {

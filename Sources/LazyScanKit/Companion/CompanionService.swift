@@ -223,6 +223,7 @@ public final class CompanionService: @unchecked Sendable {
     public func removeDevice(_ id: String) async {
         devices.remove(id)
         outbox.removeDevice(id)
+        inbox.removeDevice(id)
         await host.refresh()
         onChange?()
     }
@@ -236,6 +237,7 @@ public final class CompanionService: @unchecked Sendable {
         replaceSession(nil, timer: nil)
         for device in devices.devices {
             outbox.removeDevice(device.id)
+            inbox.removeDevice(device.id)
         }
         devices.removeAll()
         await host.refresh(restart: true)

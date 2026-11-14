@@ -131,7 +131,7 @@ public sealed class CompanionInbox
     /// <summary>
     /// The packages received but not released (the app ended before adding them), oldest first,
     /// known by its page count from the manifest (no picture is read); a file that is no longer a valid package
-    /// is deleted, one that cannot be read stays for the next start.
+    /// is deleted, one that cannot be read stays for the next start. Leftover ".part" files of uploads that are not running are deleted.
     /// </summary>
     public IReadOnlyList<ReceivedPackage> Pending()
     {
@@ -141,6 +141,13 @@ public sealed class CompanionInbox
         {
             string deviceId = System.IO.Path.GetFileName(folder);
             if (!CompanionProtocol.IsValidId(deviceId)) continue;
+            foreach (string part in Directory.GetFiles(folder, "*.part"))
+            {
+                lock (_gate)
+                {
+                    if (!_inProgress.Contains(Key(deviceId, System.IO.Path.GetFileNameWithoutExtension(part)))) TryDelete(part);
+                }
+            }
             foreach (string path in Directory.GetFiles(folder, "*." + CompanionPackage.FileExtension))
             {
                 string packageId = System.IO.Path.GetFileNameWithoutExtension(path);

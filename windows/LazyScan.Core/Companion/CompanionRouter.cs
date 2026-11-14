@@ -454,6 +454,7 @@ public sealed class CompanionRouter
         if (Authenticate(request, now) is not { } device) return Unauthorized();
         _devices.Remove(device.Id);
         _outbox.RemoveDevice(device.Id);
+        _inbox.RemoveDevice(device.Id);
         DeviceRemoved?.Invoke(this, device);
         return CompanionResponse.Empty(204);
     }

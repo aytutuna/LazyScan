@@ -295,6 +295,7 @@ public sealed class CompanionLoopbackTests : IAsyncLifetime
         using var b = removed;
         Assert.Equal(HttpStatusCode.OK, (await removed.SendAsync(HttpMethod.Get, CompanionProtocol.HelloPath)).StatusCode);
         await _service.RemoveDeviceAsync("phone-0002");
+        Assert.False(Directory.Exists(Path.Combine(_directory, "Data", "Inbox", "phone-0002")));
         var refused = await removed.SendAsync(HttpMethod.Get, CompanionProtocol.HelloPath);
         Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
         Assert.Equal(CompanionErrorCode.Unauthorized, (await Error(refused))?.Code);

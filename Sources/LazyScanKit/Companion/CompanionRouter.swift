@@ -387,6 +387,7 @@ public final class CompanionRouter: @unchecked Sendable {
         guard let device = authenticate(request, now: now) else { return CompanionRouter.unauthorized() }
         devices.remove(device.id)
         outbox.removeDevice(device.id)
+        inbox.removeDevice(device.id)
         onDeviceRemoved?(device)
         return .empty(204)
     }

@@ -177,7 +177,8 @@ public final class CompanionInbox: @unchecked Sendable {
 
     /// The packages received but not released (the app ended before adding them), oldest first, each
     /// known by its page count from the manifest (no picture is read); a file that is no longer a valid
-    /// package is deleted, one that cannot be read stays for the next start.
+    /// package is deleted, one that cannot be read stays for the next start. Leftover ".part" files of
+    /// uploads that are not running are deleted.
     public func pending() -> [ReceivedPackage] {
         var pending: [ReceivedPackage] = []
         let manager = FileManager.default
@@ -187,6 +188,13 @@ public final class CompanionInbox: @unchecked Sendable {
             guard CompanionProtocol.isValidId(deviceId),
                   let files = try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])
             else { continue }
+            for file in files where file.pathExtension == "part" {
+                lock.lock()
+                if !inProgress.contains(deviceId + "/" + file.deletingPathExtension().lastPathComponent) {
+                    CompanionInbox.tryDelete(file)
+                }
+                lock.unlock()
+            }
             for file in files where file.pathExtension == CompanionPackage.fileExtension {
                 let packageId = file.deletingPathExtension().lastPathComponent
                 guard CompanionProtocol.isValidId(packageId) else { continue }
