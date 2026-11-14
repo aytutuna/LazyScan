@@ -522,9 +522,18 @@ public partial class MainWindow : Window
         // Capabilities-driven pickers.
         SyncCapabilityPickers();
 
+        // An old error goes when a new operation starts or a save succeeds; one raised by that
+        // operation shows below.
+        bool saveShown = ViewModel.SavedBarPaths is not null;
+        if (ViewModel.IsBusy && !_wasBusy) _errorThisRun = false;
+        if ((ViewModel.IsBusy && !_wasBusy) || (saveShown && !_wasSaveShown && !_errorThisRun)) InfoBar.Visibility = Visibility.Collapsed;
+        _wasBusy = ViewModel.IsBusy;
+        _wasSaveShown = saveShown;
+
         // Errors surface once, in the InfoBar (the macOS app binds an alert to errorMessage).
         if (ViewModel.ErrorMessage is { } error)
         {
+            _errorThisRun = true;
             ViewModel.ErrorMessage = null;
             // A scanner that would not connect or scan: the bar offers the troubleshooter.
             bool troubleshoot = ViewModel.ErrorSuggestsTroubleshooter;
@@ -563,7 +572,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Shows an error in the InfoBar above the window content: a title naming the scanner's problem
     /// ("Paper jam") and what to do (<see cref="ScannerProblems.Notice"/>), the whole message as its
-    /// tooltip. It stays until dismissed; a newer error replaces the text. Screen readers are told
+    /// tooltip. It stays until dismissed, the next operation starts or a save succeeds; a newer error replaces the text. Screen readers are told
     /// through a live-region event. The bar's Troubleshoot button is hidden; only a scanner error from
     /// the view model shows it again.
     /// A refusal (<paramref name="title"/>, "Not imported") is shown as it is, under the info glyph
@@ -585,6 +594,10 @@ public partial class MainWindow : Window
         var peer = UIElementAutomationPeer.FromElement(InfoBarText) ?? UIElementAutomationPeer.CreatePeerForElement(InfoBarText);
         peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
+
+    private bool _wasBusy;
+    private bool _wasSaveShown;
+    private bool _errorThisRun;
 
     /// <summary>The InfoBar shows the error of a copy that did not print, with its two buttons.</summary>
     private bool _infoBarAboutCopy;

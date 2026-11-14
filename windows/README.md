@@ -230,12 +230,12 @@ texts); the Mac mirrors the layout (see the main README).
   blank", "Saved"; nothing while a review shows its own title); a
   setting changed for the scanner, or a two-sided scan that came back one-sided, stays on it as a
   short warning ("Ready — Office Scanner · feeder used", "300 dpi used", "3 pages added · one side
-  only", "Saved · 600 dpi used"); its accessible name is the whole sentence, read out as it changes. The Saved bar counts
+  only", "Saved · 600 dpi used"); its accessible name is the whole sentence, when shortened, the whole sentence is also its tooltip; read out as it changes. The Saved bar counts
   what was saved: "3 photos · Scans", "3 receipts · Scans", "3 files · Scans".
 - **The error bar** is titled by the scanner's problem ("Paper jam", "Scanner offline"; "Something
   went wrong" for any other error) and says what to do in a line (`ScannerProblems.Notice`); the
   whole message is its tooltip and help text. A refusal (nothing was done, nothing failed) has a
-  title of its own ("Not imported", "Not added") and the info glyph.
+  title of its own ("Not imported", "Not added") and the info glyph. It goes when the next scan or save starts, or once a save succeeds.
 - **While a review is open** (photos, receipts, the ID card), the task banner is hidden under it,
   keeping its place, and the empty stage's title and line are hidden while a banner shows (the
   import link stays).

@@ -322,11 +322,13 @@ public sealed partial class AppViewModel
             CarryDocumentLabels(before);
             string summary = Loc.T("{0}.", DocumentSplitter.QueueSummary(ScannedPages.Select(item => item.Page).ToList(), Settings.Document));
             int left = total - results.Count;
-            StatusMessage = stopped && left > 0
-                ? Loc.Plural(left, "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
+            StatusMessage = summary;
+            if (stopped && left > 0)
+            {
+                ErrorMessage = Loc.Plural(left, "Stopped reading barcodes: {0} queued page was not read, so codes on it do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
                     "Stopped reading barcodes: {0} queued pages were not read, so codes on them do not split the stack yet. They are read after the next scan, or when the split is chosen again. {1}",
-                    summary)
-                : summary;
+                    summary);
+            }
         });
     }
 

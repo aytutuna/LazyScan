@@ -322,7 +322,9 @@ public sealed partial class AppViewModel
         {
             if (printError is null)
             {
-                SetStatus($"{sent} {PdfProtection.NotSavedMessage}{warningNote}", new(new StatusHead.SentToPrinter()));
+                ErrorMessage = PdfProtection.NotSavedMessage;
+                ErrorTitle = PageFilter.NothingSavedTitle;
+                SetStatus(sent + warningNote, new(new StatusHead.SentToPrinter()));
                 return;
             }
             // Neither printed nor saved: the pages wait in the queue rather than being lost.
@@ -343,9 +345,9 @@ public sealed partial class AppViewModel
         {
             if (printError is not null) throw CopyNotPrinted(printError, setup, " " + Loc.T("The PDF was not saved (cancelled)."));
             // The copy has gone to the printer: only the PDF was cancelled.
-            SetStatus(e is PasswordNotGivenException
-                ? $"{sent} {PdfProtection.NotSavedMessage}"
-                : Loc.T("{0} PDF not saved (cancelled).", sent), new(new StatusHead.SentToPrinter()));
+            ErrorTitle = PageFilter.NothingSavedTitle;
+            ErrorMessage = e is PasswordNotGivenException ? PdfProtection.NotSavedMessage : Loc.T("The PDF was not saved (cancelled).");
+            SetStatus(sent, new(new StatusHead.SentToPrinter()));
             return;
         }
         catch (Exception e) when (printError is not null && e is not OutOfMemoryException)
