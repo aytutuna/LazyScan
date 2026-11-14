@@ -146,6 +146,22 @@ extension AppState {
                       height: min(1, Double(paper.height) / Double(bed.height)))
     }
 
+    /// The settings a copy is scanned with. A feeder copy at Automatic paper asks the scanner for the
+    /// printer's paper rather than the feeder's largest sheet.
+    func copyScanSettings(_ s: ScanSettings, setup: PrinterSetup) -> ScanSettings {
+        guard s.source == .documentFeeder, s.paperSize == .auto else { return s }
+        var scan = s
+        let paper = setup.paper.paper
+        if let named = PaperSizes.match(paper) {
+            scan.paperSize = named
+        } else {
+            scan.paperSize = .custom
+            scan.customPaperWidth = Double(paper.width)
+            scan.customPaperHeight = Double(paper.height)
+        }
+        return scan
+    }
+
     /// Prints a copy's pages (`sendCopyPages`). On the Mac they are held meanwhile, as the phone holds
     /// them on its copy screen: a print panel cancelled or a print that failed leaves them for Print Again
     /// and Choose Another Printer in the status bar, and the failure says so. A print that went through

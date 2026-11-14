@@ -258,6 +258,28 @@ public sealed partial class AppViewModel
         return (setup, selection);
     }
 
+    /// <summary>
+    /// The settings a copy is scanned with. A feeder copy at Automatic paper asks the scanner for the
+    /// printer's paper rather than the feeder's largest sheet.
+    /// </summary>
+    private static ScanSettings CopyScanSettings(ScanSettings s, PrinterSetup setup)
+    {
+        if (s.Source != ScanSource.DocumentFeeder || s.PaperSize != PaperSize.Auto) return s;
+        var scan = s.Clone();
+        var paper = setup.Paper.Paper;
+        if (PaperSizes.Match(paper) is { } named)
+        {
+            scan.PaperSize = named;
+        }
+        else
+        {
+            scan.PaperSize = PaperSize.Custom;
+            scan.CustomPaperWidth = Math.Min(paper.Width, paper.Height);
+            scan.CustomPaperHeight = Math.Max(paper.Width, paper.Height);
+        }
+        return scan;
+    }
+
     /// <summary>Prints the pages of a copy, keeping them held until they have gone to the printer.</summary>
     private async Task PrintCopy(List<ScannedPage> pages, ScanSettings s, PrinterSetup setup, bool areaSelected,
                                  CancellationToken token)

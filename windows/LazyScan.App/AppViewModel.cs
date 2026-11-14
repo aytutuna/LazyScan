@@ -1964,7 +1964,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 NotifyAll();
                 return;
             }
-            var scanned = await session.PerformScanAsync(s, selection);
+            var scanned = await session.PerformScanAsync(copySetup is null ? s : CopyScanSettings(s, copySetup), selection);
             // Discard results that arrive after the user switched devices.
             if (_switchGeneration != generation) return;
             if (scanned.Count == 0) throw ScanException.ScanFailed(() => Loc.T("The scanner returned no pages."));

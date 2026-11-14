@@ -1524,7 +1524,8 @@ public final class AppState: ObservableObject {
                 if finished && !replacesPage && !flag.isCancelled { self.startScanAgain(s, generation: generation) }
                 return
             }
-            let scanned = try await session.performScan(settings: s, selection: selection)
+            let requested = setup.map { self.copyScanSettings(s, setup: $0) } ?? s
+            let scanned = try await session.performScan(settings: requested, selection: selection)
             // Discard results that arrive after the user switched devices.
             guard self.switchGeneration == generation else { return }
             guard !scanned.isEmpty else { throw ScanError.scanFailed(reason: { L10n.t("The scanner returned no pages.") }) }
