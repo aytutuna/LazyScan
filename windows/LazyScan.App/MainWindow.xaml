@@ -1220,6 +1220,14 @@
                                                            TextWrapping="NoWrap" Margin="0,4,0,0"
                                                            Typography.NumeralAlignment="Tabular" Visibility="Collapsed" />
                                             </StackPanel>
+                                            <!-- PDF output only: the size each page is put on; the items and
+                                                 their hints come from PdfPageSize in Core. -->
+                                            <StackPanel x:Name="PageSizeOptions" Margin="0,12,0,0">
+                                                <TextBlock Text="{loc:T Page size}" Style="{StaticResource FieldLabelText}" />
+                                                <ComboBox x:Name="PageSizeBox" HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="{loc:T Page size}"
+                                                          SelectionChanged="PageSize_Changed" />
+                                            </StackPanel>
                                             <StackPanel x:Name="DocumentOptions" Margin="0,8,0,0">
                                                 <CheckBox x:Name="SearchableBox" Style="{StaticResource ToggleSwitchStyle}"
                                                           Content="{loc:T Searchable PDF}"

@@ -67,6 +67,10 @@ public partial class MainWindow : Window
         ColorModeBox.ItemsSource = Enum.GetValues<ColorMode>().Select(m => m.Label());
         FormatBox.ItemsSource = OutputFormats.Offered(ViewModel.Settings.Intent).Select(f => f.Label()).ToList();
         BuildPdfSizeSegments();
+        foreach (var size in Enum.GetValues<PdfPageSize>())
+        {
+            PageSizeBox.Items.Add(new ComboBoxItem { Content = size.Label(), Tag = size });
+        }
         ArchivalBox.Content = PdfA.OptionLabel;
         ArchivalBox.ToolTip = PdfA.OptionHint;
         ProtectBox.Content = PdfProtection.OptionLabel;
@@ -2067,6 +2071,20 @@ public partial class MainWindow : Window
         JpegQualityRow.Visibility = shownFormat == OutputFormat.Jpeg ? Visibility.Visible : Visibility.Collapsed;
         PhotoSteppers.Visibility = s.PhotoAutoSplit ? Visibility.Visible : Visibility.Collapsed;
         PdfSizeOptions.Visibility = pdf || (word && s.Output.WordPageImages) ? Visibility.Visible : Visibility.Collapsed;
+        PageSizeOptions.Visibility = pdf ? Visibility.Visible : Visibility.Collapsed;
+        bool wasUpdating = _updatingUi;
+        _updatingUi = true;
+        try
+        {
+            PageSizeBox.SelectedItem = PageSizeBox.Items.Cast<ComboBoxItem>().First(i => (PdfPageSize)i.Tag == s.Output.PageSize);
+        }
+        finally
+        {
+            _updatingUi = wasUpdating;
+        }
+        string pageSizeHint = s.Output.PageSize.Hint();
+        PageSizeBox.ToolTip = pageSizeHint;
+        AutomationProperties.SetHelpText(PageSizeBox, pageSizeHint);
         PdfSizeLabel.Text = pdf ? Loc.T("PDF size") : Loc.T("Page image size");
         AutomationProperties.SetName(PdfSizeTrack, PdfSizeLabel.Text);
         AutomationProperties.SetHelpText(PdfSizeTrack, Loc.T("{0}. {1}", s.Output.PdfSize.Hint(), s.Output.PdfSize.Detail()));
@@ -2183,6 +2201,14 @@ public partial class MainWindow : Window
         bool reads = SearchableBox.Visibility != Visibility.Visible || s.PdfSearchable;
         OcrLanguageBox.IsEnabled = packs.Count > 0 && reads;
         OcrLanguageHint.Visibility = packs.Count == 0 && reads ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void PageSize_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded || PageSizeBox.SelectedItem is not ComboBoxItem { Tag: PdfPageSize size }) return;
+        if (ViewModel.Settings.Output.PageSize == size) return;
+        ViewModel.Settings.Output.PageSize = size;
+        ViewModel.SettingsEdited();
     }
 
     private void OcrLanguage_Changed(object sender, SelectionChangedEventArgs e)
