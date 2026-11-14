@@ -130,58 +130,20 @@ struct SavedFilesView: View {
             .sorted { $0.modified > $1.modified }
     }
 
-    /// "Turn after save": rewrite a saved image file rotated 90° clockwise, keeping its
-    /// format and DPI metadata. (PDFs are not rotatable here — rotate pages before saving.)
-    ///
-    /// Safety: the rotated file is written beside the original and swapped in atomically,
-    /// so a failed write never destroys the only copy; concurrent rotates of the same file
-    /// are blocked via `rotatingPaths`; multi-page TIFFs are refused rather than silently
-    /// truncated to their first page.
+    /// "Turn after save": rewrite a saved image file rotated 90° clockwise (`ImageExporter.rotateClockwise`).
+    /// Concurrent rotates of the same file are blocked via `rotatingPaths`.
     private func rotate(_ file: SavedFileItem) {
-        guard let format = file.imageFormat else { return }
+        guard file.imageFormat != nil else { return }
         let url = file.url
         guard !rotatingPaths.contains(url.path) else { return }
         rotatingPaths.insert(url.path)
         Task {
-            let failure: String? = await Task.detached(priority: .userInitiated) { () -> String? in
-                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-                    return String(localized: "The file could not be read.")
-                }
-                guard CGImageSourceGetCount(source) == 1 else {
-                    return String(localized: "It has multiple pages — rotate it in Preview instead.")
-                }
-                // Full-size decode with the EXIF orientation baked in, so the pixels
-                // match what the user sees before rotating them.
-                let options: [CFString: Any] = [
-                    kCGImageSourceCreateThumbnailFromImageAlways: true,
-                    kCGImageSourceCreateThumbnailWithTransform: true,
-                    kCGImageSourceThumbnailMaxPixelSize: 100_000,
-                ]
-                guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-                    return String(localized: "The image could not be decoded.")
-                }
-                let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-                let dpi = (props?[kCGImagePropertyDPIWidth] as? NSNumber)?.intValue ?? 300
-                // A black & white TIFF (1 bit per pixel; the app writes them as CCITT G4) stays G4.
-                let depth = (props?[kCGImagePropertyDepth] as? NSNumber)?.intValue ?? 8
-                let mode: ColorMode = format == .tiff && depth == 1 ? .blackWhite : .color
-                let rotated = ImagePipeline.rotate(image, quarterTurns: 1)
-                let tmp = url.deletingLastPathComponent()
-                    .appendingPathComponent(".\(UUID().uuidString).\(url.pathExtension)")
-                do {
-                    // High quality to limit generation loss on repeated JPEG rotates.
-                    try ImageExporter.write(rotated, to: tmp, format: format, dpi: dpi, jpegQuality: 0.95,
-                                            colorMode: mode)
-                    _ = try FileManager.default.replaceItemAt(url, withItemAt: tmp)
-                    return nil
-                } catch {
-                    try? FileManager.default.removeItem(at: tmp)
-                    return String(localized: "The rotated copy could not be written.")
-                }
+            let failure: String? = await Task.detached(priority: .userInitiated) {
+                ImageExporter.rotateClockwise(url)
             }.value
             rotatingPaths.remove(url.path)
             if let failure {
-                state.errorMessage = String(localized: "Could not rotate \(url.lastPathComponent): \(failure)")
+                state.errorMessage = L10n.t("Could not rotate {0}: {1}", url.lastPathComponent, failure)
             } else {
                 await reload()
             }

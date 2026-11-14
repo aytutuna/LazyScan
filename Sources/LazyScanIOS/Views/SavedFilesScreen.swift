@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Everything in the save folder, newest first (`IOSSavedFiles`): each file with its picture, name, date
 /// and size, the files of the last save marked New; Share and Show in Files on each, and its other actions
-/// (open, email, copy) in its menu, through `AppState.runFileAction` as on the desktop, and for a PDF,
-/// adding the queued pages to its end (`AppState.appendToPDF(at:)`), whose progress and result show under
+/// (open, email, copy, Lazy Print while it is installed, and Rotate for a picture) in its menu, through
+/// `AppState.runFileAction` as on the desktop, and for a PDF, adding the queued pages to its end (`AppState.appendToPDF(at:)`), whose progress and result show under
 /// the list. Read again whenever something is saved and when pulled down.
 struct SavedFilesScreen: View {
     @EnvironmentObject private var state: AppState
@@ -14,10 +14,13 @@ struct SavedFilesScreen: View {
     @State private var appending: URL?
     /// Counts the reads started, so a listing that arrives after a newer read began is dropped.
     @State private var reads: Int = 0
+    /// Paths being turned, so a second tap cannot start another rewrite of the same file.
+    @State private var rotating: Set<String> = []
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let place: URL = IOSSavedFiles.shownFolder(state.settings)
+        let lazyPrint: Bool = state.lazyPrintInstalled
         List {
             if folder.files.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -34,7 +37,11 @@ struct SavedFilesScreen: View {
             }
             Section {
                 ForEach(folder.files) { (file: IOSSavedFile) in
-                    SavedFileRow(file: file, canAppend: state.canAppendPages, onAction: run, onAppend: append)
+                    let canLazyPrint: Bool = lazyPrint && SaveActions.canPrintWithLazyPrint([file.url])
+                    SavedFileRow(file: file, canAppend: state.canAppendPages,
+                                 canLazyPrint: canLazyPrint,
+                                 isRotating: rotating.contains(file.url.path),
+                                 onAction: run, onAppend: append, onRotate: rotate)
                 }
             } header: {
                 Text(place.lastPathComponent)
@@ -110,6 +117,24 @@ struct SavedFilesScreen: View {
         appending = file.url
         state.appendToPDF(at: file.url)
     }
+
+    private func rotate(_ file: IOSSavedFile) {
+        let url: URL = file.url
+        guard !rotating.contains(url.path) else { return }
+        rotating.insert(url.path)
+        Task {
+            let task: Task<String?, Never> = Task.detached(priority: .userInitiated) { () -> String? in
+                ImageExporter.rotateClockwise(url)
+            }
+            let failure: String? = await task.value
+            rotating.remove(url.path)
+            if let failure {
+                state.errorMessage = L10n.t("Could not rotate {0}: {1}", url.lastPathComponent, failure)
+            } else {
+                await reload()
+            }
+        }
+    }
 }
 
 /// One saved file: its picture (or icon), name, "New" for the last save's, date and size, then Share,
@@ -118,8 +143,12 @@ private struct SavedFileRow: View {
     let file: IOSSavedFile
     /// There are queued pages to add to a PDF (`AppState.canAppendPages`).
     let canAppend: Bool
+    /// Lazy Print is installed and can take this file.
+    let canLazyPrint: Bool
+    let isRotating: Bool
     let onAction: (FileAction, IOSSavedFile) -> Void
     let onAppend: (IOSSavedFile) -> Void
+    let onRotate: (IOSSavedFile) -> Void
     @State private var thumbnail: CGImage?
 
     var body: some View {
@@ -209,12 +238,21 @@ private struct SavedFileRow: View {
 
     @ViewBuilder
     private var actionMenu: some View {
-        ForEach(IOSSavedFiles.moreActions) { (action: FileAction) in
+        ForEach(IOSSavedFiles.moreActions(lazyPrint: canLazyPrint)) { (action: FileAction) in
             Button {
                 onAction(action, file)
             } label: {
                 Label(IOSSavedFiles.label(action), systemImage: IOSSavedFiles.symbol(action))
             }
+        }
+        if file.isImage {
+            Button {
+                onRotate(file)
+            } label: {
+                Label(IOSSavedFiles.rotateLabel, systemImage: "rotate.right")
+            }
+            .disabled(isRotating)
+            .accessibilityIdentifier("saved.rotate")
         }
         if file.isPDF {
             Button {

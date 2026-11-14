@@ -386,7 +386,9 @@ final class IOSLibraryTests: XCTestCase {
         let notAFolder: IOSSavedFolder = IOSSavedFiles.list(in: saved.appendingPathComponent("c.txt"), justSaved: [])
         XCTAssertTrue(notAFolder.failed)
 
-        XCTAssertEqual(IOSSavedFiles.moreActions, [FileAction.open, FileAction.email, FileAction.copy])
+        XCTAssertEqual(IOSSavedFiles.moreActions(lazyPrint: false), [FileAction.open, FileAction.email, FileAction.copy])
+        XCTAssertEqual(IOSSavedFiles.moreActions(lazyPrint: true),
+                       [FileAction.open, FileAction.email, FileAction.lazyPrint, FileAction.copy])
         XCTAssertEqual(IOSSavedFiles.label(FileAction.reveal), "Show in Files")
         XCTAssertEqual(IOSSavedFiles.label(FileAction.copy), FileAction.copy.label)
     }

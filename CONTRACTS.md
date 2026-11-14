@@ -3255,6 +3255,7 @@ public enum ImageExporter {
     public static func write(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
                              colorMode: ColorMode = .color, details: PhotoDetails = .none,
                              keepingExisting: Bool = false) throws -> URL
+    public static func rotateClockwise(_ url: URL) -> String?   // (Output/ImageRotation.swift) a JPEG, PNG or single-page TIFF turned 90° clockwise in place, format, DPI and G4 kept; the failure text or nil (texts of Windows SavedFiles.RotateClockwiseAsync)
 }
 ```
 
@@ -4227,7 +4228,8 @@ public enum IOSSavedFiles { /* title "Saved files", emptyTitle, emptyLine, faile
                                                                        // one is out of reach (where a save goes meanwhile)
     public static func list(in folder: URL, justSaved: [URL]) -> IOSSavedFolder   // newest first; hidden files, folders and
                                                                        // other kinds left out; a folder not made yet: empty, not failed
-    public static var moreActions: [FileAction]                       // SaveActions.offered(fileCount: 1) without share, reveal and open with
+    public static func moreActions(lazyPrint: Bool) -> [FileAction]   // SaveActions.offered(fileCount: 1, lazyPrint:) without share, reveal and open with
+    public static var rotateLabel: String                             // "Rotate 90° clockwise": in the menu of a picture, which ImageExporter.rotateClockwise turns in place
     public static func label(_ action: FileAction) -> String          // reveal: "Show in Files"
     public static func symbol(_ action: FileAction) -> String
     public static func thumbnail(of url: URL, maxSide: Int) -> CGImage?   // ImageIO; a PDF's first page with Core Graphics
