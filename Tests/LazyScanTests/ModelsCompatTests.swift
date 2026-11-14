@@ -960,7 +960,8 @@ final class ModelsCompatTests: XCTestCase {
     // MARK: The settings' short texts (the text spec: tooltips of a few words)
 
     func test_choiceTexts_areShort_andNeverRepeatTheLabel() {
-        XCTAssertEqual([ScanSource.flatbed, .documentFeeder].map(\.label), ["Flatbed", "Document feeder"])
+        XCTAssertEqual([ScanSource.flatbed, .documentFeeder, .slides, .negatives].map(\.label),
+                       ["Flatbed", "Document feeder", "Slides", "Negatives"])
         XCTAssertEqual(ScanSource.documentFeeder.hint, "Automatic document feeder (ADF)")
         XCTAssertEqual(ScanSource.flatbed.hint, "The scanner's glass")
         XCTAssertEqual(PDFSizePreset.displayOrder.map(\.hint),

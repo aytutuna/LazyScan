@@ -273,6 +273,40 @@ final class ImagePipelineTests: XCTestCase {
                           "grayscale keeps the original white level")
     }
 
+    func test_negativeTablesInvertBetweenPercentiles() {
+        let uniform = [Int](repeating: 100, count: 256)
+        let tables = ImagePipeline.negativeTables([uniform, uniform, uniform])
+        for table in tables {
+            XCTAssertEqual(table[0], 255)
+            XCTAssertEqual(table[1], 255)
+            XCTAssertEqual(table[128], 127)
+            XCTAssertEqual(table[254], 0)
+            XCTAssertEqual(table[255], 0)
+        }
+    }
+
+    func test_negativeTablesInvertNarrowChannelsAsTheyAre() {
+        var narrow = [Int](repeating: 0, count: 256)
+        for v in 100...140 { narrow[v] = 50 }
+        let tables = ImagePipeline.negativeTables([narrow, narrow, narrow])
+        for v in 0..<256 { XCTAssertEqual(Int(tables[0][v]), 255 - v) }
+    }
+
+    func test_invertNegativeTakesTheOrangeBaseToBlackAndKeepsAlpha() {
+        // Left half: the film base (orange); right half: a dense patch that came out dark.
+        var pixels = [UInt8](repeating: 0, count: 20 * 10 * 4)
+        for i in 0..<(20 * 10) {
+            let dense = i % 20 >= 10
+            pixels[i * 4] = dense ? 40 : 230
+            pixels[i * 4 + 1] = dense ? 20 : 150
+            pixels[i * 4 + 2] = dense ? 10 : 90
+            pixels[i * 4 + 3] = 200
+        }
+        let positive = ImagePipeline.invertNegative(RgbaImage(width: 20, height: 10, pixels: pixels)).pixels
+        XCTAssertEqual(Array(positive[0..<4]), [0, 0, 0, 200])
+        XCTAssertEqual(Array(positive[40..<44]), [255, 255, 255, 200])
+    }
+
     func test_fadedColorTablesStretchBetweenPercentiles() {
         let uniform = [Int](repeating: 100, count: 256)
         let tables = ImagePipeline.fadedColorTables([uniform, uniform, uniform])

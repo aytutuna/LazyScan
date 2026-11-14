@@ -329,6 +329,48 @@ public class ImagePipelineTests
     }
 
     [Fact]
+    public void NegativeTablesInvertBetweenPercentiles()
+    {
+        var uniform = Enumerable.Repeat(100, 256).ToArray();
+        var tables = ImagePipeline.NegativeTables([uniform, uniform, uniform]);
+        foreach (var table in tables)
+        {
+            Assert.Equal(255, table[0]);
+            Assert.Equal(255, table[1]);
+            Assert.Equal(127, table[128]);
+            Assert.Equal(0, table[254]);
+            Assert.Equal(0, table[255]);
+        }
+    }
+
+    [Fact]
+    public void NegativeTablesInvertNarrowChannelsAsTheyAre()
+    {
+        var narrow = new int[256];
+        for (int v = 100; v <= 140; v++) narrow[v] = 50;
+        var tables = ImagePipeline.NegativeTables([narrow, narrow, narrow]);
+        for (int v = 0; v < 256; v++) Assert.Equal(255 - v, tables[0][v]);
+    }
+
+    [Fact]
+    public void InvertNegativeTakesTheOrangeBaseToBlackAndKeepsAlpha()
+    {
+        // Left half: the film base (orange); right half: a dense patch that came out dark.
+        var pixels = new byte[20 * 10 * 4];
+        for (int i = 0; i < 20 * 10; i++)
+        {
+            bool dense = i % 20 >= 10;
+            pixels[i * 4] = (byte)(dense ? 40 : 230);
+            pixels[i * 4 + 1] = (byte)(dense ? 20 : 150);
+            pixels[i * 4 + 2] = (byte)(dense ? 10 : 90);
+            pixels[i * 4 + 3] = 200;
+        }
+        var positive = ImagePipeline.InvertNegative(new RgbaImage(20, 10, pixels)).Pixels;
+        Assert.Equal([0, 0, 0, 200], positive[..4]);
+        Assert.Equal([255, 255, 255, 200], positive[40..44]);
+    }
+
+    [Fact]
     public void FadedColorTablesStretchBetweenPercentiles()
     {
         var uniform = Enumerable.Repeat(100, 256).ToArray();

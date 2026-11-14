@@ -324,6 +324,56 @@ public enum ImagePipeline {
         return leveled.transformed(by: CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
     }
 
+    // MARK: - Negatives
+
+    /// One 256-entry table per channel from its byte histogram, for a color negative: the channel is inverted
+    /// between the values that leave 0.5% of the pixels outside. The bright end is the film's unexposed
+    /// base, which takes each channel's own orange cast to black, so the picture comes out neutral. A channel
+    /// with less than `fadedMinSpan` between them is inverted as it is. Twin of C# `ImagePipeline.NegativeTables`.
+    static func negativeTables(_ histograms: [[Int]]) -> [[UInt8]] {
+        return histograms.map { (h: [Int]) -> [UInt8] in
+            let skip = h.reduce(0, +) * fadedClip / 1000
+            var low = 0, high = 255
+            var sum = 0
+            for v in 0..<256 {
+                sum += h[v]
+                if sum > skip { low = v; break }
+            }
+            sum = 0
+            for v in stride(from: 255, through: 0, by: -1) {
+                sum += h[v]
+                if sum > skip { high = v; break }
+            }
+            if high - low < fadedMinSpan {
+                low = 0
+                high = 255
+            }
+            let span = Double(high - low)
+            return (0..<256).map { (v: Int) -> UInt8 in
+                UInt8(min(max((Double(high - v) / span * 255).rounded(), 0), 255))
+            }
+        }
+    }
+
+    /// A color negative as a positive: each color channel through `negativeTables`, alpha as it is.
+    /// Twin of C# `ImagePipeline.InvertNegative`.
+    public static func invertNegative(_ image: RgbaImage) -> RgbaImage {
+        var histograms = [[Int]](repeating: [Int](repeating: 0, count: 256), count: 3)
+        var i = 0
+        while i < image.pixels.count {
+            for c in 0..<3 { histograms[c][Int(image.pixels[i + c])] += 1 }
+            i += 4
+        }
+        let tables = negativeTables(histograms)
+        var pixels = image.pixels
+        i = 0
+        while i < pixels.count {
+            for c in 0..<3 { pixels[i + c] = tables[c][Int(pixels[i + c])] }
+            i += 4
+        }
+        return RgbaImage(width: image.width, height: image.height, pixels: pixels)
+    }
+
     // MARK: - Private helpers
 
     private static func applyFilter(_ name: String, to image: CIImage, parameters: [String: Any]) -> CIImage {

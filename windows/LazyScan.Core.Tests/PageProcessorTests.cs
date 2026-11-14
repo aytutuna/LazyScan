@@ -51,6 +51,25 @@ public class PageProcessorTests
     }
 
     [Fact]
+    public void ForScan_Negatives_InvertsBeforeAnythingElse()
+    {
+        var s = new ScanSettings { Source = ScanSource.Negatives };
+        Assert.Equal(["negative", "blank", "separator"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
+        s.Source = ScanSource.Slides;
+        Assert.Equal(["blank", "separator"], PageProcessor.ForScan(s).Steps.Select(step => step.Name));
+    }
+
+    [Fact]
+    public void NegativeStep_InvertsScannerPagesOnly()
+    {
+        var step = new NegativeStep();
+        var scanned = Page(RgbaImage.Filled(4, 6, 255, 255, 255));
+        Assert.NotEqual(scanned.Image.Pixels, step.Apply(scanned).Image.Pixels);
+        var photo = new ScannedPage(RgbaImage.Filled(4, 6, 255, 255, 255), 100, ColorMode.Color) { Source = PageSource.Photo };
+        Assert.Equal(photo.Image.Pixels, step.Apply(photo).Image.Pixels);
+    }
+
+    [Fact]
     public void ForScan_AdjustmentsComeAfterTheBlankCheck_OnlyWhenTheyChangeSomething()
     {
         var s = new ScanSettings();

@@ -591,6 +591,69 @@ public static class ImagePipeline
         return tables;
     }
 
+    /// <summary>
+    /// One 256-entry table per channel from its byte histogram, for a color negative: the channel is
+    /// inverted between the values that leave 0.5% of the pixels outside. The bright end is the film's
+    /// unexposed base, which takes each channel's own orange cast to black, so the picture comes out
+    /// neutral. A channel with less than <see cref="FadedMinSpan"/> between them is inverted as it is.
+    /// Twin of Swift <c>negativeTables</c>.
+    /// </summary>
+    internal static byte[][] NegativeTables(int[][] histograms)
+    {
+        var tables = new byte[3][];
+        for (int c = 0; c < 3; c++)
+        {
+            var h = histograms[c];
+            int skip = h.Sum() * FadedClip / 1000;
+            int low = 0, high = 255;
+            int sum = 0;
+            for (int v = 0; v < 256; v++)
+            {
+                sum += h[v];
+                if (sum > skip) { low = v; break; }
+            }
+            sum = 0;
+            for (int v = 255; v >= 0; v--)
+            {
+                sum += h[v];
+                if (sum > skip) { high = v; break; }
+            }
+            if (high - low < FadedMinSpan)
+            {
+                low = 0;
+                high = 255;
+            }
+            double span = high - low;
+            tables[c] = new byte[256];
+            for (int v = 0; v < 256; v++)
+                tables[c][v] = (byte)Math.Clamp(Math.Round((high - v) / span * 255, MidpointRounding.AwayFromZero), 0, 255);
+        }
+        return tables;
+    }
+
+    /// <summary>A color negative as a positive: each color channel through <see cref="NegativeTables"/>, alpha as it is.</summary>
+    public static RgbaImage InvertNegative(RgbaImage image)
+    {
+        var src = image.Pixels;
+        var histograms = new[] { new int[256], new int[256], new int[256] };
+        for (int i = 0; i < src.Length; i += 4)
+        {
+            histograms[0][src[i]]++;
+            histograms[1][src[i + 1]]++;
+            histograms[2][src[i + 2]]++;
+        }
+        var tables = NegativeTables(histograms);
+        var output = new byte[src.Length];
+        for (int i = 0; i < src.Length; i += 4)
+        {
+            output[i] = tables[0][src[i]];
+            output[i + 1] = tables[1][src[i + 1]];
+            output[i + 2] = tables[2][src[i + 2]];
+            output[i + 3] = src[i + 3];
+        }
+        return new RgbaImage(image.Width, image.Height, output);
+    }
+
     private static void CountChannels(int[][] histograms, double[] r, double[] g, double[] b, int from, int count)
     {
         var channels = new[] { r, g, b };

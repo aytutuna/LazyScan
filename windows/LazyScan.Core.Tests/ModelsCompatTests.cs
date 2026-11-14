@@ -1046,7 +1046,8 @@ public class ModelsCompatTests
     [Fact]
     public void ChoiceTexts_AreShort_AndNeverRepeatTheLabel()
     {
-        Assert.Equal(["Flatbed", "Document feeder"], new[] { ScanSource.Flatbed, ScanSource.DocumentFeeder }.Select(s => s.Label()));
+        Assert.Equal(["Flatbed", "Document feeder", "Slides", "Negatives"],
+                     new[] { ScanSource.Flatbed, ScanSource.DocumentFeeder, ScanSource.Slides, ScanSource.Negatives }.Select(s => s.Label()));
         Assert.Equal("Automatic document feeder (ADF)", ScanSource.DocumentFeeder.Hint());
         Assert.Equal("The scanner's glass", ScanSource.Flatbed.Hint());
         Assert.Equal(["Full quality, largest files", "Good for most documents", "Smaller, for email and uploads",

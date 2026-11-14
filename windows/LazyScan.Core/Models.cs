@@ -28,6 +28,10 @@ public enum ScanSource
 {
     Flatbed,
     DocumentFeeder,
+    /// <summary>The flatbed's transparency unit with slides in it.</summary>
+    Slides,
+    /// <summary>The same unit with film negatives; the scan comes out positive (<see cref="ImagePipeline.InvertNegative"/>).</summary>
+    Negatives,
 }
 
 /// <summary>
@@ -215,6 +219,8 @@ public static class ModelLabels
     {
         ScanSource.Flatbed => Loc.T("Flatbed"),
         ScanSource.DocumentFeeder => Loc.T("Document feeder"),
+        ScanSource.Slides => Loc.T("Slides"),
+        ScanSource.Negatives => Loc.T("Negatives"),
         _ => source.ToString(),
     };
 
@@ -222,6 +228,8 @@ public static class ModelLabels
     public static string Hint(this ScanSource source) => source switch
     {
         ScanSource.DocumentFeeder => Loc.T("Automatic document feeder (ADF)"),
+        ScanSource.Slides => Loc.T("Film slides in the lid's light unit"),
+        ScanSource.Negatives => Loc.T("Film negatives, scanned as positives"),
         _ => Loc.T("The scanner's glass"),
     };
 

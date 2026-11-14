@@ -42,12 +42,18 @@ public enum ColorMode: String, Codable, CaseIterable, Identifiable, Sendable {
 public enum ScanSource: String, Codable, CaseIterable, Identifiable, Sendable {
     case flatbed
     case documentFeeder
+    /// The flatbed's transparency unit with slides in it.
+    case slides
+    /// The same unit with film negatives; the scan comes out positive (`ImagePipeline.invertNegative`).
+    case negatives
 
     public var id: String { rawValue }
     public var label: String {
         switch self {
         case .flatbed: return L10n.t("Flatbed")
         case .documentFeeder: return L10n.t("Document feeder")
+        case .slides: return L10n.t("Slides")
+        case .negatives: return L10n.t("Negatives")
         }
     }
 
@@ -56,6 +62,8 @@ public enum ScanSource: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .flatbed: return L10n.t("The scanner's glass")
         case .documentFeeder: return L10n.t("Automatic document feeder (ADF)")
+        case .slides: return L10n.t("Film slides in the lid's light unit")
+        case .negatives: return L10n.t("Film negatives, scanned as positives")
         }
     }
 }

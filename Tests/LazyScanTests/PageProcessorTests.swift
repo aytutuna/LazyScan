@@ -158,6 +158,23 @@ final class PageProcessorTests: XCTestCase {
         }
     }
 
+    func test_forScan_negatives_invertsBeforeAnythingElse() {
+        var s = ScanSettings()
+        s.source = .negatives
+        XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["negative", "blank", "separator"])
+        s.source = .slides
+        XCTAssertEqual(PageProcessor.forScan(s).steps.map(\.name), ["blank", "separator"])
+    }
+
+    func test_negativeStep_invertsScannerPagesOnly() {
+        let step = NegativeStep()
+        let scanned = page(solid(4, 6, 255))
+        XCTAssertNotEqual(RgbaImage(cgImage: step.apply(scanned).image)?.pixels, RgbaImage(cgImage: scanned.image)?.pixels)
+        var photo = page(solid(4, 6, 255))
+        photo.source = .photo
+        XCTAssertEqual(RgbaImage(cgImage: step.apply(photo).image)?.pixels, RgbaImage(cgImage: photo.image)?.pixels)
+    }
+
     func test_forScan_adjustmentsComeAfterTheBlankCheck_onlyWhenTheyChangeSomething() throws {
         var s = ScanSettings()
         s.adjustments.brightness = 0.25

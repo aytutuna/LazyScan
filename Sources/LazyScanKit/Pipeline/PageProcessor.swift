@@ -385,6 +385,20 @@ public struct AdjustmentStep: PageStep {
     }
 }
 
+/// Turns the page of a film negative into a positive (`ImagePipeline.invertNegative`). Runs first, on the page as
+/// scanned, and only for pages from a scanner. Twin of C# `NegativeStep`.
+public struct NegativeStep: PageStep {
+    public var name: String { "negative" }
+
+    public init() {}
+
+    public func apply(_ page: ScannedPage) -> ScannedPage {
+        guard page.source == .scanner, let rgba = RgbaImage(cgImage: page.image),
+              let positive = ImagePipeline.invertNegative(rgba).makeCGImage() else { return page }
+        return page.withImage(positive)
+    }
+}
+
 /// How the pages of one scan come out of the scanner. Twin of C# `ScanArrangement`.
 public enum ScanArrangement: Sendable {
     /// One page per sheet, in the order scanned.
@@ -426,8 +440,8 @@ public struct ProcessedScan {
 /// The clean-up stage between the scanner and the page queue, the same for every scanner: the
 /// pages are put in reading order with their sides (two-sided scans), each spread of an open book is
 /// cut into its two pages when facing pages are split (`book`), then every step runs on every page in
-/// order. The order of the steps is fixed: `forScan` builds them from the settings: blank check
-/// (document pages), crop and straighten, softening the spine's shadow, separator sheets, barcodes,
+/// order. The order of the steps is fixed: `forScan` builds them from the settings: inverting a negative,
+/// blank check (document pages), crop and straighten, softening the spine's shadow, separator sheets, barcodes,
 /// turning pages upright, cleaning up, then adjustments. `prepare` runs on each arranged page before the steps and
 /// before it is cut: a camera's page or spread is cut out of its photo first (`forCapture`).
 /// Twin of C# `PageProcessor`.
@@ -451,7 +465,7 @@ public struct PageProcessor {
         self.prepare = prepare
     }
 
-    /// The steps for a scan made with `settings`: the blank-page check for pages collected in the
+    /// The steps for a scan made with `settings`: turning a negative into a positive when the source is `.negatives`, the blank-page check for pages collected in the
     /// document queue (whether or not blank pages are left out, so the page strip can flag them),
     /// crop and straighten when asked for those pages, softening the spine's shadow when asked for on split
     /// spreads (`softensSpineShadow`), the separator-sheet check for those pages
@@ -464,6 +478,7 @@ public struct PageProcessor {
                                scorer: (any OrientationScorer)? = nil,
                                barcodes: (any BarcodeReader)? = nil) -> PageProcessor {
         var steps: [any PageStep] = []
+        if settings.source == .negatives { steps.append(NegativeStep()) }
         if checksBlankPages(settings) {
             steps.append(BlankDetectionStep(options: BlankPageOptions(sensitivity: settings.document.blankSensitivity)))
         }

@@ -314,6 +314,18 @@ public sealed class AdjustmentStep(AdjustmentSettings adjustments, ColorMode col
     }
 }
 
+/// <summary>
+/// Turns the page of a film negative into a positive (<see cref="ImagePipeline.InvertNegative"/>). Runs
+/// first, on the page as scanned, and only for pages from a scanner.
+/// </summary>
+public sealed class NegativeStep : IPageStep
+{
+    public string Name => "negative";
+
+    public ScannedPage Apply(ScannedPage page) =>
+        page.Source != PageSource.Scanner ? page : page.WithImage(ImagePipeline.InvertNegative(page.Image));
+}
+
 /// <summary>How the pages of one scan come out of the scanner.</summary>
 public enum ScanArrangement
 {
@@ -364,7 +376,7 @@ public sealed record ProcessedScan(IReadOnlyList<ScannedPage> Arranged, IReadOnl
 /// pages are put in reading order with their sides (two-sided scans), each spread of an open book
 /// is cut into its two pages when facing pages are split (<paramref name="book"/>), then every step
 /// runs on every page in order. The order of the steps is fixed: <see cref="ForScan"/> builds them
-/// from the settings: blank check (document pages), crop and straighten, softening the spine's shadow,
+/// from the settings: inverting a negative, blank check (document pages), crop and straighten, softening the spine's shadow,
 /// separator sheets, barcodes, turning pages upright, then adjustments. <paramref name="prepare"/> runs
 /// on each arranged page before the steps and before it is cut: a camera's page or spread is cut out of
 /// its photo first (<see cref="ForCapture"/>).
@@ -388,7 +400,8 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     public IReadOnlyList<IPageStep> Prepare { get; } = prepare ?? [];
 
     /// <summary>
-    /// The steps for a scan made with <paramref name="settings"/>: the blank-page check for pages
+    /// The steps for a scan made with <paramref name="settings"/>: turning a negative into a positive when the
+    /// source is <see cref="ScanSource.Negatives"/>, the blank-page check for pages
     /// collected in the document queue (whether or not blank pages are left out, so the page
     /// strip can flag them), crop and straighten when asked for those pages, softening the spine's
     /// shadow when asked for on split spreads (<see cref="SoftensSpineShadow"/>), the separator-sheet
@@ -405,6 +418,7 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
                                         IOrientationScorer? scorer = null, IBarcodeReader? barcodes = null)
     {
         var steps = new List<IPageStep>();
+        if (settings.Source == ScanSource.Negatives) steps.Add(new NegativeStep());
         if (ChecksBlankPages(settings))
         {
             steps.Add(new BlankDetectionStep(new BlankPageOptions { Sensitivity = settings.Document.BlankSensitivity }));
