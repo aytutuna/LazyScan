@@ -55,12 +55,12 @@ final class PhotosTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [ticked], timeout: 10), .completed, "Page 2 ticked")
 
         let delete: XCUIElement = app.descendants(matching: .any)["pages.deleteSelected"].firstMatch
-        app.waitUntilEnabled(delete, "Delete", timeout: 120)
+        app.waitUntilEnabled(delete, "Remove", timeout: 120)
         let deleteText: String = delete.label
         delete.tap()
         let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteText,
                                                                     "pages.deleteSelected")).firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Remove")
         confirm.tap()
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: second)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 30), .completed, "No second page")

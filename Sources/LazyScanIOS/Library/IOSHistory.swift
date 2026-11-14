@@ -3,7 +3,7 @@ import LazyScanKit
 import CoreGraphics
 import Foundation
 
-/// A scan of this session as the Scans screen lists it: its small picture, "Document · 300 dpi", the
+/// A scan of this session as the History screen lists it: its small picture, "Document · 300 dpi", the
 /// time it was taken (with the day for earlier days), and the whole of it for VoiceOver.
 public struct IOSHistoryRow: Identifiable {
     public let id: UUID
@@ -14,15 +14,15 @@ public struct IOSHistoryRow: Identifiable {
     public let accessibilityLabel: String
 }
 
-/// The Scans screen without a screen: `AppState.scanHistory` (this session's scans, newest first, small
+/// The History screen without a screen: `AppState.scanHistory` (this session's scans, newest first, small
 /// pictures only), read-only as on the Mac and Windows.
 public enum IOSHistory {
-    public static var title: String { String(localized: "Scans") }
+    public static var title: String { String(localized: "History") }
     public static var emptyTitle: String { String(localized: "No scans yet") }
     public static var emptyLine: String { String(localized: "Scans from this session appear here, newest first.") }
     public static var clearButton: String { String(localized: "Clear") }
     public static var clearQuestion: String { String(localized: "Clear this session's scans? Saved files are not touched.") }
-    public static var clearAction: String { String(localized: "Clear Scans") }
+    public static var clearAction: String { String(localized: "Clear History") }
 
     /// "1 scan", "13 scans".
     public static func countText(_ count: Int) -> String {

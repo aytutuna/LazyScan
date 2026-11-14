@@ -1372,7 +1372,7 @@ public struct DetectedPhoto: Identifiable {
     }
 }
 
-/// One entry in the session's scan history ("Scans" tab): a small preview of every scan
+/// One entry in the session's scan history (History): a small preview of every scan
 /// as it happened, newest first.
 public struct ScanHistoryEntry: Identifiable {
     public let id: UUID

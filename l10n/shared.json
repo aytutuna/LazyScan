@@ -587,12 +587,12 @@
   "New document every {0} sheet": {
     "other": "New document every {0} sheets"
   },
-  "Delete {0} page?": {
-    "other": "Delete {0} pages?"
+  "Remove {0} page?": {
+    "other": "Remove {0} pages?"
   },
-  "Delete {0} page?|all": {
-    "other": "Delete all {0} pages?",
-    "note": "Asked when the only page left is deleted, so it deletes everything; the other form reads 'Delete all {0} pages?'."
+  "Remove {0} page?|all": {
+    "other": "Remove all {0} pages?",
+    "note": "Asked when the only page left is removed, so it removes everything; the other form reads 'Remove all {0} pages?'."
   },
   "{0} file in {1}": {
     "other": "{0} files in {1}",
@@ -2920,7 +2920,7 @@
   },
   "Save undone: the pages are back.": {},
   "Save undone: {0} is as it was, and the pages are back.": {},
-  "Pages cleared.": {},
+  "Pages removed.": {},
   "Added {0} page, both sides of each sheet — {1} so far. Scan more or tap Save.": {
     "other": "Added {0} pages, both sides of each sheet — {1} so far. Scan more or tap Save."
   },
@@ -2934,7 +2934,7 @@
     "other": "Kept {0} front sides — {1} so far. Scan another stack or tap Save."
   },
   "None of the documents was saved; the pages are still here. {0}": {},
-  "Pages cleared": {},
+  "Pages removed": {},
   "Not saved: no password was given for the protected PDF. The page is still here: save with a password, or turn the password off.": {
     "other": "Not saved: no password was given for the protected PDF. The {0} pages are still here: save with a password, or turn the password off."
   },

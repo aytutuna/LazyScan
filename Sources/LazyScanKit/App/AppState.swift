@@ -298,7 +298,7 @@ public final class AppState: ObservableObject {
     var addsToReview = false
     /// The last Scan more found no receipts; the review says so.
     @Published public internal(set) var scanMoreFoundNothing = false
-    /// This session's scans, newest first (small previews only) — the "Scans" tab.
+    /// This session's scans, newest first (small previews only) — the History tab.
     @Published public internal(set) var scanHistory: [ScanHistoryEntry] = []
     /// Full-resolution sources of the current photo batch, keyed by scanned-page id and
     /// retained only while the photo review is open, so manual crop corrections can
@@ -2565,11 +2565,10 @@ public final class AppState: ObservableObject {
         if discarding { discardRemovedUndo() }
         resetFlow()
         if cleared > 0 {
-            let title = removedUndo == nil ? Self.clearedMessage(cleared) : removedTitle
+            let title = removedUndo == nil ? Self.removedMessage(cleared) : removedTitle
             setStatus(title, StatusDetail(head: .queueCleared(removedUndo?.pages.count ?? cleared)))
         } else {
-            let message: String = PhoneWording.isPhone ? L10n.t("Pages cleared.") : L10n.t("Page queue cleared.")
-            setStatus(message, StatusDetail(head: .queueCleared(0)))
+            setStatus(L10n.t("Pages removed."), StatusDetail(head: .queueCleared(0)))
         }
     }
 

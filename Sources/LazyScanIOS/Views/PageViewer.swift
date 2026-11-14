@@ -27,10 +27,10 @@ enum PageViewerText {
     static var noText: String { String(localized: "No text found on this page") }
     static var textFailed: String { String(localized: "The text could not be read") }
     static var copyLabel: String { String(localized: "Copy") }
-    static var deleteLabel: String { String(localized: "Delete") }
-    static var deleteAllLabel: String { String(localized: "Delete All") }
+    static var removeLabel: String { String(localized: "Remove") }
+    static var removeAllLabel: String { String(localized: "Remove All") }
     static var openHint: String { String(localized: "Opens the page") }
-    static var deleteQuestion: String { String(localized: "Delete this page?") }
+    static var removeQuestion: String { String(localized: "Remove this page?") }
     static var deleteMessage: String { String(localized: "It is taken out of the pages to save.") }
     static var selectLabel: String { String(localized: "Select") }
     static var selectAllLabel: String { String(localized: "Select All") }
@@ -70,14 +70,14 @@ enum PageViewerText {
         count == 0 ? String(localized: "Select Pages") : L10n.plural(count, one: "{0} Selected", other: "{0} Selected")
     }
 
-    /// "Delete 3 pages?" for the pages picked in the grid.
-    static func deletePagesQuestion(_ count: Int) -> String {
-        L10n.plural(count, one: "Delete {0} page?", other: "Delete {0} pages?")
+    /// "Remove 3 pages?" for the pages picked in the grid.
+    static func removePagesQuestion(_ count: Int) -> String {
+        L10n.plural(count, one: "Remove {0} page?", other: "Remove {0} pages?")
     }
 
-    /// "Delete all 3 pages?" for Delete All in the page grid.
-    static func deleteAllQuestion(_ count: Int) -> String {
-        L10n.plural(count, one: "Delete {0} page?|all", other: "Delete all {0} pages?")
+    /// "Remove all 3 pages?" for Remove All in the page grid.
+    static func removeAllQuestion(_ count: Int) -> String {
+        L10n.plural(count, one: "Remove {0} page?|all", other: "Remove all {0} pages?")
     }
 }
 
@@ -90,7 +90,7 @@ enum PageViewerText {
 /// skips it (`PageStripCell.toggle`), for a book's page splits its spread again (`onEditSpread`) or joins its
 /// two pages, starts a new document at it, joins it to the one before and names its document (the Document
 /// menu, `DocumentMenuItems`), and deletes it once asked; the edits are off
-/// while the app is busy, and the filters, Crop and Delete also while a share or a send reads the pages
+/// while the app is busy, and the filters, Crop and Remove also while a share or a send reads the pages
 /// (`AppState.readsQueue`).
 /// Filters (`PageRecut.canRecut`; not for a photo) and Crop (`PageRecut.canCrop`) cut a camera's page out of its
 /// photo again. A page with no capture facts (a scan, an imported PDF, the pages of a book's spread taken whole;
@@ -338,8 +338,8 @@ struct PageViewer: View {
                 }
                 .toolbarBackground(Visibility.visible, for: .bottomBar)
         }
-        .confirmationDialog(PageViewerText.deleteQuestion, isPresented: $asksDelete, titleVisibility: .visible) {
-            Button(PageViewerText.deleteLabel, role: .destructive) {
+        .confirmationDialog(PageViewerText.removeQuestion, isPresented: $asksDelete, titleVisibility: .visible) {
+            Button(PageViewerText.removeLabel, role: .destructive) {
                 deleteCurrent()
             }
             .accessibilityIdentifier("viewer.confirmDelete")
@@ -569,7 +569,7 @@ struct PageViewer: View {
             Spacer()
         }
         Button(role: .destructive, action: askDelete) {
-            Label(PageViewerText.deleteLabel, systemImage: "trash")
+            Label(PageViewerText.removeLabel, systemImage: "trash")
         }
         .disabled(state.isBusy || state.readsQueue)
         .accessibilityIdentifier("viewer.delete")

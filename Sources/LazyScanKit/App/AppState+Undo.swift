@@ -149,19 +149,15 @@ extension AppState {
     /// Pages were taken out of the queue (removed, cleared, or backs left out) and can be put back.
     public var canUndoRemove: Bool { removedUndo != nil }
 
-    /// "Page removed", "3 pages removed" or "Cleared 12 pages": what the hold is, for the Undo beside it.
+    /// "Page removed" or "3 pages removed": what the hold is, for the Undo beside it.
     public var removedTitle: String {
         guard let held = removedUndo else { return "" }
         if held.reordered > 0 { return BookPages.reorderedNote(held.reordered) }
-        return held.cleared ? Self.clearedMessage(held.pages.count) : Self.removedMessage(held.pages.count)
+        return Self.removedMessage(held.pages.count)
     }
 
     static func removedMessage(_ count: Int) -> String {
         L10n.plural(count, one: "Page removed", other: "{0} pages removed")
-    }
-
-    static func clearedMessage(_ count: Int) -> String {
-        L10n.plural(count, one: "Cleared {0} page", other: "Cleared {0} pages")
     }
 
     /// Takes the pages out of the queue into the hold, keeping their spool files, and says how many went.

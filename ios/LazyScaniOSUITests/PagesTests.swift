@@ -1,8 +1,8 @@
 import XCTest
 
 // The page grid's Select mode, as a person uses it on the Simulator: the three pages of the batch fixture
-// brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Delete and
-// its question, and one page is left; Delete All, which empties the queue and closes the sheet; and a page
+// brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Remove and
+// its question, and one page is left; Remove All, which empties the queue and closes the sheet; and a page
 // dragged onto another, which takes its place.
 
 final class PagesTests: XCTestCase {
@@ -37,13 +37,13 @@ final class PagesTests: XCTestCase {
 
         let delete: XCUIElement = app.descendants(matching: .any)["pages.deleteSelected"].firstMatch
         // Off until the import is done, as Save is in BatchTests.
-        app.waitUntilEnabled(delete, "Delete", timeout: 120)
+        app.waitUntilEnabled(delete, "Remove", timeout: 120)
         let deleteText: String = delete.label
         delete.tap()
-        // By its label: a dialog's button may not keep its identifier. The bar's Delete is the other one.
+        // By its label: a dialog's button may not keep its identifier. The bar's Remove is the other one.
         let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteText,
                                                                     "pages.deleteSelected")).firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Remove")
         confirm.tap()
 
         let second: XCUIElement = app.descendants(matching: .any)["page.2"]
@@ -121,14 +121,14 @@ final class PagesTests: XCTestCase {
 
         app.openPages(3)
         let deleteAll: XCUIElement = app.descendants(matching: .any)["pages.deleteAll"].firstMatch
-        XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Delete All")
+        XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Remove All")
         // Off until the import is done.
-        app.waitUntilEnabled(deleteAll, "Delete All", timeout: 120)
+        app.waitUntilEnabled(deleteAll, "Remove All", timeout: 120)
         let deleteAllText: String = deleteAll.label
         deleteAll.tap()
         let confirm: XCUIElement = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", deleteAllText,
                                                                     "pages.deleteAll")).firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Delete All")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "The question's Remove All")
         confirm.tap()
 
         // The sheet stays, with the Undo of the pages just cleared.

@@ -73,12 +73,11 @@ final class PhoneWordingTests: XCTestCase {
         }
     }
 
-    func test_clearedStatusLine_saysPagesOnThePhone() {
-        PhoneWording.choosing(phone: true) {
-            XCTAssertEqual(StatusLine.short("Pages cleared.", StatusDetail(head: .queueCleared(0))), "Pages cleared")
-        }
-        PhoneWording.choosing(phone: false) {
-            XCTAssertEqual(StatusLine.short("Page queue cleared.", StatusDetail(head: .queueCleared(0))), "Queue cleared")
+    func test_removedStatusLine_readsTheSameOnBothDevices() {
+        for phone in [true, false] {
+            PhoneWording.choosing(phone: phone) {
+                XCTAssertEqual(StatusLine.short("Pages removed.", StatusDetail(head: .queueCleared(0))), "Pages removed")
+            }
         }
     }
 }

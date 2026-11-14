@@ -44,7 +44,7 @@ struct HistoryScreen: View {
                     Button(IOSHistory.clearButton) {
                         asksClear = true
                     }
-                    .accessibilityHint(Text("Empties the Scans list"))
+                    .accessibilityHint(Text("Empties the History list"))
                     .accessibilityIdentifier("history.clear")
                 }
             }

@@ -469,7 +469,7 @@ struct DocumentNameAlert: ViewModifier {
     }
 }
 
-/// What is said of the pages taken out of the queue ("Page removed", "Cleared 12 pages") with the button that
+/// What is said of the pages taken out of the queue ("Page removed", "3 pages removed") with the button that
 /// puts them back; on the Pages sheet and on the camera's cards.
 struct RemovedPagesRow: View {
     @EnvironmentObject private var state: AppState
@@ -505,7 +505,7 @@ struct RemovedPagesRow: View {
 /// (`capture.pages`), with Done; a page tapped opens in the page viewer over it. Select
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
-/// start or the end, and deletes them once asked. Outside Select a bottom bar has Delete All, which empties the
+/// start or the end, and removes them once asked. Outside Select a bottom bar has Remove All, which empties the
 /// queue once asked; the sheet then closes, as it does whenever the pages run out, unless the pages just taken
 /// out can still be put back (`RemovedPagesRow` under the grid). The deletes are off while
 /// a share or a send reads the pages (`AppState.readsQueue`).
@@ -562,7 +562,7 @@ struct PageStripSheet: View {
                         if !state.scannedPages.isEmpty {
                             ToolbarItemGroup(placement: .bottomBar) {
                                 Spacer()
-                                Button(PageViewerText.deleteAllLabel, role: .destructive, action: askDeleteAll)
+                                Button(PageViewerText.removeAllLabel, role: .destructive, action: askDeleteAll)
                                     .tint(Color.red)
                                     .disabled(state.isBusy || state.readsQueue)
                                     .accessibilityIdentifier("pages.deleteAll")
@@ -576,16 +576,16 @@ struct PageStripSheet: View {
         .onChange(of: state.scannedPages.map { (page: ScannedPage) -> UUID in page.id }) { (_: [UUID], ids: [UUID]) in
             selected.formIntersection(ids)
         }
-        .confirmationDialog(PageViewerText.deletePagesQuestion(selected.count), isPresented: $asksDelete,
+        .confirmationDialog(PageViewerText.removePagesQuestion(selected.count), isPresented: $asksDelete,
                             titleVisibility: .visible) {
-            Button(PageViewerText.deleteLabel, role: .destructive) {
+            Button(PageViewerText.removeLabel, role: .destructive) {
                 deleteSelected()
             }
             .accessibilityIdentifier("pages.confirmDelete")
         }
-        .confirmationDialog(PageViewerText.deleteAllQuestion(state.scannedPages.count), isPresented: $asksDeleteAll,
+        .confirmationDialog(PageViewerText.removeAllQuestion(state.scannedPages.count), isPresented: $asksDeleteAll,
                             titleVisibility: .visible) {
-            Button(PageViewerText.deleteAllLabel, role: .destructive) {
+            Button(PageViewerText.removeAllLabel, role: .destructive) {
                 state.clearPages()
             }
             .accessibilityIdentifier("pages.confirmDeleteAll")
@@ -701,7 +701,7 @@ struct PageStripSheet: View {
         .accessibilityIdentifier("pages.moveSelected")
         Spacer()
         Button(role: .destructive, action: askDelete) {
-            Label(PageViewerText.deleteLabel, systemImage: "trash")
+            Label(PageViewerText.removeLabel, systemImage: "trash")
         }
         .disabled(blocked || state.readsQueue)
         .accessibilityIdentifier("pages.deleteSelected")

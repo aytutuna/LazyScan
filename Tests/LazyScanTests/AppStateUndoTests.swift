@@ -370,7 +370,7 @@ final class AppStateUndoTests: XCTestCase {
         let spool = try spoolFiles(of: queued)
         state.clearPages()
         XCTAssertTrue(state.scannedPages.isEmpty)
-        XCTAssertEqual(state.removedTitle, "Cleared 3 pages")
+        XCTAssertEqual(state.removedTitle, "3 pages removed")
         XCTAssertEqual(state.statusDetail.head, .queueCleared(3))
         XCTAssertEqual(exists(spool), [true, true, true])
 

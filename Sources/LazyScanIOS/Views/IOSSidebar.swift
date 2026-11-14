@@ -15,7 +15,7 @@ enum IOSDetail: Hashable {
 /// pages to a PDF" as the task list has them (`IOSShell.kindTiles`: dimmed with the reason when
 /// one cannot be started, the kind set up marked; in camera mode only camera mode's, `IOSShell.cameraKinds`,
 /// named as the camera's Type list names them), the scanners, one of which picked is printer mode's
-/// (`ScannerPickerSections`, with Add by address and Troubleshoot), and the library: Presets, Scans and Saved files.
+/// (`ScannerPickerSections`, with Add by address and Troubleshoot), and the library: Presets, History and Saved files.
 /// A kind picked goes to the root view (`onTask`), which asks about the pages and an ID card
 /// held; a preset picked while a side of an ID card is held asks to discard the card first
 /// (`IdCardDiscardQuestion`), and one that would leave the queued pages without a Save asks about them

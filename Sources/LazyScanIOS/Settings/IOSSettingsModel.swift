@@ -14,7 +14,7 @@ public enum IOSSettingsText {
     public static var shareNowLabel: String { String(localized: "Share now") }
     public static var helpLabel: String { String(localized: "Help and about") }
     public static var presetsLabel: String { String(localized: "Presets") }
-    public static var historyLabel: String { String(localized: "Scans") }
+    public static var historyLabel: String { String(localized: "History") }
     public static var savedLabel: String { String(localized: "Saved files") }
     /// The iPhone's saved files and scans together (`LibraryScreen`).
     public static var libraryLabel: String { String(localized: "Library") }
