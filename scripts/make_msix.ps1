@@ -108,7 +108,10 @@ function New-Package([string] $arch, [string] $helper, [string] $helper64) {
 
     $resources = ($languages | ForEach-Object { "    <Resource Language=`"$(if ($_ -eq 'en') { 'en-US' } else { $_ })`" />" }) -join "`n"
     $manifest = Get-Content (Join-Path $store 'Package.appxmanifest') -Raw
-    $manifest = $manifest.Replace('Version="1.0.0.0"', "Version=`"$packageVersion`"").Replace('ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$arch`"")
+    $identityVersion = '(?s)(<Identity[^>]*?Version=")[^"]*(")'
+    if (-not [regex]::IsMatch($manifest, $identityVersion)) { throw 'Package.appxmanifest has no Version on its Identity element' }
+    $manifest = [regex]::Replace($manifest, $identityVersion, { param($m) $m.Groups[1].Value + $packageVersion + $m.Groups[2].Value })
+    $manifest = $manifest.Replace('ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$arch`"")
     $manifest = [regex]::Replace($manifest, '(?s)(<Resources>\r?\n).*?(\r?\n  </Resources>)', { param($m) $m.Groups[1].Value + $resources + $m.Groups[2].Value })
     $manifest = $manifest.Replace('PartnerCenterIdentityName', $IdentityName).Replace('CN=PartnerCenterPublisher', $Publisher).Replace('PartnerCenterPublisherDisplayName', $PublisherDisplayName)
     [IO.File]::WriteAllText((Join-Path $stage 'AppxManifest.xml'), $manifest, (New-Object Text.UTF8Encoding $false))
