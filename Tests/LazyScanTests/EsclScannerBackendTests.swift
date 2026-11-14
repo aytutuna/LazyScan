@@ -412,6 +412,39 @@ final class EsclScannerBackendTests: XCTestCase {
     }
 
     @MainActor
+    func test_scannersOfTheSameModel_areToldApartByInstanceNameNoteOrHost() throws {
+        prepare()
+        let first: ScannerAddress = try ScannerAddress.parse("192.168.1.20")
+        let second: ScannerAddress = try ScannerAddress.parse("192.168.1.21")
+        func endpoint(_ key: String, _ instance: String, _ txt: [String], _ address: ScannerAddress) -> EsclEndpoint {
+            EsclEndpoint(key: key, name: "HP M479", instanceName: instance, txt: EsclTxtRecord.parse(txt), addresses: [address])
+        }
+
+        let byInstance: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [
+            endpoint("uuid:a", "HP M479 (A1B2C3)", [], first), endpoint("uuid:b", "HP M479 (D4E5F6)", [], second)])
+        byInstance.startBrowsing()
+        XCTAssertEqual(byInstance.devices.map { $0.name }, ["HP M479 (A1B2C3)", "HP M479 (D4E5F6)"])
+        XCTAssertEqual(byInstance.devices.map { $0.model }, ["HP M479", "HP M479"])
+
+        let byNote: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [
+            endpoint("uuid:a", "HP M479", ["note=Front office"], first), endpoint("uuid:b", "HP M479", ["note=Back office"], second)])
+        byNote.startBrowsing()
+        XCTAssertEqual(byNote.devices.map { $0.name }, ["HP M479 (Front office)", "HP M479 (Back office)"])
+
+        let byHost: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [
+            endpoint("uuid:a", "HP M479", [], first), endpoint("uuid:b", "HP M479", [], second)])
+        byHost.startBrowsing()
+        XCTAssertEqual(byHost.devices.map { $0.name }, ["HP M479 (192.168.1.20)", "HP M479 (192.168.1.21)"])
+
+        let alone: EsclScannerBackend = makeBackend(hosts: nil, endpoints: [endpoint("uuid:a", "HP M479 (A1B2C3)", [], first)])
+        alone.startBrowsing()
+        XCTAssertEqual(alone.devices.map { $0.name }, ["HP M479"])
+        for backend in [byInstance, byNote, byHost, alone] {
+            backend.stopBrowsing()
+        }
+    }
+
+    @MainActor
     func test_plainHttpAfterHttpsCouldNotBeUsed_isNotEncrypted() async throws {
         prepare()
         let host: String = stubHost()

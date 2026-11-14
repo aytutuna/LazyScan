@@ -98,6 +98,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let uuid: String?
         let addresses: [ScannerAddress]
         let manualAddresses: [ScannerAddress]
+        /// What tells this scanner from another of the same model: its Bonjour instance name and location note.
+        var instanceName: String? = nil
+        var note: String? = nil
     }
 
     /// An address added by hand and what answered there.
@@ -471,12 +474,14 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                         addresses.append(address)
                     }
                     built[index] = EsclDevice(info: found.info, uuid: found.uuid, addresses: addresses,
-                                              manualAddresses: found.manualAddresses)
+                                              manualAddresses: found.manualAddresses, instanceName: found.instanceName,
+                                              note: found.note)
                     continue
                 }
                 let info: ScannerInfo = ScannerInfo(id: id, name: endpoint.name, transport: "Network", backend: "escl",
                                                     model: endpoint.txt.model, hardwareID: endpoint.uuid)
-                built.append(EsclDevice(info: info, uuid: endpoint.uuid, addresses: endpoint.addresses, manualAddresses: []))
+                built.append(EsclDevice(info: info, uuid: endpoint.uuid, addresses: endpoint.addresses, manualAddresses: [],
+                                        instanceName: endpoint.instanceName, note: endpoint.txt.note))
             }
             for host in manual where host.listed {
                 let uuidKey: String? = EsclTxtRecord.uuidKey(host.uuid)
@@ -501,7 +506,8 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
                     }
                     var manualAddresses: [ScannerAddress] = found.manualAddresses
                     manualAddresses.append(host.address)
-                    built[index] = EsclDevice(info: info, uuid: found.uuid, addresses: addresses, manualAddresses: manualAddresses)
+                    built[index] = EsclDevice(info: info, uuid: found.uuid, addresses: addresses, manualAddresses: manualAddresses,
+                                              instanceName: found.instanceName, note: found.note)
                     continue
                 }
                 let id: String = "escl:" + (uuidKey ?? host.address.description)
@@ -514,10 +520,11 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             }
         }
         records = built
+        let listed: [EsclDevice] = EsclScannerBackend.telling(apart: built)
 
         // Raised when the list or the diagnostics change (devices.txt is written from them).
         var parts: [String] = []
-        for record in built {
+        for record in listed {
             parts.append("\(record.info)")
         }
         let signature: String = parts.joined(separator: "\u{1E}") + "\u{1D}" + (diagnosticsReport ?? "")
@@ -526,11 +533,67 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         }
         lastSignature = signature
         var infos: [ScannerInfo] = []
-        for record in built {
+        for record in listed {
             infos.append(record.info)
         }
         devices = infos
         onDevicesChanged?()
+    }
+
+    /// Scanners that share a name get what sets them apart added to it: the instance name's suffix, else the
+    /// location note, else the host address, whichever is there and different for all of them.
+    private static func telling(apart devices: [EsclDevice]) -> [EsclDevice] {
+        var result: [EsclDevice] = devices
+        var done: Set<String> = []
+        for device in devices {
+            let name: String = device.info.name.lowercased()
+            if !done.insert(name).inserted {
+                continue
+            }
+            let same: [Int] = devices.indices.filter { (index: Int) -> Bool in
+                devices[index].info.name.lowercased() == name
+            }
+            if same.count < 2 {
+                continue
+            }
+            let kinds: [(EsclDevice) -> String?] = [
+                { (device: EsclDevice) -> String? in device.instanceName.map(instanceSuffix) },
+                { (device: EsclDevice) -> String? in device.note },
+                { (device: EsclDevice) -> String? in device.addresses.first?.host },
+            ]
+            for (position, kind) in kinds.enumerated() {
+                let values: [String] = same.map { (index: Int) -> String in
+                    kind(devices[index])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                }
+                let distinct: Bool = !values.contains("") && Set(values.map { $0.lowercased() }).count == values.count
+                if !distinct && position < kinds.count - 1 {
+                    continue
+                }
+                for (offset, index) in same.enumerated() where !values[offset].isEmpty {
+                    let info: ScannerInfo = devices[index].info
+                    let renamed: ScannerInfo = ScannerInfo(id: info.id, name: "\(info.name) (\(values[offset]))",
+                                                           transport: info.transport, isDemo: info.isDemo,
+                                                           backend: info.backend, model: info.model ?? info.name,
+                                                           hardwareID: info.hardwareID)
+                    result[index] = EsclDevice(info: renamed, uuid: devices[index].uuid, addresses: devices[index].addresses,
+                                               manualAddresses: devices[index].manualAddresses,
+                                               instanceName: devices[index].instanceName, note: devices[index].note)
+                }
+                break
+            }
+        }
+        return result
+    }
+
+    /// The part of an instance name inside its last parentheses ("HP LaserJet (A1B2C3)" gives "A1B2C3"), else all of it.
+    private static func instanceSuffix(_ instance: String) -> String {
+        if instance.hasSuffix(")"), let open = instance.lastIndex(of: "(") {
+            let inner: String = String(instance[instance.index(after: open)..<instance.index(before: instance.endIndex)])
+            if !inner.trimmingCharacters(in: .whitespaces).isEmpty {
+                return inner
+            }
+        }
+        return instance
     }
 
     // MARK: Sessions

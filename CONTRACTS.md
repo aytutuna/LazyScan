@@ -2171,7 +2171,7 @@ public struct ScannerAddress: Hashable, CustomStringConvertible {   // == and ha
     public static func tryParse(_ text: String?, error: inout String) -> ScannerAddress?
 }
 public struct EsclService: Equatable { id, instanceName: String; secure: Bool; hostName: String?; addresses: [String]; port: Int; textAttributes: [String] }
-public struct EsclEndpoint: Equatable { key, name: String; txt: EsclTxtRecord; addresses: [ScannerAddress]; uuid: String?
+public struct EsclEndpoint: Equatable { key, name, instanceName: String; txt: EsclTxtRecord; addresses: [ScannerAddress]; uuid: String?
     public static func choose(_ services: [EsclService]) -> [EsclEndpoint] }
 public final class EsclHostList {                  // fileName "escl-hosts.json"; init(directory:); fileURL
     public func loadEntries() -> [String]; public func load() -> [ScannerAddress]
@@ -2306,6 +2306,8 @@ extension EsclScannerBackend {   // since I12, beside the I11 members
     @discardableResult public func addAddress(_ address: ScannerAddress, capabilities: EsclCapabilities) -> String
     public func manualAddresses(_ deviceID: String) -> [ScannerAddress]; public func removeAddress(_ address: ScannerAddress); public func removeAddress(named text: String)   // by ManualHostStatus.address, for the troubleshooter
     public func isNotEncrypted(_ deviceID: String) -> Bool; public static var notEncryptedLabel: String   // "Not encrypted"
+    // Listed scanners that share a name get a suffix in it, "HP M479 (A1B2C3)": the instance name's part in parentheses (else all of it),
+    // else the TXT note, else the host address, whichever is there for all of them and differs; ScannerInfo.model keeps the plain model, or the plain name when the scanner has none, so matching ignores the suffix (the Core does the same).
     // ScannerBackendDiagnostics: addStatus(to:), rescan(), diagnosticsReport
 }
 // Core/ScannerBackend.swift: ScannerBackend gains openSession(deviceID:interactive:) (default: openSession(deviceID:)); AppState

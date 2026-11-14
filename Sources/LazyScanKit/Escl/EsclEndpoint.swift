@@ -38,15 +38,18 @@ public struct EsclEndpoint: Equatable, Sendable {
     public var key: String
     /// The model from the TXT record, else the service instance name.
     public var name: String
+    /// The first service's Bonjour instance name, e.g. "HP Color LaserJet MFP M479fdw (A1B2C3)".
+    public var instanceName: String
     /// The TXT record of the first service (the secure one when both are advertised).
     public var txt: EsclTxtRecord
     /// Where to connect, best first: every HTTPS address before every HTTP one, and within each, IPv4
     /// addresses, then the host name, then IPv6 addresses.
     public var addresses: [ScannerAddress]
 
-    public init(key: String, name: String, txt: EsclTxtRecord, addresses: [ScannerAddress]) {
+    public init(key: String, name: String, instanceName: String = "", txt: EsclTxtRecord, addresses: [ScannerAddress]) {
         self.key = key
         self.name = name
+        self.instanceName = instanceName
         self.txt = txt
         self.addresses = addresses
     }
@@ -135,7 +138,8 @@ public struct EsclEndpoint: Equatable, Sendable {
                     break
                 }
             }
-            endpoints.append(EsclEndpoint(key: group.key, name: name, txt: first.txt, addresses: addresses))
+            endpoints.append(EsclEndpoint(key: group.key, name: name, instanceName: first.service.instanceName,
+                                         txt: first.txt, addresses: addresses))
         }
         return endpoints
     }
