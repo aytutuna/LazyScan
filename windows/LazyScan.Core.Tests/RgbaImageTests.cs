@@ -116,6 +116,21 @@ public class RgbaImageTests
     }
 
     [Fact]
+    public void ExtractRotated_OnePixelStripes_KeepTheirContrast()
+    {
+        // Black and white columns one pixel wide, read a quarter pixel off: Catmull-Rom gives 40 and
+        // 215; bilinear would give 64 and 191.
+        var columns = Enumerable.Range(0, 40).Select(x => x % 2 == 0 ? (byte)0 : (byte)255).ToArray();
+        var image = Reds(40, 3, columns.Concat(columns).Concat(columns).ToArray());
+        var shifted = image.ExtractRotated(new PointD(20.25, 1.5), new SizeD(40, 3), 0)!;
+        var row = RedsOf(shifted);
+        for (int x = 4; x < 36; x++)
+        {
+            Assert.Equal(x % 2 == 0 ? 40 : 215, row[40 + x]);
+        }
+    }
+
+    [Fact]
     public void Clone_IsIndependent()
     {
         var image = Reds(1, 1, 9);

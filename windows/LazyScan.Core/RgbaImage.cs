@@ -132,7 +132,8 @@ public sealed class RgbaImage
     ///   ix = center.X + u*cos(a) - v*sin(a)
     ///   iy = center.Y + u*sin(a) + v*cos(a)
     /// — exactly the <see cref="DetectedPhotoRegion"/> corner convention (top-left origin,
-    /// y down, positive angle clockwise on screen). Samples bilinearly; areas outside the
+    /// y down, positive angle clockwise on screen). Samples bicubically (Catmull-Rom, as
+    /// <see cref="PerspectiveCorrector"/>, so one-pixel strokes keep their contrast); areas outside the
     /// source are white, matching the Swift extractor's white fill.
     /// </summary>
     public RgbaImage? ExtractRotated(PointD center, SizeD size, double angleDegrees) =>
@@ -140,10 +141,11 @@ public sealed class RgbaImage
 
     /// <summary>
     /// <see cref="ExtractRotated(PointD, SizeD, double)"/> with a custom (opaque) color for
-    /// areas outside the source.
+    /// areas outside the source. <paramref name="bilinear"/> samples bilinearly instead, for
+    /// measuring (no overshoot at edges).
     /// </summary>
     public RgbaImage? ExtractRotated(PointD center, SizeD size, double angleDegrees,
-                                     byte fillR, byte fillG, byte fillB)
+                                     byte fillR, byte fillG, byte fillB, bool bilinear = false)
     {
         // Swift's .rounded() rounds halves away from zero (300.5 -> 301), not to even.
         int outW = (int)Math.Round(size.Width, MidpointRounding.AwayFromZero);
@@ -162,9 +164,11 @@ public sealed class RgbaImage
                 double sx = center.X + u * cos - v * sin;
                 double sy = center.Y + u * sin + v * cos;
                 // Region coordinates are continuous (pixel i spans [i, i+1), center i + 0.5);
-                // SampleBilinear indexes pixel centers, hence the half-pixel shift — the same
-                // pixel-center mapping CG applies when the Swift extractor draws the source.
-                SampleBilinear(sx - 0.5, sy - 0.5, output, (oy * outW + ox) * 4, fillR, fillG, fillB);
+                // The samplers index pixel centers, hence the half-pixel shift.
+                if (bilinear)
+                    SampleBilinear(sx - 0.5, sy - 0.5, output, (oy * outW + ox) * 4, fillR, fillG, fillB);
+                else
+                    SampleCatmullRom(sx - 0.5, sy - 0.5, output, (oy * outW + ox) * 4, fillR, fillG, fillB);
             }
         }
         return new RgbaImage(outW, outH, output);
@@ -198,6 +202,51 @@ public sealed class RgbaImage
             }
         }
         return new RgbaImage(nw, nh, output);
+    }
+
+    /// <summary>
+    /// Catmull-Rom sample (4 × 4 taps) at (sx, sy) into dest[destIndex..destIndex+3]; taps
+    /// outside the image are the given background color (opaque).
+    /// </summary>
+    private void SampleCatmullRom(double sx, double sy, byte[] dest, int destIndex,
+                                  byte bgR, byte bgG, byte bgB)
+    {
+        double fx0 = Math.Floor(sx), fy0 = Math.Floor(sy);
+        int x0 = (int)fx0 - 1, y0 = (int)fy0 - 1;
+        Span<double> kx = stackalloc double[4];
+        Span<double> ky = stackalloc double[4];
+        PerspectiveCorrector.CatmullRom(sx - fx0, kx);
+        PerspectiveCorrector.CatmullRom(sy - fy0, ky);
+
+        Span<double> acc = stackalloc double[4];
+        for (int j = 0; j < 4; j++)
+        {
+            int cy = y0 + j;
+            for (int i = 0; i < 4; i++)
+            {
+                int cx = x0 + i;
+                double weight = kx[i] * ky[j];
+                if (cx >= 0 && cx < Width && cy >= 0 && cy < Height)
+                {
+                    int si = (cy * Width + cx) * 4;
+                    acc[0] += weight * Pixels[si];
+                    acc[1] += weight * Pixels[si + 1];
+                    acc[2] += weight * Pixels[si + 2];
+                    acc[3] += weight * Pixels[si + 3];
+                }
+                else
+                {
+                    acc[0] += weight * bgR;
+                    acc[1] += weight * bgG;
+                    acc[2] += weight * bgB;
+                    acc[3] += weight * 255;
+                }
+            }
+        }
+        dest[destIndex] = (byte)Math.Clamp(Math.Round(acc[0]), 0, 255);
+        dest[destIndex + 1] = (byte)Math.Clamp(Math.Round(acc[1]), 0, 255);
+        dest[destIndex + 2] = (byte)Math.Clamp(Math.Round(acc[2]), 0, 255);
+        dest[destIndex + 3] = (byte)Math.Clamp(Math.Round(acc[3]), 0, 255);
     }
 
     /// <summary>

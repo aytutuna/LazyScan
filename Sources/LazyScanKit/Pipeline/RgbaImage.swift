@@ -110,7 +110,8 @@ public struct RgbaImage: Equatable, Sendable {
     ///   ix = center.x + u*cos(a) - v*sin(a)
     ///   iy = center.y + u*sin(a) + v*cos(a)
     /// — the `DetectedPhotoRegion` corner convention (top-left origin, y down, positive angle
-    /// clockwise on screen). Samples bilinearly; areas outside the source are the fill color
+    /// clockwise on screen). Samples bicubically (Catmull-Rom, as `PerspectiveCorrector`, so one-pixel
+    /// strokes keep their contrast); areas outside the source are the fill color
     /// (white by default). nil when the rounded size is empty.
     public func extractRotated(center: CGPoint, size: CGSize, angleDegrees: Double,
                                fillR: UInt8 = 255, fillG: UInt8 = 255, fillB: UInt8 = 255) -> RgbaImage? {
@@ -130,9 +131,9 @@ public struct RgbaImage: Equatable, Sendable {
                 let sx = cx + u * c - v * s
                 let sy = cy + u * s + v * c
                 // Region coordinates are continuous (pixel i spans [i, i+1), center i + 0.5);
-                // sampleBilinear indexes pixel centers, hence the half-pixel shift.
-                sampleBilinear(sx - 0.5, sy - 0.5, into: &output, at: (oy * outW + ox) * 4,
-                               bgR: fillR, bgG: fillG, bgB: fillB)
+                // The samplers index pixel centers, hence the half-pixel shift.
+                sampleCatmullRom(sx - 0.5, sy - 0.5, into: &output, at: (oy * outW + ox) * 4,
+                                 bgR: fillR, bgG: fillG, bgB: fillB)
             }
         }
         return RgbaImage(width: outW, height: outH, pixels: output)
@@ -192,6 +193,41 @@ public struct RgbaImage: Equatable, Sendable {
                 acc1 += weight * Double(bgG)
                 acc2 += weight * Double(bgB)
                 acc3 += weight * 255
+            }
+        }
+        dest[destIndex] = RgbaImage.clampedByte(acc0)
+        dest[destIndex + 1] = RgbaImage.clampedByte(acc1)
+        dest[destIndex + 2] = RgbaImage.clampedByte(acc2)
+        dest[destIndex + 3] = RgbaImage.clampedByte(acc3)
+    }
+
+    /// Catmull-Rom sample (4 × 4 taps) at (sx, sy) into dest[destIndex...destIndex+3]; taps outside
+    /// the image are the given background color (opaque). Rounds halves to even, as C# `Math.Round` does.
+    private func sampleCatmullRom(_ sx: Double, _ sy: Double, into dest: inout [UInt8], at destIndex: Int,
+                                  bgR: UInt8, bgG: UInt8, bgB: UInt8) {
+        let fx0 = sx.rounded(.down), fy0 = sy.rounded(.down)
+        let x0 = Int(fx0) - 1, y0 = Int(fy0) - 1
+        let kx: SIMD4<Double> = PerspectiveCorrector.catmullRom(sx - fx0)
+        let ky: SIMD4<Double> = PerspectiveCorrector.catmullRom(sy - fy0)
+
+        var acc0 = 0.0, acc1 = 0.0, acc2 = 0.0, acc3 = 0.0
+        for j in 0..<4 {
+            let cy = y0 + j
+            for i in 0..<4 {
+                let cx = x0 + i
+                let weight: Double = kx[i] * ky[j]
+                if cx >= 0 && cx < width && cy >= 0 && cy < height {
+                    let si = (cy * width + cx) * 4
+                    acc0 += weight * Double(pixels[si])
+                    acc1 += weight * Double(pixels[si + 1])
+                    acc2 += weight * Double(pixels[si + 2])
+                    acc3 += weight * Double(pixels[si + 3])
+                } else {
+                    acc0 += weight * Double(bgR)
+                    acc1 += weight * Double(bgG)
+                    acc2 += weight * Double(bgB)
+                    acc3 += weight * 255
+                }
             }
         }
         dest[destIndex] = RgbaImage.clampedByte(acc0)

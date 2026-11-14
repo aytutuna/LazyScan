@@ -593,7 +593,7 @@ A slash in the template makes folders under the save folder ("{year}/{month}/Sca
 ### Pipeline/RgbaImage.swift, GrayImage.swift, BackgroundMap.swift, MaskOps.swift (the image toolkit)
 
 ```swift
-/// RGBA8, row-major, top-left origin; a port of C# RgbaImage (same box filter, bilinear sampling
+/// RGBA8, row-major, top-left origin; a port of C# RgbaImage (same box filter, bilinear sampling in resized, Catmull-Rom in extractRotated
 /// and rounding: halves to even when sampling, away from zero when sizing). A value type: no clone().
 public struct RgbaImage: Equatable, Sendable {
     public let width: Int, height: Int
@@ -603,7 +603,7 @@ public struct RgbaImage: Equatable, Sendable {
     public func resized(width: Int, height: Int) -> RgbaImage      // box filter down, bilinear up
     public func cropped(_ rect: CGRect) -> RgbaImage?              // integral, clamped; nil when empty
     public func extractRotated(center: CGPoint, size: CGSize, angleDegrees: Double,
-                               fillR: UInt8 = 255, fillG: UInt8 = 255, fillB: UInt8 = 255) -> RgbaImage?
+                               fillR: UInt8 = 255, fillG: UInt8 = 255, fillB: UInt8 = 255) -> RgbaImage?   // Catmull-Rom
     public func rotatedQuarterTurns(_ quarterTurns: Int) -> RgbaImage   // clockwise
     public init?(cgImage: CGImage)                                 // ColorAnalysis.rgbaPixels
     public func makeCGImage() -> CGImage?

@@ -248,7 +248,7 @@ public static class PhotoDetector
     {
         byte gray = (byte)Math.Clamp(Math.Round(fillGray * 255), 0, 255);
         return image.ExtractRotated(center, new SizeD(width, height), angleDegrees,
-                                    gray, gray, gray)?.Pixels;
+                                    gray, gray, gray, bilinear: true)?.Pixels;
     }
 
     // MARK: - Merging and ordering

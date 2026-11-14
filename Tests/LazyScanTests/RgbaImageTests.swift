@@ -89,6 +89,19 @@ final class RgbaImageTests: XCTestCase {
         XCTAssertNil(image.extractRotated(center: CGPoint(x: 1, y: 1), size: CGSize(width: 0.4, height: 2), angleDegrees: 0))
     }
 
+    func test_extractRotated_onePixelStripes_keepTheirContrast() throws {
+        // Black and white columns one pixel wide, read a quarter pixel off: Catmull-Rom gives 40 and
+        // 215; bilinear would give 64 and 191.
+        let columns: [UInt8] = (0..<40).map { $0 % 2 == 0 ? 0 : 255 }
+        let image = reds(40, 3, columns + columns + columns)
+        let shifted = try XCTUnwrap(image.extractRotated(center: CGPoint(x: 20.25, y: 1.5),
+                                                         size: CGSize(width: 40, height: 3), angleDegrees: 0))
+        let row = redsOf(shifted)[40..<80]
+        for x in 4..<36 {
+            XCTAssertEqual(row[40 + x], x % 2 == 0 ? 40 : 215)
+        }
+    }
+
     func test_copy_isIndependent() {
         let image = reds(1, 1, [9])
         var copy = image

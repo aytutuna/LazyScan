@@ -354,7 +354,7 @@ public static class PerspectiveCorrector
     /// The Catmull-Rom weights of the taps at −1, 0, 1 and 2 from the pixel <paramref name="t"/>
     /// (0 to 1) before the point; at t = 0 they are exactly 0, 1, 0, 0.
     /// </summary>
-    private static void CatmullRom(double t, Span<double> k)
+    internal static void CatmullRom(double t, Span<double> k)
     {
         k[0] = ((-0.5 * t + 1) * t - 0.5) * t;
         k[1] = (1.5 * t - 2.5) * t * t + 1;
