@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
@@ -4672,6 +4673,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         using var cts = new CancellationTokenSource();
         _operationCts = cts;
         NotifyAll();
+        // The state belongs to this thread; the awaits below resume on the UI thread, so the reset runs there too.
+        SetThreadExecutionState(EsContinuous | EsSystemRequired);
         try
         {
             await operation(cts.Token);
@@ -4699,6 +4702,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         finally
         {
+            SetThreadExecutionState(EsContinuous);
             ForgetPdfPassword();
         }
         _operationCts = null;
@@ -4707,4 +4711,10 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         NotifyAll();
         EndOfWork();
     }
+
+    private const uint EsContinuous = 0x80000000;
+    private const uint EsSystemRequired = 0x00000001;
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern uint SetThreadExecutionState(uint flags);
 }
