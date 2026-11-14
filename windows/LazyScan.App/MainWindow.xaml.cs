@@ -115,7 +115,15 @@ public partial class MainWindow : Window
         // is seen when the window is back in front.
         Activated += (_, _) =>
         {
-            if (IsLoaded) ViewModel.PrintersMayHaveChanged();
+            if (!IsLoaded) return;
+            ViewModel.PrintersMayHaveChanged();
+            // Files moved or deleted in Explorer meanwhile leave the Saved list.
+            if (SavedTab.IsSelected)
+            {
+                _savedTabStale = false;
+                SavedView.Reload();
+            }
+            else _savedTabStale = true;
         };
         Closing += MainWindow_Closing;
         // Flush any debounced settings write and remove this instance's page spill files.

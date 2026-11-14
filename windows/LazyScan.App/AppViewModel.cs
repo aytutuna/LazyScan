@@ -4120,6 +4120,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 : Loc.Plural(missing.Count,
                     "{0} of the files is no longer in its folder. It may have been moved, renamed or deleted.",
                     "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted.");
+            // The Saved list drops the rows that are gone.
+            SavedRevision++;
             NotifyAll();
             return false;
         }
