@@ -1622,6 +1622,13 @@
   "Building TIFF…": {},
   "password-protected": {},
   "This copy has no password.": {},
+  "Large file": {
+    "other": "Large files"
+  },
+  "This file is {1}. Many mail services reject attachments over {2}.": {
+    "other": "These files are {1}. Many mail services reject attachments over {2}."
+  },
+  "Saved smaller: {0}.": {},
   "Receipts discarded.": {},
   "Photo batch discarded.": {},
   "The page could not be switched: its file could not be read.": {},

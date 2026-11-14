@@ -127,6 +127,13 @@ public enum SaveActions {
         L10n.t("Sharing is not available here, so the file is shown in its folder. Attach it from there.")
     }
 
+    /// Files over this many bytes together are not handed to Mail or the share sheet before the user has
+    /// seen their size (`AppState.largeSendNotice`). Decimal, as sizes are shown and mail services quote them.
+    public static let largeAttachmentBytes: Int64 = 20_000_000
+
+    /// The JPEG quality of Save smaller, the lowest the quality setting offers.
+    public static let smallestJPEGQuality = 0.5
+
     private static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "tif", "tiff"]
 
     /// The step `action` comes down to for `saved`, the files a save wrote; nil when there is

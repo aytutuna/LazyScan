@@ -611,6 +611,15 @@ public final class AppState: ObservableObject {
     var emailsAfterSave = false
     /// The save under way opens the share sheet with its files once written (`saveAndShare`).
     var sharesAfterSave = false
+    /// Files held back from Mail or the share sheet for their size, until the user decides
+    /// (AppState+LargeSend.swift).
+    @Published public var largeSendNotice: LargeSendNotice?
+    /// Save smaller was chosen: the held save is undone, then the pages are saved again at the smallest sizes
+    /// and sent as before. `smallerAfterUndo` is the send, once the undo has put the pages back.
+    var smallerSend: FileAction?
+    var smallerAfterUndo: FileAction?
+    /// The save under way is the one Save smaller makes (`saveSettings`).
+    var savingSmaller = false
     /// A step the iPhone adds to the save under way (its Photos), run with the files once written; for that
     /// save only.
     public var afterSaveStep: (@MainActor ([URL]) -> Void)?
@@ -2052,7 +2061,7 @@ public final class AppState: ObservableObject {
             appendToPDF(at: target)
             return
         }
-        let s = settings
+        let s = saveSettings
         let typedName = name ?? pendingName
         let eachReceipt = Receipts.savesEachFile(s)
         runExclusive { flag in
@@ -2929,9 +2938,10 @@ public final class AppState: ObservableObject {
     /// a save). Nothing leaves the Mac here: sharing and email open the share menu or a new Mail
     /// message, and the user decides where the files go. A file that is gone, or an action macOS
     /// refuses, is reported. Open and Open with use the first file. Returns whether the action
-    /// was carried out. Twin of the Windows `AppViewModel.RunFileAction`.
+    /// was carried out; a send of files over `SaveActions.largeAttachmentBytes` is held back for the user to
+    /// decide (`largeSendNotice`) unless `ignoringSize`. Twin of the Windows `AppViewModel.RunFileAction`.
     @discardableResult
-    public func runFileAction(_ action: FileAction, urls: [URL]) -> Bool {
+    public func runFileAction(_ action: FileAction, urls: [URL], ignoringSize: Bool = false) -> Bool {
         guard !urls.isEmpty else { return false }
         let missing = urls.filter { !FileManager.default.fileExists(atPath: $0.path) }
         if !missing.isEmpty {
@@ -2942,6 +2952,7 @@ public final class AppState: ObservableObject {
                               other: "{0} of the files are no longer in their folder. They may have been moved, renamed or deleted.")
             return false
         }
+        if !ignoringSize && holdsBackLargeSend(action, urls: urls) { return false }
         do {
             switch action {
             case .open:
@@ -2992,6 +3003,9 @@ public final class AppState: ObservableObject {
     /// The after-save action of the settings the files were saved with, once a save has finished
     /// (never after a cancelled or failed one). A refusal is reported; the save stands.
     func runAfterSave(_ action: AfterSaveAction, saved: [URL]) {
+        if savingSmaller {
+            statusMessage = L10n.t("Saved smaller: {0}.", LargeSendNotice.sizeText(attachmentBytes(of: saved)))
+        }
         if let step = afterSaveStep {
             afterSaveStep = nil
             step(saved)
@@ -3361,7 +3375,7 @@ public final class AppState: ObservableObject {
                 stamps[url] = FileStamp(of: url)
             }
             savedUndo = SavedUndo(pages: queued, files: files, stamps: stamps, shown: lastSavedURLs, appended: appended,
-                                  taskFlow: taskFlow, cameraSides: cameraSides)
+                                  taskFlow: taskFlow, cameraSides: cameraSides, smaller: savingSmaller)
         } else {
             deleteSpoolFiles(of: queued)
         }
@@ -3590,6 +3604,12 @@ public final class AppState: ObservableObject {
             if queueRecordTask != nil { writeQueueRecord() }
             if let activity { background?.endActivity(activity) }
             if let awake { lifecycle?.endHoldingAwake(awake) }
+            smallerSend = nil
+            savingSmaller = false
+            if let send = smallerAfterUndo {
+                smallerAfterUndo = nil
+                saveAgainSmaller(thenSending: send)
+            }
             endOfWork()
         }
     }

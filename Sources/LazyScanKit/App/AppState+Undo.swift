@@ -37,6 +37,8 @@ struct SavedUndo {
     var appended: AppendedPDF?
     var taskFlow: TaskFlow?
     var cameraSides: CameraSides?
+    /// The save was made by Save smaller, so there is nothing smaller to offer.
+    var smaller = false
 }
 
 /// What `undoRemove()` puts back: the pages taken out of the queue, in the order they were taken, each with the
@@ -143,6 +145,7 @@ extension AppState {
             if let flow = held.taskFlow, flow.steps == self.taskFlow?.steps { self.taskFlow = flow }
             if held.cameraSides != nil, self.cameraSides != nil { self.cameraSides = held.cameraSides }
             self.statusMessage = held.appended.map { Self.undoneAppendMessage($0.url.lastPathComponent) } ?? Self.undoneMessage
+            self.smallerAfterUndo = self.smallerSend
         }
     }
 
@@ -229,6 +232,9 @@ extension AppState {
     func discardSavedUndo() {
         guard let held = savedUndo else { return }
         savedUndo = nil
+        if let notice = largeSendNotice, notice.canSaveSmaller {
+            largeSendNotice = LargeSendNotice(action: notice.action, urls: notice.urls, bytes: notice.bytes, canSaveSmaller: false)
+        }
         deleteSpoolFiles(of: held.pages)
         if let backup = held.appended?.backup { try? FileManager.default.removeItem(at: backup) }
         pruneSpreads()

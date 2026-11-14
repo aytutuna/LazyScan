@@ -688,6 +688,7 @@ private struct FileActionPresenters: ViewModifier {
                 Text(problem.message)
             }
             .modifier(ErrorAlert(state: state))
+            .modifier(LargeFilesAlert(state: state))
             .modifier(SidesOrderQuestion(state: state))
     }
 
@@ -864,6 +865,47 @@ struct ErrorAlert: ViewModifier {
                 if !isShown {
                     appState.errorMessage = nil
                     appState.errorSuggestsTroubleshooter = false
+                }
+            })
+    }
+}
+
+/// The question before Mail or the share sheet gets files over about 20 MB (`AppState.largeSendNotice`):
+/// Save smaller, when the pages are still held, Send anyway, or Cancel. What was asked is taken when the alert
+/// opens, as the alert's dismissal clears the notice before a button may run.
+@MainActor
+struct LargeFilesAlert: ViewModifier {
+    @ObservedObject var state: AppState
+
+    func body(content: Content) -> some View {
+        let title: String = state.largeSendNotice?.title ?? ""
+        content
+            .alert(title, isPresented: shown, presenting: state.largeSendNotice) { (notice: LargeSendNotice) in
+                if notice.canSaveSmaller {
+                    Button("Save smaller") {
+                        state.saveSmaller(notice)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("largefiles.saveSmaller")
+                }
+                Button("Send anyway") {
+                    state.sendLargeAnyway(notice)
+                }
+                .accessibilityIdentifier("largefiles.sendAnyway")
+                Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("largefiles.cancel")
+            } message: { (notice: LargeSendNotice) in
+                Text(notice.message)
+            }
+    }
+
+    private var shown: Binding<Bool> {
+        let appState: AppState = state
+        return Binding<Bool>(
+            get: { appState.largeSendNotice != nil },
+            set: { (isShown: Bool) in
+                if !isShown {
+                    appState.largeSendNotice = nil
                 }
             })
     }

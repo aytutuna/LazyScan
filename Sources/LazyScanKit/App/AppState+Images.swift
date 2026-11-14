@@ -32,7 +32,7 @@ extension AppState {
     /// steps start over and the after-save action runs, as `savePDF()` does.
     public func saveImages(sides choice: SidesSaveChoice? = nil) {
         guard !scannedPages.isEmpty, settleSides(choice) else { return }
-        let s: ScanSettings = settings
+        let s: ScanSettings = saveSettings
         let format: OutputFormat = s.format.imageFormatOrJPEG
         runExclusive { flag in
             // Let page swaps and turns that were clicked before the save land first.
