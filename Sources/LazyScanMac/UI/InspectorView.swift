@@ -627,7 +627,7 @@ struct InspectorView: View {
     /// Searchable PDF applies whenever the save writes a PDF that can carry text: not for Word, text or
     /// image files saved at once, nor for copies and ID cards (saved without their text).
     private var searchableShown: Bool {
-        let writesPDF: Bool = state.settings.format.savesPDF(collectsPages: state.settings.documentMultiPage)
+        let writesPDF: Bool = InspectorSections.writesPDF(state.settings)
         return writesPDF && !state.isCopyFlow && !state.isIdCardFlow
     }
 

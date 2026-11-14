@@ -145,6 +145,14 @@ final class InspectorSectionsTests: XCTestCase {
         s.documentMultiPage = false
         XCTAssertFalse(InspectorSections.writesPDF(s))
 
+        // Receipts follow the page format, whatever Collect pages says.
+        var receipts: ScanSettings = TaskCatalog.apply(.receipt, to: ScanSettings())
+        receipts.documentMultiPage = true
+        receipts.format = .jpeg
+        XCTAssertFalse(InspectorSections.writesPDF(receipts))
+        receipts.format = .pdf
+        XCTAssertTrue(InspectorSections.writesPDF(receipts))
+
         var photos: ScanSettings = ScanSettings()
         photos.intent = .photo
         XCTAssertEqual(InspectorSections.shown(photos), ["scanner", "output", "adjustments", "more"])
