@@ -37,6 +37,13 @@ public class NamingTemplateTests
     }
 
     [Fact]
+    public void FilesOfOneSaveShareTheCounterAndTimeAndDifferByIndex()
+    {
+        string[] names = Enumerable.Range(1, 3).Select(i => Render("{time} {counter}", counter: 7, index: i)).ToArray();
+        Assert.Equal(new[] { "14.05.09 7 1", "14.05.09 7 2", "14.05.09 7 3" }, names);
+    }
+
+    [Fact]
     public void CounterZeroPadding()
     {
         Assert.Equal("0007", Render("{counter:4}", counter: 7));

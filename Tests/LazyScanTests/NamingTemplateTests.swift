@@ -46,6 +46,11 @@ final class NamingTemplateTests: XCTestCase {
         XCTAssertEqual(render("{counter}", counter: 123), "123")
     }
 
+    func test_filesOfOneSave_shareTheCounterAndTime_andDifferByIndex() {
+        let names: [String] = (1...3).map { render("{time} {counter}", counter: 7, index: $0) }
+        XCTAssertEqual(names, ["14.05.09 7 1", "14.05.09 7 2", "14.05.09 7 3"])
+    }
+
     func test_counterZeroPadding() {
         XCTAssertEqual(render("{counter:4}", counter: 7), "0007")
         XCTAssertEqual(render("{counter:4}", counter: 123), "0123")

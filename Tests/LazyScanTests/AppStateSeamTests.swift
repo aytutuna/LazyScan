@@ -483,10 +483,12 @@ final class AppStateSeamTests: XCTestCase {
         // The second page is skipped in the strip.
         state.scannedPages[1] = state.scannedPages[1].withInclusion(.skip)
         state.settings.format = .jpeg
+        let counterBefore: Int = state.counterDefaults.integer(forKey: AppState.counterKey)
         state.saveImages()
         try await waitUntil(timeout: 60) { !state.isBusy }
         XCTAssertNil(state.errorMessage)
         XCTAssertEqual(state.lastSavedURLs.count, 2)
+        XCTAssertEqual(state.counterDefaults.integer(forKey: AppState.counterKey), counterBefore + 1)
         var sizes: [Int] = []
         for url in state.lastSavedURLs {
             XCTAssertEqual(url.pathExtension, "jpg")

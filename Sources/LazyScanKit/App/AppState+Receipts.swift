@@ -284,9 +284,11 @@ extension AppState {
             var saved: [URL] = []
             var written: [URL] = []
             var textProblem: String?
+            let stamp: SaveStamp = self.nextStamp()
             do {
                 if combine {
-                    let planned = try self.outputURL(fileExtension: "pdf", documentDate: Receipts.combinedDate(read.map(\.date)))
+                    let planned = try self.outputURL(fileExtension: "pdf", documentDate: Receipts.combinedDate(read.map(\.date)),
+                                                     stamp: stamp)
                     self.statusMessage = L10n.t("Writing the PDF…")
                     let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                     let text = try await Task.detached(priority: .userInitiated) { () throws -> (pdf: URL, url: URL?, problem: String?) in
@@ -301,7 +303,9 @@ extension AppState {
                     for (index, receipt) in read.enumerated() {
                         if flag.isCancelled { throw ScanError.cancelled }
                         self.statusMessage = L10n.t("Saving receipt {0} of {1}…", index + 1, read.count)
-                        let planned = try self.outputURL(fileExtension: format.fileExtension, documentDate: receipt.date)
+                        let planned = try self.outputURL(fileExtension: format.fileExtension,
+                                                         index: read.count > 1 ? index + 1 : nil,
+                                                         documentDate: receipt.date, stamp: stamp)
                         if format == .pdf {
                             let options: PDFWriteOptions = try await self.pdfOptions(s, for: planned)
                             let text = try await Task.detached(priority: .userInitiated) { () throws -> (pdf: URL, url: URL?, problem: String?) in
@@ -327,6 +331,7 @@ extension AppState {
                 for url in written { try? FileManager.default.removeItem(at: url) }
                 throw error
             }
+            self.commit(stamp)
             self.lastSavedURLs = saved
             let pdfs: Bool = combine || format == .pdf
             if let url = saved.first, pdfs, saved.count == 1 { self.notePDFSize(of: url, protected: protection != nil) }

@@ -230,7 +230,7 @@ final class CaptureFlowTests: XCTestCase {
         try await waitFor(timeout: 120) { !state.isBusy && !state.showPhotoReview }
         XCTAssertNil(state.errorMessage)
         XCTAssertEqual(fileNames(saved).count, 10)
-        XCTAssertEqual(state.counterDefaults.integer(forKey: AppState.counterKey), counterBefore + 10)
+        XCTAssertEqual(state.counterDefaults.integer(forKey: AppState.counterKey), counterBefore + 1)
     }
 
     @MainActor

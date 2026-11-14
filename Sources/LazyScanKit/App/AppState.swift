@@ -2195,10 +2195,12 @@ public final class AppState: ObservableObject {
                 return
             }
         } else {
+            let stamp: SaveStamp = nextStamp()
             do {
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
-                    let planned = try outputURL(fileExtension: s.format.fileExtension)
+                    let planned = try outputURL(fileExtension: s.format.fileExtension,
+                                                index: pages.count > 1 ? saved.count + 1 : nil, stamp: stamp)
                     let number = saved.count + 1
                     let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
                         let full: CGImage = try Self.fullImage(of: page, number: number)
@@ -2207,7 +2209,9 @@ public final class AppState: ObservableObject {
                     }.value
                     saved.append(url)
                 }
+                commit(stamp)
             } catch {
+                if !saved.isEmpty { commit(stamp) }
                 deleteSpoolFiles(of: Array(pages.prefix(saved.count)))
                 let rest = Array(pages.dropFirst(saved.count))
                 let cancelled = await keepInQueue(rest, after: error)
@@ -2262,11 +2266,12 @@ public final class AppState: ObservableObject {
             let photos = self.detectedPhotos.filter(\.included)
             guard !photos.isEmpty else { return }
             var saved: [URL] = []
-            let counter: Int = self.counterDefaults.integer(forKey: Self.counterKey)
+            let stamp: SaveStamp = self.nextStamp()
             do {
                 for (index, photo) in photos.enumerated() {
                     if flag.isCancelled { throw ScanError.cancelled }
-                    let planned = try self.outputURL(fileExtension: format.fileExtension, index: index + 1)
+                    let planned = try self.outputURL(fileExtension: format.fileExtension, index: index + 1,
+                                                     stamp: stamp)
                     let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
                         let image = photo.rotationQuarterTurns == 0
                             ? photo.image
@@ -2282,9 +2287,9 @@ public final class AppState: ObservableObject {
                 for url in saved {
                     try? FileManager.default.removeItem(at: url)
                 }
-                self.counterDefaults.set(counter, forKey: Self.counterKey)
                 throw error
             }
+            self.commit(stamp)
             self.lastSavedURLs = saved
             self.detectedPhotos = []
             self.showPhotoReview = false
@@ -3400,10 +3405,20 @@ public final class AppState: ObservableObject {
     /// processes of `swift test --parallel` share the standard ones.
     var counterDefaults: UserDefaults = .standard
 
-    private func nextCounter() -> Int {
-        let value = counterDefaults.integer(forKey: Self.counterKey) + 1
-        counterDefaults.set(value, forKey: Self.counterKey)
-        return value
+    /// The running number and time shared by every file of one save.
+    struct SaveStamp {
+        let counter: Int
+        let date: Date
+    }
+
+    /// The stamp the next save would use; nothing is stored until `commit(_:)`.
+    func nextStamp() -> SaveStamp {
+        SaveStamp(counter: counterDefaults.integer(forKey: Self.counterKey) + 1, date: Date())
+    }
+
+    /// Keeps `stamp`'s running number, once the files of its save were written.
+    func commit(_ stamp: SaveStamp) {
+        counterDefaults.set(stamp.counter, forKey: Self.counterKey)
     }
 
     /// The name the next file saved as `format` would get with `template` (the file name field's
@@ -3415,9 +3430,11 @@ public final class AppState: ObservableObject {
     }
 
     /// `name`, when it holds text, is the whole file name: it does not go through the template and does
-    /// not take the running number. It is cut and sanitized as {label} is.
+    /// not take the running number. It is cut and sanitized as {label} is. A save of several files passes
+    /// one `stamp` for all of them and commits it after they are written; without one the running
+    /// number is taken at once.
     func outputURL(fileExtension: String, index: Int? = nil, documentDate: DocumentDate? = nil,
-                   label: String? = nil, name: String? = nil) throws -> URL {
+                   label: String? = nil, name: String? = nil, stamp: SaveStamp? = nil) throws -> URL {
         let dir = try destinationDirectory()
         let base: String
         let suffix = "." + fileExtension.lowercased()
@@ -3429,8 +3446,10 @@ public final class AppState: ObservableObject {
             base = NamingTemplate("{label}")
                 .baseFilename(NamingContext(counter: 0, date: Date(), intent: settings.intent, label: typed))
         } else {
+            let used: SaveStamp = stamp ?? nextStamp()
+            if stamp == nil { commit(used) }
             base = NamingTemplate(settings.namingTemplate)
-                .baseFilename(NamingContext(counter: nextCounter(), date: Date(), intent: settings.intent,
+                .baseFilename(NamingContext(counter: used.counter, date: used.date, intent: settings.intent,
                                             index: index, task: TaskCatalog.infer(settings), documentDate: documentDate,
                                             label: label))
         }

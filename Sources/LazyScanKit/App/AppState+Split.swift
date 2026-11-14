@@ -248,6 +248,8 @@ extension AppState {
         var noText: [String] = []
         var textProblem: String?
         let failures = PDFTextFailures()
+        let stamp: SaveStamp = nextStamp()
+        var usedStamp = false
         // The PDFs carry the save's password when the option is on, asked for before the first file is
         // named (which takes the running number).
         var protectedPDFs = false
@@ -271,7 +273,9 @@ extension AppState {
                 }
                 let fileName: String? = receipts ? typed.map { "\($0) \(document.number)" } : name
                 let planned = try self.outputURL(fileExtension: format.fileExtension, index: plan.fileIndex(document),
-                                                 documentDate: printed, label: document.label, name: fileName)
+                                                 documentDate: printed, label: document.label, name: fileName,
+                                                 stamp: stamp)
+                if fileName == nil { usedStamp = true }
                 if format.isTextFormat {
                     let pageImages: PDFSizePreset? = s.output.wordPageImages ? s.output.pdfSize : nil
                     let (url, hasText) = try await Task.detached(priority: .userInitiated) {
@@ -327,6 +331,7 @@ extension AppState {
                 throw NotSavedError(SavePlan.notSavedMessage(SavePlan.failureReason(error)))
             }
         }
+        if usedStamp { commit(stamp) }
         lastSavedURLs = saved
         // The last PDF's size, as after any save (the Windows inspector shows the same).
         if format == .pdf, let last = saved.last { notePDFSize(of: last, protected: protectedPDFs) }

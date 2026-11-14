@@ -52,13 +52,15 @@ extension AppState {
             }
             let left: String = plan.leftOutNote()
             var saved: [URL] = []
+            let stamp: SaveStamp = self.nextStamp()
             do {
                 var number: Int = 1
                 for page in pages {
                     if flag.isCancelled { throw ScanError.cancelled }
                     self.statusMessage = L10n.t("Saving page {0} of {1}…", number, pages.count)
                     let planned: URL = try self.outputURL(fileExtension: format.fileExtension,
-                                                          index: pages.count > 1 ? number : nil)
+                                                          index: pages.count > 1 ? number : nil,
+                                                          stamp: stamp)
                     let quality: Double = s.jpegQuality
                     let pageNumber: Int = number
                     let url: URL = try await Task.detached(priority: .userInitiated) { () throws -> URL in
@@ -75,6 +77,7 @@ extension AppState {
                 }
                 throw error
             }
+            self.commit(stamp)
             self.lastSavedURLs = saved
             self.dropSaved(queued, wrote: saved)
             self.resetFlow()
