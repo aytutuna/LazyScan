@@ -621,6 +621,15 @@ one file run this way; a preset that opens a photo, receipt, ID card or copy rev
 PDF password. It does not take part in the one-window rule, so it can run while the window is open, and it never
 writes the settings file.
 
+**Import from folder**, the last switch of the Scanner section, imports the images and PDFs that appear in a chosen
+folder (a scanner's scan-to-folder, an SD card copied over) as pages, through the same path as Import photos
+(`FolderImportWatcher.cs`, `AppViewModel.FolderImport.cs`). Files already in the folder when it is switched on are left
+alone, a file is taken once its size and date have been steady for two seconds, and the folder is not searched below its
+top level. Files that arrive while a scan, a save or another import runs wait and are imported afterwards, oldest first;
+none is moved, renamed or deleted. The folder and the switch are kept in `preferences.json` (`ImportFolder`,
+`ImportFolderOn`); files that arrive while the app is closed, or while the task saves on its own (ID card, Photocopy,
+Receipts) and the switch is greyed out, are not imported. A command-line scan never starts it.
+
 When the network keeps the phone and this PC apart, the phone can put its documents, sealed with a
 key only this PC and that phone hold, in a folder synced through OneDrive or iCloud Drive; the PC
 watches that folder (`SyncFolderWatcher.cs`, `SyncPackage.cs`), adds them as if they had been sent

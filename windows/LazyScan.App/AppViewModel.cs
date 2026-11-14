@@ -1098,6 +1098,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         _scanAgainCts?.Cancel();
         ShutdownCompanion();
+        _folderWatcher?.Dispose();
         FlushSettings();
         StopQueueRecord();
         _spool.Dispose();
@@ -1132,7 +1133,9 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         if (PageOptionsStale()) SyncPageOptions();
         _dispatcher.BeginInvoke(SyncRowStates);
+        SyncFolderWatch();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        if (_folderWatcher is { Pending: > 0 }) _dispatcher.BeginInvoke(TakeFolderFiles);
     }
 
     /// <summary>
@@ -4354,6 +4357,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
 
     private void MarkSaved(List<string> paths, bool appended = false)
     {
+        _folderWatcher?.Skip(paths);
         DiscardRemoved();
         DiscardSaved();
         LastSavedPaths = paths;

@@ -2369,6 +2369,16 @@
   "Updated “{0}” with the current settings.": {},
   "Save": {},
   "Choose the save folder": {},
+  "Import from folder": {},
+  "Add new images that appear in a folder as pages": {},
+  "Choose the import folder": {},
+  "Import folder": {},
+  "Watching. New images become pages.": {},
+  "Importing {0} new image…": {
+    "other": "Importing {0} new images…"
+  },
+  "The folder is not there. Pick it again or turn this off.": {},
+  "This folder cannot be read. Pick another or turn this off.": {},
   "The {0} receipt has not been saved.\n\nDiscard it?": {
     "other": "The {0} receipts have not been saved.\n\nDiscard them?"
   },

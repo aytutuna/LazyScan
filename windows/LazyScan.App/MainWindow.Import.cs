@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using LazyScan.Core;
 using Microsoft.Win32;
@@ -61,6 +62,75 @@ public partial class MainWindow
         CanvasImport.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
         CanvasImportButton.IsEnabled = ViewModel.CanImportPhotos;
         CanvasImportButton.ToolTip = underWay ? DocumentSides.NotWhileTurningOverReason : PhotoImport.ButtonHint;
+        SyncImportFolder();
+    }
+
+    private string? _lastImportFolderStatus;
+
+    /// <summary>The Import from folder switch in the Scanner section: off and explained for a task that saves on its own, else its folder and what the watch is doing.</summary>
+    private void SyncImportFolder()
+    {
+        string? reason = ViewModel.ImportFolderReason;
+        bool wasUpdating = _updatingUi;
+        _updatingUi = true;
+        try
+        {
+            ImportFolderBox.IsChecked = ViewModel.ImportFolderOn;
+            ImportFolderBox.IsEnabled = reason is null;
+        }
+        finally
+        {
+            _updatingUi = wasUpdating;
+        }
+        ImportFolderReason.Visibility = reason is null ? Visibility.Collapsed : Visibility.Visible;
+        ImportFolderReasonText.Text = reason ?? "";
+        string? folder = ViewModel.ImportFolder;
+        ImportFolderRow.Visibility = folder is null || reason is not null ? Visibility.Collapsed : Visibility.Visible;
+        ImportFolderPathBox.Text = folder ?? "";
+        string? status = ViewModel.ImportFolderStatus;
+        ImportFolderStatusRow.Visibility = status is null ? Visibility.Collapsed : Visibility.Visible;
+        ImportFolderStatus.Text = status ?? "";
+        if (status is not null && status != _lastImportFolderStatus && ImportFolderStatus.IsVisible)
+        {
+            var peer = UIElementAutomationPeer.FromElement(ImportFolderStatus) ?? UIElementAutomationPeer.CreatePeerForElement(ImportFolderStatus);
+            peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        }
+        _lastImportFolderStatus = status;
+        if (ViewModel.ImportFolderHasProblem)
+        {
+            ImportFolderStatusGlyph.Text = "\uE7BA";
+            ImportFolderStatusGlyph.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+            ImportFolderStatus.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+        }
+        else
+        {
+            ImportFolderStatusGlyph.Text = "\uE946";
+            ImportFolderStatusGlyph.ClearValue(TextBlock.ForegroundProperty);
+            ImportFolderStatus.ClearValue(TextBlock.ForegroundProperty);
+        }
+    }
+
+    private void ImportFolder_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        bool on = ImportFolderBox.IsChecked == true;
+        // Switched on with no folder yet: the picker opens, and cancelling leaves the switch off.
+        if (on && ViewModel.ImportFolder is null) PickImportFolder();
+        else ViewModel.SetImportFolderOn(on);
+        RefreshFromViewModel();
+    }
+
+    private void BrowseImportFolder_Click(object sender, RoutedEventArgs e)
+    {
+        PickImportFolder();
+        RefreshFromViewModel();
+    }
+
+    private void PickImportFolder()
+    {
+        var dialog = new OpenFolderDialog { Title = Loc.T("Import from folder") };
+        if (ViewModel.ImportFolder is { } current && Directory.Exists(current)) dialog.InitialDirectory = current;
+        if (dialog.ShowDialog(this) == true) ViewModel.SetImportFolder(dialog.FolderName);
     }
 
     private void ImportPhotos_Click(object sender, RoutedEventArgs e)

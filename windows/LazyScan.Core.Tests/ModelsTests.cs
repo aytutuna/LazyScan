@@ -280,6 +280,32 @@ public class ModelsTests
     }
 
     [Fact]
+    public void ImportFolderIsOffUntilChosenAndIsKept()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "lazyscan-prefs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var fresh = AppPreferencesStore.Load(dir);
+            Assert.False(fresh.ImportFolderOn);
+            Assert.Null(fresh.ImportFolder);
+            AppPreferencesStore.Update(p =>
+            {
+                p.ImportFolder = @"C:\Scans\Inbox";
+                p.ImportFolderOn = true;
+            }, dir);
+            AppPreferencesStore.Update(p => p.Appearance = AppAppearance.Dark, dir);
+            var kept = AppPreferencesStore.Load(dir);
+            Assert.True(kept.ImportFolderOn);
+            Assert.Equal(@"C:\Scans\Inbox", kept.ImportFolder);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void KeepReceivingIsOffUntilChosenAndIsKept()
     {
         string dir = Path.Combine(Path.GetTempPath(), "lazyscan-prefs-" + Guid.NewGuid().ToString("N"));

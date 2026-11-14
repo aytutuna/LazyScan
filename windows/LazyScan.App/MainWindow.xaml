@@ -1217,6 +1217,35 @@
                                                           ToolTip="{loc:T Scans the next page by itself after the wait. Swap the page during the wait. Press Stop to end it.}"
                                                           SelectionChanged="Setting_Changed" />
                                             </StackPanel>
+
+                                            <!-- New images in a folder become pages: shown for every source, since it imports files. -->
+                                            <StackPanel x:Name="ImportFolderOptions" Margin="0,12,0,0">
+                                                <CheckBox x:Name="ImportFolderBox" Style="{StaticResource ToggleSwitchStyle}"
+                                                          Content="{loc:T Import from folder}"
+                                                          ToolTip="{loc:T Add new images that appear in a folder as pages}"
+                                                          ToolTipService.ShowOnDisabled="True"
+                                                          AutomationProperties.HelpText="{loc:T Add new images that appear in a folder as pages}"
+                                                          Checked="ImportFolder_Changed" Unchecked="ImportFolder_Changed" />
+                                                <DockPanel x:Name="ImportFolderReason" Margin="0,4,0,0" Visibility="Collapsed">
+                                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
+                                                    <TextBlock x:Name="ImportFolderReasonText" Style="{StaticResource ReasonText}" />
+                                                </DockPanel>
+                                                <DockPanel x:Name="ImportFolderRow" KeyboardNavigation.TabNavigation="Local" Margin="0,8,0,0" Visibility="Collapsed">
+                                                    <Button x:Name="ImportFolderBrowse" DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Content="&#xE838;" KeyboardNavigation.TabIndex="1"
+                                                            ToolTip="{loc:T Choose the import folder}"
+                                                            AutomationProperties.Name="{loc:T Choose the import folder}"
+                                                            Click="BrowseImportFolder_Click" />
+                                                    <TextBox x:Name="ImportFolderPathBox" Margin="0,0,4,0" IsReadOnly="True" FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="0"
+                                                             ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
+                                                             AutomationProperties.Name="{loc:T Import folder}"
+                                                             AutomationProperties.LabeledBy="{Binding ElementName=ImportFolderBox}" />
+                                                </DockPanel>
+                                                <DockPanel x:Name="ImportFolderStatusRow" Margin="0,4,0,0" Visibility="Collapsed">
+                                                    <TextBlock x:Name="ImportFolderStatusGlyph" DockPanel.Dock="Left" Style="{StaticResource ReasonGlyph}" Text="&#xE946;" />
+                                                    <TextBlock x:Name="ImportFolderStatus" Style="{StaticResource ReasonText}"
+                                                               AutomationProperties.LiveSetting="Polite" />
+                                                </DockPanel>
+                                            </StackPanel>
                                         </StackPanel>
                                     </Expander>
 

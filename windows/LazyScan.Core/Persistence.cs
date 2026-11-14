@@ -131,6 +131,12 @@ public sealed class AppPreferences
 
     /// <summary>Closing the window hides it to a notification area icon and the phone link keeps receiving. Windows only.</summary>
     public bool KeepReceiving { get; set; }
+
+    /// <summary>The folder whose new images are imported as pages (<see cref="FolderImportWatcher"/>); null until one is chosen. Windows only.</summary>
+    public string? ImportFolder { get; set; }
+
+    /// <summary>New images in <see cref="ImportFolder"/> are imported while this is on. Windows only.</summary>
+    public bool ImportFolderOn { get; set; }
 }
 
 public static class AppPreferencesStore
