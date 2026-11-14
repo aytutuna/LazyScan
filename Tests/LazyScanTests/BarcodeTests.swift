@@ -123,9 +123,13 @@ private func pattern() -> QrModules {
 final class BarcodeTests: XCTestCase {
     // MARK: Kinds and readings
 
-    func test_symbologies_theFourKindsRead() {
-        XCTAssertEqual(BarcodeSymbology.all, [.qrCode, .code128, .code39, .dataMatrix])
-        XCTAssertEqual(BarcodeSymbology.all.map(\.label), ["QR code", "Code 128", "Code 39", "Data Matrix"])
+    func test_symbologies_theKindsRead() {
+        XCTAssertEqual(BarcodeSymbology.all, [
+            .qrCode, .code128, .code39, .dataMatrix, .itf, .pdf417, .ean13, .codabar, .aztec,
+        ])
+        XCTAssertEqual(BarcodeSymbology.all.map(\.label), [
+            "QR code", "Code 128", "Code 39", "Data Matrix", "ITF", "PDF417", "EAN-13", "Codabar", "Aztec",
+        ])
     }
 
     func test_inReadingOrder_topToBottomThenLeftToRight_withoutEmptyOrRepeatedCodes() {

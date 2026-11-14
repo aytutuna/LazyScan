@@ -13,9 +13,11 @@ public struct VisionBarcodeReader: BarcodeReader {
     /// Vision's barcode detection is always there on macOS 14.
     public var isAvailable: Bool { true }
 
-    /// The kinds read, in Vision's terms.
+    /// The kinds read, in Vision's terms. A UPC-A code is read as EAN-13 with a leading 0.
     static let kinds: [(VNBarcodeSymbology, BarcodeSymbology)] = [
         (.qr, .qrCode), (.code128, .code128), (.code39, .code39), (.dataMatrix, .dataMatrix),
+        (.i2of5, .itf), (.itf14, .itf), (.pdf417, .pdf417), (.ean13, .ean13), (.codabar, .codabar),
+        (.aztec, .aztec),
     ]
 
     public func read(_ image: GrayImage) throws -> [BarcodeReading] {

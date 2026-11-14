@@ -15,21 +15,35 @@ public enum BarcodeSymbology
     Code128,
     Code39,
     DataMatrix,
+    Itf,
+    Pdf417,
+    Ean13,
+    Codabar,
+    Aztec,
 }
 
 public static class BarcodeSymbologies
 {
     /// <summary>Every kind read, in this order.</summary>
     public static IReadOnlyList<BarcodeSymbology> All { get; } =
-        [BarcodeSymbology.QrCode, BarcodeSymbology.Code128, BarcodeSymbology.Code39, BarcodeSymbology.DataMatrix];
+        [
+            BarcodeSymbology.QrCode, BarcodeSymbology.Code128, BarcodeSymbology.Code39, BarcodeSymbology.DataMatrix,
+            BarcodeSymbology.Itf, BarcodeSymbology.Pdf417, BarcodeSymbology.Ean13,
+            BarcodeSymbology.Codabar, BarcodeSymbology.Aztec,
+        ];
 
-    /// <summary>"QR code", "Code 128", "Code 39", "Data Matrix".</summary>
+    /// <summary>"QR code", "Code 128", "Code 39", "Data Matrix", "ITF", "PDF417", "EAN-13", "Codabar", "Aztec".</summary>
     public static string Label(this BarcodeSymbology symbology) => symbology switch
     {
         BarcodeSymbology.QrCode => Loc.T("QR code"),
         BarcodeSymbology.Code128 => "Code 128",
         BarcodeSymbology.Code39 => "Code 39",
         BarcodeSymbology.DataMatrix => "Data Matrix",
+        BarcodeSymbology.Itf => "ITF",
+        BarcodeSymbology.Pdf417 => "PDF417",
+        BarcodeSymbology.Ean13 => "EAN-13",
+        BarcodeSymbology.Codabar => "Codabar",
+        BarcodeSymbology.Aztec => "Aztec",
         _ => symbology.ToString(),
     };
 }

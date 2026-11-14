@@ -11,17 +11,29 @@ public enum BarcodeSymbology: Int, CaseIterable, Codable, Sendable {
     case code128
     case code39
     case dataMatrix
+    case itf
+    case pdf417
+    case ean13
+    case codabar
+    case aztec
 
     /// Every kind read, in this order.
-    public static let all: [BarcodeSymbology] = [.qrCode, .code128, .code39, .dataMatrix]
+    public static let all: [BarcodeSymbology] = [
+        .qrCode, .code128, .code39, .dataMatrix, .itf, .pdf417, .ean13, .codabar, .aztec,
+    ]
 
-    /// "QR code", "Code 128", "Code 39", "Data Matrix".
+    /// "QR code", "Code 128", "Code 39", "Data Matrix", "ITF", "PDF417", "EAN-13", "Codabar", "Aztec".
     public var label: String {
         switch self {
         case .qrCode: return L10n.t("QR code")
         case .code128: return "Code 128"
         case .code39: return "Code 39"
         case .dataMatrix: return "Data Matrix"
+        case .itf: return "ITF"
+        case .pdf417: return "PDF417"
+        case .ean13: return "EAN-13"
+        case .codabar: return "Codabar"
+        case .aztec: return "Aztec"
         }
     }
 }

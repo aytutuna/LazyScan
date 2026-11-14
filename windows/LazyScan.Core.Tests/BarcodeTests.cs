@@ -76,11 +76,13 @@ public class BarcodeTests
     // MARK: - Kinds and readings
 
     [Fact]
-    public void Symbologies_TheFourKindsRead()
+    public void Symbologies_TheKindsRead()
     {
-        Assert.Equal([BarcodeSymbology.QrCode, BarcodeSymbology.Code128, BarcodeSymbology.Code39, BarcodeSymbology.DataMatrix],
+        Assert.Equal([BarcodeSymbology.QrCode, BarcodeSymbology.Code128, BarcodeSymbology.Code39, BarcodeSymbology.DataMatrix,
+                      BarcodeSymbology.Itf, BarcodeSymbology.Pdf417, BarcodeSymbology.Ean13,
+                      BarcodeSymbology.Codabar, BarcodeSymbology.Aztec],
                      BarcodeSymbologies.All);
-        Assert.Equal(["QR code", "Code 128", "Code 39", "Data Matrix"], BarcodeSymbologies.All.Select(s => s.Label()));
+        Assert.Equal(["QR code", "Code 128", "Code 39", "Data Matrix", "ITF", "PDF417", "EAN-13", "Codabar", "Aztec"], BarcodeSymbologies.All.Select(s => s.Label()));
     }
 
     [Fact]

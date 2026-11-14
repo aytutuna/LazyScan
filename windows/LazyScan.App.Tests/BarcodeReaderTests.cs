@@ -132,6 +132,8 @@ public class BarcodeReaderTests(ITestOutputHelper output)
         { BarcodeFormat.CODE_128, BarcodeSymbology.Code128, "INV-0042/b", 0.013 },
         { BarcodeFormat.CODE_39, BarcodeSymbology.Code39, "INV-0042", 0.012 },
         { BarcodeFormat.DATA_MATRIX, BarcodeSymbology.DataMatrix, "Lease 2026", 0.03 },
+        { BarcodeFormat.PDF_417, BarcodeSymbology.Pdf417, "Lease 2026", 0.02 },
+        { BarcodeFormat.EAN_13, BarcodeSymbology.Ean13, "5901234123457", 0.017 },
     };
 
     [Theory]
@@ -147,7 +149,7 @@ public class BarcodeReaderTests(ITestOutputHelper output)
             {
                 for (int x = PrintDpi; x < (int)(7.5 * PrintDpi); x++)
                 {
-                    if ((x / 20) % 3 != 0) pixels[y * w + x] = Toner;
+                    if (((x / 20) * (x / 20) + x / 20) % 5 < 3) pixels[y * w + x] = Toner;
                 }
             }
         });
@@ -159,7 +161,7 @@ public class BarcodeReaderTests(ITestOutputHelper output)
                 var reading = Assert.Single(found);
                 Assert.Equal((kind, text), (reading.Symbology, reading.Text));
                 // Where it is, in the scan's pixels: near where it was drawn.
-                Assert.InRange(reading.Bounds.X, 0.7 * dpi, 1.6 * dpi);
+                Assert.InRange(reading.Bounds.X, 0.7 * dpi, (kind == BarcodeSymbology.Pdf417 ? 3.5 : 1.6) * dpi);
                 Assert.InRange(reading.Bounds.Y, 0.5 * dpi, 1.9 * dpi);
             }
         }

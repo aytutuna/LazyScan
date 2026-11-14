@@ -17,13 +17,18 @@ namespace LazyScan.App.Services;
 /// </summary>
 public sealed class ZXingBarcodeReader : IBarcodeReader
 {
-    /// <summary>The kinds read, in ZXing's terms.</summary>
+    /// <summary>The kinds read, in ZXing's terms. A UPC-A code is read as EAN-13 with a leading 0.</summary>
     private static readonly Dictionary<BarcodeFormat, BarcodeSymbology> Kinds = new()
     {
         [BarcodeFormat.QR_CODE] = BarcodeSymbology.QrCode,
         [BarcodeFormat.CODE_128] = BarcodeSymbology.Code128,
         [BarcodeFormat.CODE_39] = BarcodeSymbology.Code39,
         [BarcodeFormat.DATA_MATRIX] = BarcodeSymbology.DataMatrix,
+        [BarcodeFormat.ITF] = BarcodeSymbology.Itf,
+        [BarcodeFormat.PDF_417] = BarcodeSymbology.Pdf417,
+        [BarcodeFormat.EAN_13] = BarcodeSymbology.Ean13,
+        [BarcodeFormat.CODABAR] = BarcodeSymbology.Codabar,
+        [BarcodeFormat.AZTEC] = BarcodeSymbology.Aztec,
     };
 
     /// <summary>A Data Matrix spot is looked for in cells this big; a code of at least this size is found.</summary>
