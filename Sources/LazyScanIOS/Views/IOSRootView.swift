@@ -126,10 +126,10 @@ public struct IOSRootView: View {
             followMode()
         }
     }
+
     private var libraryTransition: AnyTransition {
         reduceMotion ? .opacity : .move(edge: .leading)
     }
-
 
     public var body: some View {
         layout
