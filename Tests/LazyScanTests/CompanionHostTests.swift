@@ -225,6 +225,36 @@ final class CompanionHostTests: XCTestCase {
         XCTAssertFalse(listening)
     }
 
+    func testListenerThatFailsAfterStarting_IsReplacedByTheHost() async throws {
+        let opened = await service.openPairing()
+        XCTAssertNotNil(opened)
+        let failed = try XCTUnwrap(service.host.server)
+        XCTAssertTrue(failed.isListening)
+        failed.listenerStateChanged(.failed(.posix(.ECONNABORTED)))
+        XCTAssertFalse(failed.isListening)
+        try await waitUntil { !failed.isRunning }
+        await service.refresh()
+        let replaced = try XCTUnwrap(service.host.server)
+        XCTAssertTrue(replaced !== failed)
+        XCTAssertTrue(replaced.isListening)
+        XCTAssertEqual(service.status.state, .listening)
+        let listening = await isListening(service.status.port)
+        XCTAssertTrue(listening)
+    }
+
+    func testRefresh_ReplacesAListenerThatIsNotReady() async throws {
+        _ = await service.openPairing()
+        let failed = try XCTUnwrap(service.host.server)
+        failed.onListenerLost = nil
+        failed.listenerStateChanged(.waiting(.posix(.ENETDOWN)))
+        XCTAssertFalse(failed.isListening)
+        await service.refresh()
+        let replaced = try XCTUnwrap(service.host.server)
+        XCTAssertTrue(replaced !== failed)
+        XCTAssertTrue(replaced.isListening)
+        XCTAssertEqual(service.status.state, .listening)
+    }
+
     func testListener_StopsWhenTheNetworkIsNoLongerTrusted() async throws {
         let (code, client) = try await pairedPhone()
         _ = try await client.health()

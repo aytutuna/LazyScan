@@ -60,6 +60,11 @@ public final class CompanionServer: @unchecked Sendable {
     private var nextNumber = 0
     private var running = false
     private var bound: [NWEndpoint] = []
+    private var lost = false
+
+    /// Called (on the server's queue) when a listener fails or has to wait after the server started, so
+    /// that it no longer answers phones. Set before `start`.
+    public var onListenerLost: (() -> Void)?
 
     public init(identity: SecIdentity, router: CompanionRouter, limiter: CompanionRateLimiter,
                 options: CompanionServerOptions = CompanionServerOptions(), clock: @escaping () -> Date = { Date() }) {
@@ -81,6 +86,13 @@ public final class CompanionServer: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return running
+    }
+
+    /// Whether the server is running and none of its listeners has failed since.
+    public var isListening: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return running && !lost
     }
 
     /// The connections being served now.
@@ -171,12 +183,16 @@ public final class CompanionServer: @unchecked Sendable {
         let queue: DispatchQueue = self.queue
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NWEndpoint.Port, Error>) in
             let once: Once<NWEndpoint.Port> = Once(continuation)
-            listener.stateUpdateHandler = { (state: NWListener.State) in
+            listener.stateUpdateHandler = { [weak self] (state: NWListener.State) in
                 switch state {
                 case .ready:
                     once.resume(.success(listener.port ?? .any))
                 case .failed(let error), .waiting(let error):
-                    if once.resume(.failure(error)) { listener.cancel() }
+                    if once.resume(.failure(error)) {
+                        listener.cancel()
+                    } else {
+                        self?.listenerStateChanged(state)
+                    }
                 case .cancelled:
                     once.resume(.failure(NWError.posix(.ECANCELED)))
                 default:
@@ -190,6 +206,21 @@ public final class CompanionServer: @unchecked Sendable {
             queue.asyncAfter(deadline: .now() + 10) {
                 if once.resume(.failure(NWError.posix(.ETIMEDOUT))) { listener.cancel() }
             }
+        }
+    }
+
+    /// A listener's state after it started: a failure or a wait means it no longer answers, which is
+    /// reported unless the server is stopping.
+    func listenerStateChanged(_ state: NWListener.State) {
+        switch state {
+        case .failed, .waiting:
+            lock.lock()
+            let report = running && !lost
+            if report { lost = true }
+            lock.unlock()
+            if report { onListenerLost?() }
+        default:
+            break
         }
     }
 
@@ -297,6 +328,7 @@ public final class CompanionServer: @unchecked Sendable {
         defer { lock.unlock() }
         guard !running else { return false }
         running = true
+        lost = false
         return true
     }
 

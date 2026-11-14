@@ -120,8 +120,8 @@ public final class CompanionHost: @unchecked Sendable {
     private var current = CompanionHostStatus.initial
     private var advertisements: [Int: (registration: DnsSdRegistration, withdraw: () -> Void)] = [:]
     private var localNetworkDenied = false
-    // Touched only by the refresh running.
-    private var server: CompanionServer?
+    // Touched only by the refresh running (and read by tests).
+    private(set) var server: CompanionServer?
     private var listening: [LocalSubnet] = []
     private var lastPort = 0
     private var disposed = false
@@ -229,7 +229,7 @@ public final class CompanionHost: @unchecked Sendable {
         var error: String?
         if state != .listening {
             await stopServer()
-        } else if restart || server == nil || !CompanionHost.sameAddresses(listening, addresses) {
+        } else if restart || server?.isListening != true || !CompanionHost.sameAddresses(listening, addresses) {
             await stopServer()
             error = await start(addresses, networks)
             if error != nil { state = .failed }
@@ -263,6 +263,13 @@ public final class CompanionHost: @unchecked Sendable {
         for port in ports {
             let candidate = CompanionServer(identity: served, router: router, limiter: limiter, options: serverOptions,
                                             clock: options.clock)
+            candidate.onListenerLost = { [weak self, weak candidate] in
+                guard let self, let candidate else { return }
+                _ = self.chain {
+                    // A server already replaced or stopped has nothing to restart.
+                    if self.server === candidate { await self.update(restart: true) }
+                }
+            }
             var endpoints: [NWEndpoint] = []
             for subnet in addresses {
                 let bindPort: NWEndpoint.Port = port > 0 ? NWEndpoint.Port(rawValue: UInt16(port)) ?? .any : .any
