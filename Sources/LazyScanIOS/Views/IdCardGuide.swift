@@ -11,7 +11,7 @@ public enum IOSIdCardGuide {
     /// The card's long side over its short side (`MultiQuadPicker.idCardLongOverShort`).
     public static let aspect: Double = MultiQuadPicker.idCardLongOverShort
     /// The frame's width as a share of the screen's.
-    public static let widthShare: Double = 0.86
+    public static let widthShare: Double = 0.65
     /// The frame's height as a share of the screen's, at most.
     public static let heightShare: Double = 0.6
 

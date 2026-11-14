@@ -698,7 +698,7 @@ final class IOSObjectsTests: XCTestCase {
 
     func test_theGuideFrame_hasTheCardsShape_andFitsTheScreen() {
         let portrait: CGRect = IOSIdCardGuide.frame(in: CGSize(width: 390, height: 844))
-        XCTAssertEqual(Double(portrait.width), 390 * 0.86, accuracy: 1e-9)
+        XCTAssertEqual(Double(portrait.width), 390 * 0.65, accuracy: 1e-9)
         XCTAssertEqual(Double(portrait.width / portrait.height), 3.370 / 2.125, accuracy: 1e-9)
         XCTAssertEqual(Double(portrait.midX), 195, accuracy: 1e-9)
         XCTAssertEqual(Double(portrait.midY), 422, accuracy: 1e-9)
