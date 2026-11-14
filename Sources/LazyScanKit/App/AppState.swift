@@ -414,6 +414,8 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var lastSavedURLs: [URL] = [] {
         didSet {
             if let held = savedUndo, held.shown != lastSavedURLs { discardSavedUndo() }
+            if savedAsReceipts != lastSavedURLs { savedAsReceipts = [] }
+            if savedByAppending != lastSavedURLs { savedByAppending = [] }
             if let scoped = scopedSavedURL, lastSavedURLs != [scoped] {
                 scoped.stopAccessingSecurityScopedResource()
                 scopedSavedURL = nil

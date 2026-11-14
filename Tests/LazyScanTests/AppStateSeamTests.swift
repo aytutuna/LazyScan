@@ -298,7 +298,6 @@ final class AppStateSeamTests: XCTestCase {
         state.lastSavedURLs = [pdf]
         state.savedAsReceipts = [pdf]
         state.lastSavedURLs = []
-        state.savedAsReceipts = []
         state.lastSavedURLs = [pdf]
         XCTAssertTrue(state.canAddMorePages(to: [pdf]))
     }
