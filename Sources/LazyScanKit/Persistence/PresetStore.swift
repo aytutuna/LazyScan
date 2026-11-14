@@ -360,7 +360,7 @@ enum StoreFiles {
         if nsError.domain == NSCocoaErrorDomain, missingCodes.contains(nsError.code) {
             return true
         }
-        if nsError.domain == NSPOSIXErrorDomain, nsError.code == Int(ENOENT) {
+        if nsError.domain == NSPOSIXErrorDomain, nsError.code == Int(ENOENT) || nsError.code == Int(ENOTDIR) {
             return true
         }
         if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {

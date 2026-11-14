@@ -171,6 +171,7 @@ public enum PDFImageEncoding {
         }
         let page = RgbaImage(width: target.width, height: target.height, pixels: pixels)
         let split = TextSplit.split(page, dpi: maskPlan.targetDPI)
+        if hasColoredInk(split, pixels: pixels) { return nil }
         guard let g4 = try? CCITTG4Encoder.encode(split.mask, width: split.width, height: split.height),
               Double(g4.count) <= maxMaskShare * Double(split.mask.count) else {
             return nil
