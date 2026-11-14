@@ -107,6 +107,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 } else if phase == .active {
                     model.apply(IOSCameraEvent.foreground)
                     model.rearm()
+                    Task { await model.accessMayHaveChanged() }
                 }
             }
             .onChange(of: covered) { (_: Bool, rests: Bool) in
@@ -560,6 +561,13 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 .foregroundStyle(Color.white)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("camera.message")
+            if model.availability == .restricted {
+                Text(IOSCameraText.restrictedHint)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("camera.restrictedHint")
+            }
             if model.opensSettings {
                 Button(IOSCameraText.settingsLabel) {
                     openSettings()

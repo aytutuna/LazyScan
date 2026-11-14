@@ -180,6 +180,8 @@ public struct IOSCameraLifecycle: Equatable, Sendable {
 /// The camera screen's short texts.
 public enum IOSCameraText {
     public static var title: String { String(localized: "Camera") }
+    /// The line under "Camera not allowed": the other ways to add pages.
+    public static var restrictedHint: String { String(localized: "Photos or Files still work.") }
     public static var doneLabel: String { String(localized: "Done") }
     public static var shutterLabel: String { String(localized: "Take photo") }
     /// The automatic shutter's toggle.

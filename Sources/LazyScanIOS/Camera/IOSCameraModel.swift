@@ -269,6 +269,13 @@ public final class IOSCameraModel: ObservableObject {
         apply(.ready(prepared))
     }
 
+    /// The app is active again: access that was off or not allowed may have changed in Settings, so it is read
+    /// again and the camera starts if it is allowed now.
+    public func accessMayHaveChanged() async {
+        guard availability == .denied || availability == .restricted else { return }
+        await appear()
+    }
+
     /// Try again after the camera did not start: the screen is shown afresh and the session set up again.
     public func retry() async {
         await appear()

@@ -358,6 +358,7 @@
  {"key": "Photo not taken", "comment": ""},
  {"key": "Photo scan, %@ dpi, %@ by %@ pixels, %@", "comment": ""},
  {"key": "Photos", "comment": ""},
+ {"key": "Photos or Files still work.", "comment": ""},
  {"key": "Pick a PDF, then scan the pages to add", "comment": ""},
  {"key": "Pick a scanner", "comment": ""},
  {"key": "Preset for %@. %@.", "comment": ""},

@@ -653,6 +653,24 @@ final class IOSCameraTests: XCTestCase {
     }
 
     @MainActor
+    func test_access_isReadAgainWhenTheAppIsActiveAgain() async {
+        let driver = FakeCameraDriver()
+        let access = FakeCameraAccess(status: .denied, grants: false)
+        let model: IOSCameraModel = makeModel(driver, access: access, hasCamera: true, center: NotificationCenter())
+        await model.appear()
+        XCTAssertEqual(model.availability, .denied)
+        XCTAssertEqual(driver.prepares, 0)
+        access.status = .authorized
+        await model.accessMayHaveChanged()
+        XCTAssertEqual(model.availability, .available)
+        XCTAssertEqual(driver.prepares, 1)
+        XCTAssertEqual(driver.starts, 1)
+        XCTAssertEqual(access.asks, 0)
+        await model.accessMayHaveChanged()
+        XCTAssertEqual(driver.prepares, 1)
+    }
+
+    @MainActor
     func test_theCamera_isSetUpOnce_andStartsAndStops_asTheAppAndTheDeviceAllow() async throws {
         let driver = FakeCameraDriver()
         driver.frameSource = FixtureFrameSource(stillFrames())
