@@ -81,7 +81,7 @@ public final class SystemFileActions: FileActionService {
 
     public func copy(_ content: ClipboardContent) throws {
         let pasteboard = NSPasteboard.general
-        _ = pasteboard.clearContents()
+        _ = pasteboard.prepareForNewContents(with: .currentHostOnly)
         if let imageFile = content.imageFile, content.files.count == 1 {
             // One item that is both the file (for Finder) and its picture (for documents and editors).
             let item = NSPasteboardItem()
@@ -123,7 +123,7 @@ public final class SystemFileActions: FileActionService {
 
     public func copyText(_ text: String) throws {
         let pasteboard = NSPasteboard.general
-        _ = pasteboard.clearContents()
+        _ = pasteboard.prepareForNewContents(with: .currentHostOnly)
         guard pasteboard.setString(text, forType: .string) else {
             throw ScanError.exportFailed(String(localized: "The pasteboard did not take the text."))
         }

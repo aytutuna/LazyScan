@@ -333,7 +333,7 @@ struct PhoneView: View {
 
     private func copyPairingText(_ text: String) {
         let pasteboard = NSPasteboard.general
-        _ = pasteboard.clearContents()
+        _ = pasteboard.prepareForNewContents(with: .currentHostOnly)
         footerMessage = pasteboard.setString(text, forType: .string)
             ? String(localized: "Copied to the clipboard.") : String(localized: "Copy did not work.")
     }
