@@ -700,8 +700,31 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
     /// <summary>How many copies the Copy task prints; read through <see cref="PrintCopies.Clamp"/> (1 to 99). One unless chosen.</summary>
     public int CopyCount { get; set; } = 1;
 
-    /// <summary>Copies are made smaller to fit the printable area of the paper. Off: they print at real size, like a photocopier.</summary>
-    public bool CopyFitToPage { get; set; } = false;
+    /// <summary>
+    /// How copies are sized on the paper (<see cref="PrintScale"/>): at real size like a photocopier, made
+    /// smaller to fit the printable area, enlarged to fill it, or at <see cref="CopyScalePercent"/>.
+    /// Settings without it read from <see cref="CopyFitToPage"/>: on is fit, off is actual size.
+    /// </summary>
+    public CopyScale CopyScale { get; set; } = CopyScale.Actual;
+
+    /// <summary>The share of real size for <see cref="CopyScale"/> Percent; read through <see cref="PrintScale.Clamp"/> (25 to 400).</summary>
+    public int CopyScalePercent { get; set; } = 100;
+
+    /// <summary>Copies at real size or a percentage are centered on the paper instead of lying against its top-left corner. Off unless chosen.</summary>
+    public bool CopyCenter { get; set; } = false;
+
+    /// <summary>
+    /// Whether <see cref="CopyScale"/> is fit. Still written, as before the scale choices, so older versions
+    /// open the file; setting it picks fit or actual size.
+    /// </summary>
+    public bool CopyFitToPage
+    {
+        get => CopyScale == CopyScale.Fit;
+        set
+        {
+            if (value != (CopyScale == CopyScale.Fit)) CopyScale = value ? CopyScale.Fit : CopyScale.Actual;
+        }
+    }
 
     /// <summary>
     /// The printer the Copy task (and printing the ID card) prints on; null for the default printer,
@@ -793,7 +816,8 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
 
     public bool Equals(TaskOptions? other) =>
         other is not null && IdCardPaper == other.IdCardPaper && IdCardSaveSidesAsImages == other.IdCardSaveSidesAsImages
-        && CopyCount == other.CopyCount && CopyFitToPage == other.CopyFitToPage
+        && CopyCount == other.CopyCount && CopyScale == other.CopyScale
+        && CopyScalePercent == other.CopyScalePercent && CopyCenter == other.CopyCenter
         && CopyPrinterName == other.CopyPrinterName && CopyAlsoSavePdf == other.CopyAlsoSavePdf
         && ReceiptNameByDate == other.ReceiptNameByDate && ReceiptCombine == other.ReceiptCombine
         && ReceiptEachFile == other.ReceiptEachFile
@@ -809,7 +833,9 @@ public sealed class TaskOptions : IEquatable<TaskOptions>
         hash.Add(IdCardPaper);
         hash.Add(IdCardSaveSidesAsImages);
         hash.Add(CopyCount);
-        hash.Add(CopyFitToPage);
+        hash.Add(CopyScale);
+        hash.Add(CopyScalePercent);
+        hash.Add(CopyCenter);
         hash.Add(CopyPrinterName);
         hash.Add(CopyAlsoSavePdf);
         hash.Add(ReceiptNameByDate);

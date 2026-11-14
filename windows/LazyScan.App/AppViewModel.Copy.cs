@@ -74,10 +74,11 @@ public sealed partial class AppViewModel
 
     /// <summary>
     /// "Edges may lose up to 5 mm" when copies at real size from the corner of the paper lose an edge
-    /// to the chosen printer's margins; null otherwise (and while Fit to page is on).
+    /// to the chosen printer's margins; null otherwise (and while Fit, Fill or Center is on).
     /// </summary>
     public string? CopyMarginWarning =>
-        _copySetup is { } setup && !Settings.TaskOptions.CopyFitToPage && setup.Paper.LargestMargin > PrintLayout.ClipWarningInches
+        _copySetup is { } setup && PrintScale.HasCenterChoice(Settings.TaskOptions.CopyScale) && !Settings.TaskOptions.CopyCenter
+        && setup.Paper.LargestMargin > PrintLayout.ClipWarningInches
             ? Loc.T("Edges may lose up to {0} mm", PrintLayout.Millimetres(setup.Paper.LargestMargin))
             : null;
 
@@ -279,8 +280,9 @@ public sealed partial class AppViewModel
     {
         var options = s.TaskOptions;
         bool allRealSize = pages.All(p => p.PrintsAtRealSize);
-        var mode = PrintLayout.CopyFitsToPage(options.CopyFitToPage, allRealSize) ? PrintMode.FitToPrintable : PrintMode.ActualSize;
-        var align = PrintLayout.AlignFor(areaSelected);
+        var chosen = PrintScale.ModeFor(options.CopyScale, options.CopyScalePercent);
+        var mode = PrintLayout.CopyFitsToPage(chosen == PrintMode.FitToPrintable, allRealSize) ? PrintMode.FitToPrintable : chosen;
+        var align = PrintLayout.AlignFor(areaSelected, options.CopyCenter);
         var printPages = pages
             .Select(p => new PrintPage(p.Image, p.Dpi, PrintLayout.Place(p.Image.Width, p.Image.Height, p.Dpi, setup.Paper, mode, align)))
             .ToList();

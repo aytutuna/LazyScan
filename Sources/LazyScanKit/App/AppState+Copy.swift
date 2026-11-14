@@ -32,7 +32,8 @@ extension AppState {
     /// "Edges may be cut by up to 5 mm (printer margins)." when copies at real size from the corner
     /// of the paper lose an edge to the chosen printer's margins; nil otherwise.
     public var copyMarginWarning: String? {
-        guard let setup = copySetup, !settings.taskOptions.copyFitToPage,
+        let options = settings.taskOptions
+        guard let setup = copySetup, PrintScale.hasCenterChoice(options.copyScale), !options.copyCenter,
               setup.paper.largestMargin > PrintLayout.clipWarningInches else { return nil }
         return L10n.t("Edges may be cut by up to {0} mm (printer margins).", PrintLayout.millimetres(setup.paper.largestMargin))
     }
@@ -104,6 +105,25 @@ extension AppState {
         settings.taskOptions.copyFitToPage = fit
     }
 
+    /// How copies are sized: at real size, fitted, filling the page, or at the percentage.
+    public func setCopyScale(_ scale: CopyScale) {
+        guard !isBusy, settings.taskOptions.copyScale != scale else { return }
+        settings.taskOptions.copyScale = scale
+    }
+
+    /// The percentage of the `.percent` scale, kept between 25 and 400.
+    public func setCopyScalePercent(_ percent: Int) {
+        let clamped = PrintScale.clamp(percent)
+        guard !isBusy, settings.taskOptions.copyScalePercent != clamped else { return }
+        settings.taskOptions.copyScalePercent = clamped
+    }
+
+    /// Copies at real size or a percentage are centred on the paper (true), or lie against its corner (false).
+    public func setCopyCenter(_ center: Bool) {
+        guard !isBusy, settings.taskOptions.copyCenter != center else { return }
+        settings.taskOptions.copyCenter = center
+    }
+
     /// Each copy is also saved as a PDF.
     public func setCopyAlsoSavePdf(_ save: Bool) {
         guard !isBusy, settings.taskOptions.copyAlsoSavePdf != save else { return }
@@ -147,8 +167,8 @@ extension AppState {
         }
     }
 
-    /// Prints the pages of a copy: each at real size (or fitted, when chosen) on the printer's paper,
-    /// against the corner as it lay on the glass or centred when an area was selected, as many copies
+    /// Prints the pages of a copy: each at real size (or fitted, filled or at a percentage, when chosen) on the
+    /// printer's paper, against the corner as it lay on the glass or centred when asked or when an area was selected, as many copies
     /// as asked; then saves them as a PDF too when asked, also when printing failed (the pages are kept
     /// nowhere else; the print error is reported after), not when the print panel was cancelled, and never
     /// for the queue's pages printed from Save's menu (`copyIsOfQueue`): the queue's own Save writes them. The
@@ -160,9 +180,10 @@ extension AppState {
         let options = s.taskOptions
         let alsoPDF = options.copyAlsoSavePdf && !copyIsOfQueue
         let allRealSize = pages.allSatisfy { $0.printsAtRealSize }
-        let fit = PrintLayout.copyFitsToPage(chosenFit: options.copyFitToPage, allPagesRealSize: allRealSize)
-        let mode: PrintMode = fit ? .fitToPrintable : .actualSize
-        let align = PrintLayout.align(hasSelection: areaSelected)
+        let chosen = PrintScale.mode(for: options.copyScale, percent: options.copyScalePercent)
+        let fit = PrintLayout.copyFitsToPage(chosenFit: chosen == .fitToPrintable, allPagesRealSize: allRealSize)
+        let mode: PrintMode = fit ? .fitToPrintable : chosen
+        let align = PrintLayout.align(hasSelection: areaSelected, center: options.copyCenter)
         let placements: [PrintPlacement] = pages.map { page in
             let size = Self.printPixelSize(of: page)
             return PrintLayout.place(pixelWidth: Int(size.width), pixelHeight: Int(size.height),
@@ -360,7 +381,7 @@ extension AppState {
     }
 
     /// Some held page has no known real size (a camera page that matched no paper size), so the copy is
-    /// fitted to the page whatever Fit to page says (`PrintLayout.copyFitsToPage`).
+    /// fitted to the page whatever the scale says (`PrintLayout.copyFitsToPage`).
     public var copyNeedsFit: Bool { copyPages.contains { !$0.printsAtRealSize } }
 
     /// Prints the held copy on the printer chosen in the picker. The pages stay held, for Copy again.

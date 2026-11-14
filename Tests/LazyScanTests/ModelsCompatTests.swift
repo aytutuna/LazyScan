@@ -163,8 +163,9 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
                               + "        \"bookRightToLeft\" : true,\n        \"bookRotationQuarterTurns\" : 1,\n"
                               + "        \"cameraFilter\" : \"original\",\n"
                               + "        \"cameraFrontsFirst\" : true,\n        \"cameraSpreads\" : true,\n"
-                              + "        \"copyAlsoSavePdf\" : true,\n        \"copyCount\" : 3,\n        \"copyFitToPage\" : true,\n"
-                              + "        \"copyPrinterName\" : \"Office printer\",\n        \"idCardPaper\" : \"letter\",\n"
+                              + "        \"copyAlsoSavePdf\" : true,\n        \"copyCenter\" : false,\n        \"copyCount\" : 3,\n"
+                              + "        \"copyFitToPage\" : true,\n        \"copyPrinterName\" : \"Office printer\",\n"
+                              + "        \"copyScale\" : \"fit\",\n        \"copyScalePercent\" : 100,\n        \"idCardPaper\" : \"letter\",\n"
                               + "        \"idCardSaveSidesAsImages\" : true,\n        \"receiptCombine\" : true,\n"
                               + "        \"receiptEachFile\" : false,\n        \"receiptNameByDate\" : false\n      }")
 
@@ -1211,7 +1212,7 @@ final class ModelsCompatTests: XCTestCase {
                 let written = try XCTUnwrap(try jsonObject(data)["taskOptions"] as? [String: Any])
                 // No printer chosen: the key is left out (C# leaves out a null too).
                 XCTAssertEqual(Set(written.keys), ["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage",
-                                                   "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine", "receiptEachFile",
+                                                   "copyScale", "copyScalePercent", "copyCenter", "copyAlsoSavePdf", "receiptNameByDate", "receiptCombine", "receiptEachFile",
                                                    "bookRightToLeft", "bookRotationQuarterTurns", "bookCutAt",
                                                    "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst",
                                                    "cameraSpreads"])
@@ -1247,6 +1248,9 @@ final class ModelsCompatTests: XCTestCase {
         let options = ScanSettings().taskOptions
         XCTAssertEqual(options.copyCount, 1)
         XCTAssertFalse(options.copyFitToPage)
+        XCTAssertEqual(options.copyScale, .actual)
+        XCTAssertEqual(options.copyScalePercent, 100)
+        XCTAssertFalse(options.copyCenter)
         XCTAssertNil(options.copyPrinterName)
         XCTAssertFalse(options.copyAlsoSavePdf)
         // Files of the ID card version have task options without the copy keys.
@@ -1565,6 +1569,29 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertFalse(nulls.receiptCombine)
     }
 
+    func test_copyScale_oldFitToPageSettingsReadAsFit_andTheChoiceRoundTrips() throws {
+        let fit = try decode(ScanSettings.self, #"{"taskOptions": {"copyFitToPage": true}}"#).taskOptions
+        XCTAssertEqual(fit.copyScale, .fit)
+        XCTAssertTrue(fit.copyFitToPage)
+        let actual = try decode(ScanSettings.self, #"{"taskOptions": {"copyFitToPage": false}}"#).taskOptions
+        XCTAssertEqual(actual.copyScale, .actual)
+        var settings = ScanSettings()
+        settings.taskOptions.copyScale = .percent
+        settings.taskOptions.copyScalePercent = 150
+        settings.taskOptions.copyCenter = true
+        let data = try encode(settings)
+        let written = try XCTUnwrap(try jsonObject(data)["taskOptions"] as? [String: Any])
+        XCTAssertEqual(written["copyScale"] as? String, "percent")
+        XCTAssertEqual(written["copyScalePercent"] as? Int, 150)
+        XCTAssertEqual(written["copyCenter"] as? Bool, true)
+        XCTAssertEqual(written["copyFitToPage"] as? Bool, false)
+        XCTAssertEqual(try JSONDecoder().decode(ScanSettings.self, from: data).taskOptions, settings.taskOptions)
+        // A percentage out of range is kept as written and read through PrintScale.clamp.
+        let wild = try decode(ScanSettings.self, #"{"taskOptions": {"copyScale": "percent", "copyScalePercent": 900}}"#).taskOptions
+        XCTAssertEqual(wild.copyScalePercent, 900)
+        XCTAssertEqual(PrintScale.clamp(wild.copyScalePercent), 400)
+    }
+
     func test_corruptCopyOptions_fallBackOneByOne_restIntact() throws {
         let settings = try decode(ScanSettings.self, """
             {"resolution": 150, "taskOptions": {"idCardPaper": "letter", "copyCount": "three", "copyFitToPage": 1,
@@ -1577,6 +1604,11 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertFalse(settings.taskOptions.copyFitToPage)
         XCTAssertNil(settings.taskOptions.copyPrinterName)
         XCTAssertTrue(settings.taskOptions.copyAlsoSavePdf)
+        let badScale = try decode(ScanSettings.self,
+                                  #"{"taskOptions": {"copyScale": "zoom", "copyScalePercent": "big", "copyCenter": 3}}"#).taskOptions
+        XCTAssertEqual(badScale.copyScale, .actual)
+        XCTAssertEqual(badScale.copyScalePercent, 100)
+        XCTAssertFalse(badScale.copyCenter)
         let nulls = try decode(ScanSettings.self,
                                #"{"taskOptions": {"copyCount": null, "copyPrinterName": null, "copyFitToPage": true}}"#).taskOptions
         XCTAssertEqual(nulls.copyCount, 1)

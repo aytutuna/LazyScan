@@ -46,7 +46,7 @@ final class PrintLayoutTests: XCTestCase {
         XCTAssertEqual(placement.clippedInches, 0.2323, accuracy: 0.0001)
         XCTAssertTrue(placement.isClipped)
         XCTAssertEqual(PrintLayout.clipWarning(placement, paper: a4),
-                       "Larger than the paper: up to 6 mm is cut off. Turn on Fit to page to print all of it.")
+                       "Larger than the paper: up to 6 mm is cut off. Choose Fit to page to print all of it.")
     }
 
     func test_actualSize_againstTheCorner_printerMarginsCutTheEdges() {
@@ -68,8 +68,108 @@ final class PrintLayoutTests: XCTestCase {
                                           mode: .actualSize, align: .center)
         assertRect(2.75, 4.5, 3, 2, placement.rect)
         XCTAssertEqual(placement.clippedInches, 0)
-        XCTAssertEqual(PrintLayout.align(hasSelection: true), .center)
-        XCTAssertEqual(PrintLayout.align(hasSelection: false), .paperOrigin)
+        XCTAssertEqual(PrintLayout.align(hasSelection: true, center: false), .center)
+        XCTAssertEqual(PrintLayout.align(hasSelection: false, center: false), .paperOrigin)
+        XCTAssertEqual(PrintLayout.align(hasSelection: false, center: true), .center)
+    }
+
+    func test_actualSize_aClippedCopyIsNoLongerClippedWhenCentred() {
+        // A whole 8.5 x 11 in glass on A4 with 0.17 in margins, against the corner: cut on the right and bottom.
+        let a4Width = Double(a4.width), a4Height = Double(a4.height)
+        let printable = CGRect(x: 0.17, y: 0.17, width: a4Width - 0.34, height: a4Height - 0.34)
+        let corner = PrintLayout.place(pixelWidth: 2550, pixelHeight: 3300, dpi: 300, paper: a4, printable: printable,
+                                       mode: .actualSize, align: .paperOrigin)
+        XCTAssertTrue(corner.isClipped)
+        // A 7.5 x 10.5 in original lies on the printable area's top-left corner and is cut by the margin there.
+        let small = PrintLayout.place(pixelWidth: 2250, pixelHeight: 3150, dpi: 300, paper: a4, printable: printable,
+                                      mode: .actualSize, align: .paperOrigin)
+        XCTAssertEqual(small.clippedInches, 0.17, accuracy: 1e-9)
+        let centred = PrintLayout.place(pixelWidth: 2250, pixelHeight: 3150, dpi: 300, paper: a4, printable: printable,
+                                        mode: .actualSize, align: PrintLayout.align(hasSelection: false, center: true))
+        assertRect((a4Width - 7.5) / 2, (a4Height - 10.5) / 2, 7.5, 10.5, centred.rect)
+        XCTAssertEqual(centred.clippedInches, 0)
+        XCTAssertNil(PrintLayout.clipWarning(centred, paper: a4))
+    }
+
+    // MARK: Percent and fill
+
+    func test_percent_halvesTheRect_andKeepsTheAlignment() {
+        let half = PrintLayout.place(pixelWidth: 2550, pixelHeight: 3300, dpi: 300, paper: letter, printable: whole(letter),
+                                     mode: .percent(0.5), align: .paperOrigin)
+        assertRect(0, 0, 4.25, 5.5, half.rect)
+        XCTAssertEqual(half.scale, 0.5)
+        XCTAssertEqual(half.quarterTurns, 0)
+        XCTAssertEqual(half.clippedInches, 0)
+        let centred = PrintLayout.place(pixelWidth: 2550, pixelHeight: 3300, dpi: 300, paper: letter, printable: whole(letter),
+                                        mode: .percent(0.5), align: .center)
+        assertRect(2.125, 2.75, 4.25, 5.5, centred.rect)
+    }
+
+    func test_percent_aLetterPageAt150OnA4_isClipped() {
+        let placement = PrintLayout.place(pixelWidth: 2550, pixelHeight: 3300, dpi: 300, paper: a4, printable: whole(a4),
+                                          mode: .percent(1.5), align: .paperOrigin)
+        assertRect(0, 0, 12.75, 16.5, placement.rect)
+        XCTAssertEqual(placement.scale, 1.5)
+        XCTAssertTrue(placement.isClipped)
+        XCTAssertEqual(PrintLayout.clipWarning(placement, paper: a4),
+                       "Larger than the paper: up to 123 mm is cut off. Choose Fit to page to print all of it.")
+    }
+
+    func test_percent_turnsOnlyWhenThatCutsOffLess() {
+        // 10 x 7 in at 100% turns on Letter; at 50% it is 5 x 3.5 in and stays upright.
+        let full = PrintLayout.place(pixelWidth: 3000, pixelHeight: 2100, dpi: 300, paper: letter, printable: whole(letter),
+                                     mode: .percent(1), align: .paperOrigin)
+        XCTAssertEqual(full.quarterTurns, 1)
+        let half = PrintLayout.place(pixelWidth: 3000, pixelHeight: 2100, dpi: 300, paper: letter, printable: whole(letter),
+                                     mode: .percent(0.5), align: .paperOrigin)
+        XCTAssertEqual(half.quarterTurns, 0)
+        assertRect(0, 0, 5, 3.5, half.rect)
+    }
+
+    func test_fill_anA5OriginalFillsA4_centredAndCropped() {
+        // A5 is 1748 x 2480 px at 300 dpi (5.827 x 8.267 in); A4 prints inside 0.17 in margins.
+        let a4Width = Double(a4.width), a4Height = Double(a4.height)
+        let printable = CGRect(x: 0.17, y: 0.17, width: a4Width - 0.34, height: a4Height - 0.34)
+        let placement = PrintLayout.place(pixelWidth: 1748, pixelHeight: 2480, dpi: 300, paper: a4, printable: printable,
+                                          mode: .fillPrintable, align: .paperOrigin)
+        let scale = max((a4Width - 0.34) / (1748 / 300.0), (a4Height - 0.34) / (2480 / 300.0))
+        XCTAssertEqual(scale, 1.373, accuracy: 0.001)
+        XCTAssertEqual(placement.scale, scale, accuracy: 1e-9)
+        XCTAssertEqual(placement.quarterTurns, 0)
+        // Centred in the printable area; the overflow past it is cut on purpose and gives no warning.
+        let w = 1748 / 300.0 * scale, h = 2480 / 300.0 * scale
+        assertRect(0.17 + (a4Width - 0.34 - w) / 2, 0.17 + (a4Height - 0.34 - h) / 2, w, h, placement.rect)
+        XCTAssertGreaterThanOrEqual(Double(placement.rect.height), a4Height - 0.34 - 1e-9)
+        XCTAssertEqual(placement.clippedInches, 0)
+        XCTAssertNil(PrintLayout.clipWarning(placement, paper: a4))
+    }
+
+    func test_fill_turnsWhenThatCropsLess() {
+        // A landscape A5 original on portrait A4: upright it is scaled by the height ratio, turned by the width ratio.
+        let placement = PrintLayout.place(pixelWidth: 2480, pixelHeight: 1748, dpi: 300, paper: a4, printable: whole(a4),
+                                          mode: .fillPrintable, align: .paperOrigin)
+        XCTAssertEqual(placement.quarterTurns, 1)
+        let expected = max(Double(a4.width) / (1748 / 300.0), Double(a4.height) / (2480 / 300.0))
+        XCTAssertEqual(placement.scale, expected, accuracy: 1e-9)
+        assertRect(0 + (Double(a4.width) - 1748 / 300.0 * expected) / 2, (Double(a4.height) - 2480 / 300.0 * expected) / 2,
+                   1748 / 300.0 * expected, 2480 / 300.0 * expected, placement.rect)
+    }
+
+    func test_scale_modesLabelsAndLimits() {
+        XCTAssertEqual(PrintScale.mode(for: .actual, percent: 150), .actualSize)
+        XCTAssertEqual(PrintScale.mode(for: .fit, percent: 150), .fitToPrintable)
+        XCTAssertEqual(PrintScale.mode(for: .fill, percent: 150), .fillPrintable)
+        XCTAssertEqual(PrintScale.mode(for: .percent, percent: 150), .percent(1.5))
+        XCTAssertEqual(PrintScale.mode(for: .percent, percent: 10), .percent(0.25))
+        XCTAssertEqual(PrintScale.mode(for: .percent, percent: 900), .percent(4))
+        XCTAssertEqual(PrintScale.label(for: .actual, percent: 100), "Actual size")
+        XCTAssertEqual(PrintScale.label(for: .fit, percent: 100), "Fit to page")
+        XCTAssertEqual(PrintScale.label(for: .fill, percent: 100), "Fill page")
+        XCTAssertEqual(PrintScale.label(for: .percent, percent: 150), "150%")
+        XCTAssertTrue(PrintScale.hasCenterChoice(.actual))
+        XCTAssertTrue(PrintScale.hasCenterChoice(.percent))
+        XCTAssertFalse(PrintScale.hasCenterChoice(.fit))
+        XCTAssertFalse(PrintScale.hasCenterChoice(.fill))
     }
 
     func test_actualSize_turnsOnlyWhenThatCutsOffLess() {
@@ -198,8 +298,6 @@ final class PrintLayoutTests: XCTestCase {
         XCTAssertEqual(PrintText.sent(pageCount: 1, copies: 1, printerName: "Office Printer"), "Sent 1 page to Office Printer.")
         XCTAssertEqual(PrintText.sent(pageCount: 2, copies: 3, printerName: "Office Printer"),
                        "Sent 2 pages to Office Printer. Copies: 3.")
-        XCTAssertEqual(PrintText.modeLabel(fitToPage: false), "Actual size")
-        XCTAssertEqual(PrintText.modeLabel(fitToPage: true), "Fit to page")
         XCTAssertEqual(PrintText.noPrinterReason, "Needs a printer")
         XCTAssertEqual(PrintText.copyPaperHint(.auto, source: .flatbed), "The printer's paper size, from the glass corner")
         XCTAssertEqual(PrintText.copyPaperHint(.auto, source: .documentFeeder), PaperSizes.hint(.auto, source: .documentFeeder))

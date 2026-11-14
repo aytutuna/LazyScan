@@ -880,7 +880,6 @@
     "{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.": "“{0}”は証明済みのPDFです。証明の設定でページの追加が許可されていないため、PDFアプリでは証明が無効になったと表示されます。",
     "{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.": "“{0}”はPDF/A-{1}{2}ファイルです。追加するページがこの規格を満たさないと、PDF/Aとして認められなくなる可能性があります。",
     "Adding page {0} of {1}…": "{0} / {1}ページを追加中…",
-    "Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.": "用紙より大きいため、最大{0} mmが切れてしまいます。全体をプリントするには、“用紙に合わせる”をオンにしてください。",
     "Edges may be cut by up to {0} mm (printer margins).": "端が最大{0} mm切れる場合があります（プリンタの余白）。",
     "Needs a printer": "プリンタが必要",
     "No printer is installed. Add a printer, then try again.": "プリンタがインストールされていません。プリンタを追加してから、やり直してください。",

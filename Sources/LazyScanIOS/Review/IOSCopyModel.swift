@@ -7,8 +7,13 @@ import Foundation
 public enum IOSCopyText {
     public static var title: String { L10n.t("Copy|photocopy title") }
     public static var pageName: String { String(localized: "Page to copy") }
-    public static var fitLabel: String { String(localized: "Fit to page") }
-    public static var fitHint: String { String(localized: "Off: real size. On: shrinks to fit the paper.") }
+    public static var scaleLabel: String { String(localized: "Scale") }
+    public static var scaleHint: String { String(localized: "Real size, shrink to fit, fill the page, or a percentage.") }
+    public static var customChoice: String { String(localized: "Custom percent…") }
+    public static var customValue: String { String(localized: "Custom") }
+    public static var customLabel: String { String(localized: "Custom percent") }
+    public static var centerLabel: String { String(localized: "Center") }
+    public static var centerHint: String { String(localized: "Off: the page starts at its top-left corner.") }
     public static var pdfLabel: String { String(localized: "Also save a PDF") }
     public static var pdfHint: String { String(localized: "Keeps a PDF of each copy in your save folder") }
     public static var printLabel: String { String(localized: "Print") }
@@ -48,6 +53,16 @@ public enum IOSCopyText {
         String(localized: "Page \(number) of \(count)")
     }
 
+    /// "Custom percent: 120%", beside the stepper.
+    public static func customTitle(_ percent: Int) -> String {
+        String(localized: "Custom percent: \(percent)%")
+    }
+
+    /// "120 percent", for VoiceOver on the stepper.
+    public static func customSpoken(_ percent: Int) -> String {
+        String(localized: "\(percent) percent")
+    }
+
     /// "2 of 5", for VoiceOver on each page.
     public static func positionOfCount(_ number: Int, _ count: Int) -> String {
         String(localized: "\(number) of \(count)")
@@ -55,8 +70,8 @@ public enum IOSCopyText {
 }
 
 /// The copy screen without a screen (I16): the pages a photocopy holds (`AppState.copyPages`, in memory
-/// only), how many copies, Fit to page (on and fixed when a page has no known size,
-/// `AppState.copyNeedsFit`), Also save a PDF, the printer the copy goes to, and Print, Copy again on the
+/// only), how many copies, the scale (Fit to page and fixed when a page has no known size,
+/// `AppState.copyNeedsFit`) and centering, Also save a PDF, the printer the copy goes to, and Print, Copy again on the
 /// printer picked last, or Discard.
 @MainActor
 public final class IOSCopyModel: ObservableObject {
@@ -105,14 +120,81 @@ public final class IOSCopyModel: ObservableObject {
         state.setCopyCount(count)
     }
 
-    /// Fit to page can't be turned off: some page's real size is not known.
+    /// The scale can't be changed: some page's real size is not known, so the copy is fitted.
     public var fitIsForced: Bool { state.copyNeedsFit }
 
-    public var fitsToPage: Bool { fitIsForced || state.settings.taskOptions.copyFitToPage }
+    /// One entry of the Scale menu.
+    public enum ScaleChoice: Hashable {
+        case actual
+        case fit
+        case fill
+        case preset(Int)
+        case custom
+    }
 
-    public func setFitsToPage(_ fit: Bool) {
+    /// The scale in force: Fit while it is forced, else the stored one.
+    public var scale: CopyScale { fitIsForced ? .fit : state.settings.taskOptions.copyScale }
+
+    /// The stored percentage, between 25 and 400.
+    public var customPercent: Int { PrintScale.clamp(state.settings.taskOptions.copyScalePercent) }
+
+    /// The entry the Scale menu shows as chosen. `customPicked` is set once Custom percent is picked, so the
+    /// stepper stays when its value reaches a preset; a stored percentage that is no preset shows as Custom
+    /// without it.
+    public func scaleChoice(customPicked: Bool) -> ScaleChoice {
+        switch scale {
+        case .actual: return .actual
+        case .fit: return .fit
+        case .fill: return .fill
+        case .percent:
+            let percent: Int = customPercent
+            return customPicked || !PrintScale.presetPercents.contains(percent) ? .custom : .preset(percent)
+        }
+    }
+
+    /// The stepper under the Scale row shows: Custom is the choice.
+    public func showsCustomPercent(customPicked: Bool) -> Bool { scaleChoice(customPicked: customPicked) == .custom }
+
+    /// Center applies to the scale chosen (Fit and Fill always center).
+    public var showsCenter: Bool { PrintScale.hasCenterChoice(scale) }
+
+    /// What the Scale row says: the choice's words, "Custom" for a percentage of one's own.
+    public func scaleValue(customPicked: Bool) -> String {
+        showsCustomPercent(customPicked: customPicked) ? IOSCopyText.customValue : PrintScale.label(for: scale, percent: customPercent)
+    }
+
+    /// The menu entry's words.
+    public func scaleTitle(_ choice: ScaleChoice) -> String {
+        switch choice {
+        case .actual: return PrintScale.label(for: .actual, percent: customPercent)
+        case .fit: return PrintScale.label(for: .fit, percent: customPercent)
+        case .fill: return PrintScale.label(for: .fill, percent: customPercent)
+        case .preset(let percent): return PrintScale.label(for: .percent, percent: percent)
+        case .custom: return IOSCopyText.customChoice
+        }
+    }
+
+    public func setScaleChoice(_ choice: ScaleChoice) {
         guard !fitIsForced else { return }
-        state.setCopyFitToPage(fit)
+        switch choice {
+        case .actual: state.setCopyScale(.actual)
+        case .fit: state.setCopyScale(.fit)
+        case .fill: state.setCopyScale(.fill)
+        case .preset(let percent):
+            state.setCopyScalePercent(percent)
+            state.setCopyScale(.percent)
+        case .custom: state.setCopyScale(.percent)
+        }
+    }
+
+    public func setCustomPercent(_ percent: Int) {
+        state.setCopyScalePercent(percent)
+    }
+
+    public var centers: Bool { state.settings.taskOptions.copyCenter }
+
+    public func setCenters(_ center: Bool) {
+        state.setCopyCenter(center)
     }
 
     public var alsoSavesPDF: Bool { state.settings.taskOptions.copyAlsoSavePdf }

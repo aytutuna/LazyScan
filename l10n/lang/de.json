@@ -880,7 +880,6 @@
     "{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.": "„{0}“ ist zertifiziert. Die Zertifizierung erlaubt kein Anhängen von Seiten, daher zeigen PDF-Apps sie danach als ungültig an.",
     "{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.": "„{0}“ ist eine PDF/A-{1}{2}-Datei. Erfüllen die angehängten Seiten diesen Standard nicht, gilt die Datei womöglich nicht mehr als PDF/A.",
     "Adding page {0} of {1}…": "Seite {0} von {1} wird angehängt …",
-    "Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.": "Größer als das Papier: Bis zu {0} mm werden abgeschnitten. Aktiviere „Einpassen“, um alles zu drucken.",
     "Edges may be cut by up to {0} mm (printer margins).": "Wegen der Druckränder können bis zu {0} mm am Rand fehlen.",
     "Needs a printer": "Drucker erforderlich",
     "No printer is installed. Add a printer, then try again.": "Es ist kein Drucker installiert. Füge einen hinzu und versuche es erneut.",

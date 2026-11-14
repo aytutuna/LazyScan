@@ -5,8 +5,8 @@ import SwiftUI
 import UIKit
 
 /// The photocopy's screen, full screen once its pages are in (`AppState.copyPages`, I16): the first page
-/// large, paged through with "Page 2 of 5" under it when several, then Copies, Fit to page (on and
-/// fixed, with why, when a page has no known size), Also save a PDF, the printer the copy goes to and the status while it prints;
+/// large, paged through with "Page 2 of 5" under it when several, then Copies, Scale (Fit to page and
+/// fixed, with why, when a page has no known size) with its Custom percent and Center, Also save a PDF, the printer the copy goes to and the status while it prints;
 /// Print shows AirPrint's printer picker, Copy again prints on the printer picked last without it, and
 /// Add page closes the screen to shoot another page into the copy, which comes back with it; Discard asks, then lets
 /// the pages go and closes the screen (Close, for the queue's pages printed from Options, which stay in
@@ -17,6 +17,7 @@ struct CopyScreen: View {
     @EnvironmentObject private var state: AppState
     @State private var asksDiscard: Bool = false
     @State private var shown: Int = 0
+    @State private var customPicked: Bool = false
     /// Closes the screen with the pages kept, so the camera can take another.
     let onAddPage: () -> Void
 
@@ -129,10 +130,22 @@ struct CopyScreen: View {
             }
             .disabled(state.isBusy)
             .accessibilityIdentifier("copy.copies")
-            Toggle(IOSCopyText.fitLabel, isOn: fit)
+            scaleRow
+            if model.showsCustomPercent(customPicked: customPicked) {
+                Stepper(value: customPercent, in: PrintScale.minPercent...PrintScale.maxPercent, step: PrintScale.percentStep) {
+                    Text(IOSCopyText.customTitle(model.customPercent))
+                }
                 .disabled(model.fitIsForced || state.isBusy)
-                .accessibilityHint(Text(IOSCopyText.fitHint))
-                .accessibilityIdentifier("copy.fit")
+                .accessibilityLabel(Text(IOSCopyText.customLabel))
+                .accessibilityValue(Text(IOSCopyText.customSpoken(model.customPercent)))
+                .accessibilityIdentifier("copy.scaleCustom")
+            }
+            if model.showsCenter {
+                Toggle(IOSCopyText.centerLabel, isOn: center)
+                    .disabled(state.isBusy)
+                    .accessibilityHint(Text(IOSCopyText.centerHint))
+                    .accessibilityIdentifier("copy.center")
+            }
             if model.fitIsForced {
                 Label(PrintText.realSizeUnavailable, systemImage: "info.circle")
                     .font(.caption)
@@ -196,16 +209,73 @@ struct CopyScreen: View {
         .padding(16)
     }
 
+    private var scaleRow: some View {
+        HStack {
+            Text(IOSCopyText.scaleLabel)
+            Spacer()
+            Menu {
+                Picker(IOSCopyText.scaleLabel, selection: scaleChoice) {
+                    ForEach(basicChoices, id: \.self) { (choice: IOSCopyModel.ScaleChoice) in
+                        Text(model.scaleTitle(choice)).tag(choice)
+                    }
+                    Divider()
+                    ForEach(percentChoices, id: \.self) { (choice: IOSCopyModel.ScaleChoice) in
+                        Text(model.scaleTitle(choice)).tag(choice)
+                    }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Text(scaleValue)
+            }
+            .disabled(model.fitIsForced || state.isBusy)
+            .accessibilityLabel(Text(IOSCopyText.scaleLabel))
+            .accessibilityValue(Text(scaleValue))
+            .accessibilityHint(Text(IOSCopyText.scaleHint))
+            .accessibilityIdentifier("copy.scale")
+        }
+    }
+
+    private var scaleValue: String {
+        model.scaleValue(customPicked: customPicked)
+    }
+
+    private var basicChoices: [IOSCopyModel.ScaleChoice] {
+        [.actual, .fit, .fill]
+    }
+
+    private var percentChoices: [IOSCopyModel.ScaleChoice] {
+        let presets: [IOSCopyModel.ScaleChoice] = PrintScale.presetPercents.map { (percent: Int) -> IOSCopyModel.ScaleChoice in
+            .preset(percent)
+        }
+        return presets + [.custom]
+    }
+
     private var copies: Binding<Int> {
         let copyModel: IOSCopyModel = model
         return Binding<Int>(get: { copyModel.copies },
                             set: { (count: Int) in copyModel.setCopies(count) })
     }
 
-    private var fit: Binding<Bool> {
+    private var scaleChoice: Binding<IOSCopyModel.ScaleChoice> {
         let copyModel: IOSCopyModel = model
-        return Binding<Bool>(get: { copyModel.fitsToPage },
-                             set: { (on: Bool) in copyModel.setFitsToPage(on) })
+        let picked: Bool = customPicked
+        return Binding<IOSCopyModel.ScaleChoice>(get: { copyModel.scaleChoice(customPicked: picked) },
+                                                 set: { (choice: IOSCopyModel.ScaleChoice) in
+                                                    customPicked = choice == .custom
+                                                    copyModel.setScaleChoice(choice)
+                                                 })
+    }
+
+    private var customPercent: Binding<Int> {
+        let copyModel: IOSCopyModel = model
+        return Binding<Int>(get: { copyModel.customPercent },
+                            set: { (percent: Int) in copyModel.setCustomPercent(percent) })
+    }
+
+    private var center: Binding<Bool> {
+        let copyModel: IOSCopyModel = model
+        return Binding<Bool>(get: { copyModel.centers },
+                             set: { (on: Bool) in copyModel.setCenters(on) })
     }
 
     private var alsoPDF: Binding<Bool> {

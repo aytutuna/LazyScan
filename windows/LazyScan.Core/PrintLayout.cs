@@ -5,13 +5,63 @@ namespace LazyScan.Core;
 // the point: a page scanned at 300 dpi prints at pixels / 300 inches, never scaled to the page
 // unless the user asks for it.
 
-/// <summary>How a page is sized on the paper.</summary>
-public enum PrintMode
+/// <summary>
+/// How a page is sized on the paper: at real size, made smaller to fit the printable area, made larger
+/// or smaller to fill it, or at a share of real size. Swift has these as the cases of one enum.
+/// </summary>
+public readonly record struct PrintMode(bool Fits, bool Fills, double Scale)
 {
     /// <summary>At real size (pixels / dpi), like a photocopier; what does not fit is cut off.</summary>
-    ActualSize,
+    public static PrintMode ActualSize => new(false, false, 1);
     /// <summary>Made smaller (never larger) to fit the part of the paper the printer prints on.</summary>
-    FitToPrintable,
+    public static PrintMode FitToPrintable => new(true, false, 1);
+    /// <summary>Made larger or smaller until it covers the part of the paper the printer prints on; what runs past it is cut off.</summary>
+    public static PrintMode FillPrintable => new(false, true, 1);
+    /// <summary>At this share of real size (1.5 is 150%), placed like <see cref="ActualSize"/>.</summary>
+    public static PrintMode Percent(double share) => new(false, false, share);
+}
+
+/// <summary>What the Copy task's scale choice stores in <see cref="TaskOptions.CopyScale"/>. Stored by its camelCase name.</summary>
+public enum CopyScale
+{
+    Actual,
+    Fit,
+    Fill,
+    Percent,
+}
+
+/// <summary>The scale choices of a copy, shared by the apps so each says the same words.</summary>
+public static class PrintScale
+{
+    public const int MinPercent = 25;
+    public const int MaxPercent = 400;
+    public const int PercentStep = 5;
+    /// <summary>The percentages offered besides Custom; 100 is Actual size.</summary>
+    public static readonly IReadOnlyList<int> PresetPercents = [50, 75, 150, 200];
+
+    /// <summary><paramref name="percent"/> kept between <see cref="MinPercent"/> and <see cref="MaxPercent"/>.</summary>
+    public static int Clamp(int percent) => Math.Min(Math.Max(percent, MinPercent), MaxPercent);
+
+    /// <summary>How <paramref name="scale"/> (at <paramref name="percent"/> for Percent) sizes a page.</summary>
+    public static PrintMode ModeFor(CopyScale scale, int percent) => scale switch
+    {
+        CopyScale.Fit => PrintMode.FitToPrintable,
+        CopyScale.Fill => PrintMode.FillPrintable,
+        CopyScale.Percent => PrintMode.Percent(Clamp(percent) / 100.0),
+        _ => PrintMode.ActualSize,
+    };
+
+    /// <summary>Actual size and percentages start at the paper's corner unless centered; Fit and Fill always center.</summary>
+    public static bool HasCenterChoice(CopyScale scale) => scale is CopyScale.Actual or CopyScale.Percent;
+
+    /// <summary>"Actual size", "Fit to page", "Fill page", "150%".</summary>
+    public static string Label(CopyScale scale, int percent) => scale switch
+    {
+        CopyScale.Fit => Loc.T("Fit to page"),
+        CopyScale.Fill => Loc.T("Fill page"),
+        CopyScale.Percent => Loc.T("{0}%", Loc.Plain(Clamp(percent))),
+        _ => Loc.T("Actual size"),
+    };
 }
 
 /// <summary>Where a page printed at real size goes on the paper.</summary>
@@ -86,9 +136,11 @@ public static class PrintLayout
     /// <paramref name="printable"/>. At real size the page is pixels / dpi inches, against the
     /// paper's corner or centred on the paper (<paramref name="align"/>), turned a quarter only when
     /// that cuts off less; <see cref="PrintPlacement.ClippedInches"/> says how far it runs past the
-    /// printable area. Fit to the printable area makes it smaller by
-    /// min(printable width / width, printable height / height, 1), turned a quarter when that
-    /// gives a larger scale, centred in the printable area.
+    /// printable area. A percentage is the same at that share of the size. Fit to the printable area
+    /// makes it smaller by min(printable width / width, printable height / height, 1), turned a quarter
+    /// when that gives a larger scale, centred in the printable area. Fill makes it as large as it takes
+    /// to cover the printable area (max of the two ratios), turned a quarter when that cuts off less,
+    /// centred; what runs past is cut on purpose and is not counted in ClippedInches.
     /// </summary>
     public static PrintPlacement Place(int pixelWidth, int pixelHeight, int dpi, SizeD paper, RectD printable,
                                        PrintMode mode, PrintAlign align)
@@ -98,7 +150,7 @@ public static class PrintLayout
         var area = printable.Standardized;
         if (area.IsEmpty) area = new RectD(0, 0, paper.Width, paper.Height);
 
-        if (mode == PrintMode.FitToPrintable)
+        if (mode.Fits)
         {
             double upright = FitScale(width, height, area);
             double turned = FitScale(height, width, area);
@@ -109,12 +161,25 @@ public static class PrintLayout
             return new PrintPlacement(fitted, scale, turns, ClippedInches(fitted, area));
         }
 
-        int quarterTurns = Overflow(height, width, paper) + Epsilon < Overflow(width, height, paper) ? 1 : 0;
-        double rw = quarterTurns == 1 ? height : width, rh = quarterTurns == 1 ? width : height;
+        if (mode.Fills)
+        {
+            double upright = FillScale(width, height, area);
+            double turned = FillScale(height, width, area);
+            int turns = turned + Epsilon < upright ? 1 : 0;
+            double scale = Math.Min(upright, turned);
+            double w = (turns == 1 ? height : width) * scale, h = (turns == 1 ? width : height) * scale;
+            var filled = new RectD(area.X + (area.Width - w) / 2, area.Y + (area.Height - h) / 2, w, h);
+            return new PrintPlacement(filled, scale, turns, 0);
+        }
+
+        double factor = mode.Scale;
+        double shownWidth = width * factor, shownHeight = height * factor;
+        int quarterTurns = Overflow(shownHeight, shownWidth, paper) + Epsilon < Overflow(shownWidth, shownHeight, paper) ? 1 : 0;
+        double rw = quarterTurns == 1 ? shownHeight : shownWidth, rh = quarterTurns == 1 ? shownWidth : shownHeight;
         var rect = align == PrintAlign.Center
             ? new RectD((paper.Width - rw) / 2, (paper.Height - rh) / 2, rw, rh)
             : new RectD(0, 0, rw, rh);
-        return new PrintPlacement(rect, 1, quarterTurns, ClippedInches(rect, area));
+        return new PrintPlacement(rect, factor, quarterTurns, ClippedInches(rect, area));
     }
 
     /// <summary><see cref="Place(int, int, int, SizeD, RectD, PrintMode, PrintAlign)"/> on a printer's paper.</summary>
@@ -140,10 +205,11 @@ public static class PrintLayout
         new(inches.Width * unitsPerInch, inches.Height * unitsPerInch);
 
     /// <summary>
-    /// A copy of the whole glass or of a page lies against the corner, as it lay on the glass; an
-    /// area selected on the preview is centred.
+    /// A copy of the whole glass or of a page lies against the corner, as it lay on the glass, unless
+    /// the user chose to centre it; an area selected on the preview is always centred.
     /// </summary>
-    public static PrintAlign AlignFor(bool hasSelection) => hasSelection ? PrintAlign.Center : PrintAlign.PaperOrigin;
+    public static PrintAlign AlignFor(bool hasSelection, bool center) =>
+        hasSelection || center ? PrintAlign.Center : PrintAlign.PaperOrigin;
 
     /// <summary>
     /// Whether a copy is fitted to the page: the user asked for it (<paramref name="chosenFit"/>), or
@@ -161,7 +227,7 @@ public static class PrintLayout
         if (!placement.IsClipped) return null;
         double beyondPaper = ClippedInches(placement.Rect, new RectD(0, 0, paper.Width, paper.Height));
         return beyondPaper > ClipWarningInches
-            ? Loc.T("Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.", Millimetres(beyondPaper))
+            ? Loc.T("Larger than the paper: up to {0} mm is cut off. Choose Fit to page to print all of it.", Millimetres(beyondPaper))
             : Loc.T("Edges may be cut by up to {0} mm (printer margins).", Millimetres(placement.ClippedInches));
     }
 
@@ -173,6 +239,12 @@ public static class PrintLayout
     {
         if (width <= 0 || height <= 0) return 1;
         return Math.Min(Math.Min(area.Width / width, area.Height / height), 1);
+    }
+
+    private static double FillScale(double width, double height, RectD area)
+    {
+        if (width <= 0 || height <= 0) return 1;
+        return Math.Max(area.Width / width, area.Height / height);
     }
 
     /// <summary>How far a page runs past the paper across and down together.</summary>
@@ -291,9 +363,6 @@ public static class PrintText
             ? Loc.Plural(pageCount, "Sent {0} page to {1}. Copies: {2}.", "Sent {0} pages to {1}. Copies: {2}.", printerName, copies)
             : Loc.Plural(pageCount, "Sent {0} page to {1}.", "Sent {0} pages to {1}.", printerName);
     }
-
-    /// <summary>"Actual size" or "Fit to page".</summary>
-    public static string ModeLabel(bool fitToPage) => fitToPage ? Loc.T("Fit to page") : Loc.T("Actual size");
 
     /// <summary>
     /// What the paper size picker says for a copy: on the glass, Automatic scans the part the

@@ -471,6 +471,12 @@ public class ScanTaskTests
         // A count beyond what can be asked for is read as the most.
         s.TaskOptions.CopyCount = 500;
         Assert.Equal("300 dpi · Grayscale · Fit to page · 99 copies", TaskCatalog.Summary(s));
+        s.TaskOptions.CopyScale = CopyScale.Fill;
+        Assert.Equal("300 dpi · Grayscale · Fill page · 99 copies", TaskCatalog.Summary(s));
+        s.TaskOptions.CopyScale = CopyScale.Percent;
+        s.TaskOptions.CopyScalePercent = 150;
+        s.TaskOptions.CopyCount = 1;
+        Assert.Equal("300 dpi · Grayscale · 150%", TaskCatalog.Summary(s));
         // Without the task the settings describe a file again.
         s.TaskId = null;
         Assert.Equal("300 dpi · Grayscale · PDF", TaskCatalog.Summary(s));

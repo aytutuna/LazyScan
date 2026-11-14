@@ -432,6 +432,12 @@ final class ScanTaskTests: XCTestCase {
         // A count beyond what can be asked for is read as the most.
         s.taskOptions.copyCount = 500
         XCTAssertEqual(TaskCatalog.summary(s), "300 dpi \u{00B7} Grayscale \u{00B7} Fit to page \u{00B7} 99 copies")
+        s.taskOptions.copyScale = .fill
+        XCTAssertEqual(TaskCatalog.summary(s), "300 dpi \u{00B7} Grayscale \u{00B7} Fill page \u{00B7} 99 copies")
+        s.taskOptions.copyScale = .percent
+        s.taskOptions.copyScalePercent = 150
+        s.taskOptions.copyCount = 1
+        XCTAssertEqual(TaskCatalog.summary(s), "300 dpi \u{00B7} Grayscale \u{00B7} 150%")
         // Without the task the settings describe a file again.
         s.taskId = nil
         XCTAssertEqual(TaskCatalog.summary(s), "300 dpi \u{00B7} Grayscale \u{00B7} PDF")

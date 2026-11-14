@@ -1473,7 +1473,6 @@
   "{0} is signed. Adding pages with a password writes the whole file again, so its signature will no longer be valid.": {},
   "{0} is a PDF/A-{1}{2} file. PDF/A can't be password-protected, so it will no longer pass as PDF/A.": {},
   "Adding page {0} of {1}…": {},
-  "Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.": {},
   "Edges may be cut by up to {0} mm (printer margins).": {},
   "Needs a printer": {},
   "No printer is installed. Add a printer, then try again.": {},
@@ -3039,6 +3038,8 @@
   "Sent to {0}": {
     "note": "{0} is the name of a phone. The phone has downloaded the file."
   },
+  "Fill page": {},
+  "Larger than the paper: up to {0} mm is cut off. Choose Fit to page to print all of it.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",

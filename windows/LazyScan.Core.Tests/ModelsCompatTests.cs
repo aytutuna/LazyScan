@@ -157,7 +157,8 @@ internal static class CompatFixtures
         + "        \"splitSheetCount\": 3,\n        \"autoRotate\": true,\n        \"splitFacingPages\": true,\n"
         + "        \"softenSpineShadow\": true,\n        \"barcodeStartsDocument\": true,\n        \"splitBarcodePrefix\": \"DOC\"\n      },\n"
         + "      \"taskOptions\": {\n        \"idCardPaper\": \"letter\",\n        \"idCardSaveSidesAsImages\": true,\n"
-        + "        \"copyCount\": 3,\n        \"copyFitToPage\": true,\n        \"copyPrinterName\": \"Office printer\",\n"
+        + "        \"copyCount\": 3,\n        \"copyScale\": \"fit\",\n        \"copyScalePercent\": 100,\n        \"copyCenter\": false,\n"
+        + "        \"copyFitToPage\": true,\n        \"copyPrinterName\": \"Office printer\",\n"
         + "        \"copyAlsoSavePdf\": true,\n        \"receiptNameByDate\": false,\n        \"receiptCombine\": true,\n        \"receiptEachFile\": false,\n"
         + "        \"bookRightToLeft\": true,\n        \"bookRotationQuarterTurns\": 1,\n"
         + "        \"bookCutAt\": \"sameAsLast\",\n        \"bookLastCut\": 0.3,\n"
@@ -1318,7 +1319,8 @@ public class ModelsCompatTests
                 string json = CompatFixtures.Encode(settings);
                 using var written = JsonDocument.Parse(json);
                 // No printer chosen: the key is left out, as Swift leaves out a nil.
-                Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyFitToPage", "copyAlsoSavePdf",
+                Assert.Equal(["idCardPaper", "idCardSaveSidesAsImages", "copyCount", "copyScale", "copyScalePercent",
+                              "copyCenter", "copyFitToPage", "copyAlsoSavePdf",
                               "receiptNameByDate", "receiptCombine", "receiptEachFile", "bookRightToLeft", "bookRotationQuarterTurns",
                               "bookCutAt", "bookFlattenCurves", "bookFillFingers", "cameraFrontsFirst", "cameraSpreads"],
                              written.RootElement.GetProperty("taskOptions").EnumerateObject().Select(p => p.Name));
@@ -1356,6 +1358,7 @@ public class ModelsCompatTests
         var options = new ScanSettings().TaskOptions;
         Assert.Equal((1, false, (string?)null, false),
                      (options.CopyCount, options.CopyFitToPage, options.CopyPrinterName, options.CopyAlsoSavePdf));
+        Assert.Equal((CopyScale.Actual, 100, false), (options.CopyScale, options.CopyScalePercent, options.CopyCenter));
         // Files of the ID card version have task options without the copy keys.
         var idCardOnly = Decode<ScanSettings>("""{"taskOptions": {"idCardPaper": "a4", "idCardSaveSidesAsImages": true}}""").TaskOptions;
         Assert.Equal((IdCardPaper.A4, true), (idCardOnly.IdCardPaper, idCardOnly.IdCardSaveSidesAsImages));
@@ -1659,6 +1662,31 @@ public class ModelsCompatTests
     }
 
     [Fact]
+    public void CopyScale_OldFitToPageSettingsReadAsFit_AndTheChoiceRoundTrips()
+    {
+        var fit = Decode<ScanSettings>("""{"taskOptions": {"copyFitToPage": true}}""").TaskOptions;
+        Assert.Equal((CopyScale.Fit, true), (fit.CopyScale, fit.CopyFitToPage));
+        var actual = Decode<ScanSettings>("""{"taskOptions": {"copyFitToPage": false}}""").TaskOptions;
+        Assert.Equal(CopyScale.Actual, actual.CopyScale);
+        var settings = new ScanSettings();
+        settings.TaskOptions.CopyScale = CopyScale.Percent;
+        settings.TaskOptions.CopyScalePercent = 150;
+        settings.TaskOptions.CopyCenter = true;
+        string json = CompatFixtures.Encode(settings);
+        using var written = JsonDocument.Parse(json);
+        var options = written.RootElement.GetProperty("taskOptions");
+        Assert.Equal("percent", options.GetProperty("copyScale").GetString());
+        Assert.Equal(150, options.GetProperty("copyScalePercent").GetInt32());
+        Assert.True(options.GetProperty("copyCenter").GetBoolean());
+        Assert.False(options.GetProperty("copyFitToPage").GetBoolean());
+        Assert.Equal(settings.TaskOptions, Decode<ScanSettings>(json).TaskOptions);
+        // A percentage out of range is kept as written and read through PrintScale.Clamp.
+        var wild = Decode<ScanSettings>("""{"taskOptions": {"copyScale": "percent", "copyScalePercent": 900}}""").TaskOptions;
+        Assert.Equal(900, wild.CopyScalePercent);
+        Assert.Equal(400, PrintScale.Clamp(wild.CopyScalePercent));
+    }
+
+    [Fact]
     public void CorruptCopyOptions_FallBackOneByOne_RestIntact()
     {
         var options = Decode<ScanSettings>("""
@@ -1671,6 +1699,8 @@ public class ModelsCompatTests
         Assert.Equal((1, false, (string?)null, true),
                      (options.TaskOptions.CopyCount, options.TaskOptions.CopyFitToPage,
                       options.TaskOptions.CopyPrinterName, options.TaskOptions.CopyAlsoSavePdf));
+        var badScale = Decode<ScanSettings>("""{"taskOptions": {"copyScale": "zoom", "copyScalePercent": "big", "copyCenter": 3}}""").TaskOptions;
+        Assert.Equal((CopyScale.Actual, 100, false), (badScale.CopyScale, badScale.CopyScalePercent, badScale.CopyCenter));
         var nulls = Decode<ScanSettings>("""{"taskOptions": {"copyCount": null, "copyPrinterName": null, "copyFitToPage": true}}""").TaskOptions;
         Assert.Equal((1, true, (string?)null), (nulls.CopyCount, nulls.CopyFitToPage, nulls.CopyPrinterName));
         // A count out of range is kept as written and read through PrintCopies.Clamp.

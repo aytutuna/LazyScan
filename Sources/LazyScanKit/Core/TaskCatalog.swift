@@ -619,13 +619,14 @@ public enum TaskCatalog {
     /// ("… · Split at separator sheets") and facing pages ("… · Facing pages split", "… · Facing pages
     /// split, right to left"), so the line stays short
     /// enough for cards and the preset list. A copy says how it prints instead of a format:
-    /// "300 dpi · Color · Actual size", "300 dpi · Grayscale · Fit to page · 3 copies".
+    /// "300 dpi · Color · Actual size", "300 dpi · Grayscale · Fit to page · 3 copies",
+    /// "300 dpi · Color · 150%".
     public static func summary(_ settings: ScanSettings) -> String {
         let dpi: String = L10n.t("{0} dpi", L10n.plain(settings.resolution))
         if flow(of: settings) == .copy {
             // A copy is paper, not a file: its size and count matter, not the format.
             let copies = PrintCopies.clamp(settings.taskOptions.copyCount)
-            let mode = PrintText.modeLabel(fitToPage: settings.taskOptions.copyFitToPage)
+            let mode = PrintScale.label(for: settings.taskOptions.copyScale, percent: settings.taskOptions.copyScalePercent)
             let count: String = L10n.plural(copies, one: "{0} copy", other: "{0} copies")
             return "\(dpi) \u{00B7} \(settings.colorMode.label) \u{00B7} \(mode)"
                 + (copies > 1 ? " \u{00B7} \(count)" : "")

@@ -632,9 +632,23 @@ public struct TaskOptions: Codable, Equatable, Sendable {
     public var idCardSaveSidesAsImages: Bool = false
     /// How many copies the Copy task prints; read through `PrintCopies.clamp` (1 to 99). One unless chosen.
     public var copyCount: Int = 1
-    /// Copies are made smaller to fit the printable area of the paper. Off: they print at real size,
-    /// like a photocopier.
-    public var copyFitToPage: Bool = false
+    /// How copies are sized on the paper (`PrintScale`): at real size like a photocopier, made smaller to
+    /// fit the printable area, enlarged to fill it, or at `copyScalePercent`. Settings without it read
+    /// from `copyFitToPage`: on is fit, off is actual size.
+    public var copyScale: CopyScale = .actual
+    /// The share of real size for `copyScale` `.percent`; read through `PrintScale.clamp` (25 to 400).
+    public var copyScalePercent: Int = 100
+    /// Copies at real size or a percentage are centred on the paper instead of lying against its
+    /// top-left corner. Off unless chosen.
+    public var copyCenter: Bool = false
+    /// Whether `copyScale` is fit. Still written, as before the scale choices, so older versions open
+    /// the file; setting it picks fit or actual size.
+    public var copyFitToPage: Bool {
+        get { copyScale == .fit }
+        set {
+            if newValue != (copyScale == .fit) { copyScale = newValue ? .fit : .actual }
+        }
+    }
     /// The printer the Copy task (and printing the ID card) prints on; nil for the default printer,
     /// which is also used when this one is no longer installed. Left out of the file when nil.
     public var copyPrinterName: String?
@@ -680,11 +694,13 @@ public struct TaskOptions: Codable, Equatable, Sendable {
 
     public init() {}
 
-    /// `encode(to:)` stays synthesized.
     private enum CodingKeys: String, CodingKey {
         case idCardPaper
         case idCardSaveSidesAsImages
         case copyCount
+        case copyScale
+        case copyScalePercent
+        case copyCenter
         case copyFitToPage
         case copyPrinterName
         case copyAlsoSavePdf
@@ -711,6 +727,9 @@ extension TaskOptions {
         idCardPaper = container.decodeLenient(forKey: .idCardPaper, default: idCardPaper)
         idCardSaveSidesAsImages = container.decodeLenient(forKey: .idCardSaveSidesAsImages, default: idCardSaveSidesAsImages)
         copyCount = container.decodeLenient(forKey: .copyCount, default: copyCount)
+        copyScale = container.decodeLenient(forKey: .copyScale, default: copyScale)
+        copyScalePercent = container.decodeLenient(forKey: .copyScalePercent, default: copyScalePercent)
+        copyCenter = container.decodeLenient(forKey: .copyCenter, default: copyCenter)
         copyFitToPage = container.decodeLenient(forKey: .copyFitToPage, default: copyFitToPage)
         copyPrinterName = container.decodeLenient(forKey: .copyPrinterName, default: copyPrinterName)
         copyAlsoSavePdf = container.decodeLenient(forKey: .copyAlsoSavePdf, default: copyAlsoSavePdf)
@@ -726,6 +745,34 @@ extension TaskOptions {
         cameraFrontsFirst = container.decodeLenient(forKey: .cameraFrontsFirst, default: cameraFrontsFirst)
         cameraSpreads = container.decodeLenient(forKey: .cameraSpreads, default: cameraSpreads)
         cameraFilter = container.decodeLenient(forKey: .cameraFilter, default: cameraFilter)
+    }
+}
+
+extension TaskOptions {
+    /// Every key is written, as the synthesized encoder did, now that `copyFitToPage` is computed.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(idCardPaper, forKey: .idCardPaper)
+        try container.encode(idCardSaveSidesAsImages, forKey: .idCardSaveSidesAsImages)
+        try container.encode(copyCount, forKey: .copyCount)
+        try container.encode(copyScale, forKey: .copyScale)
+        try container.encode(copyScalePercent, forKey: .copyScalePercent)
+        try container.encode(copyCenter, forKey: .copyCenter)
+        try container.encode(copyFitToPage, forKey: .copyFitToPage)
+        try container.encodeIfPresent(copyPrinterName, forKey: .copyPrinterName)
+        try container.encode(copyAlsoSavePdf, forKey: .copyAlsoSavePdf)
+        try container.encode(receiptNameByDate, forKey: .receiptNameByDate)
+        try container.encode(receiptCombine, forKey: .receiptCombine)
+        try container.encode(receiptEachFile, forKey: .receiptEachFile)
+        try container.encode(bookRightToLeft, forKey: .bookRightToLeft)
+        try container.encode(bookRotationQuarterTurns, forKey: .bookRotationQuarterTurns)
+        try container.encode(bookCutAt, forKey: .bookCutAt)
+        try container.encodeIfPresent(bookLastCut, forKey: .bookLastCut)
+        try container.encode(bookFlattenCurves, forKey: .bookFlattenCurves)
+        try container.encode(bookFillFingers, forKey: .bookFillFingers)
+        try container.encode(cameraFrontsFirst, forKey: .cameraFrontsFirst)
+        try container.encode(cameraSpreads, forKey: .cameraSpreads)
+        try container.encodeIfPresent(cameraFilter, forKey: .cameraFilter)
     }
 }
 

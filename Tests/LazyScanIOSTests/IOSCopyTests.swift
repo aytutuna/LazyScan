@@ -240,6 +240,46 @@ final class IOSCopyTests: XCTestCase {
     }
 
     @MainActor
+    func test_copyModel_scaleChoices_storeTheScale_thePercentAndCentering() {
+        let state: AppState = makeState(CopyPrintService())
+        let model = IOSCopyModel(state: state, pickedPrinter: { () -> String? in nil })
+        XCTAssertEqual(model.scaleChoice(customPicked: false), .actual)
+        XCTAssertEqual(model.scaleValue(customPicked: false), "Actual size")
+        XCTAssertTrue(model.showsCenter)
+        XCTAssertFalse(model.showsCustomPercent(customPicked: false))
+        model.setScaleChoice(.fill)
+        XCTAssertEqual(state.settings.taskOptions.copyScale, .fill)
+        XCTAssertEqual(model.scaleValue(customPicked: false), "Fill page")
+        XCTAssertFalse(model.showsCenter)
+        model.setScaleChoice(.preset(150))
+        XCTAssertEqual(state.settings.taskOptions.copyScale, .percent)
+        XCTAssertEqual(state.settings.taskOptions.copyScalePercent, 150)
+        XCTAssertEqual(model.scaleChoice(customPicked: false), .preset(150))
+        XCTAssertEqual(model.scaleValue(customPicked: false), "150%")
+        // Custom keeps its stepper while the value passes a preset.
+        model.setScaleChoice(.custom)
+        XCTAssertEqual(model.scaleChoice(customPicked: true), .custom)
+        XCTAssertEqual(model.scaleValue(customPicked: true), "Custom")
+        model.setCustomPercent(200)
+        XCTAssertEqual(model.scaleChoice(customPicked: true), .custom)
+        model.setCustomPercent(9000)
+        XCTAssertEqual(model.customPercent, 400)
+        XCTAssertEqual(state.settings.taskOptions.copyScalePercent, 400)
+        model.setScaleChoice(.fit)
+        XCTAssertFalse(model.showsCustomPercent(customPicked: false))
+        model.setScaleChoice(.actual)
+        model.setCenters(true)
+        XCTAssertTrue(state.settings.taskOptions.copyCenter)
+        XCTAssertTrue(model.centers)
+        // A stored percentage that is no preset reads as Custom.
+        state.setCopyScalePercent(120)
+        state.setCopyScale(.percent)
+        let reopened = IOSCopyModel(state: state, pickedPrinter: { () -> String? in nil })
+        XCTAssertEqual(reopened.scaleChoice(customPicked: false), .custom)
+        XCTAssertEqual(reopened.customPercent, 120)
+    }
+
+    @MainActor
     func test_aCameraPageOfNoKnownSize_isFittedToThePage() async throws {
         let printer = CopyPrintService()
         let state: AppState = makeState(printer)
@@ -253,6 +293,11 @@ final class IOSCopyTests: XCTestCase {
         try await idle(state)
         XCTAssertTrue(state.copyNeedsFit)
         XCTAssertFalse(state.settings.taskOptions.copyFitToPage)
+        let forced = IOSCopyModel(state: state, pickedPrinter: { () -> String? in nil })
+        XCTAssertEqual(forced.scaleChoice(customPicked: false), .fit)
+        XCTAssertFalse(forced.showsCenter)
+        forced.setScaleChoice(.fill)
+        XCTAssertEqual(state.settings.taskOptions.copyScale, .actual)
 
         state.printHeldCopy()
         try await idle(state)
@@ -399,8 +444,8 @@ final class IOSCopyTests: XCTestCase {
         XCTAssertEqual(model.copies, PrintCopies.maxCount)
         model.setCopies(0)
         XCTAssertEqual(model.copies, 1)
-        model.setFitsToPage(true)
-        XCTAssertTrue(model.fitsToPage)
+        model.setScaleChoice(.fit)
+        XCTAssertEqual(model.scale, .fit)
         XCTAssertFalse(model.fitIsForced)
 
         XCTAssertTrue(state.ingest([page(inches: 2), page(inches: 2)], source: .photo))

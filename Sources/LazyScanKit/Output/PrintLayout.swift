@@ -7,11 +7,59 @@ import Foundation
 // the user asks for it.
 
 /// How a page is sized on the paper.
-public enum PrintMode: Sendable {
+public enum PrintMode: Equatable, Sendable {
     /// At real size (pixels / dpi), like a photocopier; what does not fit is cut off.
     case actualSize
     /// Made smaller (never larger) to fit the part of the paper the printer prints on.
     case fitToPrintable
+    /// Made larger or smaller until it covers the part of the paper the printer prints on; what runs
+    /// past it is cut off.
+    case fillPrintable
+    /// At this share of real size (1.5 is 150%), placed like `actualSize`.
+    case percent(Double)
+}
+
+/// What the Copy task's scale choice stores in `TaskOptions.copyScale`. Twin of C# `CopyScale`.
+public enum CopyScale: String, Codable, Sendable {
+    case actual
+    case fit
+    case fill
+    case percent
+}
+
+/// The scale choices of a copy, shared by the apps so each says the same words. Twin of C# `PrintScale`.
+public enum PrintScale {
+    public static let minPercent = 25
+    public static let maxPercent = 400
+    public static let percentStep = 5
+    /// The percentages offered besides Custom; 100 is Actual size.
+    public static let presetPercents = [50, 75, 150, 200]
+
+    /// `percent` kept between `minPercent` and `maxPercent`.
+    public static func clamp(_ percent: Int) -> Int { min(max(percent, minPercent), maxPercent) }
+
+    /// How `scale` (at `percent` for `.percent`) sizes a page.
+    public static func mode(for scale: CopyScale, percent: Int) -> PrintMode {
+        switch scale {
+        case .actual: return .actualSize
+        case .fit: return .fitToPrintable
+        case .fill: return .fillPrintable
+        case .percent: return .percent(Double(clamp(percent)) / 100)
+        }
+    }
+
+    /// Actual size and percentages start at the paper's corner unless centred; Fit and Fill always centre.
+    public static func hasCenterChoice(_ scale: CopyScale) -> Bool { scale == .actual || scale == .percent }
+
+    /// "Actual size", "Fit to page", "Fill page", "150%".
+    public static func label(for scale: CopyScale, percent: Int) -> String {
+        switch scale {
+        case .actual: return L10n.t("Actual size")
+        case .fit: return L10n.t("Fit to page")
+        case .fill: return L10n.t("Fill page")
+        case .percent: return L10n.t("{0}%", L10n.plain(clamp(percent)))
+        }
+    }
 }
 
 /// Where a page printed at real size goes on the paper.
@@ -89,9 +137,12 @@ public enum PrintLayout {
     /// Where a scan `pixelWidth` × `pixelHeight` at `dpi` goes on `paper` (inches) whose printer
     /// prints on `printable`. At real size the page is pixels / dpi inches, against the paper's corner
     /// or centred on the paper (`align`), turned a quarter only when that cuts off less;
-    /// `clippedInches` says how far it runs past the printable area. Fit to the printable area makes
-    /// it smaller by min(printable width / width, printable height / height, 1), turned a quarter when
-    /// that gives a larger scale, centred in the printable area.
+    /// `clippedInches` says how far it runs past the printable area. A percentage is the same at that
+    /// share of the size. Fit to the printable area makes it smaller by min(printable width / width,
+    /// printable height / height, 1), turned a quarter when that gives a larger scale, centred in the
+    /// printable area. Fill makes it as large as it takes to cover the printable area (max of the two
+    /// ratios), turned a quarter when that cuts off less, centred; what runs past is cut on purpose and
+    /// is not counted in `clippedInches`.
     public static func place(pixelWidth: Int, pixelHeight: Int, dpi: Int, paper: CGSize, printable: CGRect,
                              mode: PrintMode, align: PrintAlign) -> PrintPlacement {
         let resolution = Double(max(1, dpi))
@@ -115,14 +166,31 @@ public enum PrintLayout {
                                   clippedInches: clippedInches(fitted, printable: area))
         }
 
-        let quarterTurns = overflow(height, width, paperWidth, paperHeight) + epsilon
-            < overflow(width, height, paperWidth, paperHeight) ? 1 : 0
-        let rw = quarterTurns == 1 ? height : width
-        let rh = quarterTurns == 1 ? width : height
+        if mode == .fillPrintable {
+            let upright = fillScale(width, height, area)
+            let turned = fillScale(height, width, area)
+            let turns = turned + epsilon < upright ? 1 : 0
+            let scale = min(upright, turned)
+            let w = (turns == 1 ? height : width) * scale
+            let h = (turns == 1 ? width : height) * scale
+            let filled = CGRect(x: Double(area.minX) + (Double(area.width) - w) / 2,
+                                y: Double(area.minY) + (Double(area.height) - h) / 2,
+                                width: w, height: h)
+            return PrintPlacement(rect: filled, scale: scale, quarterTurns: turns, clippedInches: 0)
+        }
+
+        var factor = 1.0
+        if case .percent(let share) = mode { factor = share }
+        let shownWidth = width * factor
+        let shownHeight = height * factor
+        let quarterTurns = overflow(shownHeight, shownWidth, paperWidth, paperHeight) + epsilon
+            < overflow(shownWidth, shownHeight, paperWidth, paperHeight) ? 1 : 0
+        let rw = quarterTurns == 1 ? shownHeight : shownWidth
+        let rh = quarterTurns == 1 ? shownWidth : shownHeight
         let rect = align == .center
             ? CGRect(x: (paperWidth - rw) / 2, y: (paperHeight - rh) / 2, width: rw, height: rh)
             : CGRect(x: 0, y: 0, width: rw, height: rh)
-        return PrintPlacement(rect: rect, scale: 1, quarterTurns: quarterTurns,
+        return PrintPlacement(rect: rect, scale: factor, quarterTurns: quarterTurns,
                               clippedInches: clippedInches(rect, printable: area))
     }
 
@@ -153,9 +221,11 @@ public enum PrintLayout {
         CGSize(width: Double(inches.width) * unitsPerInch, height: Double(inches.height) * unitsPerInch)
     }
 
-    /// A copy of the whole glass or of a page lies against the corner, as it lay on the glass; an
-    /// area selected on the preview is centred.
-    public static func align(hasSelection: Bool) -> PrintAlign { hasSelection ? .center : .paperOrigin }
+    /// A copy of the whole glass or of a page lies against the corner, as it lay on the glass, unless
+    /// the user chose to centre it; an area selected on the preview is always centred.
+    public static func align(hasSelection: Bool, center: Bool) -> PrintAlign {
+        hasSelection || center ? .center : .paperOrigin
+    }
 
     /// Whether a copy is fitted to the page: the user asked for it (`chosenFit`), or some page's real
     /// size is not known (`allPagesRealSize` is false, a camera page that snapped to no known size),
@@ -171,7 +241,7 @@ public enum PrintLayout {
         let beyondPaper = clippedInches(placement.rect,
                                         printable: CGRect(x: 0, y: 0, width: Double(paper.width), height: Double(paper.height)))
         return beyondPaper > clipWarningInches
-            ? L10n.t("Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.", millimetres(beyondPaper))
+            ? L10n.t("Larger than the paper: up to {0} mm is cut off. Choose Fit to page to print all of it.", millimetres(beyondPaper))
             : L10n.t("Edges may be cut by up to {0} mm (printer margins).", millimetres(placement.clippedInches))
     }
 
@@ -189,6 +259,11 @@ public enum PrintLayout {
     private static func fitScale(_ width: Double, _ height: Double, _ area: CGRect) -> Double {
         guard width > 0, height > 0 else { return 1 }
         return min(min(Double(area.width) / width, Double(area.height) / height), 1)
+    }
+
+    private static func fillScale(_ width: Double, _ height: Double, _ area: CGRect) -> Double {
+        guard width > 0, height > 0 else { return 1 }
+        return max(Double(area.width) / width, Double(area.height) / height)
     }
 
     /// How far a page runs past the paper across and down together.
@@ -314,9 +389,6 @@ public enum PrintText {
         }
         return L10n.plural(pageCount, one: "Sent {0} page to {1}.", other: "Sent {0} pages to {1}.", printerName)
     }
-
-    /// "Actual size" or "Fit to page".
-    public static func modeLabel(fitToPage: Bool) -> String { fitToPage ? L10n.t("Fit to page") : L10n.t("Actual size") }
 
     /// What the paper size picker says for a copy: on the glass, Automatic scans the part the
     /// printer's paper covers (a copier copies the sheet it prints on); otherwise as `PaperSizes.hint`.

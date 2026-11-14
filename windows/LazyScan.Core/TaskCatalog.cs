@@ -627,7 +627,7 @@ public static class TaskCatalog
     /// documents ("… · Split at separator sheets") and facing pages ("… · Facing pages split",
     /// "… · Facing pages split, right to left"), so the line stays
     /// short enough for cards and the preset list. A copy says how it prints instead of a format:
-    /// "300 dpi · Color · Actual size", "300 dpi · Grayscale · Fit to page · 3 copies".
+    /// "300 dpi · Color · Actual size", "300 dpi · Grayscale · Fit to page · 3 copies", "300 dpi · Color · 150%".
     /// </summary>
     public static string Summary(ScanSettings settings)
     {
@@ -637,7 +637,7 @@ public static class TaskCatalog
             // A copy is paper, not a file: its size and count matter, not the format.
             int copies = PrintCopies.Clamp(settings.TaskOptions.CopyCount);
             string count = Loc.Plural(copies, "{0} copy", "{0} copies");
-            return $"{dpi} · {settings.ColorMode.Label()} · {PrintText.ModeLabel(settings.TaskOptions.CopyFitToPage)}"
+            return $"{dpi} · {settings.ColorMode.Label()} · {PrintScale.Label(settings.TaskOptions.CopyScale, settings.TaskOptions.CopyScalePercent)}"
                    + (copies > 1 ? $" · {count}" : "");
         }
         string format = settings.Format == OutputFormat.Pdf && settings.Output.PdfSize != PdfSizePreset.Standard

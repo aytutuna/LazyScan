@@ -880,7 +880,6 @@
     "{0} is certified. Its certification does not allow adding pages, so PDF apps will show the certification as no longer valid.": "الملف {0} معتمد. لا تسمح شهادة اعتماده بإضافة صفحات، لذا ستُظهر تطبيقات PDF أن الاعتماد لم يعد صالحًا.",
     "{0} is a PDF/A-{1}{2} file. The added pages may not meet that standard, so it may no longer pass as PDF/A.": "الملف {0} بتنسيق PDF/A-{1}{2}. قد لا تستوفي الصفحات المضافة هذا المعيار، وعندها قد لا يُعدّ الملف متوافقًا مع PDF/A.",
     "Adding page {0} of {1}…": "جارٍ إضافة الصفحة {0} من {1}…",
-    "Larger than the paper: up to {0} mm is cut off. Turn on Fit to page to print all of it.": "أكبر من الورق: سيُقص ما يصل إلى {0} مم. لطباعة المحتوى كله، يمكن تشغيل \"ملاءمة الصفحة\".",
     "Edges may be cut by up to {0} mm (printer margins).": "قد تُقتطع الحواف بمقدار يصل إلى {0} مم (هوامش الطابعة).",
     "Needs a printer": "تلزم طابعة",
     "No printer is installed. Add a printer, then try again.": "لا توجد طابعة مثبّتة. يُرجى إضافة طابعة ثم المحاولة مرة أخرى.",

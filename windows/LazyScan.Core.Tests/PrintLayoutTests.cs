@@ -44,7 +44,7 @@ public class PrintLayoutTests
         Assert.Equal(0, placement.QuarterTurns);
         Assert.Equal(0.2323, placement.ClippedInches, 0.0001);
         Assert.True(placement.IsClipped);
-        Assert.Equal("Larger than the paper: up to 6 mm is cut off. Turn on Fit to page to print all of it.",
+        Assert.Equal("Larger than the paper: up to 6 mm is cut off. Choose Fit to page to print all of it.",
                      PrintLayout.ClipWarning(placement, A4));
     }
 
@@ -67,8 +67,110 @@ public class PrintLayoutTests
         var placement = PrintLayout.Place(900, 600, 300, Letter, Whole(Letter), PrintMode.ActualSize, PrintAlign.Center);
         AssertRect(2.75, 4.5, 3, 2, placement.Rect);
         Assert.Equal(0, placement.ClippedInches);
-        Assert.Equal(PrintAlign.Center, PrintLayout.AlignFor(hasSelection: true));
-        Assert.Equal(PrintAlign.PaperOrigin, PrintLayout.AlignFor(hasSelection: false));
+        Assert.Equal(PrintAlign.Center, PrintLayout.AlignFor(hasSelection: true, center: false));
+        Assert.Equal(PrintAlign.PaperOrigin, PrintLayout.AlignFor(hasSelection: false, center: false));
+        Assert.Equal(PrintAlign.Center, PrintLayout.AlignFor(hasSelection: false, center: true));
+    }
+
+    [Fact]
+    public void ActualSize_AClippedCopyIsNoLongerClippedWhenCentred()
+    {
+        // A whole 8.5 x 11 in glass on A4 with 0.17 in margins, against the corner: cut on the right and bottom.
+        var printable = new RectD(0.17, 0.17, A4.Width - 0.34, A4.Height - 0.34);
+        var corner = PrintLayout.Place(2550, 3300, 300, A4, printable, PrintMode.ActualSize, PrintAlign.PaperOrigin);
+        Assert.True(corner.IsClipped);
+        // A 7.5 x 10.5 in original lies on the printable area's top-left corner and is cut by the margin there.
+        var small = PrintLayout.Place(2250, 3150, 300, A4, printable, PrintMode.ActualSize, PrintAlign.PaperOrigin);
+        Assert.Equal(0.17, small.ClippedInches, 1e-9);
+        var centred = PrintLayout.Place(2250, 3150, 300, A4, printable, PrintMode.ActualSize, PrintLayout.AlignFor(hasSelection: false, center: true));
+        AssertRect((A4.Width - 7.5) / 2, (A4.Height - 10.5) / 2, 7.5, 10.5, centred.Rect);
+        Assert.Equal(0, centred.ClippedInches);
+        Assert.Null(PrintLayout.ClipWarning(centred, A4));
+    }
+
+    // MARK: - Percent and fill
+
+    [Fact]
+    public void Percent_HalvesTheRect_AndKeepsTheAlignment()
+    {
+        var half = PrintLayout.Place(2550, 3300, 300, Letter, Whole(Letter), PrintMode.Percent(0.5), PrintAlign.PaperOrigin);
+        AssertRect(0, 0, 4.25, 5.5, half.Rect);
+        Assert.Equal(0.5, half.Scale);
+        Assert.Equal(0, half.QuarterTurns);
+        Assert.Equal(0, half.ClippedInches);
+        var centred = PrintLayout.Place(2550, 3300, 300, Letter, Whole(Letter), PrintMode.Percent(0.5), PrintAlign.Center);
+        AssertRect(2.125, 2.75, 4.25, 5.5, centred.Rect);
+    }
+
+    [Fact]
+    public void Percent_ALetterPageAt150OnA4_IsClipped()
+    {
+        var placement = PrintLayout.Place(2550, 3300, 300, A4, Whole(A4), PrintMode.Percent(1.5), PrintAlign.PaperOrigin);
+        AssertRect(0, 0, 12.75, 16.5, placement.Rect);
+        Assert.Equal(1.5, placement.Scale);
+        Assert.True(placement.IsClipped);
+        Assert.Equal("Larger than the paper: up to 123 mm is cut off. Choose Fit to page to print all of it.",
+                     PrintLayout.ClipWarning(placement, A4));
+    }
+
+    [Fact]
+    public void Percent_TurnsOnlyWhenThatCutsOffLess()
+    {
+        // 10 x 7 in at 100% turns on Letter; at 50% it is 5 x 3.5 in and stays upright.
+        var full = PrintLayout.Place(3000, 2100, 300, Letter, Whole(Letter), PrintMode.Percent(1), PrintAlign.PaperOrigin);
+        Assert.Equal(1, full.QuarterTurns);
+        var half = PrintLayout.Place(3000, 2100, 300, Letter, Whole(Letter), PrintMode.Percent(0.5), PrintAlign.PaperOrigin);
+        Assert.Equal(0, half.QuarterTurns);
+        AssertRect(0, 0, 5, 3.5, half.Rect);
+    }
+
+    [Fact]
+    public void Fill_AnA5OriginalFillsA4_CentredAndCropped()
+    {
+        // A5 is 1748 x 2480 px at 300 dpi (5.827 x 8.267 in); A4 prints inside 0.17 in margins.
+        var printable = new RectD(0.17, 0.17, A4.Width - 0.34, A4.Height - 0.34);
+        var placement = PrintLayout.Place(1748, 2480, 300, A4, printable, PrintMode.FillPrintable, PrintAlign.PaperOrigin);
+        double scale = Math.Max((A4.Width - 0.34) / (1748 / 300.0), (A4.Height - 0.34) / (2480 / 300.0));
+        Assert.Equal(1.373, scale, 0.001);
+        Assert.Equal(scale, placement.Scale, 1e-9);
+        Assert.Equal(0, placement.QuarterTurns);
+        // Centred in the printable area; the overflow past it is cut on purpose and gives no warning.
+        double w = 1748 / 300.0 * scale, h = 2480 / 300.0 * scale;
+        AssertRect(0.17 + (A4.Width - 0.34 - w) / 2, 0.17 + (A4.Height - 0.34 - h) / 2, w, h, placement.Rect);
+        Assert.True(placement.Rect.Height >= A4.Height - 0.34 - 1e-9);
+        Assert.Equal(0, placement.ClippedInches);
+        Assert.Null(PrintLayout.ClipWarning(placement, A4));
+    }
+
+    [Fact]
+    public void Fill_TurnsWhenThatCropsLess()
+    {
+        // A landscape A5 original on portrait A4: upright it is scaled by the height ratio, turned by the width ratio.
+        var placement = PrintLayout.Place(2480, 1748, 300, A4, Whole(A4), PrintMode.FillPrintable, PrintAlign.PaperOrigin);
+        Assert.Equal(1, placement.QuarterTurns);
+        double expected = Math.Max(A4.Width / (1748 / 300.0), A4.Height / (2480 / 300.0));
+        Assert.Equal(expected, placement.Scale, 1e-9);
+        AssertRect((A4.Width - 1748 / 300.0 * expected) / 2, (A4.Height - 2480 / 300.0 * expected) / 2,
+                   1748 / 300.0 * expected, 2480 / 300.0 * expected, placement.Rect);
+    }
+
+    [Fact]
+    public void Scale_ModesLabelsAndLimits()
+    {
+        Assert.Equal(PrintMode.ActualSize, PrintScale.ModeFor(CopyScale.Actual, 150));
+        Assert.Equal(PrintMode.FitToPrintable, PrintScale.ModeFor(CopyScale.Fit, 150));
+        Assert.Equal(PrintMode.FillPrintable, PrintScale.ModeFor(CopyScale.Fill, 150));
+        Assert.Equal(PrintMode.Percent(1.5), PrintScale.ModeFor(CopyScale.Percent, 150));
+        Assert.Equal(PrintMode.Percent(0.25), PrintScale.ModeFor(CopyScale.Percent, 10));
+        Assert.Equal(PrintMode.Percent(4), PrintScale.ModeFor(CopyScale.Percent, 900));
+        Assert.Equal("Actual size", PrintScale.Label(CopyScale.Actual, 100));
+        Assert.Equal("Fit to page", PrintScale.Label(CopyScale.Fit, 100));
+        Assert.Equal("Fill page", PrintScale.Label(CopyScale.Fill, 100));
+        Assert.Equal("150%", PrintScale.Label(CopyScale.Percent, 150));
+        Assert.True(PrintScale.HasCenterChoice(CopyScale.Actual));
+        Assert.True(PrintScale.HasCenterChoice(CopyScale.Percent));
+        Assert.False(PrintScale.HasCenterChoice(CopyScale.Fit));
+        Assert.False(PrintScale.HasCenterChoice(CopyScale.Fill));
     }
 
     [Fact]
@@ -201,8 +303,6 @@ public class PrintLayoutTests
     {
         Assert.Equal("Sent 1 page to Office Printer.", PrintText.Sent(1, 1, "Office Printer"));
         Assert.Equal("Sent 2 pages to Office Printer. Copies: 3.", PrintText.Sent(2, 3, "Office Printer"));
-        Assert.Equal("Actual size", PrintText.ModeLabel(false));
-        Assert.Equal("Fit to page", PrintText.ModeLabel(true));
         Assert.Equal("Needs a printer", PrintText.NoPrinterReason);
         Assert.Equal("The printer's paper size, from the glass corner",
                      PrintText.CopyPaperHint(PaperSize.Auto, ScanSource.Flatbed));
