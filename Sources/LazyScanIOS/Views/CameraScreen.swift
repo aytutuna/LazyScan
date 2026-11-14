@@ -43,6 +43,9 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The count of prints or receipts found, waiting to be spoken once it has stayed the same for a second.
     @State private var countAnnouncement: Task<Void, Never>?
     @State private var announcedCount: String?
+    /// The page in view was said to be found; said again only after a page has been taken.
+    @State private var foundAnnounced: Bool = false
+    @State private var stepAnnouncement: Task<Void, Never>?
     @State private var showsDrawer: Bool = false
     @State private var retakenNote: String?
     @State private var drawerGroup: DrawerGroup = .colour
@@ -134,6 +137,15 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             }
             .onChange(of: countLine) { (_: String?, line: String?) in
                 announceCount(line)
+            }
+            .onChange(of: state.scannedPages.count) { (old: Int, count: Int) in
+                announceTaken(from: old, to: count)
+            }
+            .onChange(of: pageSeen) { (_: Bool, seen: Bool) in
+                announceFound(seen)
+            }
+            .onChange(of: stepLine) { (old: String?, line: String?) in
+                announceStep(from: old, to: line)
             }
             .onChange(of: glareLine) { (_: String?, line: String?) in
                 if let line {
@@ -681,6 +693,43 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
             announcedCount = text
+            AccessibilityNotification.Announcement(text).post()
+        }
+    }
+
+    /// The page is outlined in the viewfinder, for the kinds that take one page; the others say their count.
+    private var pageSeen: Bool {
+        !CaptureObjects.findsSeveral(kind) && model.live?.outline != nil
+    }
+
+    /// The step the camera asks for now, as the card or the task line says it; nil while a page is retaken.
+    private var stepLine: String? {
+        if let card = cardPrompt { return card }
+        guard state.retakingID == nil else { return nil }
+        return taskLine?.prompt
+    }
+
+    /// Says the page numbers once pages join the queue, not when a shot failed or a page was replaced.
+    private func announceTaken(from old: Int, to count: Int) {
+        guard count > old else { return }
+        foundAnnounced = false
+        AccessibilityNotification.Announcement(IOSCameraText.taken(from: old + 1, to: count)).post()
+    }
+
+    private func announceFound(_ seen: Bool) {
+        guard seen, !foundAnnounced else { return }
+        foundAnnounced = true
+        AccessibilityNotification.Announcement(IOSCameraText.pageFound(kind)).post()
+    }
+
+    /// Says the next step of the two-sided and ID card flows a moment after the page number, which would
+    /// otherwise cut it off.
+    private func announceStep(from old: String?, to line: String?) {
+        stepAnnouncement?.cancel()
+        guard old != nil, let text = line else { return }
+        stepAnnouncement = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
             AccessibilityNotification.Announcement(text).post()
         }
     }

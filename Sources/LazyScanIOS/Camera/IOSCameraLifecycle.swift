@@ -219,6 +219,13 @@ public enum IOSCameraText {
     public static func retaken(_ number: Int) -> String {
         String(localized: "Page \(number) retaken")
     }
+    /// What VoiceOver hears when pages join the queue: "Page 3 taken", "Pages 3 to 5 taken" when one shot made several.
+    public static func taken(from first: Int, to last: Int) -> String {
+        if first == last {
+            return String(localized: "Page \(last) taken")
+        }
+        return String(localized: "Pages \(first) to \(last) taken")
+    }
     public static var retakeCancelHint: String { String(localized: "Keeps the page as it is") }
     /// A toggle's spoken value (Auto, the flash).
     public static var onValue: String { String(localized: "On") }
