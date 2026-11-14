@@ -75,11 +75,23 @@ public class CompanionProtocolTests
     }
 
     [Fact]
+    public void PortOrder_LastThenTheRangeThenAny()
+    {
+        int[] range = [52731, 52732, 52733, 52734, 52735, 52736, 52737, 52738, 52739];
+        Assert.Equal([.. range, 0], CompanionHost.PortOrder(0, 52731, true));
+        Assert.Equal([52735, 52731, 52732, 52733, 52734, 52736, 52737, 52738, 52739, 0], CompanionHost.PortOrder(52735, 52731, true));
+        Assert.Equal([60000, .. range], CompanionHost.PortOrder(60000, 52731, false));
+        Assert.Equal(range, CompanionHost.PortOrder(0, 52731, false));
+        Assert.Equal([0], CompanionHost.PortOrder(0, 0, false));
+    }
+
+    [Fact]
     public void Constants_AreTheProtocols()
     {
         Assert.Equal(1, CompanionProtocol.Version);
         Assert.Equal("_lazyscan._tcp", CompanionProtocol.ServiceType);
         Assert.Equal(52731, CompanionProtocol.DefaultPort);
+        Assert.Equal(9, CompanionProtocol.PortCount);
         Assert.Equal(553_648_128L, CompanionProtocol.MaxUploadBytes);
         Assert.Equal("From phone", CompanionProtocol.PageLabel);
         Assert.Equal("1 page from Aytu's iPhone added to the queue.", CompanionProtocol.AddedMessage(1, "Aytu's iPhone"));

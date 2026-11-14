@@ -110,6 +110,7 @@ public sealed partial class AppViewModel
                     Networks = _companionNetworks,
                     Advertiser = new WindowsDnsSdAdvertiser(),
                     DesktopName = Environment.MachineName,
+                    AnyPortFallback = !Packaging.IsPackaged,
                 };
             }
             var companion = new CompanionService(options);

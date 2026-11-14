@@ -36,8 +36,10 @@ public static class CompanionProtocol
     public const string ServiceType = "_lazyscan._tcp";
     /// <summary>The <c>service</c> value of <see cref="HealthResponse"/>.</summary>
     public const string ServiceName = "lazyscan";
-    /// <summary>The port the desktop tries first; another free one is used when it is taken.</summary>
+    /// <summary>The port the desktop tries first; the next ones are used when it is taken.</summary>
     public const int DefaultPort = 52731;
+    /// <summary>How many ports from <see cref="DefaultPort"/> the desktop uses (52731-52739), the range the Store build's firewall rule opens.</summary>
+    public const int PortCount = 9;
 
     public const string HealthPath = "/v1/health";
     public const string PairPath = "/v1/pair";

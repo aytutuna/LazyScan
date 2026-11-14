@@ -84,8 +84,10 @@ public sealed record CompanionHostStatus(CompanionListenState State, IReadOnlyLi
 /// <summary>How the host listens and advertises.</summary>
 public sealed record CompanionHostOptions
 {
-    /// <summary>The port tried first (after the one used last); 0 lets the system pick.</summary>
+    /// <summary>The first port of the range tried (after the one used last); 0 lets the system pick.</summary>
     public int PreferredPort { get; init; } = CompanionProtocol.DefaultPort;
+    /// <summary>Let the system pick a port when every port of the range is taken; off where only the range is open in the firewall.</summary>
+    public bool AnyPortFallback { get; init; } = true;
     public string InstanceName { get; init; } = Environment.MachineName;
     public string HostName { get; init; } = Environment.MachineName + ".local";
     /// <summary>The desktop's id for the TXT record, asked for when advertising starts.</summary>
@@ -231,8 +233,9 @@ public sealed class CompanionHost : IAsyncDisposable
         }
         var listening = addresses;
         var options = _options.Server with { AllowPeer = remote => TrustedNetworkPolicy.IsAllowedPeer(remote, listening) };
-        var ports = new[] { _lastPort, _options.PreferredPort, 0 }.Where((p, i) => i == 2 || p > 0).Distinct().ToList();
+        var ports = PortOrder(_lastPort, _options.PreferredPort, _options.AnyPortFallback);
         SocketException? failure = null;
+        bool onlyBusy = true;
         foreach (int port in ports)
         {
             var server = new CompanionServer(certificate, _router, _limiter, options, _options.Clock);
@@ -247,10 +250,31 @@ public sealed class CompanionHost : IAsyncDisposable
             catch (SocketException e)
             {
                 failure = e;
-                if (e.SocketErrorCode is not (SocketError.AddressAlreadyInUse or SocketError.AccessDenied)) break;
+                if (e.SocketErrorCode is not (SocketError.AddressAlreadyInUse or SocketError.AccessDenied))
+                {
+                    onlyBusy = false;
+                    break;
+                }
             }
         }
+        if (onlyBusy && !_options.AnyPortFallback && _options.PreferredPort > 0)
+            return Loc.T("Lazy Scan could not listen for phones: ports {0} to {1} are in use by other programs.",
+                         _options.PreferredPort, _options.PreferredPort + CompanionProtocol.PortCount - 1);
         return Loc.T("Windows did not let Lazy Scan listen for phones ({0}).", failure?.Message);
+    }
+
+    /// <summary>
+    /// The ports to try: the one used last, then the range from <paramref name="preferredPort"/>
+    /// (<see cref="CompanionProtocol.PortCount"/> ports), then 0, a port the system picks, unless
+    /// <paramref name="anyPort"/> is off. A preferred port of 0 means the system picks at once.
+    /// </summary>
+    public static IReadOnlyList<int> PortOrder(int lastPort, int preferredPort, bool anyPort)
+    {
+        var ports = new List<int>();
+        if (lastPort > 0) ports.Add(lastPort);
+        if (preferredPort > 0) ports.AddRange(Enumerable.Range(preferredPort, CompanionProtocol.PortCount));
+        if (anyPort || preferredPort == 0) ports.Add(0);
+        return [.. ports.Distinct()];
     }
 
     private async Task StopServerAsync()

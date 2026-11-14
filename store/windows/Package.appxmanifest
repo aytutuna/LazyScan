@@ -82,10 +82,10 @@
   </Capabilities>
 
   <Extensions>
-    <!-- The phone link listener (CompanionProtocol.DefaultPort). The app itself listens only on networks the user trusts. -->
+    <!-- The phone link listener (CompanionProtocol.DefaultPort, PortCount ports). The app itself listens only on networks the user trusts. -->
     <desktop2:Extension Category="windows.firewallRules">
       <desktop2:FirewallRules Executable="LazyScan.exe">
-        <desktop2:Rule Direction="in" IPProtocol="TCP" LocalPortMin="52731" LocalPortMax="52731" Profile="all" />
+        <desktop2:Rule Direction="in" IPProtocol="TCP" LocalPortMin="52731" LocalPortMax="52739" Profile="all" />
       </desktop2:FirewallRules>
     </desktop2:Extension>
   </Extensions>

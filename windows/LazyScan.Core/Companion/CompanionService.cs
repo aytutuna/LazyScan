@@ -20,6 +20,7 @@ public sealed record CompanionServiceOptions
     public Func<DateTimeOffset> Clock { get; init; } = () => DateTimeOffset.UtcNow;
     public string DesktopName { get; init; } = Environment.MachineName;
     public int PreferredPort { get; init; } = CompanionProtocol.DefaultPort;
+    public bool AnyPortFallback { get; init; } = true;
     public CompanionServerOptions Server { get; init; } = new();
 }
 
@@ -62,6 +63,7 @@ public sealed class CompanionService : IAsyncDisposable
                                  IsWanted, new CompanionHostOptions
                                  {
                                      PreferredPort = options.PreferredPort,
+                                     AnyPortFallback = options.AnyPortFallback,
                                      InstanceName = options.DesktopName,
                                      HostName = options.DesktopName + ".local",
                                      DesktopId = () => Devices.DesktopId,
