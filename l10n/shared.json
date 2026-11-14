@@ -1847,6 +1847,7 @@
   "{0} did not answer securely, so Lazy Scan did not use its unencrypted address. Check that the scanner is on and reachable, then try again.": {},
   "Not encrypted": {},
   "This scanner has no flatbed to preview.": {},
+  "This scanner has no film unit.": {},
   "The scanner returned no overview image.": {},
   "The scanner did not return any image data.": {},
   "The security certificate of {0} has changed since you trusted it, so Lazy Scan did not connect. A firmware update or a reset of the scanner can change it, but so can another device pretending to be your scanner.": {},

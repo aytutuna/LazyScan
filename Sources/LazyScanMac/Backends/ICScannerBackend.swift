@@ -302,16 +302,20 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
         var caps = ScannerCapabilities()
 
         var sources: [ScanSource] = []
+        var hasFilm = false
         for number in device.availableFunctionalUnitTypes {
             switch ICScannerFunctionalUnitType(rawValue: number.uintValue) {
             case .some(.flatbed):
                 if !sources.contains(.flatbed) { sources.append(.flatbed) }
             case .some(.documentFeeder):
                 if !sources.contains(.documentFeeder) { sources.append(.documentFeeder) }
+            case .some(.positiveTransparency), .some(.negativeTransparency):
+                hasFilm = true
             default:
                 break
             }
         }
+        if hasFilm { sources += [.slides, .negatives] }
         if sources.isEmpty { sources = [.flatbed] }
         caps.sources = sources
         caps.supportsOverview = sources.contains(.flatbed)
@@ -418,7 +422,7 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
         lastScanStop = nil
         lastScanDuplex = nil
 
-        let unitType: ICScannerFunctionalUnitType = settings.source == .documentFeeder ? .documentFeeder : .flatbed
+        let unitType = try functionalUnitType(for: settings.source)
         try await selectFunctionalUnit(unitType)
 
         let unit = device.selectedFunctionalUnit
@@ -602,6 +606,25 @@ private final class ICHardwareScannerSession: NSObject, ScannerSession, ButtonSc
         guard openContinuation == nil, selectContinuation == nil,
               overviewContinuation == nil, scanContinuation == nil else {
             throw ScanError.scanFailed(reason: { L10n.t("Another scan is already in progress.") })
+        }
+    }
+
+    /// Slides and negatives both use the transparency unit; a device that lists only one kind of film unit
+    /// serves both, and the negative inversion is done by the app.
+    private func functionalUnitType(for source: ScanSource) throws -> ICScannerFunctionalUnitType {
+        switch source {
+        case .flatbed:
+            return .flatbed
+        case .documentFeeder:
+            return .documentFeeder
+        case .slides, .negatives:
+            let kinds: [ICScannerFunctionalUnitType] = source == .slides
+                ? [.positiveTransparency, .negativeTransparency] : [.negativeTransparency, .positiveTransparency]
+            let available = device.availableFunctionalUnitTypes
+            if let kind = kinds.first(where: { available.contains(NSNumber(value: $0.rawValue)) }) {
+                return kind
+            }
+            throw ScanError.unsupported(L10n.t("This scanner has no film unit."))
         }
     }
 
