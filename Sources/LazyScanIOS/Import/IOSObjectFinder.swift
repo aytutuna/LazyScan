@@ -28,7 +28,7 @@ public struct IOSRectangleSearch: Equatable, Sendable {
         self.minimumConfidence = minimumConfidence
     }
 
-    /// The search for `kind`: receipts long and narrow, up to 16 outlines (the picker keeps 6), crumpled
+    /// The search for `kind`: receipts from long and narrow to square, up to 16 outlines (the picker keeps 6), crumpled
     /// corners allowed 20°; photos up to twice as long as wide, up to 16 (the picker keeps 8), 15°; an ID
     /// card near ID-1's shape, up to 4 (the picker keeps 1), 15°, a fifth of the photo at least; a page,
     /// one outline of at least 0.3 of the photo.

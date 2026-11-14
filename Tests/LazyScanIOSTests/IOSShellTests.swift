@@ -273,7 +273,7 @@ final class IOSShellTests: XCTestCase {
         defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.scanModeKey)
         defaults.set(IOSScanMode.camera.rawValue, forKey: IOSShell.startModeKey)
         IOSShell.applyStartMode(defaults)
-        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "camera", "The camera unless picked otherwise")
+        XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "camera", "The start screen picked, not the mode left last")
         defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.startModeKey)
         defaults.set(IOSScanMode.camera.rawValue, forKey: IOSShell.scanModeKey)
         IOSShell.applyStartMode(defaults)
