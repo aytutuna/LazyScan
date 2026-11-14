@@ -1018,7 +1018,43 @@ internal static class MockBedRenderer
             {
                 FillRect(image, left + mark * pitch, markY, side, side, 56, 56, 61);
             }
+            DrawSheetSample(image, scale, pageInches, atRight: true);
         }
+        else
+        {
+            // The flatbed scans the top left of the glass for small papers, so the mark sits in the top margin.
+            DrawSample(image, left, pageY + 0.35 * scale, scale);
+        }
+    }
+
+    /// <summary>SAMPLE in red blocks of 0.035 in, its top-left corner at (<paramref name="x"/>, <paramref name="y"/>) pixels.</summary>
+    private static void DrawSample(RgbaImage image, double x, double y, double scale)
+    {
+        double cell = 0.035 * scale;
+        for (int letter = 0; letter < SampleGlyphs.Length; letter++)
+        {
+            for (int row = 0; row < 7; row++)
+            {
+                for (int column = 0; column < 5; column++)
+                {
+                    if (SampleGlyphs[letter][row * 5 + column] == '1')
+                    {
+                        FillRect(image, x + (letter * 6 + column) * cell, y + row * cell, cell, cell, 190, 40, 40);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// SAMPLE in the bottom corner of a document sheet, 0.75 in from the side and 0.6 in above the
+    /// bottom edge: right on fronts, left on backs, clear of the body text and the sheet marks.
+    /// </summary>
+    private static void DrawSheetSample(RgbaImage image, double scale, RectD pageInches, bool atRight)
+    {
+        const double width = 35 * 0.035, height = 7 * 0.035;
+        double x = atRight ? pageInches.X + pageInches.Width - 0.75 - width : pageInches.X + 0.75;
+        DrawSample(image, x * scale, (pageInches.Y + pageInches.Height - 0.6 - height) * scale, scale);
     }
 
     /// <summary>
@@ -1051,6 +1087,7 @@ internal static class MockBedRenderer
         {
             FillRect(image, right - side - mark * pitch, markY, side, side, 56, 56, 61);
         }
+        DrawSheetSample(image, scale, pageInches, atRight: false);
     }
 
     private static void FillRect(RgbaImage image, double x, double y, double w, double h,

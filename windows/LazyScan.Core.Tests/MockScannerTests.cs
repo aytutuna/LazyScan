@@ -48,6 +48,38 @@ public class MockScannerTests
     }
 
     [Fact]
+    public async Task EveryDocumentSheetSaysSample_RightOnFrontsLeftOnBacks()
+    {
+        var (_, session) = await Open();
+        var pages = await session.PerformScanAsync(FeederSettings(duplex: DuplexMode.Both), selection: null);
+        Assert.Equal(6, pages.Count);
+        for (int i = 0; i < pages.Count; i++)
+        {
+            var image = pages[i].Image;
+            int left = 0, right = 0;
+            for (int y = image.Height - 2 * Dpi; y < image.Height; y++)
+            {
+                for (int x = 0; x < image.Width; x++)
+                {
+                    int at = (y * image.Width + x) * 4;
+                    if (image.Pixels[at] <= 150 || image.Pixels[at + 1] >= 90 || image.Pixels[at + 2] >= 90) continue;
+                    if (x < image.Width / 2) left++; else right++;
+                }
+            }
+            if (i % 2 == 0)
+            {
+                Assert.True(right > 0);
+                Assert.Equal(0, left);
+            }
+            else
+            {
+                Assert.True(left > 0);
+                Assert.Equal(0, right);
+            }
+        }
+    }
+
+    [Fact]
     public async Task DemoScannerHasAFeeder()
     {
         var (_, session) = await Open();

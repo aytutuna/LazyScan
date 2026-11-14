@@ -786,12 +786,14 @@ public partial class MainWindow : Window
     {
         var task = ViewModel.ActiveTaskDefinition;
         bool turningOver = ViewModel.IsTurningOverByHand;
+        DemoStrip.Visibility = ViewModel.DemoSelected ? Visibility.Visible : Visibility.Collapsed;
         if (task is null && !turningOver)
         {
             TaskBanner.Visibility = Visibility.Collapsed;
             CanvasHintTitle.Visibility = Visibility.Visible;
             string startLine = ViewModel.Settings.Source == ScanSource.DocumentFeeder ? ShortText.LoadFeeder : ShortText.PlaceOriginal;
-            CanvasHintBody.Text = ViewModel.DemoSelected ? startLine + "\n" + ShortText.DemoNote(ViewModel.ListedRealScannerName) : startLine;
+            string? listedReal = ViewModel.DemoSelected ? ViewModel.ListedRealScannerName : null;
+            CanvasHintBody.Text = listedReal is null ? startLine : startLine + "\n" + ShortText.DemoNote(listedReal);
             CanvasHintBody.Visibility = Visibility.Visible;
             return;
         }

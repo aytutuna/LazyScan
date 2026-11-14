@@ -1295,7 +1295,6 @@
     "Last PDF: {0}": "最後に保存したPDF: {0}",
     "Place the original face down, then select Scan.": "原稿の表面を下にして置き、“スキャン”を選択してください。",
     "Load the pages in the feeder, then select Scan.": "ページをフィーダにセットして、“スキャン”を選択してください。",
-    "This is the demo scanner: it scans sample pages. Your own scanner appears in the sidebar once it is found.": "これはデモ用のスキャナで、サンプルページをスキャンします。お使いのスキャナは、見つかるとサイドバーに表示されます。",
     "Drag to select an area": "ドラッグして範囲を選択",
     "Needs Color": "カラーが必要",
     "Needs Collect pages": "まとめる設定が必要",

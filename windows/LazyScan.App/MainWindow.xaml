@@ -396,6 +396,7 @@
                         <Grid Grid.Column="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
@@ -481,8 +482,19 @@
                                 </GroupBox>
                             </Border>
 
+                            <!-- Shown while the Demo Scanner is selected, so its pages are never taken for real ones. -->
+                            <Border Grid.Row="1" x:Name="DemoStrip" Style="{StaticResource TaskBannerStyle}"
+                                    Margin="12,12,12,0" Padding="10,4,10,4" Visibility="Collapsed">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE7C3;" Margin="0,0,8,0" />
+                                    <TextBlock Style="{StaticResource CaptionText}" Text="{loc:T Demo Scanner: sample pages}"
+                                               AutomationProperties.AutomationId="DemoStrip" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+
                             <!-- Stage: the page sits on a neutral surface with a soft shadow. -->
-                            <Border Grid.Row="1" Style="{StaticResource StageStyle}" Margin="12,12,12,0">
+                            <Border Grid.Row="2" Style="{StaticResource StageStyle}" Margin="12,12,12,0">
                                 <local:FocusHost x:Name="CanvasHost" Focusable="True"
                                       AutomationProperties.Name="{loc:T Page view}"
                                       AutomationProperties.HelpText="{loc:T Use the arrow keys to scroll or change page.}"
@@ -599,7 +611,7 @@
                             </Border>
 
                             <!-- Page strip -->
-                            <Border Grid.Row="2" x:Name="PageStrip" Background="Transparent" Visibility="Collapsed"
+                            <Border Grid.Row="3" x:Name="PageStrip" Background="Transparent" Visibility="Collapsed"
                                     Padding="12,8,12,8">
                                 <StackPanel>
                                     <TextBlock x:Name="PageStripLabel" Text="{loc:T 0 pages}" Style="{StaticResource CaptionText}"
