@@ -27,7 +27,7 @@ struct QuickScanScreen: View {
                                 .accessibilityLabel(Text("Page"))
                                 .accessibilityIdentifier("quick.image")
                         } else {
-                            ZoomablePage(image: image)
+                            ZoomablePage(image: image, isShown: true)
                                 .padding(12)
                                 .accessibilityLabel(Text("Page"))
                                 .accessibilityIdentifier("quick.image")
@@ -93,7 +93,7 @@ struct QuickScanScreen: View {
     }
 }
 
-/// The page with Live Text over it: VisionKit reads its text once, and a press on the text selects it as in
+/// The page with Live Text over it: VisionKit reads its text and codes once, and a press on the text selects it as in
 /// Photos (copy, look up, translate are the system's own menu).
 struct LiveTextImageView: UIViewRepresentable {
     let image: CGImage
@@ -120,16 +120,26 @@ struct LiveTextImageView: UIViewRepresentable {
     }
 }
 
-/// Reads the page's text for Live Text once, off the screen's way; dropped when the view goes.
+/// Reads the page's text and codes for Live Text once, off the screen's way; dropped when the view goes.
 @MainActor
 final class LiveTextCoordinator {
     private var analysis: Task<Void, Never>?
+    private var analyzed: CGImage?
+    var interaction: ImageAnalysisInteraction?
+
+    /// Reads a page not read yet; a page shown again as it is keeps its reading.
+    func analyzeIfNew(_ image: CGImage) {
+        guard let interaction, image !== analyzed else { return }
+        analyzed = image
+        interaction.analysis = nil
+        analyze(image, interaction: interaction)
+    }
 
     func analyze(_ image: CGImage, interaction: ImageAnalysisInteraction) {
         analysis?.cancel()
         analysis = Task { @MainActor [weak interaction] in
             let analyzer: ImageAnalyzer = ImageAnalyzer()
-            let configuration: ImageAnalyzer.Configuration = ImageAnalyzer.Configuration([.text])
+            let configuration: ImageAnalyzer.Configuration = ImageAnalyzer.Configuration([.text, .machineReadableCode])
             guard let result = try? await analyzer.analyze(image, orientation: .up, configuration: configuration) else {
                 return
             }
@@ -141,6 +151,9 @@ final class LiveTextCoordinator {
     func cancel() {
         analysis?.cancel()
         analysis = nil
+        if interaction?.analysis == nil {
+            analyzed = nil
+        }
     }
 }
 #endif

@@ -4,6 +4,7 @@ import CoreGraphics
 import ImageIO
 import SwiftUI
 import UIKit
+import VisionKit
 import UniformTypeIdentifiers
 
 /// The page the viewer opens on.
@@ -421,7 +422,7 @@ struct PageViewer: View {
         let index: Int = state.scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == page.id }) ?? 0
         let label: String = PageViewerText.title(number: index + 1, count: state.scannedPages.count)
         let spoken: String = note.map { (text: String) -> String in String(localized: "Page \(label), \(text)") } ?? String(localized: "Page \(label)")
-        return ZoomablePage(image: shownImage(page))
+        return ZoomablePage(image: shownImage(page), isShown: page.id == selection)
             .environment(\.layoutDirection, .leftToRight)
             .overlay {
                 if state.recuttingPages.contains(page.id) {
@@ -1007,16 +1008,39 @@ struct PageViewer: View {
 }
 
 /// A page fitted whole in the space it is given, zoomed with a pinch or a double tap (back with another), and
-/// panned while zoomed; not zoomed, a swipe goes to the page viewer's next page.
+/// panned while zoomed; not zoomed, a swipe goes to the page viewer's next page. Where the device has Live Text,
+/// its text can be selected and its links, numbers and codes tapped.
 struct ZoomablePage: UIViewRepresentable {
     let image: CGImage
+    let isShown: Bool
+
+    func makeCoordinator() -> LiveTextCoordinator {
+        LiveTextCoordinator()
+    }
 
     func makeUIView(context: Context) -> ZoomingImageView {
-        ZoomingImageView()
+        let view: ZoomingImageView = ZoomingImageView()
+        if IOSQuickScanModel.deviceSupportsLiveText() {
+            view.imageView.isUserInteractionEnabled = true
+            let interaction: ImageAnalysisInteraction = ImageAnalysisInteraction()
+            interaction.preferredInteractionTypes = .automatic
+            view.imageView.addInteraction(interaction)
+            context.coordinator.interaction = interaction
+        }
+        return view
     }
 
     func updateUIView(_ view: ZoomingImageView, context: Context) {
         view.show(image)
+        if isShown {
+            context.coordinator.analyzeIfNew(image)
+        } else {
+            context.coordinator.cancel()
+        }
+    }
+
+    static func dismantleUIView(_ uiView: ZoomingImageView, coordinator: LiveTextCoordinator) {
+        coordinator.cancel()
     }
 }
 
