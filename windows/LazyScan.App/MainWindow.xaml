@@ -80,7 +80,7 @@
                                 ToolTip="{loc:T Print the copy again on the same printer}"
                                 AutomationProperties.HelpText="{loc:T Prints the copy again on the same printer}"
                                 KeyboardNavigation.TabIndex="1" Click="PrintAgain_Click" />
-                        <Button Style="{StaticResource SubtleButtonStyle}" local:Icon.Glyph="&#xE7F7;"
+                        <Button x:Name="InfoBarChooseButton" Style="{StaticResource SubtleButtonStyle}" local:Icon.Glyph="&#xE7F7;"
                                 Content="{loc:T Choose another printer}"
                                 ToolTip="{loc:T Pick a printer for the copy}"
                                 AutomationProperties.HelpText="{loc:T Opens the printer list in the copy options}"
@@ -1673,6 +1673,8 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="4" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="4" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <Button x:Name="SavePdfButton" Style="{StaticResource AccentIconTextButtonStyle}"
                                                 ContentTemplate="{StaticResource SaveLabelTemplate}"
@@ -1710,7 +1712,13 @@
                                                 Content="&#xEB9F;" Width="36" Height="36"
                                                 AutomationProperties.AcceleratorKey="Ctrl+O"
                                                 Click="ImportPhotos_Click" />
-                                        <Button Grid.Column="6" x:Name="ClearButton" Style="{StaticResource IconButtonStyle}"
+                                        <!-- Straight to the printer chosen for copies; the queue stays. -->
+                                        <Button Grid.Column="6" x:Name="PrintButton" Style="{StaticResource IconButtonStyle}"
+                                                Content="&#xE749;" Width="36" Height="36"
+                                                AutomationProperties.Name="{loc:T Print the pages in the queue}"
+                                                ToolTipService.ShowOnDisabled="True"
+                                                Click="PrintQueueDirect_Click" />
+                                        <Button Grid.Column="8" x:Name="ClearButton" Style="{StaticResource IconButtonStyle}"
                                                 Content="&#xE74D;" Width="36" Height="36"
                                                 ToolTip="{loc:T Remove all pages}"
                                                 AutomationProperties.Name="{loc:T Remove every page from the queue}"

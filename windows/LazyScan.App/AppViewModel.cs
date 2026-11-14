@@ -3189,6 +3189,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     {
         if (IsBusy) return;
         int cleared = HoldRemoved(ScannedPages.Select(p => p.Page.Id).ToHashSet());
+        if (_heldCopy is { FromQueue: true }) _heldCopy = null;
         ResetFlow();
         SaveName = "";
         if (cleared > 0) SetStatus(RemovedTitle(), new(new StatusHead.QueueCleared(_removed.Count)));
@@ -4862,7 +4863,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (_heldCopy is { } held && ReferenceEquals(held.Failure, e))
         {
-            ErrorMessage = $"{e.Message} {Loc.T("The copy is still here.")}";
+            ErrorMessage = held.FromQueue ? e.Message : $"{e.Message} {Loc.T("The copy is still here.")}";
             ErrorAboutCopy = true;
             StatusMessage = Loc.T("Could not print.");
         }

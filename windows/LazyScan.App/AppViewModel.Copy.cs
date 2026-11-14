@@ -32,11 +32,13 @@ public sealed partial class AppViewModel
     /// <summary>The last copy's pages while they have not been printed: after a cancelled or failed print, until the next scan, import or task change.</summary>
     private HeldCopy? _heldCopy;
 
-    private sealed class HeldCopy(List<ScannedPage> pages, ScanSettings settings, bool areaSelected)
+    private sealed class HeldCopy(List<ScannedPage> pages, ScanSettings settings, bool areaSelected, bool fromQueue = false)
     {
         public List<ScannedPage> Pages { get; } = pages;
         public ScanSettings Settings { get; } = settings;
         public bool AreaSelected { get; } = areaSelected;
+        /// <summary>The pages are the queue's: they are already in it, and a print of them is not a copy.</summary>
+        public bool FromQueue { get; } = fromQueue;
         /// <summary>Why the print failed; null when it was cancelled.</summary>
         public Exception? Failure { get; set; }
     }
@@ -46,6 +48,9 @@ public sealed partial class AppViewModel
 
     /// <summary>Why the held copy did not print; null when it was cancelled.</summary>
     public string? HeldCopyFailure => _heldCopy?.Failure?.Message;
+
+    /// <summary>The printer list lives in the Copy task's options, so a held queue print offers it only there.</summary>
+    public bool CanChooseAnotherPrinter => _heldCopy is { } held && (IsCopyFlow || !held.FromQueue);
 
     /// <summary>The installed printers, as last read (empty until then).</summary>
     public IReadOnlyList<PrinterInfo> Printers => _printers ?? [];
@@ -282,13 +287,13 @@ public sealed partial class AppViewModel
 
     /// <summary>Prints the pages of a copy, keeping them held until they have gone to the printer.</summary>
     private async Task PrintCopy(List<ScannedPage> pages, ScanSettings s, PrinterSetup setup, bool areaSelected,
-                                 CancellationToken token)
+                                 CancellationToken token, bool fromQueue = false)
     {
-        var held = new HeldCopy(pages, s, areaSelected);
+        var held = new HeldCopy(pages, s, areaSelected, fromQueue);
         _heldCopy = held;
         try
         {
-            await PrintCopyPages(pages, s, setup, areaSelected, token);
+            await PrintCopyPages(pages, s, setup, areaSelected, token, fromQueue);
         }
         catch (Exception e) when (!IsCancellation(e) && e is not OutOfMemoryException)
         {
@@ -313,8 +318,46 @@ public sealed partial class AppViewModel
             try { setup = await SetupForAsync(s, RequestedPaper(s)) ?? throw new PrintException(PrintText.NoPrinterMessage); }
             catch (PrintException e) { held.Failure = e; throw; }
             token.ThrowIfCancellationRequested();
-            await PrintCopy(held.Pages, s, setup, held.AreaSelected, token);
-            RecordCaptures(held.Pages.Select(p => p.Id));
+            await PrintCopy(held.Pages, s, setup, held.AreaSelected, token, held.FromQueue);
+            if (!held.FromQueue) RecordCaptures(held.Pages.Select(p => p.Id));
+        });
+    }
+
+    /// <summary>
+    /// Prints the pages the queue would save, on the printer, paper and copies chosen for copies and with
+    /// no dialog. The queue stays as it is; a print that fails holds the pages like a copy, so Print again works.
+    /// </summary>
+    public Task PrintQueue()
+    {
+        if (ScannedPages.Count == 0) return Task.CompletedTask;
+        var s = Settings.Clone();
+        s.TaskOptions.CopyAlsoSavePdf = false;
+        return RunExclusive(async token =>
+        {
+            await Settled(_pageRotateChain);
+            var queued = ScannedPages.Select(p => p.Page).ToList();
+            if (queued.Count == 0) return;
+            var plan = SavePlan.Make(queued, s.Document);
+            if (plan.IsEmpty)
+            {
+                ErrorTitle = PageFilter.NothingSavedTitle;
+                ErrorMessage = PageFilter.NothingToSaveMessage;
+                StatusMessage = Loc.T("{0}.", DocumentSplitter.QueueSummary(queued, s.Document));
+                return;
+            }
+            // Spilled pages hold only a preview in memory; the print needs the pixels at the scan's dpi.
+            // Holding them also keeps Print again working after the queue is cleared.
+            StatusMessage = Loc.T("Getting the printer ready…");
+            NotifyAll();
+            var pages = await Task.Run(() => plan.Documents.SelectMany(d => d.Pages)
+                .Select((p, i) => p.WithImage(PdfBuilder.PreparePage(p, SpoolImage(p), i + 1).Image)).ToList(), token);
+            var held = new HeldCopy(pages, s, false, true);
+            _heldCopy = held;
+            PrinterSetup setup;
+            try { setup = await SetupForAsync(s, RequestedPaper(s)) ?? throw new PrintException(PrintText.NoPrinterMessage); }
+            catch (PrintException e) { held.Failure = e; throw; }
+            token.ThrowIfCancellationRequested();
+            await PrintCopy(pages, s, setup, false, token, true);
         });
     }
 
@@ -327,7 +370,7 @@ public sealed partial class AppViewModel
     /// pages go to the queue. The status says where they went and what the printer's margins cut off.
     /// </summary>
     private async Task PrintCopyPages(List<ScannedPage> pages, ScanSettings s, PrinterSetup setup, bool areaSelected,
-                                   CancellationToken token)
+                                   CancellationToken token, bool fromQueue = false)
     {
         var options = s.TaskOptions;
         bool allRealSize = pages.All(p => p.PrintsAtRealSize);
@@ -339,7 +382,7 @@ public sealed partial class AppViewModel
             .ToList();
         int copies = PrintCopies.Clamp(options.CopyCount);
         var plan = PrintCopies.Plan(copies, setup.MaxCopyCount, printPages.Count, setup.CanCollate);
-        var job = new PrintJob(setup.PrinterName, Loc.T("Copy|print job name"), setup.Paper, RequestedPaper(s), printPages,
+        var job = new PrintJob(setup.PrinterName, fromQueue ? Loc.T("Scan|noun") : Loc.T("Copy|print job name"), setup.Paper, RequestedPaper(s), printPages,
                                plan, Gray: s.ColorMode != ColorMode.Color);
         // No answer still prints the copy; the PDF is then not written.
         bool noPassword = false;

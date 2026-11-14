@@ -224,7 +224,8 @@ texts); the Mac mirrors the layout (see the main README).
   "6 pages · 1 blank skipped".
 - **Save** is a split button: **Save PDF** with a badge of the pages it saves and a lock while the
   PDF gets a password (named "Save password-protected PDF (5 pages)" for screen readers), and a ▾
-  menu with **Add to existing PDF…**. Importing photos of documents is an icon button next to it. A name
+  menu with **Add to existing PDF…** and, when Lazy Print is installed, **Lazy Print**. Importing photos of documents is an icon button next to it, then
+  **Print**, which sends the queued pages straight to the printer chosen for copies. A name
   box above it names the next save only (empty, the file name template names it).
 - **The status bar** shows at most six words, facts only (`StatusLine` in Core: "6 pages added · 1
   blank", "Saved"; nothing while a review shows its own title); a

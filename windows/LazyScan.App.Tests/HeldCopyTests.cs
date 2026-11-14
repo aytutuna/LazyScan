@@ -78,6 +78,72 @@ public class HeldCopyTests
         });
     }
 
+    [Fact]
+    public void PrintingTheQueue_SendsThePagesAndKeepsThem()
+    {
+        Run(_ => { }, session =>
+        {
+            session.Model.StartTask(ScanTask.Document);
+            session.Wait(session.Model.PerformScan());
+            int queued = session.Model.ScannedPages.Count;
+            Assert.True(queued > 0);
+
+            session.Wait(session.Model.PrintQueue());
+
+            Assert.Equal(["Office"], session.Printers.Printed);
+            Assert.StartsWith("Sent", session.Model.StatusMessage);
+            Assert.Equal(queued, session.Model.ScannedPages.Count);
+            Assert.False(session.Model.HasHeldCopy);
+            var page = session.Model.ScannedPages[0].Page;
+            var full = page.FullPixelSize ?? new SizeD(page.Image.Width, page.Image.Height);
+            var sent = session.Printers.Jobs[0].Pages[0];
+            Assert.Equal(full.Width, sent.Image.Width);
+            Assert.Equal(full.Width / page.Dpi, sent.Placement.Rect.Width, 2);
+        });
+    }
+
+    [Fact]
+    public void FailedQueuePrint_HoldsThePagesForPrintAgain()
+    {
+        Run(_ => { }, session =>
+        {
+            session.Model.StartTask(ScanTask.Document);
+            session.Wait(session.Model.PerformScan());
+            int queued = session.Model.ScannedPages.Count;
+            session.Printers.FailNext = true;
+
+            session.Wait(session.Model.PrintQueue());
+
+            Assert.True(session.Model.HasHeldCopy);
+            Assert.True(session.Model.ErrorAboutCopy);
+            Assert.DoesNotContain("still here", session.Model.ErrorMessage);
+            Assert.False(session.Model.CanChooseAnotherPrinter);
+            Assert.Equal(queued, session.Model.ScannedPages.Count);
+
+            session.Wait(session.Model.PrintHeldCopy());
+
+            Assert.False(session.Model.HasHeldCopy);
+            Assert.Equal(["Office", "Office"], session.Printers.Printed);
+        });
+    }
+
+    [Fact]
+    public void ClearingTheQueueLetsAHeldQueuePrintGo()
+    {
+        Run(_ => { }, session =>
+        {
+            session.Model.StartTask(ScanTask.Document);
+            session.Wait(session.Model.PerformScan());
+            session.Printers.FailNext = true;
+            session.Wait(session.Model.PrintQueue());
+            Assert.True(session.Model.HasHeldCopy);
+
+            session.Model.ClearPages();
+
+            Assert.False(session.Model.HasHeldCopy);
+        });
+    }
+
     private sealed class FakePrinters : IPrintService
     {
         private static readonly PrinterPaper Letter = PrinterPaper.Make(new SizeD(8.5, 11), null);
@@ -85,6 +151,7 @@ public class HeldCopyTests
         public bool WaitForCancel { get; set; }
         public bool Started { get; private set; }
         public List<string> Printed { get; } = [];
+        public List<PrintJob> Jobs { get; } = [];
 
         public Task<IReadOnlyList<PrinterInfo>> GetPrintersAsync() =>
             Task.FromResult<IReadOnlyList<PrinterInfo>>([new PrinterInfo("Office", true), new PrinterInfo("Photo", false)]);
@@ -95,6 +162,7 @@ public class HeldCopyTests
         public async Task PrintAsync(PrintJob job, CancellationToken token)
         {
             Printed.Add(job.PrinterName);
+            Jobs.Add(job);
             if (WaitForCancel)
             {
                 Started = true;

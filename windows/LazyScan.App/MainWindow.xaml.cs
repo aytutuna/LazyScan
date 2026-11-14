@@ -386,7 +386,7 @@ public partial class MainWindow : Window
         UndoButton.Visibility = (ViewModel.CanUndoRemove || saveUndoHere) && !ViewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         bool heldCopy = ViewModel.HasHeldCopy && !ViewModel.IsBusy;
         PrintAgainButton.Visibility = heldCopy ? Visibility.Visible : Visibility.Collapsed;
-        ChooseAnotherPrinterButton.Visibility = PrintAgainButton.Visibility;
+        ChooseAnotherPrinterButton.Visibility = heldCopy && ViewModel.CanChooseAnotherPrinter ? Visibility.Visible : Visibility.Collapsed;
         UndoButton.ToolTip = ViewModel.CanUndoSave
             ? UndoSaveTooltip()
             : WithKeys(Loc.Plural(ViewModel.RemovedCount, "Put the page back", "Put the pages back"), Loc.T("Ctrl+Z"));
@@ -571,6 +571,7 @@ public partial class MainWindow : Window
             InfoBar.Visibility = Visibility.Collapsed;
         }
         InfoBarCopyActions.Visibility = _infoBarAboutCopy ? Visibility.Visible : Visibility.Collapsed;
+        InfoBarChooseButton.Visibility = ViewModel.CanChooseAnotherPrinter ? Visibility.Visible : Visibility.Collapsed;
         UpdateEmptyDevicesHint();
     }
 

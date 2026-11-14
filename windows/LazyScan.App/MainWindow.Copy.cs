@@ -219,6 +219,8 @@ public partial class MainWindow
 
     private void PrintQueue_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintQueueWithLazyPrint();
 
+    private void PrintQueueDirect_Click(object sender, RoutedEventArgs e) => _ = ViewModel.PrintQueue();
+
     /// <summary>The review's Print button: on the printer chosen for copies, else the default one.</summary>
     private void SyncIdCardPrint(bool busy)
     {

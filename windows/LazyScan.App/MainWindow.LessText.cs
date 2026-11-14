@@ -90,6 +90,8 @@ public partial class MainWindow
         AddToPdfButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : PdfAppender.ButtonHint;
         PrintQueueButton.Visibility = ViewModel.LazyPrintInstalled ? Visibility.Visible : Visibility.Collapsed;
         PrintQueueButton.IsEnabled = saveCount > 0 && !ViewModel.IsBusy;
+        PrintButton.IsEnabled = saveCount > 0 && !ViewModel.IsBusy;
+        PrintButton.ToolTip = nothingToSave ? PageFilter.NothingToSaveMessage : PrintButton.IsEnabled ? Loc.T("Print the pages") : null;
         AppendTargetText.Text = target ?? "";
         AppendTargetText.ToolTip = target;
         ClearAppendTargetButton.IsEnabled = !ViewModel.IsBusy;

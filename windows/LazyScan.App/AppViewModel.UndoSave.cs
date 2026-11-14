@@ -66,6 +66,7 @@ public sealed partial class AppViewModel
             DeleteSpoolFiles(queued);
         }
         ScannedPages.Clear();
+        if (_heldCopy is { FromQueue: true }) _heldCopy = null;
         // The record is written at once, so a crash within its delay cannot bring the saved pages back.
         QueueRecord.Write([], _spool.Directory);
     }
