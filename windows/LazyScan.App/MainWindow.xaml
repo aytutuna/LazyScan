@@ -508,6 +508,13 @@
                                                    Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2"
                                                    StrokeDashArray="4 3" Fill="{DynamicResource MarqueeFillBrush}"
                                                    Visibility="Collapsed" />
+                                        <Border x:Name="SelectionSizeChip" Visibility="Collapsed"
+                                                Padding="8,3" CornerRadius="10" BorderThickness="1"
+                                                Background="{DynamicResource SolidBackgroundFillColorQuarternaryBrush}"
+                                                BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}">
+                                            <TextBlock x:Name="SelectionSizeText" Style="{StaticResource CaptionText}"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        </Border>
                                     </Canvas>
                                     <!-- After a preview, until an area is selected: the preview can be dragged over. -->
                                     <Border x:Name="DragChip" Visibility="Collapsed" IsHitTestVisible="False"

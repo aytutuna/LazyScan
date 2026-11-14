@@ -20,6 +20,8 @@ public partial class MainWindow : Window
 
     private bool _updatingUi;
     private Point? _marqueeStart;
+    private AreaDrag? _areaDrag;
+    private readonly System.Windows.Shapes.Rectangle[] _areaHandles = new System.Windows.Shapes.Rectangle[AreaHandles.Length];
     private int _seenSavedRevision;
     private bool _savedTabStale = true;
     private object? _boundPhotoBatch;
@@ -28,6 +30,7 @@ public partial class MainWindow : Window
     {
         FlowDirection = App.Flow;
         InitializeComponent();
+        BuildAreaHandles();
         double available = SystemParameters.WorkArea.Height;
         MinHeight = Math.Min(MinHeight, available);
         Height = Math.Min(Height, available);
@@ -2935,18 +2938,84 @@ public partial class MainWindow : Window
     private void UpdateMarquee()
     {
         SyncAreaAutomation();
-        if (_marqueeStart is not null) return;
+        if (_marqueeStart is not null || _areaDrag is not null) return;
         if (ViewModel.SelectionRect is not { } selection || ViewModel.OverviewImage is null || ViewModel.ViewsPage || _zoom is not null
             || ViewModel.Settings.Source != ScanSource.Flatbed || DisplayedImageRect() is not { } imageRect)
         {
-            SelectionMarquee.Visibility = Visibility.Collapsed;
+            HideArea();
             return;
         }
-        Canvas.SetLeft(SelectionMarquee, imageRect.X + selection.MinX * imageRect.Width);
-        Canvas.SetTop(SelectionMarquee, imageRect.Y + selection.MinY * imageRect.Height);
-        SelectionMarquee.Width = Math.Abs(selection.Width) * imageRect.Width;
-        SelectionMarquee.Height = Math.Abs(selection.Height) * imageRect.Height;
+        DrawArea(selection.Standardized, imageRect);
+    }
+
+    private void HideArea()
+    {
+        SelectionMarquee.Visibility = Visibility.Collapsed;
+        SelectionSizeChip.Visibility = Visibility.Collapsed;
+        foreach (var handle in _areaHandles) handle.Visibility = Visibility.Collapsed;
+    }
+
+    private void BuildAreaHandles()
+    {
+        SelectionSizeText.FlowDirection = App.Flow;
+        for (int i = 0; i < _areaHandles.Length; i++)
+        {
+            var handle = new System.Windows.Shapes.Rectangle { Width = AreaHandleSize, Height = AreaHandleSize, StrokeThickness = 1.5, Visibility = Visibility.Collapsed };
+            handle.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "AccentFillColorDefaultBrush");
+            handle.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, "SolidBackgroundFillColorBaseBrush");
+            SelectionOverlay.Children.Add(handle);
+            _areaHandles[i] = handle;
+        }
+    }
+
+    /// <summary>Draws the area (normalized, over the displayed image) with its handles and its size.</summary>
+    private void DrawArea(RectD area, Rect imageRect)
+    {
+        var rect = AreaRect(area, imageRect);
+        Canvas.SetLeft(SelectionMarquee, rect.X);
+        Canvas.SetTop(SelectionMarquee, rect.Y);
+        SelectionMarquee.Width = rect.Width;
+        SelectionMarquee.Height = rect.Height;
         SelectionMarquee.Visibility = Visibility.Visible;
+        for (int i = 0; i < AreaHandles.Length; i++)
+        {
+            var handle = _areaHandles[i];
+            bool shown = AreaHandleShown(rect, AreaHandles[i]);
+            handle.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            if (!shown) continue;
+            var center = AreaHandlePoint(rect, AreaHandles[i]);
+            Canvas.SetLeft(handle, center.X - AreaHandleSize / 2);
+            Canvas.SetTop(handle, center.Y - AreaHandleSize / 2);
+        }
+        if (ViewModel.Capabilities is not { FlatbedSizeInches: { Width: > 0, Height: > 0 } bed })
+        {
+            SelectionSizeChip.Visibility = Visibility.Collapsed;
+            return;
+        }
+        SelectionSizeText.Text = AreaSizeText(area, bed, UsesInches);
+        SelectionSizeChip.Visibility = Visibility.Visible;
+        SelectionSizeChip.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var chip = SelectionSizeChip.DesiredSize;
+        double stageWidth = CanvasHost.ActualWidth, stageHeight = CanvasHost.ActualHeight;
+        double x = Math.Clamp(rect.X + (rect.Width - chip.Width) / 2, 0, Math.Max(0, stageWidth - chip.Width));
+        double y = rect.Bottom > stageHeight - 28 ? rect.Y - 8 - chip.Height : rect.Bottom + 8;
+        y = Math.Clamp(y, 0, Math.Max(0, stageHeight - chip.Height));
+        Canvas.SetLeft(SelectionSizeChip, x);
+        Canvas.SetTop(SelectionSizeChip, y);
+    }
+
+    private static Rect AreaRect(RectD area, Rect imageRect) =>
+        new(imageRect.X + area.X * imageRect.Width, imageRect.Y + area.Y * imageRect.Height,
+            area.Width * imageRect.Width, area.Height * imageRect.Height);
+
+    /// <summary>The area's real size on the bed: whole millimeters, or inches with one decimal.</summary>
+    internal static string AreaSizeText(RectD area, SizeD bedInches, bool inches)
+    {
+        var r = area.Standardized;
+        double w = r.Width * bedInches.Width, h = r.Height * bedInches.Height;
+        return inches
+            ? Loc.T("{0} × {1} in", Loc.Decimal(w, 1, 1), Loc.Decimal(h, 1, 1))
+            : Loc.T("{0} × {1} mm", Loc.Decimal(Math.Round(w * 25.4), 0, 0), Loc.Decimal(Math.Round(h * 25.4), 0, 0));
     }
 
     /// <summary>The flatbed's overview is on the stage at fit size: the scan area can be drawn, or set from the keyboard.</summary>
@@ -2956,6 +3025,97 @@ public partial class MainWindow : Window
 
     private const double AreaStep = 0.01;
     private const double AreaMinSize = 0.02;
+    private const double AreaHandleSize = 8;
+    private const double AreaHandleReach = 12;
+    private const double AreaHandleMinSide = 40;
+    private const double AreaClickSlop = 3;
+
+    internal enum AreaHandle { None, Move, TopLeft, TopRight, BottomRight, BottomLeft, Top, Right, Bottom, Left }
+
+    private static readonly AreaHandle[] AreaHandles =
+    {
+        AreaHandle.TopLeft, AreaHandle.TopRight, AreaHandle.BottomRight, AreaHandle.BottomLeft,
+        AreaHandle.Top, AreaHandle.Right, AreaHandle.Bottom, AreaHandle.Left,
+    };
+
+    private sealed class AreaDrag(AreaHandle handle, RectD start, Point origin)
+    {
+        public AreaHandle Handle { get; } = handle;
+        public RectD Start { get; } = start;
+        public Point Origin { get; } = origin;
+        public RectD Area { get; set; } = start;
+    }
+
+    /// <summary>Below 40 px on a side, that side's edge handle is left out and only the corners remain.</summary>
+    private static bool AreaHandleShown(Rect area, AreaHandle handle) => handle switch
+    {
+        AreaHandle.Top or AreaHandle.Bottom => area.Width >= AreaHandleMinSide,
+        AreaHandle.Left or AreaHandle.Right => area.Height >= AreaHandleMinSide,
+        _ => true,
+    };
+
+    private static Point AreaHandlePoint(Rect area, AreaHandle handle)
+    {
+        double x = handle switch
+        {
+            AreaHandle.TopLeft or AreaHandle.BottomLeft or AreaHandle.Left => area.Left,
+            AreaHandle.TopRight or AreaHandle.BottomRight or AreaHandle.Right => area.Right,
+            _ => area.Left + area.Width / 2,
+        };
+        double y = handle switch
+        {
+            AreaHandle.TopLeft or AreaHandle.TopRight or AreaHandle.Top => area.Top,
+            AreaHandle.BottomLeft or AreaHandle.BottomRight or AreaHandle.Bottom => area.Bottom,
+            _ => area.Top + area.Height / 2,
+        };
+        return new Point(x, y);
+    }
+
+    /// <summary>What a press at <paramref name="p"/> grabs: a handle (its 24 px square wins over the inside), the inside, or nothing.</summary>
+    internal static AreaHandle AreaHandleAt(Rect area, Point p)
+    {
+        foreach (var handle in AreaHandles)
+        {
+            if (!AreaHandleShown(area, handle)) continue;
+            var center = AreaHandlePoint(area, handle);
+            if (Math.Abs(p.X - center.X) <= AreaHandleReach && Math.Abs(p.Y - center.Y) <= AreaHandleReach) return handle;
+        }
+        return area.Contains(p) ? AreaHandle.Move : AreaHandle.None;
+    }
+
+    private static Cursor? AreaCursor(AreaHandle handle) => handle switch
+    {
+        AreaHandle.Move => Cursors.SizeAll,
+        AreaHandle.TopLeft or AreaHandle.BottomRight => Cursors.SizeNWSE,
+        AreaHandle.TopRight or AreaHandle.BottomLeft => Cursors.SizeNESW,
+        AreaHandle.Top or AreaHandle.Bottom => Cursors.SizeNS,
+        AreaHandle.Left or AreaHandle.Right => Cursors.SizeWE,
+        _ => null,
+    };
+
+    /// <summary>The area moved by fractions of the bed, kept on the bed.</summary>
+    internal static RectD MoveArea(RectD area, double dx, double dy)
+    {
+        var r = area.Standardized;
+        return new RectD(Math.Clamp(r.X + dx, 0, 1 - r.Width), Math.Clamp(r.Y + dy, 0, 1 - r.Height), r.Width, r.Height);
+    }
+
+    /// <summary>
+    /// The area with the handle's edges pulled to the point (fractions of the bed). The opposite
+    /// edges stay, and dragging past them stops at the least size instead of flipping.
+    /// </summary>
+    internal static RectD ResizeArea(RectD area, AreaHandle handle, double x, double y)
+    {
+        var r = area.Standardized;
+        double left = r.X, top = r.Y, right = r.X + r.Width, bottom = r.Y + r.Height;
+        x = Math.Clamp(x, 0, 1);
+        y = Math.Clamp(y, 0, 1);
+        if (handle is AreaHandle.TopLeft or AreaHandle.BottomLeft or AreaHandle.Left) left = Math.Min(x, Math.Max(0, right - AreaMinSize));
+        if (handle is AreaHandle.TopRight or AreaHandle.BottomRight or AreaHandle.Right) right = Math.Max(x, Math.Min(1, left + AreaMinSize));
+        if (handle is AreaHandle.TopLeft or AreaHandle.TopRight or AreaHandle.Top) top = Math.Min(y, Math.Max(0, bottom - AreaMinSize));
+        if (handle is AreaHandle.BottomLeft or AreaHandle.BottomRight or AreaHandle.Bottom) bottom = Math.Max(y, Math.Min(1, top + AreaMinSize));
+        return new RectD(left, top, right - left, bottom - top);
+    }
 
     /// <summary>
     /// The arrow keys move the area by one percent of the bed; with Shift they resize it, keeping
@@ -2976,7 +3136,13 @@ public partial class MainWindow : Window
     /// <summary>The keys of the scan area, when the stage has the focus; true when the key was one of them.</summary>
     private bool AreaKey(Key key, ModifierKeys modifiers)
     {
-        if (!CanDrawArea() || _marqueeStart is not null) return false;
+        if (!CanDrawArea()) return false;
+        if (key == Key.Escape && modifiers == ModifierKeys.None && (_marqueeStart is not null || _areaDrag is not null))
+        {
+            CanvasHost.ReleaseMouseCapture();
+            return true;
+        }
+        if (_marqueeStart is not null || _areaDrag is not null) return false;
         if (key == Key.Delete && modifiers == ModifierKeys.None && ViewModel.SelectionRect is not null)
         {
             ViewModel.SelectionRect = null;
@@ -3029,8 +3195,20 @@ public partial class MainWindow : Window
     private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
         _marqueeStart = null;
+        _areaDrag = null;
         CanvasHost.Focus();
         if (BeginPan(e)) return;
+        if (CanDrawArea() && ViewModel.SelectionRect is { } area && DisplayedImageRect() is { } areaImage)
+        {
+            var q = e.GetPosition(SelectionOverlay);
+            var grabbed = AreaHandleAt(AreaRect(area.Standardized, areaImage), q);
+            if (grabbed != AreaHandle.None)
+            {
+                _areaDrag = new AreaDrag(grabbed, area.Standardized, q);
+                CanvasHost.CaptureMouse();
+                return;
+            }
+        }
         // The selection is a region of the flatbed, so it can only be drawn over the overview
         // (the bed) while the flatbed is the source — never over a last scan, which may be a
         // feeder page or an earlier crop.
@@ -3045,14 +3223,52 @@ public partial class MainWindow : Window
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
     {
         Pan(e);
-        if (_marqueeStart is not { } start || DisplayedImageRect() is not { } imageRect) return;
+        if (_areaDrag is { } drag)
+        {
+            DragArea(drag, e.GetPosition(SelectionOverlay));
+            return;
+        }
+        if (_marqueeStart is not { } start)
+        {
+            ShowAreaCursor(e.GetPosition(SelectionOverlay));
+            return;
+        }
+        if (DisplayedImageRect() is not { } imageRect) return;
         var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);
-        var rect = new Rect(start, p);
-        SelectionMarquee.Visibility = Visibility.Visible;
-        Canvas.SetLeft(SelectionMarquee, rect.X);
-        Canvas.SetTop(SelectionMarquee, rect.Y);
-        SelectionMarquee.Width = rect.Width;
-        SelectionMarquee.Height = rect.Height;
+        DrawArea(NormalizedArea(new Rect(start, p), imageRect), imageRect);
+    }
+
+    private static RectD NormalizedArea(Rect rect, Rect imageRect) => new(
+        (rect.X - imageRect.X) / imageRect.Width,
+        (rect.Y - imageRect.Y) / imageRect.Height,
+        rect.Width / imageRect.Width,
+        rect.Height / imageRect.Height);
+
+    private void DragArea(AreaDrag drag, Point p)
+    {
+        if (DisplayedImageRect() is not { } imageRect) return;
+        if (drag.Handle == AreaHandle.Move)
+        {
+            drag.Area = MoveArea(drag.Start, (p.X - drag.Origin.X) / imageRect.Width, (p.Y - drag.Origin.Y) / imageRect.Height);
+        }
+        else
+        {
+            var from = AreaHandlePoint(AreaRect(drag.Start, imageRect), drag.Handle);
+            drag.Area = ResizeArea(drag.Start, drag.Handle,
+                (from.X + p.X - drag.Origin.X - imageRect.X) / imageRect.Width,
+                (from.Y + p.Y - drag.Origin.Y - imageRect.Y) / imageRect.Height);
+        }
+        DrawArea(drag.Area, imageRect);
+    }
+
+    private void ShowAreaCursor(Point p)
+    {
+        if (_panStart is not null || _zoom is not null) return;
+        Cursor? cursor = null;
+        if (CanDrawArea() && ViewModel.SelectionRect is { } area && DisplayedImageRect() is { } imageRect)
+            cursor = AreaCursor(AreaHandleAt(AreaRect(area.Standardized, imageRect), p));
+        if (cursor is null) CanvasHost.ClearValue(CursorProperty);
+        else CanvasHost.Cursor = cursor;
     }
 
     private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
@@ -3063,10 +3279,24 @@ public partial class MainWindow : Window
             EndPan();
             return;
         }
+        if (_areaDrag is { } drag)
+        {
+            _areaDrag = null;
+            CanvasHost.ReleaseMouseCapture();
+            var at = e.GetPosition(SelectionOverlay);
+            if (Math.Abs(at.X - drag.Origin.X) < AreaClickSlop && Math.Abs(at.Y - drag.Origin.Y) < AreaClickSlop)
+            {
+                UpdateMarquee();
+                return;
+            }
+            ViewModel.SelectionRect = drag.Area;
+            RefreshFromViewModel();
+            return;
+        }
         if (_marqueeStart is not { } start) return;
         _marqueeStart = null;
         CanvasHost.ReleaseMouseCapture();
-        if (ViewModel.OverviewImage is null) { SelectionMarquee.Visibility = Visibility.Collapsed; return; }
+        if (ViewModel.OverviewImage is null) { HideArea(); return; }
         if (DisplayedImageRect() is not { } imageRect) return;
 
         var p = ClampTo(e.GetPosition(SelectionOverlay), imageRect);
@@ -3074,16 +3304,12 @@ public partial class MainWindow : Window
         // A tiny drag clears the selection back to the full bed.
         if (rect.Width < 8 || rect.Height < 8)
         {
-            SelectionMarquee.Visibility = Visibility.Collapsed;
+            HideArea();
             ViewModel.SelectionRect = null;
             RefreshFromViewModel();
             return;
         }
-        ViewModel.SelectionRect = new RectD(
-            (rect.X - imageRect.X) / imageRect.Width,
-            (rect.Y - imageRect.Y) / imageRect.Height,
-            rect.Width / imageRect.Width,
-            rect.Height / imageRect.Height);
+        ViewModel.SelectionRect = NormalizedArea(rect, imageRect);
         RefreshFromViewModel();
     }
 
@@ -3094,8 +3320,9 @@ public partial class MainWindow : Window
     private void Canvas_LostMouseCapture(object sender, MouseEventArgs e)
     {
         EndPan();
-        if (_marqueeStart is null) return;
+        if (_marqueeStart is null && _areaDrag is null) return;
         _marqueeStart = null;
+        _areaDrag = null;
         UpdateMarquee();
     }
 
