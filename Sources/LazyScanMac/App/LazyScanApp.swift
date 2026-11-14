@@ -24,7 +24,7 @@ public struct LazyScanApp: App {
 
     public var body: some Scene {
         WindowGroup("Lazy Scan") {
-            // Minimum size lives on ContentView (700x560) — an outer minimum here
+            // Minimum size lives on ContentView (860x560) — an outer minimum here
             // would override it and force an oversized window on small screens.
             ContentView()
                 .environmentObject(state)

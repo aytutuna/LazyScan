@@ -113,7 +113,7 @@ struct ContentView: View {
         .errorNoticeAlert(enabled: !state.showPhotoReview && !state.showIdCardReview && historyEnlarged == nil)
         // Below this the layout cannot stay usable; the inspector adds its own
         // width requirement only while shown.
-        .frame(minWidth: 700, minHeight: 560)
+        .frame(minWidth: 860, minHeight: 560)
         // Pictures from File > Import from iPhone or iPad (Continuity Camera) become pages as dropped
         // photo files do.
         .importsItemProviders([.image]) { providers in

@@ -62,142 +62,127 @@ struct PagesStripView: View {
         let saveTitle = target.map { PDFAppender.saveTitle($0.lastPathComponent) } ?? savePlan.saveTitle(state.settings.format)
         let saveHelp: String = saveCount == 0 && !state.scannedPages.isEmpty ? PageFilter.nothingToSaveMessage : ""
         let bookLabels = plans.bookLabels
-        HStack(spacing: 12) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 10) {
-                    ForEach(Array(state.scannedPages.enumerated()), id: \.element.id) { index, page in
-                        HStack(spacing: 4) {
-                            if showsBreaks {
-                                BreakGap(label: DocumentSplitter.breakLabel(plan, index),
-                                         startsDocument: plan.isSplit && plan.pages[index].startsDocument
-                                            && (plan.pages[index].document ?? 1) > 1,
-                                         onToggle: { state.toggleDocumentBreak(id: page.id) })
-                            }
-                            if state.rescanTarget == page.id {
-                                Rectangle()
-                                    .fill(Color.accentColor)
-                                    .frame(width: 3, height: 58)
-                            }
-                            PageThumbnailCell(
-                                page: page,
-                                pageNumber: index + 1,
-                                isViewed: state.viewsPage && state.viewedPageID == page.id,
-                                onView: { state.viewPage(id: page.id) },
-                                options: options,
-                                split: PageSplitInfo(plan: plan, index: index, page: page, options: options),
-                                book: PageBookInfo(page: page, label: bookLabels[index],
-                                                   editable: state.canEditSpread(of: page)),
-                                canMoveLeft: index > 0,
-                                canMoveRight: index < state.scannedPages.count - 1,
-                                isArmed: state.rescanTarget == page.id,
-                                isBusy: state.isBusy,
-                                canScanAgain: state.canRescan,
-                                onScanAgain: { state.armRescan(id: page.id) },
-                                onCancelRescan: { state.cancelRescan() },
-                                onRemove: { state.removePage(id: page.id) },
-                                onMove: { state.movePage(id: page.id, by: $0) },
-                                onDropPage: { moving in
-                                    guard !state.isBusy, let place = state.scannedPages.firstIndex(where: { $0.id == page.id }) else { return false }
-                                    state.movePage(id: moving, to: place)
-                                    return true
-                                },
-                                onRotate: { state.rotatePage(id: page.id) },
-                                onToggle: { state.togglePageInclusion(id: page.id) },
-                                onSwap: { state.togglePageGeometry(id: page.id) },
-                                onUpright: { state.togglePageUpright(id: page.id) },
-                                onCopyText: { state.copyPageText(id: page.id) },
-                                onBreak: { state.toggleDocumentBreak(id: page.id) },
-                                onName: {
-                                    nameDraft = state.documentLabel(of: page.id)
-                                    namingPage = page.id
-                                },
-                                onSplitSpread: {
-                                    Task { editingSpread = await state.spreadEditor(for: page.id) }
-                                },
-                                onJoinSpread: { state.joinSpread(id: page.id) })
+        let thumbs = ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 10) {
+                ForEach(Array(state.scannedPages.enumerated()), id: \.element.id) { index, page in
+                    HStack(spacing: 4) {
+                        if showsBreaks {
+                            BreakGap(label: DocumentSplitter.breakLabel(plan, index),
+                                     startsDocument: plan.isSplit && plan.pages[index].startsDocument
+                                        && (plan.pages[index].document ?? 1) > 1,
+                                     onToggle: { state.toggleDocumentBreak(id: page.id) })
                         }
+                        if state.rescanTarget == page.id {
+                            Rectangle()
+                                .fill(Color.accentColor)
+                                .frame(width: 3, height: 58)
+                        }
+                        PageThumbnailCell(
+                            page: page,
+                            pageNumber: index + 1,
+                            isViewed: state.viewsPage && state.viewedPageID == page.id,
+                            onView: { state.viewPage(id: page.id) },
+                            options: options,
+                            split: PageSplitInfo(plan: plan, index: index, page: page, options: options),
+                            book: PageBookInfo(page: page, label: bookLabels[index],
+                                               editable: state.canEditSpread(of: page)),
+                            canMoveLeft: index > 0,
+                            canMoveRight: index < state.scannedPages.count - 1,
+                            isArmed: state.rescanTarget == page.id,
+                            isBusy: state.isBusy,
+                            canScanAgain: state.canRescan,
+                            onScanAgain: { state.armRescan(id: page.id) },
+                            onCancelRescan: { state.cancelRescan() },
+                            onRemove: { state.removePage(id: page.id) },
+                            onMove: { state.movePage(id: page.id, by: $0) },
+                            onDropPage: { moving in
+                                guard !state.isBusy, let place = state.scannedPages.firstIndex(where: { $0.id == page.id }) else { return false }
+                                state.movePage(id: moving, to: place)
+                                return true
+                            },
+                            onRotate: { state.rotatePage(id: page.id) },
+                            onToggle: { state.togglePageInclusion(id: page.id) },
+                            onSwap: { state.togglePageGeometry(id: page.id) },
+                            onUpright: { state.togglePageUpright(id: page.id) },
+                            onCopyText: { state.copyPageText(id: page.id) },
+                            onBreak: { state.toggleDocumentBreak(id: page.id) },
+                            onName: {
+                                nameDraft = state.documentLabel(of: page.id)
+                                namingPage = page.id
+                            },
+                            onSplitSpread: {
+                                Task { editingSpread = await state.spreadEditor(for: page.id) }
+                            },
+                            onJoinSpread: { state.joinSpread(id: page.id) })
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .frame(idealWidth: 230, maxWidth: .infinity)
+        let summary = Text(plans.summary)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        let save = saveRow(showsNameField: showsNameField, saveCount: saveCount, saveTitle: saveTitle,
+                           saveHelp: saveHelp, target: target, savePlan: savePlan)
+        let stopAdding = stopAddingButton(target)
+        let printButton = printControl(saveHelp: saveHelp)
+        let clear = clearButton
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                thumbs
+                Divider()
+                    .padding(.vertical, 10)
+                VStack(alignment: .trailing, spacing: 6) {
+                    // "24 pages · 5 blank skipped", "9 pages · 3 documents · 2 separator pages skipped"
+                    summary
+                    save
+                    HStack(spacing: 8) {
+                        stopAdding
+                        printButton
+                        clear
+                    }
+                }
+                .padding(.trailing, 12)
+            }
+            .frame(height: 104)
+            VStack(spacing: 0) {
+                thumbs
+                    .frame(height: 104)
+                HStack(spacing: 8) {
+                    summary
+                    Spacer(minLength: 8)
+                    save
+                    stopAdding
+                    printButton
+                    clear
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+            .frame(height: 140)
+            VStack(spacing: 0) {
+                thumbs
+                    .frame(height: 104)
+                VStack(alignment: .leading, spacing: 6) {
+                    summary
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        save
+                    }
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        stopAdding
+                        printButton
+                        clear
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.bottom, 8)
             }
-
-            Divider()
-                .padding(.vertical, 10)
-
-            VStack(alignment: .trailing, spacing: 6) {
-                // "24 pages · 5 blank skipped", "9 pages · 3 documents · 2 separator pages skipped"
-                Text(plans.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    if showsNameField {
-                        nameField(saveCount: saveCount)
-                    }
-                    // Pages go into an existing PDF as PDF pages, so the menu is there while the queue is saved
-                    // as one, or while it goes into a PDF picked on the start screen.
-                    if state.settings.format.queueFormat == .pdf || target != nil {
-                        Menu {
-                            // Word and text queues save their own format once the target is cleared.
-                            if state.settings.format.queueFormat == .pdf {
-                                Button(PDFAppender.saveAsNewLabel) {
-                                    state.clearAppendTarget()
-                                    state.savePDF()
-                                }
-                            }
-                            Button(PDFAppender.buttonLabel) {
-                                state.chooseAndAppendToPDF()
-                            }
-                        } label: {
-                            saveLabel(saveTitle)
-                        } primaryAction: {
-                            state.savePDF()
-                        }
-                        .menuStyle(.button)
-                        .buttonStyle(.borderedProminent)
-                        .fixedSize()
-                        .disabled(state.isBusy || saveCount == 0)
-                        .help(saveHelp.isEmpty ? (target?.path ?? "") : saveHelp)
-                        .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
-                    } else {
-                        Button {
-                            state.savePDF()
-                        } label: {
-                            saveLabel(saveTitle)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(state.isBusy || saveCount == 0)
-                        .help(saveHelp)
-                        .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    // Outside the menu, which is off while there is nothing to save.
-                    if let target {
-                        Button("Stop Adding") {
-                            state.clearAppendTarget()
-                        }
-                        .disabled(state.isBusy)
-                        .help("Stop Adding to \(target.lastPathComponent)")
-                        .accessibilityLabel(Text("Stop Adding to \(target.lastPathComponent)"))
-                    }
-                    printControl(saveHelp: saveHelp)
-                    Button("Clear") {
-                        if state.scannedPages.count > 1 {
-                            asksClear = true
-                        } else {
-                            state.clearPages()
-                        }
-                    }
-                    .disabled(state.isBusy || state.scannedPages.isEmpty)
-                    .help("Remove all pages")
-                    .accessibilityHint(Text("Remove every page from the queue"))
-                }
-            }
-            .padding(.trailing, 12)
+            .frame(height: 200)
         }
-        .frame(height: 104)
         .background(.bar)
         .alert("Name This Document", isPresented: Binding(get: { namingPage != nil },
                                                            set: { if !$0 { namingPage = nil } })) {
@@ -241,6 +226,79 @@ struct PagesStripView: View {
                 }
             }
         }
+    }
+
+    /// The name field and the Save control: a menu button while the pages can go into a PDF.
+    @ViewBuilder
+    private func saveRow(showsNameField: Bool, saveCount: Int, saveTitle: String, saveHelp: String,
+                         target: URL?, savePlan: SavePlan) -> some View {
+        HStack(spacing: 8) {
+            if showsNameField {
+                nameField(saveCount: saveCount)
+            }
+            // Pages go into an existing PDF as PDF pages, so the menu is there while the queue is saved
+            // as one, or while it goes into a PDF picked on the start screen.
+            if state.settings.format.queueFormat == .pdf || target != nil {
+                Menu {
+                    // Word and text queues save their own format once the target is cleared.
+                    if state.settings.format.queueFormat == .pdf {
+                        Button(PDFAppender.saveAsNewLabel) {
+                            state.clearAppendTarget()
+                            state.savePDF()
+                        }
+                    }
+                    Button(PDFAppender.buttonLabel) {
+                        state.chooseAndAppendToPDF()
+                    }
+                } label: {
+                    saveLabel(saveTitle)
+                } primaryAction: {
+                    state.savePDF()
+                }
+                .menuStyle(.button)
+                .buttonStyle(.borderedProminent)
+                .fixedSize()
+                .disabled(state.isBusy || saveCount == 0)
+                .help(saveHelp.isEmpty ? (target?.path ?? "") : saveHelp)
+                .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
+            } else {
+                Button {
+                    state.savePDF()
+                } label: {
+                    saveLabel(saveTitle)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(state.isBusy || saveCount == 0)
+                .help(saveHelp)
+                .accessibilityLabel(Text(saveAccessibilityLabel(saveTitle, savePlan)))
+            }
+        }
+    }
+
+    /// Outside the Save menu, which is off while there is nothing to save.
+    @ViewBuilder
+    private func stopAddingButton(_ target: URL?) -> some View {
+        if let target {
+            Button("Stop Adding") {
+                state.clearAppendTarget()
+            }
+            .disabled(state.isBusy)
+            .help("Stop Adding to \(target.lastPathComponent)")
+            .accessibilityLabel(Text("Stop Adding to \(target.lastPathComponent)"))
+        }
+    }
+
+    private var clearButton: some View {
+        Button("Clear") {
+            if state.scannedPages.count > 1 {
+                asksClear = true
+            } else {
+                state.clearPages()
+            }
+        }
+        .disabled(state.isBusy || state.scannedPages.isEmpty)
+        .help("Remove all pages")
+        .accessibilityHint(Text("Remove every page from the queue"))
     }
 
     /// A lock while the PDF gets a password (asked for when saving), as on Windows.

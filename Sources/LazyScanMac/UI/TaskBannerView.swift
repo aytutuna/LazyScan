@@ -43,91 +43,123 @@ struct TaskBannerView: View {
         return note.isEmpty ? help : help + "\n\n" + note
     }
 
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: TaskSymbols.systemImage(definition?.iconKey ?? "twoSided"))
-                .font(.system(size: 15))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 30, height: 30)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.12)))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(name)
-                        .font(.headline)
-                        .lineLimit(1)
-                    if let flow = state.taskFlow, flow.stepCount > 1 {
-                        stepIndicator(flow)
-                    }
-                    if let line = bookLine {
-                        Text(line)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+    private var icon: some View {
+        Image(systemName: TaskSymbols.systemImage(definition?.iconKey ?? "twoSided"))
+            .font(.system(size: 15))
+            .foregroundStyle(Color.accentColor)
+            .frame(width: 30, height: 30)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.12)))
+            .accessibilityHidden(true)
+    }
+
+    private var textColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(name)
+                    .font(.headline)
+                    .lineLimit(1)
+                if let flow = state.taskFlow, flow.stepCount > 1 {
+                    stepIndicator(flow)
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(prompt)
+                if let line = bookLine {
+                    Text(line)
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(Text(shownStep?.fullPrompt ?? prompt))
-                    if !guidance.isEmpty {
-                        Button {
-                            showHelp.toggle()
-                        } label: {
-                            Image(systemName: "info.circle")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("More about \(name)")
-                        .accessibilityLabel(Text("More about \(name)"))
-                        .popover(isPresented: $showHelp, arrowEdge: .bottom) {
-                            Text(guidance)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(14)
-                                .frame(width: 300, alignment: .leading)
-                        }
+                        .lineLimit(1)
+                }
+            }
+            .frame(minWidth: 0, idealWidth: 140, alignment: .leading)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(prompt)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(Text(shownStep?.fullPrompt ?? prompt))
+                if !guidance.isEmpty {
+                    Button {
+                        showHelp.toggle()
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("More about \(name)")
+                    .accessibilityLabel(Text("More about \(name)"))
+                    .popover(isPresented: $showHelp, arrowEdge: .bottom) {
+                        Text(guidance)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(14)
+                            .frame(width: 300, alignment: .leading)
                     }
                 }
-                if state.awaitingBacks || state.canFinishFronts {
-                    sidesActions
-                        .padding(.top, 4)
+            }
+            if state.awaitingBacks || state.canFinishFronts {
+                sidesActions
+                    .padding(.top, 4)
+            }
+            // The back of a card with nothing printed on it may be left out. (The backs of a stack
+            // turned over by hand are left out with Keep Fronts Only.)
+            if state.canSkipStep, let step = state.taskFlow?.current {
+                Button(step.id == IdCardSteps.backStepID ? IdCardSteps.skipBackLabel : String(localized: "Skip \(step.title.localizedLowercase)")) {
+                    state.skipStep()
                 }
-                // The back of a card with nothing printed on it may be left out. (The backs of a stack
-                // turned over by hand are left out with Keep Fronts Only.)
-                if state.canSkipStep, let step = state.taskFlow?.current {
-                    Button(step.id == IdCardSteps.backStepID ? IdCardSteps.skipBackLabel : String(localized: "Skip \(step.title.localizedLowercase)")) {
-                        state.skipStep()
-                    }
-                        .controlSize(.small)
-                        .disabled(state.isBusy)
-                        .help("Nothing is printed on the back: save the front only")
-                        .padding(.top, 4)
+                    .controlSize(.small)
+                    .disabled(state.isBusy)
+                    .help("Nothing is printed on the back: save the front only")
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var changeTaskButton: some View {
+        Button {
+            onChangeTask()
+        } label: {
+            Label("Change Task", systemImage: "square.grid.2x2")
+        }
+        .help("Pick another task")
+    }
+
+    private var exitButton: some View {
+        Button {
+            if definition != nil {
+                // Leaving the ID card task with a side scanned asks first.
+                let appState = state
+                appState.leaveIdCard { appState.exitTask() }
+            } else {
+                state.scanOneSideOnly()
+            }
+        } label: {
+            Image(systemName: "xmark")
+        }
+        .buttonStyle(.borderless)
+        // Not while a scan runs: its result belongs to the task's steps.
+        .disabled(state.isBusy)
+        .help(exitHelp)
+        .accessibilityLabel(exitLabel)
+    }
+
+    // Narrower than about 380 points the buttons drop under the text.
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                icon
+                textColumn
+                Spacer(minLength: 8)
+                changeTaskButton
+                exitButton
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 12) {
+                    icon
+                    textColumn
+                }
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    changeTaskButton
+                    exitButton
                 }
             }
-            Spacer(minLength: 8)
-            Button {
-                onChangeTask()
-            } label: {
-                Label("Change Task", systemImage: "square.grid.2x2")
-            }
-            .help("Pick another task")
-            Button {
-                if definition != nil {
-                    // Leaving the ID card task with a side scanned asks first.
-                    let appState = state
-                    appState.leaveIdCard { appState.exitTask() }
-                } else {
-                    state.scanOneSideOnly()
-                }
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.borderless)
-            // Not while a scan runs: its result belongs to the task's steps.
-            .disabled(state.isBusy)
-            .help(exitHelp)
-            .accessibilityLabel(exitLabel)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
