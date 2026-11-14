@@ -91,7 +91,8 @@ public static class WpfImageCodec
     private static string Describe(Exception e, string path) =>
         SaveErrors.Describe(e, Path.GetDirectoryName(Path.GetFullPath(path))!);
 
-    private static BitmapEncoder CreateEncoder(RgbaImage image, OutputFormat format, int dpi, double jpegQuality)
+    private static BitmapEncoder CreateEncoder(RgbaImage image, OutputFormat format, int dpi, double jpegQuality,
+                                               ColorMode colorMode = ColorMode.Color)
     {
         BitmapEncoder encoder = format switch
         {
@@ -103,7 +104,11 @@ public static class WpfImageCodec
             OutputFormat.Tiff => new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw },
             _ => throw ScanException.Unsupported("Use PdfBuilder to write PDF files."),
         };
-        encoder.Frames.Add(BitmapFrame.Create(WithDpi(image, dpi)));
+        BitmapSource frame;
+        if (colorMode == ColorMode.BlackWhite && format == OutputFormat.Png) frame = BilevelWithDpi(image, dpi);
+        else if (colorMode != ColorMode.Color) frame = GrayWithDpi(image, dpi);
+        else frame = WithDpi(image, dpi);
+        encoder.Frames.Add(BitmapFrame.Create(frame));
         return encoder;
     }
 
@@ -126,7 +131,7 @@ public static class WpfImageCodec
         }
         else
         {
-            write = CreateEncoder(image, format, dpi, jpegQuality).Save;
+            write = CreateEncoder(image, format, dpi, jpegQuality, colorMode).Save;
         }
         return WriteNew(path, write);
     }
@@ -285,12 +290,8 @@ public static class WpfImageCodec
     /// </summary>
     public static byte[] EncodeBilevelPng(RgbaImage image, int dpi)
     {
-        // Bilevel's rows (MSB first, 0 = black) are WPF's BlackWhite layout as they are.
-        var bitmap = BitmapSource.Create(image.Width, image.Height, dpi, dpi, PixelFormats.BlackWhite, null,
-                                         Bilevel.Pack(image), Bilevel.Stride(image.Width));
-        bitmap.Freeze();
         var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Frames.Add(BitmapFrame.Create(BilevelWithDpi(image, dpi)));
         using var stream = new MemoryStream();
         encoder.Save(stream);
         return stream.ToArray();
@@ -310,6 +311,16 @@ public static class WpfImageCodec
         return DocxWriter.PictureFormat(plan) == DocxPictureFormat.Png
             ? new DocxPicture(EncodeBilevelPng(pixels, plan.TargetDpi), DocxPictureFormat.Png)
             : new DocxPicture(EncodeJpeg(pixels, plan.TargetDpi, plan.Quality, plan.IsGray), DocxPictureFormat.Jpeg);
+    }
+
+    /// <summary>An RgbaImage as a 1-bit BitmapSource, thresholded by <see cref="Bilevel.Pack(RgbaImage)"/>.</summary>
+    private static BitmapSource BilevelWithDpi(RgbaImage image, int dpi)
+    {
+        // Bilevel's rows (MSB first, 0 = black) are WPF's BlackWhite layout as they are.
+        var bitmap = BitmapSource.Create(image.Width, image.Height, dpi, dpi, PixelFormats.BlackWhite, null,
+                                         Bilevel.Pack(image), Bilevel.Stride(image.Width));
+        bitmap.Freeze();
+        return bitmap;
     }
 
     /// <summary>An RgbaImage as an 8-bit gray BitmapSource carrying real DPI metadata.</summary>

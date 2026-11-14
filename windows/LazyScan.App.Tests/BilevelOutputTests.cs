@@ -265,6 +265,28 @@ public class BilevelOutputTests : IDisposable
     }
 
     [Fact]
+    public void SaveAsNew_GrayAndBlackAndWhite_WriteOneChannel_ColorStaysRgb()
+    {
+        var page = TextPage();
+        string Save(string name, OutputFormat format, ColorMode mode) =>
+            WpfImageCodec.SaveAsNew(page, Path.Combine(_folder, name), format, 300, 0.9, mode);
+
+        foreach (var (name, format) in new[] { ("g.png", OutputFormat.Png), ("g.tif", OutputFormat.Tiff), ("g.jpg", OutputFormat.Jpeg) })
+        {
+            var gray = Decode(File.ReadAllBytes(Save(name, format, ColorMode.Grayscale))).Frames[0];
+            Assert.Equal(PixelFormats.Gray8, gray.Format);
+            string colorPath = Save("c" + name, format, ColorMode.Color);
+            var color = Decode(File.ReadAllBytes(colorPath)).Frames[0];
+            Assert.Equal(24, color.Format.BitsPerPixel);
+        }
+
+        var bwPng = Decode(File.ReadAllBytes(Save("bw.png", OutputFormat.Png, ColorMode.BlackWhite))).Frames[0];
+        Assert.Equal(PixelFormats.BlackWhite, bwPng.Format);
+        AssertSamePixels(page, FromBitmap(bwPng), "bw png");
+        Assert.Equal(PixelFormats.Gray8, Decode(File.ReadAllBytes(Save("bw.jpg", OutputFormat.Jpeg, ColorMode.BlackWhite))).Frames[0].Format);
+    }
+
+    [Fact]
     public void SaveTiffPagesAsNew_ThreePages_OneFile_G4ForBlackAndWhite_LzwOtherwise()
     {
         var pages = new[] { (TextPage(), 100), (NoiseImage(301, 97, 7), 300), (RgbaImage.Filled(9, 2, 0, 0, 0), 600) };
