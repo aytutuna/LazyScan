@@ -42,9 +42,35 @@ struct PreviewCanvasView: View {
                 modeBar
                 Divider()
             }
+            if demoSelected {
+                demoStrip
+                Divider()
+            }
             canvas
         }
         .task(id: pageKey) { await loadPage() }
+    }
+
+    private var demoSelected: Bool {
+        let selected: ScannerInfo? = state.devices.first(where: { $0.id == state.selectedDeviceID })
+        return selected?.isDemo == true
+    }
+
+    /// Above the canvas while the demo scanner is selected, so its sample pages are not taken for a real scan.
+    private var demoStrip: some View {
+        let text: String = L10n.t("Demo Scanner: sample pages")
+        return HStack(spacing: 6) {
+            Image(systemName: "sparkles.rectangle.stack")
+                .accessibilityHidden(true)
+            Text(text)
+        }
+        .font(.caption)
+        .foregroundStyle(Color.primary)
+        .frame(maxWidth: .infinity, minHeight: 28)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
+        .accessibilityIdentifier("demo.strip")
     }
 
     /// Outlines are in one scan's pixels; a review that holds several scans has none to draw on the newest.
@@ -481,11 +507,6 @@ struct PreviewCanvasView: View {
                     .font(.title3)
                     .foregroundStyle(.primary)
             }
-            if demoSelected {
-                Text("This is the demo scanner: it scans sample pages. Your own scanner appears in the sidebar once it is found.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
         }
         .multilineTextAlignment(.center)
         .padding(40)
@@ -504,11 +525,6 @@ struct PreviewCanvasView: View {
             return String(localized: "Load the pages in the feeder and click \(action) below")
         }
         return String(localized: "Click \(action) below to start")
-    }
-
-    private var demoSelected: Bool {
-        let selected: ScannerInfo? = state.devices.first(where: { $0.id == state.selectedDeviceID })
-        return selected?.isDemo == true
     }
 
     // MARK: Image
