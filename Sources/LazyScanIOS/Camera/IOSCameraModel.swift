@@ -340,6 +340,7 @@ public final class IOSCameraModel: ObservableObject {
 
     /// Takes `event` in and starts or stops the session as `IOSCameraLifecycle` answers.
     public func apply(_ event: IOSCameraEvent) {
+        let wasReduced: Bool = reducedLoad
         if case .thermal(let state) = event {
             reducedLoad = state.rawValue >= ProcessInfo.ThermalState.fair.rawValue
             tracker.setReduced(reducedLoad)
@@ -363,7 +364,7 @@ public final class IOSCameraModel: ObservableObject {
                         _ = await self?.driver.setTorch(false)
                     }
                 }
-            } else if command == .keep, torchWanted, lifecycle.isLive {
+            } else if wasReduced, command == .keep, torchWanted, lifecycle.isLive {
                 relightTorch()
             }
         }

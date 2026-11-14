@@ -176,7 +176,7 @@ struct CornerEditorModel: Equatable {
         for index in 0..<4 {
             let point: CGPoint = handlePoint(index, frame: frame)
             let distance: CGFloat = hypot(point.x - location.x, point.y - location.y)
-            if distance <= bestDistance {
+            if distance < bestDistance || (best == nil && distance <= bestDistance) {
                 bestDistance = distance
                 best = index
             }
@@ -186,7 +186,7 @@ struct CornerEditorModel: Equatable {
         for index in shownEdges(frame: frame) {
             let point: CGPoint = handlePoint(index, frame: frame)
             let distance: CGFloat = hypot(point.x - location.x, point.y - location.y)
-            if distance <= bestDistance {
+            if distance < bestDistance || (best == nil && distance <= bestDistance) {
                 bestDistance = distance
                 best = index
             }

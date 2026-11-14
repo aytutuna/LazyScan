@@ -35,7 +35,7 @@ public struct IOSRectangleSearch: Equatable, Sendable {
     public static func of(_ kind: CaptureKind) -> IOSRectangleSearch {
         switch kind {
         case .receipt:
-            return IOSRectangleSearch(maximumObservations: 16, minimumAspectRatio: 0.08, maximumAspectRatio: 0.95,
+            return IOSRectangleSearch(maximumObservations: 16, minimumAspectRatio: 0.08, maximumAspectRatio: 1,
                                       minimumSize: 0.08, quadratureTolerance: 20, minimumConfidence: 0.3)
         case .photo:
             return IOSRectangleSearch(maximumObservations: 16, minimumAspectRatio: 0.4, maximumAspectRatio: 1,

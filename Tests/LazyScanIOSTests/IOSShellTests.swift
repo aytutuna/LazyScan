@@ -271,6 +271,7 @@ final class IOSShellTests: XCTestCase {
         let defaults: UserDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.scanModeKey)
+        defaults.set(IOSScanMode.camera.rawValue, forKey: IOSShell.startModeKey)
         IOSShell.applyStartMode(defaults)
         XCTAssertEqual(defaults.string(forKey: IOSShell.scanModeKey), "camera", "The camera unless picked otherwise")
         defaults.set(IOSScanMode.printer.rawValue, forKey: IOSShell.startModeKey)
