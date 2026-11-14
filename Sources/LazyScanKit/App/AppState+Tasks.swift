@@ -114,6 +114,7 @@ extension AppState {
         // check that follows the change of source switches to turning over by hand if it does not.
         let adapted = SettingsAdapter.adapt(TaskCatalog.apply(task, to: base, keepingChoices: keepingChoices),
                                             to: sidesCapabilities)
+        loweredSettings = nil
         var choicesNote: String = ""
         if keepingChoices {
             keptChoices = KeptChoices(base)

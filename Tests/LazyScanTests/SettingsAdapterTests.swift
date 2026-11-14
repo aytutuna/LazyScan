@@ -231,4 +231,33 @@ final class SettingsAdapterTests: XCTestCase {
         let quick = SettingsAdapter.adapt(TaskCatalog.apply(.quickScan, to: ScanSettings()), to: caps).settings
         XCTAssertFalse(TaskCatalog.fits(.quickScan, quick))
     }
+
+    func test_restoring_putsBackWhatAScannerLowered() {
+        var wanted = ScanSettings()
+        wanted.resolution = 600
+        let lowSpec = ScannerCapabilities(supportedResolutions: [150, 300])
+        let highSpec = ScannerCapabilities(supportedResolutions: [150, 300, 600])
+        let low = SettingsAdapter.adapt(wanted, to: lowSpec)
+        XCTAssertEqual(low.settings.resolution, 300)
+        XCTAssertEqual(low.notes.count, 1)
+        let back = SettingsAdapter.restoring(low.settings, wanted: wanted, lowered: low.settings)
+        let again = SettingsAdapter.adapt(back, to: highSpec)
+        XCTAssertEqual(again.settings.resolution, 600)
+        XCTAssertEqual(again.notes, [])
+        XCTAssertEqual(SettingsAdapter.adapt(back, to: lowSpec).settings.resolution, 300)
+    }
+
+    func test_restoring_keepsWhatTheUserChangedSince() {
+        var wanted = ScanSettings()
+        wanted.resolution = 600
+        wanted.paperSize = .a4
+        var lowered = wanted
+        lowered.resolution = 300
+        lowered.paperSize = .auto
+        var current = lowered
+        current.resolution = 150
+        let restored = SettingsAdapter.restoring(current, wanted: wanted, lowered: lowered)
+        XCTAssertEqual(restored.resolution, 150)
+        XCTAssertEqual(restored.paperSize, .a4)
+    }
 }

@@ -235,4 +235,31 @@ public class SettingsAdapterTests
         var quick = SettingsAdapter.Adapt(TaskCatalog.Apply(ScanTask.QuickScan, new ScanSettings()), caps).Settings;
         Assert.False(TaskCatalog.Fits(ScanTask.QuickScan, quick));
     }
+
+    [Fact]
+    public void Restoring_PutsBackWhatAScannerLowered()
+    {
+        var wanted = new ScanSettings { Resolution = 600 };
+        var lowSpec = new ScannerCapabilities { SupportedResolutions = [150, 300] };
+        var highSpec = new ScannerCapabilities { SupportedResolutions = [150, 300, 600] };
+        var low = SettingsAdapter.Adapt(wanted, lowSpec);
+        Assert.Equal(300, low.Settings.Resolution);
+        Assert.Single(low.Notes);
+        var back = SettingsAdapter.Restoring(low.Settings, wanted, low.Settings);
+        var again = SettingsAdapter.Adapt(back, highSpec);
+        Assert.Equal(600, again.Settings.Resolution);
+        Assert.Empty(again.Notes);
+        Assert.Equal(300, SettingsAdapter.Adapt(back, lowSpec).Settings.Resolution);
+    }
+
+    [Fact]
+    public void Restoring_KeepsWhatTheUserChangedSince()
+    {
+        var wanted = new ScanSettings { Resolution = 600, PaperSize = PaperSize.A4 };
+        var lowered = new ScanSettings { Resolution = 300, PaperSize = PaperSize.Auto };
+        var current = new ScanSettings { Resolution = 150, PaperSize = PaperSize.Auto };
+        var restored = SettingsAdapter.Restoring(current, wanted, lowered);
+        Assert.Equal(150, restored.Resolution);
+        Assert.Equal(PaperSize.A4, restored.PaperSize);
+    }
 }

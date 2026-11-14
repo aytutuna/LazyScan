@@ -930,6 +930,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// </summary>
     private Task _switchTask = Task.CompletedTask;
     private int _switchGeneration;
+    /// <summary>What the connected scanner lowered the settings from, and to (<see cref="AdaptToScanner"/>).</summary>
+    private (ScanSettings Wanted, ScanSettings Lowered)? _lowered;
     /// <summary>Ends the connect of the switch in progress when another device is chosen.</summary>
     private CancellationTokenSource _switchCancel = new();
     private DispatcherTimer? _settingsSaveTimer;
@@ -1704,6 +1706,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// The settings fitted to the connected scanner. What an earlier scanner lowered and the user has
+    /// not touched since goes back to what was wanted first, so a scanner with fewer options does not
+    /// keep the user's choice from the next one.
+    /// </summary>
+    private AdaptedSettings AdaptToScanner(ScannerCapabilities caps)
+    {
+        var wanted = _lowered is { } earlier ? SettingsAdapter.Restoring(Settings, earlier.Wanted, earlier.Lowered) : Settings;
+        var adapted = SettingsAdapter.Adapt(wanted, caps);
+        _lowered = adapted.Notes.Count == 0 ? null : (wanted.Clone(), adapted.Settings.Clone());
+        return adapted;
+    }
+
     private async Task SwitchSession(string? id, bool interactive, CancellationToken token)
     {
         if (_session is { } old)
@@ -1773,7 +1788,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var caps = await session.GetCapabilitiesAsync().WaitAsync(token);
             Capabilities = caps;
             ClearFailure();
-            var adapted = SettingsAdapter.Adapt(Settings, caps);
+            var adapted = AdaptToScanner(caps);
             Settings = adapted.Settings;
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
             SyncTaskFlow();
@@ -2236,7 +2251,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         if (_switchGeneration != generation || !ReferenceEquals(_session, session) || Capabilities is not null) return;
         Capabilities = caps;
-        var adapted = SettingsAdapter.Adapt(Settings, caps);
+        var adapted = AdaptToScanner(caps);
         Settings = adapted.Settings;
         SyncTaskFlow();
         if (adapted.Notes.Count > 0)
@@ -3136,6 +3151,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void ApplyPreset(Preset preset)
     {
         var adapted = SettingsAdapter.Adapt(preset.SettingsOver(Settings), Capabilities);
+        _lowered = null;
         Settings = adapted.Settings;
         _heldCopy = null;
         bool wasBusy = IsBusy;
@@ -3180,6 +3196,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             current = TaskCatalog.Restoring(_keptChoices ?? new KeptChoices(new ScanSettings()), leaving, current);
         _keptChoices = new KeptChoices(current);
         var adapted = SettingsAdapter.Adapt(TaskCatalog.Apply(task, current, keepingChoices: true), Capabilities);
+        _lowered = null;
         TaskChoicesNote = TaskCatalog.SetChoicesNote(task, current, adapted.Settings);
         Settings = adapted.Settings;
         // Fresh steps, even for the same task: nothing of an ID card is kept, on the stage either.

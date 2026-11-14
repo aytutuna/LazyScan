@@ -86,4 +86,16 @@ public enum SettingsAdapter {
         }
         return AdaptedSettings(settings: s, notes: notes)
     }
+
+    /// `settings` with the source, sides, paper size and resolution a scanner changed (`lowered` is the
+    /// settings it produced from `wanted`) put back to what was wanted, for those the user has not
+    /// changed since. Adapting the result to the next scanner then starts from the user's choice.
+    public static func restoring(_ settings: ScanSettings, wanted: ScanSettings, lowered: ScanSettings) -> ScanSettings {
+        var s = settings
+        if s.source == lowered.source { s.source = wanted.source }
+        if s.duplex == lowered.duplex { s.duplex = wanted.duplex }
+        if s.paperSize == lowered.paperSize { s.paperSize = wanted.paperSize }
+        if s.resolution == lowered.resolution { s.resolution = wanted.resolution }
+        return s
+    }
 }

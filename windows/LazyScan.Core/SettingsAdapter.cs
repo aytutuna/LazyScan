@@ -88,4 +88,20 @@ public static class SettingsAdapter
         }
         return new AdaptedSettings(s, notes);
     }
+
+    /// <summary>
+    /// A copy of <paramref name="settings"/> with the source, sides, paper size and resolution a scanner
+    /// changed (<paramref name="lowered"/> is what it produced from <paramref name="wanted"/>) put back to
+    /// what was wanted, for those the user has not changed since. Adapting the result to the next
+    /// scanner then starts from the user's choice.
+    /// </summary>
+    public static ScanSettings Restoring(ScanSettings settings, ScanSettings wanted, ScanSettings lowered)
+    {
+        var s = settings.Clone();
+        if (s.Source == lowered.Source) s.Source = wanted.Source;
+        if (s.Duplex == lowered.Duplex) s.Duplex = wanted.Duplex;
+        if (s.PaperSize == lowered.PaperSize) s.PaperSize = wanted.PaperSize;
+        if (s.Resolution == lowered.Resolution) s.Resolution = wanted.Resolution;
+        return s;
+    }
 }

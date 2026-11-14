@@ -490,7 +490,7 @@ public enum SettingsAdapter {
     public static func adapt(_ settings: ScanSettings, to capabilities: ScannerCapabilities?) -> AdaptedSettings
 }
 ```
-Twin of `windows/LazyScan.Core/SettingsAdapter.cs` (same note texts); `SettingsAdapterTests` on both sides. Every place settings meet a scanner goes through it: applying a preset or task, and connecting to a scanner.
+Twin of `windows/LazyScan.Core/SettingsAdapter.cs` (same note texts); `SettingsAdapterTests` on both sides. Every place settings meet a scanner goes through it: applying a preset or task, and connecting to a scanner. `restoring(_:wanted:lowered:)` (C# `Restoring`) puts back the source, sides, paper size and resolution a scanner lowered, for those not changed since; `AppState` (Windows `AppViewModel`) applies it before adapting to the next scanner, so the saved choice survives a scanner with fewer options, and a preset or task forgets what was lowered.
 
 ### Core/DocumentSides.swift, Core/PaperSize.swift (+ ScanSettings, ScannedPage in Core/Models.swift)
 

@@ -712,6 +712,8 @@ public final class AppState: ObservableObject {
     @Published private var switchTask: Task<Void, Never>?
     var switchGeneration = 0
     private var settingsSaveTask: Task<Void, Never>?
+    /// What the connected scanner lowered the settings from, and to (`adaptToScanner`).
+    var loweredSettings: (wanted: ScanSettings, lowered: ScanSettings)?
     /// The queue is recorded beside its spool files and brought back at launch (`AppStateFiles.keepsQueue`).
     let keepsQueue: Bool
     /// The spool is emptied when the app terminates (`AppStateFiles.discardsQueueAtQuit`).
@@ -1205,6 +1207,19 @@ public final class AppState: ObservableObject {
         }
     }
 
+    /// The settings fitted to the connected scanner. What an earlier scanner lowered and the user has not
+    /// touched since goes back to what was wanted first, so a scanner with fewer options does not
+    /// keep the user's choice from the next one.
+    private func adaptToScanner() -> AdaptedSettings {
+        var wanted = settings
+        if let earlier = loweredSettings {
+            wanted = SettingsAdapter.restoring(settings, wanted: earlier.wanted, lowered: earlier.lowered)
+        }
+        let adapted = SettingsAdapter.adapt(wanted, to: sidesCapabilities)
+        loweredSettings = adapted.notes.isEmpty ? nil : (wanted: wanted, lowered: adapted.settings)
+        return adapted
+    }
+
     private func switchSession(to id: String?, interactive: Bool) async {
         if let old = session {
             old.progressHandler = nil
@@ -1269,7 +1284,7 @@ public final class AppState: ObservableObject {
             }
             guard selectedDeviceID == id else { return }
             // A task the scanner cannot do (the feeder task on a flatbed) ends here.
-            let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
+            let adapted = adaptToScanner()
             settings = adapted.settings
             setStatus(L10n.t("Ready — {0}", s.info.name), notes: adapted.notes)
             connectionNotes = adapted.notes.map(\.message).joined(separator: " ")
@@ -1956,7 +1971,7 @@ public final class AppState: ObservableObject {
         guard let caps = try? await session.capabilities() else { return }
         guard switchGeneration == generation, capabilities == nil else { return }
         capabilities = caps
-        let adapted = SettingsAdapter.adapt(settings, to: sidesCapabilities)
+        let adapted = adaptToScanner()
         settings = adapted.settings
         syncTaskFlow()
         if !adapted.notes.isEmpty {
@@ -2836,6 +2851,7 @@ public final class AppState: ObservableObject {
     /// existed keeps the filter in use (`Preset.settings(over:)`).
     public func applyPreset(_ preset: Preset) {
         let adapted = SettingsAdapter.adapt(preset.settings(over: settings), to: sidesCapabilities)
+        loweredSettings = nil
         settings = adapted.settings
         openBookmarkedFolder()
         setStatus(L10n.t("Applied preset “{0}”.", preset.name), notes: adapted.notes)
