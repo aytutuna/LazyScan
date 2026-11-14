@@ -220,6 +220,11 @@ public class OcrTextTests
         Assert.Equal("a - b", OcrText.JoinLines(["a -", "b"]));
         Assert.Equal("one two", OcrText.JoinLines(["  one ", "", " two"]));
         Assert.Equal("", OcrText.JoinLines([]));
+        Assert.Equal("これは長い文章の続きです", OcrText.JoinLines(["これは長い文章の", "続きです"]));
+        Assert.Equal("这是一个很长的句子", OcrText.JoinLines(["这是一个很长的", "句子"]));
+        Assert.Equal("ภาษาไทยไม่มีช่องว่าง", OcrText.JoinLines(["ภาษาไทย", "ไม่มีช่องว่าง"]));
+        Assert.Equal("東京 Tokyo", OcrText.JoinLines(["東京", "Tokyo"]));
+        Assert.Equal("Tokyo 東京", OcrText.JoinLines(["Tokyo", "東京"]));
     }
 
     [Fact]

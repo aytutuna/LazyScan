@@ -199,6 +199,11 @@ final class OCRTextTests: XCTestCase {
         XCTAssertEqual(OCRText.joinLines(["a -", "b"]), "a - b")
         XCTAssertEqual(OCRText.joinLines(["  one ", "", " two"]), "one two")
         XCTAssertEqual(OCRText.joinLines([]), "")
+        XCTAssertEqual(OCRText.joinLines(["これは長い文章の", "続きです"]), "これは長い文章の続きです")
+        XCTAssertEqual(OCRText.joinLines(["这是一个很长的", "句子"]), "这是一个很长的句子")
+        XCTAssertEqual(OCRText.joinLines(["ภาษาไทย", "ไม่มีช่องว่าง"]), "ภาษาไทยไม่มีช่องว่าง")
+        XCTAssertEqual(OCRText.joinLines(["東京", "Tokyo"]), "東京 Tokyo")
+        XCTAssertEqual(OCRText.joinLines(["Tokyo", "東京"]), "Tokyo 東京")
     }
 
     func test_readingOrder_arabicTwoColumns_rightColumnFirst() {

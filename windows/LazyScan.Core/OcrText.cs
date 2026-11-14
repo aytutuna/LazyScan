@@ -206,7 +206,8 @@ public static class OcrText
 
     /// <summary>
     /// The lines of a paragraph as running text: joined by spaces, and a word broken over two
-    /// lines ("forward-" then "ing") joined again ("forwarding").
+    /// lines ("forward-" then "ing") joined again ("forwarding"). No space goes between two
+    /// characters of a script written without word spaces.
     /// </summary>
     public static string JoinLines(IReadOnlyList<string> lines)
     {
@@ -224,6 +225,11 @@ public static class OcrText
                 sb.Length -= 1;
                 sb.Append(line);
             }
+            else if (Rune.TryGetRuneAt(line, 0, out Rune first) && IsWrittenWithoutSpaces(first.Value)
+                && IsWrittenWithoutSpaces(LastScalar(sb)))
+            {
+                sb.Append(line);
+            }
             else
             {
                 sb.Append(' ').Append(line);
@@ -231,6 +237,21 @@ public static class OcrText
         }
         return sb.ToString();
     }
+
+    private static int LastScalar(StringBuilder sb) =>
+        sb.Length >= 2 && char.IsLowSurrogate(sb[^1]) && char.IsHighSurrogate(sb[^2])
+            ? char.ConvertToUtf32(sb[^2], sb[^1])
+            : sb[^1];
+
+    /// <summary>
+    /// Han, Hiragana, Katakana, Thai, Lao and Khmer; the ranges match the Kit's
+    /// <c>isWrittenWithoutSpaces</c>.
+    /// </summary>
+    private static bool IsWrittenWithoutSpaces(int c) =>
+        c is >= 0x0E00 and <= 0x0EFF or >= 0x1780 and <= 0x17FF or 0x3005 or 0x3007
+            or >= 0x3040 and <= 0x30FF or >= 0x31F0 and <= 0x31FF or >= 0x3400 and <= 0x4DBF
+            or >= 0x4E00 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFF66 and <= 0xFF9F
+            or >= 0x20000 and <= 0x323AF;
 
     /// <summary>
     /// The text of one page: one line of text per line on the page, a blank line between

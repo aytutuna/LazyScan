@@ -266,14 +266,29 @@ public enum OCRText {
     // MARK: X-Y cut
 
     /// Joins `text` to the end of `result`: without the hyphen of a word broken over the two lines
-    /// (a letter, then "-", then a lowercase letter), else with a space.
+    /// (a letter, then "-", then a lowercase letter), else with a space, which is left out between
+    /// two characters of a script written without word spaces.
     private static func appendJoined(_ text: String, to result: inout String) {
         let tail = Array(result.suffix(2))
         if tail.count == 2, tail[1] == "-", tail[0].isLetter, let first = text.first, first.isLowercase {
             result.removeLast()
             result += text
+        } else if let last = result.unicodeScalars.last, let first = text.unicodeScalars.first,
+                  isWrittenWithoutSpaces(last), isWrittenWithoutSpaces(first) {
+            result += text
         } else {
             result += " " + text
+        }
+    }
+
+    /// Han, Hiragana, Katakana, Thai, Lao and Khmer; the ranges match `OcrText.IsWrittenWithoutSpaces`.
+    private static func isWrittenWithoutSpaces(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x0E00...0x0EFF, 0x1780...0x17FF, 0x3005, 0x3007, 0x3040...0x30FF, 0x31F0...0x31FF,
+             0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF, 0xFF66...0xFF9F, 0x20000...0x323AF:
+            return true
+        default:
+            return false
         }
     }
 

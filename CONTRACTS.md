@@ -2873,7 +2873,7 @@ public enum OCRText {
     public static func paragraphs(_ ordered: [OCRLine], pageWidth: Double = 1, pageHeight: Double = 1) -> [OCRParagraph]
     public static func paragraphText(_ lines: [OCRLine]) -> String    // wrapped lines joined, short lines and table rows keep "\n"
     public static func isRightToLeft(_ text: String) -> Bool    // more than half of the letters are Hebrew, Arabic, Syriac, Thaana, NKo (U+0590-08FF, FB1D-FDFF, FE70-FEFF)
-    public static func joinLines(_ lines: [String]) -> String         // "forward-" + "ing" -> "forwarding"
+    public static func joinLines(_ lines: [String]) -> String         // "forward-" + "ing" -> "forwarding"; no space between two Han, kana, Thai, Lao or Khmer characters
     public static func pageText(_ page: OCRPage) -> String            // a line per line, "\n\n" between paragraphs
     public static func plainText(_ pages: [OCRPage]) -> String        // "\n\n\n" between pages, "\n" at the end; "" without text
     public static func cleanLine(_ text: String) -> String
