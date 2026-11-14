@@ -816,6 +816,10 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     public var photoMinSideInches: Double = 1.2
     /// Pixels (at scan resolution) shaved off each detected photo edge to remove background slivers.
     public var photoCropInsetPixels: Int = 0
+    /// Photos are saved as 16-bit TIFFs when the scanner unit reports 16-bit support
+    /// (`ScannerCapabilities.supportsHighBitDepth`); every other path stays 8-bit. Off unless chosen.
+    /// Twin of C# `ScanSettings.PhotoHighBitDepth`.
+    public var photoHighBitDepth: Bool = false
 
     // Document / PDF mode
     /// true: scans accumulate as pages and are saved together with "Save PDF".
@@ -917,7 +921,7 @@ public struct ScanSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case intent, source, resolution, colorMode, format, jpegQuality, destinationPath, namingTemplate
         case destinationBookmark
-        case photoAutoSplit, photoAutoDeskew, photoMinSideInches, photoCropInsetPixels
+        case photoAutoSplit, photoAutoDeskew, photoMinSideInches, photoCropInsetPixels, photoHighBitDepth
         case documentMultiPage, pdfSearchable, ocrLanguages, ocrLanguage
         case adjustments
         case taskId
@@ -948,6 +952,7 @@ extension ScanSettings {
         photoAutoDeskew = container.decodeLenient(forKey: .photoAutoDeskew, default: photoAutoDeskew)
         photoMinSideInches = container.decodeLenient(forKey: .photoMinSideInches, default: photoMinSideInches)
         photoCropInsetPixels = container.decodeLenient(forKey: .photoCropInsetPixels, default: photoCropInsetPixels)
+        photoHighBitDepth = container.decodeLenient(forKey: .photoHighBitDepth, default: photoHighBitDepth)
         documentMultiPage = container.decodeLenient(forKey: .documentMultiPage, default: documentMultiPage)
         pdfSearchable = container.decodeLenient(forKey: .pdfSearchable, default: pdfSearchable)
         ocrLanguages = container.decodeLenient(forKey: .ocrLanguages, default: ocrLanguages)
@@ -1034,6 +1039,13 @@ public struct ScannedPage: Identifiable {
     /// What softening the spine's shadow did to the page (`SpineShadow`), or nil when it did nothing (off,
     /// not cut from a spread, or no shadow found). In memory only.
     public var spineShadow: SpineShadowResult?
+
+    /// The pixels as the scanner delivered them at 16 bits per sample, for a page scanned with
+    /// `ScanSettings.photoHighBitDepth`; nil for every other page. `image` is its 8-bit view. In memory
+    /// only. A page rebuilt with other pixels does not carry it, so only a page nothing has changed saves as
+    /// a 16-bit TIFF, and the page steps leave such a page alone (`PageProcessor`). Twin of C#
+    /// `ScannedPage.DeepPixels`.
+    public var deepPixels: DeepPixels?
 
     /// The mode a scanner page was cleaned up in (`CleanUpStep`), or nil when it was not. In memory only.
     public var cleanedUp: DocumentEnhanceMode?
@@ -1537,19 +1549,23 @@ public struct ScannerCapabilities: Equatable, Sendable {
     /// done by turning the stack over by hand (`DocumentSides.effective`). ImageCaptureCore
     /// reports it only once the feeder has been selected (`ScannerSession.feederSupportsDuplex`).
     public var supportsDuplex: Bool
+    /// The unit can scan at 16 bits per sample, which `ScanSettings.photoHighBitDepth` asks for.
+    public var supportsHighBitDepth: Bool
 
     public init(supportedResolutions: [Int] = [75, 150, 200, 300, 600, 1200],
                 sources: [ScanSource] = [.flatbed],
                 flatbedSizeInches: CGSize = CGSize(width: 8.5, height: 11.7),
                 supportsOverview: Bool = true,
                 feederSizeInches: CGSize? = nil,
-                supportsDuplex: Bool = false) {
+                supportsDuplex: Bool = false,
+                supportsHighBitDepth: Bool = false) {
         self.supportedResolutions = supportedResolutions
         self.sources = sources
         self.flatbedSizeInches = flatbedSizeInches
         self.supportsOverview = supportsOverview
         self.feederSizeInches = feederSizeInches
         self.supportsDuplex = supportsDuplex
+        self.supportsHighBitDepth = supportsHighBitDepth
     }
 
     public func nearestResolution(to dpi: Int) -> Int {

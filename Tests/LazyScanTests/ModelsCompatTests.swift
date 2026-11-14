@@ -151,6 +151,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
             + "      \"customPaperHeight\" : 11,\n      \"customPaperWidth\" : 8.5,\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
     .replacingOccurrences(of: "\"brightness\" : 0.25,", with: "\"brightness\" : 0.25,\n        \"cleanUp\" : false,")
+    .replacingOccurrences(of: "\"photoMinSideInches\" : 2.5,", with: "\"photoHighBitDepth\" : false,\n      \"photoMinSideInches\" : 2.5,")
     .replacingOccurrences(of: "\"restoreFadedColors\" : true,", with: "\"removeSpecks\" : false,\n        \"restoreFadedColors\" : true,")
     .replacingOccurrences(of: "\"ocrLanguages\" : [", with: "\"ocrLanguage\" : \"de-DE\",\n      \"ocrLanguages\" : [")
     .replacingOccurrences(of: "\"colorMode\" : \"grayscale\"",
@@ -312,7 +313,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(Set(settings.keys), [
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-            "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+            "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions", "scanAgainSeconds",
         ])
@@ -397,7 +398,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(Set(written.keys), [
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-            "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+            "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions", "scanAgainSeconds",
         ])
@@ -433,7 +434,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(Set(written.keys), [
             "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
             "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-            "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+            "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
             "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
             "document", "taskOptions", "scanAgainSeconds",
         ])
@@ -1572,6 +1573,22 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(back.adjustments, on.adjustments)
         XCTAssertNotEqual(on.adjustments, ScanSettings().adjustments)
         XCTAssertTrue(on.adjustments.isIdentity)
+    }
+
+    /// Twin of `PhotoHighBitDepth_OffByDefault_AndInFilesWithoutIt`.
+    func test_photoHighBitDepth_offByDefault_andInFilesWithoutIt() throws {
+        XCTAssertFalse(ScanSettings().photoHighBitDepth)
+        XCTAssertFalse(try decode([Preset].self, presetsJSONBeforePDFSize)[0].settings.photoHighBitDepth)
+        for value in [#""yes""#, "1", "null", "{}", "[]"] {
+            let settings = try decode(ScanSettings.self, #"{"photoHighBitDepth": "# + value + #", "resolution": 150}"#)
+            XCTAssertFalse(settings.photoHighBitDepth, value)
+            XCTAssertEqual(settings.resolution, 150, value)
+        }
+        var on = ScanSettings()
+        on.photoHighBitDepth = true
+        let back = try JSONDecoder().decode(ScanSettings.self, from: encode(on))
+        XCTAssertTrue(back.photoHighBitDepth)
+        XCTAssertNotEqual(on, ScanSettings())
     }
 
     func test_bookFlattenOptions_offByDefault_andInFilesWithoutThem() throws {

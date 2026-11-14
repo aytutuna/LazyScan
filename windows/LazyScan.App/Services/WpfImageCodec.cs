@@ -150,13 +150,21 @@ public static class WpfImageCodec
     /// Returns the path actually written. A black &amp; white page (<paramref name="colorMode"/>) saved
     /// as TIFF is a 1-bit CCITT G4 file (<see cref="BilevelTiff"/>); everything else is written by WIC.
     /// <paramref name="details"/> (date taken and caption) is written as EXIF tags when it has any.
+    /// A TIFF written with <paramref name="deepPixels"/> (a page scanned at 16 bits, see <see cref="DeepTiff"/>) is a 16-bit file
+    /// of those samples whatever the color mode; <paramref name="image"/> is not read then.
     /// </summary>
     public static string SaveAsNew(RgbaImage image, string path, OutputFormat format, int dpi,
                                    double jpegQuality, ColorMode colorMode = ColorMode.Color,
-                                   PhotoDetails? details = null)
+                                   PhotoDetails? details = null,
+                                   DeepPixels? deepPixels = null)
     {
         Action<Stream> write;
-        if (BilevelTiff.Applies(format, colorMode))
+        if (deepPixels is not null && DeepTiff.Applies(format))
+        {
+            byte[] tiff = DeepTiff.Make(deepPixels, dpi, details);
+            write = stream => stream.Write(tiff);
+        }
+        else if (BilevelTiff.Applies(format, colorMode))
         {
             byte[] tiff = BilevelTiff.Make(image, dpi, details);
             write = stream => stream.Write(tiff);

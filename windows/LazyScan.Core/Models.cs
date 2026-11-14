@@ -949,6 +949,11 @@ public sealed class ScanSettings
     public double PhotoMinSideInches { get; set; } = 1.2;
     /// <summary>Pixels (at scan resolution) shaved off each detected photo edge to remove background slivers.</summary>
     public int PhotoCropInsetPixels { get; set; } = 0;
+    /// <summary>
+    /// Photos are saved as 16-bit TIFFs when the scanner unit reports 16-bit support
+    /// (<see cref="ScannerCapabilities.SupportsHighBitDepth"/>); every other path stays 8-bit. Off unless chosen.
+    /// </summary>
+    public bool PhotoHighBitDepth { get; set; } = false;
 
     // Document / PDF mode
     /// <summary>
@@ -1160,6 +1165,14 @@ public sealed class ScannedPage
     /// </summary>
     public SpineShadowResult? SpineShadow { get; init; }
 
+    /// <summary>
+    /// The pixels as the scanner delivered them at 16 bits per sample, for a page scanned with
+    /// <see cref="ScanSettings.PhotoHighBitDepth"/>; null for every other page. <see cref="Image"/> is its 8-bit view.
+    /// In memory only. A page rebuilt with other pixels does not carry it, so only a page nothing has changed
+    /// saves as a 16-bit TIFF, and the page steps leave such a page alone (<see cref="PageProcessor"/>).
+    /// </summary>
+    public DeepPixels? DeepPixels { get; init; }
+
     /// <summary>The mode a scanner page was cleaned up in (<see cref="CleanUpStep"/>), or null when it was not. In memory only.</summary>
     public DocumentEnhanceMode? CleanedUp { get; init; }
 
@@ -1224,6 +1237,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = source.Side,
             SheetIndex = source.SheetIndex,
             Blank = source.Blank,
@@ -1248,6 +1262,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = side,
             SheetIndex = sheetIndex,
             Blank = Blank,
@@ -1272,6 +1287,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = blank,
@@ -1296,6 +1312,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1320,6 +1337,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1344,6 +1362,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1368,6 +1387,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1392,6 +1412,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1499,6 +1520,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1523,6 +1545,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1547,6 +1570,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1611,6 +1635,7 @@ public sealed class ScannedPage
         new(Image, Dpi, ColorMode, Id, CreatedAt, FilePath, FullPixelSize)
         {
             RotationQuarterTurns = RotationQuarterTurns,
+            DeepPixels = DeepPixels,
             Side = Side,
             SheetIndex = SheetIndex,
             Blank = Blank,
@@ -1929,6 +1954,8 @@ public sealed class ScannerCapabilities
     /// done by turning the stack over by hand (<see cref="DocumentSides.Effective"/>).
     /// </summary>
     public bool SupportsDuplex { get; set; }
+    /// <summary>The unit can scan at 16 bits per sample, which <see cref="ScanSettings.PhotoHighBitDepth"/> asks for.</summary>
+    public bool SupportsHighBitDepth { get; set; }
 
     public int NearestResolution(int dpi) =>
         SupportedResolutions.Count == 0

@@ -802,9 +802,11 @@ public struct PageProcessor {
         try Self.runAll(steps, on: page, shouldContinue: shouldContinue)
     }
 
-    /// `steps` on `page`, in order.
+    /// `steps` on `page`, in order. A page with `deepPixels` is left as scanned: the steps work on its 8-bit
+    /// view, and the 16-bit data would no longer match it.
     private static func runAll(_ steps: [any PageStep], on page: ScannedPage,
                                shouldContinue: () -> Bool) throws -> ScannedPage {
+        if page.deepPixels != nil { return page }
         var current = page
         for step in steps {
             guard shouldContinue() else { throw ScanError.cancelled }

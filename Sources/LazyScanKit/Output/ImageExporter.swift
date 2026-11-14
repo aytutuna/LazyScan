@@ -9,22 +9,24 @@ public enum ImageExporter {
     /// A black & white page (`colorMode`, the mode it was scanned in) saved as TIFF is a 1-bit CCITT
     /// G4 file (`BilevelTIFF`); everything else is written by ImageIO, TIFFs as LZW. Twin of C#
     /// `WpfImageCodec.SaveAsNew`'s choice.
+    /// A TIFF written with `deepPixels` (a page scanned at 16 bits, see `DeepTIFF`) is a 16-bit file of those
+    /// samples whatever the color mode; `image` is not read then.
     /// With `keepingExisting` the picture is written to a hidden temp name and moved to `url` (or the next
     /// free name when `url` has been taken meanwhile), so a failed write leaves no file under a real name
     /// and nothing is replaced; returns where the file went.
     @discardableResult
     public static func write(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                             colorMode: ColorMode = .color, details: PhotoDetails = .none,
+                             colorMode: ColorMode = .color, details: PhotoDetails = .none, deepPixels: DeepPixels? = nil,
                              keepingExisting: Bool = false) throws -> URL {
         guard keepingExisting else {
             try encode(image, to: url, format: format, dpi: dpi, jpegQuality: jpegQuality, colorMode: colorMode,
-                       details: details)
+                       details: details, deepPixels: deepPixels)
             return url
         }
         let tmp = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
         do {
             try encode(image, to: tmp, format: format, dpi: dpi, jpegQuality: jpegQuality, colorMode: colorMode,
-                       details: details, shownAs: url)
+                       details: details, deepPixels: deepPixels, shownAs: url)
             return try NamingTemplate.moveToFreeURL(tmp, to: url)
         } catch {
             try? FileManager.default.removeItem(at: tmp)
@@ -33,7 +35,7 @@ public enum ImageExporter {
     }
 
     private static func encode(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                               colorMode: ColorMode, details: PhotoDetails, shownAs: URL? = nil) throws {
+                               colorMode: ColorMode, details: PhotoDetails, deepPixels: DeepPixels?, shownAs: URL? = nil) throws {
         let shown = shownAs ?? url
         let fileName = shown.lastPathComponent
         let folder = shown.deletingLastPathComponent()
@@ -44,6 +46,15 @@ public enum ImageExporter {
         case .tiff, .tiffPages: utType = .tiff
         case .pdf: throw ScanError.unsupported("Use PDFBuilder to write PDF files.")
         case .text, .word: throw ScanError.unsupported("Use TextExport or DocxWriter to write text.")
+        }
+
+        if let deepPixels, DeepTIFF.applies(format) {
+            do {
+                try DeepTIFF.make(deepPixels, dpi: dpi, details: details).write(to: url, options: .atomic)
+            } catch {
+                throw ScanError.exportFailed(SaveFailure.message(error, folder: folder))
+            }
+            return
         }
 
         if BilevelTIFF.applies(format, colorMode) {

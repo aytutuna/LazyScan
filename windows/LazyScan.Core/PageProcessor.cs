@@ -759,8 +759,13 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// <summary>Every step on <paramref name="page"/>, in order.</summary>
     private ScannedPage RunSteps(ScannedPage page, CancellationToken token) => Run(Steps, page, token);
 
+    /// <summary>
+    /// <paramref name="steps"/> on <paramref name="page"/>, in order. A page with <see cref="ScannedPage.DeepPixels"/> is left as scanned:
+    /// the steps work on its 8-bit view, and the 16-bit data would no longer match it.
+    /// </summary>
     private static ScannedPage Run(IReadOnlyList<IPageStep> steps, ScannedPage page, CancellationToken token)
     {
+        if (page.DeepPixels is not null) return page;
         var current = page;
         foreach (var step in steps)
         {

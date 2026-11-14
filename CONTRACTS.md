@@ -2916,6 +2916,30 @@ only when the PDF or TIFF is written.
   a document without them written by `PDFWriter` too, PDF/A and a password through the options;
   `ImageExporter`'s G4 and LZW TIFFs) are checked there too.
 
+### 16-bit TIFF (Photos mode, when the scanner unit reports 16-bit support)
+
+`ScanSettings.photoHighBitDepth` / C# `PhotoHighBitDepth` (a Bool, off, in the file as `photoHighBitDepth`)
+asks for photos saved as 16-bit TIFFs; it takes effect only for a unit whose
+`ScannerCapabilities.supportsHighBitDepth` / `SupportsHighBitDepth` (reported only, in no file) is true, and
+every other path (other modes and formats, units without it) stays 8-bit. The data is kept in an optional
+page field, `ScannedPage.deepPixels` / `DeepPixels` (`DeepPixels`: `width`, `height`, `channels` 1 or 3,
+`samples`, 16-bit values row by row with a pixel's channels together), in memory only; `image` stays the 8-bit
+view the screen and the other formats use. Every place that rebuilds a page with other pixels (`withImage`,
+`withGeometry`, `withSpineShadow`, `withCleanUp`, rotation) drops it, a copy that only changes what is recorded
+about the page keeps it, and `PageProcessor` runs no step on a page that carries it (no filter, crop, straighten
+or enhancement; a book spread is split from `image` as before), so a page that was changed saves as 8-bit.
+
+`DeepTIFF.make(_:dpi:details:)` / `DeepTiff.Make(pixels, dpi, details)` writes the file, the same bytes on both
+platforms (the golden files in `DeepTIFFTests` and `DeepTiffTests`): little-endian, uncompressed, the strip first
+(one strip, the samples little-endian), then the directory: ImageWidth, ImageLength, BitsPerSample 16 (an offset
+to three shorts for color), Compression 1, Photometric 1 (BlackIsZero) or 2 (RGB), SamplesPerPixel, RowsPerStrip,
+StripByteCounts, the resolution in pixels per inch, and with `details` ImageDescription and an Exif directory
+with DateTimeOriginal as in the other TIFFs. `DeepTIFF.applies(format)` is true for `.tiff` only (`.tiffPages` is
+written as 8-bit files). `ImageExporter.write(..., deepPixels:)` and `WpfImageCodec.SaveAsNew(..., deepPixels:)`
+write it for a TIFF whatever the color mode and do not read `image` then. ImageIO and WIC read the files back as 16
+bits per sample (Gray16 and Rgb48). The switch in the inspectors and the scanner backends that request 16 bits
+(ImageCaptureCore `depth16Bits`, TWAIN 16) are not part of this.
+
 ### Output/OCRText.swift, TextExport.swift, DocxWriter.swift, ZipStore.swift (+ OutputFormat, OutputOptions in Core/Models.swift)
 
 ```swift
@@ -3291,11 +3315,12 @@ public enum ImageExporter {
     /// `BilevelTIFF.make(_:dpi:details:)`, an ImageDescription entry and an Exif directory with the date.
     /// Windows writes the same tags through `WpfImageCodec.SaveAsNew(..., details:)`; WIC's PNG encoder has
     /// no EXIF, so a PNG there gets only the text chunks.
+    /// A TIFF with `deepPixels` (see "16-bit TIFF") is `DeepTIFF.make`'s 16-bit file whatever the color mode.
     /// With `keepingExisting` the image goes to a hidden temp file, is moved to `url` or the next free
     /// name, and that name is returned.
     @discardableResult
     public static func write(_ image: CGImage, to url: URL, format: OutputFormat, dpi: Int, jpegQuality: Double,
-                             colorMode: ColorMode = .color, details: PhotoDetails = .none,
+                             colorMode: ColorMode = .color, details: PhotoDetails = .none, deepPixels: DeepPixels? = nil,
                              keepingExisting: Bool = false) throws -> URL
     public static func rotateClockwise(_ url: URL) -> String?   // (Output/ImageRotation.swift) a JPEG, PNG or single-page TIFF turned 90° clockwise in place, format, DPI and G4 kept; the failure text or nil (texts of Windows SavedFiles.RotateClockwiseAsync)
 }

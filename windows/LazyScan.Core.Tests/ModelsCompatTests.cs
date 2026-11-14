@@ -147,6 +147,7 @@ internal static class CompatFixtures
     /// size, the "document" object and the "taskOptions" object, after the earlier keys.
     /// </summary>
     public static readonly string CurrentFormatPresetsJson = PresetsJsonBeforePdfSize.ReplaceLineEndings("\n").Replace(
+        "      \"photoCropInsetPixels\": 4,\n", "      \"photoCropInsetPixels\": 4,\n      \"photoHighBitDepth\": false,\n").Replace(
         "      ],\n      \"adjustments\"", "      ],\n      \"ocrLanguage\": \"de-DE\",\n      \"adjustments\"").Replace(
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
         "        \"blackWhiteThreshold\": 0.375,\n        \"cleanUp\": false,\n        \"removeSpecks\": false\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
@@ -368,7 +369,7 @@ public class ModelsCompatTests
             [
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-                "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+                "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions", "scanAgainSeconds",
             ],
@@ -461,7 +462,7 @@ public class ModelsCompatTests
             [
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-                "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+                "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "taskId", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions", "scanAgainSeconds",
             ],
@@ -504,7 +505,7 @@ public class ModelsCompatTests
             [
                 "intent", "source", "resolution", "colorMode", "format", "jpegQuality",
                 "destinationPath", "destinationBookmark", "namingTemplate", "photoAutoSplit", "photoAutoDeskew",
-                "photoMinSideInches", "photoCropInsetPixels", "documentMultiPage",
+                "photoMinSideInches", "photoCropInsetPixels", "photoHighBitDepth", "documentMultiPage",
                 "pdfSearchable", "ocrLanguages", "ocrLanguage", "adjustments", "output", "duplex", "backBinding", "paperSize", "customPaperWidth", "customPaperHeight",
                 "document", "taskOptions", "scanAgainSeconds",
             ],
@@ -1685,6 +1686,22 @@ public class ModelsCompatTests
         Assert.Equal(on.Adjustments, back.Adjustments);
         Assert.NotEqual(on.Adjustments, new ScanSettings().Adjustments);
         Assert.True(on.Adjustments.IsIdentity);
+    }
+
+    [Fact]
+    public void PhotoHighBitDepth_OffByDefault_AndInFilesWithoutIt()
+    {
+        Assert.False(new ScanSettings().PhotoHighBitDepth);
+        Assert.False(Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize)[0].Settings.PhotoHighBitDepth);
+        foreach (string value in new[] { "\"yes\"", "1", "null", "{}", "[]" })
+        {
+            var settings = Decode<ScanSettings>($$"""{"photoHighBitDepth": {{value}}, "resolution": 150}""");
+            Assert.False(settings.PhotoHighBitDepth);
+            Assert.Equal(150, settings.Resolution);
+        }
+        var on = new ScanSettings { PhotoHighBitDepth = true };
+        var back = Decode<ScanSettings>(CompatFixtures.Encode(on));
+        Assert.True(back.PhotoHighBitDepth);
     }
 
     [Fact]
