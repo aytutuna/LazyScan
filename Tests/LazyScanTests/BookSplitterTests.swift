@@ -479,6 +479,33 @@ final class BookSplitterTests: XCTestCase {
         XCTAssertEqual(BookPages.replacementPages([], fresh: fresh).map(\.id), fresh.map(\.id))
     }
 
+    func test_replacementPages_keepTurnsAndPlaces() {
+        let id = UUID()
+        var left = part(id, 0)
+        left.rotationQuarterTurns = 1
+        var right = part(id, 1)
+        right.rotationQuarterTurns = 3
+        var fresh = [part(id, 0), part(id, 1)]
+        fresh[1].rotationQuarterTurns = 2
+        // A turn the user gave a page is added to the one the new page has.
+        let both = BookPages.replacementPages([left, right], fresh: fresh)
+        XCTAssertEqual(both.map(\.rotationQuarterTurns), [1, 1])
+        // Another page between the two: each new page goes back where its old one was.
+        let queued = [left, right]
+        let placed = BookPages.placements(both, replacing: queued, at: [1, 3])
+        XCTAssertEqual(placed.map { $0.page.id }, both.map(\.id))
+        XCTAssertEqual(placed.map { $0.index }, [1, 3])
+        // The right page moved in front of the left one stays in front.
+        let swapped = BookPages.placements(both, replacing: [right, left], at: [1, 3])
+        XCTAssertEqual(swapped.map { $0.page.id }, [both[1].id, both[0].id])
+        XCTAssertEqual(swapped.map { $0.index }, [1, 3])
+        // A part the user removed stays out; joined or split from whole, all go in at the first place.
+        let one = BookPages.placements([both[1]], replacing: [right], at: [4])
+        XCTAssertEqual(one.map { $0.index }, [4])
+        let whole = BookPages.placements(fresh, replacing: [part(id, nil)], at: [2])
+        XCTAssertEqual(whole.map { $0.index }, [2, 3])
+    }
+
     func test_actions_splitOrJoinASpread() {
         let id = UUID()
         XCTAssertEqual(BookPages.splitActionLabel(part(id, 1)), "Change the split\u{2026}")

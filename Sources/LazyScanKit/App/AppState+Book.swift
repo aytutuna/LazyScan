@@ -357,7 +357,7 @@ extension AppState {
             return Self.spoolPages(processed, to: spool, previewSide: previewSide)
         }.value
         let indices = self.scannedPages.indices.filter { self.scannedPages[$0].spreadID == spreadID }
-        guard !flag.isCancelled, let firstIndex = indices.first, !pages.isEmpty else {
+        guard !flag.isCancelled, !indices.isEmpty, !pages.isEmpty else {
             self.deleteSpoolFiles(of: pages)
             if flag.isCancelled { throw ScanError.cancelled }
             return
@@ -370,7 +370,9 @@ extension AppState {
         // One change to the queue, so the spread is never without a page (`pruneSpreads`).
         var queue = self.scannedPages
         for index in indices.reversed() { queue.remove(at: index) }
-        queue.insert(contentsOf: replacement, at: firstIndex)
+        for placed in BookPages.placements(replacement, replacing: removed, at: indices) {
+            queue.insert(placed.page, at: placed.index)
+        }
         self.scannedPages = queue
         self.deleteSpoolFiles(of: removed)
         self.statusMessage = BookPages.splitNote(spreadNumber: self.spreadNumber(spreadID), split: cut != nil)

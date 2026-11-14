@@ -1248,6 +1248,19 @@ public struct ScannedPage: Identifiable {
         }
         return page
     }
+
+    /// The page turned 90° clockwise by hand, as `AppState.rotatePage` does it: the pixels in memory
+    /// (the other version's too) turn at once and the rotation grows, applied to the spool file when it
+    /// is saved. Twin of C# `ScannedPage.RotatedClockwise`.
+    public func rotatedClockwise() -> ScannedPage {
+        var page = withImage(ImagePipeline.rotate(image, quarterTurns: 1), fileURL: fileURL, fullPixelSize: fullPixelSize)
+        page.rotationQuarterTurns = (rotationQuarterTurns + 1) % 4
+        if var version = alternate, let other = version.image {
+            version.image = ImagePipeline.rotate(other, quarterTurns: 1)
+            page = page.withAlternate(version)
+        }
+        return page
+    }
 }
 
 /// One version of a queued page (`ScannedPage.alternate`): its pixels as the queue shows them (nil

@@ -811,19 +811,20 @@ public enum BookPages {
     /// The pages that take the place of a spread's pages in the queue when it is joined or split again:
     /// `fresh` (`PageProcessor.processSpread`), carrying what the user decided about `queued` (the
     /// spread's pages in the queue, in queue order). When the spread was split and is split again, each
-    /// new page replaces the queued page of the same part, with its document break, document name and
-    /// keep or skip, and a part the user removed from the queue stays out. Otherwise (joined, or a whole
-    /// spread split) every new page is used: the first takes the first queued page's document break and
-    /// the first document name among them, and every one the keep or skip they share (automatic when
-    /// they differ). Twin of C# `BookPages.ReplacementPages`.
+    /// new page replaces the queued page of the same part, with its document break, document name, keep
+    /// or skip and the turns the user gave it, and a part the user removed from the queue stays out.
+    /// Otherwise (joined, or a whole spread split) every new page is used: the first takes the first
+    /// queued page's document break and the first document name among them, and every one the keep or
+    /// skip they share (automatic when they differ). Twin of C# `BookPages.ReplacementPages`.
     public static func replacementPages(_ queued: [ScannedPage], fresh: [ScannedPage]) -> [ScannedPage] {
         guard let first = queued.first else { return fresh }
-        func isCut(_ page: ScannedPage) -> Bool { page.spread?.part != nil }
         if queued.allSatisfy(isCut) && fresh.allSatisfy(isCut) {
             var kept: [ScannedPage] = []
             for page in fresh {
                 guard let old = queued.first(where: { $0.spread?.part == page.spread?.part }) else { continue }
-                kept.append(page.withDocumentBreak(old.documentBreak).withDocumentLabel(old.documentLabel)
+                var turned = page
+                for _ in 0..<old.rotationQuarterTurns { turned = turned.rotatedClockwise() }
+                kept.append(turned.withDocumentBreak(old.documentBreak).withDocumentLabel(old.documentLabel)
                     .withInclusion(old.inclusion))
             }
             return kept
@@ -835,6 +836,29 @@ public enum BookPages {
                 ? item.element.withDocumentBreak(first.documentBreak).withDocumentLabel(label).withInclusion(inclusion)
                 : item.element.withInclusion(inclusion)
         }
+    }
+
+    private static func isCut(_ page: ScannedPage) -> Bool { page.spread?.part != nil }
+
+    /// Where `replacement` (from `replacementPages`) goes when the spread's `queued` pages, at the queue
+    /// positions `indices`, are taken out: each page with the index to insert it at, in insertion order.
+    /// A page that replaces a queued page of the same part goes where that one was, so a page the user
+    /// moved stays moved; every other page goes in at the first queued page's place.
+    public static func placements(_ replacement: [ScannedPage], replacing queued: [ScannedPage],
+                                  at indices: [Int]) -> [(page: ScannedPage, index: Int)] {
+        let sameParts = queued.allSatisfy(isCut) && replacement.allSatisfy(isCut)
+        var placed: [(page: ScannedPage, slot: Int)] = []
+        for page in replacement {
+            var slot = 0
+            if sameParts, let found = queued.firstIndex(where: { $0.spread?.part == page.spread?.part }) { slot = found }
+            placed.append((page: page, slot: slot))
+        }
+        if sameParts { placed.sort { $0.slot < $1.slot } }
+        var result: [(page: ScannedPage, index: Int)] = []
+        for (k, item) in placed.enumerated() {
+            result.append((page: item.page, index: indices[item.slot] - item.slot + k))
+        }
+        return result
     }
 
     /// "Split this spread…" for a spread kept whole, "Change the split…" for a page cut from one; nil

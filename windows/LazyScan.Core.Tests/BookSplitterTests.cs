@@ -505,6 +505,35 @@ public class BookSplitterTests
     }
 
     [Fact]
+    public void ReplacementPages_KeepTurnsAndPlaces()
+    {
+        var id = Guid.NewGuid();
+        var left = new ScannedPage(RgbaImage.Filled(4, 4, 255, 255, 255), 100, ColorMode.Color)
+            { Spread = Part(id, 0).Spread, RotationQuarterTurns = 1 };
+        var right = new ScannedPage(RgbaImage.Filled(4, 4, 255, 255, 255), 100, ColorMode.Color)
+            { Spread = Part(id, 1).Spread, RotationQuarterTurns = 3 };
+        var fresh = new[]
+        {
+            Part(id, 0),
+            new ScannedPage(RgbaImage.Filled(4, 4, 255, 255, 255), 100, ColorMode.Color) { Spread = Part(id, 1).Spread, RotationQuarterTurns = 2 },
+        };
+        // A turn the user gave a page is added to the one the new page has.
+        var both = BookPages.ReplacementPages([left, right], fresh);
+        Assert.Equal([1, 1], both.Select(p => p.RotationQuarterTurns));
+        // Another page between the two: each new page goes back where its old one was.
+        var placed = BookPages.Placements(both, [left, right], [1, 3]);
+        Assert.Equal(both.Select(p => p.Id), placed.Select(p => p.Page.Id));
+        Assert.Equal([1, 3], placed.Select(p => p.Index));
+        // The right page moved in front of the left one stays in front.
+        var swapped = BookPages.Placements(both, [right, left], [1, 3]);
+        Assert.Equal([both[1].Id, both[0].Id], swapped.Select(p => p.Page.Id));
+        Assert.Equal([1, 3], swapped.Select(p => p.Index));
+        // A part the user removed stays out; joined or split from whole, all go in at the first place.
+        Assert.Equal([4], BookPages.Placements([both[1]], [right], [4]).Select(p => p.Index));
+        Assert.Equal([2, 3], BookPages.Placements(fresh, [Part(id, null)], [2]).Select(p => p.Index));
+    }
+
+    [Fact]
     public void Actions_SplitOrJoinASpread()
     {
         var id = Guid.NewGuid();

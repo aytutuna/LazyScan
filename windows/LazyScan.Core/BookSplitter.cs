@@ -796,22 +796,23 @@ public static class BookPages
     /// <paramref name="fresh"/> (<see cref="PageProcessor.ProcessSpread"/>), carrying what the user decided
     /// about <paramref name="queued"/> (the spread's pages in the queue, in queue order). When the spread
     /// was split and is split again, each new page replaces the queued page of the same part, with its
-    /// document break, document name and keep or skip, and a part the user removed from the queue stays
-    /// out. Otherwise (joined, or a whole spread split) every new page is used: the first takes the first
-    /// queued page's document break and the first document name among them, and every one the keep or
-    /// skip they share (automatic when they differ).
+    /// document break, document name, keep or skip and the turns the user gave it, and a part the user
+    /// removed from the queue stays out. Otherwise (joined, or a whole spread split) every new page is
+    /// used: the first takes the first queued page's document break and the first document name among
+    /// them, and every one the keep or skip they share (automatic when they differ).
     /// </summary>
     public static IReadOnlyList<ScannedPage> ReplacementPages(IReadOnlyList<ScannedPage> queued, IReadOnlyList<ScannedPage> fresh)
     {
         if (queued.Count == 0) return fresh;
-        static bool IsCut(ScannedPage page) => page.Spread is { Part: not null };
         if (queued.All(IsCut) && fresh.All(IsCut))
         {
             var kept = new List<ScannedPage>();
             foreach (var page in fresh)
             {
                 if (queued.FirstOrDefault(old => old.Spread!.Part == page.Spread!.Part) is not { } old) continue;
-                kept.Add(page.WithDocumentBreak(old.DocumentBreak).WithDocumentLabel(old.DocumentLabel).WithInclusion(old.Inclusion));
+                var turned = page;
+                for (int turn = 0; turn < old.RotationQuarterTurns; turn++) turned = turned.RotatedClockwise();
+                kept.Add(turned.WithDocumentBreak(old.DocumentBreak).WithDocumentLabel(old.DocumentLabel).WithInclusion(old.Inclusion));
             }
             return kept;
         }
@@ -822,6 +823,34 @@ public static class BookPages
                 ? page.WithDocumentBreak(first.DocumentBreak).WithDocumentLabel(label).WithInclusion(inclusion)
                 : page.WithInclusion(inclusion))
             .ToList();
+    }
+
+    private static bool IsCut(ScannedPage page) => page.Spread is { Part: not null };
+
+    /// <summary>
+    /// Where <paramref name="replacement"/> (from <see cref="ReplacementPages"/>) goes when the spread's
+    /// <paramref name="queued"/> pages, at the queue positions <paramref name="indices"/>, are taken out:
+    /// each page with the index to insert it at, in insertion order. A page that replaces a queued page of
+    /// the same part goes where that one was, so a page the user moved stays moved; every other page goes
+    /// in at the first queued page's place.
+    /// </summary>
+    public static IReadOnlyList<(ScannedPage Page, int Index)> Placements(
+        IReadOnlyList<ScannedPage> replacement, IReadOnlyList<ScannedPage> queued, IReadOnlyList<int> indices)
+    {
+        bool sameParts = queued.All(IsCut) && replacement.All(IsCut);
+        var placed = new List<(ScannedPage Page, int Slot)>();
+        foreach (var page in replacement)
+        {
+            int slot = 0;
+            if (sameParts)
+            {
+                int found = queued.ToList().FindIndex(old => old.Spread!.Part == page.Spread!.Part);
+                if (found >= 0) slot = found;
+            }
+            placed.Add((page, slot));
+        }
+        if (sameParts) placed.Sort((a, b) => a.Slot.CompareTo(b.Slot));
+        return placed.Select((item, k) => (item.Page, indices[item.Slot] - item.Slot + k)).ToList();
     }
 
     /// <summary>"Split this spread…" for a spread kept whole, "Change the split…" for a page cut from one; null for other pages.</summary>

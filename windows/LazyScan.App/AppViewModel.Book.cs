@@ -203,11 +203,16 @@ public sealed partial class AppViewModel
             }
             var replacement = BookPages.ReplacementPages(removed, spooled.Select(item => item.Page).ToList());
             var thumbnails = spooled.ToDictionary(item => item.Page.Id, item => item.Thumbnail);
-            var items =replacement.Select(page => new PageItem(page, thumbnails[page.Id], Settings.Document)).ToList();
+            var items = replacement.Select(page => page.RotationQuarterTurns != 0
+                ? new PageItem(page, WpfImageCodec.ToThumbnail(page.Image, PageItem.ThumbnailMaxSide), Settings.Document)
+                : new PageItem(page, thumbnails[page.Id], Settings.Document)).ToList();
             var kept = replacement.Select(page => page.Id).ToHashSet();
             DeleteSpoolFiles(spooled.Select(item => item.Page).Where(page => !kept.Contains(page.Id)));
             for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
-            for (int k = 0; k < items.Count; k++) ScannedPages.Insert(indices[0] + k, items[k]);
+            foreach (var (page, at) in BookPages.Placements(replacement, removed, indices))
+            {
+                ScannedPages.Insert(at, items.First(item => item.Page.Id == page.Id));
+            }
             DeleteSpoolFiles(removed);
             StatusMessage = BookPages.SplitNote(SpreadNumber(spreadId), cut is not null)
                             + PageFilter.ScanNote(replacement, s.Document) + PageCorrections.ScanNote(replacement)
@@ -527,7 +532,9 @@ public sealed partial class AppViewModel
             for (int k = indices.Count - 1; k >= 0; k--) ScannedPages.RemoveAt(indices[k]);
             for (int k = 0; k < replacement.Count; k++)
             {
-                ScannedPages.Insert(indices[0] + k, new PageItem(replacement[k], thumbnails[replacement[k].Id], Settings.Document));
+                var turned = replacement[k].RotationQuarterTurns != 0;
+                var thumbnail = turned ? WpfImageCodec.ToThumbnail(replacement[k].Image, PageItem.ThumbnailMaxSide) : thumbnails[replacement[k].Id];
+                ScannedPages.Insert(indices[0] + k, new PageItem(replacement[k], thumbnail, Settings.Document));
                 _reorderedTo.Add(replacement[k].Id);
             }
         }
