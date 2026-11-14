@@ -485,6 +485,23 @@ final class IOSScannerPickerTests: XCTestCase {
     }
 
     @MainActor
+    func test_addByAddress_withoutANetwork_saysSoAndSkipsTheOtherChecks() async throws {
+        prepare()
+        let address: ScannerAddress = try ScannerAddress.parse("192.168.1.50")
+        let checker: FakeAddressChecker = FakeAddressChecker()
+        checker.results = [EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
+                                            error: "Not connected to Wi-Fi", offline: true)]
+        let probe: FakeLocalNetwork = FakeLocalNetwork()
+        let model: IOSAddScannerModel = IOSAddScannerModel(checker: checker, localNetwork: probe)
+        model.text = "192.168.1.50"
+        let added: Bool = await model.add()
+        XCTAssertFalse(added)
+        XCTAssertEqual(model.message, "Not connected to Wi-Fi")
+        XCTAssertTrue(probe.asked.isEmpty)
+        XCTAssertEqual(checker.firstUses.count, 1)
+    }
+
+    @MainActor
     func test_addByAddress_whenNothingAnswers_tellsARefusedLocalNetworkApart() async throws {
         prepare()
         let address: ScannerAddress = try ScannerAddress.parse("192.168.1.50")

@@ -141,6 +141,19 @@ private final class ChangedCertificateBackend: ScannerBackend {
     }
 }
 
+/// A connection that is there for the first look and gone for the second.
+private final class PathCalls: @unchecked Sendable {
+    private let lock: NSLock = NSLock()
+    private var count: Int = 0
+
+    func next() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
+        return count == 1
+    }
+}
+
 final class EsclScannerBackendTests: XCTestCase {
     private var folder: URL!
     private var browsers: DiscoveryFakeBrowsers!
@@ -192,6 +205,7 @@ final class EsclScannerBackendTests: XCTestCase {
                                                              hosts: hosts, discovery: discovery, clientOptions: options)
         backend.reprobeInterval = 0.05
         backend.resolveHost = { (host: String) async -> String? in host }
+        backend.hasNetworkPath = { () async -> Bool in true }
         return backend
     }
 
@@ -323,6 +337,33 @@ final class EsclScannerBackendTests: XCTestCase {
         XCTAssertEqual(timedOut.error, "Nothing answered at \(slow) in time. Check that the scanner is on and on the same network, then try again.")
         XCTAssertNil(timedOut.capabilities)
         XCTAssertNil(timedOut.certificate)
+    }
+
+    @MainActor
+    func test_checkingAnAddress_withoutANetwork_failsAtOnceAndSaysSo() async throws {
+        prepare()
+        let backend: EsclScannerBackend = makeBackend(hosts: nil)
+        backend.hasNetworkPath = { () async -> Bool in false }
+
+        let check: EsclAddressCheck = try await backend.checkAddress(try ScannerAddress.parse(stubHost()))
+        XCTAssertEqual(check.error, "Not connected to Wi-Fi")
+        XCTAssertTrue(check.offline)
+        XCTAssertFalse(check.noAnswer)
+        XCTAssertNil(check.capabilities)
+    }
+
+    @MainActor
+    func test_anAddressThatTimedOut_afterTheNetworkWentAway_saysTheNetworkIsGone() async throws {
+        prepare()
+        let backend: EsclScannerBackend = makeBackend(hosts: nil)
+        let host: String = stubHost()
+        BackendStubScanners.shared.play("http://" + host, [BackendStubAnswer.failure(URLError.Code.timedOut)])
+        let calls: PathCalls = PathCalls()
+        backend.hasNetworkPath = { () async -> Bool in calls.next() }
+
+        let check: EsclAddressCheck = try await backend.checkAddress(try ScannerAddress.parse(host))
+        XCTAssertEqual(check.error, "Not connected to Wi-Fi")
+        XCTAssertFalse(check.noAnswer)
     }
 
     @MainActor

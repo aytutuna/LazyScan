@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 // The Swift side of windows/LazyScan.App/Scanning/EsclScannerBackend.cs: the same device list,
 // the same way of connecting (addresses in order, trust on first use, a changed certificate refused
@@ -23,20 +24,24 @@ public struct EsclAddressCheck: Equatable, Sendable {
     public let error: String?
     /// `error` in English, for the support report.
     public let reportError: String?
+    /// The device has no network connection, so nothing was asked there (or the attempt timed out with
+    /// the connection gone).
+    public let offline: Bool
 
     public init(address: ScannerAddress, capabilities: EsclCapabilities?, certificate: EsclCertificateError?, error: String?,
-                reportError: String? = nil) {
+                reportError: String? = nil, offline: Bool = false) {
         self.address = address
         self.capabilities = capabilities
         self.certificate = certificate
         self.error = error
         self.reportError = reportError ?? error
+        self.offline = offline
     }
 
-    /// The scanner did not answer at all (nothing to do with its certificate): for an address typed by
-    /// hand, Local Network access may be the reason.
+    /// The scanner did not answer at all (nothing to do with its certificate or a missing network): for an
+    /// address typed by hand, Local Network access may be the reason.
     public var noAnswer: Bool {
-        capabilities == nil && certificate == nil
+        capabilities == nil && certificate == nil && !offline
     }
 }
 
@@ -70,6 +75,11 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
     /// Looks up the IPv4 address of a host name (tests replace it, as they have no real names).
     public var resolveHost: @Sendable (String) async -> String? = { (host: String) async -> String? in
         await EsclHostText.resolveIPv4(host)
+    }
+    /// Whether the device has a network connection at all (tests replace it). A refused Local Network access
+    /// does not count as a missing connection.
+    public var hasNetworkPath: @Sendable () async -> Bool = { () async -> Bool in
+        await EsclNetworkPath.isSatisfied()
     }
     /// The app may use the local network: searching and checking the addresses added by hand start only
     /// then. The iPhone and iPad first explain why the system is about to ask (`allowNetwork()`); true by
@@ -355,6 +365,12 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             : L10n.t("{0} is not a usable address. Check the address on the scanner's screen.", address)
     }
 
+    private static func offline(_ address: ScannerAddress) -> EsclAddressCheck {
+        let line: () -> String = { L10n.t("Not connected to Wi-Fi") }
+        return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
+                                error: line(), reportError: L10n.english(line), offline: true)
+    }
+
     private static func manualHost(_ address: ScannerAddress, _ result: EsclAddressCheck) -> ManualHost {
         // A changed certificate still lists the scanner (choosing it asks the user), under the UUID it was
         // trusted with, so it stays one entry with its discovered one. (The name in the pin is often just
@@ -389,6 +405,9 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         let name: String = address.description
         let validator: EsclCertificateValidator = EsclCertificateValidator(store: trust, deviceUuid: nil, deviceName: name,
                                                                            firstUse: firstUse)
+        guard await hasNetworkPath() else {
+            return EsclScannerBackend.offline(address)
+        }
         guard let base: URL = await connectURL(address) else {
             let unusable: () -> String = { EsclScannerBackend.unusable(address) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
@@ -404,6 +423,12 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
         } catch {
             if Task.isCancelled || error is CancellationError {
                 throw CancellationError()
+            }
+            if let transport = error as? URLError, transport.code == .timedOut {
+                let connected: Bool = await hasNetworkPath()
+                if !connected {
+                    return EsclScannerBackend.offline(address)
+                }
             }
             let unanswered: () -> String = { EsclScannerBackend.checkFailure(error, address) }
             return EsclAddressCheck(address: address, capabilities: nil, certificate: nil,
@@ -781,5 +806,30 @@ public final class EsclScannerBackend: ScannerBackend, ScannerBackendDiagnostics
             text += "eSCL connections over plain HTTP: \(plainConnections.sorted().joined(separator: ", "))\n"
         }
         return text.isEmpty ? nil : text
+    }
+}
+
+/// One look at the network path, for the checks of an address.
+enum EsclNetworkPath {
+    /// The monitor's handler and cancel run on `queue`, so `answered` is only touched there.
+    private final class Reader: @unchecked Sendable {
+        let monitor: NWPathMonitor = NWPathMonitor()
+        let queue: DispatchQueue = DispatchQueue(label: "lazyscan.escl.path")
+        var answered: Bool = false
+    }
+
+    static func isSatisfied() async -> Bool {
+        let reader: Reader = Reader()
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            reader.monitor.pathUpdateHandler = { (path: NWPath) -> Void in
+                guard !reader.answered else { return }
+                reader.answered = true
+                reader.monitor.cancel()
+                reader.monitor.pathUpdateHandler = nil
+                let refused: Bool = path.unsatisfiedReason == NWPath.UnsatisfiedReason.localNetworkDenied
+                continuation.resume(returning: path.status != NWPath.Status.unsatisfied || refused)
+            }
+            reader.monitor.start(queue: reader.queue)
+        }
     }
 }
