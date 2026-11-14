@@ -43,9 +43,14 @@ public enum IOSCopyText {
         String(localized: "Print again on \(printerName)")
     }
 
-    /// "3 pages".
-    public static func pageCount(_ count: Int) -> String {
-        L10n.plural(count, one: "{0} page", other: "{0} pages")
+    /// "Page 2 of 5", under the pages; shown for two or more.
+    public static func pageOfCount(_ number: Int, _ count: Int) -> String {
+        String(localized: "Page \(number) of \(count)")
+    }
+
+    /// "2 of 5", for VoiceOver on each page.
+    public static func positionOfCount(_ number: Int, _ count: Int) -> String {
+        String(localized: "\(number) of \(count)")
     }
 }
 
@@ -70,13 +75,13 @@ public final class IOSCopyModel: ObservableObject {
         }
     }
 
-    /// The first page, shown large; nil once discarded.
+    /// The first page; nil once discarded.
     public var image: CGImage? { state.copyPages.first?.image }
 
-    /// "2 pages" when the copy has several; nil for one.
-    public var pageCountLine: String? {
+    /// "Page 2 of 5" for the page at `index` when the copy has several; nil for one.
+    public func pageCaption(_ index: Int) -> String? {
         let count: Int = state.copyPages.count
-        return count > 1 ? IOSCopyText.pageCount(count) : nil
+        return count > 1 ? IOSCopyText.pageOfCount(index + 1, count) : nil
     }
 
     /// The screen's title, in printing's words for the queue's pages (`AppState.copyIsOfQueue`), as are

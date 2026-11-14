@@ -331,6 +331,7 @@
  {"key": "Page %@", "comment": ""},
  {"key": "Page %@, %@", "comment": ""},
  {"key": "Page %lld", "comment": ""},
+ {"key": "Page %lld of %lld", "comment": ""},
  {"key": "Page %lld retaken", "comment": ""},
  {"key": "Page found · hold still", "comment": ""},
  {"key": "Page preview", "comment": ""},
