@@ -2331,9 +2331,11 @@ extension EsclScannerBackend {   // since I12, beside the I11 members
 public enum ImagePipeline {
     /// Apply adjustments + color-mode conversion. Returns the input unchanged when
     /// `settings.isIdentity && colorMode == .color`.
-    public static func apply(_ settings: AdjustmentSettings, to image: CGImage, colorMode: ColorMode) -> CGImage
+    /// Descreen blurs with a Gaussian of sigma max(1, dpi / 300) pixels (`descreenSigma(dpi:)`; C# `DescreenSigma`), the page's dpi;
+    /// previews and the viewfinder pass the default 300. The Core uses the same separable Gaussian, sampled over ±3 sigma.
+    public static func apply(_ settings: AdjustmentSettings, to image: CGImage, colorMode: ColorMode, dpi: Int = 300) -> CGImage
     /// Steps 1-6 of `apply` as a Core Image chain, not rendered (Swift only: the live viewfinder runs it on frames).
-    public static func adjusted(_ image: CIImage, with settings: AdjustmentSettings, colorMode: ColorMode) -> CIImage
+    public static func adjusted(_ image: CIImage, with settings: AdjustmentSettings, colorMode: ColorMode, dpi: Int = 300) -> CIImage
     /// Lossless 90° steps, clockwise. quarterTurns 0...3.
     public static func rotate(_ image: CGImage, quarterTurns: Int) -> CGImage
 }

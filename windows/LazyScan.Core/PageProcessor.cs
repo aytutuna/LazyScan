@@ -307,9 +307,9 @@ public sealed class AdjustmentStep(AdjustmentSettings adjustments, ColorMode col
     public ScannedPage Apply(ScannedPage page)
     {
         var pageMode = ModeFor(page);
-        var adjusted = page.WithImage(ImagePipeline.Apply(Adjustments, page.Image, pageMode), pageMode);
+        var adjusted = page.WithImage(ImagePipeline.Apply(Adjustments, page.Image, pageMode, page.Dpi), pageMode);
         return AdjustsAlternate && page.Alternate is { Image: { } other } version
-            ? adjusted.WithAlternate(version with { Image = ImagePipeline.Apply(Adjustments, other, ColorMode) })
+            ? adjusted.WithAlternate(version with { Image = ImagePipeline.Apply(Adjustments, other, ColorMode, page.Dpi) })
             : adjusted;
     }
 }

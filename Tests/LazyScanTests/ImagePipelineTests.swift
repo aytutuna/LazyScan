@@ -212,6 +212,41 @@ final class ImagePipelineTests: XCTestCase {
         max(p.r, p.g, p.b) - min(p.r, p.g, p.b)
     }
 
+    private func makeHalftone(size: Int, period: Int) -> CGImage {
+        let ctx = makeContext(width: size, height: size)
+        let ptr = ctx.data!.assumingMemoryBound(to: UInt8.self)
+        let rowBytes = ctx.bytesPerRow
+        for y in 0..<size {
+            for x in 0..<size {
+                let i = y * rowBytes + x * 4
+                let dark = (x / (period / 2) + y / (period / 2)) % 2 != 0
+                ptr[i] = dark ? 0 : 255
+                ptr[i + 1] = dark ? 0 : 255
+                ptr[i + 2] = dark ? 0 : 255
+                ptr[i + 3] = 255
+            }
+        }
+        return ctx.makeImage()!
+    }
+
+    func test_descreenSigmaFollowsDpiFromOnePixel() {
+        XCTAssertEqual(ImagePipeline.descreenSigma(dpi: 150), 1)
+        XCTAssertEqual(ImagePipeline.descreenSigma(dpi: 300), 1)
+        XCTAssertEqual(ImagePipeline.descreenSigma(dpi: 600), 2)
+        XCTAssertEqual(ImagePipeline.descreenSigma(dpi: 1200), 4)
+    }
+
+    func test_descreenFlattensTheHalftoneMoreAtHigherDpi() {
+        var settings = AdjustmentSettings()
+        settings.descreen = true
+        for dpi in [600, 1200] {
+            let input = makeHalftone(size: 96, period: dpi / 75)
+            let atDefault = luminanceStats(ImagePipeline.apply(settings, to: input, colorMode: .color)).stddev
+            let scaled = luminanceStats(ImagePipeline.apply(settings, to: input, colorMode: .color, dpi: dpi)).stddev
+            XCTAssertLessThan(scaled, atDefault * 0.6, "stddev at \(dpi) dpi \(scaled), at 300 dpi \(atDefault)")
+        }
+    }
+
     func test_restoreFadedColorsNeutralizesWhitesAndBlacks() {
         let input = makeYellowedRamp()
         let rgba = renderRGBA(input)

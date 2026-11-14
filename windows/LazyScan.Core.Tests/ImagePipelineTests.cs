@@ -194,6 +194,42 @@ public class ImagePipelineTests
         Assert.InRange(edge.R, 20, 235);
     }
 
+    private static RgbaImage MakeHalftone(int size, int period)
+    {
+        var image = RgbaImage.Filled(size, size, 255, 255, 255);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                if ((x / (period / 2) + y / (period / 2)) % 2 == 0) continue;
+                int i = (y * size + x) * 4;
+                image.Pixels[i] = image.Pixels[i + 1] = image.Pixels[i + 2] = 0;
+            }
+        }
+        return image;
+    }
+
+    [Fact]
+    public void DescreenSigmaFollowsDpiFromOnePixel()
+    {
+        Assert.Equal(1, ImagePipeline.DescreenSigma(150));
+        Assert.Equal(1, ImagePipeline.DescreenSigma(300));
+        Assert.Equal(2, ImagePipeline.DescreenSigma(600));
+        Assert.Equal(4, ImagePipeline.DescreenSigma(1200));
+    }
+
+    [Theory]
+    [InlineData(600)]
+    [InlineData(1200)]
+    public void DescreenFlattensTheHalftoneMoreAtHigherDpi(int dpi)
+    {
+        var input = MakeHalftone(96, dpi / 75);
+        var settings = new AdjustmentSettings { Descreen = true };
+        double atDefault = LuminanceStats(ImagePipeline.Apply(settings, input, ColorMode.Color)).StdDev;
+        double scaled = LuminanceStats(ImagePipeline.Apply(settings, input, ColorMode.Color, dpi)).StdDev;
+        Assert.True(scaled < atDefault * 0.6, $"stddev at {dpi} dpi {scaled:F1}, at 300 dpi {atDefault:F1}");
+    }
+
     [Fact]
     public void SoftenZeroIsIdentity()
     {
@@ -332,9 +368,9 @@ public class ImagePipelineTests
     {
         var input = MakeGradientImage(41, 97);
         for (int i = 0; i < input.Pixels.Length; i += 4) input.Pixels[i + 1] ^= (byte)(i * 7);
-        var whole = ImagePipeline.Apply(settings, input, mode, input.Height);
+        var whole = ImagePipeline.Apply(settings, input, mode, 600, input.Height);
         foreach (int rows in new[] { 1, 5, 32 })
-            Assert.Equal(whole.Pixels, ImagePipeline.Apply(settings, input, mode, rows).Pixels);
+            Assert.Equal(whole.Pixels, ImagePipeline.Apply(settings, input, mode, 600, rows).Pixels);
     }
 
     [Fact]

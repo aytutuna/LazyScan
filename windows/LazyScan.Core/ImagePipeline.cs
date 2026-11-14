@@ -18,11 +18,22 @@ public static class ImagePipeline
     /// Apply adjustments + color-mode conversion. Returns the input instance unchanged when
     /// <c>settings.IsIdentity &amp;&amp; colorMode == Color</c>.
     /// </summary>
-    public static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode) =>
-        Apply(settings, image, colorMode, 0);
+    public static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode,
+                                  int dpi = DefaultDpi) =>
+        Apply(settings, image, colorMode, dpi, 0);
+
+    /// <summary>The resolution the descreen blur is sized for when the caller has no page dpi (previews).</summary>
+    public const int DefaultDpi = 300;
+
+    /// <summary>
+    /// Standard deviation in pixels of the descreen blur: about one pixel at 300 dpi, growing with the
+    /// resolution so a halftone dot keeps the same share of the blur. Twin of Swift <c>descreenSigma(dpi:)</c>.
+    /// </summary>
+    internal static double DescreenSigma(int dpi) => Math.Max(1, dpi / 300.0);
 
     /// <summary><paramref name="bandRows"/> is the rows per band; 0 sizes bands to about two million pixels.</summary>
-    internal static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode, int bandRows)
+    internal static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode, int dpi,
+                                    int bandRows)
     {
         if (settings.IsIdentity && colorMode == ColorMode.Color) return image;
 
@@ -33,7 +44,7 @@ public static class ImagePipeline
 
         // The page goes through in bands of rows plus a halo of the rows the blurs reach into,
         // so a band of doubles is alive at a time instead of three per pixel of the page.
-        int halo = HaloRows(settings);
+        int halo = HaloRows(settings, dpi);
         int coreRows = bandRows > 0 ? bandRows : Math.Max(32, (1 << 21) / Math.Max(w, 1));
         int capacity = Math.Min(h, coreRows + 2 * halo) * w;
         var r = new double[capacity];
@@ -71,7 +82,7 @@ public static class ImagePipeline
                     b[i] = src[first + i * 4 + 2] / 255.0;
                 }
                 int from = (y0 - e0) * w;
-                ApplyBand(settings, colorMode, levels, tables, histograms, from, (y1 - y0) * w,
+                ApplyBand(settings, colorMode, dpi, levels, tables, histograms, from, (y1 - y0) * w,
                           r, g, b, w, e1 - e0, scratch, blurred);
                 if (histograms is not null) continue;
 
@@ -89,20 +100,19 @@ public static class ImagePipeline
     }
 
     /// <summary>Rows above and below a band that the spatial steps of <paramref name="settings"/> read.</summary>
-    private static int HaloRows(AdjustmentSettings settings)
+    private static int HaloRows(AdjustmentSettings settings, int dpi)
     {
         int halo = 0;
         if (settings.Sharpness > 0) halo += 1;
-        else if (settings.Sharpness < 0) halo += BlurReach(settings.Sharpness);
-        if (settings.Descreen) halo += 2;
+        else if (settings.Sharpness < 0) halo += BlurReach(SoftenSigma(settings.Sharpness));
+        if (settings.Descreen) halo += BlurReach(DescreenSigma(dpi)) + 1;
         return halo;
     }
 
     private static double SoftenSigma(double sharpness) => Math.Min(-sharpness, 2) * 2;
 
-    private static int BlurReach(double sharpness)
+    private static int BlurReach(double sigma)
     {
-        double sigma = SoftenSigma(sharpness);
         return sigma >= MinBlurSigma ? Math.Max(1, (int)Math.Ceiling(3 * sigma)) : 0;
     }
 
@@ -112,7 +122,7 @@ public static class ImagePipeline
     /// (<paramref name="corePixels"/> from <paramref name="coreFrom"/>); otherwise
     /// <paramref name="tables"/> holds the step 5 tables of a color scan.
     /// </summary>
-    private static void ApplyBand(AdjustmentSettings settings, ColorMode colorMode, (double Lo, double Gain)? levels,
+    private static void ApplyBand(AdjustmentSettings settings, ColorMode colorMode, int dpi, (double Lo, double Gain)? levels,
                                   byte[][]? tables, int[][]? histograms, int coreFrom, int corePixels,
                                   double[] r, double[] g, double[] b, int w, int h,
                                   double[]? scratch, double[][]? blurred)
@@ -152,10 +162,13 @@ public static class ImagePipeline
             GaussianBlur(b, w, h, radius, scratch);
         }
 
-        // 4. Descreen: tiny blur to break up halftone moiré, then a mild re-sharpen.
+        // 4. Descreen: a small blur to break up halftone moiré, sized by the page's dpi, then a mild re-sharpen.
         if (settings.Descreen)
         {
-            GaussianBlur3x3(r, g, b, w, h, scratch!);
+            double sigma = DescreenSigma(dpi);
+            GaussianBlur(r, w, h, sigma, scratch);
+            GaussianBlur(g, w, h, sigma, scratch);
+            GaussianBlur(b, w, h, sigma, scratch);
             Sharpen(r, g, b, w, h, 0.4, blurred!, scratch!);
         }
 
@@ -256,7 +269,7 @@ public static class ImagePipeline
         }
     }
 
-    /// <summary>Separable [1 2 1]/4 Gaussian, edge-clamped — the radius-1 blur used by descreen.</summary>
+    /// <summary>Separable [1 2 1]/4 Gaussian, edge-clamped — the blur of the unsharp mask.</summary>
     private static void GaussianBlur3x3(double[] r, double[] g, double[] b, int w, int h, double[] scratch)
     {
         BlurPass(r, w, h, scratch);

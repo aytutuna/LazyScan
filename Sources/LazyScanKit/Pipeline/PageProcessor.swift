@@ -377,10 +377,10 @@ public struct AdjustmentStep: PageStep {
 
     public func apply(_ page: ScannedPage) -> ScannedPage {
         let pageMode: ColorMode = self.mode(for: page)
-        let adjusted = page.withImage(ImagePipeline.apply(adjustments, to: page.image, colorMode: pageMode),
+        let adjusted = page.withImage(ImagePipeline.apply(adjustments, to: page.image, colorMode: pageMode, dpi: page.dpi),
                                       colorMode: pageMode)
         guard adjustsAlternate, var version = page.alternate, let other = version.image else { return adjusted }
-        version.image = ImagePipeline.apply(adjustments, to: other, colorMode: colorMode)
+        version.image = ImagePipeline.apply(adjustments, to: other, colorMode: colorMode, dpi: page.dpi)
         return adjusted.withAlternate(version)
     }
 }

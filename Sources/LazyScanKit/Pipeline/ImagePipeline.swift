@@ -4,6 +4,15 @@ import Foundation
 
 public enum ImagePipeline {
 
+    /// The resolution the descreen blur is sized for when the caller has no page dpi (previews, the viewfinder).
+    public static let defaultDPI = 300
+
+    /// Standard deviation in pixels of the descreen blur: about one pixel at 300 dpi, growing with the
+    /// resolution so a halftone dot keeps the same share of the blur. Twin of C# `ImagePipeline.DescreenSigma`.
+    public static func descreenSigma(dpi: Int) -> Double {
+        max(1, Double(dpi) / 300)
+    }
+
     /// Single shared rendering context (sRGB working space), reused across all calls.
     private static let sharedContext: CIContext = {
         let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -15,10 +24,12 @@ public enum ImagePipeline {
 
     /// Apply adjustments + color-mode conversion. Returns the input unchanged when
     /// `settings.isIdentity && colorMode == .color`.
-    public static func apply(_ settings: AdjustmentSettings, to image: CGImage, colorMode: ColorMode) -> CGImage {
+    public static func apply(_ settings: AdjustmentSettings, to image: CGImage, colorMode: ColorMode,
+                             dpi: Int = defaultDPI) -> CGImage {
         if settings.isIdentity && colorMode == .color { return image }
 
-        let ci = adjusted(CIImage(cgImage: image), with: settings, colorMode: colorMode, levelingChannels: true)
+        let ci = adjusted(CIImage(cgImage: image), with: settings, colorMode: colorMode, levelingChannels: true,
+                          dpi: dpi)
 
         // 7. Render, preserving the exact pixel dimensions of the input.
         //    Grayscale/B&W output renders as true 8-bit gray so memory and saved
@@ -37,7 +48,7 @@ public enum ImagePipeline {
     /// each camera frame. `levelingChannels` adds the per-channel levels of Restore faded colors, which has to
     /// read the pixels, so the viewfinder leaves it off.
     public static func adjusted(_ image: CIImage, with settings: AdjustmentSettings, colorMode: ColorMode,
-                                levelingChannels: Bool = false) -> CIImage {
+                                levelingChannels: Bool = false, dpi: Int = defaultDPI) -> CIImage {
         if settings.isIdentity && colorMode == .color { return image }
 
         var ci = image
@@ -80,12 +91,12 @@ public enum ImagePipeline {
             ci = blurred.cropped(to: preBlurExtent)
         }
 
-        // 4. Descreen: tiny blur to break up halftone moiré, then a mild re-sharpen.
+        // 4. Descreen: a small blur to break up halftone moiré, sized by the page's dpi, then a mild re-sharpen.
         //    The blur expands the extent, so crop back to the pre-blur extent.
         if settings.descreen {
             let preBlurExtent = ci.extent
             let blurred = applyFilter("CIGaussianBlur", to: ci.clampedToExtent(), parameters: [
-                "inputRadius": 1.0,
+                "inputRadius": descreenSigma(dpi: dpi),
             ])
             ci = blurred.cropped(to: preBlurExtent)
             ci = applyFilter("CISharpenLuminance", to: ci, parameters: [
