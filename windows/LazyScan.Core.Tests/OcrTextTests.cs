@@ -212,6 +212,15 @@ public class OcrTextTests
     }
 
     [Fact]
+    public void JoinWordsWithoutSpaces_DropsSpacesBetweenCjkWords()
+    {
+        Assert.Equal("東京都", OcrText.JoinWordsWithoutSpaces(["東", "京", "都"]));
+        Assert.Equal("东京Tokyo 2020年", OcrText.JoinWordsWithoutSpaces(["东", "京", "Tokyo", "2020", "年"]));
+        Assert.Equal("こんにちは。", OcrText.JoinWordsWithoutSpaces(["こんにちは", "。"]));
+        Assert.Equal("", OcrText.JoinWordsWithoutSpaces([]));
+    }
+
+    [Fact]
     public void JoinLines_JoinsWordsBrokenOverTwoLines()
     {
         Assert.Equal("I am forwarding it", OcrText.JoinLines(["I am forward-", "ing it"]));

@@ -238,6 +238,31 @@ public static class OcrText
         return sb.ToString();
     }
 
+    /// <summary>
+    /// The words of one line as text for a Chinese or Japanese recognizer, which returns
+    /// characters one by one: no separators, except a space between neighbouring Latin or
+    /// digit runs.
+    /// </summary>
+    public static string JoinWordsWithoutSpaces(IEnumerable<string> words)
+    {
+        var sb = new StringBuilder();
+        foreach (string raw in words)
+        {
+            string word = raw.Trim();
+            if (word.Length == 0) continue;
+            if (sb.Length > 0 && IsLatinOrDigit(LastScalar(sb)) && Rune.TryGetRuneAt(word, 0, out Rune first)
+                && IsLatinOrDigit(first.Value))
+            {
+                sb.Append(' ');
+            }
+            sb.Append(word);
+        }
+        return sb.ToString();
+    }
+
+    private static bool IsLatinOrDigit(int c) =>
+        c <= 0xFFFF && char.IsLetterOrDigit((char)c) && !IsWrittenWithoutSpaces(c);
+
     private static int LastScalar(StringBuilder sb) =>
         sb.Length >= 2 && char.IsLowSurrogate(sb[^1]) && char.IsHighSurrogate(sb[^2])
             ? char.ConvertToUtf32(sb[^2], sb[^1])

@@ -173,10 +173,17 @@ public sealed class WindowsOcrService : IOcrService
             throw ScanException.ScanFailed(e.Message);
         }
 
+        string tag = engine.RecognizerLanguage.LanguageTag;
+        bool withoutWordSpaces = tag.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            || tag.StartsWith("ja", StringComparison.OrdinalIgnoreCase);
         var lines = new List<OcrLine>();
         foreach (var line in result.Lines)
         {
             if (string.IsNullOrWhiteSpace(line.Text)) continue;
+            // The Chinese and Japanese recognizers put a space between characters.
+            string text = withoutWordSpaces
+                ? OcrText.JoinWordsWithoutSpaces(line.Words.Select(word => word.Text))
+                : line.Text;
             // Union of the word rects = the line's bounding box.
             double minX = double.MaxValue, minY = double.MaxValue;
             double maxX = double.MinValue, maxY = double.MinValue;
@@ -192,7 +199,7 @@ public sealed class WindowsOcrService : IOcrService
             // Top-left pixel rect → normalized bottom-left origin.
             var box = new RectD(minX / w, 1.0 - maxY / h, (maxX - minX) / w, (maxY - minY) / h);
             // Windows OCR has no per-line confidence; report 1.
-            lines.Add(new OcrLine(line.Text, box, 1.0f));
+            lines.Add(new OcrLine(text, box, 1.0f));
         }
         return lines;
     }
