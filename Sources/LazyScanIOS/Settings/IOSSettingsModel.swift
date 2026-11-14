@@ -351,7 +351,7 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
     public static var title: String { String(localized: "After saving") }
     public static var footer: String { String(localized: "Runs each time a document is saved. Change it any time.") }
     public static var thenTitle: String { String(localized: "Then") }
-    /// Under Then while Email is checked.
+    /// Under Then while Email is on.
     public static var emailInsteadReason: String { String(localized: "Email is sent instead") }
     /// Under Photos while the save is not JPEG or PNG pictures.
     public static var photosNeedsPicturesReason: String { String(localized: "Only for JPEG and PNG saves") }
@@ -397,7 +397,19 @@ public enum IOSAfterSave: String, CaseIterable, Identifiable {
         self == .print && lazyPrintInstalled ? String(localized: "Lazy Print") : label
     }
 
-    /// The user's defaults key the row's check is kept under.
+    /// The row's full title on the After saving page; `label` stays the short name the Options list shows.
+    public func rowTitle(lazyPrintInstalled: Bool) -> String {
+        switch self {
+        case .send: return String(localized: "Send each saved document to computer")
+        case .print:
+            return lazyPrintInstalled ? String(localized: "Print each saved document in Lazy Print")
+                                      : String(localized: "Print each saved document")
+        case .email: return String(localized: "Email each saved document")
+        case .photos: return String(localized: "Add saved pictures to Photos")
+        }
+    }
+
+    /// The user's defaults key the row's switch is kept under.
     public var key: String { "afterSave.\(rawValue)" }
 
     /// The checked actions in the order they run; Send to computer only while a computer is paired, Photos

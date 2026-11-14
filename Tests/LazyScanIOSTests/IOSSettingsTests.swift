@@ -338,6 +338,10 @@ final class IOSSettingsTests: XCTestCase {
         XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: true), "Lazy Print")
         XCTAssertEqual(IOSAfterSave.print.label(lazyPrintInstalled: false), "Print")
         XCTAssertEqual(IOSAfterSave.email.label(lazyPrintInstalled: true), "Email")
+        XCTAssertEqual(IOSAfterSave.rows.map { (action: IOSAfterSave) -> String in action.rowTitle(lazyPrintInstalled: false) },
+                       ["Email each saved document", "Print each saved document", "Send each saved document to computer",
+                        "Add saved pictures to Photos"])
+        XCTAssertEqual(IOSAfterSave.print.rowTitle(lazyPrintInstalled: true), "Print each saved document in Lazy Print")
     }
 
     func test_afterSave_saysWhenSendToPCsPagesWait() {

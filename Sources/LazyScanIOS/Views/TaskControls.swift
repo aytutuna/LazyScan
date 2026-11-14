@@ -290,10 +290,10 @@ struct RestoreToggle: View {
     }
 }
 
-/// After saving (`IOSAfterSave`): what Save also does, each a check, and under them Then, the settings' own
+/// After saving (`IOSAfterSave`): what Save also does, each a switch, and under them Then, the settings' own
 /// action after a save (`OutputOptions.afterSave`) in the phone's words. The After saving page's content. Send
 /// to computer is dimmed, with its reason under it, while nothing can send, and so is Photos while the save is
-/// not JPEG or PNG pictures; their checks stay as they were. Then is dimmed while Email is checked: the email goes in its place.
+/// not JPEG or PNG pictures; their switches stay as they were. Then is dimmed while Email is on: the email goes in its place.
 struct AfterSaveSection: View {
     @EnvironmentObject private var state: AppState
     @AppStorage(IOSAfterSave.email.key) private var emails: Bool = false
@@ -343,10 +343,9 @@ struct AfterSaveSection: View {
     }
 }
 
-/// A row of After saving: a check kept in the user's defaults under the action's key.
+/// A row of After saving: a switch kept in the user's defaults under the action's key.
 private struct AfterSaveRow: View {
     @EnvironmentObject private var state: AppState
-    @Environment(\.isEnabled) private var isEnabled: Bool
     let action: IOSAfterSave
     @AppStorage private var checked: Bool
 
@@ -356,27 +355,9 @@ private struct AfterSaveRow: View {
     }
 
     var body: some View {
-        Button {
-            checked.toggle()
-        } label: {
-            HStack(spacing: 8) {
-                Text(action.label(lazyPrintInstalled: state.lazyPrintInstalled))
-                    .foregroundStyle(Color.primary)
-                Spacer(minLength: 8)
-                if checked {
-                    Image(systemName: "checkmark")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityHidden(true)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        // The label sets its own colours, so a disabled button does not dim it.
-        .opacity(isEnabled ? 1 : 0.4)
-        .accessibilityHint(Text(hint))
-        .accessibilityAddTraits(checked ? AccessibilityTraits.isSelected : [])
-        .accessibilityIdentifier("options.afterSave.\(action.rawValue)")
+        Toggle(action.rowTitle(lazyPrintInstalled: state.lazyPrintInstalled), isOn: $checked)
+            .accessibilityHint(Text(hint))
+            .accessibilityIdentifier("options.afterSave.\(action.rawValue)")
     }
 
     private var hint: String {
