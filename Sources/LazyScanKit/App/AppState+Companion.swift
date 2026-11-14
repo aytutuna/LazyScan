@@ -146,8 +146,8 @@ extension AppState {
     /// Pairs with the desktop whose code is `uri` (scanned, or its text pasted), as `phoneName`. The
     /// desktop asks its user first, so this can take two minutes. The certificate that answers must be
     /// the one the code names. On success the desktop, its secret and its sync key (from a desktop that
-    /// has the sync folder) are kept, replacing a desktop paired before; pairing the same desktop again
-    /// keeps its sync folder. A refusal is said in `errorMessage` with the desktop's own message, and the
+    /// has the sync folder) are kept as the current desktop, beside the others paired before; pairing
+    /// the same desktop again keeps its sync folder. A refusal is said in `errorMessage` with the desktop's own message, and the
     /// pairing kept before stays. True when the refusal used the code up (declined, expired, used or not a
     /// code the desktop issued), so only a new one can work.
     @discardableResult
@@ -187,7 +187,7 @@ extension AppState {
             if !response.desktopName.isEmpty { desktop.name = response.desktopName }
             desktop.pairedAt = Date()
             desktop.lastSeen = desktop.pairedAt
-            if let before = companionDesktop, before.id == desktop.id {
+            if let before = store.loadAll().first(where: { $0.id == desktop.id }) {
                 desktop.received = before.received
                 desktop.syncFolderBookmark = before.syncFolderBookmark
             }
@@ -235,11 +235,15 @@ extension AppState {
         if let client = desktopClient() {
             try? await client.unpair()
         }
-        companionStore?.remove()
+        companionStore?.remove(desktop)
         companionClient = nil
-        companionDesktop = nil
+        companionDesktop = companionStore?.load()
         countOutbox()
-        companionStatus = .notPaired
+        if let next = companionDesktop, let store = companionStore {
+            companionStatus = store.secret(for: next) == nil ? .unpaired(byDesktop: next.name) : .checking
+        } else {
+            companionStatus = .notPaired
+        }
         statusMessage = CompanionText.unpairedMessage(desktop.name)
     }
 

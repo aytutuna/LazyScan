@@ -19,10 +19,11 @@ public enum PairedDesktopStoreError: Error, Equatable, LocalizedError, Sendable 
     public var errorDescription: String? { CompanionText.notSavedMessage }
 }
 
-/// The desktop this phone is paired with: companion-desktop.json in the folder the shell gives (the
+/// The desktops this phone is paired with: companion-desktop.json in the folder the shell gives (the
 /// iPhone's network folder, kept out of backups), following the settings-file rules (CONTRACTS.md,
-/// rule 6), and its secret and sync key in the `CompanionSecretStore`. One desktop at a time; pairing
-/// with another replaces it. Safe to use from any thread.
+/// rule 6), and each one's secret and sync key in the `CompanionSecretStore`. The file holds an array,
+/// the newest pairing first; a file from before, holding one desktop, still loads and is written as an
+/// array with the next change. Safe to use from any thread.
 public final class PairedDesktopStore: @unchecked Sendable {
     public static let fileName = "companion-desktop.json"
 
@@ -35,28 +36,30 @@ public final class PairedDesktopStore: @unchecked Sendable {
         self.secrets = secrets
     }
 
-    /// The paired desktop; nil when there is none, or its file cannot be read or names no usable
+    /// The desktop paired last; nil when there is none, or the file cannot be read or names no usable
     /// desktop.
     public func load() -> PairedDesktop? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let desktop = StoreFiles.load(PairedDesktop.self, from: url), CompanionProtocol.isValidId(desktop.id),
-              CompanionProtocol.isValidId(desktop.phoneId), desktop.fingerprintBytes != nil, !desktop.addresses.isEmpty
-        else { return nil }
-        return desktop
+        loadAll().first
     }
 
-    /// Keeps `desktop`, its `secret` and its `syncKey` (nil: it gave none, and one kept before goes),
-    /// replacing the desktop paired before (whose secret and sync key go). Throws when the desktop or its
-    /// secret cannot be kept; nothing of the new pairing stays then. A sync key that cannot be kept only
-    /// leaves the phone without the sync folder.
+    /// Every paired desktop, the newest pairing first; those that name no usable desktop are left out.
+    public func loadAll() -> [PairedDesktop] {
+        lock.lock()
+        defer { lock.unlock() }
+        return readAll()
+    }
+
+    /// Keeps `desktop`, its `secret` and its `syncKey` (nil: it gave none, and one kept before goes), as
+    /// the newest pairing; a desktop with the same id is replaced, the others stay. Throws when the
+    /// desktop or its secret cannot be kept; nothing of the new pairing stays then. A sync key that
+    /// cannot be kept only leaves the phone without the sync folder.
     public func save(_ desktop: PairedDesktop, secret: Data, syncKey: Data? = nil) throws {
         lock.lock()
         defer { lock.unlock() }
-        let previous = StoreFiles.load(PairedDesktop.self, from: url)
+        let kept = readAll()
         try secrets.save(secret, for: desktop.id)
-        guard StoreFiles.write(desktop, to: url) else {
-            if previous?.id != desktop.id { try? secrets.delete(for: desktop.id) }
+        guard StoreFiles.write([desktop] + kept.filter { $0.id != desktop.id }, to: url) else {
+            if !kept.contains(where: { $0.id == desktop.id }) { try? secrets.delete(for: desktop.id) }
             throw PairedDesktopStoreError.notSaved
         }
         if let syncKey {
@@ -64,17 +67,17 @@ public final class PairedDesktopStore: @unchecked Sendable {
         } else {
             try? secrets.delete(for: PairedDesktopStore.syncAccount(desktop.id))
         }
-        if let previous = previous, previous.id != desktop.id, !previous.id.isEmpty {
-            try? secrets.delete(for: previous.id)
-            try? secrets.delete(for: PairedDesktopStore.syncAccount(previous.id))
-        }
     }
 
-    /// Writes what changed about the desktop (its name, when it was last seen); best effort.
+    /// Writes what changed about the desktop (its name, when it was last seen); best effort. A desktop
+    /// that is no longer paired stays gone.
     public func update(_ desktop: PairedDesktop) {
         lock.lock()
         defer { lock.unlock() }
-        StoreFiles.write(desktop, to: url)
+        var all = readAll()
+        guard let index = all.firstIndex(where: { $0.id == desktop.id }) else { return }
+        all[index] = desktop
+        StoreFiles.write(all, to: url)
     }
 
     /// The secret of `desktop`; nil when there is none or it cannot be read.
@@ -99,15 +102,46 @@ public final class PairedDesktopStore: @unchecked Sendable {
         try? secrets.delete(for: PairedDesktopStore.syncAccount(desktop.id))
     }
 
-    /// Forgets the paired desktop, its secret and its sync key.
+    /// Forgets `desktop`, its secret and its sync key; the other desktops stay.
+    public func remove(_ desktop: PairedDesktop) {
+        lock.lock()
+        defer { lock.unlock() }
+        try? secrets.delete(for: desktop.id)
+        try? secrets.delete(for: PairedDesktopStore.syncAccount(desktop.id))
+        let all = readAll()
+        let rest = all.filter { $0.id != desktop.id }
+        guard rest.count < all.count else { return }
+        if rest.isEmpty {
+            try? FileManager.default.removeItem(at: url)
+        } else {
+            StoreFiles.write(rest, to: url)
+        }
+    }
+
+    /// Forgets every paired desktop, with their secrets and sync keys.
     public func remove() {
         lock.lock()
         defer { lock.unlock() }
-        if let desktop = StoreFiles.load(PairedDesktop.self, from: url), !desktop.id.isEmpty {
+        for desktop in readAll() {
             try? secrets.delete(for: desktop.id)
             try? secrets.delete(for: PairedDesktopStore.syncAccount(desktop.id))
         }
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// The file's usable desktops. The caller holds the lock. A file written before holds one desktop
+    /// as an object; reading it as an array fails without side effects, so it is tried first.
+    private func readAll() -> [PairedDesktop] {
+        let found: [PairedDesktop]
+        if case .loaded(let single) = StoreFiles.read(PairedDesktop.self, from: url) {
+            found = [single]
+        } else {
+            found = StoreFiles.load([PairedDesktop].self, from: url) ?? []
+        }
+        return found.filter {
+            CompanionProtocol.isValidId($0.id) && CompanionProtocol.isValidId($0.phoneId)
+                && $0.fingerprintBytes != nil && !$0.addresses.isEmpty
+        }
     }
 
     /// The `CompanionSecretStore` account the sync key of the desktop `id` is kept under.

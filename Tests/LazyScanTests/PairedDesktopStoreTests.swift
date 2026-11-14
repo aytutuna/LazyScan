@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import LazyScanKit
 
-// The phone's record of its desktop (companion-desktop.json) and where its secret goes. Swift only:
+// The phone's record of its desktops (companion-desktop.json) and where its secret goes. Swift only:
 // the Windows app is never the phone.
 
 final class PairedDesktopStoreTests: XCTestCase {
@@ -73,7 +73,7 @@ final class PairedDesktopStoreTests: XCTestCase {
         XCTAssertNil(store.load(), "no fingerprint")
     }
 
-    func test_pairingAnotherDesktop_dropsTheFirstsSecret() throws {
+    func test_pairingAnotherDesktop_keepsTheFirst_andTheNewestComesFirst() throws {
         let secrets = MemorySecretStore()
         let store = PairedDesktopStore(directory: folder, secrets: secrets)
         try store.save(desktop(), secret: CompanionVectors.secret)
@@ -81,8 +81,73 @@ final class PairedDesktopStoreTests: XCTestCase {
         try store.save(desktop(id: "desk-0002-abcd"), secret: Data(repeating: 7, count: 32))
 
         XCTAssertEqual(store.load()?.id, "desk-0002-abcd")
+        XCTAssertEqual(store.loadAll().map(\.id), ["desk-0002-abcd", "desk-0001-abcd"])
+        XCTAssertEqual(store.secret(for: desktop()), CompanionVectors.secret)
+        XCTAssertEqual(store.secret(for: desktop(id: "desk-0002-abcd")), Data(repeating: 7, count: 32))
+        XCTAssertEqual(secrets.count, 2)
+
+        try store.save(desktop(), secret: CompanionVectors.secret)
+        XCTAssertEqual(store.loadAll().map(\.id), ["desk-0001-abcd", "desk-0002-abcd"])
+    }
+
+    func test_removeOne_leavesTheOther() throws {
+        let secrets = MemorySecretStore()
+        let store = PairedDesktopStore(directory: folder, secrets: secrets)
+        let key = Data(repeating: 9, count: SyncPackage.keyByteCount)
+        try store.save(desktop(), secret: CompanionVectors.secret, syncKey: key)
+        try store.save(desktop(id: "desk-0002-abcd"), secret: CompanionVectors.secret, syncKey: key)
+
+        store.remove(desktop())
+
+        XCTAssertEqual(store.loadAll().map(\.id), ["desk-0002-abcd"])
         XCTAssertNil(try secrets.load(for: "desk-0001-abcd"))
-        XCTAssertEqual(secrets.count, 1)
+        XCTAssertNil(try secrets.load(for: "desk-0001-abcd.sync"))
+        XCTAssertEqual(secrets.count, 2)
+
+        store.remove(desktop(id: "desk-0002-abcd"))
+        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent(PairedDesktopStore.fileName).path))
+        XCTAssertEqual(secrets.count, 0)
+    }
+
+    func test_update_changesOnlyThatDesktop_andNeverBringsOneBack() throws {
+        let store = PairedDesktopStore(directory: folder, secrets: MemorySecretStore())
+        try store.save(desktop(), secret: CompanionVectors.secret)
+        try store.save(desktop(id: "desk-0002-abcd"), secret: CompanionVectors.secret)
+
+        var renamed = desktop()
+        renamed.name = "Home PC"
+        store.update(renamed)
+        XCTAssertEqual(store.loadAll().map(\.name), ["Office PC", "Home PC"])
+
+        store.remove(renamed)
+        store.update(renamed)
+        XCTAssertEqual(store.loadAll().map(\.id), ["desk-0002-abcd"])
+    }
+
+    func test_load_takesAFileWithOneDesktop_andWritesAnArrayWithTheNextChange() throws {
+        let url = folder.appendingPathComponent(PairedDesktopStore.fileName)
+        let old = try JSONEncoder().encode(desktop())
+        try old.write(to: url)
+        let secrets = MemorySecretStore()
+        try secrets.save(CompanionVectors.secret, for: "desk-0001-abcd")
+        let store = PairedDesktopStore(directory: folder, secrets: secrets)
+
+        XCTAssertEqual(store.loadAll(), [desktop()])
+        XCTAssertEqual(store.secret(for: desktop()), CompanionVectors.secret)
+
+        try store.save(desktop(id: "desk-0002-abcd"), secret: CompanionVectors.secret)
+        let written = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertEqual(written?.count, 2)
+        XCTAssertEqual(store.loadAll().map(\.id), ["desk-0002-abcd", "desk-0001-abcd"])
+    }
+
+    func test_load_skipsAnEntryWithoutAFingerprint() throws {
+        var bare = desktop(id: "desk-0002-abcd")
+        bare.fingerprint = ""
+        try JSONEncoder().encode([bare, desktop()]).write(to: folder.appendingPathComponent(PairedDesktopStore.fileName))
+
+        XCTAssertEqual(PairedDesktopStore(directory: folder, secrets: MemorySecretStore()).loadAll(), [desktop()])
     }
 
     func test_forgetSecret_keepsTheDesktop_removeForgetsBoth() throws {
@@ -125,7 +190,7 @@ final class PairedDesktopStoreTests: XCTestCase {
 
         try store.save(paired, secret: CompanionVectors.secret, syncKey: key)
         try store.save(desktop(id: "desk-0002-abcd"), secret: CompanionVectors.secret, syncKey: key)
-        XCTAssertNil(try secrets.load(for: "desk-0001-abcd.sync"))
+        XCTAssertEqual(try secrets.load(for: "desk-0001-abcd.sync"), key)
         store.remove()
         XCTAssertEqual(secrets.count, 0)
     }
