@@ -85,6 +85,11 @@ jobs:
           LAZYSCAN_REQUIRE_WIA: '1'
           # The corner model was fetched above; its test must find it, never be skipped.
           LAZYSCAN_REQUIRE_CORNER_MODEL: '1'
+      # Packs the Store upload with a placeholder identity so a manifest or makeappx break shows here
+      # instead of at submission. The package stays in the runner's temp folder and is not uploaded.
+      - name: Pack the Store package
+        shell: pwsh
+        run: scripts/make_msix.ps1 -Out "$env:RUNNER_TEMP\msix" -Arch x64 -IdentityName Aytu.LazyScan -Publisher 'CN=00000000-0000-0000-0000-000000000000' -PublisherDisplayName Aytu
       - name: Show the WIA service after the tests
         if: always()
         shell: pwsh
@@ -589,6 +594,15 @@ jobs:
             done
           done
           plutil -extract CFBundleLocalizations xml1 -o - "$app/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - l10n/out/languages.ios.txt
+      # The upload workflow deletes ONNX Runtime's framework copy from the archive, which is only safe when
+      # the executable does not load it.
+      - name: Check ONNX Runtime is linked in
+        run: |
+          app="$RUNNER_TEMP/app-build/Build/Products/Release-iphonesimulator/LazyScan.app"
+          if otool -L "$app/LazyScan" | grep -q onnxruntime; then
+            echo "The executable loads onnxruntime.framework"
+            exit 1
+          fi
       - name: Run the app's smoke test
         timeout-minutes: 45
         run: |
