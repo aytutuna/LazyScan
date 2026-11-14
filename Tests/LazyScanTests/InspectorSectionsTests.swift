@@ -41,7 +41,7 @@ final class InspectorSectionsTests: XCTestCase {
         XCTAssertEqual(InspectorSections.scannerSummary(sharp), "Flatbed \u{00B7} 1200 dpi \u{00B7} Color")
         XCTAssertEqual(InspectorSections.outputSummary(s, shownFormat: .pdf), "PDF \u{00B7} Standard")
         XCTAssertFalse(InspectorSections.outputChanged(s, shownFormat: .pdf))
-        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "")
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode), "")
         XCTAssertEqual(InspectorSections.pagesSummary(s.document), "")
         XCTAssertEqual(InspectorSections.splitSummary(s.document), "Off")
         XCTAssertEqual(InspectorSections.archiveSummary(s.output), "Off")
@@ -84,12 +84,18 @@ final class InspectorSectionsTests: XCTestCase {
         XCTAssertEqual(InspectorSections.outputSummary(s, shownFormat: .text), "Text")
 
         s.adjustments.autoEnhance = true
-        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Auto")
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode), "Auto")
         s.adjustments.cleanUp = true
-        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Edited")
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode), "Edited")
         s.adjustments.cleanUp = false
         s.adjustments.brightness = 0.2
-        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments), "Edited")
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode), "Edited")
+        s.adjustments.brightness = 0
+        s.adjustments.removeSpecks = true
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: .color), "Auto")
+        XCTAssertEqual(InspectorSections.adjustmentsSummary(s.adjustments, colorMode: .blackWhite), "Edited")
+        s.adjustments.removeSpecks = false
+        s.adjustments.brightness = 0.2
 
         s.document.removeBlankPages = true
         s.document.autoRotate = true

@@ -149,7 +149,7 @@ internal static class CompatFixtures
     public static readonly string CurrentFormatPresetsJson = PresetsJsonBeforePdfSize.ReplaceLineEndings("\n").Replace(
         "      ],\n      \"adjustments\"", "      ],\n      \"ocrLanguage\": \"de-DE\",\n      \"adjustments\"").Replace(
         "        \"blackWhiteThreshold\": 0.375\n      }\n",
-        "        \"blackWhiteThreshold\": 0.375,\n        \"cleanUp\": false\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
+        "        \"blackWhiteThreshold\": 0.375,\n        \"cleanUp\": false,\n        \"removeSpecks\": false\n      },\n      \"output\": {\n        \"pdfSize\": \"compact\",\n        \"afterSave\": \"share\",\n"
         + "        \"alsoSaveText\": true,\n        \"archival\": true,\n        \"protect\": true,\n        \"wordPageImages\": false,\n        \"pageSize\": \"a4\"\n      },\n"
         + "      \"duplex\": \"manual\",\n      \"backBinding\": \"shortEdge\",\n      \"paperSize\": \"a4\",\n      \"customPaperWidth\": 8.5,\n      \"customPaperHeight\": 11,\n"
         + "      \"document\": {\n        \"removeBlankPages\": true,\n        \"blankSensitivity\": \"high\",\n"
@@ -377,7 +377,7 @@ public class ModelsCompatTests
         Assert.Equal(
             [
                 "autoEnhance", "brightness", "contrast", "saturation", "sharpness",
-                "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp",
+                "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp", "removeSpecks",
             ],
             adjustments.EnumerateObject().Select(p => p.Name));
         Assert.Equal("grayscale", settings.RootElement.GetProperty("colorMode").GetString());
@@ -1664,6 +1664,26 @@ public class ModelsCompatTests
         Assert.NotEqual(original.Adjustments, clone.Adjustments);
         Assert.NotEqual(original.Adjustments.GetHashCode(), clone.Adjustments.GetHashCode());
         Assert.True(original.Adjustments.IsIdentity);
+    }
+
+    [Fact]
+    public void RemoveSpecks_OffByDefault_AndInFilesWithoutIt()
+    {
+        Assert.False(new ScanSettings().Adjustments.RemoveSpecks);
+        Assert.False(Decode<List<Preset>>(CompatFixtures.PresetsJsonBeforePdfSize)[0].Settings.Adjustments.RemoveSpecks);
+        foreach (string value in new[] { "\"yes\"", "1", "null", "{}", "[]" })
+        {
+            var settings = Decode<ScanSettings>($$"""{"adjustments": {"brightness": 0.25, "removeSpecks": {{value}}}, "resolution": 150}""");
+            Assert.False(settings.Adjustments.RemoveSpecks);
+            Assert.Equal((0.25, 150), (settings.Adjustments.Brightness, settings.Resolution));
+        }
+        var on = new ScanSettings();
+        on.Adjustments.RemoveSpecks = true;
+        var back = Decode<ScanSettings>(CompatFixtures.Encode(on));
+        Assert.True(back.Adjustments.RemoveSpecks);
+        Assert.Equal(on.Adjustments, back.Adjustments);
+        Assert.NotEqual(on.Adjustments, new ScanSettings().Adjustments);
+        Assert.True(on.Adjustments.IsIdentity);
     }
 
     [Fact]

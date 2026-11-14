@@ -315,7 +315,8 @@ struct SaveFolderRow: View {
 }
 
 /// Auto-enhance, the four sliders on one -100…+100 scale with Reset, Remove print dots and Restore faded
-/// colors, which for Photos is the drawer's own switch (`RestoreToggle`: Restore old photos under the hood).
+/// colors, which for Photos is the drawer's own switch (`RestoreToggle`: Restore old photos under the hood), then,
+/// while the color is Black & White, the threshold and Remove specks.
 struct AdjustmentSettingsRows: View {
     @EnvironmentObject private var state: AppState
 
@@ -340,6 +341,9 @@ struct AdjustmentSettingsRows: View {
         }
         if AdjustmentSettingsRows.showsThreshold(state.settings) {
             thresholdSlider
+            Toggle("Remove specks", isOn: $state.settings.adjustments.removeSpecks)
+                .accessibilityHint(Text("Removes small dark specks in black and white scans, not the dot pattern of printed photos"))
+                .accessibilityIdentifier("options.removeSpecks")
         }
     }
 

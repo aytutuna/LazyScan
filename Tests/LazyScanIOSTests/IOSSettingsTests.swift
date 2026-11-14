@@ -107,7 +107,7 @@ final class IOSSettingsTests: XCTestCase {
     func test_optionsRows_look_nameTheFilterOnTheCamera_andWhatIsAdjusted() {
         var s: ScanSettings = ScanSettings()
         XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: true), IOSShell.drawerFilter(s).label)
-        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: false), InspectorSections.adjustmentsSummary(s.adjustments))
+        XCTAssertEqual(IOSOptionsPage.lookValue(s, camera: false), InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode))
         s = IOSShell.settingDrawerFilter(.grayscale, in: s)
         XCTAssertTrue(IOSOptionsPage.lookValue(s, camera: true).hasPrefix(CaptureFilter.grayscale.label))
         s.adjustments = IOSAdjustment.brightness.setting(30, in: s.adjustments)

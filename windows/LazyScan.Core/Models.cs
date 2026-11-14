@@ -506,6 +506,11 @@ public sealed class AdjustmentSettings : IEquatable<AdjustmentSettings>
     /// show-through gone, the print black. The page as scanned stays as the other version.
     /// </summary>
     public bool CleanUp { get; set; } = false;
+    /// <summary>
+    /// Black and white pages lose the isolated specks of up to about 4 pixels at 300 dpi
+    /// (<see cref="ImagePipeline.RemoveSpecks"/>). Twin of Swift <c>removeSpecks</c>.
+    /// </summary>
+    public bool RemoveSpecks { get; set; } = false;
 
     [JsonIgnore]
     public bool IsIdentity =>
@@ -520,12 +525,13 @@ public sealed class AdjustmentSettings : IEquatable<AdjustmentSettings>
         && Contrast == other.Contrast && Saturation == other.Saturation
         && Sharpness == other.Sharpness && Descreen == other.Descreen
         && RestoreFadedColors == other.RestoreFadedColors
-        && BlackWhiteThreshold == other.BlackWhiteThreshold && CleanUp == other.CleanUp;
+        && BlackWhiteThreshold == other.BlackWhiteThreshold && CleanUp == other.CleanUp
+        && RemoveSpecks == other.RemoveSpecks;
 
     public override bool Equals(object? obj) => Equals(obj as AdjustmentSettings);
     public override int GetHashCode() =>
         HashCode.Combine(AutoEnhance, Brightness, Contrast, Saturation,
-                         Sharpness, Descreen, RestoreFadedColors, HashCode.Combine(BlackWhiteThreshold, CleanUp));
+                         Sharpness, Descreen, RestoreFadedColors, HashCode.Combine(BlackWhiteThreshold, CleanUp, RemoveSpecks));
 }
 
 /// <summary>

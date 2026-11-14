@@ -208,11 +208,21 @@ struct LookPage: View {
                         .accessibilityIdentifier("options.cleanUp")
                 }
             } footer: {
-                if mode == IOSScanMode.printer {
-                    Text("Whitens paper and removes show-through")
-                } else if AdjustmentSettingsRows.showsThreshold(state.settings) {
-                    Text("Higher makes more of the page black.")
-                }
+                lookFooter
+            }
+        }
+    }
+
+    private var lookFooter: some View {
+        let showsSpecks: Bool = AdjustmentSettingsRows.showsThreshold(state.settings)
+        return VStack(alignment: .leading, spacing: 8) {
+            if mode == IOSScanMode.printer {
+                Text("Whitens paper and removes show-through")
+            } else if showsSpecks {
+                Text("Higher makes more of the page black.")
+            }
+            if showsSpecks {
+                Text("Removes small dark specks in black and white scans, not the dot pattern of printed photos.")
             }
         }
     }

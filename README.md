@@ -227,7 +227,7 @@ scanners** — including the Epson Perfection V39 II.
   TWAIN and 32-bit-only TWAIN drivers, and addresses added by hand.
 - **Image adjustments**: auto-enhance, brightness / contrast / saturation / sharpness,
   remove print dots (descreen, moiré reduction for printed material), faded-color restoration for
-  old photos, black-and-white threshold.
+  old photos, black-and-white threshold with Remove specks.
 - **Start screen**: pick what you are scanning, in three groups: **Documents** (Document to PDF,
   Stack from feeder, Two-sided document, Separate documents, Scan to Word, Email a document,
   Archive document), **Photos & images** (Photos, Restore old photos, Part of the page as an image) and

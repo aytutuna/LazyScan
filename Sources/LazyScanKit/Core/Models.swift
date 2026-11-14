@@ -449,6 +449,9 @@ public struct AdjustmentSettings: Codable, Equatable, Sendable {
     /// gone, the print black. The page as scanned stays as the other version. Twin of C#
     /// `AdjustmentSettings.CleanUp`.
     public var cleanUp: Bool = false
+    /// Black and white pages lose the isolated specks of up to about 4 pixels at 300 dpi (`ImagePipeline.removeSpecks`).
+    /// Twin of C# `AdjustmentSettings.RemoveSpecks`.
+    public var removeSpecks: Bool = false
 
     public init() {}
 
@@ -460,7 +463,7 @@ public struct AdjustmentSettings: Codable, Equatable, Sendable {
     /// Same keys the synthesized implementation used; `encode(to:)` stays synthesized.
     private enum CodingKeys: String, CodingKey {
         case autoEnhance, brightness, contrast, saturation, sharpness
-        case descreen, restoreFadedColors, blackWhiteThreshold, cleanUp
+        case descreen, restoreFadedColors, blackWhiteThreshold, cleanUp, removeSpecks
     }
 }
 
@@ -478,6 +481,7 @@ extension AdjustmentSettings {
         restoreFadedColors = container.decodeLenient(forKey: .restoreFadedColors, default: restoreFadedColors)
         blackWhiteThreshold = container.decodeLenient(forKey: .blackWhiteThreshold, default: blackWhiteThreshold)
         cleanUp = container.decodeLenient(forKey: .cleanUp, default: cleanUp)
+        removeSpecks = container.decodeLenient(forKey: .removeSpecks, default: removeSpecks)
     }
 }
 

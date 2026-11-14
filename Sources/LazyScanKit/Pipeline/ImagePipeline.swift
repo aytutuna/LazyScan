@@ -13,6 +13,13 @@ public enum ImagePipeline {
         max(1, Double(dpi) / 300)
     }
 
+    /// Largest area in pixels of a dark speck that Remove specks drops: a 2 by 2 dot at 300 dpi, growing with the
+    /// square of the resolution. A full stop or the dot of an i is several times that. Twin of C# `ImagePipeline.SpeckArea`.
+    public static func speckArea(dpi: Int) -> Int {
+        let scale = Double(dpi) / 300
+        return max(1, Int((4 * scale * scale).rounded()))
+    }
+
     /// Single shared rendering context (sRGB working space), reused across all calls.
     private static let sharedContext: CIContext = {
         let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -38,6 +45,9 @@ public enum ImagePipeline {
         if colorMode != .color,
            let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2),
            let output = sharedContext.createCGImage(ci, from: renderRect, format: .L8, colorSpace: gray) {
+            if colorMode == .blackWhite && settings.removeSpecks {
+                return removeSpecks(from: output, dpi: dpi) ?? output
+            }
             return output
         }
         guard let output = sharedContext.createCGImage(ci, from: renderRect) else { return image }
@@ -171,6 +181,67 @@ public enum ImagePipeline {
         }
         context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(w), height: CGFloat(h)))
         return context.makeImage() ?? image
+    }
+
+    // MARK: - Specks
+
+    /// Dark components of at most `speckArea(dpi:)` pixels (4-connected) turned white. Works on the page
+    /// as it is saved, after the threshold, so the pixels are only 0 or 255.
+    static func removeSpecks(from image: CGImage, dpi: Int) -> CGImage? {
+        let width = image.width, height = image.height
+        var bytes = [UInt8](repeating: 0, count: width * height)
+        let drawn: Bool = bytes.withUnsafeMutableBytes { (buffer: UnsafeMutableRawBufferPointer) -> Bool in
+            guard let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2),
+                  let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                                          bitsPerComponent: 8, bytesPerRow: width, space: gray,
+                                          bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        removeSpecks(&bytes, width: width, height: height, maxArea: speckArea(dpi: dpi))
+        guard let gray = CGColorSpace(name: CGColorSpace.genericGrayGamma2_2),
+              let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                       space: gray, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// The labeling itself on one byte per pixel, 0 dark and anything else paper: a flood fill from each
+    /// dark pixel not yet seen, with the component's pixels kept in a list so a small one can be whitened.
+    /// Twin of C# `ImagePipeline.RemoveSpecks`.
+    static func removeSpecks(_ pixels: inout [UInt8], width: Int, height: Int, maxArea: Int) {
+        var seen = [Bool](repeating: false, count: width * height)
+        var component: [Int] = []
+        var stack: [Int32] = []
+        for start in 0..<(width * height) where pixels[start] == 0 && !seen[start] {
+            var area = 0
+            component.removeAll(keepingCapacity: true)
+            stack.append(Int32(start))
+            seen[start] = true
+            while let popped = stack.popLast() {
+                let i = Int(popped)
+                area += 1
+                if area <= maxArea { component.append(i) }
+                let x = i % width, y = i / width
+                for side in 0..<4 {
+                    let n: Int
+                    switch side {
+                    case 0: n = x > 0 ? i - 1 : -1
+                    case 1: n = x < width - 1 ? i + 1 : -1
+                    case 2: n = y > 0 ? i - width : -1
+                    default: n = y < height - 1 ? i + width : -1
+                    }
+                    if n >= 0 && pixels[n] == 0 && !seen[n] {
+                        seen[n] = true
+                        stack.append(Int32(n))
+                    }
+                }
+            }
+            if area <= maxArea {
+                for i in component { pixels[i] = 255 }
+            }
+        }
     }
 
     // MARK: - Faded colors

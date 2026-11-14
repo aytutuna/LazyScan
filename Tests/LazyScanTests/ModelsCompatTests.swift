@@ -151,6 +151,7 @@ private let currentFormatPresetsJSON = presetsJSONBeforePDFSize
             + "      \"customPaperHeight\" : 11,\n      \"customPaperWidth\" : 8.5,\n"
             + "      \"paperSize\" : \"a4\",\n      \"pdfSearchable\" : false")
     .replacingOccurrences(of: "\"brightness\" : 0.25,", with: "\"brightness\" : 0.25,\n        \"cleanUp\" : false,")
+    .replacingOccurrences(of: "\"restoreFadedColors\" : true,", with: "\"removeSpecks\" : false,\n        \"restoreFadedColors\" : true,")
     .replacingOccurrences(of: "\"ocrLanguages\" : [", with: "\"ocrLanguage\" : \"de-DE\",\n      \"ocrLanguages\" : [")
     .replacingOccurrences(of: "\"colorMode\" : \"grayscale\"",
                           with: "\"backBinding\" : \"shortEdge\",\n      \"colorMode\" : \"grayscale\"")
@@ -318,7 +319,7 @@ final class ModelsCompatTests: XCTestCase {
         let adjustments = try XCTUnwrap(settings["adjustments"] as? [String: Any])
         XCTAssertEqual(Set(adjustments.keys), [
             "autoEnhance", "brightness", "contrast", "saturation", "sharpness",
-            "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp",
+            "descreen", "restoreFadedColors", "blackWhiteThreshold", "cleanUp", "removeSpecks",
         ])
         XCTAssertEqual(settings["colorMode"] as? String, "grayscale")
         XCTAssertEqual(settings["source"] as? String, "documentFeeder")
@@ -1550,6 +1551,26 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertTrue(original.adjustments.cleanUp)
         XCTAssertNotEqual(original.adjustments, copy.adjustments)
         XCTAssertTrue(original.adjustments.isIdentity)
+    }
+
+    /// Twin of `RemoveSpecks_OffByDefault_AndInFilesWithoutIt`.
+    func test_removeSpecks_offByDefault_andInFilesWithoutIt() throws {
+        XCTAssertFalse(ScanSettings().adjustments.removeSpecks)
+        XCTAssertFalse(try decode([Preset].self, presetsJSONBeforePDFSize)[0].settings.adjustments.removeSpecks)
+        for value in [#""yes""#, "1", "null", "{}", "[]"] {
+            let settings = try decode(ScanSettings.self,
+                                      #"{"adjustments": {"brightness": 0.25, "removeSpecks": "# + value + #"}, "resolution": 150}"#)
+            XCTAssertFalse(settings.adjustments.removeSpecks, value)
+            XCTAssertEqual(settings.adjustments.brightness, 0.25, value)
+            XCTAssertEqual(settings.resolution, 150, value)
+        }
+        var on = ScanSettings()
+        on.adjustments.removeSpecks = true
+        let back = try JSONDecoder().decode(ScanSettings.self, from: encode(on))
+        XCTAssertTrue(back.adjustments.removeSpecks)
+        XCTAssertEqual(back.adjustments, on.adjustments)
+        XCTAssertNotEqual(on.adjustments, ScanSettings().adjustments)
+        XCTAssertTrue(on.adjustments.isIdentity)
     }
 
     func test_bookFlattenOptions_offByDefault_andInFilesWithoutThem() throws {

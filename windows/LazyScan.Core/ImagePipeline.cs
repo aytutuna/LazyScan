@@ -31,6 +31,16 @@ public static class ImagePipeline
     /// </summary>
     internal static double DescreenSigma(int dpi) => Math.Max(1, dpi / 300.0);
 
+    /// <summary>
+    /// Largest area in pixels of a dark speck that Remove specks drops: a 2 by 2 dot at 300 dpi, growing with the
+    /// square of the resolution. A full stop or the dot of an i is several times that. Twin of Swift <c>speckArea(dpi:)</c>.
+    /// </summary>
+    internal static int SpeckArea(int dpi)
+    {
+        double scale = dpi / 300.0;
+        return Math.Max(1, (int)Math.Round(4 * scale * scale, MidpointRounding.AwayFromZero));
+    }
+
     /// <summary><paramref name="bandRows"/> is the rows per band; 0 sizes bands to about two million pixels.</summary>
     internal static RgbaImage Apply(AdjustmentSettings settings, RgbaImage image, ColorMode colorMode, int dpi,
                                     int bandRows)
@@ -64,6 +74,7 @@ public static class ImagePipeline
             tables = FadedColorTables(histograms);
         }
         Sweep(null);
+        if (settings.RemoveSpecks && colorMode == ColorMode.BlackWhite) RemoveSpecks(output, w, h, SpeckArea(dpi));
         return new RgbaImage(w, h, output);
 
         void Sweep(int[][]? histograms)
@@ -206,6 +217,52 @@ public static class ImagePipeline
                     r[i] = v; g[i] = v; b[i] = v;
                 }
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Dark components (4-connected) of at most <paramref name="maxArea"/> pixels turned white, in the
+    /// black and white page as it is saved, where every pixel is 0 or 255. A flood fill from each dark
+    /// pixel not yet seen, the component's pixels kept in a list so a small one can be whitened.
+    /// Twin of Swift <c>removeSpecks(_:width:height:maxArea:)</c>.
+    /// </summary>
+    internal static void RemoveSpecks(byte[] rgba, int w, int h, int maxArea)
+    {
+        var seen = new bool[w * h];
+        var component = new List<int>();
+        var stack = new Stack<int>();
+        for (int start = 0; start < w * h; start++)
+        {
+            if (rgba[start * 4] != 0 || seen[start]) continue;
+
+            int area = 0;
+            component.Clear();
+            stack.Push(start);
+            seen[start] = true;
+            while (stack.Count > 0)
+            {
+                int i = stack.Pop();
+                area++;
+                if (area <= maxArea) component.Add(i);
+                int x = i % w, y = i / w;
+                if (x > 0) Visit(i - 1);
+                if (x < w - 1) Visit(i + 1);
+                if (y > 0) Visit(i - w);
+                if (y < h - 1) Visit(i + w);
+            }
+            if (area > maxArea) continue;
+
+            foreach (int i in component)
+            {
+                rgba[i * 4] = 255; rgba[i * 4 + 1] = 255; rgba[i * 4 + 2] = 255;
+            }
+        }
+
+        void Visit(int n)
+        {
+            if (rgba[n * 4] != 0 || seen[n]) return;
+            seen[n] = true;
+            stack.Push(n);
         }
     }
 

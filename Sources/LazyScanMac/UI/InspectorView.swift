@@ -1382,7 +1382,7 @@ struct InspectorView: View {
     }
 
     private var adjustmentsSection: some View {
-        let summary: String = InspectorSections.adjustmentsSummary(state.settings.adjustments)
+        let summary: String = InspectorSections.adjustmentsSummary(state.settings.adjustments, colorMode: state.settings.colorMode)
         let color: Bool = state.settings.colorMode == .color
         let colorHelp: String = color ? "" : Self.colorOnlyHelp
         return section(InspectorSections.adjustments, title: InspectorSections.title(InspectorSections.adjustments), summary: summary, changed: !summary.isEmpty) {

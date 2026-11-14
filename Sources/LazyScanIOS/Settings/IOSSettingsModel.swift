@@ -251,7 +251,7 @@ public enum IOSOptionsPage: String, Hashable, Identifiable {
 
     /// Look: the filter new pages get on the camera tab (where it is offered), then what is adjusted.
     public static func lookValue(_ s: ScanSettings, camera: Bool) -> String {
-        let adjusted: String = InspectorSections.adjustmentsSummary(s.adjustments)
+        let adjusted: String = InspectorSections.adjustmentsSummary(s.adjustments, colorMode: s.colorMode)
         guard camera && IOSShell.offersFilters(s) else { return adjusted }
         let filter: String = IOSShell.drawerFilter(s).label
         return adjusted.isEmpty ? filter : filter + " \u{00B7} " + adjusted

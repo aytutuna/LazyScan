@@ -291,4 +291,78 @@ final class ImagePipelineTests: XCTestCase {
         let tables = ImagePipeline.fadedColorTables([narrow, narrow, narrow])
         for v in 0..<256 { XCTAssertEqual(Int(tables[0][v]), v) }
     }
+
+    /// White 64x40 page with dark blocks as (x, y, width, height, kept): a 1 pixel speck, a 2x2 speck, a bar
+    /// of 2 pixels, two specks touching only at a corner (four-connected, so apart), then what stays: a full
+    /// stop (3x3), a 1 pixel stroke 20 long, and an i (a 3x3 dot over a 3x10 stem).
+    private static let speckBlocks: [(Int, Int, Int, Int, Bool)] = [
+        (5, 5, 1, 1, false), (15, 5, 2, 2, false), (25, 5, 1, 2, false),
+        (35, 5, 1, 1, false), (36, 6, 1, 1, false),
+        (45, 5, 3, 3, true), (30, 20, 20, 1, true),
+        (10, 20, 3, 3, true), (10, 25, 3, 10, true),
+    ]
+
+    private func makeSpeckPage() -> CGImage {
+        let ctx = makeContext(width: 64, height: 40)
+        ctx.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 40))
+        ctx.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1))
+        for (x, y, w, h, _) in Self.speckBlocks {
+            ctx.fill(CGRect(x: x, y: 40 - y - h, width: w, height: h))
+        }
+        return ctx.makeImage()!
+    }
+
+    func test_removeSpecks_dropsSmallDarkSpecksAndKeepsText() {
+        var settings = AdjustmentSettings()
+        settings.removeSpecks = true
+        let page = makeSpeckPage()
+        let kept = renderRGBA(ImagePipeline.apply(AdjustmentSettings(), to: page, colorMode: .blackWhite))
+        let cleaned = renderRGBA(ImagePipeline.apply(settings, to: page, colorMode: .blackWhite))
+        for (x, y, w, h, keep) in Self.speckBlocks {
+            for py in y..<(y + h) {
+                for px in x..<(x + w) {
+                    let i = (py * 64 + px) * 4
+                    XCTAssertEqual(kept[i], 0, "block at \(x),\(y) is dark without the option")
+                    XCTAssertEqual(cleaned[i], keep ? 0 : 255, "block at \(x),\(y)")
+                }
+            }
+        }
+        var darkBefore = 0, darkAfter = 0
+        var i = 0
+        while i < kept.count {
+            if kept[i] == 0 { darkBefore += 1 }
+            if cleaned[i] == 0 { darkAfter += 1 }
+            i += 4
+        }
+        XCTAssertEqual(darkBefore - darkAfter, 1 + 4 + 2 + 1 + 1)
+    }
+
+    func test_removeSpecks_isOffForColorAndGray() {
+        var settings = AdjustmentSettings()
+        settings.removeSpecks = true
+        let page = makeSpeckPage()
+        let gray = renderRGBA(ImagePipeline.apply(settings, to: page, colorMode: .grayscale))
+        XCTAssertEqual(gray[(5 * 64 + 5) * 4], 0)
+        XCTAssertEqual(renderRGBA(ImagePipeline.apply(settings, to: page, colorMode: .color))[(5 * 64 + 5) * 4], 0)
+    }
+
+    func test_speckArea_growsWithTheResolutionSquared() {
+        XCTAssertEqual(ImagePipeline.speckArea(dpi: 300), 4)
+        XCTAssertEqual(ImagePipeline.speckArea(dpi: 600), 16)
+        XCTAssertEqual(ImagePipeline.speckArea(dpi: 150), 1)
+        XCTAssertEqual(ImagePipeline.speckArea(dpi: 100), 1)
+        XCTAssertEqual(ImagePipeline.speckArea(dpi: 200), 2)
+    }
+
+    func test_removeSpecks_atTheEdgesAndInOneRow() {
+        var pixels = [UInt8](repeating: 255, count: 6 * 3)
+        pixels[0] = 0                       // corner
+        pixels[5] = 0; pixels[17] = 0       // two on the right edge, apart
+        pixels[13] = 0; pixels[14] = 0      // a pair in the last row
+        ImagePipeline.removeSpecks(&pixels, width: 6, height: 3, maxArea: 1)
+        XCTAssertEqual(pixels.filter { $0 == 0 }.count, 2, "only the pair is bigger than one pixel")
+        ImagePipeline.removeSpecks(&pixels, width: 6, height: 3, maxArea: 2)
+        XCTAssertEqual(pixels.filter { $0 == 0 }.count, 0)
+    }
 }

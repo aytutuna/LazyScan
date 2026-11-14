@@ -91,10 +91,11 @@ public static class InspectorSections
     }
 
     /// <summary>"Edited" when a slider or a switch other than Auto-enhance is changed, "Auto" for Auto-enhance alone, else "".</summary>
-    public static string AdjustmentsSummary(AdjustmentSettings a)
+    public static string AdjustmentsSummary(AdjustmentSettings a, ColorMode colorMode)
     {
         bool edited = a.Brightness != 0 || a.Contrast != 1 || a.Saturation != 1 || a.Sharpness != 0
-                      || a.Descreen || a.RestoreFadedColors || a.CleanUp;
+                      || a.Descreen || a.RestoreFadedColors || a.CleanUp
+                      || (a.RemoveSpecks && colorMode == ColorMode.BlackWhite);
         return edited ? Loc.T("Edited") : a.AutoEnhance ? Loc.T("Auto|enhance") : "";
     }
 
@@ -253,7 +254,7 @@ public static class InspectorSections
     {
         Scanner => ScannerSummary(s),
         Output => OutputSummary(s, ShownFormat(s)),
-        Adjustments => AdjustmentsSummary(s.Adjustments),
+        Adjustments => AdjustmentsSummary(s.Adjustments, s.ColorMode),
         Pages => PagesSummary(s.Document),
         Split => SplitSummary(s.Document),
         Archive => ArchiveSummary(s.Output),

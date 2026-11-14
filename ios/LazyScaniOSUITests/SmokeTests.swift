@@ -105,8 +105,10 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["options.filter"].firstMatch.waitForExistence(timeout: 10),
                       "The camera's filter on the Look page")
         XCTAssertFalse(app.descendants(matching: .any)["options.bwThreshold"].firstMatch.exists, "No threshold in color")
+        XCTAssertFalse(app.descendants(matching: .any)["options.removeSpecks"].firstMatch.exists, "No Remove specks in color")
         app.descendants(matching: .any)["options.filter"].firstMatch.buttons["B&W"].tap()
         XCTAssertTrue(app.scrolledTo("options.bwThreshold").exists, "The threshold with the B&W filter")
+        XCTAssertTrue(app.scrolledTo("options.removeSpecks").exists, "Remove specks with the B&W filter")
         XCTAssertTrue(app.descendants(matching: .any)["options.done"].firstMatch.exists, "Done on a page")
         app.closePage()
         app.closeOptions()

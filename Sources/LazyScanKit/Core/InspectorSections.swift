@@ -103,9 +103,10 @@ public enum InspectorSections {
 
     /// "Edited" when a slider or a switch other than Auto-enhance is changed, "Auto" for Auto-enhance
     /// alone, else "".
-    public static func adjustmentsSummary(_ a: AdjustmentSettings) -> String {
+    public static func adjustmentsSummary(_ a: AdjustmentSettings, colorMode: ColorMode) -> String {
         let sliders: Bool = a.brightness != 0 || a.contrast != 1 || a.saturation != 1 || a.sharpness != 0
         let edited: Bool = sliders || a.descreen || a.restoreFadedColors || a.cleanUp
+            || (a.removeSpecks && colorMode == .blackWhite)
         if edited { return L10n.t("Edited") }
         return a.autoEnhance ? L10n.t("Auto|enhance") : ""
     }
@@ -257,7 +258,7 @@ public enum InspectorSections {
         switch section {
         case scanner: return scannerSummary(s)
         case output: return outputSummary(s, shownFormat: shownFormat(s))
-        case adjustments: return adjustmentsSummary(s.adjustments)
+        case adjustments: return adjustmentsSummary(s.adjustments, colorMode: s.colorMode)
         case pages: return pagesSummary(s.document)
         case split: return splitSummary(s.document)
         case archive: return archiveSummary(s.output)

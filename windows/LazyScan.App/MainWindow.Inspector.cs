@@ -167,7 +167,7 @@ public partial class MainWindow
                     changed = InspectorSections.OutputChanged(s, shownFormat);
                     break;
                 case InspectorSections.Adjustments:
-                    summary = InspectorSections.AdjustmentsSummary(s.Adjustments);
+                    summary = InspectorSections.AdjustmentsSummary(s.Adjustments, s.ColorMode);
                     changed = summary.Length > 0;
                     break;
                 case InspectorSections.Pages:

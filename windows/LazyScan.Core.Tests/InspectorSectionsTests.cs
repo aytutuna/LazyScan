@@ -43,7 +43,7 @@ public class InspectorSectionsTests
         Assert.Equal("Flatbed · 1200 dpi · Color", InspectorSections.ScannerSummary(new ScanSettings { Resolution = 1200 }));
         Assert.Equal("PDF · Standard", InspectorSections.OutputSummary(s, OutputFormat.Pdf));
         Assert.False(InspectorSections.OutputChanged(s, OutputFormat.Pdf));
-        Assert.Equal("", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        Assert.Equal("", InspectorSections.AdjustmentsSummary(s.Adjustments, s.ColorMode));
         Assert.Equal("", InspectorSections.PagesSummary(s.Document));
         Assert.Equal("Off", InspectorSections.SplitSummary(s.Document));
         Assert.Equal("Off", InspectorSections.ArchiveSummary(s.Output));
@@ -87,12 +87,18 @@ public class InspectorSectionsTests
         Assert.Equal("Text", InspectorSections.OutputSummary(s, OutputFormat.Text));
 
         s.Adjustments.AutoEnhance = true;
-        Assert.Equal("Auto", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        Assert.Equal("Auto", InspectorSections.AdjustmentsSummary(s.Adjustments, s.ColorMode));
         s.Adjustments.CleanUp = true;
-        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments, s.ColorMode));
         s.Adjustments.CleanUp = false;
         s.Adjustments.Brightness = 0.2;
-        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments));
+        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments, s.ColorMode));
+        s.Adjustments.Brightness = 0;
+        s.Adjustments.RemoveSpecks = true;
+        Assert.Equal("Auto", InspectorSections.AdjustmentsSummary(s.Adjustments, ColorMode.Color));
+        Assert.Equal("Edited", InspectorSections.AdjustmentsSummary(s.Adjustments, ColorMode.BlackWhite));
+        s.Adjustments.RemoveSpecks = false;
+        s.Adjustments.Brightness = 0.2;
 
         s.Document.RemoveBlankPages = true;
         s.Document.AutoRotate = true;

@@ -410,4 +410,93 @@ public class ImagePipelineTests
         Assert.Equal(0, Pixel(output, 0, 0).R);
         Assert.Equal(255, Pixel(output, 98, 0).R);
     }
+
+    // White 64x40 page with dark blocks as (x, y, width, height, kept): a 1 pixel speck, a 2x2 speck, a bar
+    // of 2 pixels, two specks touching only at a corner (four-connected, so apart), then what stays: a full
+    // stop (3x3), a 1 pixel stroke 20 long, and an i (a 3x3 dot over a 3x10 stem).
+    private static readonly (int X, int Y, int W, int H, bool Kept)[] SpeckBlocks =
+    {
+        (5, 5, 1, 1, false), (15, 5, 2, 2, false), (25, 5, 1, 2, false),
+        (35, 5, 1, 1, false), (36, 6, 1, 1, false),
+        (45, 5, 3, 3, true), (30, 20, 20, 1, true),
+        (10, 20, 3, 3, true), (10, 25, 3, 10, true),
+    };
+
+    private static RgbaImage MakeSpeckPage()
+    {
+        var pixels = new byte[64 * 40 * 4];
+        Array.Fill(pixels, (byte)255);
+        foreach (var (x, y, w, h, _) in SpeckBlocks)
+        {
+            for (int py = y; py < y + h; py++)
+            {
+                for (int px = x; px < x + w; px++)
+                {
+                    int i = (py * 64 + px) * 4;
+                    pixels[i] = pixels[i + 1] = pixels[i + 2] = 0;
+                }
+            }
+        }
+        return new RgbaImage(64, 40, pixels);
+    }
+
+    [Fact]
+    public void RemoveSpecksDropsSmallDarkSpecksAndKeepsText()
+    {
+        var page = MakeSpeckPage();
+        var kept = ImagePipeline.Apply(new AdjustmentSettings(), page, ColorMode.BlackWhite);
+        var cleaned = ImagePipeline.Apply(new AdjustmentSettings { RemoveSpecks = true }, page, ColorMode.BlackWhite);
+        foreach (var (x, y, w, h, keep) in SpeckBlocks)
+        {
+            for (int py = y; py < y + h; py++)
+            {
+                for (int px = x; px < x + w; px++)
+                {
+                    Assert.True(Pixel(kept, px, py).R == 0, $"block at {x},{y} is dark without the option");
+                    Assert.True(Pixel(cleaned, px, py).R == (keep ? 0 : 255), $"block at {x},{y}");
+                }
+            }
+        }
+        int darkBefore = 0, darkAfter = 0;
+        for (int i = 0; i < kept.Pixels.Length; i += 4)
+        {
+            if (kept.Pixels[i] == 0) darkBefore++;
+            if (cleaned.Pixels[i] == 0) darkAfter++;
+        }
+        Assert.Equal(1 + 4 + 2 + 1 + 1, darkBefore - darkAfter);
+    }
+
+    [Fact]
+    public void RemoveSpecksIsOffForColorAndGray()
+    {
+        var page = MakeSpeckPage();
+        var settings = new AdjustmentSettings { RemoveSpecks = true };
+        Assert.Equal(0, Pixel(ImagePipeline.Apply(settings, page, ColorMode.Grayscale), 5, 5).R);
+        Assert.Equal(0, Pixel(ImagePipeline.Apply(settings, page, ColorMode.Color), 5, 5).R);
+    }
+
+    [Fact]
+    public void SpeckAreaGrowsWithTheResolutionSquared()
+    {
+        Assert.Equal(4, ImagePipeline.SpeckArea(300));
+        Assert.Equal(16, ImagePipeline.SpeckArea(600));
+        Assert.Equal(1, ImagePipeline.SpeckArea(150));
+        Assert.Equal(1, ImagePipeline.SpeckArea(100));
+        Assert.Equal(2, ImagePipeline.SpeckArea(200));
+    }
+
+    [Fact]
+    public void RemoveSpecksAtTheEdgesAndInOneRow()
+    {
+        var rgba = new byte[6 * 3 * 4];
+        Array.Fill(rgba, (byte)255);
+        foreach (int i in new[] { 0, 5, 17, 13, 14 })
+        {
+            rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = 0;
+        }
+        ImagePipeline.RemoveSpecks(rgba, 6, 3, 1);
+        Assert.Equal(2, Enumerable.Range(0, 18).Count(i => rgba[i * 4] == 0));
+        ImagePipeline.RemoveSpecks(rgba, 6, 3, 2);
+        Assert.Equal(0, Enumerable.Range(0, 18).Count(i => rgba[i * 4] == 0));
+    }
 }
