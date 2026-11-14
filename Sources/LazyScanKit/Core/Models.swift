@@ -1334,7 +1334,7 @@ public struct PageVersion {
 ///
 /// Coordinate convention: source-image pixels, origin at TOP-LEFT, x right, y down.
 /// `angleDegrees` is the rotation of the rectangle; a positive angle appears as a
-/// CLOCKWISE rotation on screen. Normalized to (-45, 45]. A point (x, y) in the
+/// CLOCKWISE rotation on screen. Normalized to (-45, 45] by detection; the Mac crop editor may set any angle in -180...180. A point (x, y) in the
 /// rectangle's local frame maps to the image as:
 ///   ix = center.x + x*cos(a) - y*sin(a)
 ///   iy = center.y + x*sin(a) + y*cos(a)
