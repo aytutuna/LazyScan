@@ -196,6 +196,45 @@ enum TestPages {
         }
     }
 
+    /// A page filled with tight text: two layers of bold glyph lines every 10 px from 0.6 in in, a short
+    /// running head above and a page number below, on noisy paper that reaches the scan's edge.
+    static func denseTextPage() -> GrayImage {
+        noisy(0x7E57_D3E5, 245) { p in
+            let rng = Rng(0x7E57_D3E6)
+            var y = 60
+            while y + 9 <= 1040 {
+                boldTextLine(&p, 60, y, 730, rng)
+                boldTextLine(&p, 64, y, 726, rng)
+                y += 10
+            }
+            fill(&p, 60, 20, 30, 9, 40)
+            fill(&p, 420, 1070, 8, 9, 40)
+        }
+    }
+
+    /// A boxed form: a 3 px frame from (50, 50) to (800, 1050), rows ruled every 40 px with a column
+    /// rule and a line of text in each, a short running head above and a page number below, on noisy
+    /// paper that reaches the scan's edge.
+    static func boxedForm() -> GrayImage {
+        noisy(0xF0F3_B0C5, 245) { p in
+            let rng = Rng(0xF0F3_B0C6)
+            fill(&p, 50, 50, 750, 3, 40)
+            fill(&p, 50, 1047, 750, 3, 40)
+            fill(&p, 50, 50, 3, 1000, 40)
+            fill(&p, 797, 50, 3, 1000, 40)
+            fill(&p, 300, 50, 2, 1000, 40)
+            var y = 90
+            while y < 1047 {
+                fill(&p, 50, y, 750, 2, 40)
+                boldTextLine(&p, 60, y + 14, 230, rng)
+                boldTextLine(&p, 310, y + 14, 480, rng)
+                y += 40
+            }
+            fill(&p, 60, 20, 30, 9, 40)
+            fill(&p, 420, 1070, 8, 9, 40)
+        }
+    }
+
     /// `page` with its content turned clockwise by `turn` about the center (nearest pixel); what
     /// comes in from outside the page is `fill`.
     static func turned(_ page: GrayImage, _ turn: Turn, fill: UInt8) -> GrayImage {
@@ -484,6 +523,13 @@ enum TestPages {
             }
             cx += 7
         }
+    }
+
+    /// A line of text (`textLine`) drawn twice, one pixel apart, so its strokes are 2 px thick.
+    private static func boldTextLine(_ p: inout [UInt8], _ x: Int, _ y: Int, _ maxWidth: Int, _ rng: Rng) {
+        let seed = rng.next()
+        textLine(&p, x, y, maxWidth, 40, Rng(seed))
+        textLine(&p, x + 1, y + 1, maxWidth, 40, Rng(seed))
     }
 
     /// A straight pen stroke `thickness` px wide from (x0, y0) to (x1, y1).

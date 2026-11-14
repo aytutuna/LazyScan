@@ -190,6 +190,45 @@ internal static class TestPages
     });
 
     /// <summary>
+    /// A page filled with tight text: two layers of bold glyph lines every 10 px from 0.6 in in, a short
+    /// running head above and a page number below, on noisy paper that reaches the scan's edge.
+    /// </summary>
+    public static GrayImage DenseTextPage() => Noisy(0x7E57D3E5, 245, p =>
+    {
+        var rng = new Rng(0x7E57D3E6);
+        for (int y = 60; y + 9 <= 1040; y += 10)
+        {
+            BoldTextLine(p, 60, y, 730, rng);
+            BoldTextLine(p, 64, y, 726, rng);
+        }
+        Fill(p, 60, 20, 30, 9, 40);
+        Fill(p, 420, 1070, 8, 9, 40);
+    });
+
+    /// <summary>
+    /// A boxed form: a 3 px frame from (50, 50) to (800, 1050), rows ruled every 40 px with a column
+    /// rule and a line of text in each, a short running head above and a page number below, on noisy
+    /// paper that reaches the scan's edge.
+    /// </summary>
+    public static GrayImage BoxedForm() => Noisy(0xF0F3B0C5, 245, p =>
+    {
+        var rng = new Rng(0xF0F3B0C6);
+        Fill(p, 50, 50, 750, 3, 40);
+        Fill(p, 50, 1047, 750, 3, 40);
+        Fill(p, 50, 50, 3, 1000, 40);
+        Fill(p, 797, 50, 3, 1000, 40);
+        Fill(p, 300, 50, 2, 1000, 40);
+        for (int y = 90; y < 1047; y += 40)
+        {
+            Fill(p, 50, y, 750, 2, 40);
+            BoldTextLine(p, 60, y + 14, 230, rng);
+            BoldTextLine(p, 310, y + 14, 480, rng);
+        }
+        Fill(p, 60, 20, 30, 9, 40);
+        Fill(p, 420, 1070, 8, 9, 40);
+    });
+
+    /// <summary>
     /// <paramref name="page"/> with its content turned clockwise by <paramref name="turn"/> about the
     /// center (nearest pixel); what comes in from outside the page is <paramref name="fill"/>.
     /// </summary>
@@ -519,6 +558,14 @@ internal static class TestPages
             }
             cx += 7;
         }
+    }
+
+    /// <summary>A line of text (<see cref="TextLine"/>) drawn twice, one pixel apart, so its strokes are 2 px thick.</summary>
+    private static void BoldTextLine(byte[] p, int x, int y, int maxWidth, Rng rng)
+    {
+        uint seed = rng.Next();
+        TextLine(p, x, y, maxWidth, 40, new Rng(seed));
+        TextLine(p, x + 1, y + 1, maxWidth, 40, new Rng(seed));
     }
 
     /// <summary>A straight pen stroke <paramref name="thickness"/> px wide from (x0, y0) to (x1, y1).</summary>

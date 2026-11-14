@@ -173,6 +173,18 @@ public class DocumentGeometryTests
     }
 
     [Fact]
+    public void DetectPage_DenseTextBlockOrBoxedForm_OnAPageFillingTheScan_IsNotCropped()
+    {
+        foreach (var page in new[] { TestPages.DenseTextPage(), TestPages.BoxedForm() })
+        {
+            var search = DocumentGeometry.FindPage(page);
+            Assert.Null(search.Page);
+            Assert.Equal(PageRejection.TextAround, search.Rejection);
+            Assert.Null(DocumentGeometry.Plan(page, crop: true, straighten: false));
+        }
+    }
+
+    [Fact]
     public void DetectPage_PictureOnAPageOfText_IsNeverTakenForTheSheet()
     {
         // A dark 4 × 5 in picture (with a 0.2 in margin) in the middle of a page of text that fills
@@ -191,6 +203,22 @@ public class DocumentGeometryTests
         Assert.Equal(PageRejection.TextAround, search.Rejection);
         Assert.True(search.OutsideMarks > DocumentGeometry.MaxOutsideMarks);
         Assert.Null(DocumentGeometry.Plan(page, crop: true, straighten: false));
+    }
+
+    [Fact]
+    public void DetectPage_SpecksFarAboveAndBelowTheSheet_DoNotStopTheCrop()
+    {
+        var page = TestPages.SheetOnBackdrop(TestPages.Straight, 30, 240, 0, 0x5EE70005);
+        foreach (int y in new[] { 20, 1077 })
+        {
+            for (int dy = 0; dy < 3; dy++)
+            {
+                for (int dx = 0; dx < 3; dx++) page.Pixels[(y + dy) * page.Width + 400 + dx] = 240;
+            }
+        }
+        var search = DocumentGeometry.FindPage(page);
+        Assert.NotNull(search.Page);
+        Assert.Equal(PageRejection.None, search.Rejection);
     }
 
     [Fact]

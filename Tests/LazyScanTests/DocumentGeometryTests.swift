@@ -162,6 +162,15 @@ final class DocumentGeometryTests: XCTestCase {
         XCTAssertEqual(search.rejection, .fillsScan)
     }
 
+    func test_detectPage_denseTextBlockOrBoxedForm_onAPageFillingTheScan_isNotCropped() {
+        for page in [TestPages.denseTextPage(), TestPages.boxedForm()] {
+            let search = DocumentGeometry.findPage(page)
+            XCTAssertNil(search.page)
+            XCTAssertEqual(search.rejection, .textAround)
+            XCTAssertNil(DocumentGeometry.plan(page, crop: true, straighten: false))
+        }
+    }
+
     func test_detectPage_pictureOnAPageOfText_isNeverTakenForTheSheet() {
         // A dark 4 × 5 in picture (with a 0.2 in margin) in the middle of a page of text that fills
         // the scan: cropping to it would cut away the text.
@@ -177,6 +186,18 @@ final class DocumentGeometryTests: XCTestCase {
         XCTAssertEqual(search.rejection, .textAround)
         XCTAssertTrue(search.outsideMarks > DocumentGeometry.maxOutsideMarks)
         XCTAssertNil(DocumentGeometry.plan(page, crop: true, straighten: false))
+    }
+
+    func test_detectPage_specksFarAboveAndBelowTheSheet_doNotStopTheCrop() {
+        var page = TestPages.sheetOnBackdrop(TestPages.straight, backdrop: 30, paper: 240, shadow: 0, seed: 0x5EE7_0005)
+        for y in [20, 1077] {
+            for dy in 0..<3 {
+                for dx in 0..<3 { page.pixels[(y + dy) * page.width + 400 + dx] = 240 }
+            }
+        }
+        let search = DocumentGeometry.findPage(page)
+        XCTAssertNotNil(search.page)
+        XCTAssertEqual(search.rejection, .none)
     }
 
     func test_detectPage_anotherSheetBesideIt_isNotCropped_aSmallObjectIs() {

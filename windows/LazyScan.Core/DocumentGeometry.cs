@@ -126,7 +126,10 @@ public enum PageRejection
     FillsScan,
     /// <summary>It does not fill its rectangle, or is too long and thin, to be a sheet.</summary>
     NotRectangular,
-    /// <summary>Text-like marks lie around it: it is something on a page, not the page.</summary>
+    /// <summary>
+    /// Text-like marks lie around it, or on opposite sides of it (a running head and a page number):
+    /// it is something on a page, not the page.
+    /// </summary>
     TextAround,
     /// <summary>Something else of some size lies beside it (another sheet, a photo): cropping would drop it.</summary>
     OtherObjects,
@@ -229,6 +232,8 @@ public static class DocumentGeometry
     public const double MaxPageAspect = 5;
     /// <summary>Marks larger than this many pixels outside the sheet count as text there.</summary>
     public const int MinOutsideMarkPixels = 6;
+    /// <summary>Marks on opposite sides of the sheet count only within this many pixels of it, where a running head or page number sits.</summary>
+    public const int MaxOppositeDistance = 75;
     /// <summary>
     /// More text-like marks than this outside the sheet mean it is not the sheet but something on
     /// it (a photo on a page that fills the scan): nothing is cropped.
@@ -500,8 +505,8 @@ public static class DocumentGeometry
         var (rawBackground, rawLimit) = Backdrop(gray.Pixels, w, h, gray.Dpi, options.PageContrast);
         var marks = ContentMask(gray.Pixels, rawBackground, rawLimit);
         int minMark = Math.Max(1, (int)Math.Floor(MinOutsideMarkPixels * k * k + 0.5));
-        var (outside, largestOutside) = MarksOutside(marks, w, h, region, 2 * close, minMark);
-        if (outside > MaxOutsideMarks) return Rejected(PageRejection.TextAround, outside);
+        var (outside, largestOutside, opposite) = MarksOutside(marks, w, h, region, 2 * close, minMark, (int)Math.Round(MaxOppositeDistance * k));
+        if (outside > MaxOutsideMarks || opposite) return Rejected(PageRejection.TextAround, outside);
         // …nor another sheet or photo lying beside it, which cropping would drop.
         if (largestOutside >= MaxOutsideObjectFraction * rectArea) return Rejected(PageRejection.OtherObjects, outside);
         return new PageSearch(region, PageRejection.None, region, areaFraction, fill, outside, touches, hull);
@@ -630,9 +635,10 @@ public static class DocumentGeometry
     /// <summary>
     /// The marks of at least <paramref name="minArea"/> pixels (4-connected) of
     /// <paramref name="content"/> lying wholly outside <paramref name="region"/> grown by
-    /// <paramref name="margin"/> pixels, and the area of the largest.
+    /// <paramref name="margin"/> pixels, the area of the largest, and whether there are marks on
+    /// opposite sides of it (above and below, or left and right) and within <paramref name="near"/> pixels of it.
     /// </summary>
-    private static (int Count, int LargestArea) MarksOutside(byte[] content, int w, int h, DetectedPhotoRegion region, int margin, int minArea)
+    private static (int Count, int LargestArea, bool Opposite) MarksOutside(byte[] content, int w, int h, DetectedPhotoRegion region, int margin, int minArea, int near)
     {
         double a = region.AngleDegrees * Math.PI / 180;
         double c = Math.Cos(a), s = Math.Sin(a);
@@ -644,6 +650,7 @@ public static class DocumentGeometry
             return Math.Abs(u) <= hw && Math.Abs(v) <= hh;
         }
         int marks = 0, largest = 0;
+        bool above = false, below = false, left = false, right = false;
         foreach (var component in MaskOps.ConnectedComponents(content, w, h))
         {
             if (component.Area < minArea) continue;
@@ -659,8 +666,21 @@ public static class DocumentGeometry
             if (!outside) continue;
             marks++;
             largest = Math.Max(largest, component.Area);
+            long sumX = 0, sumY = 0;
+            foreach (var (y, span) in component.Rows)
+            {
+                sumX += (span.MinX + span.MaxX) / 2;
+                sumY += y;
+            }
+            double dx = sumX / (double)component.Rows.Count + 0.5 - region.Center.X;
+            double dy = sumY / (double)component.Rows.Count + 0.5 - region.Center.Y;
+            double u = dx * c + dy * s, v = -dx * s + dy * c;
+            above |= v < -hh && v >= -hh - near;
+            below |= v > hh && v <= hh + near;
+            left |= u < -hw && u >= -hw - near;
+            right |= u > hw && u <= hw + near;
         }
-        return (marks, largest);
+        return (marks, largest, (above && below) || (left && right));
     }
 
     /// <summary>

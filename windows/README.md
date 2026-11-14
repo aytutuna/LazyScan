@@ -384,7 +384,8 @@ a textured backdrop such as black felt or a dark archive frame) is something on 
 largest such region, with its gaps closed and the inside of its outline filled (a white sheet on a
 white lid shows only by its shadow), is the sheet when it covers 15–99 % of the scan, fills at
 least 90 % of the rectangle around it, is at most 5 times as long as wide, has no more than 8
-text-like marks around it (otherwise it is a picture on a page that fills the scan) and nothing
+text-like marks around it and none on opposite sides of it (otherwise it is a picture or a block of
+print on a page that fills the scan) and nothing
 beside it as large as 2 % of it (another sheet or photo, which cropping would drop). Its edges give
 the angle, snapped at full resolution, and the shadow or backdrop left along the edges of the crop
 is trimmed (0.04 in at most). A sheet lying along the scan's edge, or no sheet at all, takes its

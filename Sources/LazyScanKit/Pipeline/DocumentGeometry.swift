@@ -148,7 +148,8 @@ public enum PageRejection: Sendable {
     case fillsScan
     /// It does not fill its rectangle, or is too long and thin, to be a sheet.
     case notRectangular
-    /// Text-like marks lie around it: it is something on a page, not the page.
+    /// Text-like marks lie around it, or on opposite sides of it (a running head and a page number):
+    /// it is something on a page, not the page.
     case textAround
     /// Something else of some size lies beside it (another sheet, a photo): cropping would drop it.
     case otherObjects
@@ -247,6 +248,8 @@ public enum DocumentGeometry {
     public static let maxPageAspect = 5.0
     /// Marks larger than this many pixels outside the sheet count as text there.
     public static let minOutsideMarkPixels = 6
+    /// Marks on opposite sides of the sheet count only within this many pixels of it, where a running head or page number sits.
+    public static let maxOppositeDistance = 75
     /// More text-like marks than this outside the sheet mean it is not the sheet but something on
     /// it (a photo on a page that fills the scan): nothing is cropped.
     public static let maxOutsideMarks = 8
@@ -509,8 +512,9 @@ public enum DocumentGeometry {
         let rawBackdrop = backdropOf(gray.pixels, w, h, dpi: gray.dpi, contrast: options.pageContrast)
         let marks = contentMask(gray.pixels, background: rawBackdrop.median, limit: rawBackdrop.limit)
         let minMark = max(1, Int((Double(minOutsideMarkPixels) * k * k + 0.5).rounded(.down)))
-        let outside = marksOutside(marks, w, h, region: region, margin: 2 * closeBy, minArea: minMark)
-        if outside.count > maxOutsideMarks { return rejected(.textAround, marks: outside.count) }
+        let outside = marksOutside(marks, w, h, region: region, margin: 2 * closeBy, minArea: minMark,
+                                  near: Int((Double(maxOppositeDistance) * k).rounded()))
+        if outside.count > maxOutsideMarks || outside.opposite { return rejected(.textAround, marks: outside.count) }
         // …nor another sheet or photo lying beside it, which cropping would drop.
         if Double(outside.largestArea) >= maxOutsideObjectFraction * rectArea {
             return rejected(.otherObjects, marks: outside.count)
@@ -636,9 +640,10 @@ public enum DocumentGeometry {
     }
 
     /// The marks of at least `minArea` pixels (4-connected) of `content` lying wholly outside
-    /// `region` grown by `margin` pixels, and the area of the largest.
+    /// `region` grown by `margin` pixels, the area of the largest, and whether there are marks on
+    /// opposite sides of it (above and below, or left and right) and within `near` pixels of it.
     private static func marksOutside(_ content: [UInt8], _ w: Int, _ h: Int, region: DetectedPhotoRegion,
-                                     margin: Int, minArea: Int) -> (count: Int, largestArea: Int) {
+                                     margin: Int, minArea: Int, near: Int) -> (count: Int, largestArea: Int, opposite: Bool) {
         let a = region.angleDegrees * .pi / 180
         let c = cos(a), s = sin(a)
         let hw = Double(region.size.width) / 2 + Double(margin), hh = Double(region.size.height) / 2 + Double(margin)
@@ -648,7 +653,9 @@ public enum DocumentGeometry {
             let u = dx * c + dy * s, v = -dx * s + dy * c
             return abs(u) <= hw && abs(v) <= hh
         }
+        let nearD = Double(near)
         var marks = 0, largest = 0
+        var above = false, below = false, left = false, right = false
         for component in MaskOps.connectedComponents(mask: content, width: w, height: h) where component.area >= minArea {
             var outside = true
             for (y, span) in component.rows
@@ -659,8 +666,20 @@ public enum DocumentGeometry {
             guard outside else { continue }
             marks += 1
             largest = max(largest, component.area)
+            var sumX = 0, sumY = 0
+            for (y, span) in component.rows {
+                sumX += (span.minX + span.maxX) / 2
+                sumY += y
+            }
+            let dx = Double(sumX) / Double(component.rows.count) + 0.5 - cx
+            let dy = Double(sumY) / Double(component.rows.count) + 0.5 - cy
+            let u = dx * c + dy * s, v = -dx * s + dy * c
+            if v < -hh && v >= -hh - nearD { above = true }
+            if v > hh && v <= hh + nearD { below = true }
+            if u < -hw && u >= -hw - nearD { left = true }
+            if u > hw && u <= hw + nearD { right = true }
         }
-        return (marks, largest)
+        return (marks, largest, (above && below) || (left && right))
     }
 
     /// `coarse` snapped to the sheet's edges at full resolution (`PhotoDetector.refineRegion`), when
