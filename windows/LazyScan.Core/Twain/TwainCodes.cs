@@ -102,6 +102,7 @@ public sealed class TwainException(string operation, int returnCode, int conditi
     public string Operation { get; } = operation;
     public int ReturnCode { get; } = returnCode;
     public int ConditionCode { get; } = conditionCode;
+    public string? Detail { get; } = detail;
 }
 
 /// <summary>Maps TWAIN return and condition codes to <see cref="ScannerProblem"/> and <see cref="ScanException"/>.</summary>
@@ -164,21 +165,42 @@ public static class TwainErrors
     /// window is a cancelled scan; a problem the user can fix gets its own text (with the
     /// condition as detail); anything else is a scan failure naming the condition.
     /// </summary>
-    public static ScanException ToScanException(int returnCode, int conditionCode, string? detail = null)
+    public static ScanException ToScanException(int returnCode, int conditionCode, string? detail = null, string? operation = null)
     {
         if (returnCode == TwainReturnCodes.Cancel) return ScanException.Cancelled();
-        string code = $"TWAIN {ConditionName(conditionCode)}";
+        string code = conditionCode == TwainConditionCodes.Bummer
+            ? $"TWAIN general failure, {ConditionName(conditionCode)}"
+            : $"TWAIN {ConditionName(conditionCode)}";
         if (ProblemFor(returnCode, conditionCode) is { } problem) return ScanException.ForProblem(problem, code);
         if (conditionCode == TwainConditionCodes.LowMemory)
         {
             return ScanException.ScanFailed(() => Loc.T("The scanner driver ran out of memory. Try a lower resolution. ({0})", code));
         }
-        return ScanException.ScanFailed(() => string.IsNullOrWhiteSpace(detail)
-            ? Loc.T("The scanner driver reported an error. ({0})", code)
-            : Loc.T("The scanner driver reported an error: {0} ({1})", Loc.Reword(detail.Trim()), code));
+        return ScanException.ScanFailed(() =>
+        {
+            string? step = StepFor(operation);
+            bool hasDetail = !string.IsNullOrWhiteSpace(detail);
+            if (step is null)
+            {
+                return hasDetail
+                    ? Loc.T("The scanner driver reported an error: {0} ({1})", Loc.Reword(detail!.Trim()), code)
+                    : Loc.T("The scanner driver reported an error. ({0})", code);
+            }
+            return hasDetail
+                ? Loc.T("The scanner driver reported an error while {0}: {1} ({2})", step, Loc.Reword(detail!.Trim()), code)
+                : Loc.T("The scanner driver reported an error while {0}. ({1})", step, code);
+        });
     }
 
-    /// <inheritdoc cref="ToScanException(int, int, string?)"/>
+    private static string? StepFor(string? operation) => operation switch
+    {
+        "Reading the scanner's capabilities" => Loc.T("reading the scanner's settings"),
+        "Setting up the scan" => Loc.T("setting up the scan"),
+        "Starting the scan" => Loc.T("starting the scan"),
+        _ => null,
+    };
+
+    /// <inheritdoc cref="ToScanException(int, int, string?, string?)"/>
     public static ScanException ToScanException(TwainException error) =>
-        ToScanException(error.ReturnCode, error.ConditionCode, null);
+        ToScanException(error.ReturnCode, error.ConditionCode, error.Detail, error.Operation);
 }

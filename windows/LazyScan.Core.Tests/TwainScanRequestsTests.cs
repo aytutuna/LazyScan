@@ -436,6 +436,16 @@ public class TwainScanRequestsTests
         Assert.Null(other.Problem);
         Assert.Equal("Scan failed: The scanner driver reported an error: Lamp failure (TWAIN TWCC_OPERATIONERROR)", other.Message);
 
+        var bummer = TwainErrors.ToScanException(TwainReturnCodes.Failure, TwainConditionCodes.Bummer);
+        Assert.Equal("Scan failed: The scanner driver reported an error. (TWAIN general failure, TWCC_BUMMER)", bummer.Message);
+
+        var step = TwainErrors.ToScanException(new TwainException("Setting up the scan", TwainReturnCodes.Failure, TwainConditionCodes.Bummer, "bad value"));
+        Assert.Equal("Scan failed: The scanner driver reported an error while setting up the scan: bad value (TWAIN general failure, TWCC_BUMMER)", step.Message);
+        var caps = TwainErrors.ToScanException(new TwainException("Reading the scanner's capabilities", TwainReturnCodes.Failure, TwainConditionCodes.Bummer, "no cap"));
+        Assert.Equal("Scan failed: The scanner driver reported an error while reading the scanner's settings: no cap (TWAIN general failure, TWCC_BUMMER)", caps.Message);
+        var bare = TwainErrors.ToScanException(new TwainException("Starting the scan", TwainReturnCodes.Failure, TwainConditionCodes.OperationError));
+        Assert.Equal("Scan failed: The scanner driver reported an error while starting the scan. (TWAIN TWCC_OPERATIONERROR)", bare.Message);
+
         Assert.Equal("condition code 4242", TwainErrors.ConditionName(4242));
         var offline = TwainErrors.ToScanException(new TwainException("Starting the scan", 1, TwainConditionCodes.CheckDeviceOnline));
         Assert.Equal(ScanErrorKind.DeviceUnavailable, offline.Kind);

@@ -264,7 +264,7 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
         {
             case TwainException twain:
                 return new(TwainHelperErrorKind.Twain, twain.Operation, twain.ReturnCode, twain.ConditionCode,
-                           ScanErrorKind.ScanFailed, null, DetailOf(twain));
+                           ScanErrorKind.ScanFailed, null, twain.Detail);
             case ScanException scan when scan.Problem is { } problem:
             {
                 return new(TwainHelperErrorKind.Scan, operation, 0, 0, scan.Kind, problem,
@@ -310,15 +310,6 @@ public sealed record TwainHelperError(TwainHelperErrorKind Kind, string Operatio
         ScanErrorKind.Unsupported => ScanException.Unsupported(detail),
         _ => ScanException.ScanFailed(detail),
     };
-
-    /// <summary>The detail a <see cref="TwainException"/> was made with: its message after the codes.</summary>
-    private static string? DetailOf(TwainException error)
-    {
-        string bare = new TwainException(error.Operation, error.ReturnCode, error.ConditionCode).Message;
-        // "… condition code N)." becomes "… condition code N): detail" with a detail.
-        string withDetail = bare[..^1] + ": ";
-        return error.Message.StartsWith(withDetail, StringComparison.Ordinal) ? error.Message[withDetail.Length..] : null;
-    }
 }
 
 /// <summary>Encodes and decodes the helper protocol's frames (see the file comment).</summary>

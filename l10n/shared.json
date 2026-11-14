@@ -1883,6 +1883,11 @@
   "The scanner driver ran out of memory. Try a lower resolution. ({0})": {},
   "The scanner driver reported an error. ({0})": {},
   "The scanner driver reported an error: {0} ({1})": {},
+  "The scanner driver reported an error while {0}. ({1})": {},
+  "The scanner driver reported an error while {0}: {1} ({2})": {},
+  "reading the scanner's settings": {},
+  "setting up the scan": {},
+  "starting the scan": {},
   "{0} scanned page is still in the queue and not saved.": {
     "other": "{0} scanned pages are still in the queue and not saved."
   },
