@@ -1449,6 +1449,10 @@ struct InspectorView: View {
                             .frame(width: 34, alignment: .trailing)
                     }
                 }
+                Toggle("Remove specks", isOn: $state.settings.adjustments.removeSpecks)
+                    .help("Removes small dark specks in black and white scans")
+                    .accessibilityHint(Text("Removes small dark specks in black and white scans"))
+                    .accessibilityIdentifier("inspector.removeSpecks")
             }
             Toggle("Clean up", isOn: $state.settings.adjustments.cleanUp)
                 .help("Whitens paper and removes show-through")
