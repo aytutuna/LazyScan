@@ -612,7 +612,7 @@ public enum PDFAppender {
     /// new file (see `appendToFile`): the two files swap places, or nothing changes.
     package static func replaceOriginal(_ tmp: String, _ path: String) throws {
         let manager = FileManager.default
-        let backupName: String? = keepsToItsOwnFile ? nil : ".\(UUID().uuidString).pdf.bak"
+        let backupName: String? = keepsToItsOwnFile ? nil : visibleBackupName(for: path)
         do {
             _ = try manager.replaceItemAt(URL(fileURLWithPath: path), withItemAt: URL(fileURLWithPath: tmp),
                                           backupItemName: backupName, options: [])
@@ -638,6 +638,20 @@ public enum PDFAppender {
             }
             throw swapRefusal(path, error)
         }
+    }
+
+    /// A visible name, so the message that names it points at a file Finder shows. A backup an earlier
+    /// failure left in the folder holds somebody's original, so its name is never reused.
+    static func visibleBackupName(for path: String) -> String {
+        let stem = ((path as NSString).lastPathComponent as NSString).deletingPathExtension
+        let folder = (path as NSString).deletingLastPathComponent
+        var name = "\(stem) (original).pdf.bak"
+        var n = 2
+        while FileManager.default.fileExists(atPath: (folder as NSString).appendingPathComponent(name)) {
+            name = "\(stem) (original \(n)).pdf.bak"
+            n += 1
+        }
+        return name
     }
 
     /// The refusal for a replacement that failed for another reason than a missing or read-only file:

@@ -650,7 +650,7 @@ final class PDFAppenderTests: XCTestCase {
 
         // Moved back after a lock: the user is asked to close the other app and try again.
         let path = (folder as NSString).appendingPathComponent("Report.pdf")
-        let backup = try write(folder, ".1111.pdf.bak", original)
+        let backup = try write(folder, "Report (original).pdf.bak", original)
         let back = PDFAppender.putBack(backup, path, cause: POSIXError(.EBUSY))
         XCTAssertEqual(back.problem, .inUse)
         XCTAssertEqual(back.message, PDFAppender.message(.inUse, "Report.pdf"))
@@ -659,7 +659,7 @@ final class PDFAppenderTests: XCTestCase {
 
         // Moved back after another failure: the system's reason is given.
         try FileManager.default.removeItem(atPath: path)
-        let second = try write(folder, ".3333.pdf.bak", original)
+        let second = try write(folder, "Report (original).pdf.bak", original)
         let other = PDFAppender.putBack(second, path, cause: cause)
         XCTAssertEqual(other.problem, .notWritten)
         XCTAssertEqual(contents(path), original)
@@ -667,13 +667,28 @@ final class PDFAppenderTests: XCTestCase {
 
         // Not moved back (the way back leads into a folder that is gone): the refusal says where the file is.
         let gone = ((folder as NSString).appendingPathComponent("gone") as NSString).appendingPathComponent("Contract.pdf")
-        let held = try write(folder, ".2222.pdf.bak", original)
+        let held = try write(folder, "Contract (original).pdf.bak", original)
         let left = PDFAppender.putBack(held, gone, cause: cause)
         XCTAssertEqual(left.problem, .leftAsBackup)
-        XCTAssertEqual(left.message, PDFAppender.leftAsBackupMessage("Contract.pdf", backupName: ".2222.pdf.bak"))
+        XCTAssertEqual(left.message, PDFAppender.leftAsBackupMessage("Contract.pdf", backupName: "Contract (original).pdf.bak"))
         XCTAssertEqual(left.underlying as? Cause, cause)
         XCTAssertFalse(FileManager.default.fileExists(atPath: gone))
         XCTAssertEqual(contents(held), original)
+    }
+
+    func test_theBackupName_isVisible() {
+        XCTAssertEqual(PDFAppender.visibleBackupName(for: "/tmp/Report.v2.pdf"), "Report.v2 (original).pdf.bak")
+        XCTAssertFalse(PDFAppender.visibleBackupName(for: "/tmp/Scan.pdf").hasPrefix("."))
+    }
+
+    func test_theBackupName_skipsABackupAlreadyThere() throws {
+        let folder = try makeFolder()
+        defer { removeFolder(folder) }
+        let path = (folder as NSString).appendingPathComponent("Report.pdf")
+        _ = try write(folder, "Report (original).pdf.bak", PDFFixture.classic())
+        XCTAssertEqual(PDFAppender.visibleBackupName(for: path), "Report (original 2).pdf.bak")
+        _ = try write(folder, "Report (original 2).pdf.bak", PDFFixture.classic())
+        XCTAssertEqual(PDFAppender.visibleBackupName(for: path), "Report (original 3).pdf.bak")
     }
 
     func test_aFailedSwap_isInUseOnlyForALock() {
