@@ -8,6 +8,7 @@ import SystemConfiguration
 public struct LazyScanApp: App {
     @StateObject private var state = AppState.makeForMac()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @AppStorage(keepReceivingKey) private var keepReceiving = false
 
     public init() {
         // Before the state is made: a second copy would clear the first one's kept pages.
@@ -23,7 +24,7 @@ public struct LazyScanApp: App {
     }
 
     public var body: some Scene {
-        WindowGroup("Lazy Scan") {
+        WindowGroup("Lazy Scan", id: "main") {
             // Minimum size lives on ContentView (860x560) — an outer minimum here
             // would override it and force an oversized window on small screens.
             ContentView()
@@ -55,6 +56,10 @@ public struct LazyScanApp: App {
             CommandGroup(replacing: .help) {
                 Link("Lazy Scan Help", destination: URL(string: "https://alazy.app/scan/#support")!)
             }
+        }
+        MenuBarExtra("Lazy Scan", systemImage: "doc.viewfinder", isInserted: $keepReceiving) {
+            BackgroundMenu()
+                .environmentObject(state)
         }
     }
 }

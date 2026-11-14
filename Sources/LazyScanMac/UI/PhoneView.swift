@@ -22,6 +22,7 @@ struct PhoneView: View {
     @State private var footerMessage: String?
     @State private var opening = false
     @State private var confirmReset = false
+    @AppStorage(keepReceivingKey) private var keepReceiving = false
 
     var body: some View {
         let service = state.companionService
@@ -55,6 +56,9 @@ struct PhoneView: View {
                     ForEach(snapshot.networks, id: \.network.id) { network in
                         networkCard(network, service: service)
                     }
+
+                    sectionTitle("Background")
+                    backgroundCard
 
                     sectionTitle("Pair a Phone")
                     pairCard(service)
@@ -191,6 +195,21 @@ struct PhoneView: View {
         if !(await service.setNetworkApproved(network, allowed)) {
             footerMessage = String(localized: "The setting could not be saved.")
         }
+    }
+
+    private var backgroundCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Show Lazy Scan in the menu bar", isOn: $keepReceiving)
+                .toggleStyle(.switch)
+                .help("Adds a Lazy Scan item to the menu bar that shows whether phones can send. Off by default.")
+            Text("Phones can still send after you close the window. Quit Lazy Scan to stop.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .phoneCard()
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Pairing

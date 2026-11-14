@@ -135,7 +135,9 @@ scanners** — including the Epson Perfection V39 II.
   the computer apart, the phone can put its documents, encrypted, in a folder synced through iCloud
   Drive or OneDrive, and the computer watching the same folder takes them from there. On the Mac,
   choose that folder under **Cloud folder** in the Phone window; each phone's key for it stays in the
-  login keychain. On the iPhone, choose it under Cloud folder in Options > My computer.
+  login keychain. On the iPhone, choose it under Cloud folder in Options > My computer. The Mac keeps
+  receiving after the window is closed; **Show Lazy Scan in the menu bar** (Background, off by
+  default) adds an item that shows whether phones can send, with Open Lazy Scan and Quit Lazy Scan.
 - **Rotate pages upright**: a page put in upside down or sideways is turned the right way up by
   reading its text (Vision on the Mac, Windows OCR on Windows). Only a page whose text reads clearly
   better one way is turned; blank pages, separator sheets, photos and pages the reading is unsure
