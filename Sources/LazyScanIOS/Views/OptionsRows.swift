@@ -257,17 +257,20 @@ struct ScannerSettingsRows: View {
     }
 }
 
-/// Where files are saved: the app's own folder in Files (On My iPhone › Lazy Scan) or one picked with
-/// Choose… (iCloud Drive, a USB drive; `IOSSaveFolder`), with Show in Files. Use app folder goes back to
-/// the app's own once another is picked.
+/// Where files are saved: iCloud Drive (Lazy Scan in the iCloud Drive of Files), the app's own folder in
+/// Files (On My iPhone › Lazy Scan) or one picked with Choose… (a USB drive, another cloud; `IOSSaveFolder`),
+/// the one in use checked, with Show in Files.
 struct SaveFolderRow: View {
     @EnvironmentObject private var state: AppState
     @State private var choosing: Bool = false
+    @State private var iCloud: ICloudState?
 
     var body: some View {
         let folder: URL = IOSSavedFiles.shownFolder(state.settings)
         let isAppFolder: Bool = folder.resolvingSymlinksInPath().path == IOSShell.documentsFolder?.resolvingSymlinksInPath().path
-        let name: String = isAppFolder ? "Lazy Scan" : folder.lastPathComponent
+        let inICloud: Bool = IOSSaveFolder.usesICloud(state.settings) && !iCloudOff
+        let busy: Bool = state.isBusy
+        let name: String = isAppFolder || inICloud ? "Lazy Scan" : folder.lastPathComponent
         LabeledContent(IOSSettingsText.saveToLabel) {
             HStack(spacing: 8) {
                 Text(name)
@@ -284,20 +287,24 @@ struct SaveFolderRow: View {
                 .accessibilityLabel(Text(IOSSavedFiles.revealLabel))
             }
         }
-        HStack {
-            Button(IOSSettingsText.chooseFolderLabel) {
-                choosing = true
-            }
-            .accessibilityIdentifier("settings.saveFolder.choose")
-            if state.settings.destinationBookmark != nil {
-                Spacer()
-                Button(IOSSettingsText.appFolderLabel) {
-                    state.settings = IOSSaveFolder.appFolder(state.settings)
-                }
-                .accessibilityIdentifier("settings.saveFolder.app")
-            }
+        SaveFolderChoice(title: IOSSettingsText.iCloudFolderLabel, detail: iCloudDetail, selected: inICloud,
+                         hint: IOSSettingsText.iCloudFolderHint, identifier: "settings.saveFolder.icloud") {
+            chooseICloud()
         }
-        .buttonStyle(.borderless)
+        .disabled(busy)
+        SaveFolderChoice(title: IOSSettingsText.appFolderLabel, detail: nil, selected: appFolderChecked,
+                         hint: IOSSettingsText.appFolderHint, identifier: "settings.saveFolder.app") {
+            state.settings = IOSSaveFolder.appFolder(state.settings)
+        }
+        .disabled(busy)
+        SaveFolderChoice(title: IOSSettingsText.chooseFolderLabel, detail: pickedName, selected: pickedName != nil,
+                         hint: nil, identifier: "settings.saveFolder.choose") {
+            choosing = true
+        }
+        .disabled(busy)
+        .task {
+            iCloud = await IOSSaveFolder.iCloudState()
+        }
         .fileImporter(isPresented: $choosing, allowedContentTypes: [UTType.folder]) { (result: Result<URL, Error>) in
             switch result {
             case .success(let url):
@@ -311,6 +318,91 @@ struct SaveFolderRow: View {
                 state.errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private var iCloudOff: Bool {
+        guard let iCloud else { return false }
+        if case .off = iCloud { return true }
+        return false
+    }
+
+    private var iCloudDetail: String? {
+        switch iCloud {
+        case .off: return IOSSettingsText.iCloudOffLabel
+        case .unavailable: return IOSSettingsText.iCloudUnavailableLabel
+        default: return nil
+        }
+    }
+
+    /// With iCloud gone, saves go to the app's folder (`AppState.destinationDirectory`), so it is the one checked.
+    private var appFolderChecked: Bool {
+        state.settings.destinationBookmark == nil || (IOSSaveFolder.usesICloud(state.settings) && iCloudOff)
+    }
+
+    /// The name of the folder picked with Choose…, nil while iCloud Drive or the app's folder is the choice.
+    private var pickedName: String? {
+        guard state.settings.destinationBookmark != nil, !IOSSaveFolder.usesICloud(state.settings) else { return nil }
+        return IOSSavedFiles.shownFolder(state.settings).lastPathComponent
+    }
+
+    private func chooseICloud() {
+        Task {
+            let found: ICloudState = await IOSSaveFolder.iCloudState()
+            iCloud = found
+            switch found {
+            case .ready(let documents):
+                do {
+                    try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+                    state.settings = try IOSSaveFolder.choosing(documents, in: state.settings)
+                    state.openBookmarkedFolder()
+                } catch {
+                    state.errorMessage = error.localizedDescription
+                }
+            case .off:
+                state.errorMessage = IOSSettingsText.iCloudOffMessage
+            case .unavailable:
+                state.errorMessage = IOSSettingsText.iCloudUnavailableMessage
+            }
+        }
+    }
+}
+
+/// One row of the save folder choice: the title, a line under it, and a checkmark on the trailing edge while
+/// it is the one in use.
+private struct SaveFolderChoice: View {
+    let title: String
+    let detail: String?
+    let selected: Bool
+    let hint: String?
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        let traits: AccessibilityTraits = selected ? .isSelected : []
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .foregroundStyle(Color.primary)
+                    if let detail {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark")
+                        .accessibilityHidden(true)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(Text(detail ?? ""))
+        .accessibilityHint(Text(hint ?? ""))
+        .accessibilityAddTraits(traits)
+        .accessibilityIdentifier(identifier)
     }
 }
 

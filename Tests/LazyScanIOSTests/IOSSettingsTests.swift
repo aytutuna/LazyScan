@@ -624,10 +624,25 @@ final class IOSSettingsTests: XCTestCase {
     }
 
     @MainActor
+    func test_saveFolder_usesICloud_onlyForABookmarkedPathInTheContainer() throws {
+        var settings: ScanSettings = ScanSettings()
+        settings.destinationPath = "/private/var/mobile/Library/Mobile Documents/iCloud~com~lazyscan~lazyscan/Documents"
+        XCTAssertFalse(IOSSaveFolder.usesICloud(settings))
+        settings.destinationBookmark = Data([1])
+        XCTAssertTrue(IOSSaveFolder.usesICloud(settings))
+        settings.destinationPath = "/private/var/mobile/Library/Mobile Documents/com~apple~CloudDocs/Scans"
+        XCTAssertFalse(IOSSaveFolder.usesICloud(settings))
+        XCTAssertFalse(IOSSaveFolder.usesICloud(IOSSaveFolder.appFolder(settings)))
+    }
+
+    @MainActor
     func test_saveFolder_words_theAppsFolderOfAnEarlierInstall_andShowInFiles() throws {
         XCTAssertEqual(IOSSettingsText.saveToLabel, "Save to")
         XCTAssertEqual(IOSSettingsText.chooseFolderLabel, "Choose\u{2026}")
         XCTAssertEqual(IOSSettingsText.appFolderLabel, "Use app folder")
+        XCTAssertEqual(IOSSettingsText.iCloudFolderLabel, "iCloud Drive")
+        XCTAssertEqual(IOSSettingsText.iCloudOffLabel, "iCloud Drive is off")
+        XCTAssertEqual(IOSSettingsText.iCloudUnavailableLabel, "iCloud Drive isn't available")
 
         let documents: URL = try XCTUnwrap(IOSShell.documentsFolder)
         var settings: ScanSettings = ScanSettings()

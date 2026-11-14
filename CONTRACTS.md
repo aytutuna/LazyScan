@@ -4288,9 +4288,13 @@ public enum IOSSettingsText { /* doneLabel, saveAsLabel, lookLabel, pagesLabel, 
 @MainActor public enum IOSSaveFolder {                                // a save folder picked in Files (I3)
     public static func choosing(_ folder: URL, in settings: ScanSettings) throws -> ScanSettings   // bookmark + path
     public static func appFolder(_ settings: ScanSettings) -> ScanSettings   // bookmark cleared, default path
+    public static func iCloudState() async -> ICloudState              // .ready(Documents of the app's iCloud container, looked up off
+                                                                       // the main actor; made when chosen) / .off (no iCloud
+                                                                       // account) / .unavailable (signed in, no container)
+    public static func usesICloud(_ settings: ScanSettings) -> Bool    // a bookmark to that container's Documents folder
     public static func resolve(_ bookmark: Data) -> (folder: URL, bookmark: Data)?   // opened once, kept open
                                                                        // while reachable; a stale bookmark made again;
-                                                                       // nil: out of reach now
+                                                                       // nil: out of reach now, or in the container with iCloud off
 }
 public enum IOSOptionsPage: String, Hashable, Identifiable {          // a page of the Options sheet
     case saveAs, look, pages, separate, fileName, afterSaving, scanner, camera, shareNow, presets, computer, help

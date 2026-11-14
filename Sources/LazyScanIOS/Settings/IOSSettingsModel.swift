@@ -24,6 +24,17 @@ public enum IOSSettingsText {
     /// Picks a save folder in Files (iCloud Drive, a USB drive); Use app folder goes back to the app's own.
     public static var chooseFolderLabel: String { String(localized: "Choose\u{2026}") }
     public static var appFolderLabel: String { String(localized: "Use app folder") }
+    public static var iCloudFolderLabel: String { String(localized: "iCloud Drive") }
+    public static var iCloudFolderHint: String { String(localized: "Saves scans to iCloud Drive, so they show on your other devices") }
+    public static var appFolderHint: String { String(localized: "Saves scans inside this app's folder on this iPhone") }
+    public static var iCloudOffLabel: String { String(localized: "iCloud Drive is off") }
+    public static var iCloudUnavailableLabel: String { String(localized: "iCloud Drive isn't available") }
+    public static var iCloudOffMessage: String {
+        String(localized: "Turn on iCloud Drive for Lazy Scan in Settings > Apple Account > iCloud to save there.")
+    }
+    public static var iCloudUnavailableMessage: String {
+        String(localized: "Lazy Scan can't use iCloud Drive right now. Try again later.")
+    }
     public static var troubleshootLabel: String { String(localized: "Troubleshoot") }
     public static var aboutLabel: String { String(localized: "About") }
     /// The ruler test page, to check that AirPrint copies come out at real size (I16).

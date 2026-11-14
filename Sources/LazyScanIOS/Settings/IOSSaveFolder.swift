@@ -2,6 +2,16 @@
 import LazyScanKit
 import Foundation
 
+/// Whether iCloud Drive can hold the scans right now (`IOSSaveFolder.iCloudState()`).
+public enum ICloudState {
+    /// The Documents folder of the app's container.
+    case ready(URL)
+    /// Signed out of iCloud or iCloud Drive is off.
+    case off
+    /// Signed in, but no container came back.
+    case unavailable
+}
+
 /// A save folder outside the app (iCloud Drive, a USB drive) picked in Options. iOS lets the app back into
 /// such a folder only through a bookmark (`ScanSettings.destinationBookmark`); its path is kept too, so what
 /// reads `destinationPath` works on. The folder is opened once and kept open while the app runs, since it is
@@ -9,6 +19,27 @@ import Foundation
 @MainActor
 public enum IOSSaveFolder {
     private static let kept: IOSBookmarkedFolder = IOSBookmarkedFolder()
+    private static let containerID: String = "iCloud.com.lazyscan.lazyscan"
+    /// The folder name iOS gives the container under Mobile Documents.
+    private static let containerFolder: String = "iCloud~com~lazyscan~lazyscan"
+
+    /// The Documents folder of the app's iCloud container, which Files shows as iCloud Drive > Lazy Scan.
+    /// `url(forUbiquityContainerIdentifier:)` can block, so it runs off the main actor.
+    public static func iCloudState() async -> ICloudState {
+        guard FileManager.default.ubiquityIdentityToken != nil else { return .off }
+        let id: String = containerID
+        let documents: URL? = await Task.detached { () -> URL? in
+            guard let container = FileManager.default.url(forUbiquityContainerIdentifier: id) else { return nil }
+            return container.appendingPathComponent("Documents", isDirectory: true)
+        }.value
+        guard let documents else { return .unavailable }
+        return .ready(documents)
+    }
+
+    /// Whether `settings` save into the iCloud container: a bookmark to its Documents folder.
+    public static func usesICloud(_ settings: ScanSettings) -> Bool {
+        settings.destinationBookmark != nil && settings.destinationPath.hasSuffix("/" + containerFolder + "/Documents")
+    }
 
     /// `settings` saving to `folder`, picked in Files; throws when no bookmark can be made of it. The folder
     /// is opened by `AppState.openBookmarkedFolder()`.
@@ -31,7 +62,13 @@ public enum IOSSaveFolder {
     /// The folder `bookmark` stands for, opened, and the bookmark to keep (made again when iOS says it is
     /// stale); nil when it does not resolve. The folder kept open is resolved again once it is out of reach.
     public static func resolve(_ bookmark: Data) -> (folder: URL, bookmark: Data)? {
-        kept.resolve(bookmark)
+        guard let resolved = kept.resolve(bookmark) else { return nil }
+        // With iCloud off the container's path may still resolve, but a save there would only make a local folder.
+        if FileManager.default.ubiquityIdentityToken == nil, resolved.folder.path.contains("/" + containerFolder + "/") {
+            kept.close()
+            return nil
+        }
+        return resolved
     }
 }
 
