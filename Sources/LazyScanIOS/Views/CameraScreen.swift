@@ -524,8 +524,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     .accessibilityIdentifier("camera.retaken")
             }
             if shownMessage == nil, let status = statusLine {
-                StatusPill(text: status.text, hint: status.hint, action: status.action)
-                    .accessibilityIdentifier(status.identifier)
+                statusView(status)
             }
             if showsZoom {
                 StatusPill(text: IOSCameraText.zoomLabel(zoomValue), hint: nil)
@@ -599,6 +598,16 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         .padding(20)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.12)))
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func statusView(_ status: CameraStatus) -> some View {
+        if let retake = status.retake {
+            GlareBanner(text: status.text, isBusy: state.isBusy || importer.isImporting, onRetake: retake)
+        } else {
+            StatusPill(text: status.text, hint: status.hint, action: status.action)
+                .accessibilityIdentifier(status.identifier)
+        }
     }
 
     /// The one line at the viewfinder's top: the glare hint for the ID card's back, "Tap to take" while the
@@ -868,6 +877,7 @@ private struct CameraStatus {
     let hint: String?
     let identifier: String
     var action: (() -> Void)? = nil
+    var retake: (() -> Void)? = nil
 }
 
 /// A line on a dark capsule over a picture; with `action` it is a button, with a bolt before the words.
@@ -949,25 +959,15 @@ struct GlareBanner: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        if typeSize.isAccessibilitySize {
-            VStack(spacing: 0) {
-                label
-                retakeButton
-            }
-            .frame(minHeight: 44)
-            .background(Capsule().fill(Color.black.opacity(0.75)))
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("camera.glare")
-        } else {
-            HStack(spacing: 4) {
-                label
-                retakeButton
-            }
-            .frame(minHeight: 44)
-            .background(Capsule().fill(Color.black.opacity(0.75)))
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("camera.glare")
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 4))
+        layout {
+            label
+            retakeButton
         }
+        .frame(minHeight: 44)
+        .background(Capsule().fill(Color.black.opacity(0.75)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("camera.glare")
     }
 
     private var label: some View {
