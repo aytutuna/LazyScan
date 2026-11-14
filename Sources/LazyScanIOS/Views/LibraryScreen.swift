@@ -50,6 +50,7 @@ struct LibraryPanel: View {
     /// Closes without an animation; the panel animates the ways out itself.
     let onClose: () -> Void
     @Environment(\.layoutDirection) private var direction: LayoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
     @State private var pull: CGFloat = 0
 
     /// The sign of a horizontal movement toward the leading edge.
@@ -79,8 +80,12 @@ struct LibraryPanel: View {
     }
 
     private func closeSliding() {
-        withAnimation {
+        if reduceMotion {
             onClose()
+        } else {
+            withAnimation {
+                onClose()
+            }
         }
     }
 
@@ -92,11 +97,17 @@ struct LibraryPanel: View {
             .onEnded { (value: DragGesture.Value) in
                 let ahead: CGFloat = value.predictedEndTranslation.width * toward
                 if pull > width / 3 || ahead > width / 2 {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        pull = width
-                    } completion: {
+                    if reduceMotion {
                         onClose()
+                    } else {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            pull = width
+                        } completion: {
+                            onClose()
+                        }
                     }
+                } else if reduceMotion {
+                    pull = 0
                 } else {
                     withAnimation(.easeOut(duration: 0.2)) {
                         pull = 0

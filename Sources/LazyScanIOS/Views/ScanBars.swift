@@ -88,14 +88,19 @@ struct ModeSwitch: View {
 /// The pill at the foot of the picture that shows or hides the controls drawer under it.
 struct DrawerHandle: View {
     @Binding var open: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
 
     var body: some View {
         let symbol: String = open ? "chevron.down" : "chevron.up"
         let label: String = open ? IOSCameraText.hideControls : IOSCameraText.showControls
         let fill: Color = open ? Color.accentColor : Color(white: 0.15)
         return Button {
-            withAnimation(Animation.snappy) {
+            if reduceMotion {
                 open.toggle()
+            } else {
+                withAnimation(Animation.snappy) {
+                    open.toggle()
+                }
             }
         } label: {
             HStack(spacing: 4) {

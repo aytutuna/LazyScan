@@ -29,6 +29,7 @@ public struct IOSRootView: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.horizontalSizeClass) private var sizeClass: UserInterfaceSizeClass?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
     @ObservedObject private var fileActions: IOSFileActions
     @ObservedObject private var importer: IOSImportSession
     private let launchImports: [IOSImportItem]
@@ -125,6 +126,10 @@ public struct IOSRootView: View {
             followMode()
         }
     }
+    private var libraryTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .leading)
+    }
+
 
     public var body: some View {
         layout
@@ -195,7 +200,7 @@ public struct IOSRootView: View {
         .overlay {
             if showsLibrary {
                 LibraryPanel(onClose: closeLibrary)
-                    .transition(.move(edge: .leading))
+                    .transition(libraryTransition)
             }
         }
     }
@@ -288,8 +293,12 @@ public struct IOSRootView: View {
     }
 
     private func openLibrary() {
-        withAnimation {
+        if reduceMotion {
             showsLibrary = true
+        } else {
+            withAnimation {
+                showsLibrary = true
+            }
         }
     }
 
