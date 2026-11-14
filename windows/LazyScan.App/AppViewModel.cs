@@ -3997,6 +3997,39 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         NotifyAll();
     }
 
+    /// <summary>Gives a preset a new name. False for a blank name or a preset that is gone.</summary>
+    public bool RenamePreset(Guid id, string name)
+    {
+        string trimmed = name.Trim();
+        int index = Presets.ToList().FindIndex(p => p.Id == id);
+        if (trimmed.Length == 0 || index < 0) return false;
+        ReplacePreset(index, new Preset { Id = id, Name = trimmed, Settings = Presets[index].Settings });
+        return true;
+    }
+
+    /// <summary>Overwrites a preset's settings with the current ones, keeping its name. False for a preset that is gone.</summary>
+    public bool UpdatePreset(Guid id)
+    {
+        int index = Presets.ToList().FindIndex(p => p.Id == id);
+        if (index < 0) return false;
+        var preset = Presets[index];
+        if (ReplacePreset(index, new Preset { Id = id, Name = preset.Name, Settings = Settings.Clone() }))
+        {
+            SetStatus(Loc.T("Updated “{0}” with the current settings.", preset.Name), new StatusDetail());
+        }
+        return true;
+    }
+
+    // The list shows a name only when its item changes, so the row is swapped for a new one.
+    private bool ReplacePreset(int index, Preset replacement)
+    {
+        Presets[index] = replacement;
+        bool saved = _presetStore.Save([.. Presets]);
+        if (!saved) ErrorMessage = Loc.T("The preset “{0}” could not be saved.", replacement.Name);
+        NotifyAll();
+        return saved;
+    }
+
     // MARK: Live preview
 
     private void SetLastScan(RgbaImage preview)

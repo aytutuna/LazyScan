@@ -2622,6 +2622,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void PresetList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key is Key.F2 && !ViewModel.IsBusy && PresetList.SelectedItem is Preset selected)
+        {
+            e.Handled = true;
+            RenamePreset(selected);
+            return;
+        }
         if (e.Key is not (Key.Enter or Key.Space) || e.OriginalSource is not ListBoxItem { DataContext: Preset preset }) return;
         e.Handled = true;
         StartPreset(preset);
@@ -2647,6 +2653,46 @@ public partial class MainWindow : Window
             ViewModel.SaveCurrentAsPreset(dialog.Value);
         }
     }
+
+    private void RenamePreset(Preset preset)
+    {
+        var dialog = new PromptWindow(Loc.T("Rename preset"), placeholder: Loc.T("Preset name"), okLabel: Loc.T("Rename"), initialText: preset.Name) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Value.Trim() != preset.Name)
+        {
+            bool wasSelected = PresetList.SelectedItem == preset;
+            if (ViewModel.RenamePreset(preset.Id, dialog.Value) && wasSelected)
+            {
+                PresetList.SelectedItem = ViewModel.Presets.FirstOrDefault(p => p.Id == preset.Id);
+            }
+        }
+        PresetList.Focus();
+    }
+
+    private void PresetRename_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOfMenuItem(sender) is { } preset) RenamePreset(preset);
+    }
+
+    private void PresetUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOfMenuItem(sender) is not { } preset) return;
+        bool wasSelected = PresetList.SelectedItem == preset;
+        if (ViewModel.UpdatePreset(preset.Id) && wasSelected)
+        {
+            PresetList.SelectedItem = ViewModel.Presets.FirstOrDefault(p => p.Id == preset.Id);
+        }
+        PresetList.Focus();
+    }
+
+    private void PresetMenuDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOfMenuItem(sender) is not { } preset) return;
+        ViewModel.DeletePreset(preset.Id);
+        PresetList.Focus();
+    }
+
+    private static Preset? PresetOfMenuItem(object sender) =>
+        (sender as MenuItem)?.Parent is ContextMenu { PlacementTarget: FrameworkElement { DataContext: Preset preset } } ? preset : null;
 
     private void DeletePreset_Click(object sender, RoutedEventArgs e)
     {
@@ -3404,7 +3450,8 @@ public sealed class PromptWindow : Window
     /// <param name="message">A line above the box; none when null.</param>
     /// <param name="placeholder">What the empty box says (and its accessible name).</param>
     /// <param name="okLabel">The default button's label.</param>
-    public PromptWindow(string title, string? message = null, string? placeholder = null, string? okLabel = null)
+    /// <param name="initialText">What the box starts with, selected.</param>
+    public PromptWindow(string title, string? message = null, string? placeholder = null, string? okLabel = null, string? initialText = null)
     {
         FlowDirection = App.Flow;
         Title = title;
@@ -3454,6 +3501,11 @@ public sealed class PromptWindow : Window
         panel.Children.Add(buttons);
         Content = panel;
 
-        Loaded += (_, _) => _textBox.Focus();
+        if (initialText is not null) _textBox.Text = initialText;
+        Loaded += (_, _) =>
+        {
+            _textBox.Focus();
+            _textBox.SelectAll();
+        };
     }
 }

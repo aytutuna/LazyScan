@@ -331,6 +331,20 @@
                          SelectionChanged="PresetList_SelectionChanged"
                          PreviewKeyDown="PresetList_PreviewKeyDown"
                          MouseDoubleClick="PresetList_MouseDoubleClick">
+                    <ListBox.Resources>
+                        <!-- On the item container so the Menu key and Shift+F10 reach it from the focused row. -->
+                        <ContextMenu x:Key="PresetMenu">
+                            <MenuItem Header="{loc:T Rename…}" InputGestureText="F2" Click="PresetRename_Click" />
+                            <MenuItem Header="{loc:T Update with current settings}" Click="PresetUpdate_Click" />
+                            <Separator />
+                            <MenuItem Header="{loc:T Delete}" Click="PresetMenuDelete_Click" />
+                        </ContextMenu>
+                    </ListBox.Resources>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavListBoxItemStyle}">
+                            <Setter Property="ContextMenu" Value="{StaticResource PresetMenu}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel>

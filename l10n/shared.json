@@ -2356,6 +2356,12 @@
   },
   "Save preset": {},
   "Preset name": {},
+  "Rename preset": {},
+  "Rename": {},
+  "Rename…": {},
+  "Update with current settings": {},
+  "Delete": {},
+  "Updated “{0}” with the current settings.": {},
   "Save": {},
   "Choose the save folder": {},
   "The {0} receipt has not been saved.\n\nDiscard it?": {

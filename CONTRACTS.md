@@ -2404,7 +2404,7 @@ public enum SettingsStore {
     public static func save(_ settings: ScanSettings)
 }
 ```
-`AppState` keeps the presets (`presets`, `applyPreset`, `saveCurrentAsPreset(named:)`, `deletePreset(id:)`, and since I15 `renamePreset(id:to:)`, which trims the name, refuses a blank one or a preset that is gone and returns whether it renamed, and `updatePreset(id:)`, which overwrites a preset's settings with the current ones and keeps its name and id; both Swift only) and writes them through the store at each change. Storage: JSON under `~/Library/Application Support/Lazy Scan/` (`presets.json`, `settings.json`). The file plumbing (`StoreFiles`, `StoreReadResult`) is internal to the module so other settings files follow the same rules (`PairedDeviceStore`'s `companion-devices.json`); `StoreFiles.write` returns whether the file was written.
+`AppState` keeps the presets (`presets`, `applyPreset`, `saveCurrentAsPreset(named:)`, `deletePreset(id:)`, and since I15 `renamePreset(id:to:)`, which trims the name, refuses a blank one or a preset that is gone and returns whether it renamed, and `updatePreset(id:)`, which overwrites a preset's settings with the current ones and keeps its name and id; both Swift only in the Kit; the Windows app has the same two in AppViewModel (RenamePreset, UpdatePreset)) and writes them through the store at each change. Storage: JSON under `~/Library/Application Support/Lazy Scan/` (`presets.json`, `settings.json`). The file plumbing (`StoreFiles`, `StoreReadResult`) is internal to the module so other settings files follow the same rules (`PairedDeviceStore`'s `companion-devices.json`); `StoreFiles.write` returns whether the file was written.
 
 ### Output/PDFBuilder.swift
 
