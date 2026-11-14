@@ -4641,6 +4641,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     DocumentDate = documentDate,
                     Label = label,
                 });
+        baseName = NamingTemplate.FitToPathLength(dir, baseName, fileExtension);
         string path = NamingTemplate.UniquePath(dir, baseName, fileExtension);
         string folder = Path.GetDirectoryName(path)!;
         try { Directory.CreateDirectory(folder); }

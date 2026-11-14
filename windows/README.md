@@ -1659,7 +1659,7 @@ Known divergences from the macOS app (all documented in the source):
   file's bytes as they were, and both refuse a password-protected file. What stays each app's own
   is putting the new file in place (`File.Replace` here, `FileManager.replaceItemAt` on the Mac).
   Nothing about it is stored on either.
-- Filename sanitization strips the full Windows-reserved character set, not just `:`; a `/` in the template separates folders, each part sanitized and `.`/`..` dropped (`OutputPath` makes them, `SavedFiles.List` reads them down to four levels).
+- Filename sanitization strips the full Windows-reserved character set, not just `:`; a `/` in the template separates folders, each part sanitized (trailing dots cut, device names such as `CON` and `NUL` get an underscore) and `.`/`..` dropped (`OutputPath` makes them, `SavedFiles.List` reads them down to four levels); `NamingTemplate.FitToPathLength` shortens the file name to keep the path within 255 characters and refuses a save folder that leaves fewer than 5 for the name.
 - WIA hot-plug comes from WIA's connect and disconnect events (macOS gets add/remove callbacks
   from ICDeviceBrowser instead): each one re-reads the list within seconds, as does a Windows
   Scan entry going away. A poll stays as the fallback for a missed event or WIA not running

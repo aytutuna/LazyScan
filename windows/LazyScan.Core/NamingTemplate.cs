@@ -186,8 +186,9 @@ public sealed partial class NamingTemplate
 
     /// <summary>
     /// One folder or file name: no Windows-reserved characters, no leading dots (a hidden file on
-    /// Mac and iPhone; "." and ".." end up empty), no leading/trailing whitespace, no doubled
-    /// spaces. Empty when nothing is left.
+    /// Mac and iPhone; "." and ".." end up empty), no trailing dots (Windows drops them, so
+    /// "Scan." and "Scan" would be one name), no leading/trailing whitespace, no doubled spaces,
+    /// and no device name (see <see cref="NotADeviceName"/>). Empty when nothing is left.
     /// </summary>
     private static string SanitizedPart(string name)
     {
@@ -198,12 +199,68 @@ public sealed partial class NamingTemplate
             if (c is ':' or '\\' or '*' or '?' or '"' or '<' or '>' or '|' || char.IsControl(c))
                 chars[i] = '-';
         }
-        string result = new string(chars).TrimStart('.').Trim();
+        string result = new string(chars).TrimStart('.').Trim().TrimEnd('.', ' ');
         while (result.Contains("  "))
         {
             result = result.Replace("  ", " ");
         }
-        return result;
+        return NotADeviceName(result);
+    }
+
+    private static readonly HashSet<string> DeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³",
+    };
+
+    /// <summary>
+    /// Windows opens CON, NUL, COM1 and the like as devices, with any extension ("CON.pdf"), so
+    /// an underscore goes after the device name: "Con" becomes "Con_", "nul.x" becomes "nul_.x".
+    /// </summary>
+    private static string NotADeviceName(string name)
+    {
+        int dot = name.IndexOf('.');
+        string stem = dot < 0 ? name : name[..dot];
+        return DeviceNames.Contains(stem.TrimEnd()) ? stem + "_" + name[stem.Length..] : name;
+    }
+
+    /// <summary>The longest path a saved file may have; Explorer and most viewers stop at 260.</summary>
+    private const int MaxPathLength = 255;
+
+    /// <summary>Room kept in the path for the " 2", " 3", ... that <see cref="UniquePath"/> may add.</summary>
+    private const int CounterReserve = 4;
+
+    /// <summary>A file name shorter than this is not worth saving; the folder is the problem.</summary>
+    private const int MinNameLength = 5;
+
+    /// <summary>
+    /// <paramref name="baseName"/> (as <see cref="BaseFilename(NamingContext)"/> returns it) with its
+    /// file name cut so that folder, name, counter suffix and extension stay within
+    /// <see cref="MaxPathLength"/>. Throws when the folders leave less than
+    /// <see cref="MinNameLength"/> characters for the name.
+    /// </summary>
+    public static string FitToPathLength(string directory, string baseName, string fileExtension)
+    {
+        int slash = baseName.LastIndexOf('/');
+        string folders = baseName[..(slash + 1)];
+        string stem = baseName[(slash + 1)..];
+        string folder = Path.GetFullPath(Path.Combine(directory, folders)).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        int room = MaxPathLength - (folder.Length + 1) - (1 + fileExtension.Length) - CounterReserve;
+        if (room < MinNameLength)
+        {
+            throw ScanException.ExportFailed($"{Loc.T("The path of the save folder is too long. Choose a folder with a shorter path.")} {SaveErrors.PagesKept}");
+        }
+        if (stem.Length <= room) return baseName;
+
+        var cut = new StringBuilder();
+        var elements = StringInfo.GetTextElementEnumerator(stem);
+        while (elements.MoveNext() && cut.Length + elements.GetTextElement().Length <= room)
+        {
+            cut.Append(elements.GetTextElement());
+        }
+        string fitted = cut.ToString().TrimEnd('.', ' ');
+        return folders + NotADeviceName(fitted.Length == 0 ? "Scan" : fitted);
     }
 }
 

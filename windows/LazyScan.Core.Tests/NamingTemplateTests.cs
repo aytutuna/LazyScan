@@ -127,6 +127,52 @@ public class NamingTemplateTests
     }
 
     [Fact]
+    public void DeviceNamesGetAnUnderscore()
+    {
+        Assert.Equal("Con_", Render("{label}", new NamingContext(1, FixedDate(), ScanIntent.Document) { Label = "Con" }));
+        Assert.Equal("nul_", Render("{label}", new NamingContext(1, FixedDate(), ScanIntent.Document) { Label = "nul" }));
+        Assert.Equal("com1_.x", Render("com1.x"));
+        Assert.Equal("a/Aux_/Lpt9_", Render("a/Aux/Lpt9"));
+        Assert.Equal("Console", Render("Console"));
+        Assert.Equal("Com10", Render("Com10"));
+    }
+
+    [Fact]
+    public void TrailingDotsAreStripped()
+    {
+        Assert.Equal("scan", Render("scan..."));
+        Assert.Equal("a/scan", Render("a./scan. "));
+        Assert.Equal("Con_", Render("Con."));
+    }
+
+    [Fact]
+    public void FitToPathLengthCutsTheName()
+    {
+        string dir = "C:\\" + new string('d', 237);
+        string fitted = NamingTemplate.FitToPathLength(dir, new string('n', 100), "pdf");
+        Assert.True(fitted.Length >= 5);
+        Assert.True(Path.Combine(dir, fitted + " 99.pdf").Length < 260);
+        Assert.Equal("short", NamingTemplate.FitToPathLength(@"C:\Scans", "short", "pdf"));
+    }
+
+    [Fact]
+    public void FitToPathLengthCountsSubfolders()
+    {
+        string fitted = NamingTemplate.FitToPathLength("C:\\" + new string('d', 200), "2026/" + new string('n', 100), "pdf");
+        Assert.StartsWith("2026/", fitted);
+        Assert.True(Path.Combine("C:\\" + new string('d', 200), fitted + " 99.pdf").Length < 260);
+    }
+
+    [Fact]
+    public void FitToPathLengthRefusesAFolderThatIsTooLong()
+    {
+        var e = Assert.Throws<ScanException>(() =>
+            NamingTemplate.FitToPathLength("C:\\" + new string('d', 252), "Scan", "pdf"));
+        Assert.Equal(ScanErrorKind.ExportFailed, e.Kind);
+        Assert.Equal("Saving failed: The path of the save folder is too long. Choose a folder with a shorter path. The pages are still in the queue.", e.Message);
+    }
+
+    [Fact]
     public void CombinedTemplate() =>
         Assert.Equal("Scan 2026-08-13 4", Render("Scan {date} {counter}", counter: 4));
 
@@ -198,7 +244,7 @@ public class NamingTemplateTests
         // Characters a file name cannot hold become "-"; tokens in a name are not expanded.
         Assert.Equal("ACME-Smith - 2026 Q3", Render("{label}", context with { Label = "ACME/Smith : 2026 Q3" }));
         // A name never makes folders, as a template's slash does.
-        Assert.Equal("2026/ACME-..", Render("{year}/{label}", context with { Label = "ACME/.." }));
+        Assert.Equal("2026/ACME-", Render("{year}/{label}", context with { Label = "ACME/.." }));
         Assert.Equal("{date} 14", Render("{label} {counter}", context with { Label = "{date}" }));
     }
 

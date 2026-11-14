@@ -2904,6 +2904,7 @@
   "Files cannot be saved in “{0}”. It may be read-only. Choose another folder.": {},
   "The folder “{0}” was not found. Choose another folder.": {},
   "Could not save in “{0}”.": {},
+  "The path of the save folder is too long. Choose a folder with a shorter path.": {},
   "JPEG quality": {},
   "B&W threshold": {},
   "Min photo side": {},
