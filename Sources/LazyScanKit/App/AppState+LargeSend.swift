@@ -45,9 +45,9 @@ extension AppState {
     }
 
     /// Holds an email or share of large files back and says so in `largeSendNotice`; false when they are small
-    /// enough, the action sends nothing, or the app has no notice to show yet (the Mac).
+    /// enough or the action sends nothing.
     func holdsBackLargeSend(_ action: FileAction, urls: [URL]) -> Bool {
-        guard platform == .ios, action == .email || action == .share else { return false }
+        guard action == .email || action == .share else { return false }
         let bytes: Int64 = attachmentBytes(of: urls)
         guard bytes > SaveActions.largeAttachmentBytes else { return false }
         largeSendNotice = LargeSendNotice(action: action, urls: urls, bytes: bytes, canSaveSmaller: canSaveSmaller(urls))

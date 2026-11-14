@@ -205,14 +205,14 @@ final class AppStateLargeSendTests: XCTestCase {
     }
 
     @MainActor
-    func test_largeFiles_areNotHeldBack_onTheMac() throws {
+    func test_largeFiles_areHeldBack_onTheMac() throws {
         let files = MailFileActions()
         let state = makeState(files)
         state.platform = .mac
         let big = try file(bytes: Int(SaveActions.largeAttachmentBytes) + 1)
-        XCTAssertTrue(state.runFileAction(.email, urls: [big]))
-        XCTAssertNil(state.largeSendNotice)
-        XCTAssertEqual(files.composed, [[big]])
+        XCTAssertFalse(state.runFileAction(.email, urls: [big]))
+        XCTAssertEqual(state.largeSendNotice?.urls, [big])
+        XCTAssertTrue(files.composed.isEmpty)
     }
 
     @MainActor

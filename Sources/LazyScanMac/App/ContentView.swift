@@ -111,6 +111,7 @@ struct ContentView: View {
         }
         // The error alert, held back while a review sheet is up: the sheet shows it itself.
         .errorNoticeAlert(enabled: !state.showPhotoReview && !state.showIdCardReview && historyEnlarged == nil)
+        .largeFilesAlert(state, enabled: !state.showPhotoReview && !state.showIdCardReview && historyEnlarged == nil)
         // Below this the layout cannot stay usable; the inspector adds its own
         // width requirement only while shown.
         .frame(minWidth: 860, minHeight: 560)
