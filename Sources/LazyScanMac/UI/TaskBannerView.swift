@@ -92,6 +92,7 @@ struct TaskBannerView: View {
                     }
                 }
             }
+            .frame(minWidth: 0, idealWidth: 140, alignment: .leading)
             if state.awaitingBacks || state.canFinishFronts {
                 sidesActions
                     .padding(.top, 4)
