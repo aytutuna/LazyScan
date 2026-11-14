@@ -31,9 +31,9 @@ struct SavedFilesView: View {
                                           rotating: rotatingPaths.contains(file.url.path),
                                           canAppend: state.canAppendPages,
                                           actions: state.offeredFileActions(for: [file.url]).filter { $0 != .addPages },
-                                          onAction: { state.runFileAction($0, urls: [file.url]) },
+                                          onAction: { run($0, on: file.url) },
                                           onRotate: { rotate(file) },
-                                          onAppend: { state.appendToPDF(at: file.url) })
+                                          onAppend: { appendPages(to: file.url) })
                         }
                     }
                     .padding()
@@ -46,6 +46,9 @@ struct SavedFilesView: View {
         .task(id: state.lastSavedURLs) {
             state.removeStaleSaveTemps()
             await reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await reload() }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
@@ -82,6 +85,22 @@ struct SavedFilesView: View {
     private var destinationURL: URL {
         state.lastSaveFolder ?? URL(fileURLWithPath: (state.settings.destinationPath as NSString).expandingTildeInPath,
                                     isDirectory: true)
+    }
+
+    private func run(_ action: FileAction, on url: URL) {
+        state.runFileAction(action, urls: [url])
+        reloadIfGone(url)
+    }
+
+    private func appendPages(to url: URL) {
+        state.appendToPDF(at: url)
+        reloadIfGone(url)
+    }
+
+    /// A file moved or deleted outside the app is reported by the action; drop its row too.
+    private func reloadIfGone(_ url: URL) {
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        Task { await reload() }
     }
 
     private func reload() async {
