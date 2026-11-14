@@ -269,7 +269,8 @@ public sealed class SyncFolderWatcher : IDisposable
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            // Tried again on the next poll.
+            // A full disk or the like: tried again after the retry time, not on every poll.
+            _failed[name] = _clock();
         }
         finally
         {

@@ -244,7 +244,7 @@ public final class SyncFolderWatcher: @unchecked Sendable {
             try? FileManager.default.removeItem(at: url)
             return
         }
-        let plaintext = Data(match.plaintext)
+        let plaintext = match.plaintext
         let length = Int64(plaintext.count)
         var offset = 0
         let body = CompanionRequestBody(length: length) { maxLength in
@@ -261,7 +261,8 @@ public final class SyncFolderWatcher: @unchecked Sendable {
         } catch let error as CompanionPackageError {
             report(name, error.message)
         } catch {
-            // Tried again on the next poll.
+            // A full disk or the like: tried again after the retry time, not on every poll.
+            failed[name] = clock()
         }
     }
 

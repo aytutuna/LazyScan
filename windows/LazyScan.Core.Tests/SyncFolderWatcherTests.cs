@@ -221,6 +221,32 @@ public sealed class SyncFolderWatcherTests : IDisposable
     }
 
     [Fact]
+    public async Task AReceiveThatFails_IsTriedAgainOnlyAfterAMinute()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string path = Put("package-0001", PairPhone());
+        string blocker = Path.Combine(_root, "Inbox", PhoneId);
+        Directory.CreateDirectory(Path.GetDirectoryName(blocker)!);
+        File.WriteAllBytes(blocker, []);
+
+        await PollTwiceAsync();
+        Assert.Empty(_received);
+
+        // Not tried again before a minute has passed, though the receive would work now.
+        File.Delete(blocker);
+        _now += SyncFolderWatcher.RetryTime - TimeSpan.FromSeconds(1);
+        await _watcher.PollAsync();
+        Assert.Empty(_received);
+
+        _now += TimeSpan.FromSeconds(1);
+        await _watcher.PollAsync();
+
+        Assert.Single(_received);
+        Assert.False(File.Exists(path));
+        Assert.Empty(_problems);
+    }
+
+    [Fact]
     public async Task AFileFromARemovedPhone_IsNotReceived()
     {
         if (!OperatingSystem.IsWindows()) return;

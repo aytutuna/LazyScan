@@ -65,21 +65,23 @@ public enum SyncPackage {
     public static func open(_ data: Data, packageId: String, phoneId: String,
                             key: Data) throws -> (target: CompanionTarget, plaintext: Data) {
         guard data.count <= maxFileBytes else { throw SyncPackageError.tooLarge }
-        let bytes = [UInt8](data)
+        let start = data.startIndex
         let prefix = magic.count + headerByteCount
-        guard bytes.count >= prefix + tagByteCount, Data(bytes[0..<magic.count]) == magic, bytes[magic.count] != 0 else {
+        guard data.count >= prefix + tagByteCount, data[start..<start + magic.count] == magic,
+              data[start + magic.count] != 0 else {
             throw SyncPackageError.notASyncPackage
         }
-        guard Int(bytes[magic.count]) <= version else { throw SyncPackageError.newerVersion }
+        guard Int(data[start + magic.count]) <= version else { throw SyncPackageError.newerVersion }
         guard key.count == keyByteCount else { throw SyncPackageError.wrongKeyOrTampered }
-        let target: CompanionTarget = bytes[magic.count + 1] == 1 ? .current : .new
-        let nonceStart = magic.count + 4
+        let target: CompanionTarget = data[start + magic.count + 1] == 1 ? .current : .new
+        let nonceStart = start + magic.count + 4
+        let end = data.endIndex
         do {
-            let box = try AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: bytes[nonceStart..<nonceStart + nonceByteCount]),
-                                            ciphertext: bytes[prefix..<bytes.count - tagByteCount],
-                                            tag: bytes[(bytes.count - tagByteCount)...])
+            let box = try AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: data[nonceStart..<nonceStart + nonceByteCount]),
+                                            ciphertext: data[start + prefix..<end - tagByteCount],
+                                            tag: data[(end - tagByteCount)...])
             let plaintext = try AES.GCM.open(box, using: SymmetricKey(data: key),
-                                             authenticating: associatedData(Data(bytes[0..<prefix]), packageId: packageId,
+                                             authenticating: associatedData(data[start..<start + prefix], packageId: packageId,
                                                                             phoneId: phoneId))
             return (target, plaintext)
         } catch {

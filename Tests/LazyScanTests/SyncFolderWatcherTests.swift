@@ -177,6 +177,32 @@ final class SyncFolderWatcherTests: XCTestCase {
             "package-0002.lssync", reason: SyncPackageError.wrongKeyOrTampered.localizedDescription))
     }
 
+    func test_aReceiveThatFails_isTriedAgainOnlyAfterAMinute() async throws {
+        let url = try put("package-0001", key: try pairPhone())
+        let blocker = root.appendingPathComponent("Inbox/\(phoneId)")
+        try FileManager.default.createDirectory(at: blocker.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: blocker)
+        let loads = keys.loads
+
+        await pollTwice()
+        XCTAssertEqual(keys.loads, loads + 1)
+        XCTAssertTrue(received.isEmpty)
+
+        try FileManager.default.removeItem(at: blocker)
+        now = now.addingTimeInterval(SyncFolderWatcher.retryTime - 1)
+        await watcher.poll()
+        XCTAssertEqual(keys.loads, loads + 1)
+        XCTAssertTrue(received.isEmpty)
+
+        now = now.addingTimeInterval(1)
+        await watcher.poll()
+
+        XCTAssertEqual(keys.loads, loads + 2)
+        XCTAssertEqual(received.count, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertTrue(problems.isEmpty)
+    }
+
     func test_aFileStillGrowing_waitsUntilItSettles() async throws {
         let url = try put("package-0001", key: try pairPhone())
         let whole = try Data(contentsOf: url)
