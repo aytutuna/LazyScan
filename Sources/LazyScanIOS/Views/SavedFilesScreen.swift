@@ -2,7 +2,7 @@
 import LazyScanKit
 import SwiftUI
 
-/// Everything in the save folder, newest first, under Today, This week and Earlier (`IOSSavedFiles`): each
+/// Everything in the save folder and the folders under it, newest first by default (a menu sorts by name or size and filters by kind), under Today, This week and Earlier (`IOSSavedFiles`): each
 /// file with its picture, name, pages, size and date, the files of the last save marked New; Share on each, and its
 /// other actions (Show in Files, open, email, copy, Lazy Print while it is installed, and Rotate for a picture) in its menu, through
 /// `AppState.runFileAction` as on the desktop, and for a PDF, adding the queued pages to its end (`AppState.appendToPDF(at:)`), whose progress and result show under
@@ -16,12 +16,15 @@ struct SavedFilesScreen: View {
     @State private var reads: Int = 0
     /// Paths being turned, so a second tap cannot start another rewrite of the same file.
     @State private var rotating: Set<String> = []
+    @State private var sort: IOSSavedSort = IOSSavedSort.date
+    @State private var filter: IOSSavedFilter = IOSSavedFilter.all
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let place: URL = IOSSavedFiles.shownFolder(state.settings)
         let lazyPrint: Bool = state.lazyPrintInstalled
-        let groups: [IOSSavedGroup] = IOSSavedFiles.groups(folder.files)
+        let shown: [IOSSavedFile] = IOSSavedFiles.sorted(folder.files.filter { (file: IOSSavedFile) -> Bool in filter.matches(file) }, by: sort)
+        let groups: [IOSSavedGroup] = IOSSavedFiles.groups(shown)
         List {
             if folder.files.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -35,28 +38,71 @@ struct SavedFilesScreen: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("saved.empty")
+            } else if shown.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(IOSSavedFiles.noMatchTitle)
+                        .font(.headline)
+                    Text(filter.emptyLine)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                    Button(IOSSavedFiles.showAllLabel) {
+                        filter = IOSSavedFilter.all
+                    }
+                    .accessibilityIdentifier("saved.clearFilter")
+                    appendStatus
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("saved.noMatch")
             }
-            ForEach(groups) { (group: IOSSavedGroup) in
+            if sort == IOSSavedSort.date {
+                ForEach(groups) { (group: IOSSavedGroup) in
+                    Section {
+                        ForEach(group.files) { (file: IOSSavedFile) in
+                            fileRow(file, lazyPrint: lazyPrint)
+                        }
+                    } header: {
+                        Text(group.section.title)
+                    } footer: {
+                        if group.id == groups.last?.id {
+                            appendStatus
+                        }
+                    }
+                }
+            } else if !shown.isEmpty {
                 Section {
-                    ForEach(group.files) { (file: IOSSavedFile) in
-                        let canLazyPrint: Bool = lazyPrint && SaveActions.canPrintWithLazyPrint([file.url])
-                        SavedFileRow(file: file, canAppend: state.canAppendPages,
-                                     canLazyPrint: canLazyPrint,
-                                     isRotating: rotating.contains(file.url.path),
-                                     onAction: run, onAppend: append, onRotate: rotate)
+                    ForEach(shown) { (file: IOSSavedFile) in
+                        fileRow(file, lazyPrint: lazyPrint)
                     }
-                } header: {
-                    Text(group.section.title)
                 } footer: {
-                    if group.id == groups.last?.id {
-                        appendStatus
-                    }
+                    appendStatus
                 }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(IOSSavedFiles.title)
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Picker(IOSSavedFiles.sortHeading, selection: $sort) {
+                        ForEach(IOSSavedSort.allCases, id: \.self) { (option: IOSSavedSort) in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    Picker(IOSSavedFiles.filterHeading, selection: $filter) {
+                        ForEach(IOSSavedFilter.allCases, id: \.self) { (option: IOSSavedFilter) in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Image(systemName: filterSymbol)
+                }
+                .disabled(folder.files.isEmpty)
+                .accessibilityLabel(Text(IOSSavedFiles.sortFilterLabel))
+                .accessibilityValue(Text(IOSSavedFiles.sortFilterValue(sort, filter)))
+                .accessibilityIdentifier("saved.sortFilter")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     state.revealInFinder(place)
@@ -81,6 +127,19 @@ struct SavedFilesScreen: View {
         .onDisappear {
             appending = nil
         }
+    }
+
+    private var filterSymbol: String {
+        filter == IOSSavedFilter.all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill"
+    }
+
+    @ViewBuilder
+    private func fileRow(_ file: IOSSavedFile, lazyPrint: Bool) -> some View {
+        let canLazyPrint: Bool = lazyPrint && SaveActions.canPrintWithLazyPrint([file.url])
+        SavedFileRow(file: file, canAppend: state.canAppendPages,
+                     canLazyPrint: canLazyPrint,
+                     isRotating: rotating.contains(file.url.path),
+                     onAction: run, onAppend: append, onRotate: rotate)
     }
 
     @ViewBuilder
@@ -156,6 +215,7 @@ private struct SavedFileRow: View {
     let onRotate: (IOSSavedFile) -> Void
     @State private var thumbnail: CGImage?
     @State private var pages: Int?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         HStack(spacing: 12) {
@@ -175,9 +235,7 @@ private struct SavedFileRow: View {
                             .padding(.vertical, 1)
                             .background(Capsule().fill(Color.accentColor))
                     }
-                    Text(file.detail(pages: pages))
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
+                    detailLine
                 }
             }
             .accessibilityElement(children: .combine)
@@ -227,6 +285,30 @@ private struct SavedFileRow: View {
             if file.isPDF {
                 pages = await SavedFileRow.loadPageCount(file.url)
             }
+        }
+    }
+
+    private var detailLines: Int {
+        typeSize.isAccessibilitySize ? 2 : 1
+    }
+
+    @ViewBuilder
+    private var detailLine: some View {
+        if let folder = file.folder {
+            HStack(spacing: 0) {
+                Text(folder)
+                    .lineLimit(1)
+                    .layoutPriority(-1)
+                Text(" \u{00B7} " + file.detail(pages: pages, withFolder: false))
+                    .lineLimit(detailLines)
+            }
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+        } else {
+            Text(file.detail(pages: pages))
+                .lineLimit(detailLines)
+                .font(.caption)
+                .foregroundStyle(Color.secondary)
         }
     }
 

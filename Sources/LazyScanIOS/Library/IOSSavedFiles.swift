@@ -11,12 +11,15 @@ public struct IOSSavedFile: Identifiable, Equatable, Sendable {
     public let byteCount: Int
     /// Saved by the last save of this session (`AppState.lastSavedURLs`).
     public let isNew: Bool
+    /// The name of the folder under the save folder that holds it; nil at the top level.
+    public let folder: String?
 
-    public init(url: URL, modified: Date, byteCount: Int, isNew: Bool) {
+    public init(url: URL, modified: Date, byteCount: Int, isNew: Bool, folder: String? = nil) {
         self.url = url
         self.modified = modified
         self.byteCount = byteCount
         self.isNew = isNew
+        self.folder = folder
     }
 
     /// The modification date is part of it, so a file written again gets a fresh row.
@@ -32,20 +35,69 @@ public struct IOSSavedFile: Identifiable, Equatable, Sendable {
         return "doc.text"
     }
 
-    /// "3 pages · 498 KB · Oct 20", with the year when it is not this year's; the page count is left out
+    /// "3 pages · 498 KB · Oct 20", "Taxes · " in front for a file in a folder, with the year when it is not this year's; the page count is left out
     /// until it is known (`IOSSavedFiles.pageCount(of:)`, PDFs only).
-    public func detail(pages: Int?, now: Date = Date(), calendar: Calendar = Calendar.current) -> String {
+    public func detail(pages: Int?, withFolder: Bool = true, now: Date = Date(), calendar: Calendar = Calendar.current) -> String {
         let style: Date.FormatStyle = Date.FormatStyle(calendar: calendar, timeZone: calendar.timeZone)
         let sameYear: Bool = calendar.isDate(modified, equalTo: now, toGranularity: .year)
         let date: String = sameYear ? modified.formatted(style.month(.abbreviated).day())
                                     : modified.formatted(style.month(.abbreviated).day().year())
         var parts: [String] = []
+        if withFolder, let folder {
+            parts.append(folder)
+        }
         if let pages {
             parts.append(L10n.plural(pages, one: "{0} page", other: "{0} pages"))
         }
         parts.append(ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file))
         parts.append(date)
         return parts.joined(separator: " \u{00B7} ")
+    }
+}
+
+/// What the Saved files list is ordered by; each has one fixed direction.
+public enum IOSSavedSort: CaseIterable, Sendable {
+    case date, name, size
+
+    public var title: String {
+        switch self {
+        case .date: return L10n.t("Date")
+        case .name: return L10n.t("Name")
+        case .size: return L10n.t("Size")
+        }
+    }
+}
+
+/// Which kinds of file the Saved files list shows; text files only show under `all`.
+public enum IOSSavedFilter: CaseIterable, Sendable {
+    case all, pdf, images, word
+
+    public var title: String {
+        switch self {
+        case .all: return L10n.t("All")
+        case .pdf: return L10n.t("PDF")
+        case .images: return L10n.t("Images")
+        case .word: return L10n.t("Word")
+        }
+    }
+
+    /// Shown when the filter hides every file.
+    public var emptyLine: String {
+        switch self {
+        case .all: return ""
+        case .pdf: return L10n.t("Nothing in the folder is a PDF.")
+        case .images: return L10n.t("Nothing in the folder is an image.")
+        case .word: return L10n.t("Nothing in the folder is a Word file.")
+        }
+    }
+
+    public func matches(_ file: IOSSavedFile) -> Bool {
+        switch self {
+        case .all: return true
+        case .pdf: return file.isPDF
+        case .images: return file.isImage
+        case .word: return file.url.pathExtension.lowercased() == "docx"
+        }
     }
 }
 
@@ -87,6 +139,15 @@ public enum IOSSavedFiles {
     public static var newBadge: String { String(localized: "New") }
     public static var revealLabel: String { String(localized: "Show in Files") }
     public static var moreLabel: String { String(localized: "More") }
+    public static var sortFilterLabel: String { L10n.t("Sort and filter") }
+    public static var sortHeading: String { L10n.t("Sort by") }
+    public static var filterHeading: String { L10n.t("Show") }
+    public static var noMatchTitle: String { L10n.t("No matching files") }
+    public static var showAllLabel: String { L10n.t("Show all") }
+
+    public static func sortFilterValue(_ sort: IOSSavedSort, _ filter: IOSSavedFilter) -> String {
+        L10n.t("Sorted by {0}, showing {1}", sort.title, filter.title)
+    }
 
     /// The extensions of the files the app saves.
     public static let knownExtensions: Set<String> = ["pdf", "jpg", "jpeg", "png", "tiff", "tif", "txt", "docx"]
@@ -131,9 +192,12 @@ public enum IOSSavedFiles {
             guard knownExtensions.contains(url.pathExtension.lowercased()) else { continue }
             let values: URLResourceValues? = try? url.resourceValues(forKeys: Set(keys))
             if values?.isRegularFile == false { continue }
+            let parent: URL = url.deletingLastPathComponent()
+            let inFolder: Bool = parent.resolvingSymlinksInPath().path != folder.resolvingSymlinksInPath().path
             let file: IOSSavedFile = IOSSavedFile(url: url, modified: values?.contentModificationDate ?? Date.distantPast,
                                                   byteCount: values?.fileSize ?? 0,
-                                                  isNew: saved.contains(url.standardizedFileURL.path))
+                                                  isNew: saved.contains(url.standardizedFileURL.path),
+                                                  folder: inFolder ? parent.lastPathComponent : nil)
             files.append(file)
         }
         files.sort { (a: IOSSavedFile, b: IOSSavedFile) -> Bool in
@@ -141,6 +205,24 @@ public enum IOSSavedFiles {
             return a.name < b.name
         }
         return IOSSavedFolder(files: files, failed: false)
+    }
+
+    /// `files` ordered by `sort`: newest first, A to Z (numbers by value, case ignored) or largest first;
+    /// files that tie stay newest first, then by name.
+    public static func sorted(_ files: [IOSSavedFile], by sort: IOSSavedSort) -> [IOSSavedFile] {
+        files.sorted { (a: IOSSavedFile, b: IOSSavedFile) -> Bool in
+            switch sort {
+            case .date:
+                break
+            case .name:
+                let order: ComparisonResult = a.name.localizedStandardCompare(b.name)
+                if order != .orderedSame { return order == .orderedAscending }
+            case .size:
+                if a.byteCount != b.byteCount { return a.byteCount > b.byteCount }
+            }
+            if a.modified != b.modified { return a.modified > b.modified }
+            return a.name < b.name
+        }
     }
 
     /// `files` (newest first) cut into Today, This week (earlier than today, in the calendar's current week)

@@ -417,6 +417,45 @@ final class IOSLibraryTests: XCTestCase {
         XCTAssertTrue(IOSSavedFiles.groups([], now: now, calendar: calendar).isEmpty)
     }
 
+    func test_savedFiles_sortAndFilter() throws {
+        func file(_ name: String, size: Int, age: Double) -> IOSSavedFile {
+            IOSSavedFile(url: URL(fileURLWithPath: "/tmp/\(name)"), modified: Date(timeIntervalSince1970: 1_000_000 - age),
+                         byteCount: size, isNew: false)
+        }
+        let files: [IOSSavedFile] = [file("Scan 10.pdf", size: 500, age: 10), file("scan 2.pdf", size: 900, age: 20),
+                                     file("Notes.docx", size: 500, age: 5), file("photo.JPG", size: 100, age: 30),
+                                     file("page.tif", size: 100, age: 40), file("a.txt", size: 50, age: 50)]
+        XCTAssertEqual(IOSSavedFiles.sorted(files, by: IOSSavedSort.date).map(\.name),
+                       ["Notes.docx", "Scan 10.pdf", "scan 2.pdf", "photo.JPG", "page.tif", "a.txt"])
+        XCTAssertEqual(IOSSavedFiles.sorted(files, by: IOSSavedSort.name).map(\.name),
+                       ["a.txt", "Notes.docx", "page.tif", "photo.JPG", "scan 2.pdf", "Scan 10.pdf"])
+        XCTAssertEqual(IOSSavedFiles.sorted(files, by: IOSSavedSort.size).map(\.name),
+                       ["scan 2.pdf", "Notes.docx", "Scan 10.pdf", "photo.JPG", "page.tif", "a.txt"])
+
+        XCTAssertEqual(files.filter { IOSSavedFilter.all.matches($0) }.count, 6)
+        XCTAssertEqual(files.filter { IOSSavedFilter.pdf.matches($0) }.map(\.name), ["Scan 10.pdf", "scan 2.pdf"])
+        XCTAssertEqual(files.filter { IOSSavedFilter.images.matches($0) }.map(\.name), ["photo.JPG", "page.tif"])
+        XCTAssertEqual(files.filter { IOSSavedFilter.word.matches($0) }.map(\.name), ["Notes.docx"])
+        XCTAssertEqual(IOSSavedFiles.sortFilterValue(IOSSavedSort.size, IOSSavedFilter.pdf), "Sorted by Size, showing PDF")
+        XCTAssertEqual(IOSSavedFilter.images.emptyLine, "Nothing in the folder is an image.")
+    }
+
+    func test_savedFiles_aFileInAFolderNamesIt() throws {
+        let saved: URL = folder.appendingPathComponent("Saved", isDirectory: true)
+        let taxes: URL = saved.appendingPathComponent("Taxes", isDirectory: true)
+        try FileManager.default.createDirectory(at: taxes, withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: saved.appendingPathComponent("top.pdf"))
+        try Data("b".utf8).write(to: taxes.appendingPathComponent("inner.pdf"))
+
+        let listed: [IOSSavedFile] = IOSSavedFiles.list(in: saved, justSaved: []).files
+        let top: IOSSavedFile = try XCTUnwrap(listed.first { $0.name == "top.pdf" })
+        let inner: IOSSavedFile = try XCTUnwrap(listed.first { $0.name == "inner.pdf" })
+        XCTAssertNil(top.folder)
+        XCTAssertEqual(inner.folder, "Taxes")
+        XCTAssertTrue(inner.detail(pages: 2).hasPrefix("Taxes \u{00B7} 2 pages \u{00B7} "), inner.detail(pages: 2))
+        XCTAssertFalse(top.detail(pages: 2).contains("Taxes"))
+    }
+
     func test_savedFiles_detail_pagesSizeAndDate() throws {
         var calendar: Calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "UTC"))
