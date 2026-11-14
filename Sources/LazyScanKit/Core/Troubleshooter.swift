@@ -709,6 +709,11 @@ public enum Troubleshooter {
             more: L10n.t("Guest networks and some VPNs hide scanners. Try adding the scanner by its address."),
             actions: [.addByAddress]))
         tips.append(TroubleshootCheck(
+            id: "airScan", status: .tip, title: L10n.t("Does it support AirPrint?"),
+            detail: L10n.t("The scanner must support AirPrint or AirScan."),
+            more: L10n.t("Look for AirPrint or AirScan in the scanner's network settings or manual. A scanner without it can't be found from here."),
+            actions: []))
+        tips.append(TroubleshootCheck(
             id: "usb", status: .tip, title: L10n.t("Connected by USB?"),
             detail: L10n.t("Use its Wi-Fi connection; iPhone and iPad can't use USB scanners."),
             more: L10n.t("Most scanners that print or copy also join Wi-Fi. The scanner's manual shows how."),

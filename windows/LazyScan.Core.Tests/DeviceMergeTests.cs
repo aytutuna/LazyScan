@@ -285,7 +285,7 @@ public class DeviceMergeTests
         Assert.Equal("escl:Network", DeviceMerge.ConnectionId(Escl("A")));
         Assert.Equal("WIA", DeviceMerge.ConnectionLabel(Wia("A")));
         Assert.Equal("TWAIN", DeviceMerge.ConnectionLabel(Twain("A")));
-        Assert.Equal("Network (eSCL)", DeviceMerge.ConnectionLabel(Escl("A")));
+        Assert.Equal("Network (AirScan)", DeviceMerge.ConnectionLabel(Escl("A")));
         Assert.Equal("Demo", DeviceMerge.ConnectionLabel(Demo));
         Assert.Equal("USB", DeviceMerge.ConnectionLabel(Ic("A", "USB")));
     }

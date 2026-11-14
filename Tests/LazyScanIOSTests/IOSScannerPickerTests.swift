@@ -196,19 +196,19 @@ final class IOSScannerPickerTests: XCTestCase {
         let office: ScannerInfo = ScannerInfo(id: "escl:office", name: "Office MFP", transport: "Network", backend: "escl")
         let rows: [IOSScannerRow] = IOSScannerPickerModel.rows(devices: [demo, office], selected: "escl:office", backend: nil)
         XCTAssertEqual(rows.map(\.id), ["mock:demo", "escl:office"])
-        XCTAssertEqual(rows.map(\.connection), ["Demo", "Network (eSCL)"])
+        XCTAssertEqual(rows.map(\.connection), ["Demo", "Network (AirScan)"])
         XCTAssertEqual(rows.map(\.isSelected), [false, true])
-        XCTAssertEqual(rows[1].detail, "Network (eSCL)")
+        XCTAssertEqual(rows[1].detail, "Network (AirScan)")
         XCTAssertNil(rows[1].note)
         XCTAssertFalse(rows[1].canRemoveAddress)
         XCTAssertEqual(rows[0].symbol, "sparkles.rectangle.stack")
         XCTAssertEqual(rows[1].symbol, "scanner")
 
-        let added: IOSScannerRow = IOSScannerRow(id: "escl:x", name: "X", connection: "Network (eSCL)",
+        let added: IOSScannerRow = IOSScannerRow(id: "escl:x", name: "X", connection: "Network (AirScan)",
                                                  note: EsclScannerBackend.notEncryptedLabel, isSelected: false, isDemo: false,
                                                  addedAddresses: [try ScannerAddress.parse("192.168.1.50")])
         XCTAssertTrue(added.canRemoveAddress)
-        XCTAssertEqual(added.detail, "Network (eSCL) \u{00B7} Not encrypted")
+        XCTAssertEqual(added.detail, "Network (AirScan) \u{00B7} Not encrypted")
     }
 
     @MainActor

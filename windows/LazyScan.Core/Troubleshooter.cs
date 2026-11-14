@@ -647,6 +647,11 @@ public static class Troubleshooter
             [TroubleshootAction.AddByAddress],
             Loc.T("Guest networks and some VPNs hide scanners. Try adding the scanner by its address."));
         yield return new TroubleshootCheck(
+            "airScan", CheckStatus.Tip, Loc.T("Does it support AirPrint?"),
+            Loc.T("The scanner must support AirPrint or AirScan."),
+            [],
+            Loc.T("Look for AirPrint or AirScan in the scanner's network settings or manual. A scanner without it can't be found from here."));
+        yield return new TroubleshootCheck(
             "usb", CheckStatus.Tip, Loc.T("Connected by USB?"),
             Loc.T("Use its Wi-Fi connection; iPhone and iPad can't use USB scanners."),
             [],

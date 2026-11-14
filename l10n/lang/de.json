@@ -1134,7 +1134,6 @@
     "Sent from a paired phone": "Von einem gekoppelten Telefon",
     "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {"one": "Abgebrochen. Die Seite von „{1}“ wurde nicht hinzugefügt. Sie bleibt auf diesem Mac und wird beim nächsten Start von Lazy Scan hinzugefügt.", "other": "Abgebrochen. Die {0} Seiten von „{1}“ wurden nicht hinzugefügt. Sie bleiben auf diesem Mac und werden beim nächsten Start von Lazy Scan hinzugefügt."},
     "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {"one": "Abgebrochen. Die Seite von „{1}“ wurde nicht hinzugefügt. Sie bleibt auf diesem PC und wird beim nächsten Start von Lazy Scan hinzugefügt.", "other": "Abgebrochen. Die {0} Seiten von „{1}“ wurden nicht hinzugefügt. Sie bleiben auf diesem PC und werden beim nächsten Start von Lazy Scan hinzugefügt."},
-    "Network (eSCL)": "Netzwerk (eSCL)",
     "Demo": "Demo",
     "The document is larger than {0} MB, too large for one package.": "Das Dokument ist größer als {0} MB und damit zu groß für ein Paket.",
     "{0} is a TIFF, which only black & white pages can be.": "{0} ist ein TIFF, was nur bei Schwarzweißseiten zulässig ist.",

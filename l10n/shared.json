@@ -962,6 +962,9 @@
   "Shared by another Mac?": {},
   "Turn on Scanner Sharing in that Mac's Sharing settings.": {},
   "It's in System Settings, General, Sharing. Both Macs must be on the same network.": {},
+  "Does it support AirPrint?": {},
+  "The scanner must support AirPrint or AirScan.": {},
+  "Look for AirPrint or AirScan in the scanner's network settings or manual. A scanner without it can't be found from here.": {},
   "Still not listed?": {},
   "Wake the scanner and close other scanning apps.": {},
   "Press a button on the scanner. Close Windows Scan or the maker's app. Some scanners work only with their maker's app.": {},
@@ -1897,7 +1900,7 @@
     "other": "Cancelled. The {0} pages from {1} were not added; they are kept on this PC and are added the next time Lazy Scan starts.",
     "note": "{1} is the name of a phone."
   },
-  "Network (eSCL)": {},
+  "Network (AirScan)": {},
   "Demo": {},
   "The document is larger than {0} MB, too large for one package.": {},
   "{0} is a TIFF, which only black & white pages can be.": {},
@@ -2117,7 +2120,7 @@
   },
   "Demo (no hardware)": {},
   "via {0}": {
-    "note": "{0} is how the scanner is reached: WIA, TWAIN, or a phrase such as Network (eSCL)."
+    "note": "{0} is how the scanner is reached: WIA, TWAIN, or a phrase such as Network (AirScan)."
   },
   "TWAIN (32-bit driver)": {},
   "TWAIN driver": {},

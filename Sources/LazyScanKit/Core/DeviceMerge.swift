@@ -201,7 +201,7 @@ public enum DeviceMerge {
         switch asciiLowercased(device.backend) {
         case "wia": return "WIA"
         case "twain": return "TWAIN"
-        case "escl": return L10n.t("Network (eSCL)")
+        case "escl": return L10n.t("Network (AirScan)")
         case "mock": return L10n.t("Demo")
         default: return device.transport
         }

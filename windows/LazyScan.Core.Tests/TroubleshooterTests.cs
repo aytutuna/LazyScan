@@ -144,8 +144,8 @@ public class TroubleshooterTests
     {
         var snapshot = HealthyPhone();
         var checks = Troubleshooter.Diagnose(snapshot);
-        Assert.Equal(["network", "discovery", "networkScanner", "usb", "otherApps"], Ids(checks));
-        Assert.Equal([CheckStatus.Ok, CheckStatus.Ok, CheckStatus.Tip, CheckStatus.Tip, CheckStatus.Tip], checks.Select(c => c.Status));
+        Assert.Equal(["network", "discovery", "networkScanner", "airScan", "usb", "otherApps"], Ids(checks));
+        Assert.Equal([CheckStatus.Ok, CheckStatus.Ok, CheckStatus.Tip, CheckStatus.Tip, CheckStatus.Tip, CheckStatus.Tip], checks.Select(c => c.Status));
         Assert.Equal("1 scanner found", Troubleshooter.Overview(snapshot, checks));
         var network = Check(checks, "network");
         Assert.Equal(("Connected to a local network", "Network scanners on this network can be found."), (network.Title, network.Detail));
@@ -158,6 +158,11 @@ public class TroubleshooterTests
             "This device and the scanner must be on the same Wi-Fi.",
             [TroubleshootAction.AddByAddress],
             "Guest networks and some VPNs hide scanners. Try adding the scanner by its address."), Check(checks, "networkScanner"));
+        Assert.Equal(new TroubleshootCheck(
+            "airScan", CheckStatus.Tip, "Does it support AirPrint?",
+            "The scanner must support AirPrint or AirScan.",
+            [],
+            "Look for AirPrint or AirScan in the scanner's network settings or manual. A scanner without it can't be found from here."), Check(checks, "airScan"));
         Assert.Equal(new TroubleshootCheck(
             "usb", CheckStatus.Tip, "Connected by USB?",
             "Use its Wi-Fi connection; iPhone and iPad can't use USB scanners.",
@@ -172,7 +177,7 @@ public class TroubleshooterTests
     {
         var snapshot = TroubledPhone();
         var checks = Troubleshooter.Diagnose(snapshot);
-        Assert.Equal(["network", "localNetwork", "lastFailure", "manualHost:192.168.1.50", "networkScanner", "usb", "otherApps"],
+        Assert.Equal(["network", "localNetwork", "lastFailure", "manualHost:192.168.1.50", "networkScanner", "airScan", "usb", "otherApps"],
                      Ids(checks));
         Assert.Equal("No scanner found · 2 problems, 2 warnings", Troubleshooter.Overview(snapshot, checks));
         Assert.Equal(new TroubleshootCheck(

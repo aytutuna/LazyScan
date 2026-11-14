@@ -240,7 +240,7 @@ final class DeviceMergeTests: XCTestCase {
         XCTAssertEqual(DeviceMerge.connectionID(escl("A")), "escl:Network")
         XCTAssertEqual(DeviceMerge.connectionLabel(wia("A")), "WIA")
         XCTAssertEqual(DeviceMerge.connectionLabel(twain("A")), "TWAIN")
-        XCTAssertEqual(DeviceMerge.connectionLabel(escl("A")), "Network (eSCL)")
+        XCTAssertEqual(DeviceMerge.connectionLabel(escl("A")), "Network (AirScan)")
         XCTAssertEqual(DeviceMerge.connectionLabel(demo), "Demo")
         XCTAssertEqual(DeviceMerge.connectionLabel(ic("A", "USB")), "USB")
     }

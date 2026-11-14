@@ -134,8 +134,8 @@ final class TroubleshooterTests: XCTestCase {
     func test_phone_healthy_showsWhatIsFineThenItsTips() {
         let snapshot: DiscoverySnapshot = healthyPhone()
         let checks: [TroubleshootCheck] = Troubleshooter.diagnose(snapshot)
-        XCTAssertEqual(ids(checks), ["network", "discovery", "networkScanner", "usb", "otherApps"])
-        XCTAssertEqual(checks.map { $0.status }, [.ok, .ok, .tip, .tip, .tip])
+        XCTAssertEqual(ids(checks), ["network", "discovery", "networkScanner", "airScan", "usb", "otherApps"])
+        XCTAssertEqual(checks.map { $0.status }, [.ok, .ok, .tip, .tip, .tip, .tip])
         XCTAssertEqual(Troubleshooter.overview(snapshot, checks: checks), "1 scanner found")
         let network: TroubleshootCheck = check(checks, "network")
         XCTAssertEqual(network.title, "Connected to a local network")
@@ -150,6 +150,11 @@ final class TroubleshooterTests: XCTestCase {
             detail: "This device and the scanner must be on the same Wi-Fi.",
             more: "Guest networks and some VPNs hide scanners. Try adding the scanner by its address.",
             actions: [.addByAddress]))
+        XCTAssertEqual(check(checks, "airScan"), TroubleshootCheck(
+            id: "airScan", status: .tip, title: "Does it support AirPrint?",
+            detail: "The scanner must support AirPrint or AirScan.",
+            more: "Look for AirPrint or AirScan in the scanner's network settings or manual. A scanner without it can't be found from here.",
+            actions: []))
         XCTAssertEqual(check(checks, "usb"), TroubleshootCheck(
             id: "usb", status: .tip, title: "Connected by USB?",
             detail: "Use its Wi-Fi connection; iPhone and iPad can't use USB scanners.",
@@ -162,7 +167,7 @@ final class TroubleshooterTests: XCTestCase {
     func test_phone_troubled_localNetworkAccessOffComesFirstWithSettings() {
         let snapshot: DiscoverySnapshot = troubledPhone()
         let checks: [TroubleshootCheck] = Troubleshooter.diagnose(snapshot)
-        XCTAssertEqual(ids(checks), ["network", "localNetwork", "lastFailure", "manualHost:192.168.1.50", "networkScanner", "usb",
+        XCTAssertEqual(ids(checks), ["network", "localNetwork", "lastFailure", "manualHost:192.168.1.50", "networkScanner", "airScan", "usb",
                                      "otherApps"])
         XCTAssertEqual(Troubleshooter.overview(snapshot, checks: checks), "No scanner found \u{00B7} 2 problems, 2 warnings")
         XCTAssertEqual(check(checks, "localNetwork"), TroubleshootCheck(

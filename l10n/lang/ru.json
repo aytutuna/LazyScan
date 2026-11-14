@@ -1134,7 +1134,6 @@
     "Sent from a paired phone": "Отправлено с телефона в паре",
     "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {"one": "Отменено. {1}: {0} страница сохранена на этом Mac и будет добавлена при следующем запуске Lazy Scan.", "few": "Отменено. {1}: {0} страницы сохранены на этом Mac и будут добавлены при следующем запуске Lazy Scan.", "many": "Отменено. {1}: {0} страниц сохранено на этом Mac и будет добавлено при следующем запуске Lazy Scan.", "other": "Отменено. {1}: {0} страницы сохранено на этом Mac и будет добавлено при следующем запуске Lazy Scan."},
     "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {"one": "Отменено. {1}: {0} страница сохранена на этом компьютере и будет добавлена при следующем запуске Lazy Scan.", "few": "Отменено. {1}: {0} страницы сохранены на этом компьютере и будут добавлены при следующем запуске Lazy Scan.", "many": "Отменено. {1}: {0} страниц сохранено на этом компьютере и будет добавлено при следующем запуске Lazy Scan.", "other": "Отменено. {1}: {0} страницы сохранено на этом компьютере и будет добавлено при следующем запуске Lazy Scan."},
-    "Network (eSCL)": "Сеть (eSCL)",
     "Demo": "Демо",
     "The document is larger than {0} MB, too large for one package.": "Документ больше {0} МБ и не помещается в один пакет.",
     "{0} is a TIFF, which only black & white pages can be.": "{0}: TIFF допустим только для черно-белых страниц.",

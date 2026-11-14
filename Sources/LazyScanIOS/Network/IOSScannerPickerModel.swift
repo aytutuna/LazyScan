@@ -3,7 +3,7 @@ import LazyScanKit
 import Foundation
 
 /// A row of the scanner picker: the scanner's name, how it is reached (as Windows labels connections,
-/// `DeviceMerge.connectionLabel`: "Network (eSCL)", "Demo"), "Not encrypted" for a network scanner reached
+/// `DeviceMerge.connectionLabel`: "Network (AirScan)", "Demo"), "Not encrypted" for a network scanner reached
 /// over plain HTTP after HTTPS could not be used, and the addresses added by hand that reach it.
 public struct IOSScannerRow: Identifiable, Equatable {
     public let id: String

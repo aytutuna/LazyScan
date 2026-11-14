@@ -1134,7 +1134,6 @@
     "Sent from a paired phone": "Eşleştirilmiş telefondan gönderildi",
     "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {"one": "İptal edildi. {1} adlı telefondan gelen sayfa eklenmedi; bu Mac’te saklanıyor ve Lazy Scan yeniden açıldığında eklenecek.", "other": "İptal edildi. {1} adlı telefondan gelen {0} sayfa eklenmedi; bu Mac’te saklanıyor ve Lazy Scan yeniden açıldığında eklenecek."},
     "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {"one": "İptal edildi. {1} adlı telefondan gelen sayfa eklenmedi; bu bilgisayarda saklanıyor ve Lazy Scan yeniden açıldığında eklenecek.", "other": "İptal edildi. {1} adlı telefondan gelen {0} sayfa eklenmedi; bu bilgisayarda saklanıyor ve Lazy Scan yeniden açıldığında eklenecek."},
-    "Network (eSCL)": "Ağ (eSCL)",
     "Demo": "Demo",
     "The document is larger than {0} MB, too large for one package.": "Belge çok büyük: tek pakette en fazla {0} MB olabilir.",
     "{0} is a TIFF, which only black & white pages can be.": "{0} bir TIFF; yalnızca siyah beyaz sayfalar TIFF olabilir.",

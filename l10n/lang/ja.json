@@ -1134,7 +1134,6 @@
     "Sent from a paired phone": "ペアリング済みのiPhoneから送信",
     "Cancelled. The page from {1} was not added; it is kept on this Mac and is added the next time Lazy Scan starts.": {"other": "キャンセルしました。“{1}”から届いた{0}ページはまだ追加されていません。このMacに保管され、次回Lazy Scanを起動したときに追加されます。"},
     "Cancelled. The page from {1} was not added; it is kept on this PC and is added the next time Lazy Scan starts.": {"other": "キャンセルしました。“{1}”から届いた{0}ページはまだ追加されていません。このPCに保管され、次回Lazy Scanを起動したときに追加されます。"},
-    "Network (eSCL)": "ネットワーク（eSCL）",
     "Demo": "デモ",
     "The document is larger than {0} MB, too large for one package.": "書類が{0} MBを超えているため、ひとつのパッケージにまとめられません。",
     "{0} is a TIFF, which only black & white pages can be.": "“{0}”はTIFFですが、TIFFにできるのは白黒のページだけです。",

@@ -211,7 +211,7 @@ public static class DeviceMerge
     {
         "wia" => "WIA",
         "twain" => "TWAIN",
-        "escl" => Loc.T("Network (eSCL)"),
+        "escl" => Loc.T("Network (AirScan)"),
         "mock" => Loc.T("Demo"),
         "twain32" => Loc.T("TWAIN (32-bit driver)"),
         "winrt" => Loc.T("Windows Scan (backup)"),
