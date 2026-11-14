@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -25,6 +26,7 @@ public partial class TroubleshooterWindow : Window
     private readonly DispatcherTimer _updateTimer;
     private readonly DispatcherTimer _statusTimer;
     private IReadOnlyList<TroubleshootCheck> _shownChecks = [];
+    private IReadOnlyList<TrustedRow> _shownTrusted = [];
     private int _refreshes;
 
     /// <summary>The snapshot the cards show (Copy diagnostics copies it).</summary>
@@ -102,15 +104,26 @@ public partial class TroubleshooterWindow : Window
         string headline = Troubleshooter.Overview(snapshot, checks);
         if (HeadlineText.Text != headline && _refreshes == 0) Announce(HeadlineText, headline);
         else HeadlineText.Text = headline;
-        if (checks.SequenceEqual(_shownChecks)) return;
+        var trusted = (_viewModel.NetworkScanners?.TrustedCertificates ?? [])
+            .Select(c => new TrustedRow(c.Fingerprint, c.Name, c.Addresses.FirstOrDefault() ?? "", c.Trusted)).ToList();
+        if (checks.SequenceEqual(_shownChecks) && trusted.SequenceEqual(_shownTrusted)) return;
 
         // Where keyboard focus was: the check and the action of the focused button.
         (string Id, TroubleshootAction Action)? focused =
             Keyboard.FocusedElement is Button { Tag: ActionTag tag } && ChecksPanel.IsKeyboardFocusWithin
                 ? (tag.CheckId, tag.Action) : null;
+        string? forgetFocused = Keyboard.FocusedElement is Button { Tag: ForgetTag forget } && ChecksPanel.IsKeyboardFocusWithin
+            ? forget.Fingerprint : null;
         _shownChecks = checks;
+        _shownTrusted = trusted;
         ChecksPanel.Children.Clear();
         foreach (var check in checks) ChecksPanel.Children.Add(Card(check));
+        if (trusted.Count > 0) ChecksPanel.Children.Add(TrustedCard(trusted));
+        if (forgetFocused is not null)
+        {
+            ForgetButtons().FirstOrDefault(b => ((ForgetTag)b.Tag).Fingerprint == forgetFocused)?.Focus();
+            return;
+        }
         if (focused is { } was)
         {
             var again = ActionButtons().FirstOrDefault(b => ((ActionTag)b.Tag).CheckId == was.Id && ((ActionTag)b.Tag).Action == was.Action);
@@ -122,9 +135,19 @@ public partial class TroubleshooterWindow : Window
     /// <summary>A check's button: which check it belongs to and what it does.</summary>
     private sealed record ActionTag(string CheckId, TroubleshootAction Action);
 
+    /// <summary>A trusted scanner's Forget button: which certificate it removes.</summary>
+    private sealed record ForgetTag(string Fingerprint);
+
+    /// <summary>A trusted scanner as listed: its first stored address, as the card shows it.</summary>
+    private sealed record TrustedRow(string Fingerprint, string Name, string Host, DateTimeOffset? Trusted);
+
     internal IEnumerable<Button> ActionButtons() =>
         ChecksPanel.Children.OfType<FrameworkElement>()
-            .SelectMany(card => FindButtons(card));
+            .SelectMany(card => FindButtons(card)).Where(b => b.Tag is ActionTag);
+
+    private IEnumerable<Button> ForgetButtons() =>
+        ChecksPanel.Children.OfType<FrameworkElement>()
+            .SelectMany(card => FindButtons(card)).Where(b => b.Tag is ForgetTag);
 
     private static IEnumerable<Button> FindButtons(DependencyObject root)
     {
@@ -257,6 +280,126 @@ public partial class TroubleshooterWindow : Window
         AutomationProperties.SetHelpText(card, check.FullDetail);
         AutomationProperties.SetAutomationId(card, check.Id);
         return card;
+    }
+
+    /// <summary>
+    /// The trusted scanner certificates: one row per scanner with its name, where it was seen and
+    /// when it was trusted, and a Forget button. A named group for screen readers, like the checks.
+    /// </summary>
+    private CheckCard TrustedCard(IReadOnlyList<TrustedRow> rows)
+    {
+        string title = Loc.T("Trusted scanners");
+        string line = Loc.T("Lazy Scan checks these scanners' certificates and warns you if one changes.");
+        var icon = new TextBlock
+        {
+            Text = "\uE72E",
+            Style = (Style)FindResource("GlyphText"),
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 2, 12, 0),
+        };
+        icon.SetResourceReference(TextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+        DockPanel.SetDock(icon, Dock.Left);
+
+        var texts = new StackPanel();
+        texts.Children.Add(new TextBlock { Text = title, Style = (Style)FindResource("BodyStrongText"), TextWrapping = TextWrapping.Wrap });
+        texts.Children.Add(new TextBlock
+        {
+            Text = line,
+            Style = (Style)FindResource("BodyText"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 2, 0, 8),
+        });
+        foreach (var row in rows) texts.Children.Add(TrustedRowView(row));
+
+        var cardRow = new DockPanel();
+        cardRow.Children.Add(icon);
+        cardRow.Children.Add(texts);
+        var card = new CheckCard
+        {
+            Style = (Style)FindResource("CardStyle"),
+            Padding = new Thickness(16, 12, 16, 12),
+            Margin = new Thickness(0, 0, 0, 8),
+            Child = cardRow,
+        };
+        AutomationProperties.SetName(card, title);
+        AutomationProperties.SetHelpText(card, line);
+        return card;
+    }
+
+    private CheckCard TrustedRowView(TrustedRow row)
+    {
+        string name = DisplayName(row);
+        string? date = row.Trusted?.LocalDateTime.ToString("d", CultureInfo.CurrentCulture);
+        bool showHost = row.Name.Length > 0 && row.Host.Length > 0;
+        string? second = (showHost, date is not null) switch
+        {
+            (true, true) => Loc.T("{0} · Trusted {1}", row.Host, date),
+            (true, false) => row.Host,
+            (false, true) => Loc.T("Trusted {0}", date),
+            _ => null,
+        };
+        var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        texts.Children.Add(new TextBlock { Text = name, Style = (Style)FindResource("BodyStrongText"), TextTrimming = TextTrimming.CharacterEllipsis });
+        if (second is not null)
+        {
+            texts.Children.Add(new TextBlock
+            {
+                Text = second,
+                Style = (Style)FindResource("SecondaryBodyText"),
+                TextWrapping = TextWrapping.NoWrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+        }
+        var forget = new Button
+        {
+            Content = Loc.T("Forget"),
+            Tag = new ForgetTag(row.Fingerprint),
+            MinWidth = 80,
+            Margin = new Thickness(12, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        AutomationProperties.SetName(forget, Loc.T("Forget {0}", name));
+        AutomationProperties.SetHelpText(forget, Loc.T("Removes the saved certificate"));
+        forget.Click += Forget_Click;
+        DockPanel.SetDock(forget, Dock.Right);
+        var line = new DockPanel();
+        line.Children.Add(forget);
+        line.Children.Add(texts);
+        var view = new CheckCard
+        {
+            Padding = new Thickness(0, 6, 0, 6),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = line,
+        };
+        view.SetResourceReference(Border.BorderBrushProperty, "DividerStrokeColorDefaultBrush");
+        var parts = new List<string> { name };
+        if (showHost) parts.Add(row.Host);
+        if (date is not null) parts.Add(Loc.T("Trusted {0}", date));
+        AutomationProperties.SetName(view, string.Join(", ", parts));
+        return view;
+    }
+
+    private static string DisplayName(TrustedRow row) => row.Name.Length > 0 ? row.Name : row.Host;
+
+    private void Forget_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ForgetTag tag }) return;
+        var row = _shownTrusted.First(r => r.Fingerprint == tag.Fingerprint);
+        string name = DisplayName(row);
+        string question = Loc.T("Forget {0}?\n\nLazy Scan will ask you to trust it again the next time it connects.", name);
+        if (MessageBox.Show(this, question, "Lazy Scan", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                            MessageBoxResult.No, App.BoxOptions) != MessageBoxResult.Yes) return;
+        if (_viewModel.NetworkScanners?.Forget(tag.Fingerprint) != true)
+        {
+            ShowStatus(Loc.T("Could not forget {0}.", name));
+            return;
+        }
+        int index = _shownTrusted.ToList().IndexOf(row);
+        ShowChecks(Snapshot);
+        var left = ForgetButtons().ToList();
+        if (left.Count > 0) left[Math.Min(index, left.Count - 1)].Focus();
+        else RefreshButton.Focus();
+        ShowStatus(Loc.T("Forgot {0}.", name));
     }
 
     private static string ActionGlyph(TroubleshootAction action) => action switch

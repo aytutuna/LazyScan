@@ -104,6 +104,12 @@ public sealed class EsclScannerBackend : IScannerBackend, IBackendDiagnostics, I
         }
     }
 
+    /// <summary>The trusted scanner certificates, for the troubleshooter's list.</summary>
+    public IReadOnlyList<EsclTrustedCertificate> TrustedCertificates => _trust.Certificates;
+
+    /// <summary>Forgets a trusted certificate; false when the file could not be written.</summary>
+    public bool Forget(string fingerprint) => _trust.Remove(fingerprint);
+
     public void StartBrowsing()
     {
         if (_browsing) return;
