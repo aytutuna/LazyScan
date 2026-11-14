@@ -172,7 +172,7 @@ struct ContentView: View {
             }
             ScanActionBar(showsScanButtons: true)
             Divider()
-            StatusBarView()
+            StatusBarView(onAddPages: { detailTab = .scanner })
         }
         // Photos of documents dropped on the scanner view become pages (AppState+Import.swift), a
         // `.lsdoc` is offered on the banner (photos dropped with it are imported as well, so such a drop
@@ -222,7 +222,7 @@ struct ContentView: View {
             TaskStartView(onOpenScanner: { detailTab = .scanner })
             runningScanBar
             Divider()
-            StatusBarView()
+            StatusBarView(onAddPages: { detailTab = .scanner })
         }
     }
 
@@ -231,7 +231,7 @@ struct ContentView: View {
             ScanHistoryView(enlarged: $historyEnlarged)
             runningScanBar
             Divider()
-            StatusBarView()
+            StatusBarView(onAddPages: { detailTab = .scanner })
         }
     }
 
@@ -240,7 +240,7 @@ struct ContentView: View {
             SavedFilesView()
             runningScanBar
             Divider()
-            StatusBarView()
+            StatusBarView(onAddPages: { detailTab = .scanner })
         }
     }
 }

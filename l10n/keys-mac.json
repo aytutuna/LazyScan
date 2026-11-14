@@ -31,6 +31,7 @@
  {"key": "A phone scanned this code. Allow it below, or not.", "comment": ""},
  {"key": "A scan or save is still running.", "comment": ""},
  {"key": "Actual Size", "comment": ""},
+ {"key": "Add More Pages", "comment": ""},
  {"key": "Add Pages", "comment": ""},
  {"key": "Add a printer in System Settings → Printers & Scanners, then look again.", "comment": ""},
  {"key": "Add pages to a PDF", "comment": ""},

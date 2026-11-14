@@ -3,15 +3,21 @@ import LazyScanKit
 import SwiftUI
 
 /// Slim bar under the preview canvas: current status, a busy spinner, and what can be done with
-/// the files saved last (open, show in Finder, share, copy; open with and email in More). The
-/// twin of the bar Windows shows after a save. The status shows at most six words, facts only
-/// (`StatusLine`); VoiceOver reads the whole sentence.
+/// the files saved last (open, show in Finder, share, add more pages, copy; open with and email in
+/// More). The twin of the bar Windows shows after a save. The status shows at most six words,
+/// facts only (`StatusLine`); VoiceOver reads the whole sentence.
 struct StatusBarView: View {
     @EnvironmentObject var state: AppState
     @State private var statusBeforeBusy = ""
 
+    /// Called once the saved PDF is the target of the next scan, so the window can show the scanner.
+    let onAddPages: () -> Void
+
     /// The actions with their own button; the rest are in More.
-    private static let barActions: [FileAction] = [.open, .reveal, .share, .copy]
+    private static let barActions: [FileAction] = [.open, .reveal, .share, .addPages, .copy]
+
+    /// What is left of them on a narrow bar.
+    private static let narrowBarActions: [FileAction] = [.open]
 
     var body: some View {
         HStack(spacing: 8) {
@@ -158,27 +164,22 @@ struct StatusBarView: View {
 
     private var savedActions: some View {
         let urls = state.lastSavedURLs
-        let offered = state.savedFileActions.filter { $0 != .addPages }
+        let offered = state.savedFileActions
         // Open with is in the menu for one saved file only (`SaveActions.offered`).
         let moreHelp: String = urls.count == 1
             ? String(localized: "More: open with, email and the other actions")
             : String(localized: "More: email and the other actions")
         return HStack(spacing: 10) {
-            ForEach(offered.filter { Self.barActions.contains($0) }) { action in
-                Button {
-                    state.runFileAction(action, urls: urls)
-                } label: {
-                    Label(action.label, systemImage: action.systemImage)
-                }
-                .labelStyle(.iconOnly)
-                .help(action.hint(fileCount: urls.count))
+            ViewThatFits(in: .horizontal) {
+                barButtons(Self.barActions, offered: offered, urls: urls)
+                barButtons(Self.narrowBarActions, offered: offered, urls: urls)
             }
             Menu {
                 ForEach(offered) { action in
                     Button {
-                        state.runFileAction(action, urls: urls)
+                        run(action, urls: urls)
                     } label: {
-                        Label(action.label, systemImage: action.systemImage)
+                        Label(title(of: action), systemImage: action.systemImage)
                     }
                 }
             } label: {
@@ -192,6 +193,42 @@ struct StatusBarView: View {
         }
         .buttonStyle(.borderless)
         .controlSize(.small)
+    }
+
+    private func barButtons(_ actions: [FileAction], offered: [FileAction], urls: [URL]) -> some View {
+        HStack(spacing: 10) {
+            ForEach(offered.filter { actions.contains($0) }) { action in
+                Button {
+                    run(action, urls: urls)
+                } label: {
+                    Label(title(of: action), systemImage: action.systemImage)
+                }
+                .labelStyle(.iconOnly)
+                .help(action.hint(fileCount: urls.count))
+                .accessibilityHint(Text(action.hint(fileCount: urls.count)))
+                .accessibilityIdentifier("saved.\(action.rawValue.lowercased())")
+            }
+        }
+        .fixedSize()
+    }
+
+    /// Title case on the Mac, where the Kit's label is a sentence.
+    private func title(of action: FileAction) -> String {
+        action == .addPages ? String(localized: "Add More Pages") : action.label
+    }
+
+    private func run(_ action: FileAction, urls: [URL]) {
+        guard action == .addPages, let url = urls.first else {
+            state.runFileAction(action, urls: urls)
+            return
+        }
+        let appState: AppState = state
+        let switchToScanner: () -> Void = onAddPages
+        Task { @MainActor in
+            if await appState.addMorePages(to: url) {
+                switchToScanner()
+            }
+        }
     }
 }
 #endif
