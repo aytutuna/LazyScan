@@ -40,17 +40,14 @@ targets:
         buildPhase: resources
       - path: ../THIRD-PARTY-NOTICES.txt
         buildPhase: resources
-      # Where FastViTCornerModel looks first in a packaged app, as make_app.sh lays it out. The model is there only
-      # after scripts/fetch_docaligner.sh; without it the app finds pages with its own search.
+      # The licences FastViTCornerModel reads from the app's Resources. The model itself is in LazyScanModel's
+      # resource bundle (scripts/fetch_docaligner.sh puts it there); a copy here would ship it twice.
       - path: ../Sources/LazyScanModel/Models/ONNXRuntime-LICENSE.txt
         buildPhase: resources
       - path: ../Sources/LazyScanModel/Models/ONNXRuntime-THIRD-PARTY-NOTICES.txt
         buildPhase: resources
       - path: ../Sources/LazyScanModel/Models/DocAligner-LICENSE.txt
         buildPhase: resources
-      - path: ../Sources/LazyScanModel/Models/fastvit_t8_h_e_bifpn_256_fp32.onnx
-        buildPhase: resources
-        optional: true
     dependencies:
       - package: LazyScan
         product: LazyScanMac

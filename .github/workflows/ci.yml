@@ -442,9 +442,11 @@ jobs:
             [ -d "$app/Contents/Resources/$lang.lproj" ] || { echo "$lang.lproj is not in the app" >&2; exit 1; }
           done < l10n/out/languages.mac.txt
           plutil -extract CFBundleLocalizations xml1 -o - "$app/Contents/Info.plist" | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g' | diff - l10n/out/languages.mac.txt
-          for file in THIRD-PARTY-NOTICES.txt ONNXRuntime-THIRD-PARTY-NOTICES.txt fastvit_t8_h_e_bifpn_256_fp32.onnx; do
+          for file in THIRD-PARTY-NOTICES.txt ONNXRuntime-THIRD-PARTY-NOTICES.txt; do
             [ -f "$app/Contents/Resources/$file" ] || { echo "$file is not in the app" >&2; exit 1; }
           done
+          [ "$(find "$app" -name '*.onnx' | wc -l | tr -d ' ')" = 1 ] \
+            || { echo "The app must hold the model exactly once" >&2; exit 1; }
       # The upload workflow deletes ONNX Runtime's framework copy from the archive, which is only safe when the
       # executable does not load it.
       - name: Check ONNX Runtime is linked in

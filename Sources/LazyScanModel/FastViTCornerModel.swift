@@ -44,8 +44,10 @@ public final class FastViTCornerModel: CornerModel, @unchecked Sendable {
         #if os(macOS)
         // SwiftPM's Bundle.module stops the app when its bundle is neither next to the executable nor at the
         // path it was built at (an .app, a copied or moved executable), so the bundle is looked for here: next
-        // to the executable, or next to the .xctest bundle under `swift test`.
+        // to the executable, in the app's Resources (the store app embeds it there), or next to the .xctest
+        // bundle under `swift test`.
         let places: [URL] = [Bundle.main.bundleURL,
+                             Bundle.main.resourceURL ?? Bundle.main.bundleURL,
                              Bundle(for: FastViTCornerModel.self).bundleURL.deletingLastPathComponent()]
         for place in places {
             let bundleURL: URL = place.appendingPathComponent("LazyScan_LazyScanModel.bundle")
