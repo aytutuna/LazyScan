@@ -719,7 +719,9 @@ struct PageStripSheet: View {
         let quality: Double = state.settings.jpegQuality
         let appState: AppState = state
         sharing = true
+        appState.beginQueueRead()
         Task { @MainActor in
+            defer { appState.endQueueRead() }
             // Turns queued behind a page swap land before the pages are read, as for a save.
             await appState.pageEditChain?.value
             let pages: [ScannedPage] = appState.scannedPages

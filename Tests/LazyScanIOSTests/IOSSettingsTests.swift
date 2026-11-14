@@ -524,6 +524,18 @@ final class IOSSettingsTests: XCTestCase {
         }
     }
 
+    func test_pageSelection_aMissingSpoolFile_failsTheShare() async throws {
+        let plain: ScannedPage = settingsPage()
+        let gone: ScannedPage = ScannedPage(image: plain.image, dpi: 60, colorMode: .color,
+                                            fileURL: folder.appendingPathComponent("gone.jpg"))
+        do {
+            _ = try await IOSPageSelection.writeImages([gone.id], of: [gone], format: .jpeg, jpegQuality: 0.9)
+            XCTFail("a page whose file is gone was written from its preview")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("could not be written"), error.localizedDescription)
+        }
+    }
+
     func test_droppedFiles_comeInByTheirKind() {
         let pdf: IOSImportItem = IOSDroppedFile(data: Data("%PDF-1.4".utf8), kind: .pdf).item
         XCTAssertEqual(pdf.kind, IOSImportItem.Kind.pdf)

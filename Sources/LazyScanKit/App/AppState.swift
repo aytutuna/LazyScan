@@ -382,6 +382,9 @@ public final class AppState: ObservableObject {
     @Published var queueReaders = 0
     /// A share or a send of the queue is reading its spooled pages (`queueReaders`). Swift only.
     public var readsQueue: Bool { queueReaders > 0 }
+    /// Held by a share of selected pages while it writes them, so the queue is not edited meanwhile.
+    public func beginQueueRead() { queueReaders += 1 }
+    public func endQueueRead() { queueReaders -= 1 }
     @Published public private(set) var progress: ScanProgress?
     @Published public internal(set) var statusMessage = L10n.t("Looking for scanners…") {
         didSet { statusDetail = StatusDetail() }
