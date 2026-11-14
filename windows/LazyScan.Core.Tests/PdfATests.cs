@@ -178,7 +178,7 @@ public class PdfATests
                         "/FontDescriptor 5 0 R /DW 500 /CIDToGIDMap 7 0 R>>", text);
         Assert.Contains("5 0 obj\n<</Type /FontDescriptor /FontName /GlyphLessFont /Flags 5 /FontBBox [0 0 500 1000] " +
                         "/ItalicAngle 0 /Ascent 1000 /Descent -1 /CapHeight 1000 /StemV 80 /FontFile2 6 0 R>>", text);
-        Assert.Contains($"6 0 obj\n<</Length1 {GlyphlessFont.Program.Length} /Length {GlyphlessFont.Program.Length}>>\nstream\n", text);
+        Assert.Contains($"6 0 obj\n<</Length1 {GlyphlessFont.Program.Length} /Filter /FlateDecode /Length {FlateEncoder.Zlib(GlyphlessFont.Program).Length}>>\nstream\n", text);
         Assert.Contains($"7 0 obj\n<</Filter /FlateDecode /Length {GlyphlessFont.CidToGidMap.Length}>>\nstream\n", text);
         Assert.Contains("9 0 obj\n<</Title <FEFF", text);
         // The metadata is not compressed; the profile is the sRGB one with three components.
@@ -280,7 +280,7 @@ public class PdfATests
         Assert.Equal(396.0, letters[0].StartBaseLine.Y, 2);                // 0.5 × 792: the baseline is the box's bottom
         Assert.Equal(550.8, letters[^1].EndBaseLine.X, 1);                 // 0.9 × 612: the text spans the box
         Assert.Equal(39.6, letters[0].PointSize, 1);                       // 0.05 × 792
-        string content = Latin1(pdf);
+        string content = PdfFixture.Readable(pdf);
         Assert.Contains("/F1 39.6 Tf\n", content);
         Assert.Contains("1 0 0 1 61.2 396 Tm\n", content);
         // 15 code units × 0.5 em × 39.6 pt = 297 pt measured; 489.6 pt wanted.
@@ -297,7 +297,7 @@ public class PdfATests
             new("", new RectD(0, 0.3, 0.5, 0.05), 0.9f),
             new("flat", new RectD(0, 0.2, 0.5, 0), 0.9f),
         };
-        string content = Latin1(PdfBuilder.Make([Page(lines)]));
+        string content = PdfFixture.Readable(PdfBuilder.Make([Page(lines)]));
         Assert.Contains("500 Tz\n", content);
         Assert.Contains("20 Tz\n", content);
         Assert.Equal(2, content.Split(" Tj\n").Length - 1);
@@ -317,7 +317,7 @@ public class PdfATests
         Assert.Equal(237.6, placed.Baseline, 9);
         // 6 code units × 0.5 em × 12.24 pt = 36.72 pt measured; 79.2 pt wanted.
         Assert.Equal(79.2 / 36.72, placed.HorizontalScale, 9);
-        string content = Latin1(PdfBuilder.Make([Page([tall])]));
+        string content = PdfFixture.Readable(PdfBuilder.Make([Page([tall])]));
         Assert.Contains("/F1 12.24 Tf\n215.6863 Tz\n0 -1 1 0 61.2 237.6 Tm\n", content);
         // Two characters stay horizontal whatever the box, and so does a wide box.
         Assert.False(PdfBuilder.IsTurned(new OcrLine("ab", new RectD(0.1, 0.2, 0.02, 0.1), 0.9f), codes, 612, 792));
@@ -336,7 +336,7 @@ public class PdfATests
             new("its", new RectD(0.3, 0.5, 0.02, 0.03)),
         };
         var flat = new OcrLine("of all its", new RectD(0.1, 0.5, 0.3, 0.03), 0.9f, words);
-        string content = Latin1(PdfBuilder.Make([Page([flat])]));
+        string content = PdfFixture.Readable(PdfBuilder.Make([Page([flat])]));
         Assert.Equal(3, content.Split(" Tj\n").Length - 1);
         Assert.DoesNotContain("0 -1 1 0", content);
     }
@@ -350,7 +350,7 @@ public class PdfATests
             new("de", new RectD(0.1, 0.2, 0.02, 0.05)),
         };
         var tall = new OcrLine("abc de", new RectD(0.1, 0.2, 0.02, 0.2), 0.9f, words);
-        string content = Latin1(PdfBuilder.Make([Page([tall])]));
+        string content = PdfFixture.Readable(PdfBuilder.Make([Page([tall])]));
         Assert.Equal(2, content.Split(" Tj\n").Length - 1);
         Assert.Equal(2, content.Split("0 -1 1 0").Length - 1);
     }
@@ -367,7 +367,7 @@ public class PdfATests
             new("three", new RectD(0.5, 0.5, 0.2, 0.05)),
         };
         var line = new OcrLine("one two three", new RectD(0.1, 0.5, 0.6, 0.05), 0.9f, words);
-        string content = Latin1(PdfBuilder.Make([Page([line])]));
+        string content = PdfFixture.Readable(PdfBuilder.Make([Page([line])]));
         Assert.Equal(3, content.Split(" Tj\n").Length - 1);
         Assert.Contains("154.5455 Tz\n1 0 0 1 61.2 396 Tm\n", content);
         Assert.Contains("154.5455 Tz\n1 0 0 1 183.6 396 Tm\n", content);
@@ -400,8 +400,8 @@ public class PdfATests
         // One Letter page with a Turkish line, dated and identified: the Mac's writer port must match.
         var line = new OcrLine("Çağrı Işık İzmir'de öğün şüpheli", new RectD(0.1, 0.8, 0.6, 0.04), 0.9f);
         byte[] pdf = PdfBuilder.Make([Page([line])], options: Archival("Tapu belgesi — Çağrı"));
-        Assert.Equal(11473, pdf.Length);
-        Assert.Equal("387107CDC430BDF0BD348CD837BF6BFB673C168706F4C310570D1231C86A8FD8", Convert.ToHexString(SHA256.HashData(pdf)));
+        Assert.Equal(8451, pdf.Length);
+        Assert.Equal("4D1350CC42A4A7158A9EB3CCEC9E381DDD085B4E79895BFBA7C0099363158625", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     [Fact]
@@ -409,8 +409,8 @@ public class PdfATests
     {
         var line = new OcrLine("Çağrı Işık İzmir'de öğün şüpheli", new RectD(0.1, 0.8, 0.6, 0.04), 0.9f);
         byte[] pdf = PdfBuilder.Make([Page([line]), Page()], options: new PdfWriteOptions { Title = "Tapu belgesi — Çağrı", CreationDate = Date, DocumentId = Id });
-        Assert.Equal(10207, pdf.Length);
-        Assert.Equal("2780A2BA51636E3A03974712445A8741D86CCA463CE958FF929214EB5B949ECF", Convert.ToHexString(SHA256.HashData(pdf)));
+        Assert.Equal(7186, pdf.Length);
+        Assert.Equal("79CEAD5058F5ECA74778937FF13CEBC8BBC2DD19936EB4607F8404EE1A6A8577", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     // MARK: - Files

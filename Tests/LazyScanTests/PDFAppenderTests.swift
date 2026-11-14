@@ -268,7 +268,7 @@ final class PDFAppenderTests: XCTestCase {
                                 ocrLines: [line])
         let appended = try append(original, [page], PDFAppendOptions(pageSize: .a4))
         try checkAppended(original, appended, 1)
-        let update = Self.update(original, appended)
+        let update = Self.latin1([UInt8](PDFWriterTests.readable(Data(appended[original.count...]))))
         XCTAssertTrue(update.contains("/MediaBox [0 0 595 842]"))
         XCTAssertTrue(update.contains("/CropBox [0 0 595 842]>>"))
         XCTAssertTrue(update.contains("q\n144 0 0 216 225.5 313 cm\n/Im0 Do\nQ\n"))

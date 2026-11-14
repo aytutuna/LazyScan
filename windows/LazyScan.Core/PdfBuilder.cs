@@ -433,7 +433,9 @@ public static class PdfBuilder
         byte[] data = page.Image.Data;
         w.WriteStream(imageObject, ImageEntries(page, data), data);
 
-        w.WriteStream(contentsObject, "", BuildContentStream(index, place, page.OcrLines, codes));
+        byte[] contents = BuildContentStream(index, place, page.OcrLines, codes);
+        if (pageHasText) w.WriteStream(contentsObject, "/Filter /FlateDecode", FlateEncoder.Zlib(contents));
+        else w.WriteStream(contentsObject, "", contents);
     }
 
     /// <summary>
@@ -485,9 +487,9 @@ public static class PdfBuilder
             $"/Ascent {GlyphlessFont.UnitsPerEm} /Descent -1 /CapHeight {GlyphlessFont.UnitsPerEm} /StemV 80 " +
             $"/FontFile2 {program} 0 R>>");
         byte[] font = GlyphlessFont.Program;
-        w.WriteStream(program, $"/Length1 {font.Length}", font);
+        w.WriteStream(program, $"/Length1 {font.Length} /Filter /FlateDecode", FlateEncoder.Zlib(font));
         w.WriteStream(cidToGid, "/Filter /FlateDecode", GlyphlessFont.CidToGidMap);
-        w.WriteStream(toUnicode, "", Encoding.ASCII.GetBytes(codes.ToUnicodeCMap()));
+        w.WriteStream(toUnicode, "/Filter /FlateDecode", FlateEncoder.Zlib(Encoding.ASCII.GetBytes(codes.ToUnicodeCMap())));
     }
 
     // MARK: - JPEG header

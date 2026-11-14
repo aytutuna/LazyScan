@@ -349,6 +349,7 @@ public class PdfEncryptionTests
         Assert.DoesNotContain("BT\n3 Tr", text);
         Assert.DoesNotContain("beginbfrange", text);
         Assert.DoesNotContain(Latin1(PdfBuilderTests.TinyJpeg[..64]), text);
+        Assert.DoesNotContain(Latin1(FlateEncoder.Zlib(GlyphlessFont.Program)[..64]), text);
         AssertXrefPointsAtEveryObject(text, 16);
     }
 
@@ -371,10 +372,12 @@ public class PdfEncryptionTests
         }
         // 10 Encrypt, 11 Page, 12 Image, 13 Contents.
         Assert.Equal(PdfBuilderTests.TinyJpeg, PdfEncryption.Decrypt(fileKey, Stream(12)));
-        Assert.StartsWith("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Stream(13))));
-        Assert.Equal(GlyphlessFont.Program, PdfEncryption.Decrypt(fileKey, Stream(6)));
+        byte[] Inflated(int number) => PdfFilters.Decode(PdfEncryption.Decrypt(fileKey, Stream(number)), new PdfName("FlateDecode"), null);
+        Assert.StartsWith("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n", Encoding.ASCII.GetString(Inflated(13)));
+        Assert.Equal(GlyphlessFont.Program, Inflated(6));
         // The font program keeps its own length beside the encrypted stream's.
-        Assert.Contains($"6 0 obj\n<</Length1 {GlyphlessFont.Program.Length} /Length {16 + (GlyphlessFont.Program.Length / 16 + 1) * 16}>>", text);
+        int compressed = FlateEncoder.Zlib(GlyphlessFont.Program).Length;
+        Assert.Contains($"6 0 obj\n<</Length1 {GlyphlessFont.Program.Length} /Filter /FlateDecode /Length {16 + (compressed / 16 + 1) * 16}>>", text);
         var registry = Regex.Match(text, @"/Registry <([0-9A-F]+)> /Ordering <([0-9A-F]+)>");
         Assert.Equal("Adobe", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Hex(registry.Groups[1].Value))));
         Assert.Equal("Identity", Encoding.ASCII.GetString(PdfEncryption.Decrypt(fileKey, Hex(registry.Groups[2].Value))));
@@ -457,8 +460,8 @@ public class PdfEncryptionTests
         // writer port must match.
         using var protection = new PdfProtection("Şifre 2026");
         byte[] pdf = PdfBuilder.Make([Page([Line])], options: Protected(protection));
-        Assert.Equal(10458, pdf.Length);
-        Assert.Equal("7DADC017AF051A60FC4E2F7069FDBBB9B6DFB7DCF8E529329D86C0CF2CE1F46E", Convert.ToHexString(SHA256.HashData(pdf)));
+        Assert.Equal(7464, pdf.Length);
+        Assert.Equal("191BCA62C0D282E1AD683E366AB0972D641ABA79286C0F09A0DF1108E4B659BC", Convert.ToHexString(SHA256.HashData(pdf)));
     }
 
     [Fact]

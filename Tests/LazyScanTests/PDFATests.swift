@@ -219,7 +219,8 @@ final class PDFATests: XCTestCase {
         descriptor += "/ItalicAngle 0 /Ascent 1000 /Descent -1 /CapHeight 1000 /StemV 80 /FontFile2 6 0 R>>"
         XCTAssertTrue(Self.has(pdf, descriptor))
         let program = GlyphlessFont.program.count
-        XCTAssertTrue(Self.has(pdf, "6 0 obj\n<</Length1 \(program) /Length \(program)>>\nstream\n"))
+        let compressed = FlateEncoder.zlib(GlyphlessFont.program).count
+        XCTAssertTrue(Self.has(pdf, "6 0 obj\n<</Length1 \(program) /Filter /FlateDecode /Length \(compressed)>>\nstream\n"))
         XCTAssertTrue(Self.has(pdf, "7 0 obj\n<</Filter /FlateDecode /Length \(GlyphlessFont.cidToGidMap.count)>>\nstream\n"))
         XCTAssertTrue(Self.has(pdf, "9 0 obj\n<</Title <FEFF"))
         // The metadata is not compressed; the profile is the sRGB one with three components.
@@ -316,9 +317,9 @@ final class PDFATests: XCTestCase {
         let line = OCRLine(text: "Çağrı Işık İzmir'de öğün şüpheli", boundingBox: CGRect(x: 0.1, y: 0.8, width: 0.6, height: 0.04),
                            confidence: 0.9)
         let pdf = try PDFWriter.make([Self.page([line])], options: Self.archival("Tapu belgesi — Çağrı"))
-        XCTAssertEqual(pdf.count, 11473)
+        XCTAssertEqual(pdf.count, 8451)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "387107CDC430BDF0BD348CD837BF6BFB673C168706F4C310570D1231C86A8FD8")
+                       "4D1350CC42A4A7158A9EB3CCEC9E381DDD085B4E79895BFBA7C0099363158625")
     }
 
     // MARK: - Files

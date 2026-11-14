@@ -87,7 +87,7 @@ public class PdfBuilderTests
             new("hello world", new RectD(0.1, 0.8, 0.5, 0.05), 0.95f),
         };
         byte[] pdf = PdfBuilder.Make([Page(lines)]);
-        string text = Encoding.Latin1.GetString(pdf);
+        string text = PdfFixture.Readable(pdf);
         Assert.Contains("3 Tr", text);                  // invisible text rendering mode
         Assert.Contains("<00680065006C006C006F00200077006F0072006C0064> Tj", text); // UTF-16 code units
         Assert.Contains("/Subtype /Type0 /BaseFont /GlyphLessFont /Encoding /Identity-H", text);
@@ -115,7 +115,7 @@ public class PdfBuilderTests
             new("a(b)c\\d", new RectD(0.1, 0.5, 0.4, 0.05), 0.9f),
         };
         byte[] pdf = PdfBuilder.Make([Page(lines)]);
-        string text = Encoding.Latin1.GetString(pdf);
+        string text = PdfFixture.Readable(pdf);
         Assert.Contains("<00610028006200290063005C0064> Tj", text);
         using var document = PdfDocument.Open(pdf);
         Assert.Equal("a(b)c\\d", document.GetPage(1).Text);
@@ -447,11 +447,11 @@ public class PdfBuilderTests
         // The Letter page on A4 is 595 x 770 pt with its corner at (0, 36).
         var line = new OcrLine("Şehir İçi ığdır", new RectD(0.1, 0.5, 0.8, 0.05), 0.9f);
         var options = new PdfWriteOptions { PageSize = PdfPageSize.A4 };
-        string text = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(2550, 3300, [line])], options: options));
+        string text = PdfFixture.Readable(PdfBuilder.Make([Scanned(2550, 3300, [line])], options: options));
         Assert.Contains("/F1 38.5 Tf\n", text);
         Assert.Contains("1 0 0 1 59.5 421 Tm\n", text);
         Assert.Contains("164.8485 Tz\n", text);
-        string small = Encoding.Latin1.GetString(PdfBuilder.Make([Scanned(600, 900, [line])], options: options));
+        string small = PdfFixture.Readable(PdfBuilder.Make([Scanned(600, 900, [line])], options: options));
         // 144 x 216 pt at (225.5, 313): 0.1 * 144 + 225.5 and 0.5 * 216 + 313.
         Assert.Contains("1 0 0 1 239.9 421 Tm\n", small);
     }

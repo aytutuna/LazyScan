@@ -64,15 +64,36 @@ final class PDFWriterTests: XCTestCase {
 
     // MARK: - Byte search (the files are binary: never decoded into Characters)
 
+    /// The file followed by every Flate stream our writers produce (a filter and a length ending the
+    /// dictionary) inflated by Foundation, so a search sees the page text, the font and the map.
+    static func readable(_ data: Data) -> Data {
+        var all = data
+        let marker = Data("/Filter /FlateDecode /Length ".utf8)
+        let tail = Data(">>\nstream\n".utf8)
+        var start = data.startIndex
+        while let found = data.range(of: marker, options: [], in: start..<data.endIndex),
+              let end = data.range(of: tail, options: [], in: found.upperBound..<data.endIndex),
+              let length = Int(String(decoding: data[found.upperBound..<end.lowerBound], as: UTF8.self)) {
+            let body = [UInt8](data[end.upperBound..<(end.upperBound + length)])
+            if let inflated = PDFFixture.inflate(body) {
+                all.append(10)
+                all.append(contentsOf: inflated)
+            }
+            start = end.upperBound + length
+        }
+        return all
+    }
+
     static func has(_ data: Data, _ needle: String) -> Bool {
-        data.range(of: Data(needle.utf8)) != nil
+        readable(data).range(of: Data(needle.utf8)) != nil
     }
 
     static func count(_ data: Data, _ needle: String) -> Int {
         let pattern = Data(needle.utf8)
+        let all = readable(data)
         var found = 0
-        var start = data.startIndex
-        while let range = data.range(of: pattern, options: [], in: start..<data.endIndex) {
+        var start = all.startIndex
+        while let range = all.range(of: pattern, options: [], in: start..<all.endIndex) {
             found += 1
             start = range.upperBound
         }
@@ -609,9 +630,9 @@ final class PDFWriterTests: XCTestCase {
         let options = PDFWriteOptions(title: "Tapu belgesi — Çağrı", creationDate: Date(timeIntervalSince1970: 1_792_434_605),
                                       timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: Array(0xA0..<0xB0))
         let pdf = try PDFWriter.make([Self.letterPage([line]), Self.letterPage()], options: options)
-        XCTAssertEqual(pdf.count, 10207)
+        XCTAssertEqual(pdf.count, 7186)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "2780A2BA51636E3A03974712445A8741D86CCA463CE958FF929214EB5B949ECF")
+                       "79CEAD5058F5ECA74778937FF13CEBC8BBC2DD19936EB4607F8404EE1A6A8577")
     }
 
     func test_g4AndJpegPages_goldenBytes() throws {
@@ -626,8 +647,8 @@ final class PDFWriterTests: XCTestCase {
         let options = PDFWriteOptions(title: "Siyah beyaz", creationDate: Date(timeIntervalSince1970: 1_792_434_605),
                                       timeZone: TimeZone(secondsFromGMT: 3 * 3600), documentId: Array(0xA0..<0xB0))
         let pdf = try PDFWriter.make([g4, jpeg], options: options)
-        XCTAssertEqual(pdf.count, 10160)
+        XCTAssertEqual(pdf.count, 7154)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "799A2B612B58DEE3D2829A6841D5E598CD879D51384E35BC708890EEB6DA6804")
+                       "C9CB40F60D03C4B573EA256FA926136D60F992022CC05FEB7C978B1147E8F55B")
     }
 }

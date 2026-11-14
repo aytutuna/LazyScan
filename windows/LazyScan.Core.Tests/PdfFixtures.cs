@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace LazyScan.Core.Tests;
 
@@ -161,6 +162,22 @@ internal sealed class PdfFixture
         using var output = new MemoryStream();
         using (var z = new ZLibStream(output, CompressionLevel.Optimal, leaveOpen: true)) z.Write(data);
         return output.ToArray();
+    }
+
+    /// <summary>The file as Latin-1 text, followed by every Flate stream our writers produce (a filter and a length ending the dictionary) inflated by the platform.</summary>
+    internal static string Readable(byte[] pdf)
+    {
+        string text = Encoding.Latin1.GetString(pdf);
+        var sb = new StringBuilder(text);
+        foreach (Match m in Regex.Matches(text, @"/Filter /FlateDecode /Length (\d+)>>\nstream\n"))
+        {
+            using var input = new MemoryStream(pdf, m.Index + m.Length, int.Parse(m.Groups[1].Value));
+            using var z = new ZLibStream(input, CompressionMode.Decompress);
+            using var inflated = new MemoryStream();
+            z.CopyTo(inflated);
+            sb.Append('\n').Append(Encoding.Latin1.GetString(inflated.ToArray()));
+        }
+        return sb.ToString();
     }
 
     private static IEnumerable<(int First, int Count)> Runs(IEnumerable<int> numbers)

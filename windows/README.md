@@ -893,7 +893,9 @@ from code (`GlyphlessFont`): one empty glyph, half an em wide, for every charact
 script can be selected, searched and copied: Turkish (ç, ğ, ı, İ, ö, ş, ü), Greek, Cyrillic,
 Arabic, Hebrew, Chinese, Japanese, Devanagari and characters beyond the Basic Multilingual
 Plane, where earlier versions wrote "?" for anything outside Latin-1. Each line's text fills
-the box OCR found for it, so a selection covers the printed words. The color profile is
+the box OCR found for it, so a selection covers the printed words. The page text, the font
+program and the character map are stored Flate-compressed by `FlateEncoder`, an encoder of our
+own, so the Mac writes the same bytes. The color profile is
 sRGB-v2-magic from [Compact-ICC-Profiles](https://github.com/saucecontrol/Compact-ICC-Profiles)
 by Clinton Ingram (CC0 1.0, 736 bytes), stored in `PdfA.cs`.
 

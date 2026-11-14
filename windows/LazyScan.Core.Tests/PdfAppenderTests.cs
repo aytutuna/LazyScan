@@ -201,7 +201,7 @@ public class PdfAppenderTests
         var page = new PdfPageInput(PdfBuilderTests.TinyJpeg, 600, 900, 300, [line]);
         byte[] appended = PdfAppender.Append(original, [page], new PdfAppendOptions { PageSize = PdfPageSize.A4 });
         CheckAppended(original, appended, 1);
-        string update = Update(original, appended);
+        string update = PdfFixture.Readable(appended[original.Length..]);
         Assert.Contains("/MediaBox [0 0 595 842]", update);
         Assert.Contains("/CropBox [0 0 595 842]>>", update);
         Assert.Contains("q\n144 0 0 216 225.5 313 cm\n/Im0 Do\nQ\n", update);

@@ -166,6 +166,14 @@ final class PDFFixture {
         return output
     }
 
+    /// A zlib stream's data through Foundation's inflater (raw deflate between the header and the Adler-32); nil when it is not one.
+    static func inflate(_ zlib: [UInt8]) -> [UInt8]? {
+        guard zlib.count > 6, zlib[0] == 0x78 else { return nil }
+        let raw = Data(zlib[2..<(zlib.count - 4)])
+        guard let inflated = try? (raw as NSData).decompressed(using: .zlib) else { return nil }
+        return [UInt8](inflated as Data)
+    }
+
     /// One byte per scalar, as C#'s Encoding.Latin1 (the fixtures never go past U+00FF).
     static func latin1(_ text: String) -> [UInt8] {
         var bytes: [UInt8] = []

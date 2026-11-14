@@ -405,6 +405,7 @@ final class PDFEncryptionTests: XCTestCase {
         XCTAssertFalse(Self.has(pdf, "BT\n3 Tr"))
         XCTAssertFalse(Self.has(pdf, "beginbfrange"))
         XCTAssertNil(pdf.range(of: PDFWriterTests.tinyJPEGData.prefix(64)))
+        XCTAssertNil(pdf.range(of: Data(FlateEncoder.zlib(GlyphlessFont.program).prefix(64))))
         PDFWriterTests.assertXrefPointsAtEveryObject(pdf, objects: 16)
     }
 
@@ -418,11 +419,14 @@ final class PDFEncryptionTests: XCTestCase {
         // 10 Encrypt, 11 Page, 12 Image, 13 Contents.
         XCTAssertEqual(try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 12)), PDFWriterTests.tinyJPEG)
         let contents = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 13))
-        XCTAssertTrue(String(decoding: contents, as: UTF8.self).hasPrefix("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n"))
-        XCTAssertEqual(try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 6)), GlyphlessFont.program)
+        let page = try XCTUnwrap(PDFFixture.inflate(contents))
+        XCTAssertTrue(String(decoding: page, as: UTF8.self).hasPrefix("q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ\nBT\n3 Tr\n"))
+        let font = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.stream(pdf, 6))
+        XCTAssertEqual(PDFFixture.inflate(font), GlyphlessFont.program)
         // The font program keeps its own length beside the encrypted stream's.
         let program = GlyphlessFont.program.count
-        XCTAssertTrue(Self.has(pdf, "6 0 obj\n<</Length1 \(program) /Length \(16 + (program / 16 + 1) * 16)>>"))
+        let compressed = FlateEncoder.zlib(GlyphlessFont.program).count
+        XCTAssertTrue(Self.has(pdf, "6 0 obj\n<</Length1 \(program) /Filter /FlateDecode /Length \(16 + (compressed / 16 + 1) * 16)>>"))
         let registry = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.value(pdf, "Registry"))
         let ordering = try PDFEncryption.decrypt(fileKey: fileKey, stored: Self.value(pdf, "Ordering"))
         XCTAssertEqual(String(decoding: registry, as: UTF8.self), "Adobe")
@@ -568,9 +572,9 @@ final class PDFEncryptionTests: XCTestCase {
         // and IVs from the counting bytes.
         let protection = try PDFProtection("Şifre 2026")
         let pdf = try PDFWriter.make([Self.page([Self.line])], options: Self.protected(protection))
-        XCTAssertEqual(pdf.count, 10458)
+        XCTAssertEqual(pdf.count, 7464)
         XCTAssertEqual(CompanionPackage.sha256Hex(pdf).uppercased(),
-                       "7DADC017AF051A60FC4E2F7069FDBBB9B6DFB7DCF8E529329D86C0CF2CE1F46E")
+                       "191BCA62C0D282E1AD683E366AB0972D641ABA79286C0F09A0DF1108E4B659BC")
     }
 
     func test_writeFile_writesAProtectedFile() throws {

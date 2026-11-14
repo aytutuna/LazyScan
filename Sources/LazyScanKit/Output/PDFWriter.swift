@@ -337,7 +337,11 @@ public enum PDFWriter {
         try w.writeStream(imageObject, imageEntries(page), page.image.data)
 
         let contents = contentStream(index, place: place, lines: lines, codes: codes)
-        try w.writeStream(contentsObject, "", contents)
+        if pageHasText {
+            try w.writeStream(contentsObject, "/Filter /FlateDecode", Data(FlateEncoder.zlib([UInt8](contents))))
+        } else {
+            try w.writeStream(contentsObject, "", contents)
+        }
     }
 
     /// The image XObject's dictionary entries (before /Length). A JPEG declares its own frame size,
@@ -400,9 +404,9 @@ public enum PDFWriter {
         try w.writeObject(descriptor, fontDescriptor)
 
         let font = GlyphlessFont.program
-        try w.writeStream(program, "/Length1 \(font.count)", Data(font))
+        try w.writeStream(program, "/Length1 \(font.count) /Filter /FlateDecode", Data(FlateEncoder.zlib(font)))
         try w.writeStream(cidToGid, "/Filter /FlateDecode", Data(GlyphlessFont.cidToGidMap))
-        try w.writeStream(toUnicode, "", Data(codes.toUnicodeCMap().utf8))
+        try w.writeStream(toUnicode, "/Filter /FlateDecode", Data(FlateEncoder.zlib(Array(codes.toUnicodeCMap().utf8))))
     }
 
     // MARK: - Content stream
