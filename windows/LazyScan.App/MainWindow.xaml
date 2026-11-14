@@ -303,6 +303,11 @@
                         x:Name="EmptyTroubleshootLink" Click="Troubleshoot_Click"
                         AutomationProperties.Name="{loc:T Troubleshoot: why isn\'t my scanner listed?}"><Run Text="{loc:T Troubleshoot}" /></Hyperlink>
                 </TextBlock>
+                <!-- Takes the hint's place until the search has had its time (UpdateEmptyDevicesHint). -->
+                <StackPanel Grid.Row="2" x:Name="SearchingHint" Margin="16,4" Visibility="Collapsed">
+                    <TextBlock Text="{loc:T Looking for scanners…}" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
+                    <ProgressBar IsIndeterminate="True" Height="3" Margin="0,6,0,0" />
+                </StackPanel>
 
                 <DockPanel Grid.Row="3" x:Name="PresetsHeader" Margin="16,16,8,4">
                     <StackPanel DockPanel.Dock="Right" x:Name="PresetButtons" Orientation="Horizontal">

@@ -1201,6 +1201,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             backend.StartBrowsing();
         }
         MergeDevices();
+        BeginDiscoveryWindow();
         // The troubleshooter's part of devices.txt needs the WIA service and the network.
         _ = ReadSystemStateAsync();
         // The Copy card needs a printer; Automatic paper for the ID card is the default printer's.
@@ -1516,6 +1517,28 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     /// <summary>A scanner other than the demo scanner is listed; without one the sidebar offers the troubleshooter.</summary>
     public bool HasRealDevices => DeviceGroups.Any(group => !group.Primary.IsDemo);
 
+    /// <summary>How long after the start and after each Refresh the list is taken as still filling in; the Kit's discoveryTime.</summary>
+    private static readonly TimeSpan DiscoveryTime = TimeSpan.FromSeconds(5);
+
+    private int _discoveryGeneration;
+
+    /// <summary>False from the start and from each Refresh until <see cref="DiscoveryTime"/> has passed.</summary>
+    public bool DiscoverySettled { get; private set; }
+
+    /// <summary>No scanner but the demo scanner is listed and the search has not had its time: the sidebar says "Looking for scanners…" instead of "No scanner found".</summary>
+    public bool ShowsSearching => !HasRealDevices && !DiscoverySettled;
+
+    private async void BeginDiscoveryWindow()
+    {
+        DiscoverySettled = false;
+        int generation = ++_discoveryGeneration;
+        NotifyAll();
+        await Task.Delay(DiscoveryTime);
+        if (generation != _discoveryGeneration) return;
+        DiscoverySettled = true;
+        NotifyAll();
+    }
+
     /// <summary>The Demo Scanner is the selected device.</summary>
     public bool DemoSelected => SelectedDeviceId is { } id && DeviceGroups.Any(g => g.Primary.IsDemo && g.Members.Any(m => m.Id == id));
 
@@ -1591,6 +1614,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
     public void RefreshScanners()
     {
         foreach (var backend in _backends.OfType<IScannerBackendDiagnostics>()) backend.Rescan();
+        BeginDiscoveryWindow();
         _ = ReadSystemStateAsync();
         if (SelectedDeviceId is { } id && _session is null && _switchTask.IsCompleted && !AutoSwitchMustWait)
         {

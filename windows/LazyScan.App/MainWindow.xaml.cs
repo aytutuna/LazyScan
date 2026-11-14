@@ -585,7 +585,9 @@ public partial class MainWindow : Window
         TroubleshootButton.Visibility = help ? Visibility.Visible : Visibility.Collapsed;
         // Alone, the + sits where the ? does, level with the presets' buttons.
         AddScannerButton.Margin = new Thickness(0, 4, help ? 2 : 8, 0);
-        EmptyDevicesHint.Visibility = !ViewModel.HasRealDevices && !IsPaneCompact ? Visibility.Visible : Visibility.Collapsed;
+        bool empty = !ViewModel.HasRealDevices && !IsPaneCompact;
+        SearchingHint.Visibility = empty && ViewModel.ShowsSearching ? Visibility.Visible : Visibility.Collapsed;
+        EmptyDevicesHint.Visibility = empty && !ViewModel.ShowsSearching ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
