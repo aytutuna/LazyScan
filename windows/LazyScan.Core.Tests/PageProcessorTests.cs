@@ -687,6 +687,59 @@ public class PageProcessorTests
         Assert.True(PageProcessor.SplitsFacingPages(flatbed));
     }
 
+    /// <summary>
+    /// A step that turns a page upright by half a turn when its text starts bright at the top, as reading it
+    /// would; a page of one flat green is a picture and text starting dark at the top reads upright, and
+    /// reading leaves both alone.
+    /// </summary>
+    private sealed class ReadStep : IPageStep
+    {
+        public string Name => "orientation";
+
+        public ScannedPage Apply(ScannedPage page) =>
+            page.Image.Pixels[1] == 0 && page.Image.Pixels[0] + page.Image.Pixels[2] == 250 ? page.TurnedUpright(2) : page;
+    }
+
+    [Fact]
+    public void Process_BookUpsideDown_TurnsAndOrdersASpreadWithNoTextLikeTheRest()
+    {
+        ScannedPage Text() => Page(TwoTone(200, 100));
+        ScannedPage Picture() => Page(RgbaImage.Filled(200, 100, 0, 200, 0));
+        var book = new BookSplitOptions(CutAt: BookCutAt.Middle);
+        var result = new PageProcessor([new ReadStep()], book: book).Process([Text(), Picture(), Text(), Text()]).Pages;
+        Assert.Equal(8, result.Count);
+        // Every spread is turned half a way, so the part after the cut leads.
+        Assert.Equal(new int?[] { 1, 0, 1, 0, 1, 0, 1, 0 }, result.Select(p => p.Spread!.Part));
+        Assert.Equal(new int?[] { 2, 2, null, null, 2, 2, 2, 2 }, result.Select(p => p.Upright?.QuarterTurns));
+        Assert.Equal(" Most spreads were turned upright. Set Book rotation to 180° to turn every spread.",
+                     BookPages.RotationNote(result, 0));
+        Assert.Equal("", BookPages.RotationNote(result.Take(2), 0));
+        // When few spreads read as turned, the others are left as they were scanned.
+        var few = new PageProcessor([new ReadStep()], book: book).Process([Text(), Picture(), Picture()]).Pages;
+        Assert.Equal(new int?[] { 1, 0, 0, 1, 0, 1 }, few.Select(p => p.Spread!.Part));
+        Assert.Equal("", BookPages.RotationNote(few, 0));
+    }
+
+    [Fact]
+    public void Process_BookUpsideDown_SpreadsOneAtATimeUseTheQueue()
+    {
+        ScannedPage Text() => Page(TwoTone(200, 100));
+        ScannedPage Picture() => Page(RgbaImage.Filled(200, 100, 0, 200, 0));
+        ScannedPage Upright() => Page(TwoTone(200, 100).RotatedQuarterTurns(2));
+        var processor = new PageProcessor([new ReadStep()], book: new BookSplitOptions(CutAt: BookCutAt.Middle));
+        var queue = new List<ScannedPage>();
+        for (int i = 0; i < 2; i++) queue.AddRange(processor.Process([Text()], queue: queue).Pages);
+        Assert.Equal(new int?[] { 2, 2, 2, 2 }, queue.Select(p => p.Upright?.QuarterTurns));
+        Assert.Equal(new int?[] { 0, 1 }, processor.Process([Picture()]).Pages.Select(p => p.Spread!.Part));
+        Assert.Equal(new int?[] { 1, 0 }, processor.Process([Picture()], queue: queue).Pages.Select(p => p.Spread!.Part));
+        // A spread that reads upright is left as it was read.
+        var read = processor.Process([Upright()], queue: queue).Pages;
+        Assert.Equal(new int?[] { 0, 1 }, read.Select(p => p.Spread!.Part));
+        Assert.Equal(new int?[] { null, null }, read.Select(p => p.Upright?.QuarterTurns));
+        Assert.Equal(" Most spreads were turned upright. Set Book rotation to 180° to turn every spread.",
+                     BookPages.RotationNote(queue, 0));
+    }
+
     [Fact]
     public void Process_SpreadsGivenASide_KeepTheirSheetAndSide()
     {

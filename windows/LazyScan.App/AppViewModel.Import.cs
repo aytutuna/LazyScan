@@ -249,9 +249,10 @@ public sealed partial class AppViewModel
             // A page ready to be cleaned up: spooled and added to the queue, or held to be saved at once.
             async Task BringIn(ScannedPage cleaned)
             {
+                var queued = ScannedPages.Select(item => item.Page).ToList();
                 var (processed, preview) = await Task.Run(() =>
                 {
-                    var pages = processor.Process([cleaned], token).Pages.ToList();
+                    var pages = processor.Process([cleaned], token, queue: queued).Pages.ToList();
                     return (pages, ScanHistory.MakePreview((pages.Count > 0 ? pages[^1] : cleaned).Image, CanvasPreviewMaxSide));
                 }, token);
                 // Spill the page and the photo it was taken from to disk; keep only previews, in the queue

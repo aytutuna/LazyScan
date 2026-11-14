@@ -715,6 +715,30 @@ public static class BookSplitter
         return NormalizedTurns(rotationQuarterTurns + extra);
     }
 
+    /// <summary>
+    /// The total turn (<see cref="TotalTurns"/>) that more than half of the split spreads in
+    /// <paramref name="spreads"/> (each the two pages cut from one spread) were given by reading their text;
+    /// null when no turn has that many. Spreads kept whole are not counted.
+    /// </summary>
+    public static int? MajorityTurn(int rotation, IEnumerable<IReadOnlyList<ScannedPage>> spreads)
+    {
+        var pairs = spreads.Where(s => s.Count == 2).ToList();
+        var counts = new Dictionary<int, int>();
+        foreach (var pair in pairs.Where(p => p.Any(page => page.Upright is { Undone: false })))
+        {
+            int total = TotalTurns(rotation, pair[0].Upright, pair[1].Upright);
+            counts[total] = counts.GetValueOrDefault(total) + 1;
+        }
+        if (counts.Count == 0) return null;
+        var best = counts.MaxBy(pair => pair.Value);
+        return best.Value * 2 > pairs.Count ? best.Key : null;
+    }
+
+    /// <summary>The pages of <paramref name="pages"/> cut from the same spread, one list per spread in order of first appearance.</summary>
+    public static List<IReadOnlyList<ScannedPage>> SplitSpreads(IEnumerable<ScannedPage> pages) =>
+        pages.Where(p => p.Spread is { IsWhole: false }).GroupBy(p => p.Spread!.SpreadId)
+            .Select(g => (IReadOnlyList<ScannedPage>)g.ToList()).ToList();
+
     /// <summary><paramref name="quarterTurns"/> as 0 to 3.</summary>
     public static int NormalizedTurns(int quarterTurns) => ((quarterTurns % 4) + 4) % 4;
 }
@@ -886,6 +910,19 @@ public static class BookPages
                 "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it).");
         }
         return note;
+    }
+
+    /// <summary>
+    /// The line after a scan when reading the text turned most of the queue's spreads the same way and the
+    /// book's rotation is not set to that: " Most spreads were turned upright. Set Book rotation to 180° to
+    /// turn every spread." (leading space; empty otherwise, and when only one spread is split).
+    /// </summary>
+    public static string RotationNote(IEnumerable<ScannedPage> queue, int rotation)
+    {
+        var spreads = BookSplitter.SplitSpreads(queue);
+        if (spreads.Count < 2 || BookSplitter.MajorityTurn(rotation, spreads) is not { } turn
+            || turn == BookSplitter.NormalizedTurns(rotation)) return "";
+        return " " + Loc.T("Most spreads were turned upright. Set Book rotation to {0} to turn every spread.", RotationLabel(turn));
     }
 
     /// <summary>"Spread 2 is split into two pages." or "Spread 2 is one page again."</summary>

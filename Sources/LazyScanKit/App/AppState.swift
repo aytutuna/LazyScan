@@ -1623,6 +1623,7 @@ public final class AppState: ObservableObject {
         let barcodes = self.barcodeReader
         let straightens = intake.straightens
         let firstTransfer = intake.firstTransfer
+        let queued = self.scannedPages
         let total: Int? = intake.streaming ? nil : scanned.count
         self.showProcessing(page: firstTransfer + 1, of: total)
         // Pages that go to the queue are kept when Cancel stops their clean-up: they are queued as scanned.
@@ -1632,7 +1633,7 @@ public final class AppState: ObservableObject {
             cleaned = try await Task.detached(priority: .userInitiated) {
                 try Self.cleanUpStage(for: source, settings: s, arrangement: arrangement, scorer: scorer, barcodes: barcodes,
                                       straightens: straightens)
-                    .process(scanned, firstTransfer: firstTransfer, shouldContinue: { !flag.isCancelled },
+                    .process(scanned, firstTransfer: firstTransfer, queue: queued, shouldContinue: { !flag.isCancelled },
                              onPage: { [weak self] number in
                         Task { @MainActor in self?.showProcessing(page: firstTransfer + number, of: total) }
                     })

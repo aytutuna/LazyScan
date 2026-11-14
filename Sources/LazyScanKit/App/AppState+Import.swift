@@ -233,11 +233,12 @@ extension AppState {
             // The clean-up stage, then spill the page (and the photo it was taken from) to disk; keep only
             // previews, in the queue or until the pages are saved.
             @MainActor func bringIn(_ cleaned: ScannedPage) async throws {
+                let queued = self.scannedPages
                 let done: ([ScannedPage], CGImage?) = try await Task.detached(priority: .userInitiated) {
                     let processor: PageProcessor = savesAtOnce
                         ? PageProcessor.forScan(s)
                         : PageProcessor.forPhotoImport(s, scorer: scorer, barcodes: barcodes)
-                    let processed = try processor.process([cleaned], shouldContinue: { !flag.isCancelled }).pages
+                    let processed = try processor.process([cleaned], queue: queued, shouldContinue: { !flag.isCancelled }).pages
                     let pages: [ScannedPage] = Self.spoolPages(processed, to: spool, previewSide: previewSide)
                     return (pages, Self.makePreview(processed.last?.image ?? cleaned.image, maxSide: 2600))
                 }.value

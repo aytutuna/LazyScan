@@ -53,7 +53,8 @@ public sealed partial class AppViewModel
         var plan = QueuePlan;
         var notSeparators = WithoutSeparators(added);
         int separatorsAdded = added.Count - notSeparators.Count;
-        return BookPages.ScanNote(added) + PageFilter.ScanNote(notSeparators, options) + PageCorrections.ScanNote(added)
+        return BookPages.ScanNote(added) + BookPages.RotationNote(ScannedPages.Select(item => item.Page), Settings.TaskOptions.BookRotationQuarterTurns)
+               + PageFilter.ScanNote(notSeparators, options) + PageCorrections.ScanNote(added)
                + PageTurns.ScanNote(added) + DocumentSplitter.ScanNote(plan, separatorsAdded);
     }
 

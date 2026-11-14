@@ -1157,6 +1157,7 @@
   "Apply the new settings to the spread already scanned?": {
     "other": "Apply the new settings to the {0} spreads already scanned?"
   },
+  "Most spreads were turned upright. Set Book rotation to {0} to turn every spread.": {},
   "Pages already scanned keep the old order.": {},
   "Pages already scanned keep the old rotation.": {},
   "Pages already scanned keep the old order and rotation.": {},

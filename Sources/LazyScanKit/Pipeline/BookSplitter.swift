@@ -710,6 +710,31 @@ public enum BookSplitter {
         return normalizedTurns(rotationQuarterTurns + extra)
     }
 
+    /// The total turn (`totalTurns`) that more than half of the split spreads in `spreads` (each the two
+    /// pages cut from one spread) were given by reading their text; nil when no turn has that many.
+    /// Spreads kept whole are not counted.
+    public static func majorityTurn(rotation: Int, spreads: [[ScannedPage]]) -> Int? {
+        let pairs = spreads.filter { $0.count == 2 }
+        var counts: [Int: Int] = [:]
+        for pair in pairs where pair.contains(where: { $0.upright?.undone == false }) {
+            counts[totalTurns(rotation, pair[0].upright, pair[1].upright), default: 0] += 1
+        }
+        guard let best = counts.max(by: { $0.value < $1.value }), best.value * 2 > pairs.count else { return nil }
+        return best.key
+    }
+
+    /// The pages of `pages` cut from the same spread, one array per spread in order of first appearance.
+    public static func splitSpreads(_ pages: [ScannedPage]) -> [[ScannedPage]] {
+        var order: [UUID] = []
+        var byID: [UUID: [ScannedPage]] = [:]
+        for page in pages {
+            guard let part = page.spread, !part.isWhole else { continue }
+            if byID[part.spreadID] == nil { order.append(part.spreadID) }
+            byID[part.spreadID, default: []].append(page)
+        }
+        return order.compactMap { byID[$0] }
+    }
+
     /// `quarterTurns` as 0 to 3.
     public static func normalizedTurns(_ quarterTurns: Int) -> Int {
         ((quarterTurns % 4) + 4) % 4
@@ -892,6 +917,16 @@ public enum BookPages {
                                       other: "The spine of {0} spreads was not found: they were added as one page each (Split… on one splits it).")
         }
         return note
+    }
+
+    /// The line after a scan when reading the text turned most of the queue's spreads the same way and the
+    /// book's rotation is not set to that: " Most spreads were turned upright. Set Book rotation to 180° to
+    /// turn every spread." (leading space; empty otherwise, and when only one spread is split).
+    public static func rotationNote(_ queue: [ScannedPage], rotation: Int) -> String {
+        let spreads = BookSplitter.splitSpreads(queue)
+        guard spreads.count > 1, let turn = BookSplitter.majorityTurn(rotation: rotation, spreads: spreads),
+              turn != BookSplitter.normalizedTurns(rotation) else { return "" }
+        return " " + L10n.t("Most spreads were turned upright. Set Book rotation to {0} to turn every spread.", rotationLabel(turn))
     }
 
     /// "Spread 2 is split into two pages." or "Spread 2 is one page again."

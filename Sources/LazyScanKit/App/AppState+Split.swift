@@ -21,7 +21,8 @@ extension AppState {
         let plan = queuePlan
         let notSeparators = withoutSeparators(added)
         let separatorsAdded = added.count - notSeparators.count
-        return BookPages.scanNote(added) + PageFilter.scanNote(notSeparators, options: options)
+        return BookPages.scanNote(added) + BookPages.rotationNote(scannedPages, rotation: settings.taskOptions.bookRotationQuarterTurns)
+            + PageFilter.scanNote(notSeparators, options: options)
             + PageCorrections.scanNote(added) + PageTurns.scanNote(added)
             + DocumentSplitter.scanNote(plan, separatorsAdded: separatorsAdded)
     }

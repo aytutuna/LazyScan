@@ -89,6 +89,19 @@ private struct TurnStep: PageStep {
     }
 }
 
+/// A step that turns a page upright by half a turn when its text starts bright at the top, as reading it
+/// would; a page of one flat green is a picture and text starting dark at the top reads upright, and
+/// reading leaves both alone.
+private struct ReadStep: PageStep {
+    var name: String { "orientation" }
+
+    func apply(_ page: ScannedPage) -> ScannedPage {
+        guard let image = RgbaImage(cgImage: page.image), image.pixels[1] == 0,
+              Int(image.pixels[0]) + Int(image.pixels[2]) == 250 else { return page }
+        return page.turnedUpright(2)
+    }
+}
+
 /// A step that prints a bar across the page.
 private struct BarStep: PageStep {
     var name: String { "bar" }
@@ -743,6 +756,42 @@ final class PageProcessorTests: XCTestCase {
         flatbed.duplex = .both
         flatbed.document.splitFacingPages = true
         XCTAssertTrue(PageProcessor.splitsFacingPages(flatbed))
+    }
+
+    func test_process_bookUpsideDown_turnsAndOrdersASpreadWithNoTextLikeTheRest() throws {
+        func text() -> ScannedPage { page(twoTone(200, 100).makeCGImage()!) }
+        func picture() -> ScannedPage { page(RgbaImage.filled(width: 200, height: 100, r: 0, g: 200, b: 0).makeCGImage()!) }
+        let book = BookSplitOptions(cutAt: .middle)
+        let result = try PageProcessor(steps: [ReadStep()], book: book).process([text(), picture(), text(), text()]).pages
+        XCTAssertEqual(result.count, 8)
+        // Every spread is turned half a way, so the part after the cut leads.
+        XCTAssertEqual(result.map { $0.spread?.part }, [1, 0, 1, 0, 1, 0, 1, 0])
+        XCTAssertEqual(result.map { $0.upright?.quarterTurns }, [2, 2, nil, nil, 2, 2, 2, 2])
+        XCTAssertEqual(BookPages.rotationNote(result, rotation: 0),
+                       " Most spreads were turned upright. Set Book rotation to 180° to turn every spread.")
+        XCTAssertEqual(BookPages.rotationNote(Array(result.prefix(2)), rotation: 0), "")
+        // When few spreads read as turned, the others are left as they were scanned.
+        let few = try PageProcessor(steps: [ReadStep()], book: book).process([text(), picture(), picture()]).pages
+        XCTAssertEqual(few.map { $0.spread?.part }, [1, 0, 0, 1, 0, 1])
+        XCTAssertEqual(BookPages.rotationNote(few, rotation: 0), "")
+    }
+
+    func test_process_bookUpsideDown_spreadsOneAtATimeUseTheQueue() throws {
+        func text() -> ScannedPage { page(twoTone(200, 100).makeCGImage()!) }
+        func picture() -> ScannedPage { page(RgbaImage.filled(width: 200, height: 100, r: 0, g: 200, b: 0).makeCGImage()!) }
+        func upright() -> ScannedPage { page(twoTone(200, 100).rotatedQuarterTurns(2).makeCGImage()!) }
+        let processor = PageProcessor(steps: [ReadStep()], book: BookSplitOptions(cutAt: .middle))
+        var queue: [ScannedPage] = []
+        for _ in 0..<2 { queue += try processor.process([text()], queue: queue).pages }
+        XCTAssertEqual(queue.map { $0.upright?.quarterTurns }, [2, 2, 2, 2])
+        XCTAssertEqual(try processor.process([picture()]).pages.map { $0.spread?.part }, [0, 1])
+        XCTAssertEqual(try processor.process([picture()], queue: queue).pages.map { $0.spread?.part }, [1, 0])
+        // A spread that reads upright is left as it was read.
+        let read = try processor.process([upright()], queue: queue).pages
+        XCTAssertEqual(read.map { $0.spread?.part }, [0, 1])
+        XCTAssertEqual(read.map { $0.upright?.quarterTurns }, [nil, nil])
+        XCTAssertEqual(BookPages.rotationNote(queue, rotation: 0),
+                       " Most spreads were turned upright. Set Book rotation to 180° to turn every spread.")
     }
 
     func test_process_spreadsGivenASide_keepTheirSheetAndSide() throws {

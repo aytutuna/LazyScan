@@ -617,9 +617,11 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
     /// many pages of a two-sided scan came before <paramref name="scanned"/>, which is a later part of it (a scan
     /// processed as its pages arrive), so each page keeps its sheet and side. <paramref name="onPage"/> hears
     /// the number of each page (from 1, among <paramref name="scanned"/>) before it is worked on.
+    /// <paramref name="queue"/>: the pages already queued, whose split spreads count with this scan's when a
+    /// spread the text could not turn is given the turn of the rest.
     /// </summary>
     public ProcessedScan Process(IReadOnlyList<ScannedPage> scanned, CancellationToken token = default, int firstTransfer = 0,
-                                 Action<int>? onPage = null)
+                                 Action<int>? onPage = null, IReadOnlyList<ScannedPage>? queue = null)
     {
         token.ThrowIfCancellationRequested();
         IReadOnlyList<ScannedPage> arranged = Arrangement switch
@@ -645,6 +647,8 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         // so a cut placed by hand lies on the image it is shown on.
         var spreads = new List<ScannedPage>(arranged.Count);
         var pages = new List<ScannedPage>(arranged.Count);
+        var bookPages = new List<IReadOnlyList<ScannedPage>>();
+        var cuts = new List<GutterResult?>();
         for (int number = 1; number <= arranged.Count; number++)
         {
             token.ThrowIfCancellationRequested();
@@ -654,10 +658,17 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
             spreads.Add(page);
             if (Book is { } book)
             {
-                pages.AddRange(ProcessSpread(page, BookSplitter.Cut(page.Image, page.Dpi, book), book, token));
+                var cut = BookSplitter.Cut(page.Image, page.Dpi, book);
+                bookPages.Add(ProcessSpread(page, cut, book, token));
+                cuts.Add(cut);
                 continue;
             }
             pages.Add(RunSteps(page, token));
+        }
+        if (Book is { } turnedBook)
+        {
+            TurnUnsureSpreads(bookPages, spreads, cuts, queue ?? [], turnedBook, token);
+            pages.AddRange(bookPages.SelectMany(p => p));
         }
         return new ProcessedScan(spreads, pages);
     }
@@ -699,6 +710,27 @@ public sealed class PageProcessor(IReadOnlyList<IPageStep> steps,
         a = a.WithSpread(a.Spread! with { Left = firstIsLeft });
         b = b.WithSpread(b.Spread! with { Left = !firstIsLeft });
         return firstLeads ? [a, b] : [b, a];
+    }
+
+    /// <summary>
+    /// Spreads whose text gave neither page a turn (pictures, a title page) are cut and ordered again with
+    /// the turn most of the book's spreads in the queue and this scan were given, so they come out like the
+    /// rest (a book lying upside down). A spread that reads upright keeps its first reading.
+    /// </summary>
+    private void TurnUnsureSpreads(List<IReadOnlyList<ScannedPage>> results, List<ScannedPage> spreads,
+                                   List<GutterResult?> cuts, IReadOnlyList<ScannedPage> queue, BookSplitOptions options,
+                                   CancellationToken token)
+    {
+        int own = BookSplitter.NormalizedTurns(options.RotationQuarterTurns);
+        if (BookSplitter.MajorityTurn(own, BookSplitter.SplitSpreads(queue).Concat(results)) is not { } turn || turn == own) return;
+        var turned = options with { RotationQuarterTurns = turn };
+        for (int i = 0; i < results.Count; i++)
+        {
+            if (results[i].Count != 2 || results[i].Any(p => p.Upright is { Undone: false }) || cuts[i] is not { } cut) continue;
+            var again = ProcessSpread(spreads[i], cut, turned, token);
+            if (again.Count == 2 && BookSplitter.TotalTurns(turn, again[0].Upright, again[1].Upright) == own) continue;
+            results[i] = again;
+        }
     }
 
     /// <summary>

@@ -644,8 +644,9 @@ public struct PageProcessor {
     /// (`CancellablePageStep`); when it says no, `ScanError.cancelled` is thrown. `firstTransfer`: how many
     /// pages of a two-sided scan came before `scanned`, which is a later part of it (a scan processed as
     /// its pages arrive), so each page keeps its sheet and side. `onPage` hears the number of each
-    /// page (from 1, among `scanned`) before it is worked on.
-    public func process(_ scanned: [ScannedPage], firstTransfer: Int = 0,
+    /// page (from 1, among `scanned`) before it is worked on. `queue`: the pages already queued, whose split
+    /// spreads count with this scan's when a spread the text could not turn is given the turn of the rest.
+    public func process(_ scanned: [ScannedPage], firstTransfer: Int = 0, queue: [ScannedPage] = [],
                         shouldContinue: () -> Bool = { true },
                         onPage: ((Int) -> Void)? = nil) throws -> ProcessedScan {
         guard shouldContinue() else { throw ScanError.cancelled }
@@ -672,6 +673,8 @@ public struct PageProcessor {
         spreads.reserveCapacity(arranged.count)
         var pages: [ScannedPage] = []
         pages.reserveCapacity(arranged.count)
+        var bookPages: [[ScannedPage]] = []
+        var cuts: [GutterResult?] = []
         for (index, scannedSpread) in arranged.enumerated() {
             guard shouldContinue() else { throw ScanError.cancelled }
             onPage?(index + 1)
@@ -680,12 +683,16 @@ public struct PageProcessor {
             spreads.append(page)
             if let book {
                 let gutter = BookSplitter.cut(page.image, dpi: page.dpi, options: book)
-                let spreadPages = try processSpread(page, cut: gutter, options: book, shouldContinue: shouldContinue)
-                pages.append(contentsOf: spreadPages)
+                bookPages.append(try processSpread(page, cut: gutter, options: book, shouldContinue: shouldContinue))
+                cuts.append(gutter)
                 continue
             }
             let current = try runSteps(page, shouldContinue: shouldContinue)
             pages.append(current)
+        }
+        if let book {
+            try turnUnsureSpreads(&bookPages, of: spreads, cuts: cuts, queue: queue, options: book, shouldContinue: shouldContinue)
+            pages = bookPages.flatMap { $0 }
         }
         return ProcessedScan(arranged: spreads, pages: pages)
     }
@@ -726,6 +733,24 @@ public struct PageProcessor {
         a.spread?.left = firstIsLeft
         b.spread?.left = !firstIsLeft
         return firstLeads ? [a, b] : [b, a]
+    }
+
+    /// Spreads whose text gave neither page a turn (pictures, a title page) are cut and ordered again with
+    /// the turn most of the book's spreads in the queue and this scan were given, so they come out like the
+    /// rest (a book lying upside down). A spread that reads upright keeps its first reading.
+    private func turnUnsureSpreads(_ results: inout [[ScannedPage]], of spreads: [ScannedPage], cuts: [GutterResult?],
+                                   queue: [ScannedPage], options: BookSplitOptions, shouldContinue: () -> Bool) throws {
+        let own = BookSplitter.normalizedTurns(options.rotationQuarterTurns)
+        guard let turn = BookSplitter.majorityTurn(rotation: own, spreads: BookSplitter.splitSpreads(queue) + results),
+              turn != own else { return }
+        var turned = options
+        turned.rotationQuarterTurns = turn
+        for (index, pair) in results.enumerated() where pair.count == 2 {
+            guard !pair.contains(where: { $0.upright?.undone == false }), let cut = cuts[index] else { continue }
+            let again = try processSpread(spreads[index], cut: cut, options: turned, shouldContinue: shouldContinue)
+            if again.count == 2, BookSplitter.totalTurns(turn, again[0].upright, again[1].upright) == own { continue }
+            results[index] = again
+        }
     }
 
     /// A scanner's spread turned level by the slant of its sheet or its text; a camera's, which was straightened

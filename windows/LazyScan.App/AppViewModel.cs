@@ -1953,7 +1953,8 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // work runs off the UI thread so the window stays live; the token is checked between
             // pages and steps.
             var processor = PageProcessor.ForScan(s, ArrangementOf(twoSided, manualSide), _orientation, _barcodes);
-            var cleaned = await Task.Run(() => processor.Process(scanned, token, onPage: number =>
+            var queued = ScannedPages.Select(item => item.Page).ToList();
+            var cleaned = await Task.Run(() => processor.Process(scanned, token, queue: queued, onPage: number =>
                 _dispatcher.BeginInvoke(() =>
                 {
                     if (!IsBusy) return;
@@ -2141,13 +2142,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         NotifyAll();
         string spoolDirectory = _spool.Directory;
         string historyFolder = HistoryFolder;
+        var queued = ScannedPages.Select(item => item.Page).ToList();
         var (raw, preview, historyItems, spooled, spreadSources) = await Task.Run(() =>
         {
             // Cancel stops the clean-up of this page, not the page: it is queued as scanned.
             ProcessedScan cleaned;
             try
             {
-                cleaned = processor.Process([page], token, firstTransfer);
+                cleaned = processor.Process([page], token, firstTransfer, queue: queued);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested && _switchGeneration == generation)
             {
