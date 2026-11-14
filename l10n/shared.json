@@ -3040,6 +3040,18 @@
   "Sent to {0}": {
     "note": "{0} is the name of a phone. The phone has downloaded the file."
   },
+  "Send to {0}": {
+    "note": "Button and menu item: send the saved file to a paired phone. {0} is the name of the phone."
+  },
+  "Send this file to your phone. It is fetched the next time Lazy Scan is open on the phone.": {
+    "other": "Send these files to your phone. They are fetched the next time Lazy Scan is open on the phone."
+  },
+  "Waiting for {0} to fetch the last file.": {
+    "note": "{0} is the name of a phone. Help on a disabled button: the file sent before has not been downloaded yet."
+  },
+  "Could not send {0} to {1}: {2}": {
+    "note": "{0} is a file name, {1} the name of a phone and {2} the reason."
+  },
   "Fill page": {},
   "Larger than the paper: up to {0} mm is cut off. Choose Fit to page to print all of it.": {},
   "History": {},

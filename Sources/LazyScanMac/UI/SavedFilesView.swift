@@ -20,7 +20,9 @@ struct SavedFilesView: View {
     @State private var rotatingPaths: Set<String> = []
 
     var body: some View {
-        Group {
+        let phone: PairedDevice? = state.phoneToSendTo
+        let sendDisabled: Bool = state.isBusy || phone.map { state.isWaitingToSend(to: $0) } == true
+        return Group {
             if files.isEmpty {
                 emptyState
             } else {
@@ -31,7 +33,10 @@ struct SavedFilesView: View {
                                           rotating: rotatingPaths.contains(file.url.path),
                                           canAppend: state.canAppendPages,
                                           actions: state.offeredFileActions(for: [file.url]).filter { $0 != .addPages },
+                                          phone: phone,
+                                          sendDisabled: sendDisabled,
                                           onAction: { run($0, on: file.url) },
+                                          onSend: { if let phone { state.sendToPhone([file.url], device: phone) } },
                                           onRotate: { rotate(file) },
                                           onAppend: { appendPages(to: file.url) })
                         }
@@ -218,7 +223,11 @@ fileprivate struct SavedFileCard: View {
     let canAppend: Bool
     /// What the file's menus offer (`AppState.offeredFileActions`).
     let actions: [FileAction]
+    /// The paired phone Send to phone goes to; nil when none is paired.
+    let phone: PairedDevice?
+    let sendDisabled: Bool
     let onAction: (FileAction) -> Void
+    let onSend: () -> Void
     let onRotate: () -> Void
     let onAppend: () -> Void
 
@@ -334,6 +343,15 @@ fileprivate struct SavedFileCard: View {
             } label: {
                 Label(action.label, systemImage: action.systemImage)
             }
+        }
+        if let phone {
+            Button {
+                onSend()
+            } label: {
+                Label(L10n.t("Send to {0}", phone.name), systemImage: "paperplane")
+            }
+            .disabled(sendDisabled)
+            .accessibilityIdentifier("saved.menu.sendToPhone")
         }
         if file.imageFormat != nil {
             Divider()
