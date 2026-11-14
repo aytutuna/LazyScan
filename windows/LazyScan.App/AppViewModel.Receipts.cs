@@ -343,6 +343,7 @@ public sealed partial class AppViewModel
             // 2. The files, all or nothing.
             var saved = new List<string>();
             var textFiles = new List<string>();
+            var stamp = NextStamp();
             async Task WriteText(string pdfPath, IReadOnlyList<int> indices)
             {
                 if (!s.Output.SavesTextBeside) return;
@@ -362,7 +363,7 @@ public sealed partial class AppViewModel
                     StatusMessage = Loc.T("Writing the PDF…");
                     NotifyAll();
                     var pages = images.Select((image, i) => new ScannedPage(image, pieces[i].Dpi, ColorMode.Grayscale)).ToList();
-                    string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates)),
+                    string path = await WritePdfAtomically(pages, s, await OutputPath(s, "pdf", documentDate: Receipts.CombinedDate(dates), stamp: stamp),
                                                            token, knownLines: lines);
                     saved.Add(path);
                     await WriteText(path, Enumerable.Range(0, images.Count).ToList());
@@ -373,7 +374,7 @@ public sealed partial class AppViewModel
                     token.ThrowIfCancellationRequested();
                     StatusMessage = Loc.T("Saving receipt {0} of {1}…", i + 1, receipts.Count);
                     NotifyAll();
-                    string path = await OutputPath(s, format.FileExtension(), documentDate: dates[i]);
+                    string path = await OutputPath(s, format.FileExtension(), receipts.Count > 1 ? i + 1 : null, dates[i], stamp: stamp);
                     var (start, count) = spans[i];
                     if (format == OutputFormat.Pdf)
                     {
@@ -389,6 +390,7 @@ public sealed partial class AppViewModel
                     }
                 }
             }, alsoWritten: textFiles);
+            Commit(stamp);
             MarkSaved(saved);
             DetectedPhotos = [];
             ShowPhotoReview = false;

@@ -2473,6 +2473,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
         else
         {
+            var stamp = NextStamp();
             try
             {
                 for (int i = 0; i < pages.Count; i++)
@@ -2480,17 +2481,22 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     token.ThrowIfCancellationRequested();
                     var page = pages[i];
                     int number = i + 1;
-                    string path = await OutputPath(s, s.Format.FileExtension());
+                    string path = await OutputPath(s, s.Format.FileExtension(), pages.Count > 1 ? number : null, stamp: stamp);
                     saved.Add(await Task.Run(() =>
                     {
                         var image = PdfBuilder.PreparePage(page, SpoolImage(page), number).Image;
                         return WpfImageCodec.SaveAsNew(image, path, s.Format, page.Dpi, s.JpegQuality, page.ColorMode);
                     }));
                 }
+                Commit(stamp);
             }
             catch (Exception e)
             {
-                if (saved.Count > 0) MarkSaved(saved);
+                if (saved.Count > 0)
+                {
+                    Commit(stamp);
+                    MarkSaved(saved);
+                }
                 DeleteSpoolFiles(pages.Take(saved.Count));
                 await KeepInQueue(pages.Skip(saved.Count).ToList());
                 bool cancelled = IsCancellation(e);
@@ -2549,13 +2555,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             var photos = DetectedPhotos.Where(p => p.Photo.Included).Select(p => p.Photo).ToList();
             if (photos.Count == 0) return;
             var saved = new List<string>();
+            var stamp = NextStamp();
             await WriteImagesRollingBack(saved, async () =>
             {
                 for (int index = 0; index < photos.Count; index++)
                 {
                     token.ThrowIfCancellationRequested();
                     var photo = photos[index];
-                    string path = await OutputPath(s, format.FileExtension(), index + 1);
+                    string path = await OutputPath(s, format.FileExtension(), index + 1, stamp: stamp);
                     StatusMessage = Loc.T("Saving photo {0} of {1}…", index + 1, photos.Count);
                     NotifyAll();
                     saved.Add(await Task.Run(() =>
@@ -2568,6 +2575,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                     }));
                 }
             });
+            Commit(stamp);
             MarkSaved(saved);
             DetectedPhotos = [];
             ShowPhotoReview = false;
@@ -4627,7 +4635,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         }
     }
 
-    private int NextCounter()
+    /// <summary>The running number and time shared by every file of one save.</summary>
+    private sealed record SaveStamp(int Counter, DateTime Date);
+
+    /// <summary>The stamp the next save would use; nothing is stored until <see cref="Commit"/>.</summary>
+    private SaveStamp NextStamp() => new(PeekCounter() + 1, DateTime.Now);
+
+    /// <summary>Keeps the stamp's running number, once the files of its save were written.</summary>
+    private void Commit(SaveStamp stamp)
     {
         // The macOS app keeps the counter in UserDefaults; here a tiny file next to the
         // presets serves the same purpose.
@@ -4636,25 +4651,23 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             "Lazy Scan", "counter.txt");
         try
         {
-            int value = File.Exists(counterPath) ? int.Parse(File.ReadAllText(counterPath).Trim()) : 0;
-            value += 1;
             Directory.CreateDirectory(Path.GetDirectoryName(counterPath)!);
-            File.WriteAllText(counterPath, value.ToString());
-            return value;
+            File.WriteAllText(counterPath, stamp.Counter.ToString());
         }
         catch
         {
-            return ++_counterFallback;
+            _counterFallback = stamp.Counter;
         }
     }
 
     /// <summary>
     /// A free file name in the snapshot's destination folder. It is only a proposal: the
     /// writers move into place without replacing and pick the next free name if another
-    /// file took this one meanwhile.
+    /// file took this one meanwhile. A save of several files passes one <paramref name="stamp"/> for
+    /// all of them and commits it after they are written; without one the running number is taken at once.
     /// </summary>
     private Task<string> OutputPath(ScanSettings s, string fileExtension, int? index = null, DocumentDate? documentDate = null,
-                                    string? label = null, string? name = null) => Task.Run(() =>
+                                    string? label = null, string? name = null, SaveStamp? stamp = null) => Task.Run(() =>
     {
         // On a network folder these calls can block for the network timeout.
         string dir = s.ResolveDestination();
@@ -4664,10 +4677,12 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             throw ScanException.ExportFailed(SaveErrors.Describe(e, dir));
         }
         // A typed name is the whole file name: no template and no running number.
+        var used = name is null ? stamp ?? NextStamp() : null;
+        if (name is null && stamp is null) Commit(used!);
         string baseName = name is not null
             ? new NamingTemplate("{label}").BaseFilename(new NamingContext(0, DateTime.Now, s.Intent) { Label = name })
             : new NamingTemplate(s.NamingTemplate)
-                .BaseFilename(new NamingContext(NextCounter(), DateTime.Now, s.Intent)
+                .BaseFilename(new NamingContext(used!.Counter, used.Date, s.Intent)
                 {
                     Index = index,
                     Task = TaskCatalog.Infer(s),

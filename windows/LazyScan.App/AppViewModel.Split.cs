@@ -353,6 +353,7 @@ public sealed partial class AppViewModel
         var saved = new List<string>();
         var textFiles = new List<string>();
         var noText = new List<string>();
+        var stamp = NextStamp();
         long? totalBytes = 0;
         // Each PDF written sets the last PDF's size and protection; a save undone puts back the ones before.
         long? lastPdfBytes = LastPdfBytes;
@@ -370,7 +371,7 @@ public sealed partial class AppViewModel
                     StatusMessage = Loc.T("Saving document {0} of {1}…", document.Number, plan.Documents.Count);
                     NotifyAll();
                     var pages = document.Pages.ToList();
-                    string path = await OutputPath(s, format.FileExtension(), plan.FileIndex(document), label: document.Label);
+                    string path = await OutputPath(s, format.FileExtension(), plan.FileIndex(document), label: document.Label, stamp: stamp);
                     if (format.IsTextFormat())
                     {
                         var (written, hasText) = await WriteTextDocument(pages, format, path, s, token);
@@ -406,6 +407,7 @@ public sealed partial class AppViewModel
             if (IsCancellation(e)) throw;
             throw new IOException(SavePlan.NotSavedMessage(SavePlan.FailureReason(e.Message)), e);
         }
+        Commit(stamp);
         MarkSaved(saved);
         DropSaved(queued, files.Paths, undoable: !(format == OutputFormat.Pdf && s.Output.Protect));
         ResetFlow();
