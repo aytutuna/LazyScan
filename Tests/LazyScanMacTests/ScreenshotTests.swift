@@ -94,6 +94,7 @@ final class ScreenshotTests: XCTestCase {
             }
             XCTAssertEqual(state.scannedPages.count, pages)
         }
+        state.discoverySettled = true
         return state
     }
 

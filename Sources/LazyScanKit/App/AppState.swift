@@ -920,6 +920,7 @@ public final class AppState: ObservableObject {
             backend.startBrowsing()
         }
         mergeDevices()
+        beginDiscoveryWindow()
         // The Copy card needs a printer; Automatic paper for the ID card is the default printer's.
         refreshPrinters()
         // A printer added or removed while the app was in the background (in System Settings, say)
@@ -1071,6 +1072,29 @@ public final class AppState: ObservableObject {
     /// A scanner other than the demo scanner is listed; without one the sidebar offers the troubleshooter.
     public var hasRealDevices: Bool { deviceGroups.contains { !$0.primary.isDemo } }
 
+    /// How long after the start and after each Refresh the scanner list is taken as still filling in: a USB
+    /// scanner or a service on the network can take seconds to be reported.
+    var discoveryTime: TimeInterval = 5
+    /// False from the start and from each Refresh until `discoveryTime` has passed.
+    @Published public internal(set) var discoverySettled = false
+    private var discoveryGeneration = 0
+
+    /// No scanner other than the demo scanner is listed yet, and the search has not had its time: the sidebar says
+    /// "Looking for scanners…" instead of "No scanner found".
+    public var showsSearching: Bool { !hasRealDevices && !discoverySettled }
+
+    private func beginDiscoveryWindow() {
+        discoverySettled = false
+        discoveryGeneration += 1
+        let generation: Int = discoveryGeneration
+        let nanoseconds = UInt64(discoveryTime * 1_000_000_000)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard let self, self.discoveryGeneration == generation else { return }
+            self.discoverySettled = true
+        }
+    }
+
     /// The selected scanner is the demo scanner.
     public var demoSelected: Bool {
         devices.contains { $0.id == selectedDeviceID && $0.isDemo }
@@ -1115,6 +1139,7 @@ public final class AppState: ObservableObject {
             if let diagnostics = backend as? any ScannerBackendDiagnostics { diagnostics.rescan() }
         }
         mergeDevices()
+        beginDiscoveryWindow()
         if let id = selectedDeviceID, session == nil, switchTask == nil, !autoSwitchMustWait {
             selectDevice(id, interactive: true)
         }

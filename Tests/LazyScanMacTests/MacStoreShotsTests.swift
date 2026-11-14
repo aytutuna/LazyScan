@@ -59,6 +59,7 @@ final class MacStoreShotsTests: XCTestCase {
             let fresh = AppState(backends: backends, presetStore: PresetStore(directory: folder),
                                  files: AppStateFiles.all(in: folder))
             fresh.start()
+            fresh.discoverySettled = true
             return fresh
         }
         let first = AppState(backends: backends, presetStore: PresetStore(directory: folder),
@@ -85,6 +86,7 @@ final class MacStoreShotsTests: XCTestCase {
             try await Task.sleep(nanoseconds: 50_000_000)
         }
         XCTAssertEqual(state.scannedPages.count, pages)
+        state.discoverySettled = true
         return state
     }
 

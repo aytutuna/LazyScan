@@ -26,7 +26,16 @@ struct SidebarView: View {
                         .selectionDisabled(state.isBusy)
                         .help(rowHelp)
                 }
-                if !state.hasRealDevices {
+                if state.showsSearching {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Looking for scanners\u{2026}")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                } else if !state.hasRealDevices {
                     // Twin of the Windows side pane: what is missing, and the way to find out why.
                     VStack(alignment: .leading, spacing: 4) {
                         Text("No scanner found")

@@ -101,6 +101,26 @@ final class AppStateDeviceTests: XCTestCase {
         }
     }
 
+    /// The sidebar says "Looking for scanners…" from the start and after Refresh until a scanner is listed or
+    /// the discovery time is over, and "No scanner found" only after that.
+    @MainActor
+    func test_noScannerListedYet_showsSearchingUntilDiscoverySettles() async throws {
+        let backend: ListedScannersBackend = ListedScannersBackend()
+        let state: AppState = makeState([backend])
+        state.discoveryTime = 0.2
+        XCTAssertFalse(state.discoverySettled)
+        state.start()
+        XCTAssertTrue(state.showsSearching)
+        try await waitFor(5) { state.discoverySettled }
+        XCTAssertFalse(state.showsSearching)
+
+        state.refreshScanners()
+        XCTAssertTrue(state.showsSearching)
+        backend.list([office])
+        XCTAssertFalse(state.showsSearching)
+        try await waitFor(5) { state.discoverySettled }
+    }
+
     /// The phone's scanner dropping off the list (switched off, out of the Wi-Fi): no other scanner is opened
     /// meanwhile, the status is the phone's "Ready", and the scanner is opened again once it is listed.
     @MainActor
