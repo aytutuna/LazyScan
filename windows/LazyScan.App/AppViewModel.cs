@@ -1970,6 +1970,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // its capabilities were never read) delivered one side of each sheet.
             bool twoSided = sides == DuplexMode.Both && session.LastScanDuplex != false;
             token.ThrowIfCancellationRequested();
+            Progress = null;
             StatusMessage = Loc.T("Processing…");
             NotifyAll();
             // The clean-up stage: two-sided pages in reading order with their sides marked and the
@@ -1982,8 +1983,7 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
                 _dispatcher.BeginInvoke(() =>
                 {
                     if (!IsBusy) return;
-                    StatusMessage = ProcessingStatus(number, scanned.Count);
-                    NotifyAll();
+                    ShowPageProgress(ProcessingStatus(number, scanned.Count), number - 1, scanned.Count);
                 })), token);
             if (_switchGeneration != generation) return;
             token.ThrowIfCancellationRequested();
@@ -2066,6 +2066,14 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             if (Capabilities is null) await ReadCapabilitiesAfterScan(session, generation);
             NotifyAll();
         });
+    }
+
+    /// <summary>A software phase at page <paramref name="index"/> (from 0) of <paramref name="total"/>: the bar fills and the status names the page.</summary>
+    private void ShowPageProgress(string message, int index, int total)
+    {
+        Progress = new ScanProgress((double)index / total, message);
+        StatusMessage = message;
+        NotifyAll();
     }
 
     private static string ProcessingStatus(int number, int total) =>
@@ -4327,13 +4335,19 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
         {
             var inputs = await PdfPageInputs(pages, s, token, encoded, text, knownLines, failures);
 
+            Progress = null;
             StatusMessage = Loc.T("Writing PDF…");
             NotifyAll();
             // Protected with the password when that option is on, else PDF/A when the archival option
             // is; titled with the file's name (WriteNewFile retitles the file when it has to take
             // another free name).
             options = PdfWriteOptions.For(s.Output, Path.GetFileNameWithoutExtension(path), protection);
-            written = await Task.Run(() => PdfBuilder.WriteNewFile(inputs, path, progress: null, token, options), token);
+            int writing = 0;
+            written = await Task.Run(() => PdfBuilder.WriteNewFile(inputs, path, message =>
+                _dispatcher.BeginInvoke(() =>
+                {
+                    if (IsBusy) ShowPageProgress(message, writing++, inputs.Count);
+                }), token, options), token);
         }
         finally
         {
@@ -4368,16 +4382,17 @@ public sealed partial class AppViewModel : INotifyPropertyChanged
             // pixels one page at a time; PreparePage applies the page's rotation.
             var prepared = await Task.Run(() => PdfBuilder.PreparePage(page, SpoolImage(page), i + 1), token);
             var image = prepared.Image;
+            bool reads = knownLines is null && (s.PdfSearchable || text is { Problem: null });
+            ShowPageProgress(reads ? Loc.T("OCR page {0} of {1}…", i + 1, pages.Count)
+                                   : Loc.T("Preparing page {0} of {1}…", i + 1, pages.Count), i, pages.Count);
             IReadOnlyList<OcrLine>? lines = null;
             if (knownLines is not null)
             {
                 // Read beforehand (the receipts' one OCR pass per save): no OCR here.
                 lines = i < knownLines.Count ? knownLines[i] : null;
             }
-            else if (s.PdfSearchable || text is { Problem: null })
+            else if (reads)
             {
-                StatusMessage = Loc.T("OCR page {0} of {1}…", i + 1, pages.Count);
-                NotifyAll();
                 // If OCR fails for a page, the PDF is still produced without a text layer (and
                 // without the text file beside it).
                 try { lines = await RecognizeKept(page, image, s, token); }
