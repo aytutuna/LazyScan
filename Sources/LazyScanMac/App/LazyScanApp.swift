@@ -52,11 +52,12 @@ public struct LazyScanApp: App {
             PageZoomCommands()
             UndoCommands(state: state)
             ScanCommands(state: state)
-            // Help > Lazy Scan Help: no help book is registered, so the default item only says help isn't available.
-            CommandGroup(replacing: .help) {
-                Link("Lazy Scan Help", destination: URL(string: "https://alazy.app/scan/#support")!)
-            }
+            HelpCommands()
         }
+        Window("Licenses", id: "licenses") {
+            LicensesWindow()
+        }
+        .defaultSize(width: 560, height: 640)
         MenuBarExtra("Lazy Scan", systemImage: "doc.viewfinder", isInserted: $keepReceiving) {
             BackgroundMenu()
                 .environmentObject(state)
