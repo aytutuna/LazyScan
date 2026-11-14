@@ -287,6 +287,7 @@ final class AppStateCompanionTests: XCTestCase {
         XCTAssertEqual(state.companionNotice?.text, state.statusMessage)
     }
 
+    @MainActor
     func test_noteNoPasswordWhenProtecting_onlyWithThePasswordOn() async throws {
         let state = try await makeState()
         let before = state.statusMessage
@@ -298,6 +299,7 @@ final class AppStateCompanionTests: XCTestCase {
         XCTAssertEqual(state.statusMessage, AppState.noPasswordNote)
     }
 
+    @MainActor
     func test_sendQueueToDesktop_unreachable_keepsTheDocumentUntilItGoes() async throws {
         let fake = CompanionFakeDesktop()
         let state = try await makeState(pages: 1)
