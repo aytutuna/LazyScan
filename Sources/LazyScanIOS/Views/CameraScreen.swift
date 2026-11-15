@@ -91,7 +91,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
         self.pictureButtons = pictureButtons
     }
 
-    var body: some View {
+    private var tracked: some View {
         layout
             .environment(\.shownTip, shownTip)
             .background(Color(uiColor: .systemBackground))
@@ -139,6 +139,10 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     model.rearm()
                 }
             }
+    }
+
+    private var announcing: some View {
+        tracked
             .onChange(of: kind) { (_: CaptureKind, next: CaptureKind) in
                 announcedCount = nil
                 model.setKind(next, singleItem: singleItem)
@@ -175,6 +179,10 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                     AccessibilityNotification.Announcement(reason).post()
                 }
             }
+    }
+
+    var body: some View {
+        announcing
             .onChange(of: state.retakenNumber) { (_: Int?, number: Int?) in
                 if let number { noteRetaken(number) }
             }
@@ -189,18 +197,29 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
                 }
             }
             .alert(IOSCameraText.memoryTitle, isPresented: memoryAlertShown, presenting: memoryWarned) { (size: IOSPhotoSize) in
-                Button(IOSCameraText.useLabel(size)) {}
-                if let safer = IOSCameraLens.saferSize(among: IOSCameraLens.choices(IOSCameraLens.offered),
-                                                       physicalMemory: ProcessInfo.processInfo.physicalMemory) {
-                    Button(IOSCameraText.useLabel(safer)) {
-                        chosenMegapixels = IOSCameraLens.megapixels(safer)
-                    }
-                }
+                memoryAlertButtons(size)
             } message: { (size: IOSPhotoSize) in
-                Text(IOSCameraText.memoryWarning(size, among: IOSCameraLens.choices(IOSCameraLens.offered),
-                                                 physicalMemory: ProcessInfo.processInfo.physicalMemory) ?? "")
+                Text(memoryAlertMessage(size))
             }
             .sensoryFeedback(SensoryFeedback.impact(weight: SensoryFeedback.Weight.medium), trigger: model.shotCount)
+    }
+
+    @ViewBuilder
+    private func memoryAlertButtons(_ size: IOSPhotoSize) -> some View {
+        let choices: [IOSPhotoSize] = IOSCameraLens.choices(IOSCameraLens.offered)
+        let memory: UInt64 = ProcessInfo.processInfo.physicalMemory
+        Button(IOSCameraText.useLabel(size)) {}
+        if let safer = IOSCameraLens.saferSize(among: choices, physicalMemory: memory) {
+            Button(IOSCameraText.useLabel(safer)) {
+                chosenMegapixels = IOSCameraLens.megapixels(safer)
+            }
+        }
+    }
+
+    private func memoryAlertMessage(_ size: IOSPhotoSize) -> String {
+        let choices: [IOSPhotoSize] = IOSCameraLens.choices(IOSCameraLens.offered)
+        let memory: UInt64 = ProcessInfo.processInfo.physicalMemory
+        return IOSCameraText.memoryWarning(size, among: choices, physicalMemory: memory) ?? ""
     }
 
     private var layout: some View {
