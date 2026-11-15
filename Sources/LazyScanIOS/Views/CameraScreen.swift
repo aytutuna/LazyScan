@@ -581,38 +581,48 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     /// The status line at the top; at the foot the notices and the task's buttons.
     private var overlays: some View {
         VStack(spacing: 8) {
-            if let number = state.retakingNumber {
-                RetakeBanner(number: number, onCancel: cancelRetake)
-            }
-            if let note = retakenNote {
-                StatusPill(text: note, hint: nil)
-                    .accessibilityIdentifier("camera.retaken")
-            }
-            if shownMessage == nil, let status = statusLine {
-                statusView(status)
-            }
-            if showsZoom {
-                StatusPill(text: IOSCameraText.zoomLabel(zoomValue), hint: nil)
-                    .transition(.opacity)
-                    .accessibilityIdentifier("camera.zoomReadout")
-            }
+            topOverlays
             Spacer(minLength: 0)
-            notices()
-            if let mismatch = state.sidesMismatch, state.cameraSides != nil {
-                MismatchPill(text: mismatch)
+            bottomOverlays
+        }
+    }
+
+    @ViewBuilder
+    private var topOverlays: some View {
+        if let number = state.retakingNumber {
+            RetakeBanner(number: number, onCancel: cancelRetake)
+        }
+        if let note = retakenNote {
+            StatusPill(text: note, hint: nil)
+                .accessibilityIdentifier("camera.retaken")
+        }
+        if shownMessage == nil, let status = statusLine {
+            statusView(status)
+        }
+        if showsZoom {
+            StatusPill(text: IOSCameraText.zoomLabel(zoomValue), hint: nil)
+                .transition(.opacity)
+                .accessibilityIdentifier("camera.zoomReadout")
+        }
+    }
+
+    @ViewBuilder
+    private var bottomOverlays: some View {
+        notices()
+        if let mismatch = state.sidesMismatch, state.cameraSides != nil {
+            MismatchPill(text: mismatch)
+        }
+        CameraTaskButtons(onDark: true)
+        if state.canSkipStep {
+            Button(IdCardSteps.skipBackLabel) {
+                state.skipStep()
             }
-            CameraTaskButtons(onDark: true)
-            if state.canSkipStep {
-                Button(IdCardSteps.skipBackLabel) {
-                    state.skipStep()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(state.isBusy || importer.isImporting)
-                .accessibilityIdentifier("camera.skipBack")
-            }
-            if verticalSizeClass != .compact {
-                handleRow
-            }
+            .buttonStyle(.borderedProminent)
+            .disabled(state.isBusy || importer.isImporting)
+            .accessibilityIdentifier("camera.skipBack")
+        }
+        if verticalSizeClass != .compact {
+            handleRow
         }
     }
 
