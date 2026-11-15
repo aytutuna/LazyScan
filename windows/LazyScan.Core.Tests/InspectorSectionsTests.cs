@@ -84,6 +84,7 @@ public class InspectorSectionsTests
         a4.Output.PageSize = PdfPageSize.A4;
         Assert.Equal("PDF · Standard · A4", InspectorSections.OutputSummary(a4, OutputFormat.Pdf));
         Assert.True(InspectorSections.OutputChanged(a4, OutputFormat.Pdf));
+        a4.Intent = ScanIntent.Photo;
         Assert.False(InspectorSections.OutputChanged(a4, OutputFormat.Jpeg));
         Assert.Equal("Text", InspectorSections.OutputSummary(s, OutputFormat.Text));
 
