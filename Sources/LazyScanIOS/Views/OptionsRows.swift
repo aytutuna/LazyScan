@@ -635,6 +635,8 @@ struct SplitSettingsRows: View {
             }
         }
         .disabled(!collecting || busy)
+        // Since the section lost its header the element with the identifier reports no value; give it the choice.
+        .accessibilityValue(Text(mode.label))
         .accessibilityHint(Text(mode.hint))
         .accessibilityIdentifier("options.split")
         if let reason = separateReason {
