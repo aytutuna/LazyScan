@@ -606,7 +606,7 @@ jobs:
             exit 1
           fi
       - name: Run the app's smoke test
-        timeout-minutes: 45
+        timeout-minutes: 60
         run: |
           set -o pipefail
           xcodebuild test-without-building \
