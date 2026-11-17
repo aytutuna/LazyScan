@@ -115,7 +115,7 @@ function New-Package([string] $arch, [string] $helper, [string] $helper64) {
 
     $resources = ($languages | ForEach-Object { "    <Resource Language=`"$(if ($_ -eq 'en') { 'en-US' } else { $_ })`" />" }) -join "`n"
     $manifest = Get-Content (Join-Path $store 'Package.appxmanifest') -Raw
-    $identityVersion = '(?s)(<Identity[^>]*?Version=")[^"]*(")'
+    $identityVersion = '(?s)(<Identity\b[^>]*?\bVersion=")[^"]*(")'
     if ($manifest -notmatch $identityVersion) { throw 'Package.appxmanifest has no Version on its Identity element' }
     $manifest = $manifest -replace $identityVersion, "`${1}$packageVersion`${2}"
     $manifest = $manifest.Replace('ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$arch`"")
