@@ -413,7 +413,7 @@ public class TwainHelperTests
         try
         {
             string missing = Path.Combine(AppContext.BaseDirectory, "no-such-folder", TwainHelperOptions.FileName);
-            using var backend = new Twain32ScannerBackend(null, new TwainHelperOptions(missing, Simulate: true), () => [@"Acmecme.ds"]);
+            using var backend = new Twain32ScannerBackend(null, new TwainHelperOptions(missing, Simulate: true), () => [@"Acme\acme.ds"]);
             await Listed(backend, expectDevices: false);
             Assert.Contains("failed (Scanner unavailable:", backend.DiagnosticsReport);
             Assert.DoesNotContain("Tarayıcı", backend.DiagnosticsReport);

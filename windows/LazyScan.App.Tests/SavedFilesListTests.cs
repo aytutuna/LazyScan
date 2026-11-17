@@ -58,7 +58,7 @@ public class SavedFilesListTests : IDisposable
     [InlineData((FileAttributes)0, false)]
     public void OnlyCloudPlaceholdersAreOnlineOnly(FileAttributes attributes, bool expected)
     {
-        Assert.Equal(expected, new SavedFile(@"C:\scans.jpg", DateTime.Now, 1, attributes).IsOnlineOnly);
+        Assert.Equal(expected, new SavedFile(@"C:\scans\a.jpg", DateTime.Now, 1, attributes).IsOnlineOnly);
     }
 
     [Fact]
