@@ -5,16 +5,17 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          $PSVersionTable.PSVersion.ToString()
-          git config --get core.autocrlf
-          $m = Get-Content store\windows\Package.appxmanifest -Raw
-          "type $($m.GetType().FullName) len $($m.Length)"
-          $p = '(?s)(<Identity[^>]*?Version=")[^"]*(")'
-          "match $($m -match $p)"
-          "regex $([regex]::IsMatch($m, $p))"
-          "plain $($m.Contains('Version=""1.0.0.0""'))"
-          $i = $m.IndexOf('<Identity')
-          "at $i"
-          if ($i -ge 0) { ($m.Substring($i, 160) -replace "`r", '\r' -replace "`n", '\n') }
-          [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($m.Substring(0, 40)))
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+        continue-on-error: true
+      - shell: bash
+        run: bash scripts/fetch_docaligner.sh
+      - shell: pwsh
+        run: |
+          $lines = Get-Content scripts/make_msix.ps1
+          $i = [array]::FindIndex([string[]]$lines, [Predicate[string]]{ param($l) $l -like '*$identityVersion = *' })
+          $probe = '    Write-Host "type $($manifest.GetType().FullName) count $(@($manifest).Count) len $($manifest.Length) at $("$manifest".IndexOf(''<Identity''))"; Write-Host ("$manifest".Substring(0, [Math]::Min(1300, "$manifest".Length)))'
+          $lines = $lines[0..($i-1)] + $probe + $lines[$i..($lines.Count-1)]
+          Set-Content scripts/make_msix.ps1 $lines
+          scripts/make_msix.ps1 -Out "$env:RUNNER_TEMP\msix" -Arch x64 -IdentityName Aytu.LazyScan -Publisher 'CN=00000000-0000-0000-0000-000000000000' -PublisherDisplayName Aytu
