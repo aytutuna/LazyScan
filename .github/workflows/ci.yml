@@ -465,7 +465,7 @@ jobs:
     # silently. Source: actions/runner-images, images/macos/macos-26-arm64-Readme.md.
     needs: macos
     runs-on: macos-26
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       # The languages ci/l10n walks the screens in, read there before they go live.
       SHOT_LANGUAGES: de ar ja ru tr
