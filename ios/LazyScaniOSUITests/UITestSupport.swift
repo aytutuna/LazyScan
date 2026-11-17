@@ -177,6 +177,10 @@ extension XCUIApplication {
             XCTAssertTrue(button.waitForExistence(timeout: 30), "The Options button", file: file, line: line)
             waitUntilEnabled(button, "The Options button", file: file, line: line)
             button.tap()
+            // On iPad a tap right after the sheet was closed now and then lands while it is still going and does nothing.
+            if !descendants(matching: .any)["options.done"].firstMatch.waitForExistence(timeout: 5), button.isHittable {
+                button.tap()
+            }
         }
         let done: XCUIElement = descendants(matching: .any)["options.done"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 10), "The \(group) sheet", file: file, line: line)
