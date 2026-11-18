@@ -13,8 +13,9 @@ ONNX Runtime 1.24.2 (iPhone, Mac, Windows)
     Runs the page corner model on the device. On the iPhone and Mac it comes
     from Microsoft's release archive, with the Objective-C bindings of
     onnxruntime-swift-package-manager 1.24.2 kept in Vendor/onnxruntime; on
-    Windows from the Microsoft.ML.OnnxRuntime package. The runtime statically links code from
-    other projects (protobuf, abseil, Eigen, flatbuffers and more). Their
+    Windows from the Microsoft.ML.OnnxRuntime package. The runtime
+    statically links code from other projects (protobuf, abseil, Eigen,
+    flatbuffers and more). Their
     notices are ONNXRuntime-THIRD-PARTY-NOTICES.txt, shipped next to the app
     (in the Models folder of the iPhone app).
 
