@@ -40,11 +40,12 @@ public class ScannerButtonTests
         var dispatcher = Dispatcher.CurrentDispatcher;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
         Action<string, string>? press = null;
+        // Off the shared WIA thread: earlier tests' real WIA calls can hold it for tens of seconds.
         var wia = new WiaScannerBackend(() => ServiceStatus.Running, () => true, () => [], onEvent =>
         {
             press = onEvent;
             return () => { };
-        });
+        }, onWiaThread: false);
         var scanner = new StandInScanner();
         var model = new AppViewModel(backends: [wia, scanner]);
         bool busy = false;

@@ -113,6 +113,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     private readonly Func<List<ScannerInfo>> _enumerateScanners;
     /// <summary>Starts WIA event delivery on the WIA thread and returns what stops it; null when there is no WIA to listen to. Null itself: no events (harnesses).</summary>
     private readonly Func<Action<string, string>, Action?>? _listen;
+    private readonly bool _onWiaThread;
     private Task<Action?>? _listener;
     private SynchronizationContext? _context;
     private CancellationTokenSource? _watchdog;
@@ -142,10 +143,13 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     /// <param name="automationRegistered">Whether WIA Automation is registered; asked likewise.</param>
     /// <param name="enumerateScanners">Lists the scanners on the WIA thread; WIA itself when null.</param>
     /// <param name="listen">Registers for WIA events on the WIA thread, given the handler of an event (its id and device id); no events when null.</param>
+    /// <param name="onWiaThread">False runs the delegates above on the pool, for harnesses whose fakes need no COM.</param>
     internal WiaScannerBackend(Func<ServiceStatus> serviceStatus, Func<bool> automationRegistered,
                                Func<List<ScannerInfo>>? enumerateScanners = null,
-                               Func<Action<string, string>, Action?>? listen = null)
+                               Func<Action<string, string>, Action?>? listen = null,
+                               bool onWiaThread = true)
     {
+        _onWiaThread = onWiaThread;
         _listen = listen;
         _serviceStatus = serviceStatus;
         _automationRegistered = automationRegistered;
@@ -204,7 +208,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
     private void EnsureListening()
     {
         if (_listen is not { } listen || _listener is { IsFaulted: false }) return;
-        _listener = WiaApartment.Run(() => listen(HandleEvent));
+        _listener = Work(() => listen(HandleEvent));
         _ = _listener.ContinueWith(t => System.Diagnostics.Trace.TraceWarning($"Could not listen for WIA events: {t.Exception?.GetBaseException().Message}"),
                                    CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
@@ -215,7 +219,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         _listener = null;
         _ = listener?.ContinueWith(t =>
         {
-            if (t.IsCompletedSuccessfully && t.Result is { } stop) _ = WiaApartment.Run(() => { stop(); return 0; });
+            if (t.IsCompletedSuccessfully && t.Result is { } stop) _ = Work(() => { stop(); return 0; });
         }, TaskScheduler.Default);
     }
 
@@ -365,7 +369,7 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
         int generation = Volatile.Read(ref _browseGeneration);
         long number = Interlocked.Increment(ref _enumerationsStarted);
         _running = number;
-        WiaApartment.Run(() => Enumerate(generation)).ContinueWith(task =>
+        Work(() => Enumerate(generation)).ContinueWith(task =>
         {
             var result = task.IsCompletedSuccessfully ? task.Result : null;
             string? failure = task.Exception?.GetBaseException().Message;
@@ -399,6 +403,8 @@ public sealed class WiaScannerBackend : IPolledScannerBackend, IScannerBackendDi
             });
         }, TaskScheduler.Default);
     }
+
+    private Task<T> Work<T>(Func<T> work) => _onWiaThread ? WiaApartment.Run(work) : Task.Run(work);
 
     private sealed record EnumerationResult(List<ScannerInfo> Found, string? Unavailable, ServiceStatus Service);
 
