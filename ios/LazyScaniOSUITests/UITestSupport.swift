@@ -92,6 +92,10 @@ extension XCUIApplication {
         waitUntilEnabled(menu, "The Type row", file: file, line: line)
         menu.tap()
         let item: XCUIElement = descendants(matching: .any)["type.\(task)"].firstMatch
+        // Same iPad slip as the Options button: a tap while the sheet is still settling opens no menu.
+        if !item.waitForExistence(timeout: 5), menu.isHittable {
+            menu.tap()
+        }
         XCTAssertTrue(item.waitForExistence(timeout: 10), "The \(task) type", file: file, line: line)
         waitUntilEnabled(item, "The \(task) type", file: file, line: line)
         item.tap()
