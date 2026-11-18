@@ -60,9 +60,6 @@ jobs:
       - name: Write the app's project
         run: |
           xcodegen generate --spec mac/project.yml
-          # xcodebuild reads the project's own resolved file, and a local-path package has none
-          mkdir -p mac/LazyScanMacApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
-          cp Package.resolved mac/LazyScanMacApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           plutil -replace CFBundleLocalizations -json "$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' < l10n/out/languages.mac.txt)" mac/LazyScanMacApp/Info.plist
       - name: Write the API key
         env:

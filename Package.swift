@@ -23,7 +23,7 @@ let package = Package(
     ],
     dependencies: [
         // ONNX Runtime (MIT) runs DocAligner's corner model (LazyScanModel) on the Mac and the iPhone.
-        .package(url: "https://github.com/microsoft/onnxruntime-swift-package-manager", exact: "1.24.2"),
+        .package(path: "Vendor/onnxruntime"),
     ],
     targets: [
         .target(
@@ -34,7 +34,7 @@ let package = Package(
             name: "LazyScanModel",
             dependencies: [
                 "LazyScanKit",
-                .product(name: "onnxruntime", package: "onnxruntime-swift-package-manager"),
+                .product(name: "onnxruntime", package: "onnxruntime"),
             ],
             path: "Sources/LazyScanModel",
             // The model (scripts/fetch_docaligner.sh); the folder holds only the licences until it is fetched.
