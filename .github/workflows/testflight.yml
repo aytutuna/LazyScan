@@ -75,7 +75,6 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild archive \
-            -onlyUsePackageVersionsFromResolvedFile \
             -project ios/LazyScaniOS.xcodeproj \
             -scheme LazyScaniOS \
             -configuration Release \
