@@ -57,8 +57,8 @@ struct SaveAsPage: View {
                 }
             }
             Section {
-                Picker("Format", selection: format) {
-                    ForEach(formats) { (choice: OutputFormat) in
+                Picker("Format", selection: choices.format) {
+                    ForEach(choices.formats) { (choice: OutputFormat) in
                         Text(choice.label).tag(choice)
                     }
                 }
@@ -67,14 +67,13 @@ struct SaveAsPage: View {
                 if IOSSettingsSections.shownFormat(s) == OutputFormat.jpeg {
                     JPEGQualityRow()
                 }
-                if IOSShell.offersSave(s, pageCount: state.scannedPages.count) && !IOSShell.separatesDocuments(s)
-                    && IOSShell.exportFormat(s) == OutputFormat.pdf {
+                if choices.offersEach {
                     if state.isReceiptFlow {
-                        Toggle("Save each receipt as its own PDF", isOn: eachReceipt)
+                        Toggle("Save each receipt as its own PDF", isOn: choices.eachReceipt)
                             .accessibilityHint(Text("Writes one PDF for every receipt instead of one for all of them"))
                             .accessibilityIdentifier("options.eachReceipt")
                     } else {
-                        Toggle(IOSShell.eachPageTitle(s, camera: mode == IOSScanMode.camera), isOn: eachPage)
+                        Toggle(IOSShell.eachPageTitle(s, camera: choices.camera), isOn: choices.eachPage)
                             .accessibilityIdentifier("options.eachPage")
                     }
                 }
@@ -132,9 +131,21 @@ struct SaveAsPage: View {
             })
     }
 
+    private var choices: SaveFormatChoices {
+        SaveFormatChoices(state: state, camera: mode == IOSScanMode.camera)
+    }
+}
+
+/// The format and the PDF per page switch Save as offers, and whether the pages can go into a PDF picked, for
+/// the page and for the menu beside Save (`SaveFormatMenu`).
+@MainActor
+struct SaveFormatChoices {
+    let state: AppState
+    let camera: Bool
+
     /// Every format for documents, Photos and Receipts (the format Options saves them in), the image formats
     /// for the Text kind's held page (saved as a picture); the ID card is saved as a PDF or an image.
-    private var formats: [OutputFormat] {
+    var formats: [OutputFormat] {
         if IOSSettingsSections.offersEveryFormat(state.settings) {
             let everyFormat: [OutputFormat] = OutputFormat.offered(for: ScanIntent.document)
             let withText: Bool = IOSSettingsSections.offersTextFormats(state.settings, pagesHaveText: state.queueHasRecognizedText)
@@ -154,7 +165,7 @@ struct SaveAsPage: View {
         return list
     }
 
-    private var format: Binding<OutputFormat> {
+    var format: Binding<OutputFormat> {
         let appState: AppState = state
         return Binding<OutputFormat>(
             get: { IOSSettingsSections.shownFormat(appState.settings) },
@@ -165,7 +176,19 @@ struct SaveAsPage: View {
             })
     }
 
-    private var eachReceipt: Binding<Bool> {
+    /// The PDF per page (or per receipt) switch is there while a save writes one PDF from the pages.
+    var offersEach: Bool {
+        let s: ScanSettings = state.settings
+        return IOSShell.offersSave(s, pageCount: state.scannedPages.count) && !IOSShell.separatesDocuments(s)
+            && IOSShell.exportFormat(s) == OutputFormat.pdf
+    }
+
+    /// The pages can go into a PDF picked in Files, as the Share now rows offer.
+    var offersAppend: Bool {
+        IOSShell.offersPDFOptions(state.settings) || state.appendTarget != nil
+    }
+
+    var eachReceipt: Binding<Bool> {
         let appState: AppState = state
         return Binding<Bool>(
             get: { appState.settings.taskOptions.receiptEachFile },
@@ -177,13 +200,62 @@ struct SaveAsPage: View {
             })
     }
 
-    private var eachPage: Binding<Bool> {
+    var eachPage: Binding<Bool> {
         let appState: AppState = state
         return Binding<Bool>(
             get: { IOSShell.savesEachPage(appState.settings) },
             set: { (on: Bool) in
                 appState.settings = IOSShell.settingEachPage(on, in: appState.settings)
             })
+    }
+}
+
+/// The chevron beside a Save button and the menu it opens: Save as with the formats of the kind in hand (the
+/// list and the setting of Options' Save as), the PDF per page switch where Options has it, and Add to
+/// existing PDF where Share now has it. `onAddToPDF` is the host's, since Files cannot open over a sheet.
+struct SaveFormatMenu: View {
+    @EnvironmentObject private var state: AppState
+    @AppStorage(IOSShell.scanModeKey) private var mode: IOSScanMode = .camera
+    let identifier: String
+    let tint: Color
+    let height: CGFloat
+    let onAddToPDF: () -> Void
+
+    var body: some View {
+        let choices: SaveFormatChoices = SaveFormatChoices(state: state, camera: mode == IOSScanMode.camera)
+        Menu {
+            Section(IOSSettingsText.saveAsLabel) {
+                Picker(IOSSettingsText.saveAsLabel, selection: choices.format) {
+                    ForEach(choices.formats) { (choice: OutputFormat) in
+                        Text(choice.label).tag(choice)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+            if choices.offersEach {
+                if state.isReceiptFlow {
+                    Toggle("Save each receipt as its own PDF", isOn: choices.eachReceipt)
+                        .accessibilityIdentifier("saveFormat.eachReceipt")
+                } else {
+                    Toggle(IOSShell.eachPageTitle(state.settings, camera: choices.camera), isOn: choices.eachPage)
+                        .accessibilityIdentifier("saveFormat.eachPage")
+                }
+            }
+            if choices.offersAppend {
+                Button(action: onAddToPDF) {
+                    Label(PDFAppender.buttonLabel, systemImage: "doc.badge.plus")
+                }
+                .accessibilityIdentifier("saveFormat.append")
+            }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: height)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Text(IOSSettingsText.saveAsLabel))
+        .accessibilityIdentifier(identifier)
     }
 }
 

@@ -574,8 +574,9 @@ struct RemovedPagesRow: View {
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
 /// start or the end, and removes them once asked, each by name: as buttons at a regular width, in an Actions
-/// menu on a compact phone. Outside Select a bottom bar has Save, which runs the scan screen's Save without
-/// closing the sheet, and a menu with Remove All, which empties the queue once asked; the sheet then closes,
+/// menu on a compact phone. Outside Select a bottom bar has Options, which closes the sheet for the scan
+/// screen's Options and brings it back with Done, Save, which runs the scan screen's Save without closing the
+/// sheet, with a chevron for the formats, and Remove All, which empties the queue once asked; the sheet then closes,
 /// as it does whenever the pages run out, unless the pages just taken out can still be put back
 /// (`RemovedPagesRow` under the grid). The removes are off while a share or a send reads the pages
 /// (`AppState.readsQueue`).
@@ -589,6 +590,9 @@ struct PageStripSheet: View {
     /// The scan screen's Save is on.
     var canSave: Bool = false
     var onSave: () -> Void = {}
+    /// Options and Add to existing PDF are the scan screen's, which it opens once this sheet has closed.
+    var onOptions: () -> Void = {}
+    var onAddToPDF: () -> Void = {}
     /// Shows the camera to take a page again once this sheet and the viewer are closed; nil in the scanner's mode.
     var onRetake: (@MainActor (UUID) -> Void)?
     let onClose: () -> Void
@@ -705,40 +709,85 @@ struct PageStripSheet: View {
         }
     }
 
-    /// Save and a menu with Remove All, drawn flat so the bar looks the same over the camera.
+    /// Remove All, Options and Save with its format menu, drawn flat so the bar looks the same over the camera.
+    /// At an accessibility text size Save takes a row of its own.
     private var saveBar: some View {
-        let removeBlocked: Bool = state.isBusy || state.readsQueue
-        return HStack(spacing: 12) {
-            Button(action: onSave) {
-                Text(saveText)
-                    .font(.headline)
-                    .foregroundStyle(Color.white)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Capsule().fill(Color.accentColor))
-            }
-            .buttonStyle(.plain)
-            .opacity(canSave ? 1 : 0.4)
-            .disabled(!canSave)
-            .accessibilityIdentifier("pages.save")
-            Menu {
-                Button(role: .destructive, action: askDeleteAll) {
-                    Label(PageViewerText.removeAllLabel, systemImage: "trash")
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 8) {
+                    saveControl
+                    HStack(spacing: 12) {
+                        removeAllButton
+                        optionsButton
+                    }
                 }
-                .disabled(removeBlocked)
-                .accessibilityIdentifier("pages.deleteAll")
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title3)
-                    .foregroundStyle(Color.primary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color(uiColor: .secondarySystemBackground)))
+            } else {
+                HStack(spacing: 12) {
+                    removeAllButton
+                    optionsButton
+                    saveControl
+                }
             }
-            .accessibilityLabel(Text(PageViewerText.moreLabel))
-            .accessibilityIdentifier("pages.more")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Color(uiColor: .systemBackground))
+    }
+
+    private var removeAllButton: some View {
+        let blocked: Bool = state.isBusy || state.readsQueue
+        return Button(role: .destructive, action: askDeleteAll) {
+            Image(systemName: "trash")
+                .font(.title3)
+                .foregroundStyle(Color.red)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Color(uiColor: .secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+        .opacity(blocked ? 0.4 : 1)
+        .disabled(blocked)
+        .accessibilityLabel(Text(PageViewerText.removeAllLabel))
+        .accessibilityIdentifier("pages.deleteAll")
+    }
+
+    /// Options of the scan screen, which the sheet gives way to and comes back from.
+    private var optionsButton: some View {
+        Button(action: onOptions) {
+            Text("Options")
+                .font(.headline)
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 44)
+                .background(Capsule().fill(Color(uiColor: .secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("pages.options")
+    }
+
+    /// Save, and the chevron that opens the format menu, on one accent capsule.
+    private var saveControl: some View {
+        HStack(spacing: 0) {
+            Button(action: onSave) {
+                Text(saveText)
+                    .font(.headline)
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("pages.save")
+            Rectangle()
+                .fill(Color.white.opacity(0.4))
+                .frame(width: 1, height: 22)
+                .accessibilityHidden(true)
+            SaveFormatMenu(identifier: "pages.saveFormat", tint: Color.white, height: 44, onAddToPDF: onAddToPDF)
+        }
+        .background(Capsule().fill(Color.accentColor))
+        .opacity(canSave ? 1 : 0.4)
+        .disabled(!canSave)
     }
 
     private func undoRemoved() {

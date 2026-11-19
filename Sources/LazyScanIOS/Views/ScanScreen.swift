@@ -88,6 +88,11 @@ struct ScanScreen: View {
     /// The split sheet came from the page strip, which opens again once the sheet has closed.
     @State private var reopenPages: Bool = false
     @State private var savesAfterPages: Bool = false
+    /// The pages sheet's Options and Add to existing PDF wait for it to close; the first brings the sheet back
+    /// once the Options sheet has closed (`reopensPagesAfterOptions`).
+    @State private var optionsAfterPages: Bool = false
+    @State private var reopensPagesAfterOptions: Bool = false
+    @State private var addsToPDFAfterPages: Bool = false
     /// The option group open in a sheet.
     @State private var openGroup: ScanOptionGroup?
     /// What waits for the option group's sheet to close: nothing else can be presented while it is up.
@@ -162,7 +167,8 @@ struct ScanScreen: View {
             }
             .sheet(isPresented: $pagesShown, onDismiss: pagesClosed) {
                 PageStripSheet(onEditSpread: editSpreadFromPages, saveText: pagesSaveText, canSave: canSaveFromPages,
-                               onSave: saveFromPages, onRetake: retakeAction, onClose: closePages,
+                               onSave: saveFromPages, onOptions: optionsFromPages, onAddToPDF: addToPDFFromPages,
+                               onRetake: retakeAction, onClose: closePages,
                                detents: sheetDetents)
                     .environmentObject(state)
             }
@@ -332,6 +338,9 @@ struct ScanScreen: View {
                     picksPDF = false
                     spreadEditor = nil
                     reopenPages = false
+                    optionsAfterPages = false
+                    reopensPagesAfterOptions = false
+                    addsToPDFAfterPages = false
                 } else if !state.copyPages.isEmpty {
                     showReview(true, as: .copy)
                 }
@@ -1163,6 +1172,11 @@ struct ScanScreen: View {
         }
         let action: (() -> Void)? = afterOptionsClosed
         afterOptionsClosed = nil
+        if reopensPagesAfterOptions {
+            reopensPagesAfterOptions = false
+            // An action Options chose (a share, a PDF to add to) runs instead, as it does without the sheet.
+            pagesShown = action == nil && !state.scannedPages.isEmpty
+        }
         action?()
     }
 
@@ -1201,6 +1215,17 @@ struct ScanScreen: View {
         saveWithActions()
     }
 
+    /// Options and Add to existing PDF open on the root, which cannot show over the strip's sheet.
+    private func optionsFromPages() {
+        optionsAfterPages = true
+        pagesShown = false
+    }
+
+    private func addToPDFFromPages() {
+        addsToPDFAfterPages = true
+        pagesShown = false
+    }
+
     private func closePages() {
         pagesShown = false
     }
@@ -1223,6 +1248,17 @@ struct ScanScreen: View {
         if savesAfterPages {
             savesAfterPages = false
             saveWithActions()
+            return
+        }
+        if optionsAfterPages {
+            optionsAfterPages = false
+            reopensPagesAfterOptions = true
+            openGroup = .options
+            return
+        }
+        if addsToPDFAfterPages {
+            addsToPDFAfterPages = false
+            picksPDF = true
             return
         }
         guard let pageID = spreadAfterPages else { return }
@@ -1817,7 +1853,8 @@ struct ScanScreen: View {
                               detail: IOSShell.saveDetail(state.settings, plan: plan, target: state.appendTarget),
                               canSave: offered && !saveBlocked && plan.pageCount > 0,
                               adding: state.appendTarget?.lastPathComponent,
-                              onOptions: openOptions, onSave: { afterOptions(saveWithActions) })
+                              onOptions: openOptions, onSave: { afterOptions(saveWithActions) },
+                              onAddToPDF: { picksPDF = true })
     }
 
     /// A pairing code came from outside the app: Options opens, and its My computer page takes the code.

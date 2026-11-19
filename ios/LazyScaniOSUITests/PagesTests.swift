@@ -2,8 +2,8 @@ import XCTest
 
 // The page grid's Select mode, as a person uses it on the Simulator: the three pages of the batch fixture
 // brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Remove and
-// its question, and one page is left; Remove All, which empties the queue and closes the sheet; and a page
-// dragged onto another, which lands before it.
+// its question, and one page is left; Remove All, which empties the queue and closes the sheet; the bar's
+// Options and the format menu beside Save; and a page dragged onto another, which lands before it.
 
 final class PagesTests: XCTestCase {
     override func setUpWithError() throws {
@@ -153,11 +153,9 @@ final class PagesTests: XCTestCase {
 
         app.openPages(3)
         app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
-        let more: XCUIElement = app.descendants(matching: .any)["pages.more"].firstMatch
-        XCTAssertTrue(more.waitForExistence(timeout: 10), "The menu beside Save")
-        more.tap()
         let deleteAll: XCUIElement = app.descendants(matching: .any)["pages.deleteAll"].firstMatch
-        XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Remove All")
+        XCTAssertTrue(deleteAll.waitForExistence(timeout: 10), "Remove All in the bar")
+        XCTAssertFalse(app.descendants(matching: .any)["pages.more"].exists, "No menu behind Remove All")
         // Off until the import is done.
         app.waitUntilEnabled(deleteAll, "Remove All", timeout: 10)
         let deleteAllText: String = deleteAll.label
@@ -173,5 +171,56 @@ final class PagesTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["page.1"].exists, "No pages left")
         undo.tap()
         XCTAssertTrue(app.descendants(matching: .any)["page.3"].waitForExistence(timeout: 30), "The pages are back")
+    }
+
+    // The bar has Options, and the chevron beside Save lists the formats of the kind: a document's has PDF, and
+    // picking JPEG puts it in Save's text.
+    @MainActor
+    func test_saveFormatMenu_listsPDF_andJPEGChangesSave() throws {
+        let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
+                                         "The fixture PDF in the test bundle")
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "batch"]
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
+        app.launch()
+
+        app.openPages(3)
+        let save: XCUIElement = app.descendants(matching: .any)["pages.save"].firstMatch
+        app.waitUntilEnabled(save, "Save", timeout: 120)
+        XCTAssertTrue(app.descendants(matching: .any)["pages.options"].firstMatch.exists, "Options in the bar")
+        let formats: XCUIElement = app.descendants(matching: .any)["pages.saveFormat"].firstMatch
+        XCTAssertTrue(formats.waitForExistence(timeout: 10), "The format menu beside Save")
+        XCTAssertFalse(save.label.contains("JPEG"), "Save is not a JPEG's yet")
+
+        formats.tap()
+        let pdf: XCUIElement = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "PDF")).firstMatch
+        XCTAssertTrue(pdf.waitForExistence(timeout: 10), "PDF in the format menu")
+        let jpeg: XCUIElement = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "JPEG")).firstMatch
+        XCTAssertTrue(jpeg.exists, "JPEG in the format menu")
+        jpeg.tap()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "JPEG"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed, "Save names JPEG")
+    }
+
+    // Options in the bar closes the sheet for the Options sheet, and Done there brings the pages back.
+    @MainActor
+    func test_optionsInTheBar_comesBackToThePages() throws {
+        let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
+                                         "The fixture PDF in the test bundle")
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "batch"]
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
+        app.launch()
+
+        app.openPages(3)
+        let options: XCUIElement = app.descendants(matching: .any)["pages.options"].firstMatch
+        XCTAssertTrue(options.waitForExistence(timeout: 10), "Options in the bar")
+        options.tap()
+        let done: XCUIElement = app.descendants(matching: .any)["options.done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 30), "The Options sheet")
+        done.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["pages.done"].firstMatch.waitForExistence(timeout: 30),
+                      "The pages are back")
+        app.closePages()
     }
 }

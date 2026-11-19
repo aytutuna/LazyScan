@@ -156,12 +156,13 @@ struct KindMenuItems: View {
     }
 }
 
-/// Options and Save as round buttons over the bottom corners of the picture on both tabs, Options at the
+/// Options and Save as buttons over the bottom corners of the picture on both tabs, Options at the
 /// leading corner (it opens the sheet of everything about what is saved) and Save at the trailing one. Both
 /// are always there; Save keeps Options' dark look with a dimmed glyph while nothing can be saved. Save's
 /// accessibility label is its `title` ("Save", or "Add to Contract.pdf" while the pages go into a PDF
 /// picked) and the format and the pages are its value (`detail`); while a PDF is picked the caption
-/// `adding` between the buttons says so in words.
+/// `adding` between the buttons says so in words. A chevron on Save's trailing side opens the format menu
+/// (`SaveFormatMenu`).
 /// With Separate documents, Split here sits there too (`SplitHereButton`), at the buttons' height.
 struct PictureButtons: View {
     @EnvironmentObject private var state: AppState
@@ -172,6 +173,7 @@ struct PictureButtons: View {
     let adding: String?
     let onOptions: () -> Void
     let onSave: () -> Void
+    let onAddToPDF: () -> Void
 
     static let diameter: CGFloat = 52
     static let margin: CGFloat = 16
@@ -198,7 +200,7 @@ struct PictureButtons: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            saveButton
+            saveControl
         }
         .padding(Self.margin)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -223,28 +225,35 @@ struct PictureButtons: View {
         .accessibilityIdentifier("options.button")
     }
 
-    private var saveButton: some View {
+    private var saveControl: some View {
         let fill: Color = canSave ? Color.accentColor : Color(white: 0.15)
         let stroke: Color = canSave ? Color.clear : Color.white.opacity(0.3)
         let glyph: Color = canSave ? Color.white : Color.white.opacity(0.4)
-        return Button(action: onSave) {
-            Image(systemName: "square.and.arrow.down")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(glyph)
-                // The tray makes the symbol bottom-heavy, so centred by its bounds it looks low in the circle.
-                .offset(y: -2)
-                .frame(width: Self.diameter, height: Self.diameter)
-                .background(Circle().fill(fill))
-                .overlay(Circle().strokeBorder(stroke, lineWidth: 1))
-                .contentShape(Circle())
+        return HStack(spacing: 0) {
+            Button(action: onSave) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(glyph)
+                    // The tray makes the symbol bottom-heavy, so centred by its bounds it looks low in the circle.
+                    .offset(y: -2)
+                    .frame(width: Self.diameter - 4, height: Self.diameter)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
+            .tipAnchor(.save)
+            .accessibilityLabel(Text(title))
+            .accessibilityValue(Text(detail))
+            .accessibilityIdentifier("save.button")
+            Rectangle()
+                .fill(glyph.opacity(0.5))
+                .frame(width: 1, height: 22)
+                .accessibilityHidden(true)
+            SaveFormatMenu(identifier: "save.format", tint: glyph, height: Self.diameter, onAddToPDF: onAddToPDF)
         }
-        .buttonStyle(.plain)
+        .background(Capsule().fill(fill))
+        .overlay(Capsule().strokeBorder(stroke, lineWidth: 1))
         .disabled(!canSave)
-        .keyboardShortcut(IOSShortcuts.save.keyboardShortcut)
-        .tipAnchor(.save)
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(Text(detail))
-        .accessibilityIdentifier("save.button")
     }
 }
 

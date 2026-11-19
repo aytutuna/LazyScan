@@ -43,7 +43,6 @@ enum PageViewerText {
     static var copyLabel: String { String(localized: "Copy") }
     static var removeLabel: String { String(localized: "Remove") }
     static var removeAllLabel: String { String(localized: "Remove All") }
-    static var moreLabel: String { String(localized: "More") }
     static var actionsLabel: String { String(localized: "Actions") }
     static var openHint: String { String(localized: "Opens the page") }
     static var removeQuestion: String { String(localized: "Remove this page?") }
