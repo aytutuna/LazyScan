@@ -3172,7 +3172,15 @@
     "error %d": "エラー %d",
     "last seen %@": "最終接続: %@",
     "last seen today at %@": "最終接続: 今日%@",
-    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "Lazy Scanにローカルネットワーク上のデバイスの検出を許可するかどうか、macOSから一度確認されることがあります。iPhoneからこのMacを見つけられるように、“許可”を選択してください。"
+    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "Lazy Scanにローカルネットワーク上のデバイスの検出を許可するかどうか、macOSから一度確認されることがあります。iPhoneからこのMacを見つけられるように、“許可”を選択してください。",
+    "Clear History": "履歴を消去",
+    "Clear this session's scans? Saved files are not touched.": "このセッションのスキャンを消去しますか? 保存済みのファイルは削除されません。",
+    "Empties the History list": "履歴の一覧を空にします",
+    "DocAligner": "DocAligner",
+    "ONNX Runtime": "ONNX Runtime",
+    "Add Now": "今すぐ追加",
+    "Delete this document from this Mac without adding it": "この書類を追加せずに、このMacから削除します",
+    "Waiting (%lld)": "待機中（%lld）"
   },
   "win": {},
   "infoplist": {
