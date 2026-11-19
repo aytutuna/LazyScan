@@ -3172,7 +3172,15 @@
     "error %d": "ошибка %d",
     "last seen %@": "был в сети: %@",
     "last seen today at %@": "был в сети сегодня в %@",
-    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS может один раз спросить, можно ли Lazy Scan находить устройства в локальных сетях. Выберите «Разрешить», чтобы телефоны могли найти этот Mac."
+    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS может один раз спросить, можно ли Lazy Scan находить устройства в локальных сетях. Выберите «Разрешить», чтобы телефоны могли найти этот Mac.",
+    "Clear History": "Очистить историю",
+    "Clear this session's scans? Saved files are not touched.": "Очистить сканы за этот сеанс? Сохранённые файлы не будут удалены.",
+    "Empties the History list": "Очищает историю",
+    "DocAligner": "DocAligner",
+    "ONNX Runtime": "ONNX Runtime",
+    "Add Now": "Добавить сейчас",
+    "Delete this document from this Mac without adding it": "Удалить документ с этого Mac, не добавляя его",
+    "Waiting (%lld)": "В ожидании (%lld)"
   },
   "win": {
     "Copy": "Копировать",
