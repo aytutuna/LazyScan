@@ -3172,7 +3172,15 @@
     "error %d": "الخطأ %d",
     "last seen %@": "آخر اتصال في %@",
     "last seen today at %@": "آخر اتصال اليوم الساعة %@",
-    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "قد يسأل macOS مرة واحدة عما إذا كان بإمكان Lazy Scan العثور على الأجهزة في الشبكات المحلية. يُرجى اختيار \"السماح\" كي تتمكن الهواتف من العثور على جهاز Mac هذا."
+    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "قد يسأل macOS مرة واحدة عما إذا كان بإمكان Lazy Scan العثور على الأجهزة في الشبكات المحلية. يُرجى اختيار \"السماح\" كي تتمكن الهواتف من العثور على جهاز Mac هذا.",
+    "Clear History": "مسح السجل",
+    "Clear this session's scans? Saved files are not touched.": "مسح النسخ الضوئية من هذه الجلسة؟ لن تتأثر الملفات المحفوظة.",
+    "Empties the History list": "يُفرغ قائمة السجل",
+    "DocAligner": "DocAligner",
+    "ONNX Runtime": "ONNX Runtime",
+    "Add Now": "إضافة الآن",
+    "Delete this document from this Mac without adding it": "حذف هذا المستند من جهاز Mac هذا دون إضافته",
+    "Waiting (%lld)": "في الانتظار (%lld)"
   },
   "win": {
     "Require a password": "الحماية بكلمة مرور",
