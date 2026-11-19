@@ -61,7 +61,7 @@ KEEP = re.compile(PLACEHOLDER.pattern + "|" + SPECIFIER.pattern + r"|%%|\\.|\n")
 ACCENTS = str.maketrans("AEIOUYCNSZaeiouycnszdlt", "ÀÉÎÕÜÝÇÑŠŽàéîõüýçñšžðłţ")
 # Names that read the same in every script.
 TOKENS = re.compile("|".join(["Lazy Scan", "TWAIN", "JPEG", "TIFF", "PDF/A", "PDF", "OCR", "PNG", "DPI", "QR", "USB",
-                              r"\b(?:dpi|px|MP)\b"]))
+                              "DocAligner", "ONNX Runtime", r"\b(?:dpi|px|MP)\b"]))
 LITERAL = r'"((?:[^"\\]|\\.)*)"'
 # L10n.t("..."), Loc.T("..."), L10n.plural(n, one: "...") and Loc.Plural(n, "...").
 CALLS = [
