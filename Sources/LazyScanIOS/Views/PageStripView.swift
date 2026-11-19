@@ -95,6 +95,8 @@ struct PageStripCell: Identifiable {
 /// it will land before, and one dropped past the last goes to the end (`IOSPageDrop`); VoiceOver has Move
 /// page earlier and Move page later for the same.
 /// While the sheet is selecting (`selection`), a tap picks or drops the page instead, and it is not dragged.
+/// A pinch resizes the pages as the fingers move, the number across on a pill at the top, and they settle on a
+/// whole number when the fingers lift.
 struct PageStripView: View {
     @EnvironmentObject private var state: AppState
     /// The pages picked; nil when the grid is not selecting.
@@ -103,10 +105,17 @@ struct PageStripView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The pages across chosen with a pinch; 0 until one is.
     @AppStorage(PageStripView.columnsKey) private var chosenColumns: Int = 0
-    /// The pinch under way has taken its step.
-    @State private var pinched: Bool = false
+    /// The pages across while a pinch is under way, between one and the most; nil at rest.
+    @State private var liveColumns: Double?
+    /// The pages across when the pinch began.
+    @State private var pinchStart: Double?
     /// A pinch is under way; back to false when it ends or the system cancels it.
     @GestureState private var pinching: Bool = false
+    /// The pill with the number of pages across is up: while pinching and a second after.
+    @State private var showsColumns: Bool = false
+    @State private var hideColumns: Task<Void, Never>?
+    /// The page the grid is scrolled to, which a pinch keeps in place.
+    @State private var scroll: ScrolledPage = ScrolledPage()
     /// The page whose document is being named.
     @State private var namingPage: UUID?
     /// The page a dragged page is over.
@@ -141,8 +150,19 @@ struct PageStripView: View {
     }
 
     /// The gap between pages, tighter as they get smaller: 14 pt up to two across, 6 pt from five.
-    nonisolated static func spacing(columns: Int) -> CGFloat {
-        min(14, max(6, 28 / CGFloat(columns)))
+    nonisolated static func spacing(columns: CGFloat) -> CGFloat {
+        min(14, max(6, 28 / columns))
+    }
+
+    /// The pages across under a pinch of `magnification` that began at `start` across: fewer as the fingers
+    /// spread, never fewer than one or more than `most`.
+    nonisolated static func pinchedColumns(start: Double, magnification: Double, most: Int) -> Double {
+        min(Double(most), max(1, start / max(magnification, 0.01)))
+    }
+
+    /// The whole number across a pinch that ends at `live` settles on.
+    nonisolated static func settledColumns(live: Double, most: Int) -> Int {
+        min(most, max(1, Int(live.rounded())))
     }
 
     var body: some View {
@@ -157,11 +177,11 @@ struct PageStripView: View {
         let summary: String = DocumentSplitter.queueSummary(state.scannedPages, options: state.settings.document)
         let pad: Bool = UIDevice.current.userInterfaceIdiom == .pad
         let count: Int = Self.columnCount(chosen: chosenColumns, width: width, pad: pad)
-        let spacing: CGFloat = Self.spacing(columns: count)
-        // The gaps belong to the tiles, so a page dropped between two lands on one of them.
-        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 0, alignment: .top), count: count)
-        let compact: Bool = count >= 4
-        return ScrollView {
+        let most: Int = Self.maxColumns(width: width, pad: pad)
+        let across: Double = liveColumns ?? Double(count)
+        let spacing: CGFloat = Self.spacing(columns: CGFloat(across))
+        let compact: Bool = across >= 3.5
+        let strip = ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 // The sheet's title already gives the count; the line stays for what it adds (documents, separators).
                 if cells.isEmpty || summary != IOSCameraText.pageCount(state.scannedPages.count) {
@@ -176,7 +196,7 @@ struct PageStripView: View {
                         .foregroundStyle(Color.secondary)
                         .accessibilityIdentifier("pages.dragHint")
                 }
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 0) {
+                LazyVGrid(columns: gridItems(count: count, across: width - 32), alignment: .leading, spacing: 0) {
                     ForEach(cells) { (cell: PageStripCell) in
                         if let selection {
                             selectTile(cell, selection: selection, compact: compact, spacing: spacing)
@@ -185,6 +205,7 @@ struct PageStripView: View {
                         }
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.bottom, 60)
                 .contentShape(Rectangle())
                 .dropDestination(for: IOSDraggedPage.self) { (items: [IOSDraggedPage], _: CGPoint) -> Bool in
@@ -197,40 +218,106 @@ struct PageStripView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("pages.strip")
         }
-        .simultaneousGesture(pinch(columns: count, most: Self.maxColumns(width: width, pad: pad)))
+        .scrollPosition(id: scroll.topBinding)
+        .overlay(alignment: .top) {
+            if showsColumns {
+                StatusPill(text: Self.columnsLabel(Int(across.rounded())), hint: nil)
+                    .padding(.top, 8)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+                    .accessibilityIdentifier("pages.columnsReadout")
+            }
+        }
+        .simultaneousGesture(pinch(count: count, most: most))
         .onChange(of: pinching) { (_: Bool, now: Bool) in
             if !now {
-                pinched = false
+                settle(from: count, most: most)
             }
+        }
+        return ScrollViewReader { (proxy: ScrollViewProxy) in
+            strip
+                .onChange(of: liveColumns) { (_: Double?, _: Double?) in
+                    keepPlace(proxy, first: cells.first?.id)
+                }
         }
     }
 
-    /// Pinching out shows fewer, larger pages and pinching in more, smaller ones, a step a pinch.
-    private func pinch(columns: Int, most: Int) -> some Gesture {
+    /// The columns of the grid: flexible ones at rest, so the tiles fill the width; under a pinch fixed ones, as
+    /// wide as the fingers have made them and as many as fit.
+    private func gridItems(count: Int, across: CGFloat) -> [GridItem] {
+        // The gaps belong to the tiles, so a page dropped between two lands on one of them.
+        guard let live = liveColumns else {
+            return Array(repeating: GridItem(.flexible(), spacing: 0, alignment: .top), count: count)
+        }
+        let tile: CGFloat = (across / CGFloat(live)).rounded(.down)
+        return Array(repeating: GridItem(.fixed(tile), spacing: 0, alignment: .top), count: Int(live + 0.0001))
+    }
+
+    /// Pinching out shows fewer, larger pages and pinching in more, smaller ones, as far as the fingers go; the
+    /// pages settle on a whole number across when they lift (`settle`).
+    private func pinch(count: Int, most: Int) -> some Gesture {
         MagnifyGesture()
             .updating($pinching) { (_: MagnifyGesture.Value, active: inout Bool, _: inout Transaction) in
                 active = true
             }
             .onChanged { (value: MagnifyGesture.Value) in
-                guard !pinched else { return }
-                if value.magnification > 1.15 && columns > 1 {
-                    pinched = true
-                    show(columns: columns - 1)
-                } else if value.magnification < 0.87 && columns < most {
-                    pinched = true
-                    show(columns: columns + 1)
+                if pinchStart == nil {
+                    pinchStart = Double(count)
+                    scroll.held = scroll.top
+                    hideColumns?.cancel()
                 }
+                liveColumns = Self.pinchedColumns(start: pinchStart ?? Double(count), magnification: Double(value.magnification),
+                                                  most: most)
+                showsColumns = true
             }
     }
 
-    private func show(columns: Int) {
-        if reduceMotion {
-            chosenColumns = columns
-        } else {
-            withAnimation(Animation.snappy) {
-                chosenColumns = columns
+    /// The pinch is over: the pages settle on the nearest whole number across, kept in the defaults, and the pill
+    /// goes a second later.
+    private func settle(from count: Int, most: Int) {
+        guard let live = liveColumns else { return }
+        let target: Int = Self.settledColumns(live: live, most: most)
+        withAnimation(settling) {
+            if target != count {
+                chosenColumns = target
+            }
+            liveColumns = nil
+        }
+        pinchStart = nil
+        hideColumns?.cancel()
+        hideColumns = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : Animation.easeOut(duration: 0.3)) {
+                showsColumns = false
             }
         }
+    }
+
+    private var settling: Animation? {
+        reduceMotion ? nil : Animation.snappy
+    }
+
+    /// Scrolls back to the page that was at the top when the pinch began, since the rows move under it.
+    private func keepPlace(_ proxy: ScrollViewProxy, first: UUID?) {
+        let held: UUID? = scroll.held
+        if liveColumns == nil {
+            scroll.held = nil
+        }
+        // The top of the first row is the top of the grid, with the lines above it.
+        guard let held, held != first else { return }
+        if liveColumns == nil {
+            withAnimation(settling) {
+                proxy.scrollTo(held, anchor: .top)
+            }
+        } else {
+            proxy.scrollTo(held, anchor: .top)
+        }
+    }
+
+    /// "3 per row".
+    nonisolated static func columnsLabel(_ count: Int) -> String {
+        L10n.plural(count, one: "{0} per row", other: "{0} per row")
     }
 
     /// Where the bar of a dragged page goes: before the tile it is over, or after the last page while it is
@@ -336,6 +423,17 @@ struct PageStripView: View {
         dragging = nil
         guard let moving = items.first?.id else { return false }
         return IOSPageDrop.move(moving, before: target, in: state)
+    }
+}
+
+/// The page at the top of the grid, noted as it scrolls, and the one a pinch holds there. A class, so that
+/// noting a scroll does not redraw the grid.
+private final class ScrolledPage {
+    var top: UUID?
+    var held: UUID?
+
+    var topBinding: Binding<UUID?> {
+        Binding<UUID?>(get: { self.top }, set: { (id: UUID?) -> Void in self.top = id })
     }
 }
 

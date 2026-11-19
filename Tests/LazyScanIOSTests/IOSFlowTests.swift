@@ -614,6 +614,23 @@ final class IOSFlowTests: XCTestCase {
         XCTAssertEqual(PageStripView.spacing(columns: 6), 6)
     }
 
+    func test_pinchedGrid_followsTheFingers_staysWithinOneAndTheMost_andSettlesOnAWholeNumber() {
+        XCTAssertEqual(PageStripView.pinchedColumns(start: 2, magnification: 1, most: 6), 2)
+        XCTAssertEqual(PageStripView.pinchedColumns(start: 2, magnification: 0.5, most: 6), 4, accuracy: 0.0001)
+        XCTAssertEqual(PageStripView.pinchedColumns(start: 4, magnification: 1.6, most: 6), 2.5, accuracy: 0.0001)
+        XCTAssertEqual(PageStripView.pinchedColumns(start: 2, magnification: 0.1, most: 6), 6)
+        XCTAssertEqual(PageStripView.pinchedColumns(start: 2, magnification: 3, most: 6), 1)
+        XCTAssertEqual(PageStripView.settledColumns(live: 2.4, most: 6), 2)
+        XCTAssertEqual(PageStripView.settledColumns(live: 2.6, most: 6), 3)
+        XCTAssertEqual(PageStripView.settledColumns(live: 1, most: 6), 1)
+        XCTAssertEqual(PageStripView.settledColumns(live: 6, most: 6), 6)
+    }
+
+    func test_pinchedGrid_readsHowManyAreAcross() {
+        XCTAssertEqual(PageStripView.columnsLabel(1), "1 per row")
+        XCTAssertEqual(PageStripView.columnsLabel(3), "3 per row")
+    }
+
     func test_pageGrid_keepsAPageLeftOut_skipsAPageKept_andOffersNeitherForAPlainPage() {
         let pages: [ScannedPage] = [flowPage().withInclusion(.skip), flowPage().withInclusion(.keep), flowPage()]
         let cells: [PageStripCell] = PageStripCell.cells(pages, options: DocumentOptions())

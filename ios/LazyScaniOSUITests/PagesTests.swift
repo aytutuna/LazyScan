@@ -3,7 +3,7 @@ import XCTest
 // The page grid's Select mode, as a person uses it on the Simulator: the three pages of the batch fixture
 // brought in at launch (`-importFixture`, as in BatchTests), Select, the first two pages ticked, Remove and
 // its question, and one page is left; Remove All, which empties the queue and closes the sheet; the bar's
-// Options and the format menu beside Save; and a page dragged onto another, which lands before it.
+// Options and the format menu beside Save; a page dragged onto another, which lands before it; and a pinch.
 
 final class PagesTests: XCTestCase {
     override func setUpWithError() throws {
@@ -279,6 +279,36 @@ final class PagesTests: XCTestCase {
         done.tap()
         XCTAssertTrue(app.descendants(matching: .any)["pages.done"].firstMatch.waitForExistence(timeout: 30),
                       "The pages are back")
+        app.closePages()
+    }
+
+    // Pinching in shows more pages across with the number on a pill, which goes a second after the fingers lift;
+    // the pages settle at a whole number across, so they are narrower than before.
+    @MainActor
+    func test_pinchingTheGrid_showsTheNumberAcross_andSettlesNarrower() throws {
+        let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
+                                         "The fixture PDF in the test bundle")
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "batch"]
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
+        app.launch()
+
+        app.openPages(3)
+        app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
+        let page: XCUIElement = app.descendants(matching: .any)["page.1"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "The first page")
+        let before: CGFloat = page.frame.width
+        let readout: XCUIElement = app.descendants(matching: .any)["pages.columnsReadout"].firstMatch
+        XCTAssertFalse(readout.exists, "No pill before a pinch")
+
+        app.descendants(matching: .any)["pages.strip"].firstMatch.pinch(withScale: 0.4, velocity: -1)
+        XCTAssertTrue(readout.waitForExistence(timeout: 5), "The pill with the number across")
+        let narrower = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
+            page.frame.width < before - 10
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrower], timeout: 10), .completed, "The pages settle narrower")
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: readout)
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 10), .completed, "The pill fades")
         app.closePages()
     }
 }

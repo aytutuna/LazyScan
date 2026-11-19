@@ -152,6 +152,10 @@ struct PageViewer: View {
     @State private var shownOnly: Bool = false
     /// The pager's longest side so far, in points: it only grows, so turning the phone reads nothing again.
     @State private var viewSide: CGFloat = 0
+    /// The zoom of each page pinched or double tapped, to the tenth the readout shows; a page not in it is at 1.
+    @State private var zooms: [UUID: Double] = [:]
+    /// The zoom readout is up: while pinching, and a second after a pinch or a double tap.
+    @State private var showsZoom: Bool = false
 
     /// What a page is read from: its spool file, at `side` pixels on its longer side (`pixels` in all), turned
     /// `turns`. `preview` is the queue's preview the page has: turned, cut again, swapped or replaced, a page
@@ -439,6 +443,16 @@ struct PageViewer: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         // The page being cropped stays on screen while its photo is read.
         .allowsHitTesting(!preparesCrop)
+        .overlay(alignment: .top) {
+            if showsZoom, let id = selection {
+                StatusPill(text: IOSCameraText.zoomLabel(zooms[id] ?? 1), hint: nil)
+                    .padding(.top, 12)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .accessibilityIdentifier("viewer.zoomReadout")
+            }
+        }
         .accessibilityIdentifier("viewer.pages")
         .onGeometryChange(for: CGFloat.self) { (proxy: GeometryProxy) -> CGFloat in
             max(proxy.size.width, proxy.size.height)
@@ -453,7 +467,9 @@ struct PageViewer: View {
         let index: Int = state.scannedPages.firstIndex(where: { (item: ScannedPage) -> Bool in item.id == page.id }) ?? 0
         let label: String = PageViewerText.title(number: index + 1, count: state.scannedPages.count)
         let spoken: String = note.map { (text: String) -> String in String(localized: "Page \(label), \(text)") } ?? String(localized: "Page \(label)")
-        return ZoomablePage(image: shownImage(page), isShown: page.id == selection)
+        let pageID: UUID = page.id
+        return ZoomablePage(image: shownImage(page), isShown: pageID == selection,
+                            onZoom: { (zoom: Double, shown: Bool) -> Void in showZoom(of: pageID, zoom, shown: shown) })
             .environment(\.layoutDirection, .leftToRight)
             .overlay {
                 if state.recuttingPages.contains(page.id) {
@@ -468,6 +484,7 @@ struct PageViewer: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(spoken))
+            .accessibilityValue(Text(IOSCameraText.zoomLabel(zooms[pageID] ?? 1)))
             .accessibilityAddTraits(.isImage)
             .accessibilityAction(named: Text("Next page")) {
                 step(by: 1)
@@ -476,6 +493,20 @@ struct PageViewer: View {
                 step(by: -1)
             }
             .accessibilityIdentifier("viewer.page.\(index + 1)")
+    }
+
+    private func showZoom(of id: UUID, _ zoom: Double, shown: Bool) {
+        let tenths: Double = (zoom * 10).rounded() / 10
+        if zooms[id] != tenths {
+            zooms[id] = tenths
+        }
+        if shown {
+            showsZoom = true
+        } else {
+            withAnimation(reduceMotion ? nil : Animation.easeOut(duration: 0.3)) {
+                showsZoom = false
+            }
+        }
     }
 
     /// The grid's note on the page, on a badge in the corner as the grid has it.
@@ -1120,6 +1151,8 @@ final class MarkedPictures {
 struct ZoomablePage: UIViewRepresentable {
     let image: CGImage
     let isShown: Bool
+    /// Told the zoom while it changes under a pinch or a double tap, and once more, shown false, a second later.
+    var onZoom: (Double, Bool) -> Void = { (_: Double, _: Bool) -> Void in }
 
     func makeCoordinator() -> LiveTextCoordinator {
         LiveTextCoordinator()
@@ -1138,6 +1171,7 @@ struct ZoomablePage: UIViewRepresentable {
     }
 
     func updateUIView(_ view: ZoomingImageView, context: Context) {
+        view.onZoom = onZoom
         view.show(image)
         if isShown {
             context.coordinator.analyzeIfNew(image)
@@ -1156,6 +1190,8 @@ final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
     private var shown: CGImage?
     /// The size the page was last fitted to.
     private var fittedSize: CGSize = .zero
+    var onZoom: (Double, Bool) -> Void = { (_: Double, _: Bool) -> Void in }
+    private var hideZoom: Task<Void, Never>?
 
     init() {
         super.init(frame: .zero)
@@ -1210,6 +1246,26 @@ final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         centre()
+        // A zoom set in code (a page fitted again) says nothing.
+        if isZooming || isZoomBouncing {
+            hideZoom?.cancel()
+            onZoom(Double(zoomScale), true)
+        }
+    }
+
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        flashZoom(scale)
+    }
+
+    /// Reports `scale` as the zoom now, then, a second later, that the readout can go.
+    private func flashZoom(_ scale: CGFloat) {
+        hideZoom?.cancel()
+        onZoom(Double(scale), true)
+        hideZoom = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled, let view = self else { return }
+            view.onZoom(Double(view.zoomScale), false)
+        }
     }
 
     /// The page at zoom 1, as large as it fits.
@@ -1217,6 +1273,12 @@ final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
         fittedSize = bounds.size
         guard let size = imageView.image?.size, size.width > 0, size.height > 0,
               bounds.width > 0, bounds.height > 0 else { return }
+        if zoomScale != 1 {
+            // The readout and the page's spoken zoom drop back to 1 once this layout pass is done.
+            DispatchQueue.main.async { [weak self] in
+                self?.onZoom(1, false)
+            }
+        }
         zoomScale = 1
         let scale: CGFloat = min(bounds.width / size.width, bounds.height / size.height)
         let fitted = CGSize(width: size.width * scale, height: size.height * scale)
@@ -1235,6 +1297,7 @@ final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
         let animated: Bool = !UIAccessibility.isReduceMotionEnabled
         if zoomScale > minimumZoomScale {
             setZoomScale(minimumZoomScale, animated: animated)
+            flashZoom(minimumZoomScale)
             return
         }
         let point: CGPoint = gesture.location(in: imageView)
@@ -1242,6 +1305,7 @@ final class ZoomingImageView: UIScrollView, UIScrollViewDelegate {
         let size = CGSize(width: bounds.width / scale, height: bounds.height / scale)
         zoom(to: CGRect(x: point.x - size.width / 2, y: point.y - size.height / 2, width: size.width, height: size.height),
              animated: animated)
+        flashZoom(min(scale, maximumZoomScale))
     }
 }
 

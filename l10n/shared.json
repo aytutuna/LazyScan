@@ -2993,6 +2993,10 @@
     "other": "{0} Selected",
     "note": "Title of the page grid while pages are picked; {0} is how many are picked."
   },
+  "{0} per row": {
+    "other": "{0} per row",
+    "note": "Pill over the page grid while pinching; {0} is how many pages fit across, from 1 to 10."
+  },
   "The picture of page {0} could not be written.": {},
   "Up to {0} dpi (black & white {1}), gray pages saved in gray.": {},
   "Up to {0} dpi (black & white {1}), more compression.": {},
