@@ -2181,6 +2181,7 @@
     "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Этот компьютер не подключен к сети, поэтому найти сетевые сканеры не удается. На сканеры, подключенные по USB, это не влияет.",
     "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Этот Mac не подключен к сети, поэтому найти сетевые сканеры не удается. На сканеры, подключенные по USB, это не влияет.",
     "{0} Selected": {"one": "Выбрано: {0}", "few": "Выбрано: {0}", "many": "Выбрано: {0}", "other": "Выбрано: {0}"},
+    "{0} per row": {"one": "По {0} в ряд", "few": "По {0} в ряд", "many": "По {0} в ряд", "other": "По {0} в ряд"},
     "The picture of page {0} could not be written.": "Не удалось записать изображение страницы {0}.",
     "Up to {0} dpi (black & white {1}), gray pages saved in gray.": "До {0} dpi (черно-белый режим: {1}), серые страницы остаются серыми.",
     "Up to {0} dpi (black & white {1}), more compression.": "До {0} dpi (черно-белый режим: {1}), более сильное сжатие.",
