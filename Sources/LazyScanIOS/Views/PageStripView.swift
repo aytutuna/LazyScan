@@ -574,7 +574,8 @@ struct RemovedPagesRow: View {
 /// picks pages as the Photos app does: "2 Selected" as the title, Select All or Deselect All, and Cancel in
 /// place of Done, with a bottom bar that turns the pages picked, shares them as pictures, moves them to the
 /// start or the end, and removes them once asked, each by name: as buttons at a regular width, in an Actions
-/// menu on a compact phone. Outside Select a bottom bar has Options, which closes the sheet for the scan
+/// menu on a compact phone. With one page picked they also split or join its spread, start or join a document
+/// there and name it, as the page viewer does (a Document menu at a regular width). Outside Select a bottom bar has Options, which closes the sheet for the scan
 /// screen's Options and brings it back with Done, Save, which runs the scan screen's Save without closing the
 /// sheet, with a chevron for the formats, and Remove All, which empties the queue once asked; the sheet then closes,
 /// as it does whenever the pages run out, unless the pages just taken out can still be put back
@@ -603,6 +604,8 @@ struct PageStripSheet: View {
     @State private var selected: Set<UUID> = []
     @State private var asksDelete: Bool = false
     @State private var asksDeleteAll: Bool = false
+    /// The page whose document is being named from the selection's menu.
+    @State private var namingPage: UUID?
     @State private var sharing: Bool = false
     @State private var share: ShareRequest?
     @State private var shareNote: String?
@@ -674,6 +677,7 @@ struct PageStripSheet: View {
             PageViewer(startID: start.id, onEditSpread: editSpread, onRetake: retakeAction, onClose: closeViewer)
                 .environmentObject(state)
         }
+        .modifier(DocumentNameAlert(state: state, page: $namingPage))
         // The root's alert cannot show over a sheet.
         .modifier(ErrorAlert(state: state))
         .modifier(SidesOrderQuestion(state: state))
@@ -835,6 +839,10 @@ struct PageStripSheet: View {
             Spacer()
             moveAction
             Spacer()
+            if offersSplit {
+                splitMenu
+                Spacer()
+            }
             removeAction
         } else {
             Menu {
@@ -842,6 +850,7 @@ struct PageStripSheet: View {
                 filterAction
                 shareAction
                 moveAction
+                splitItems
                 removeAction
             } label: {
                 Label(PageViewerText.actionsLabel, systemImage: "ellipsis.circle")
@@ -913,6 +922,71 @@ struct PageStripSheet: View {
         .accessibilityIdentifier("pages.moveSelected")
     }
 
+    /// The one page picked, when exactly one is.
+    private var pickedPage: ScannedPage? {
+        guard selected.count == 1 else { return nil }
+        return state.scannedPages.first { (page: ScannedPage) -> Bool in selected.contains(page.id) }
+    }
+
+    /// The picked page as the grid has it, for its document items.
+    private var pickedCell: PageStripCell? {
+        guard let page = pickedPage else { return nil }
+        let cells: [PageStripCell] = PageStripCell.cells(state.scannedPages, options: state.settings.document)
+        return cells.first { (cell: PageStripCell) -> Bool in cell.id == page.id }
+    }
+
+    private func splitLabel(of page: ScannedPage) -> String? {
+        guard onEditSpread != nil, state.canEditSpread(of: page) else { return nil }
+        return BookPages.splitActionLabel(page)
+    }
+
+    private func joinLabel(of page: ScannedPage) -> String? {
+        guard state.canEditSpread(of: page) else { return nil }
+        return BookPages.joinActionLabel(page)
+    }
+
+    /// The one page picked has a split, a join or a document item to offer.
+    private var offersSplit: Bool {
+        guard let page = pickedPage else { return false }
+        return splitLabel(of: page) != nil || joinLabel(of: page) != nil || pickedCell?.hasDocumentMenu == true
+    }
+
+    /// What the page viewer offers for a page, for the one page picked: split or change the split of its spread,
+    /// join its two pages, start a new document there or join the one before, and name the document.
+    @ViewBuilder
+    private var splitItems: some View {
+        if let page = pickedPage {
+            if let split = splitLabel(of: page) {
+                Button(action: splitSelected) {
+                    Label(split, systemImage: "rectangle.split.2x1")
+                }
+                .disabled(state.isBusy)
+                .accessibilityIdentifier("pages.splitSelected")
+            }
+            if let join = joinLabel(of: page) {
+                Button(action: joinSelected) {
+                    Label(join, systemImage: "rectangle")
+                }
+                .disabled(state.isBusy)
+                .accessibilityIdentifier("pages.joinSelected")
+            }
+            if let cell = pickedCell, cell.hasDocumentMenu {
+                DocumentMenuItems(state: state, cell: cell, onName: nameSelected)
+            }
+        }
+    }
+
+    private var splitMenu: some View {
+        Menu {
+            splitItems
+        } label: {
+            Label(PageViewerText.documentLabel, systemImage: "scissors")
+                .labelStyle(.titleAndIcon)
+        }
+        .disabled(state.isBusy)
+        .accessibilityIdentifier("pages.documentSelected")
+    }
+
     private var removeAction: some View {
         Button(role: .destructive, action: askDelete) {
             Label(PageViewerText.removeLabel, systemImage: "trash")
@@ -926,6 +1000,21 @@ struct PageStripSheet: View {
         for id in IOSPageSelection.ordered(selected, in: state.scannedPages) {
             state.rotatePage(id: id)
         }
+    }
+
+    private func splitSelected() {
+        guard let page = pickedPage else { return }
+        onEditSpread?(page.id)
+    }
+
+    private func joinSelected() {
+        guard let page = pickedPage else { return }
+        state.joinSpread(id: page.id)
+        stopSelecting()
+    }
+
+    private func nameSelected() {
+        namingPage = pickedPage?.id
     }
 
     private func shareSelected() {

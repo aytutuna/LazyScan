@@ -61,6 +61,64 @@ final class PagesTests: XCTestCase {
         XCTAssertTrue(app.pagesButton.waitForPageCount(1, timeout: 30), "1 page on the pages' button")
     }
 
+    // The document items of the page viewer are in the selection's actions for one page picked, and gone for two.
+    // In the batch fixture the third page starts Document 2.
+    @MainActor
+    func test_onePageSelected_offersTheDocumentItems() throws {
+        let fixture: URL = try XCTUnwrap(Bundle(for: PagesTests.self).url(forResource: "batch", withExtension: "pdf"),
+                                         "The fixture PDF in the test bundle")
+        let app = XCUIApplication()
+        app.launchArguments = ["-demoScanner", "-importFixture", "-importTask", "batch"]
+        app.launchEnvironment["LAZYSCAN_IMPORT_FIXTURE"] = try Data(contentsOf: fixture).base64EncodedString()
+        app.launch()
+
+        app.openPages(3)
+        app.waitUntilEnabled(app.descendants(matching: .any)["pages.save"].firstMatch, "Save", timeout: 120)
+        app.descendants(matching: .any)["pages.select"].firstMatch.tap()
+        let rename: XCUIElement = app.descendants(matching: .any)["tile.document.name"].firstMatch
+        let join: XCUIElement = app.descendants(matching: .any)["tile.document.break"].firstMatch
+
+        app.descendants(matching: .any)["page.3"].firstMatch.tap()
+        openSelectionMenu(app)
+        XCTAssertTrue(join.waitForExistence(timeout: 10), "Join with document 1")
+        XCTAssertTrue(rename.exists, "Name document")
+        dismissSelectionMenu(app)
+
+        app.descendants(matching: .any)["page.1"].firstMatch.tap()
+        XCTAssertTrue(titleCount(app, is: 2), "The title counts the two selected pages")
+        if app.descendants(matching: .any)["pages.selectActions"].firstMatch.exists {
+            openSelectionMenu(app)
+            let rotate: XCUIElement = app.descendants(matching: .any)["pages.rotateSelected"].firstMatch
+            XCTAssertTrue(rotate.waitForExistence(timeout: 10), "The other actions stay")
+            XCTAssertFalse(join.exists, "No document items for two pages")
+            XCTAssertFalse(rename.exists, "No document items for two pages")
+            dismissSelectionMenu(app)
+        } else {
+            XCTAssertFalse(app.descendants(matching: .any)["pages.documentSelected"].firstMatch.exists,
+                           "No Document menu for two pages")
+        }
+    }
+
+    // On a compact phone the items are in the Actions menu, at a regular width in the Document menu.
+    @MainActor
+    private func openSelectionMenu(_ app: XCUIApplication) {
+        let actions: XCUIElement = app.descendants(matching: .any)["pages.selectActions"].firstMatch
+        let document: XCUIElement = app.descendants(matching: .any)["pages.documentSelected"].firstMatch
+        if actions.exists {
+            app.waitUntilEnabled(actions, "Actions", timeout: 10)
+            actions.tap()
+        } else {
+            XCTAssertTrue(document.waitForExistence(timeout: 10), "The Document menu")
+            document.tap()
+        }
+    }
+
+    // A tap on the title, which no page is under.
+    @MainActor
+    private func dismissSelectionMenu(_ app: XCUIApplication) {
+        app.navigationBars.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
     // Mark Up opens from the page viewer with nothing drawn: Undo is off, and Cancel closes it with no question.
     @MainActor
     func test_markUp_opensWithUndoOff_andCancelCloses() throws {
