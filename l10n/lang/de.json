@@ -2181,6 +2181,7 @@
     "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Dieser PC ist mit keinem Netzwerk verbunden, daher können keine Netzwerkscanner gefunden werden. USB-Scanner sind davon nicht betroffen.",
     "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Dieser Mac ist mit keinem Netzwerk verbunden, daher können keine Netzwerkscanner gefunden werden. USB-Scanner sind davon nicht betroffen.",
     "{0} Selected": {"one": "{0} ausgewählt", "other": "{0} ausgewählt"},
+    "{0} per row": {"one": "{0} pro Reihe", "other": "{0} pro Reihe"},
     "The picture of page {0} could not be written.": "Das Bild von Seite {0} konnte nicht erstellt werden.",
     "Up to {0} dpi (black & white {1}), gray pages saved in gray.": "Bis {0} dpi (Schwarzweiß {1}), graue Seiten in Graustufen gesichert.",
     "Up to {0} dpi (black & white {1}), more compression.": "Bis {0} dpi (Schwarzweiß {1}), stärkere Komprimierung.",
