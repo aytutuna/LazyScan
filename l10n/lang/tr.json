@@ -2181,6 +2181,7 @@
     "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Bu bilgisayar bir ağa bağlı değil, bu yüzden ağ tarayıcıları bulunamıyor. USB ile bağlı tarayıcılar bundan etkilenmez.",
     "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "Bu Mac bir ağa bağlı değil, bu yüzden ağ tarayıcıları bulunamıyor. USB ile bağlı tarayıcılar bundan etkilenmez.",
     "{0} Selected": {"one": "{0} Sayfa Seçildi", "other": "{0} Sayfa Seçildi"},
+    "{0} per row": {"one": "Her satırda {0}", "other": "Her satırda {0}"},
     "The picture of page {0} could not be written.": "{0}. sayfanın görüntüsü yazılamadı.",
     "Up to {0} dpi (black & white {1}), gray pages saved in gray.": "En fazla {0} dpi (siyah beyaz {1}); gri sayfalar gri tonlamalı kaydedilir.",
     "Up to {0} dpi (black & white {1}), more compression.": "En fazla {0} dpi (siyah beyaz {1}), daha çok sıkıştırma.",
