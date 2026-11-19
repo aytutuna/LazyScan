@@ -2181,6 +2181,7 @@
     "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "هذا الكمبيوتر غير متصل بشبكة، لذا يتعذر العثور على الماسحات الشبكية. أما الماسحات المتصلة عبر USB فلا تتأثر.",
     "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "جهاز Mac هذا غير متصل بشبكة، لذا يتعذر العثور على الماسحات الشبكية. أما الماسحات المتصلة عبر USB فلا تتأثر.",
     "{0} Selected": {"zero": "لم يتم تحديد أي صفحة", "one": "تم تحديد صفحة واحدة", "two": "تم تحديد صفحتين", "few": "تم تحديد {0} صفحات", "many": "تم تحديد {0} صفحة", "other": "تم تحديد {0} صفحة"},
+    "{0} per row": {"zero": "{0} في كل صف", "one": "{0} في كل صف", "two": "{0} في كل صف", "few": "{0} في كل صف", "many": "{0} في كل صف", "other": "{0} في كل صف"},
     "The picture of page {0} could not be written.": "تعذرت كتابة صورة الصفحة {0}.",
     "Up to {0} dpi (black & white {1}), gray pages saved in gray.": "حتى {0} dpi (أسود وأبيض {1})، وتُحفظ الصفحات الرمادية بتدرج رمادي.",
     "Up to {0} dpi (black & white {1}), more compression.": "حتى {0} dpi (أسود وأبيض {1})، مع ضغط أكبر.",
