@@ -2181,6 +2181,7 @@
     "This PC is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "このPCはネットワークに接続されていないため、ネットワークスキャナを検出できません。USB接続のスキャナには影響しません。",
     "This Mac is not on a network, so network scanners can't be found. Scanners connected by USB are not affected.": "このMacはネットワークに接続されていないため、ネットワークスキャナを検出できません。USB接続のスキャナには影響しません。",
     "{0} Selected": {"other": "{0}ページを選択中"},
+    "{0} per row": {"other": "1行に{0}ページ"},
     "The picture of page {0} could not be written.": "{0}ページ目の画像を書き込めませんでした。",
     "Up to {0} dpi (black & white {1}), gray pages saved in gray.": "最大{0} dpi（白黒は{1}）。グレイのページはグレイのまま保存されます。",
     "Up to {0} dpi (black & white {1}), more compression.": "最大{0} dpi（白黒は{1}）。圧縮率は高めです。",
