@@ -11,6 +11,7 @@ namespace LazyScan.App.Tests;
 // Twin of the connection cases of Tests/LazyScanTests/EsclScannerBackendTests.swift: when a scanner
 // has a pinned certificate its plain HTTP address is never used, and a scanner never trusted keeps it.
 
+[Collection(WallClockCollection.Name)]
 public sealed class EsclScannerBackendTests : IDisposable
 {
     private readonly string _directory;
