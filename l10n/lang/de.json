@@ -3172,7 +3172,15 @@
     "error %d": "Fehler %d",
     "last seen %@": "zuletzt gesehen am %@",
     "last seen today at %@": "zuletzt heute um %@ gesehen",
-    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS fragt eventuell einmal, ob Lazy Scan Geräte in deinem lokalen Netzwerk finden darf. Wähle „Erlauben“, damit Telefone diesen Mac finden können."
+    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS fragt eventuell einmal, ob Lazy Scan Geräte in deinem lokalen Netzwerk finden darf. Wähle „Erlauben“, damit Telefone diesen Mac finden können.",
+    "Clear History": "Verlauf löschen",
+    "Clear this session's scans? Saved files are not touched.": "Scans dieser Sitzung entfernen? Gesicherte Dateien bleiben erhalten.",
+    "Empties the History list": "Leert den Verlauf",
+    "DocAligner": "DocAligner",
+    "ONNX Runtime": "ONNX Runtime",
+    "Add Now": "Jetzt hinzufügen",
+    "Delete this document from this Mac without adding it": "Dokument von diesem Mac löschen, ohne es hinzuzufügen",
+    "Waiting (%lld)": "Ausstehend (%lld)"
   },
   "win": {
     "Saved": "Gespeichert",
