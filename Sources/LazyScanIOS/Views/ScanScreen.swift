@@ -320,6 +320,7 @@ struct ScanScreen: View {
             .onChange(of: state.pendingPackage != nil) { (_: Bool, offered: Bool) in
                 // The package banner is at the picture's foot, behind the half sheet.
                 if offered {
+                    reopensPagesAfterOptions = false
                     openGroup = nil
                 }
             }

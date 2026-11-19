@@ -1182,6 +1182,12 @@ struct ZoomablePage: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: ZoomingImageView, coordinator: LiveTextCoordinator) {
         coordinator.cancel()
+        // The viewer keeps the zoom per page; the page comes back at 1 when its view is made again.
+        if uiView.zoomScale != 1 {
+            DispatchQueue.main.async {
+                uiView.onZoom(1, false)
+            }
+        }
     }
 }
 

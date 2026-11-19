@@ -29,8 +29,10 @@ public struct LazyScanIOSApp: App {
         actions.clearHandoffs()
         IOSPageSelection.clearShareFolders()
         IOSShell.sweepInbox()
-        // The UI tests pick their mode themselves.
-        if !options.demoScannerOnly {
+        // The UI tests pick their mode themselves, and start with the pages at the default width.
+        if options.demoScannerOnly {
+            UserDefaults.standard.removeObject(forKey: PageStripView.columnsKey)
+        } else {
             IOSShell.applyStartMode(UserDefaults.standard)
         }
         let network: IOSNetworkScanners? = options.demoScannerOnly ? nil : IOSNetworkScanners()
