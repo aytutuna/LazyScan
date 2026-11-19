@@ -258,6 +258,13 @@ final class PagesTests: XCTestCase {
         jpeg.tap()
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "JPEG"), object: save)
         XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed, "Save names JPEG")
+
+        // The format is kept across launches, so put PDF back for the tests after this one.
+        formats.tap()
+        XCTAssertTrue(pdf.waitForExistence(timeout: 10), "PDF in the format menu again")
+        pdf.tap()
+        let back = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "JPEG"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [back], timeout: 10), .completed, "Save back to PDF")
     }
 
     // Options in the bar closes the sheet for the Options sheet, and Done there brings the pages back.
