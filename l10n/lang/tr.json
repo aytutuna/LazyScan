@@ -3173,7 +3173,15 @@
     "error %d": "hata %d",
     "last seen %@": "son görülme: %@",
     "last seen today at %@": "son görülme: bugün %@",
-    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS, Lazy Scan’in yerel ağlardaki aygıtları bulmasına izin verip vermeyeceğinizi bir kez sorabilir. Telefonların bu Mac’i bulabilmesi için “İzin Ver”i seçin."
+    "macOS may ask once whether Lazy Scan may find devices on local networks. Choose Allow, so phones can find this Mac.": "macOS, Lazy Scan’in yerel ağlardaki aygıtları bulmasına izin verip vermeyeceğinizi bir kez sorabilir. Telefonların bu Mac’i bulabilmesi için “İzin Ver”i seçin.",
+    "Clear History": "Geçmişi Temizle",
+    "Clear this session's scans? Saved files are not touched.": "Bu oturumdaki taramalar temizlensin mi? Kaydedilen dosyalar silinmez.",
+    "Empties the History list": "Geçmiş listesini boşaltır",
+    "DocAligner": "DocAligner",
+    "ONNX Runtime": "ONNX Runtime",
+    "Add Now": "Şimdi Ekle",
+    "Delete this document from this Mac without adding it": "Belgeyi kuyruğa eklemeden bu Mac’ten sil",
+    "Waiting (%lld)": "Bekleyenler (%lld)"
   },
   "win": {
     "Scan page": "Sayfayı tara",
