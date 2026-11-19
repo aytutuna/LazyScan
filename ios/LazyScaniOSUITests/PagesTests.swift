@@ -301,7 +301,8 @@ final class PagesTests: XCTestCase {
         let readout: XCUIElement = app.descendants(matching: .any)["pages.columnsReadout"].firstMatch
         XCTAssertFalse(readout.exists, "No pill before a pinch")
 
-        app.descendants(matching: .any)["pages.strip"].firstMatch.pinch(withScale: 0.4, velocity: -1)
+        // On a page, not the whole strip: fingers that far apart drag the sheet down to half instead.
+        page.pinch(withScale: 0.4, velocity: -1)
         XCTAssertTrue(readout.waitForExistence(timeout: 5), "The pill with the number across")
         let narrower = XCTNSPredicateExpectation(predicate: NSPredicate { (_: Any?, _: [String: Any]?) -> Bool in
             page.frame.width < before - 10
