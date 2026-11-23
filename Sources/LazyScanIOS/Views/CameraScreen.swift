@@ -658,7 +658,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             .padding(.horizontal, 12)
             .frame(minHeight: 32)
             .background(Capsule().fill(Color(uiColor: .tertiarySystemFill)))
-            .frame(maxWidth: 112, minHeight: 44)
+            .frame(maxWidth: 240, minHeight: 44)
             .opacity(blocked ? 0.4 : 1)
             .contentShape(Rectangle())
         }
