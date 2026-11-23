@@ -17,10 +17,10 @@ enum ScanCover: String, Identifiable {
 }
 
 /// The scan screen, in the phone's mode (`IOSScanMode`), which is also where the pages come from; the two tabs
-/// share one layout. The top bar (`ScanTopBar`): the library (`onOpenLibrary`; nil where the sidebar has it)
-/// and the Camera | Scanner switch (`ModeSwitch`: `mode.printer`, and `mode.camera`, back to camera mode,
-/// which selects no scanner so none of its limits apply to the camera). The Controls pill at the picture's
-/// foot (`DrawerHandle`) opens the options drawer (`ScanDrawer`: Filter, and Flash and Camera on the camera,
+/// share one layout. The top bar (`ScanTopBar`): the library (`onOpenLibrary`; nil where the sidebar has it),
+/// the drawer arrow, and the camera | scanner icon switch (`ModeSwitch`:
+/// `mode.printer`, and `mode.camera`, back to camera mode, which selects no scanner so none of its limits
+/// apply to the camera). The arrow opens the options drawer (`ScanDrawer`: Filter, and Flash and Camera on the camera,
 /// Color and the scanner's Source, Sides and Resolution on the scanner tab).
 /// Over the bottom corners of the picture, on both tabs, Options (`OptionsScreen` in a sheet that opens at half
 /// height: the Type and a short list of pages, each with its value, that holds every setting; the camera keeps
@@ -386,7 +386,7 @@ struct ScanScreen: View {
 
     private var mainColumn: some View {
         VStack(spacing: 0) {
-            ScanTopBar(onLibrary: libraryAction) {
+            ScanTopBar(showsDrawer: $showsDrawer, onLibrary: libraryAction) {
                 ModeSwitch(onCamera: false, disabled: state.isBusy, onSwitch: switchToCamera)
             }
             scannerRow
@@ -926,7 +926,6 @@ struct ScanScreen: View {
             if showsPictureFlatbedButtons {
                 pictureFlatbedButtons
             }
-            DrawerHandle(open: $showsDrawer)
         }
         .padding(.horizontal, 12)
         .padding(.top, 12)

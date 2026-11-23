@@ -8,9 +8,10 @@ import UIKit
 
 /// Camera mode, the iPhone's scan screen unless printer mode was picked (`IOSScanMode`): the viewfinder is
 /// the screen. Its top bar (`ScanTopBar`) has the library (`onLibrary`; none where the sidebar has it), the
-/// Auto chip (on or off, a tap switches it), the flash button where the camera has a light, and the Camera |
-/// Scanner switch (`ModeSwitch`), whose Scanner segment switches to printer mode (`onPrinter`). The Controls
-/// pill at the picture's foot (`DrawerHandle`) opens the drawer (`ScanDrawer`) above the bottom bar; beside it the Type label (`typeButton`) names the kind and opens the Options sheet's Type menu. The photo size ("24 MP", where the camera offers more than one: a tap
+/// arrow that opens the drawer (`ScanDrawer`) above the bottom bar, the Auto chip (on or off, a tap switches
+/// it), the flash button where the camera has a light, and the camera | scanner icon switch (`ModeSwitch`),
+/// whose scanner segment switches to printer mode (`onPrinter`). At the picture's foot the Type label
+/// (`typeButton`) names the kind and opens the Options sheet's Type menu. The photo size ("24 MP", where the camera offers more than one: a tap
 /// steps to the next, the first pick of a size that may not fit in the phone's memory says so once) is in
 /// the drawer's Camera group. The viewfinder shows the whole photo as it will be taken (black bands where the screen is
 /// taller or wider), the page's outline, or every print's or receipt's, over it (yellow, green once the page holds still), one status line at
@@ -400,7 +401,7 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
     // MARK: The top bar
 
     private var topBar: some View {
-        ScanTopBar(onLibrary: onLibrary) {
+        ScanTopBar(showsDrawer: $showsDrawer, onLibrary: onLibrary) {
             HStack(spacing: 0) {
                 autoChip
                 flashButton
@@ -621,22 +622,17 @@ struct CameraScreen<Notices: View, Buttons: View>: View {
             .disabled(state.isBusy || importer.isImporting)
             .accessibilityIdentifier("camera.skipBack")
         }
-        if verticalSizeClass != .compact {
+        if verticalSizeClass != .compact && onLibrary != nil {
             handleRow
         }
     }
 
-    /// The Controls pill, centred, with the Type label at its leading side. Where the sidebar has the library
-    /// (`onLibrary` nil) it lists the type too, so the pill stands alone.
+    /// The Type label at the leading side of the picture's foot. Where the sidebar has the library
+    /// (`onLibrary` nil) it lists the type too, so there is no row.
     private var handleRow: some View {
-        DrawerHandle(open: $showsDrawer)
-            .frame(maxWidth: .infinity)
-            .overlay(alignment: .leading) {
-                if onLibrary != nil {
-                    typeButton
-                        .padding(.leading, 16)
-                }
-            }
+        typeButton
+            .padding(.leading, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The camera's Type menu, as Options has it, named by the current kind.

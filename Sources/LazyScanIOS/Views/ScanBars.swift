@@ -2,13 +2,17 @@
 import LazyScanKit
 import SwiftUI
 
-/// The top bar of both tabs: the library at the left (`onLibrary`; none where the sidebar has it) and at the
-/// right `trailing`, which ends in the mode switch (`ModeSwitch`).
+/// The top bar of both tabs: the library at the left (`onLibrary`; none where the sidebar has it), a small
+/// round arrow in the middle that shows or hides the options drawer, and at the right `trailing`, which ends
+/// in the mode switch (`ModeSwitch`).
 struct ScanTopBar<Trailing: View>: View {
+    @Binding var showsDrawer: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
     let onLibrary: (() -> Void)?
     let trailing: Trailing
 
-    init(onLibrary: (() -> Void)?, @ViewBuilder trailing: () -> Trailing) {
+    init(showsDrawer: Binding<Bool>, onLibrary: (() -> Void)?, @ViewBuilder trailing: () -> Trailing) {
+        _showsDrawer = showsDrawer
         self.onLibrary = onLibrary
         self.trailing = trailing()
     }
@@ -17,6 +21,7 @@ struct ScanTopBar<Trailing: View>: View {
         HStack(spacing: 0) {
             libraryButton
                 .frame(maxWidth: .infinity, alignment: .leading)
+            drawerToggle
             trailing
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -42,10 +47,37 @@ struct ScanTopBar<Trailing: View>: View {
                 .frame(width: 44, height: 44)
         }
     }
+
+    private var drawerToggle: some View {
+        let open: Bool = showsDrawer
+        let label: String = open ? IOSCameraText.hideControls : IOSCameraText.showControls
+        return Button {
+            if reduceMotion {
+                showsDrawer.toggle()
+            } else {
+                withAnimation(Animation.snappy) {
+                    showsDrawer.toggle()
+                }
+            }
+        } label: {
+            Image(systemName: open ? "chevron.down" : "chevron.up")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(open ? Color.white : Color.primary)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(open ? Color.accentColor : Color(uiColor: .tertiarySystemFill)))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .accessibilityLabel(Text(label))
+        .accessibilityIdentifier("drawer.toggle")
+    }
 }
 
-/// The Camera | Scanner switch at the top right of both tabs: the segment of the tab shown is filled and does
-/// nothing, the other one switches the mode (`onSwitch`). `disabled` is while the switch must not happen.
+/// The camera | scanner switch at the top right of both tabs, a camera and a scanner icon: the segment of the
+/// tab shown is filled and does nothing, the other one switches the mode (`onSwitch`). `disabled` is while the
+/// switch must not happen.
 struct ModeSwitch: View {
     let onCamera: Bool
     let disabled: Bool
@@ -53,75 +85,36 @@ struct ModeSwitch: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            segment(IOSImportText.cameraLabel, selected: onCamera, hint: IOSCameraText.cameraModeHint,
-                    identifier: "mode.camera")
-            segment(IOSCameraText.printerLabel, selected: !onCamera, hint: IOSCameraText.printerHint,
-                    identifier: "mode.printer")
+            segment("camera", label: IOSImportText.cameraLabel, selected: onCamera,
+                    hint: IOSCameraText.cameraModeHint, identifier: "mode.camera")
+            segment("scanner", label: IOSCameraText.printerLabel, selected: !onCamera,
+                    hint: IOSCameraText.printerHint, identifier: "mode.printer")
         }
         .background(Capsule().fill(Color(uiColor: .tertiarySystemFill)).frame(height: 32))
         .opacity(disabled ? 0.4 : 1)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
-    private func segment(_ title: String, selected: Bool, hint: String, identifier: String) -> some View {
+    private func segment(_ symbol: String, label: String, selected: Bool, hint: String, identifier: String) -> some View {
         Button {
             if !selected {
                 onSwitch()
             }
         } label: {
-            Text(title)
-                .font(.footnote.weight(.semibold))
+            Image(systemName: symbol)
+                .font(.body)
                 .foregroundStyle(selected ? Color.white : Color.primary)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 32)
-                .background(Capsule().fill(selected ? Color.accentColor : Color.clear).frame(height: 32))
+                .frame(width: 44, height: 32)
+                .background(Capsule().fill(selected ? Color.accentColor : Color.clear))
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(disabled)
+        .accessibilityLabel(Text(label))
         .accessibilityHint(Text(selected ? "" : hint))
         .accessibilityAddTraits(selected ? AccessibilityTraits.isSelected : [])
         .accessibilityIdentifier(identifier)
-    }
-}
-
-/// The pill at the foot of the picture that shows or hides the controls drawer under it.
-struct DrawerHandle: View {
-    @Binding var open: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
-
-    var body: some View {
-        let symbol: String = open ? "chevron.down" : "chevron.up"
-        let label: String = open ? IOSCameraText.hideControls : IOSCameraText.showControls
-        let fill: Color = open ? Color.accentColor : Color(white: 0.15)
-        return Button {
-            if reduceMotion {
-                open.toggle()
-            } else {
-                withAnimation(Animation.snappy) {
-                    open.toggle()
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text(IOSCameraText.controlsLabel)
-                Image(systemName: symbol)
-                    .font(.caption.weight(.bold))
-            }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 28)
-            .background(Capsule().fill(fill))
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .accessibilityLabel(Text(label))
-        .accessibilityIdentifier("drawer.toggle")
     }
 }
 

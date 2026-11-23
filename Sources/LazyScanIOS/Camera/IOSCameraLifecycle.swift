@@ -201,11 +201,10 @@ public enum IOSCameraText {
         }
         return String(localized: "Auto splits the shot when it sees more than one page or photo. Pick One for a page with slips on it.")
     }
-    /// The pill that opens the controls drawer, and its VoiceOver names.
-    public static var controlsLabel: String { String(localized: "Controls") }
+    /// The VoiceOver names of the arrow that opens the controls drawer.
     public static var showControls: String { String(localized: "Show controls") }
     public static var hideControls: String { String(localized: "Hide controls") }
-    /// The hint of the Type label beside the Controls pill.
+    /// The hint of the Type label at the picture's foot.
     public static var typeHint: String { String(localized: "Changes what you are scanning") }
     /// Camera mode's button to printer mode, and its hint.
     public static var printerLabel: String { String(localized: "Scanner") }
