@@ -382,9 +382,8 @@ xcodebuild test -project ios/LazyScaniOS.xcodeproj -scheme LazyScaniOS \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' CODE_SIGNING_ALLOWED=NO
 ```
 
-The app's icon is drawn by `python scripts/make_ios_icon.py ios/LazyScaniOS/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`
-(standard library only; the Windows app's `windows/LazyScan.App/app.ico` is the same picture,
-from `python scripts/make_ico.py windows/LazyScan.App/app.ico`), and the photo the import UI test brings in by
+The app's icons (the iPhone and Mac asset catalogs, `windows/LazyScan.App/app.ico` and the tiles in `store/windows/Assets`) are drawn by
+`python brand/make_icons.py scan <this repo>` in the alazy repo (aytutuna/alazy), and the photo the import UI test brings in by
 `python scripts/make_ios_ui_fixture.py ios/LazyScaniOSUITests/Fixtures/document-photo.png`
 (a sheet with grey bars on a dark table; standard library only), and the Photos task's by
 `python scripts/make_ios_ui_fixture.py ios/LazyScaniOSUITests/Fixtures/photos-on-table.png photos`
