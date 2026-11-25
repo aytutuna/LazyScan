@@ -36,9 +36,20 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 $store = Join-Path $root 'store\windows'
-$props = [xml](Get-Content (Join-Path $root 'windows\Directory.Build.props'))
-$version = $props.Project.PropertyGroup.Version
-$packageVersion = "$version.0"
+$version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
+$packageVersion = (@($version.Split('.')) + @('0', '0', '0') | Select-Object -First 4) -join '.'
+
+# A package for the Store comes only from the tip of main once its tests have passed. CI packs one to check
+# the manifest and does not keep it, and -Register is a local test.
+if (-not $Register -and -not $env:GITHUB_ACTIONS) {
+    $head = (git -C $root rev-parse HEAD).Trim()
+    git -C $root fetch origin main --quiet
+    $tip = (git -C $root rev-parse origin/main).Trim()
+    if ($head -ne $tip) { throw "Not packing: $head is not the tip of origin/main ($tip)." }
+    if (git -C $root status --porcelain) { throw 'Not packing: the working tree has changes.' }
+    $passed = gh run list --repo aytutuna/LazyScan --workflow ci.yml --commit $head --status success --json databaseId --jq length
+    if ([int]$passed -lt 1) { throw "Not packing: no passing ci.yml run on $head." }
+}
 if (-not ($IdentityName -and $Publisher -and $PublisherDisplayName)) {
     throw 'Give -IdentityName, -Publisher and -PublisherDisplayName (or set STORE_IDENTITY_NAME, STORE_PUBLISHER and STORE_PUBLISHER_DISPLAY_NAME): they come from Partner Center, Product identity.'
 }

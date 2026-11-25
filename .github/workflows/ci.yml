@@ -47,6 +47,14 @@ jobs:
           }
       # Validates the catalog and every lang file and fails on a key used in code that the catalog lacks;
       # the report goes to the job summary. The strings themselves are generated into l10n/out.
+      - name: Check the versions
+        shell: pwsh
+        run: |
+          python scripts/check_version.py
+          if ($LASTEXITCODE -ne 0) { throw 'The platforms disagree on the version' }
+          $built = (dotnet msbuild windows/LazyScan.Core/LazyScan.Core.csproj -getProperty:Version).Trim()
+          $wanted = (Get-Content VERSION -Raw).Trim()
+          if ($built -ne $wanted) { throw "The Windows build says $built, VERSION says $wanted" }
       - name: Check the translations
         shell: pwsh
         run: |
@@ -929,5 +937,8 @@ jobs:
   testflight:
     if: github.ref == 'refs/heads/ci/testflight'
     needs: [macos, ios, ios18]
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/testflight.yml
     secrets: inherit
