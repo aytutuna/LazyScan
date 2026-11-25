@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 // Twin of windows/LazyScan.Core/DeepTiff.cs: the same file, byte for byte (the golden value in
-// DeepTIFFTests, pinned in C#). See CONTRACTS.md, "16-bit TIFF".
+// DeepTIFFTests, pinned in C#).
 
 /// A page at 16 bits per sample as a scanner delivers it: `channels` is 1 (gray) or 3 (red, green, blue),
 /// `samples` holds `width * height * channels` values, row by row, a pixel's channels together.

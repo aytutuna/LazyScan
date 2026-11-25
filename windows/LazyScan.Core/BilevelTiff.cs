@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace LazyScan.Core;
 
 // The Mac's twin is Sources/LazyScanKit/Output/BilevelTIFF.swift, which writes the same
-// bytes (see CONTRACTS.md, "CCITT G4 for black & white pages").
+// bytes.
 
 /// <summary>One page of a black &amp; white TIFF: the page and its resolution.</summary>
 public sealed record BilevelTiffPage(RgbaImage Image, int Dpi);

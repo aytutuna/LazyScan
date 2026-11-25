@@ -6,7 +6,7 @@ import Foundation
 /// The network scanners added by address: escl-hosts.json in the settings folder, a JSON list of
 /// address strings (["192.168.1.50", "scanner.local:8080", "https://10.0.0.7"]). Adding a scanner by
 /// address writes it, and entries written by hand keep working. Entries that do not parse as an
-/// address are kept but not used. The file follows the settings-file rules (CONTRACTS.md, rule 6): a
+/// address are kept but not used. The file follows the settings-file rules: a
 /// file that does not decode is kept aside as escl-hosts.unreadable-<timestamp>.json, one that cannot
 /// be read is never overwritten.
 public final class EsclHostList {

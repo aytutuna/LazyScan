@@ -9,7 +9,7 @@ using Xunit;
 namespace LazyScan.Core.Tests;
 
 // Port of Tests/LazyScanTests/ModelsCompatTests.swift: settings files load across
-// versions (CONTRACTS.md, rule 6). Same cases, same fixtures; the fixture JSON is in the
+// versions. Same cases, same fixtures; the fixture JSON is in the
 // format this platform writes (declaration order, lowercase id).
 
 internal static class CompatFixtures
@@ -400,7 +400,7 @@ public class ModelsCompatTests
         Assert.Equal(CompatFixtures.CurrentFormatPresetsJson.ReplaceLineEndings("\n"), written.ReplaceLineEndings("\n"));
     }
 
-    // MARK: - Task (CONTRACTS.md, rule 6: the task is stored as text)
+    // MARK: - Task (settings files: the task is stored as text)
 
     [Fact]
     public void OldSettingsWithoutTask_LoadWithNoTask()
@@ -470,7 +470,7 @@ public class ModelsCompatTests
         Assert.Equal("document", written.RootElement.GetProperty("taskId").GetString());
     }
 
-    // MARK: - Save folder (CONTRACTS.md, rule 6; the iPhone's bookmark, kept but not used here)
+    // MARK: - Save folder (settings files; the iPhone's bookmark, kept but not used here)
 
     [Fact]
     public void ScanAgainSeconds_IsOffByDefault_ReadLeniently_AndRoundTrips()
@@ -526,7 +526,7 @@ public class ModelsCompatTests
         Assert.Null(Decode<ScanSettings>("""{"destinationBookmark": null}""").DestinationBookmark);
     }
 
-    // MARK: - PDF size (CONTRACTS.md, rule 6; Standard is the default for everyone)
+    // MARK: - PDF size (settings files; Standard is the default for everyone)
 
     [Fact]
     public void PdfSize_StandardIsTheFirstMemberAndTheDefault()
@@ -602,7 +602,7 @@ public class ModelsCompatTests
         Assert.Equal(PdfSizePreset.Smallest, settings.Output.PdfSize);
     }
 
-    // MARK: - Text output (CONTRACTS.md, rule 6)
+    // MARK: - Text output (settings files)
 
     [Fact]
     public void Formats_NewMembersComeLast_WithTheirStoredNames()
@@ -658,7 +658,7 @@ public class ModelsCompatTests
         Assert.False(written.RootElement.GetProperty("output").TryGetProperty("savesTextBeside", out _));
     }
 
-    // MARK: - Archival PDF (CONTRACTS.md, rule 6)
+    // MARK: - Archival PDF (settings files)
 
     [Fact]
     public void Archival_OffByDefault_AndInFilesWithoutIt()
@@ -723,7 +723,7 @@ public class ModelsCompatTests
         }
     }
 
-    // MARK: - Page pictures in Word documents (CONTRACTS.md, rule 6)
+    // MARK: - Page pictures in Word documents (settings files)
 
     [Fact]
     public void WordPageImages_OnByDefault_AndInFilesWithoutIt()
@@ -754,7 +754,7 @@ public class ModelsCompatTests
         Assert.NotEqual(settings.Output, clone.Output);
     }
 
-    // MARK: - Password-protected PDFs (CONTRACTS.md, rule 6)
+    // MARK: - Password-protected PDFs (settings files)
 
     [Fact]
     public void Protect_OffByDefault_AndInFilesWithoutIt()
@@ -799,7 +799,7 @@ public class ModelsCompatTests
         Assert.True(document.RootElement.GetProperty("output").GetProperty("protect").GetBoolean());
     }
 
-    // MARK: - Two-sided scanning and paper size (CONTRACTS.md, rule 6)
+    // MARK: - Two-sided scanning and paper size (settings files)
 
     [Fact]
     public void Sides_FirstMembersAreTheDefaults()
@@ -876,7 +876,7 @@ public class ModelsCompatTests
         Assert.Equal((DuplexMode.Manual, DuplexBinding.ShortEdge, PaperSize.A4), (clone.Duplex, clone.BackBinding, clone.PaperSize));
     }
 
-    // MARK: - Blank pages (CONTRACTS.md, rule 6)
+    // MARK: - Blank pages (settings files)
 
     [Fact]
     public void BlankSensitivity_MediumIsTheFirstMemberAndTheDefault()
@@ -957,7 +957,7 @@ public class ModelsCompatTests
         Assert.Equal(BlankSensitivity.High, original.Document.BlankSensitivity);
     }
 
-    // MARK: - Splitting into documents (CONTRACTS.md, rule 6)
+    // MARK: - Splitting into documents (settings files)
 
     [Fact]
     public void Split_IsOffByDefault_AndInFilesWithoutIt()
@@ -1079,7 +1079,7 @@ public class ModelsCompatTests
         }
     }
 
-    // MARK: - Renamed tasks (CONTRACTS.md, rule 6): files keep the raw values, only the titles changed
+    // MARK: - Renamed tasks (settings files): files keep the raw values, only the titles changed
 
     [Theory]
     [InlineData("feeder", ScanTask.Feeder, "Stack from feeder")]
@@ -1106,7 +1106,7 @@ public class ModelsCompatTests
         Assert.Equal(task, TaskCatalog.Infer(preset.Settings));
     }
 
-    // MARK: - Barcode and QR separator sheets (CONTRACTS.md, rule 6)
+    // MARK: - Barcode and QR separator sheets (settings files)
 
     [Fact]
     public void BarcodeStartsDocument_IsOffByDefault_AndInFilesWithoutIt()
@@ -1182,7 +1182,7 @@ public class ModelsCompatTests
         Assert.NotEqual(original.Document, clone.Document);
     }
 
-    // MARK: - Crop and straighten (CONTRACTS.md, rule 6)
+    // MARK: - Crop and straighten (settings files)
 
     [Fact]
     public void CropAndStraighten_AreOffByDefault_AndInFilesWithoutThem()
@@ -1233,7 +1233,7 @@ public class ModelsCompatTests
         Assert.NotEqual(original.Document, clone.Document);
     }
 
-    // MARK: - Rotate pages upright (CONTRACTS.md, rule 6)
+    // MARK: - Rotate pages upright (settings files)
 
     [Fact]
     public void RotatePagesUpright_IsOffByDefault_AndInFilesWithoutIt()
@@ -1277,7 +1277,7 @@ public class ModelsCompatTests
         Assert.NotEqual(original.Document.GetHashCode(), clone.Document.GetHashCode());
     }
 
-    // MARK: - Task options (CONTRACTS.md, rule 6)
+    // MARK: - Task options (settings files)
 
     [Fact]
     public void TaskOptions_AutomaticPaperAndNoSideImagesByDefault_AndInFilesWithoutThem()
@@ -1411,7 +1411,7 @@ public class ModelsCompatTests
         Assert.True(settings.TaskOptions.ReceiptEachFile);
     }
 
-    // MARK: - Book or magazine (CONTRACTS.md, rule 6)
+    // MARK: - Book or magazine (settings files)
 
     [Fact]
     public void BookOptions_AreOffByDefault_AndInFilesWithoutThem()
@@ -1502,7 +1502,7 @@ public class ModelsCompatTests
         Assert.Equal((true, false), (back.BookFlattenCurves, back.BookFillFingers));
     }
 
-    // MARK: - The iPhone camera's choices (CONTRACTS.md, rule 6)
+    // MARK: - The iPhone camera's choices (settings files)
 
     [Fact]
     public void CameraOptions_AreOffByDefault_ReadLeniently_AndRoundTrip()
@@ -1596,7 +1596,7 @@ public class ModelsCompatTests
         Assert.Null(new Preset("Book", saved).SettingsOver(new ScanSettings()).TaskOptions.BookLastCut);
     }
 
-    // MARK: - Softening the spine's shadow (CONTRACTS.md, rule 6)
+    // MARK: - Softening the spine's shadow (settings files)
 
     [Fact]
     public void SoftenSpineShadow_OffByDefault_AndInFilesWithoutIt()

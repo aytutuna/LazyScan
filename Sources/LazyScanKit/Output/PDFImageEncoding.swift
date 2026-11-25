@@ -8,8 +8,7 @@ import UniformTypeIdentifiers
 // encodes with WIC in the app (black & white pages as CCITT G4), here ImageIO encodes the JPEG, and
 // both embed the image through the same PDF writer (`PDFWriter`, here through
 // `PDFBuilder.storedImage`), black & white pages as CCITT G4. `encodedPage` still gives a page
-// planned as G4 as a gray JPEG, planned as a gray page is, for a caller that cannot store G4 (see
-// CONTRACTS.md, "CCITT G4 for black & white pages").
+// planned as G4 as a gray JPEG, planned as a gray page is, for a caller that cannot store G4.
 
 /// How a page image is stored in the PDF.
 public enum PDFImageKind: Equatable, Sendable {

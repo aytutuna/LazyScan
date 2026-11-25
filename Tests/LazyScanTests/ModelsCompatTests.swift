@@ -348,7 +348,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(try decode(ScanSettings.self, #"{"ocrLanguage": 5, "resolution": 150}"#).ocrLanguage, "")
     }
 
-    // MARK: Task (CONTRACTS.md, rule 6: the task is stored as text)
+    // MARK: Task (settings files: the task is stored as text)
 
     func test_oldSettingsWithoutTask_loadWithNoTask() throws {
         let presets = try decode([Preset].self, currentFormatPresetsJSON)
@@ -405,7 +405,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(written["taskId"] as? String, "document")
     }
 
-    // MARK: Save folder (CONTRACTS.md, rule 6; the iPhone's bookmark and container)
+    // MARK: Save folder (settings files; the iPhone's bookmark and container)
 
     func test_scanAgainSeconds_isOffByDefault_readLeniently_andRoundTrips() throws {
         XCTAssertEqual(ScanSettings().scanAgainSeconds, 0)
@@ -480,7 +480,7 @@ final class ModelsCompatTests: XCTestCase {
         }
     }
 
-    // MARK: PDF size (CONTRACTS.md, rule 6; standard is the default for everyone)
+    // MARK: PDF size (settings files; standard is the default for everyone)
 
     func test_pdfSize_standardIsTheFirstCaseAndTheDefault() {
         XCTAssertEqual(PDFSizePreset.allCases.map(\.rawValue), ["standard", "best", "compact", "smallest"])
@@ -544,7 +544,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(settings.output.pdfSize, .smallest)
     }
 
-    // MARK: Text output (CONTRACTS.md, rule 6)
+    // MARK: Text output (settings files)
 
     func test_formats_newCasesComeLast_withTheirStoredNames() throws {
         XCTAssertEqual(OutputFormat.allCases.map(\.rawValue), ["pdf", "jpeg", "png", "tiff", "text", "word", "tiffPages"])
@@ -593,7 +593,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNil(output["savesTextBeside"])
     }
 
-    // MARK: Archival PDF (CONTRACTS.md, rule 6)
+    // MARK: Archival PDF (settings files)
 
     func test_archival_offByDefault_andInFilesWithoutIt() throws {
         XCTAssertFalse(ScanSettings().output.archival)
@@ -655,7 +655,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(PDFPageSize.allCases.map(\.rawValue), ["asScanned", "a4", "letter"])
     }
 
-    // MARK: Page pictures in Word documents (CONTRACTS.md, rule 6)
+    // MARK: Page pictures in Word documents (settings files)
 
     /// Twin of `WordPageImages_OnByDefault_AndInFilesWithoutIt`.
     func test_wordPageImages_onByDefault_andInFilesWithoutIt() throws {
@@ -685,7 +685,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(settings.output, copy.output)
     }
 
-    // MARK: Password-protected PDFs (CONTRACTS.md, rule 6)
+    // MARK: Password-protected PDFs (settings files)
 
     /// Twin of `Protect_OffByDefault_AndInFilesWithoutIt`.
     func test_protect_offByDefault_andInFilesWithoutIt() throws {
@@ -729,7 +729,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(output["protect"] as? Bool, true)
     }
 
-    // MARK: Two-sided scanning and paper size (CONTRACTS.md, rule 6)
+    // MARK: Two-sided scanning and paper size (settings files)
 
     func test_sides_firstCasesAreTheDefaults() {
         XCTAssertEqual(DuplexMode.allCases.map(\.rawValue), ["off", "both", "manual"])
@@ -810,7 +810,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(copy.paperSize, .a4)
     }
 
-    // MARK: Blank pages (CONTRACTS.md, rule 6)
+    // MARK: Blank pages (settings files)
 
     func test_blankSensitivity_mediumIsTheFirstCaseAndTheDefault() {
         XCTAssertEqual(BlankSensitivity.allCases.map(\.rawValue), ["medium", "low", "high"])
@@ -873,7 +873,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertEqual(original.document.blankSensitivity, .high)
     }
 
-    // MARK: Splitting into documents (CONTRACTS.md, rule 6)
+    // MARK: Splitting into documents (settings files)
 
     func test_split_isOffByDefault_andInFilesWithoutIt() throws {
         let document = ScanSettings().document
@@ -993,7 +993,7 @@ final class ModelsCompatTests: XCTestCase {
         }
     }
 
-    // MARK: Renamed tasks (CONTRACTS.md, rule 6): files keep the raw values, only the titles changed
+    // MARK: Renamed tasks (settings files): files keep the raw values, only the titles changed
 
     func test_renamedTasks_stillDecode_fromSettingsAndPresetsWrittenBefore() throws {
         let renamed: [(String, ScanTask, String)] = [
@@ -1021,7 +1021,7 @@ final class ModelsCompatTests: XCTestCase {
         }
     }
 
-    // MARK: Barcode and QR separator sheets (CONTRACTS.md, rule 6)
+    // MARK: Barcode and QR separator sheets (settings files)
 
     func test_barcodeStartsDocument_isOffByDefault_andInFilesWithoutIt() throws {
         XCTAssertFalse(ScanSettings().document.barcodeStartsDocument)
@@ -1094,7 +1094,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(original.document, copy.document)
     }
 
-    // MARK: Crop and straighten (CONTRACTS.md, rule 6)
+    // MARK: Crop and straighten (settings files)
 
     func test_cropAndStraighten_areOffByDefault_andInFilesWithoutThem() throws {
         let document = ScanSettings().document
@@ -1145,7 +1145,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(original.document, copy.document)
     }
 
-    // MARK: Rotate pages upright (CONTRACTS.md, rule 6)
+    // MARK: Rotate pages upright (settings files)
 
     func test_rotatePagesUpright_isOffByDefault_andInFilesWithoutIt() throws {
         XCTAssertFalse(ScanSettings().document.autoRotate)
@@ -1184,7 +1184,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(original.document, copy.document)
     }
 
-    // MARK: Task options (CONTRACTS.md, rule 6)
+    // MARK: Task options (settings files)
 
     func test_taskOptions_automaticPaperAndNoSideImagesByDefault_andInFilesWithoutThem() throws {
         XCTAssertEqual(IdCardPaper.allCases.map(\.rawValue), ["auto", "a4", "letter"])
@@ -1313,7 +1313,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertTrue(settings.taskOptions.receiptEachFile)
     }
 
-    // MARK: Book or magazine (CONTRACTS.md, rule 6)
+    // MARK: Book or magazine (settings files)
 
     func test_bookOptions_areOffByDefault_andInFilesWithoutThem() throws {
         let settings = ScanSettings()
@@ -1390,7 +1390,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNotEqual(original.taskOptions, copy.taskOptions)
     }
 
-    // MARK: The iPhone camera's choices (CONTRACTS.md, rule 6)
+    // MARK: The iPhone camera's choices (settings files)
 
     func test_cameraOptions_areOffByDefault_readLeniently_andRoundTrip() throws {
         let settings = ScanSettings()
@@ -1485,7 +1485,7 @@ final class ModelsCompatTests: XCTestCase {
         XCTAssertNil(Preset(name: "Book", settings: saved).settings(over: ScanSettings()).taskOptions.bookLastCut)
     }
 
-    // MARK: Softening the spine's shadow (CONTRACTS.md, rule 6)
+    // MARK: Softening the spine's shadow (settings files)
 
     /// Twin of `SoftenSpineShadow_OffByDefault_AndInFilesWithoutIt`.
     func test_softenSpineShadow_offByDefault_andInFilesWithoutIt() throws {

@@ -1,7 +1,7 @@
 namespace LazyScan.Core;
 
 // The desktop's side of the companion link (Windows now; the Mac server later reuses the protocol
-// with its own host). C# only for now: see CONTRACTS.md, "The phone companion".
+// with its own host). C# only for now.
 
 /// <summary>A package a paired phone sent, checked and waiting to be added to the queue.</summary>
 /// <param name="Path">The package file in the inbox, read again when its pages are added; <see cref="CompanionInbox.Release"/> deletes it once imported.</param>

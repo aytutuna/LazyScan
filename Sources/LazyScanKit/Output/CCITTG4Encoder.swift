@@ -3,7 +3,7 @@ import Foundation
 // Twin of windows/LazyScan.Core/CcittG4Encoder.cs: the same coding, mode for mode, and the
 // same bytes (the golden values in CCITTG4EncoderTests, pinned in C#). The code tables are written
 // as the bit strings of ITU-T T.4 (tables 2 and 3) and T.6 (table 1), copied from the C# file as
-// they are. See CONTRACTS.md, "CCITT G4 for black & white pages".
+// they are.
 
 /// CCITT Group 4 (ITU-T T.6) encoding of a black & white image: the two-dimensional coding of each
 /// row against the row above it (an imaginary white row above the first), with pass, horizontal and

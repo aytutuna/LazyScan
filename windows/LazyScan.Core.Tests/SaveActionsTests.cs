@@ -207,7 +207,7 @@ public class SaveActionsTests
         Assert.Equal("3 files", SaveActions.ShareTitle(ThreePhotos));
     }
 
-    // MARK: - The setting in settings files (CONTRACTS.md, rule 6)
+    // MARK: - The setting in settings files
 
     [Fact]
     public void AfterSave_IsWrittenUnderOutput_AndRoundTrips()

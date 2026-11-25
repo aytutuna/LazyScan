@@ -11,7 +11,7 @@ namespace LazyScan.App.Tests;
 // Black & white output read back by Windows' own decoders: WIC decodes the G4 TIFFs (and, as a
 // separate encoder, gives the same G4 bytes for the same rows) and Windows.Data.Pdf renders the G4
 // PDF pages. Windows only: the Mac's twin of the encoder comes with its port of the PDF writer and
-// is to be checked with ImageIO there (see CONTRACTS.md, "CCITT G4 for black & white pages").
+// is to be checked with ImageIO there.
 public class BilevelOutputTests : IDisposable
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("LazyScan-bilevel-tests-").FullName;

@@ -1,7 +1,7 @@
 import Foundation
 
 // Twin of windows/LazyScan.Core/BilevelTiff.cs: the same file, byte for byte (the golden
-// value in BilevelOutputTests, pinned in C#). See CONTRACTS.md, "CCITT G4 for black & white pages".
+// value in BilevelOutputTests, pinned in C#).
 
 /// One page of a black & white TIFF: the page and its resolution.
 public struct BilevelTIFFPage {

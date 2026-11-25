@@ -93,7 +93,7 @@ public enum EsclTrustStoreError: Error, Equatable, Sendable {
 /// The trusted scanner certificates (escl-trust.json), safe to use from any thread. The file is
 /// re-read for every check and before every write, since another part of the app may share it;
 /// certificates trusted while the file could not be written stay trusted for the rest of the session.
-/// It follows the settings-file rules (CONTRACTS.md, rule 6).
+/// It follows the settings-file rules.
 public final class EsclTrustStore: @unchecked Sendable {
     public static let fileName = "escl-trust.json"
     /// Addresses remembered per certificate; the oldest are dropped beyond this.

@@ -5,7 +5,7 @@ namespace LazyScan.Core;
 // Port of Sources/LazyScanKit/Core/Models.swift. Enums serialize as camelCase
 // strings (see StoreFiles.JsonOptions in Persistence.cs) matching the Swift rawValues, so
 // settings/preset files stay conceptually interchangeable. Settings files load across
-// versions (CONTRACTS.md, rule 6): every persisted property needs an initializer default,
+// versions: every persisted property needs an initializer default,
 // and the first member of every persisted enum is its default; add new members after the
 // existing ones and never rename one.
 

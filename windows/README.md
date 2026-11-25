@@ -18,9 +18,8 @@ UI per platform** architecture:
   scanner. It is a type-for-type port of the
   Swift `LazyScanKit` core, the Swift package's shared target, which builds for macOS and
   iOS (the Mac's views and system services are in `LazyScanMac`, the iPhone's in
-  `LazyScanIOS`, with the iPhone app's Xcode project in `../ios/`; see `../CONTRACTS.md` for
-  the shared conventions, especially the four
-  coordinate systems). It also holds the testable protocol logic of the
+  `LazyScanIOS`, with the iPhone app's Xcode project in `../ios/`; the four coordinate systems
+  are the main convention they share). It also holds the testable protocol logic of the
   Windows-only backends, which has no Swift twin because macOS reaches the same scanners
   through ImageCaptureCore: the WIA error and document-handling tables (`WiaErrors.cs`), the
   decisions of the Windows Scan backup connection (`WindowsScan.cs`: capabilities, the scan
@@ -2104,7 +2103,7 @@ kept when a task is picked; a file without it, or with a paper this version does
 Automatic without side images. The delay before a flatbed scan repeats by itself is `"scanAgainSeconds"`
 (0 is off); a file without it reads as off. The Scanner section offers it for flatbed scans into the queue, and while the countdown runs Scan is Stop (Esc and Ctrl+Enter press it). A first run starts without presets: the task
 cards replaced the five starter presets earlier versions wrote, and presets files that already
-hold them keep them. They load across versions the same way as on macOS (`../CONTRACTS.md`, rule 6): a value this version does not understand resets only
+hold them keep them. They load across versions the same way as on macOS: a value this version does not understand resets only
 that setting; a file that cannot be decoded is kept next to it as
 `<name>.unreadable-<yyyyMMdd-HHmmss>.json` before defaults are written; and a file that cannot
 be read at all (for example, locked by another program) is left alone and not overwritten

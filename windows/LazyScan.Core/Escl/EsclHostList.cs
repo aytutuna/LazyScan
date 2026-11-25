@@ -7,7 +7,7 @@ namespace LazyScan.Core;
 /// list of address strings (["192.168.1.50", "scanner.local:8080", "https://10.0.0.7"]). The
 /// "Add scanner by address" dialog writes it, and entries written by hand keep working.
 /// Entries that do not parse as an address are kept but not used. The file follows the
-/// settings-file rules (CONTRACTS.md, rule 6): a file that does not decode is kept aside as
+/// settings-file rules: a file that does not decode is kept aside as
 /// escl-hosts.unreadable-&lt;timestamp&gt;.json, one that cannot be read is never overwritten.
 /// </summary>
 public sealed class EsclHostList

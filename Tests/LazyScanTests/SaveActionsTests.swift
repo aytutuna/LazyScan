@@ -162,7 +162,7 @@ final class SaveActionsTests: XCTestCase {
         XCTAssertEqual(SaveActions.shareTitle(threePhotos), "3 files")
     }
 
-    // MARK: The setting in settings files (CONTRACTS.md, rule 6)
+    // MARK: The setting in settings files
 
     func test_afterSave_isWrittenUnderOutput_andRoundTrips() throws {
         for action in AfterSaveAction.allCases {

@@ -7,7 +7,7 @@ import ImageIO
 // Mirrors windows/LazyScan.Core.Tests/CcittG4EncoderTests.cs: the same known answers (written
 // from the bit strings of ITU-T T.4 and T.6, not from the encoder's own tables) and the same golden
 // bytes, pinned in C#. C# decodes with PdfPig; here the round trips decode with ImageIO, through a
-// G4 TIFF around the data (`BilevelTIFF`), as CONTRACTS.md asks of the Mac's port. The every-run
+// G4 TIFF around the data (`BilevelTIFF`), as the Mac's port needs. The every-run
 // round trip decodes a sample of run lengths (every one up to 130, then every 61st, and each code
 // boundary) so a debug build stays quick; the known answers cover the codes themselves.
 

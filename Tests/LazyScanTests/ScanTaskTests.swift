@@ -3,7 +3,7 @@ import Foundation
 @testable import LazyScanKit
 
 // Mirrors windows/LazyScan.Core.Tests/ScanTaskTests.cs: the same cases, the Archive document
-// task included (CONTRACTS.md).
+// task included.
 
 private func customized() -> ScanSettings {
     var s = ScanSettings()

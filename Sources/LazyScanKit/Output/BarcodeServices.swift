@@ -38,7 +38,7 @@ public struct VisionBarcodeReader: BarcodeReader {
         for observation in request.results ?? [] {
             guard let text = observation.payloadStringValue, !text.isEmpty,
                   let kind = Self.kinds.first(where: { $0.0 == observation.symbology })?.1 else { continue }
-            // Vision's box is normalized with its origin at the bottom left (CONTRACTS.md, rule 4).
+            // Vision's box is normalized with its origin at the bottom left.
             let box = observation.boundingBox
             let bounds = CGRect(x: Double(box.minX) * width, y: (1 - Double(box.maxY)) * height,
                                 width: Double(box.width) * width, height: Double(box.height) * height)
