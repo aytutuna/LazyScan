@@ -175,6 +175,30 @@ jobs:
           }
           Write-Output "veraPDF $version`: all $passed samples are PDF/A-2b."
 
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Android platform
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0"
+      - name: Build
+        run: ./gradlew assembleDebug --console=plain
+      - name: Test
+        run: ./gradlew testDebugUnitTest --console=plain
+      # The release build with minifying and resource shrinking on, unsigned here; the signed bundle is built
+      # on a PC with the upload key (scripts/make_aab.ps1).
+      - name: Build the release bundle
+        run: ./gradlew bundleRelease --console=plain
+
   macos:
     # Package.swift declares swift-tools-version 6.0 (the Swift 5 language mode), macOS 14 and
     # iOS 18. The macos-15 image ships Xcode 16.0 through 26.x with 16.4 (Swift 6.1) as its

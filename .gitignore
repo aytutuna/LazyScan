@@ -15,3 +15,12 @@ Sources/LazyScanModel/Models/*.part
 
 # Written by scripts/gen_l10n.py
 l10n/out/
+
+# Android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
