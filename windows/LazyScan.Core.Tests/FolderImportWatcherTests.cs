@@ -158,6 +158,8 @@ public sealed class FolderImportWatcherTests : IDisposable
     [InlineData(@"C:\Scans\Sub\..", @"C:\Scans\Print", true)]
     [InlineData(@"C:\Scans", @"C:\Scans2", false)]
     [InlineData(@"C:\Scans", @"D:\Scans", false)]
+    [InlineData(@"D:\", @"D:\Scans", true)]
+    [InlineData(@" ", @"D:\Scans", false)]
     [InlineData(@"C:\Inbox", @"C:\Scans", false)]
     public void OverlapsMeansTheSameFolderOrOneInsideTheOther(string a, string b, bool expected)
     {

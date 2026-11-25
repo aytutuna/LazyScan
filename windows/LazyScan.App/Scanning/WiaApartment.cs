@@ -144,6 +144,12 @@ internal static class WiaApartment
         var task = Run(() => work(limit => Volatile.Write(ref due,
             limit == Timeout.InfiniteTimeSpan ? long.MaxValue : Environment.TickCount64 + (long)limit.TotalMilliseconds)));
         long giveUpAt = long.MaxValue;
+        void MarkHung()
+        {
+            Volatile.Write(ref _hungDevice, deviceName);
+            Interlocked.Increment(ref _timedOut);
+            _ = task.ContinueWith(_ => Interlocked.Decrement(ref _timedOut), TaskScheduler.Default);
+        }
         while (!task.IsCompleted)
         {
             await Task.WhenAny(task, Task.Delay(WatchStep)).ConfigureAwait(false);
@@ -155,14 +161,25 @@ internal static class WiaApartment
                 if (now >= giveUpAt)
                 {
                     _ = task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                    // Nobody waits on the call now, but a scanner that never answers must still be reported to the next caller.
+                    _ = Task.Run(async () =>
+                    {
+                        while (!task.IsCompleted)
+                        {
+                            await Task.WhenAny(task, Task.Delay(WatchStep)).ConfigureAwait(false);
+                            if (!task.IsCompleted && Environment.TickCount64 >= Volatile.Read(ref due))
+                            {
+                                MarkHung();
+                                return;
+                            }
+                        }
+                    });
                     throw ScanException.Cancelled();
                 }
             }
             if (now >= Volatile.Read(ref due))
             {
-                Volatile.Write(ref _hungDevice, deviceName);
-                Interlocked.Increment(ref _timedOut);
-                _ = task.ContinueWith(_ => Interlocked.Decrement(ref _timedOut), TaskScheduler.Default);
+                MarkHung();
                 throw NotResponding(deviceName);
             }
         }

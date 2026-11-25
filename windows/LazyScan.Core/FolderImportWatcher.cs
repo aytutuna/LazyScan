@@ -48,12 +48,22 @@ public sealed class FolderImportWatcher : IDisposable
     /// </summary>
     public static bool Overlaps(string folder, string other)
     {
-        string a = Normalized(folder), b = Normalized(other);
-        return a.StartsWith(b, StringComparison.OrdinalIgnoreCase) || b.StartsWith(a, StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            string a = Normalized(folder), b = Normalized(other);
+            return a.StartsWith(b, StringComparison.OrdinalIgnoreCase) || b.StartsWith(a, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false; // not a path: the watcher reports it as missing
+        }
     }
 
-    private static string Normalized(string folder) =>
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar;
+    private static string Normalized(string folder)
+    {
+        string full = Path.GetFullPath(folder);
+        return Path.EndsInDirectorySeparator(full) ? full : full + Path.DirectorySeparatorChar;
+    }
 
     public FolderImportState State { get; private set; } = FolderImportState.Watching;
 

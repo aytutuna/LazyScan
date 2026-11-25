@@ -134,6 +134,35 @@ public sealed class WiaApartmentTests
     }
 
     [Fact]
+    public async Task AScannerThatStaysSilentAfterCancelIsStillReportedToTheNextCall()
+    {
+        using var release = new ManualResetEventSlim();
+        using var cancel = new CancellationTokenSource();
+        var scan = WiaApartment.RunWatched(watch =>
+        {
+            watch(TimeSpan.FromMilliseconds(600));
+            release.Wait();
+            return 1;
+        }, "Acme 5", cancel.Token, TimeSpan.FromMilliseconds(100));
+        try
+        {
+            await Task.Delay(100);
+            cancel.Cancel();
+            await Assert.ThrowsAsync<ScanException>(() => scan);
+            await Task.Delay(1200);
+            var next = await Assert.ThrowsAsync<ScanException>(() =>
+                WiaApartment.RunWatched(_ => 2, "Other 6", CancellationToken.None, TimeSpan.FromSeconds(30)));
+            Assert.Contains("Acme 5 is not responding", next.Message);
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        Assert.Equal(4, await WaitUntilItRuns(() => 4));
+    }
+
+    [Fact]
     public async Task ACancelThatTheScannerAnswersInTimeGivesTheJobsOwnResult()
     {
         using var cancel = new CancellationTokenSource();

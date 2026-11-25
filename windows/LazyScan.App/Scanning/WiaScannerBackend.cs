@@ -761,6 +761,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                 }
                 else
                 {
+                    if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
                     RgbaImage image = Transfer(item, watch, FlatbedTransferLimit);
                     if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
                     emit(new ScannedPage(image, _preparedDpi, settings.ColorMode));
@@ -809,6 +810,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         int count = 0;
         while (count < limit)
         {
+            // Not another sheet once the scan is cancelled.
+            if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
             RgbaImage image;
             try
             {
