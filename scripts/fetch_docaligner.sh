@@ -1,4 +1,5 @@
 #!/bin/bash
+# Reads our copy on the deps-docaligner-1.1.1 pre-release first, then the upstream release.
 # Fetches DocAligner's FastViT-T8 corner model (DocsaidLab/DocAligner release 1.1.1, Apache-2.0, see
 # Sources/LazyScanModel/Models/DocAligner-LICENSE.txt) into Sources/LazyScanModel/Models, the
 # page corner model of every platform. It is not checked in; without it the apps fall back to their own
@@ -6,6 +7,7 @@
 # and in Git Bash on Windows.
 set -euo pipefail
 
+copy="https://github.com/aytutuna/LazyScan/releases/download/deps-docaligner-1.1.1"
 release="https://github.com/DocsaidLab/DocAligner/releases/download/1.1.1"
 models="$(cd "$(dirname "$0")/.." && pwd)/Sources/LazyScanModel/Models"
 
@@ -24,7 +26,10 @@ fetch() {
     echo "$name: already fetched"
     return
   fi
-  curl -fsSL -o "$file.part" "$release/$name"
+  if ! curl -fsSL --retry 3 --retry-all-errors --retry-delay 10 -o "$file.part" "$copy/$name"; then
+    echo "$name: our copy is not available, trying the upstream release" >&2
+    curl -fsSL --retry 3 --retry-all-errors --retry-delay 10 -o "$file.part" "$release/$name"
+  fi
   local hash
   hash=$(sha256 "$file.part")
   if [ "$hash" != "$expected" ]; then
