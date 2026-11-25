@@ -1668,6 +1668,8 @@
     "Importing {0} new image…": {"zero": "لا صور جديدة", "one": "جارٍ استيراد صورة جديدة…", "two": "جارٍ استيراد صورتين جديدتين…", "few": "جارٍ استيراد {0} صور جديدة…", "many": "جارٍ استيراد {0} صورة جديدة…", "other": "جارٍ استيراد {0} صورة جديدة…"},
     "The folder is not there. Pick it again or turn this off.": "المجلد غير موجود. يُرجى اختياره مرة أخرى أو إيقاف هذا الخيار.",
     "This folder cannot be read. Pick another or turn this off.": "تتعذر قراءة هذا المجلد. يُرجى اختيار مجلد آخر أو إيقاف هذا الخيار.",
+    "Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.": "ستُستورد عمليات المسح المحفوظة مرة أخرى، لأن هذا المجلد ومجلد الحفظ متطابقان أو أحدهما يحتوي الآخر. يُرجى اختيار مجلد آخر.",
+    "The feeder delivered more than {0} sheets, so scanning stopped.": "سلّمت وحدة التغذية أكثر من {0} ورقة، لذلك توقف المسح.",
     "The {0} receipt has not been saved.\n\nDiscard it?": {"zero": "لا توجد إيصالات غير محفوظة.\n\nاستبعاد الإيصالات؟", "one": "لم يُحفظ الإيصال.\n\nاستبعاده؟", "two": "لم يُحفظ الإيصالان.\n\nاستبعادهما؟", "few": "لم يتم حفظ {0} إيصالات.\n\nاستبعادها؟", "many": "لم يتم حفظ {0} إيصالًا.\n\nاستبعادها؟", "other": "لم يتم حفظ {0} إيصال.\n\nاستبعادها؟"},
     "The {0} photo has not been saved.\n\nDiscard it?": {"zero": "لم تُحفظ الصور.\n\nاستبعادها؟", "one": "لم تُحفظ الصورة.\n\nاستبعادها؟", "two": "لم تُحفظ الصورتان.\n\nاستبعادهما؟", "few": "لم تُحفظ {0} صور.\n\nاستبعادها؟", "many": "لم تُحفظ {0} صورة.\n\nاستبعادها؟", "other": "لم تُحفظ {0} صورة.\n\nاستبعادها؟"},
     "The original scan for this photo is no longer available.": "لم تعد النسخة الضوئية الأصلية لهذه الصورة متاحة.",

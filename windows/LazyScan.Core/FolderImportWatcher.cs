@@ -41,6 +41,20 @@ public sealed class FolderImportWatcher : IDisposable
 
     public string Folder { get; }
 
+    /// <summary>
+    /// Whether two folders are the same or one holds the other. A scan saved into the watched folder, or into one
+    /// inside it, would be imported again as a new page; so would one saved around it, whichever way the folders are
+    /// written (case, trailing slash, "..").
+    /// </summary>
+    public static bool Overlaps(string folder, string other)
+    {
+        string a = Normalized(folder), b = Normalized(other);
+        return a.StartsWith(b, StringComparison.OrdinalIgnoreCase) || b.StartsWith(a, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Normalized(string folder) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar;
+
     public FolderImportState State { get; private set; } = FolderImportState.Watching;
 
     /// <summary>How many settled new files wait to be taken.</summary>

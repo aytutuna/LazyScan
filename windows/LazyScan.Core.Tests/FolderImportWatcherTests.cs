@@ -149,4 +149,19 @@ public sealed class FolderImportWatcherTests : IDisposable
         Settle();
         Assert.Equal(1, changes);
     }
+
+    [Theory]
+    [InlineData(@"C:\Scans", @"C:\Scans", true)]
+    [InlineData(@"C:\Scans", @"c:\scans\", true)]
+    [InlineData(@"C:\Scans", @"C:\Scans\Print", true)]
+    [InlineData(@"C:\Scans\Print", @"C:\Scans", true)]
+    [InlineData(@"C:\Scans\Sub\..", @"C:\Scans\Print", true)]
+    [InlineData(@"C:\Scans", @"C:\Scans2", false)]
+    [InlineData(@"C:\Scans", @"D:\Scans", false)]
+    [InlineData(@"C:\Inbox", @"C:\Scans", false)]
+    public void OverlapsMeansTheSameFolderOrOneInsideTheOther(string a, string b, bool expected)
+    {
+        Assert.Equal(expected, FolderImportWatcher.Overlaps(a, b));
+        Assert.Equal(expected, FolderImportWatcher.Overlaps(b, a));
+    }
 }

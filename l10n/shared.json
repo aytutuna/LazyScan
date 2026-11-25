@@ -3246,6 +3246,8 @@
   "Stop scanning again (Esc)": {},
   "Stop scanning again": {},
   "Scanning again countdown": {},
+  "Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.": {},
+  "The feeder delivered more than {0} sheets, so scanning stopped.": {},
   "infoplist": {
     "ios": {
       "NSCameraUsageDescription": "Lazy Scan uses the camera to scan documents and photos, and the pairing code of your computer. What you scan stays on this device unless you share it.",
