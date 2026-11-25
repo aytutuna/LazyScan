@@ -64,6 +64,88 @@ public class PhotoFileReaderTests : IDisposable
         return Write(name, encoder);
     }
 
+    /// <summary>
+    /// A matrix profile with Display P3's colorants (D50 adapted) and a plain 2.2 curve, the kind an iPhone embeds, built here
+    /// so the test needs no file from the machine it runs on.
+    /// </summary>
+    private static byte[] WideGamutProfile()
+    {
+        static byte[] Fixed(double v) => BitConverter.GetBytes((int)Math.Round(v * 65536)).Reverse().ToArray();
+        static byte[] Tag(string type, params byte[][] parts) => [.. System.Text.Encoding.ASCII.GetBytes(type), 0, 0, 0, 0, .. parts.SelectMany(p => p)];
+        static byte[] Xyz(double x, double y, double z) => Tag("XYZ ", Fixed(x), Fixed(y), Fixed(z));
+        static byte[] Text(string type, string text) => Tag(type, System.Text.Encoding.ASCII.GetBytes(text + "\0"));
+        var description = Tag("desc", [0, 0, 0, 5], System.Text.Encoding.ASCII.GetBytes("Wide\0"), new byte[4 + 4 + 2 + 1 + 67]);
+        var gamma = Tag("curv", [0, 0, 0, 1], [0x02, 0x33]);
+        var tags = new (string Name, byte[] Data)[]
+        {
+            ("desc", description),
+            ("cprt", Text("text", "none")),
+            ("wtpt", Xyz(0.9642, 1.0, 0.8249)),
+            ("rXYZ", Xyz(0.51512, 0.24120, -0.00105)),
+            ("gXYZ", Xyz(0.29198, 0.69225, 0.04189)),
+            ("bXYZ", Xyz(0.15710, 0.06657, 0.78407)),
+            ("rTRC", gamma),
+            ("gTRC", gamma),
+            ("bTRC", gamma),
+        };
+        static byte[] Pad(byte[] data) => [.. data, .. new byte[(4 - data.Length % 4) % 4]];
+        int offset = 128 + 4 + tags.Length * 12;
+        var table = new List<byte>(BitConverter.GetBytes(tags.Length).Reverse());
+        var body = new List<byte>();
+        foreach (var (name, data) in tags)
+        {
+            table.AddRange(System.Text.Encoding.ASCII.GetBytes(name));
+            table.AddRange(BitConverter.GetBytes(offset + body.Count).Reverse());
+            table.AddRange(BitConverter.GetBytes(data.Length).Reverse());
+            body.AddRange(Pad(data));
+        }
+        var header = new byte[128];
+        void Put(int at, params byte[] bytes) => bytes.CopyTo(header, at);
+        Put(0, BitConverter.GetBytes(offset + body.Count).Reverse().ToArray());
+        Put(8, 2, 0x40, 0, 0);
+        Put(12, System.Text.Encoding.ASCII.GetBytes("mntrRGB XYZ "));
+        Put(36, System.Text.Encoding.ASCII.GetBytes("acsp"));
+        Put(68, [.. Fixed(0.9642), .. Fixed(1.0), .. Fixed(0.8249)]);
+        return [.. header, .. table, .. body];
+    }
+
+    [Fact]
+    public void APhotoWithAWideColorProfileIsReadInSrgb()
+    {
+        string profile = Path.Combine(_folder, "wide.icc");
+        File.WriteAllBytes(profile, WideGamutProfile());
+        var pixels = new byte[8 * 8 * 4];
+        for (int i = 0; i < pixels.Length; i += 4) (pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]) = (50, 100, 200, 255);
+        var picture = BitmapSource.Create(8, 8, 72, 72, PixelFormats.Bgra32, null, pixels, 8 * 4);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(picture, null, null, new[] { new ColorContext(new Uri(profile)) }.ToList().AsReadOnly()));
+        string path = Write("wide.png", encoder);
+
+        var read = PhotoFileReader.Read(path).Stored;
+
+        // 200, 100, 50 in the wide space is about 216, 93, 24 in sRGB: redder, since sRGB reaches less far.
+        Assert.InRange(read.Pixels[0], 212, 220);
+        Assert.InRange(read.Pixels[1], 89, 97);
+        Assert.InRange(read.Pixels[2], 20, 28);
+        Assert.Equal(255, read.Pixels[3]);
+    }
+
+    [Fact]
+    public void APhotoWithNoProfileIsReadAsStored()
+    {
+        string path = Write("plain.png", PngOf(Picture(4, 4)));
+        var read = PhotoFileReader.Read(path).Stored;
+        Assert.Equal(255, read.Pixels[0]);
+        Assert.Equal(0, read.Pixels[2]);
+    }
+
+    private static PngBitmapEncoder PngOf(BitmapSource picture)
+    {
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(picture));
+        return encoder;
+    }
+
     [Theory]
     [InlineData((ushort)1)]
     [InlineData((ushort)3)]

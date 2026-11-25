@@ -34,4 +34,10 @@
     <None Include="..\..\Tests\Fixtures\Escl\capabilities-platen-duplex-adf.xml" LinkBase="Fixtures\Escl" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The Store manifest and the script that packs it, which PackagingTests read for the Windows versions. -->
+  <ItemGroup>
+    <None Include="..\..\store\windows\Package.appxmanifest" LinkBase="Store" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\scripts\make_msix.ps1" LinkBase="Store" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

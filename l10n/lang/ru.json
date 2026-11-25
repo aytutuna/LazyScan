@@ -1668,6 +1668,8 @@
     "Importing {0} new image…": {"one": "Импорт {0} нового изображения…", "few": "Импорт {0} новых изображений…", "many": "Импорт {0} новых изображений…", "other": "Импорт {0} нового изображения…"},
     "The folder is not there. Pick it again or turn this off.": "Папка не найдена. Выберите ее снова или отключите импорт.",
     "This folder cannot be read. Pick another or turn this off.": "Не удается прочитать папку. Выберите другую или отключите импорт.",
+    "Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.": "Сохранённые сканы импортировались бы повторно: эта папка и папка сохранения совпадают или одна содержит другую. Выберите другую папку.",
+    "The feeder delivered more than {0} sheets, so scanning stopped.": "Податчик выдал больше {0} листов, поэтому сканирование остановлено.",
     "The {0} receipt has not been saved.\n\nDiscard it?": {"one": "{0} чек не сохранен.\n\nУдалить его?", "few": "{0} чека не сохранены.\n\nУдалить их?", "many": "{0} чеков не сохранено.\n\nУдалить их?", "other": "{0} чека не сохранено.\n\nУдалить их?"},
     "The {0} photo has not been saved.\n\nDiscard it?": {"one": "{0} фото не сохранено.\n\nУдалить его?", "few": "{0} фото не сохранены.\n\nУдалить их?", "many": "{0} фото не сохранено.\n\nУдалить их?", "other": "{0} фото не сохранено.\n\nУдалить их?"},
     "The original scan for this photo is no longer available.": "Исходный скан этого фото больше недоступен.",

@@ -130,7 +130,13 @@ public partial class MainWindow
     {
         var dialog = new OpenFolderDialog { Title = Loc.T("Import from folder") };
         if (ViewModel.ImportFolder is { } current && Directory.Exists(current)) dialog.InitialDirectory = current;
-        if (dialog.ShowDialog(this) == true) ViewModel.SetImportFolder(dialog.FolderName);
+        if (dialog.ShowDialog(this) != true) return;
+        if (ViewModel.ImportFolderRefusal(dialog.FolderName) is { } refusal)
+        {
+            ShowError(refusal, Loc.T("Not imported"));
+            return;
+        }
+        ViewModel.SetImportFolder(dialog.FolderName);
     }
 
     private void ImportPhotos_Click(object sender, RoutedEventArgs e)

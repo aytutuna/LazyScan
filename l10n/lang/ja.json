@@ -1668,6 +1668,8 @@
     "Importing {0} new image…": {"other": "新しい画像を{0}枚読み込み中…"},
     "The folder is not there. Pick it again or turn this off.": "フォルダが見つかりません。もう一度選択するか、この機能をオフにしてください。",
     "This folder cannot be read. Pick another or turn this off.": "このフォルダを読み込めません。別のフォルダを選択するか、この機能をオフにしてください。",
+    "Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.": "保存したスキャンが再びインポートされてしまいます。このフォルダと保存先フォルダが同じか、一方がもう一方を含んでいるためです。別のフォルダを選択してください。",
+    "The feeder delivered more than {0} sheets, so scanning stopped.": "フィーダーから{0}枚を超える原稿が送られてきたため、スキャンを停止しました。",
     "The {0} receipt has not been saved.\n\nDiscard it?": {"other": "{0}枚のレシートは保存されていません。\n\n破棄しますか?"},
     "The {0} photo has not been saved.\n\nDiscard it?": {"other": "{0}枚の写真は保存されていません。\n\n破棄しますか?"},
     "The original scan for this photo is no longer available.": "この写真の元のスキャンは使用できなくなりました。",

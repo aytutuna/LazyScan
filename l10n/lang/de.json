@@ -1668,6 +1668,8 @@
     "Importing {0} new image…": {"one": "Import von {0} neuem Bild …", "other": "Import von {0} neuen Bildern …"},
     "The folder is not there. Pick it again or turn this off.": "Der Ordner fehlt. Wähle ihn erneut aus oder schalte den Import aus.",
     "This folder cannot be read. Pick another or turn this off.": "Der Ordner lässt sich nicht lesen. Wähle einen anderen oder schalte den Import aus.",
+    "Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.": "Gespeicherte Scans würden erneut importiert, weil dieser Ordner und der Speicherordner derselbe sind oder einer den anderen enthält. Wähle einen anderen Ordner.",
+    "The feeder delivered more than {0} sheets, so scanning stopped.": "Der Einzug hat mehr als {0} Blätter geliefert, deshalb wurde das Scannen beendet.",
     "The {0} receipt has not been saved.\n\nDiscard it?": {"one": "Der Beleg wurde nicht gesichert.\n\nBeleg verwerfen?", "other": "Die {0} Belege wurden nicht gesichert.\n\nBelege verwerfen?"},
     "The {0} photo has not been saved.\n\nDiscard it?": {"one": "Das Foto wurde nicht gesichert.\n\nFoto verwerfen?", "other": "Die {0} Fotos wurden nicht gesichert.\n\nFotos verwerfen?"},
     "The original scan for this photo is no longer available.": "Der ursprüngliche Scan dieses Fotos ist nicht mehr verfügbar.",

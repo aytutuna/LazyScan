@@ -19,12 +19,23 @@ public sealed partial class AppViewModel
     /// <summary>Why the switch is off for the task in use (it saves its scans on its own); null when it can be used.</summary>
     public string? ImportFolderReason => PhotoImport.OwnSaveTaskReason(Settings);
 
+    /// <summary>Whether the folder is the save folder, holds it or lies inside it: what is saved would be imported again.</summary>
+    private bool ImportFolderOverlapsSaveFolder => ImportFolder is { } folder && FolderImportWatcher.Overlaps(folder, DestinationFolder);
+
+    /// <summary>Why <paramref name="folder"/> cannot be the import folder now; null when it can.</summary>
+    public string? ImportFolderRefusal(string folder) =>
+        FolderImportWatcher.Overlaps(folder, DestinationFolder) ? OverlapMessage : null;
+
+    private static string OverlapMessage =>
+        Loc.T("Saved scans would be imported again, because this folder and the save folder are the same or hold each other. Pick another folder.");
+
     /// <summary>The line under the folder: what the watch is doing, or what is wrong with the folder. Null when nothing is watched.</summary>
     public string? ImportFolderStatus
     {
         get
         {
             if (!ImportFolderOn || ImportFolder is null || ImportFolderReason is not null) return null;
+            if (ImportFolderOverlapsSaveFolder) return OverlapMessage;
             return _folderWatcher?.State switch
             {
                 FolderImportState.Missing => Loc.T("The folder is not there. Pick it again or turn this off."),
@@ -35,7 +46,8 @@ public sealed partial class AppViewModel
         }
     }
 
-    public bool ImportFolderHasProblem => ImportFolderStatus is not null && _folderWatcher is { State: not FolderImportState.Watching };
+    public bool ImportFolderHasProblem => ImportFolderStatus is not null
+        && (ImportFolderOverlapsSaveFolder || _folderWatcher is { State: not FolderImportState.Watching });
 
     /// <summary>Reads the saved folder and starts watching it. Not called for a command-line scan, which shows no window.</summary>
     public void StartFolderImport()
@@ -75,7 +87,7 @@ public sealed partial class AppViewModel
     /// <summary>Watching follows the switch, the folder and the task: it stops for a task that saves on its own and starts again with the next one.</summary>
     private void SyncFolderWatch()
     {
-        string? folder = ImportFolderOn && ImportFolderReason is null ? ImportFolder : null;
+        string? folder = ImportFolderOn && ImportFolderReason is null && !ImportFolderOverlapsSaveFolder ? ImportFolder : null;
         if (_folderWatcher is { } current && current.Folder == folder) return;
         _folderWatcher?.Dispose();
         _folderWatcher = null;
