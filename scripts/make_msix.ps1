@@ -119,6 +119,9 @@ function New-Package([string] $arch, [string] $helper, [string] $helper64) {
     if ($manifest -notmatch $identityVersion) { throw 'Package.appxmanifest has no Version on its Identity element' }
     $manifest = $manifest -replace $identityVersion, "`${1}$packageVersion`${2}"
     $manifest = $manifest.Replace('ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$arch`"")
+    # The 64-bit TWAIN helper runs on Arm only through Windows 11's emulation, so the Arm package asks for Windows 11.
+    $minVersions = @{ x64 = '10.0.19041.0'; arm64 = '10.0.22000.0' }
+    $manifest = $manifest.Replace('MinVersion="10.0.19041.0"', "MinVersion=`"$($minVersions[$arch])`"")
     $manifest = [regex]::Replace($manifest, '(?s)(<Resources>\r?\n).*?(\r?\n  </Resources>)', { param($m) $m.Groups[1].Value + $resources + $m.Groups[2].Value })
     $manifest = $manifest.Replace('PartnerCenterIdentityName', $IdentityName).Replace('CN=PartnerCenterPublisher', $Publisher).Replace('PartnerCenterPublisherDisplayName', $PublisherDisplayName)
     [IO.File]::WriteAllText((Join-Path $stage 'AppxManifest.xml'), $manifest, (New-Object Text.UTF8Encoding $false))
