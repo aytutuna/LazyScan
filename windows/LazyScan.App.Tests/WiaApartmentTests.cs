@@ -190,6 +190,15 @@ public sealed class WiaApartmentTests
     }
 
     [Fact]
+    public void ATwoSidedFeedCountsSheetsNotSides()
+    {
+        var image = new RgbaImage(1, 1, new byte[4]);
+        int count = WiaScannerSession.PullSheets(() => image, _ => { }, _ => { }, CancellationToken.None, 3, out var stop, sidesPerSheet: 2);
+        Assert.Equal(6, count);
+        Assert.Contains("more than 3 sheets", stop!.Reason);
+    }
+
+    [Fact]
     public void AnEmptyFeederEndsTheBatchWithoutAStop()
     {
         var image = new RgbaImage(1, 1, new byte[4]);

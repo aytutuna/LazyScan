@@ -664,11 +664,13 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
         return RunScan(watch =>
         {
+            watch(ReadTimeout); // a device that never answers the connection is reported like a silent transfer
             dynamic device = Connect();
             try
             {
                 object item = PrepareItem(device, 150, ScanSource.Flatbed, ColorMode.Color, null, false,
                                           PaperSize.Auto);
+                watch(Timeout.InfiniteTimeSpan);
                 try
                 {
                     return Transfer(item, watch, FlatbedTransferLimit);
@@ -690,7 +692,8 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         var pages = new List<ScannedPage>();
         // Made here, not on the WIA thread: a Cancel pressed while that thread is still busy with
         // something else must survive until the scan starts.
-        var cancelled = (_cancel = new CancellationTokenSource()).Token;
+        var source = _cancel = new CancellationTokenSource();
+        var cancelled = source.Token;
         _scanning = true;
         return RunScan<IReadOnlyList<ScannedPage>>(watch =>
         {
@@ -701,14 +704,15 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             }
             finally
             {
-                _scanning = false;
+                if (_cancel == source) _scanning = false; // not the flag of a scan that began since
             }
         }, cancelled);
     }
 
     public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage)
     {
-        var cancelled = (_cancel = new CancellationTokenSource()).Token;
+        var source = _cancel = new CancellationTokenSource();
+        var cancelled = source.Token;
         _scanning = true;
         return PageHandover.Run(emit => RunScan(watch =>
         {
@@ -719,7 +723,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             }
             finally
             {
-                _scanning = false;
+                if (_cancel == source) _scanning = false;
             }
         }, cancelled), onPage);
     }
@@ -740,6 +744,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         ScanSize.Check(ScanAreaInches(settings, selection), settings.Resolution);
         // One connection for the whole batch: every sheet of a feeder scan comes from the
         // same prepared item.
+        watch(ReadTimeout);
         dynamic device = Connect();
         try
         {
@@ -751,6 +756,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                                        feeder ? null : selection,
                                        askedBoth && _supportsDuplex != false,
                                        feeder ? settings.PaperSize : PaperSize.Auto, settings.CustomPaper);
+            watch(Timeout.InfiniteTimeSpan);
             // Whether the driver took two-sided feeding, so the app knows what the pages are.
             if (askedBoth) _lastScanDuplex = _preparedTwoSided ? 1 : 0;
             try
@@ -792,7 +798,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
         int count = PullSheets(() => Transfer(item, watch, SheetTransferLimit),
                                image => emit(new ScannedPage(image, _preparedDpi, settings.ColorMode)),
                                sheets => ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", sheets))),
-                               cancelled, FeederSheetLimit, out var stop);
+                               cancelled, FeederSheetLimit, out var stop, _preparedTwoSided ? 2 : 1);
         if (stop is not null) _lastScanStop = stop;
         return count;
     }
@@ -804,11 +810,12 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// keeps what came and is given in <paramref name="stop"/> too.
     /// </summary>
     internal static int PullSheets(Func<RgbaImage> transfer, Action<RgbaImage> emit, Action<int> sheetDone,
-                                   CancellationToken cancelled, int limit, out ScanStop? stop)
+                                   CancellationToken cancelled, int limit, out ScanStop? stop, int sidesPerSheet = 1)
     {
         stop = null;
         int count = 0;
-        while (count < limit)
+        // A two-sided feed delivers a front and a back for every sheet: the limit counts sheets.
+        while (count < limit * sidesPerSheet)
         {
             // Not another sheet once the scan is cancelled.
             if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
