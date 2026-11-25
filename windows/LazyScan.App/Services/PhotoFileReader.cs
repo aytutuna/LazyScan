@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using LazyScan.Core;
 
@@ -114,7 +115,7 @@ public static class PhotoFileReader
                 throw new PhotoUnreadableException(PhotoImport.UnreadableMessage(shown, PhotoImport.TooLargeDetail));
             }
             var orientation = PhotoOrientation.FromExif(OrientationTag(frame));
-            return new PhotoFile(WpfImageCodec.FromBitmapSource(frame), orientation, name, page, pageCount);
+            return new PhotoFile(ReadPixels(frame), orientation, name, page, pageCount);
         }
         catch (PhotoUnreadableException)
         {
@@ -134,6 +135,30 @@ public static class PhotoFileReader
             if (PhotoImport.IsHeif(path)) throw new PhotoUnreadableException(PhotoImport.HeifUnavailableMessage(name), e);
             throw new PhotoUnreadableException(PhotoImport.UnreadableMessage(shown, PhotoImport.UnreadableDetail), e);
         }
+    }
+
+    /// <summary>
+    /// The frame's pixels in sRGB, which the rest of the app takes every picture to be in. A photo that carries its own
+    /// color profile (an iPhone's Display P3, an Adobe RGB camera file) is converted through it by Windows' color
+    /// management; read as it is stored, its colors came out flat. A picture whose profile cannot be used (a gray one,
+    /// a damaged one) is read as stored.
+    /// </summary>
+    internal static RgbaImage ReadPixels(BitmapFrame frame)
+    {
+        if (frame.ColorContexts is { Count: > 0 } contexts)
+        {
+            try
+            {
+                var converted = new ColorConvertedBitmap(frame, contexts[0], new ColorContext(PixelFormats.Bgra32), PixelFormats.Bgra32);
+                return WpfImageCodec.FromBitmapSource(converted);
+            }
+            catch (Exception e) when (e is NotSupportedException or ArgumentException or InvalidOperationException
+                                          or COMException or FileFormatException or OverflowException)
+            {
+                // No conversion for this kind of picture: as stored.
+            }
+        }
+        return WpfImageCodec.FromBitmapSource(frame);
     }
 
     /// <summary>The orientation tag (274) of the frame, 1 when it has none or it cannot be read.</summary>
