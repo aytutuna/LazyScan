@@ -4,7 +4,7 @@ using Xunit;
 namespace LazyScan.Core.Tests;
 
 // Twin of Tests/LazyScanTests/DocumentEnhancerTests.swift: the same pages, the same bytes. The
-// checksums were recomputed by an independent model of the algorithm as CONTRACTS.md describes it.
+// checksums were recomputed by an independent model of the algorithm.
 
 public class DocumentEnhancerTests
 {

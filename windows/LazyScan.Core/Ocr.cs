@@ -11,7 +11,7 @@ public sealed record OcrWord(string Text, RectD BoundingBox);
 /// <param name="Text">The recognized text.</param>
 /// <param name="BoundingBox">
 /// Normalized (0...1) bounding box with a BOTTOM-LEFT origin — the Vision convention kept
-/// deliberately, because it maps straight into PDF user space with no flip (see CONTRACTS.md).
+/// deliberately, because it maps straight into PDF user space with no flip.
 /// Implementations converting from top-left pixel rects must flip:
 /// ny = 1 - (y + h) / imageHeight.
 /// </param>

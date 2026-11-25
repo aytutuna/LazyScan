@@ -55,9 +55,9 @@ public sealed class PairedDevicesFile
 }
 
 /// <summary>
-/// The phones paired with this desktop (companion-devices.json in the settings folder, rule 6 of
-/// CONTRACTS.md). Pairing makes a random 256-bit secret, hands it to the phone once and keeps only
-/// its SHA-256; a request is accepted when its device id and secret match an entry. It also makes the
+/// The phones paired with this desktop (companion-devices.json in the settings folder, under the
+/// settings-file rules). Pairing makes a random 256-bit secret, hands it to the phone once and keeps
+/// only its SHA-256; a request is accepted when its device id and secret match an entry. It also makes the
 /// phone's sync key for the cloud sync folder, kept protected for the current user. The file is
 /// re-read for every check and before every change, so a phone removed by another window of the
 /// app is refused at once; a phone removed while the file could not be written stays removed for

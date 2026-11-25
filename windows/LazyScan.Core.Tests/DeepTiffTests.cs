@@ -4,7 +4,7 @@ using Xunit;
 namespace LazyScan.Core.Tests;
 
 // 16-bit TIFF files and the pages that carry deep pixels. The Mac's twin is Tests/LazyScanTests/DeepTIFFTests.swift
-// with the same golden files (see CONTRACTS.md, "16-bit TIFF"); WIC reads the files back in
+// with the same golden files; WIC reads the files back in
 // LazyScan.App.Tests/DeepTiffOutputTests.cs.
 public class DeepTiffTests
 {

@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace LazyScan.Core;
 
 // The Mac's twin is Sources/LazyScanKit/Output/DeepTIFF.swift, which writes the same bytes
-// (see CONTRACTS.md, "16-bit TIFF").
+//.
 
 /// <summary>
 /// A page at 16 bits per sample as a scanner delivers it: <see cref="Channels"/> is 1 (gray) or 3 (red,
