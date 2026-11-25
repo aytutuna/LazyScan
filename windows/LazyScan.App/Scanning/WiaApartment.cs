@@ -125,6 +125,50 @@ internal static class WiaApartment
         }
     }
 
+    /// <summary>How often <see cref="RunWatched{T}"/> looks at the clock while the job runs.</summary>
+    private static readonly TimeSpan WatchStep = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// Like <see cref="Run{T}(Func{T}, TimeSpan, string)"/>, for a job made of several blocking calls (a scan:
+    /// one transfer per sheet). The job tells how long the call it is about to make may take through the action
+    /// it is given, and calls it again with <see cref="Timeout.InfiniteTimeSpan"/> once that call has returned. A
+    /// call that outlasts its limit faults the task with "not responding", as a timed call does, and the thread
+    /// stays busy until it returns. After <paramref name="cancelled"/> the task waits <paramref name="cancelGrace"/>
+    /// for the job to end by itself and then faults with a cancelled <see cref="ScanException"/>; the job goes on
+    /// in the background, without marking the device as hung, and what is asked of the thread next waits behind it.
+    /// </summary>
+    public static async Task<T> RunWatched<T>(Func<Action<TimeSpan>, T> work, string deviceName, CancellationToken cancelled, TimeSpan cancelGrace)
+    {
+        if (Volatile.Read(ref _timedOut) > 0) throw NotResponding(Volatile.Read(ref _hungDevice) ?? deviceName);
+        long due = long.MaxValue;
+        var task = Run(() => work(limit => Volatile.Write(ref due,
+            limit == Timeout.InfiniteTimeSpan ? long.MaxValue : Environment.TickCount64 + (long)limit.TotalMilliseconds)));
+        long giveUpAt = long.MaxValue;
+        while (!task.IsCompleted)
+        {
+            await Task.WhenAny(task, Task.Delay(WatchStep)).ConfigureAwait(false);
+            if (task.IsCompleted) break;
+            long now = Environment.TickCount64;
+            if (cancelled.IsCancellationRequested)
+            {
+                if (giveUpAt == long.MaxValue) giveUpAt = now + (long)cancelGrace.TotalMilliseconds;
+                if (now >= giveUpAt)
+                {
+                    _ = task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                    throw ScanException.Cancelled();
+                }
+            }
+            if (now >= Volatile.Read(ref due))
+            {
+                Volatile.Write(ref _hungDevice, deviceName);
+                Interlocked.Increment(ref _timedOut);
+                _ = task.ContinueWith(_ => Interlocked.Decrement(ref _timedOut), TaskScheduler.Default);
+                throw NotResponding(deviceName);
+            }
+        }
+        return await task.ConfigureAwait(false);
+    }
+
     private static ScanException NotResponding(string deviceName) =>
         ScanException.SessionFailed(() => Loc.T("{0} is not responding. Turn it off and on again, then try again.", deviceName));
 

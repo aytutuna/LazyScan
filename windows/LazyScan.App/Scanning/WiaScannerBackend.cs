@@ -581,7 +581,11 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     private volatile int _lastScanDuplex = -1;
     public bool? LastScanDuplex => _lastScanDuplex < 0 ? null : _lastScanDuplex == 1;
 
-    private volatile bool _cancelRequested;
+    /// <summary>
+    /// Cancelled by <see cref="CancelScan"/>; each scan makes its own, so a scan that is still finishing its pass
+    /// after a cancel cannot be revived by the next one.
+    /// </summary>
+    private CancellationTokenSource _cancel = new();
     private volatile bool _waitingForDriverWindow;
     private volatile int _dialogThread;
     public bool WaitingForDriverWindow => _waitingForDriverWindow;
@@ -653,13 +657,12 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
 
     public Task<RgbaImage> PerformOverviewScanAsync(ScanSettings settings)
     {
-        _cancelRequested = false;
         if (_sources is { } sources && !sources.Contains(ScanSource.Flatbed))
         {
             return Task.FromException<RgbaImage>(ScanException.Unsupported(() => Loc.T("This scanner has no flatbed to preview.")));
         }
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning overview…")));
-        return RunSta(() =>
+        return RunScan(watch =>
         {
             dynamic device = Connect();
             try
@@ -668,7 +671,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
                                           PaperSize.Auto);
                 try
                 {
-                    return Transfer(item);
+                    return Transfer(item, watch, FlatbedTransferLimit);
                 }
                 finally
                 {
@@ -679,57 +682,57 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             {
                 Release(device);
             }
-        });
+        }, CancellationToken.None);
     }
 
     public Task<IReadOnlyList<ScannedPage>> PerformScanAsync(ScanSettings settings, RectD? selection)
     {
         var pages = new List<ScannedPage>();
-        // Reset here, not on the WIA thread: a Cancel pressed while that thread is still busy with
+        // Made here, not on the WIA thread: a Cancel pressed while that thread is still busy with
         // something else must survive until the scan starts.
-        _cancelRequested = false;
+        var cancelled = (_cancel = new CancellationTokenSource()).Token;
         _scanning = true;
-        return RunSta<IReadOnlyList<ScannedPage>>(() =>
+        return RunScan<IReadOnlyList<ScannedPage>>(watch =>
         {
             try
             {
-                Scan(settings, selection, pages.Add);
+                Scan(settings, selection, pages.Add, watch, cancelled);
                 return pages;
             }
             finally
             {
                 _scanning = false;
             }
-        });
+        }, cancelled);
     }
 
     public Task PerformScanAsync(ScanSettings settings, RectD? selection, Func<ScannedPage, Task> onPage)
     {
-        _cancelRequested = false;
+        var cancelled = (_cancel = new CancellationTokenSource()).Token;
         _scanning = true;
-        return PageHandover.Run(emit => RunSta(() =>
+        return PageHandover.Run(emit => RunScan(watch =>
         {
             try
             {
-                Scan(settings, selection, page => emit(page).GetAwaiter().GetResult());
+                Scan(settings, selection, page => emit(page).GetAwaiter().GetResult(), watch, cancelled);
                 return true;
             }
             finally
             {
                 _scanning = false;
             }
-        }), onPage);
+        }, cancelled), onPage);
     }
 
     /// <summary>Scans on the WIA thread, passing each page to <paramref name="emit"/> as it transfers.</summary>
-    private void Scan(ScanSettings settings, RectD? selection, Action<ScannedPage> emit)
+    private void Scan(ScanSettings settings, RectD? selection, Action<ScannedPage> emit, Action<TimeSpan> watch, CancellationToken cancelled)
     {
         _lastScanStop = null;
         _lastScanDuplex = -1;
-        if (_cancelRequested) throw ScanException.Cancelled();
+        if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
         if (UseDriverWindow)
         {
-            ScanInDriverWindow(settings, emit);
+            ScanInDriverWindow(settings, emit, watch, cancelled);
             return;
         }
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Scanning…")));
@@ -754,12 +757,12 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             {
                 if (feeder)
                 {
-                    count = ScanFeeder(item, settings, emit);
+                    count = ScanFeeder(item, settings, emit, watch, cancelled);
                 }
                 else
                 {
-                    RgbaImage image = Transfer(item);
-                    if (_cancelRequested) throw ScanException.Cancelled();
+                    RgbaImage image = Transfer(item, watch, FlatbedTransferLimit);
+                    if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
                     emit(new ScannedPage(image, _preparedDpi, settings.ColorMode));
                     count = 1;
                 }
@@ -783,15 +786,33 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// already transferred (mirroring the macOS backend) and records why the scan stopped in
     /// <see cref="LastScanStop"/>.
     /// </summary>
-    private int ScanFeeder(object item, ScanSettings settings, Action<ScannedPage> emit)
+    private int ScanFeeder(object item, ScanSettings settings, Action<ScannedPage> emit, Action<TimeSpan> watch, CancellationToken cancelled)
     {
+        int count = PullSheets(() => Transfer(item, watch, SheetTransferLimit),
+                               image => emit(new ScannedPage(image, _preparedDpi, settings.ColorMode)),
+                               sheets => ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", sheets))),
+                               cancelled, FeederSheetLimit, out var stop);
+        if (stop is not null) _lastScanStop = stop;
+        return count;
+    }
+
+    /// <summary>
+    /// The feeder loop: <paramref name="transfer"/> sheets until the feeder is empty, passing each to
+    /// <paramref name="emit"/>. It also ends at <paramref name="limit"/> sheets, so a feeder or driver that never reports
+    /// "empty" cannot go on for good; <paramref name="stop"/> then says so. A failure after the first sheet
+    /// keeps what came and is given in <paramref name="stop"/> too.
+    /// </summary>
+    internal static int PullSheets(Func<RgbaImage> transfer, Action<RgbaImage> emit, Action<int> sheetDone,
+                                   CancellationToken cancelled, int limit, out ScanStop? stop)
+    {
+        stop = null;
         int count = 0;
-        while (true)
+        while (count < limit)
         {
             RgbaImage image;
             try
             {
-                image = Transfer(item);
+                image = transfer();
             }
             catch (ScanException e) when (e.Problem == ScannerProblem.FeederEmpty && count > 0)
             {
@@ -799,14 +820,16 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             }
             catch (ScanException e) when (count > 0 && e.Kind != ScanErrorKind.Cancelled)
             {
-                _lastScanStop = ScanStop.From(e);
+                stop = ScanStop.From(e);
                 return count;
             }
-            if (_cancelRequested) throw ScanException.Cancelled();
-            emit(new ScannedPage(image, _preparedDpi, settings.ColorMode));
+            if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
+            emit(image);
             count++;
-            ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferred sheet {0}…", count)));
+            sheetDone(count);
         }
+        stop = new ScanStop(Loc.T("The feeder delivered more than {0} sheets, so scanning stopped.", limit));
+        return count;
     }
 
     /// <summary>
@@ -814,7 +837,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// scans to <paramref name="emit"/>, a whole feeder batch when the window selected the feeder. The window
     /// chooses the settings, so the pages take the resolution and color the app asked for as their labels.
     /// </summary>
-    private void ScanInDriverWindow(ScanSettings settings, Action<ScannedPage> emit)
+    private void ScanInDriverWindow(ScanSettings settings, Action<ScannedPage> emit, Action<TimeSpan> watch, CancellationToken cancelled)
     {
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Choose the settings in the scanner's window, then start the scan there…")));
         using var use = WiaApartment.Use();
@@ -830,7 +853,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             _waitingForDriverWindow = true;
             try
             {
-                if (_cancelRequested) throw ScanException.Cancelled();
+                if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
                 // Intent and bias unspecified; a cancelled window returns nothing.
                 items = dialog.ShowSelectItems(device, 0, 0, true, true, false);
             }
@@ -842,21 +865,21 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
             {
                 _waitingForDriverWindow = false;
             }
-            if (items is null || _cancelRequested || ((dynamic)items).Count < 1) throw ScanException.Cancelled();
+            if (items is null || cancelled.IsCancellationRequested || ((dynamic)items).Count < 1) throw ScanException.Cancelled();
             item = (object)((dynamic)items!)[1];
             _preparedDpi = settings.Resolution;
             int? selected = ToInt(WiaScannerBackend.TryGetProperty(device.Properties, WiaScannerBackend.DocumentHandlingSelect));
             if (WiaDocumentHandling.FeederAlreadySelected(selected) is not null)
             {
-                if (ScanFeeder(item, settings, emit) == 0)
+                if (ScanFeeder(item, settings, emit, watch, cancelled) == 0)
                 {
                     throw ScanException.ScanFailed(() => Loc.T("The scanner did not return any image data."));
                 }
             }
             else
             {
-                RgbaImage image = Transfer(item);
-                if (_cancelRequested) throw ScanException.Cancelled();
+                RgbaImage image = Transfer(item, watch, FlatbedTransferLimit);
+                if (cancelled.IsCancellationRequested) throw ScanException.Cancelled();
                 emit(new ScannedPage(image, settings.Resolution, settings.ColorMode));
             }
         }
@@ -871,7 +894,7 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
 
     public void CancelScan()
     {
-        _cancelRequested = true;
+        _cancel.Cancel();
         if (_waitingForDriverWindow)
         {
             // The window may not exist yet while the device connects, so ask again for a few seconds.
@@ -1045,19 +1068,28 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     }
 
     /// <summary>One transfer (one sheet from the feeder). WIA errors become <see cref="ScanException"/>s via <see cref="WiaErrors"/>.</summary>
-    private RgbaImage Transfer(object item)
+    private RgbaImage Transfer(object item, Action<TimeSpan> watch, TimeSpan limit)
     {
         ProgressHandler?.Invoke(new ScanProgress(Loc.T("Transferring…")));
-        dynamic imageFile;
+        // A scanner that goes silent mid-transfer never returns from the call; the watch gives up on it after the limit.
+        watch(limit);
         try
         {
-            imageFile = ((dynamic)item).Transfer(WiaScannerBackend.FormatBmp);
+            dynamic imageFile;
+            try
+            {
+                imageFile = ((dynamic)item).Transfer(WiaScannerBackend.FormatBmp);
+            }
+            catch (COMException e)
+            {
+                throw WiaErrors.ToScanException(e.HResult, e.Message);
+            }
+            return LoadImageFile(imageFile);
         }
-        catch (COMException e)
+        finally
         {
-            throw WiaErrors.ToScanException(e.HResult, e.Message);
+            watch(Timeout.InfiniteTimeSpan);
         }
-        return LoadImageFile(imageFile);
     }
 
     /// <summary>Reads a WIA image file, then releases it.</summary>
@@ -1198,7 +1230,19 @@ internal sealed class WiaScannerSession(ScannerInfo info, string wiaDeviceId, Ac
     /// transfers also block. Each call runs on the WIA thread (<see cref="WiaApartment"/>), after
     /// the enumerations and session work queued before it, so the UI stays live.
     /// </summary>
-    private Task<T> RunSta<T>(Func<T> work) => WiaApartment.Run(work, Timeout.InfiniteTimeSpan, Info.Name);
+    private Task<T> RunScan<T>(Func<Action<TimeSpan>, T> work, CancellationToken cancelled) =>
+        WiaApartment.RunWatched(work, Info.Name, cancelled, CancelGrace);
+
+    /// <summary>
+    /// How long a flatbed transfer, and one sheet from the feeder, may take before the scanner counts as silent. First
+    /// values, careful ones: the real scanner (Scan check 1) sets the final ones.
+    /// </summary>
+    internal static readonly TimeSpan FlatbedTransferLimit = TimeSpan.FromMinutes(10);
+    internal static readonly TimeSpan SheetTransferLimit = TimeSpan.FromMinutes(2);
+    /// <summary>The most sheets one feeder scan takes in.</summary>
+    internal const int FeederSheetLimit = 300;
+    /// <summary>After Cancel, how long the scan waits for the scanner to finish its pass before it lets go.</summary>
+    internal static readonly TimeSpan CancelGrace = TimeSpan.FromSeconds(15);
 
     /// <summary>For the calls that only read the device: a driver that never answers must not hold the scanner for good.</summary>
     internal static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(30);
