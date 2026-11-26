@@ -1046,13 +1046,3 @@ jobs:
           name: ios18-tests-xcresult
           path: ${{ runner.temp }}/ios18-tests.xcresult
           if-no-files-found: ignore
-
-  testflight:
-    if: github.ref == 'refs/heads/ci/testflight'
-    needs: [macos, ios, ipad, ios18]
-    permissions:
-      contents: read
-      actions: read
-
-    uses: ./.github/workflows/testflight.yml
-    secrets: inherit

@@ -1,12 +1,11 @@
 name: TestFlight
 
 # Builds the iPhone app for the App Store and uploads it to TestFlight. Run it by hand from
-# the Actions tab. A push to ci/testflight reaches it through ci.yml, once the CI jobs have passed.
+# the Actions tab, from main only.
 # Signing is cloud-managed through the App Store Connect API key in the repository secrets, so no
 # certificate or profile is kept here.
 on:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read
@@ -19,6 +18,7 @@ concurrency:
 jobs:
   upload:
     runs-on: macos-26
+    environment: appstore
     timeout-minutes: 60
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
