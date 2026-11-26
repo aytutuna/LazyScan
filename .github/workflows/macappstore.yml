@@ -17,6 +17,7 @@ concurrency:
 jobs:
   upload:
     runs-on: macos-26
+    environment: appstore
     timeout-minutes: 60
     steps:
       - name: Check the secrets
