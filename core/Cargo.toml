@@ -11,7 +11,7 @@ publish = false
 
 [workspace.dependencies]
 # One commit of the shared kit, so a build never moves with its main.
-lazy-office-zip = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
-lazy-pdf-filters = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
-lazy-pdf-write = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
-lazy-tiff = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
+lazy-office-zip = { git = "https://github.com/aytutuna/LazyKit", rev = "f447de34db9d1d7b90fcc289d01f1f6191199248" }
+lazy-pdf-filters = { git = "https://github.com/aytutuna/LazyKit", rev = "f447de34db9d1d7b90fcc289d01f1f6191199248" }
+lazy-pdf-write = { git = "https://github.com/aytutuna/LazyKit", rev = "f447de34db9d1d7b90fcc289d01f1f6191199248" }
+lazy-tiff = { git = "https://github.com/aytutuna/LazyKit", rev = "f447de34db9d1d7b90fcc289d01f1f6191199248" }
