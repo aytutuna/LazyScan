@@ -10,7 +10,9 @@
 //!
 //! The paragraphs are given: the reading order of the recognized lines is another job.
 
-use lazy_office_zip::{Entry, Error as ZipError, make, package_size};
+use std::borrow::Cow;
+
+use lazy_office_zip::{Error as ZipError, Writer};
 
 /// One inch in twentieths of a point, Word's unit for page sizes.
 pub const TWIPS_PER_INCH: i32 = 1440;
@@ -375,42 +377,57 @@ pub fn document_xml(pages: &[Page], pictures: &[Option<Picture>]) -> String {
     out
 }
 
-/// The parts of the package, in the order they are stored.
-fn package_entries(pages: &[Page], pictures: &[Option<Picture>]) -> Vec<Entry> {
+/// The parts of the package, in the order they are stored; the pictures are not copied.
+fn package_parts<'a>(
+    pages: &[Page],
+    pictures: &'a [Option<Picture>],
+) -> Vec<(String, Cow<'a, [u8]>)> {
     let placed = placed_pictures(pages, pictures);
-    let mut entries = vec![
-        Entry::new(
-            "[Content_Types].xml",
-            package_content_types_xml(&placed).into_bytes(),
+    let mut parts: Vec<(String, Cow<[u8]>)> = vec![
+        (
+            "[Content_Types].xml".to_string(),
+            Cow::Owned(package_content_types_xml(&placed).into_bytes()),
         ),
-        Entry::new("_rels/.rels", RELATIONSHIPS_XML.as_bytes().to_vec()),
-        Entry::new(
-            "word/document.xml",
-            document_xml(pages, pictures).into_bytes(),
+        (
+            "_rels/.rels".to_string(),
+            Cow::Borrowed(RELATIONSHIPS_XML.as_bytes()),
+        ),
+        (
+            "word/document.xml".to_string(),
+            Cow::Owned(document_xml(pages, pictures).into_bytes()),
         ),
     ];
     if !placed.is_empty() {
-        entries.push(Entry::new(
-            "word/_rels/document.xml.rels",
-            document_relationships_xml(&placed).into_bytes(),
+        parts.push((
+            "word/_rels/document.xml.rels".to_string(),
+            Cow::Owned(document_relationships_xml(&placed).into_bytes()),
         ));
         for (i, picture) in placed.iter().enumerate() {
-            entries.push(Entry::new(
+            parts.push((
                 format!("word/media/{}", media_name(i + 1, picture.format)),
-                picture.data.clone(),
+                Cow::Borrowed(picture.data.as_slice()),
             ));
         }
     }
-    entries
+    parts
 }
 
 /// The .docx file for `pages`; `pictures` holds each page's picture by index (None, or no entry, for a page without one).
 pub fn make_docx(pages: &[Page], pictures: &[Option<Picture>]) -> Result<Vec<u8>, ZipError> {
-    make(&package_entries(pages, pictures))
+    let mut writer = Writer::new(Vec::new());
+    for (name, data) in package_parts(pages, pictures) {
+        writer.add(&name, &data)?;
+    }
+    writer.finish()
 }
 
 /// The size in bytes of the .docx file `make_docx` writes, worked out without writing it; a save checks it against
 /// `MAX_PACKAGE_BYTES` first.
 pub fn docx_size(pages: &[Page], pictures: &[Option<Picture>]) -> u64 {
-    package_size(&package_entries(pages, pictures))
+    let entries = package_parts(pages, pictures);
+    // Each part has its local header and its central record, which both carry the name.
+    22 + entries
+        .iter()
+        .map(|(name, data)| 30 + 46 + 2 * name.len() as u64 + data.len() as u64)
+        .sum::<u64>()
 }

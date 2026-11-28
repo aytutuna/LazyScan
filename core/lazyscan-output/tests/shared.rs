@@ -105,7 +105,7 @@ fn a_plain_pdf_with_a_turkish_line_is_the_pinned_file() {
         date(),
         id(),
     );
-    let pdf = make(&[letter_page(vec![text]), letter_page(vec![])], &options);
+    let pdf = make(&[letter_page(vec![text]), letter_page(vec![])], &options).unwrap();
     assert_eq!(pdf.len(), 7186);
     assert_eq!(
         sha(&pdf),
@@ -128,7 +128,7 @@ fn the_archival_pdf_is_the_pinned_file() {
         date(),
         id(),
     );
-    let pdf = make(&[letter_page(vec![text])], &options);
+    let pdf = make(&[letter_page(vec![text])], &options).unwrap();
     assert_eq!(pdf.len(), 8451);
     assert_eq!(
         sha(&pdf),
@@ -164,7 +164,7 @@ fn a_g4_page_and_a_jpeg_page_are_the_pinned_file() {
         ocr_lines: vec![],
     };
     let options = options("Siyah beyaz", Conformance::Standard, date(), id());
-    let pdf = make(&[black_and_white, color], &options);
+    let pdf = make(&[black_and_white, color], &options).unwrap();
     assert_eq!(pdf.len(), 7154);
     assert_eq!(
         sha(&pdf),
