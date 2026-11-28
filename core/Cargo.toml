@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["lazyscan-output"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+license-file = "../LICENSE"
+publish = false
+
+[workspace.dependencies]
+# One commit of the shared kit, so a build never moves with its main.
+lazy-office-zip = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
+lazy-pdf-filters = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
+lazy-pdf-write = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }
+lazy-tiff = { git = "https://github.com/aytutuna/LazyKit", rev = "66ebadaaf1f104a8f6673a7f870d78be30c6d324" }

@@ -1,0 +1,17 @@
+[package]
+name = "lazyscan-output"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[dependencies]
+lazy-office-zip.workspace = true
+
+[dev-dependencies]
+lazy-pdf-filters.workspace = true
+lazy-pdf-write.workspace = true
+lazy-tiff.workspace = true
+serde_json = "1"
+sha2 = "0.10"

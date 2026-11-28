@@ -1,0 +1,6 @@
+[
+  {"name": "sample", "pages": [{"width": 1000, "height": 1000, "paragraphs": [{"text": "Caf\u00E9 menu", "rtl": false}, {"text": "Soupe \u00E0 l\u0027oignon\t4,50 \u20AC\n\u6771\u4EAC \u30E9\u30FC\u30E1\u30F3\t9.00", "rtl": false}, {"text": "This line is forwarding the rest.", "rtl": false}]}, {"width": 1000, "height": 1000, "paragraphs": [{"text": "\u05E9\u05DC\u05D5\u05DD \u05E2\u05D5\u05DC\u05DD", "rtl": true}, {"text": "Fish \u0026 Chips \u003Cb\u003E", "rtl": false}]}], "pictures": []},
+  {"name": "sample-images", "pages": [{"width": 1000, "height": 1000, "paragraphs": [{"text": "Caf\u00E9 menu", "rtl": false}, {"text": "Soupe \u00E0 l\u0027oignon\t4,50 \u20AC\n\u6771\u4EAC \u30E9\u30FC\u30E1\u30F3\t9.00", "rtl": false}, {"text": "This line is forwarding the rest.", "rtl": false}]}, {"width": 1000, "height": 1000, "paragraphs": [{"text": "\u05E9\u05DC\u05D5\u05DD \u05E2\u05D5\u05DC\u05DD", "rtl": true}, {"text": "Fish \u0026 Chips \u003Cb\u003E", "rtl": false}]}], "pictures": ["jpeg", "png"]},
+  {"name": "some-images", "pages": [{"width": 1000, "height": 1000, "paragraphs": [{"text": "One", "rtl": false}]}, {"width": 1000, "height": 1000, "paragraphs": []}, {"width": 1000, "height": 1000, "paragraphs": []}], "pictures": ["png", null, "jpeg"]},
+  {"name": "empty", "pages": [], "pictures": []}
+]
