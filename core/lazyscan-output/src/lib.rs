@@ -3,3 +3,4 @@
 //! Required Notice: Copyright (c) 2026 Alazy Inc. (https://alazy.app)
 
 pub mod docx;
+pub mod plan;
