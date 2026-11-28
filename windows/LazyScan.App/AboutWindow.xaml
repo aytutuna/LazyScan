@@ -59,9 +59,6 @@
             <TextBlock Style="{StaticResource BodyText}">
                 <Hyperlink Click="OnnxNotices_Click" AutomationProperties.Name="{loc:T Open the ONNX Runtime notices}"><Run Text="{loc:T ONNX Runtime notices}" /></Hyperlink>
             </TextBlock>
-
-            <TextBlock Text="{loc:T Lazy Scan is source available under the PolyForm Noncommercial License 1.0.0.}"
-                       Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,16,0,0" />
         </StackPanel>
     </DockPanel>
 </Window>

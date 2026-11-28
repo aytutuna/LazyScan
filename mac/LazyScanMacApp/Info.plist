@@ -84,7 +84,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 Aytu Tuna</string>
+	<string>Copyright © 2026 Alazy Inc. All rights reserved.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Lazy Scan looks for scanners on your local network, such as printers that scan, so you can scan from them, and receives documents from your paired phone.</string>
 	<key>NSPrincipalClass</key>

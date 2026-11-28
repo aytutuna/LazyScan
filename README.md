@@ -9,7 +9,7 @@ and pairs with Lazy Scan on a Windows PC or a Mac.
 The apps will be available on the App Store (iPhone, iPad and Mac) and the Microsoft Store
 (Windows). More at [alazy.app/scan](https://alazy.app/scan/); the privacy policy is at
 [alazy.app/scan/privacy.html](https://alazy.app/scan/privacy.html), and questions go to
-support@alazy.app. The source is available under the PolyForm Noncommercial licence (see
+support@alazy.app. The code is copyright Alazy Inc., all rights reserved (see
 [Licence](#licence)).
 
 The Mac app is built with SwiftUI on Apple's **ImageCaptureCore**, so it works with any
@@ -545,4 +545,4 @@ The code and data from other people that the apps include, with their licences, 
 
 ## Licence
 
-PolyForm Noncommercial 1.0.0: free for personal, study and research use, and commercial use needs written permission. The source is available, but this is not an open source licence. See `LICENSE`.
+The code is copyright Alazy Inc., all rights reserved (see `LICENSE`). Third-party components keep their own licenses (`THIRD-PARTY-NOTICES.txt`).
